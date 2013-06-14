@@ -1,0 +1,72 @@
+# temp files
+*~
+*.#*
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+
+# Compiled Dynamic libraries
+*.so
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# helpful to me only?
+TAGS
+#makedocs
+#publish_docs.sh
+
+# Compiled programs
+corsaro
+cors2ascii
+cors-ft-aggregate
+cors-ft-reports
+cors-trace2tuple
+*.tar.gz
+ChangeLog
+
+# doxygen files
+docs/doxygen/caida-html
+docs/doxygen/html
+docs/doxygen/latex
+docs/doxygen/man
+docs/corsaro.caida.doxygen
+docs/corsaro.doxygen
+
+# Autotools files
+# http://www.gnu.org/software/automake
+
+Makefile.in
+Makefile
+
+# http://www.gnu.org/software/autoconf
+
+/autom4te.cache
+/aclocal.m4
+/compile
+/configure
+/depcomp
+/install-sh
+/missing
+.deps/
+/config.h
+config.status
+config.h.in
+config.log
+configure.scan
+stamp-h1
+.libs/
+autoscan.log
+config.guess
+config.sub
+libtool
+ltmain.sh
+m4/libtool.m4
+m4/ltoptions.m4
+m4/ltsugar.m4
+m4/ltversion.m4
+m4/lt~obsolete.m4

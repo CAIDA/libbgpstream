@@ -1,0 +1,101 @@
+--- libtrace-3.0.13/lib/wandio.h	2011-09-15 15:14:11.000000000 -0700
++++ libtrace-3.0.13.wandio_export/lib/wandio.h	2012-03-04 11:00:33.000000000 -0800
+@@ -49,6 +49,20 @@
+  * @version $Id: wandio.h 1727 2011-09-15 22:14:11Z salcock $
+  */
+ 
++/* Alistair added these to allow wandio functions to be exported */
++#if __GNUC__ >= 4
++#ifdef LT_BUILDING_DLL
++#define DLLEXPORT __attribute__ ((visibility("default")))
++#define DLLLOCAL __attribute__ ((visibility("hidden")))
++#else
++#define DLLEXPORT
++#define DLLLOCAL
++#endif
++#else
++#define DLLEXPORT
++#define DLLLOCAL
++#endif
++
+ typedef struct io_t io_t; /**< Opaque IO handle structure for reading */
+ typedef struct iow_t iow_t; /**< Opaque IO handle structure for writing */
+ 
+@@ -208,14 +222,14 @@ iow_t *stdio_wopen(const char *filename,
+  * given file (if any), provided that libtrace was built with the appropriate
+  * libraries.
+  */
+-io_t *wandio_create(const char *filename);
++DLLEXPORT io_t *wandio_create(const char *filename);
+ 
+ /** Returns the current offset of the read pointer for a libtrace IO reader. 
+  *
+  * @param io		The IO reader to get the read offset for
+  * @return The offset of the read pointer, or -1 if an error occurs
+  */
+-off_t wandio_tell(io_t *io);
++DLLEXPORT off_t wandio_tell(io_t *io);
+ 
+ /** Changes the read pointer offset to the specified value for a libtrace IO
+  * reader.
+@@ -229,7 +243,7 @@ off_t wandio_tell(io_t *io);
+  * The arguments for this function are the same as those for lseek(2). See the
+  * lseek(2) manpage for more details.
+  */
+-off_t wandio_seek(io_t *io, off_t offset, int whence);
++DLLEXPORT off_t wandio_seek(io_t *io, off_t offset, int whence);
+ 
+ /** Reads from a libtrace IO reader into the provided buffer.
+  *
+@@ -238,7 +252,7 @@ off_t wandio_seek(io_t *io, off_t offset
+  * @param len		The size of the buffer
+  * @return The amount of bytes read, 0 if EOF is reached, -1 if an error occurs
+  */
+-off_t wandio_read(io_t *io, void *buffer, off_t len);
++DLLEXPORT off_t wandio_read(io_t *io, void *buffer, off_t len);
+ 
+ /** Reads from a libtrace IO reader into the provided buffer, but does not
+  * update the read pointer.
+@@ -248,14 +262,14 @@ off_t wandio_read(io_t *io, void *buffer
+  * @param len		The size of the buffer
+  * @return The amount of bytes read, 0 if EOF is reached, -1 if an error occurs
+  */
+-off_t wandio_peek(io_t *io, void *buffer, off_t len);
++DLLEXPORT off_t wandio_peek(io_t *io, void *buffer, off_t len);
+ 
+ /** Destroys a libtrace IO reader, closing the file and freeing the reader
+  * structure.
+  *
+  * @param io		The IO reader to destroy
+  */
+-void wandio_destroy(io_t *io);
++DLLEXPORT void wandio_destroy(io_t *io);
+ 
+ /** Creates a new libtrace IO writer and opens the provided file for writing.
+  *
+@@ -266,7 +280,7 @@ void wandio_destroy(io_t *io);
+  * 				O_CREATE
+  * @return A pointer to the new libtrace IO writer, or NULL if an error occurs
+  */
+-iow_t *wandio_wcreate(const char *filename, int compression_type, int compression_level, int flags);
++DLLEXPORT iow_t *wandio_wcreate(const char *filename, int compression_type, int compression_level, int flags);
+ 
+ /** Writes the contents of a buffer using a libtrace IO writer.
+  *
+@@ -275,14 +289,14 @@ iow_t *wandio_wcreate(const char *filena
+  * @param len		The amount of writable data in the buffer
+  * @return The amount of data written, or -1 if an error occurs
+  */
+-off_t wandio_wwrite(iow_t *iow, const void *buffer, off_t len);
++DLLEXPORT off_t wandio_wwrite(iow_t *iow, const void *buffer, off_t len);
+ 
+ /** Destroys a libtrace IO writer, closing the file and freeing the writer
+  * structure.
+  *
+  * @param iow		The IO writer to destroy
+  */
+-void wandio_wdestroy(iow_t *iow);
++DLLEXPORT void wandio_wdestroy(iow_t *iow);
+ 
+ /** @} */
+ 
