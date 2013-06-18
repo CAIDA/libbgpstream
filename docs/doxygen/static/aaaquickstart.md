@@ -46,8 +46,7 @@ To run the \ref tool_corsaro tool on an existing pcap file to generate \ref
 plugins_ft and \ref plugins_dos output data, use the following command:
 
 ~~~
-corsaro -m binary -o /path/to/output/file.%P.cors.gz \
-        /path/to/pcap/file.pcap.gz
+corsaro -o /path/to/output/file.%P.cors.gz /path/to/pcap/file.pcap.gz
 ~~~
 
 Replace `/path/to/output/file` with an actual path to the desired output
@@ -58,19 +57,17 @@ each component that generates an output file (e.g. `log`, `flowtuple`, etc).
 Replace `/path/to/pcap/file` with an actual path to a pcap (or any format
 supported by _libtrace_) file.
 
-The `-m binary` option tells Corsaro to write output data in a compact binary
-format where possible. Omitting this option is permitted, but not recommended as
-Corsaro will default to the ASCII output mode. ASCII output is much more
-verbose, and as such Corsaro can take longer to process the trace file and the
-resulting disk usage could be significantly higher.
+By default Corsaro will write output data in a compact binary
+format where possible. The \ref tool_cors2ascii tool can be used to convert the
+binary output files to a human-readable ASCII format.
 
 Running this command will process the given trace file and create four output
 files, using the output file template given. Each file will have the `%%P`
 replaced with the name of the component that created it.
 That is, `global`, `log`, `flowtuple`, and `dos`.
 
-Corsaro currently has preliminary support for processing packets directly from a
-live interface. To use this functionality, replace the pcap file path with:
+Corsaro also supports processing packets directly from a live interface. To use
+this functionality, replace the pcap file path with:
 
 ~~~
 pcapint:<interface>
