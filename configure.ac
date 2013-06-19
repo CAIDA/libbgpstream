@@ -200,13 +200,13 @@ AC_MSG_RESULT([$with_slash_eight])
 ## meta plugins. these do not write output, they add metadata to the packet
 ## seems that the most common use-case will be to run them first
 ED_WITH_PLUGIN([corsaro_anon],[anon],[ANON],[no])
-ED_WITH_PLUGIN([corsaro_pfx2as],[pfx2as],[PFX2AS],[yes])
+ED_WITH_PLUGIN([corsaro_pfx2as],[pfx2as],[PFX2AS],[no])
 ED_WITH_PLUGIN([corsaro_geodb],[geodb],[GEODB],[no])
 
 # filter plugins. these do not write output, they indicate which packets 
 # should [not] be written out
-ED_WITH_PLUGIN([corsaro_filtergeo],[filtergeo],[FILTERGEO],[yes])
-ED_WITH_PLUGIN([corsaro_filterpfx],[filterpfx],[FILTERPFX],[yes])
+ED_WITH_PLUGIN([corsaro_filtergeo],[filtergeo],[FILTERGEO],[no])
+ED_WITH_PLUGIN([corsaro_filterpfx],[filterpfx],[FILTERPFX],[no])
 
 #pass-through pcap plugin
 # the pcap plugin only makes sense in live mode, so disable it by default
