@@ -121,6 +121,7 @@ typedef struct corsaro_dos_attack_vector_in
   /** The time of the last packet (usec) */
   uint32_t latest_time_usec;
 
+  /** The length of the initial packet (bytes) */
   uint32_t initial_packet_len;
 
   /** A copy of the packet that caused the vector to be created 

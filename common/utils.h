@@ -45,6 +45,7 @@
 /** Stringify a macro value */
 #define STR(a) XSTR(a)
 
+/** Count the number of elements in an arbitrary array */
 #define ARR_CNT(a) (sizeof(a) / sizeof(a[0]))
 
 /* ntholl and htonll macros from 

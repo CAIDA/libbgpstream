@@ -519,7 +519,7 @@ const char *corsaro_plugin_get_name_by_id(corsaro_plugin_manager_t *manager,
 /** Get the name of a plugin given it's magic number
  * 
  * @param manager    The plugin manager associated with the state
- * @param id         The plugin magic number to retrieve the name for
+ * @param magic      The plugin magic number to retrieve the name for
  * @return the name of the plugin as a string, NULL if no plugin matches
  * the given magic number
  */

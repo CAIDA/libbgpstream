@@ -31,7 +31,7 @@ section describes the API for reading existing corsaro plugin output data (the
 \ref arch_corsaro_in API).
 
 Bootstrapping a New Plugin {#tutorials_plugin_bootstrap}
---------------------------
+==========================
 
 Bootstrapping a new plugin generally consists of two steps:
 
@@ -39,7 +39,8 @@ Bootstrapping a new plugin generally consists of two steps:
  -# Adding references to the newly created plugin to the appropriate autotools
 	 config files and to the corsaro plugin manager.
 
-### Creating Boilerplate Code ### {#tutorials_plugin_bootstrap_create}
+Creating Boilerplate Code {#tutorials_plugin_bootstrap_create}
+-------------------------
 
 To ready a plugin for analysis code to be added, several steps must be followed:
 
@@ -83,7 +84,7 @@ libcorsaro/plugins/corsaro_flowtuple.c
 libcorsaro/plugins/corsaro_flowtuple.h
 ~~~
 
-#### Interface Code ####{#tutorials_plugin_bootstrap_interface}
+### Interface Code ###{#tutorials_plugin_bootstrap_interface}
 
 The simplest of the two files needed for each plugin is the interface (.h) file.
 A minimal plugin needs only a single line in the header file:
@@ -129,14 +130,14 @@ plugins_ft plugin, you will find lots of other code also - this is used for the
 \ref arch_corsaro_in API and is discussed in the \ref
 tutorials_plugin_corsaro_in section.
 
-#### Implementation Code ####{#tutorials_plugin_bootstrap_impl}
+### Implementation Code ###{#tutorials_plugin_bootstrap_impl}
 
 Moving to the implementation (.c) file, there is two data structures that we
 recommend you define before implementing the API functions. These provide some
 state for the plugin (because there can potentially be multiple instances of
 Corsaro used simultaneously) and helper macros for accessing that state.
 
-##### corsaro_plugin Instance{#tutorials_plugin_bootstrap_impl_plugin}
+### corsaro_plugin Instance ###{#tutorials_plugin_bootstrap_impl_plugin}
 
 The first structure that is needed is an instance of \ref corsaro_plugin which
 describes the plugin. This will be copied by the plugin manager when an instance
@@ -158,7 +159,7 @@ static corsaro_plugin_t corsaro_flowtuple_plugin = {
 };
 ~~~
 
-##### State Structure(s){#tutorials_plugin_bootstrap_impl_state}
+#### State Structure(s) ###{#tutorials_plugin_bootstrap_impl_state}
 
 The second structure needed is a structure that will hold any per-instance state
 needed by the plugin. For example, pointers to output files, data structures for
@@ -194,7 +195,7 @@ struct corsaro_flowtuple_in_state_t {
 };
 ~~~
 
-##### Helper Macros{#tutorials_plugin_bootstrap_impl_macro}
+### Helper Macros ###{#tutorials_plugin_bootstrap_impl_macro}
 
 As mentioned earlier, there are two macros provided by the plugin manager (\ref
 corsaro_plugin.h) which assist with the retrieval of plugin and state structures
@@ -238,7 +239,8 @@ Once these structures and macros have been defined, stub API functions defined
 by the \ref CORSARO_PLUGIN_GENERATE_PROTOS macro should be created, and then the
 plugin can be integrated into Corsaro.
 
-### Integrating a New Plugin ### {#tutorials_plugin_bootstrap_integrate}
+Integrating a New Plugin {#tutorials_plugin_bootstrap_integrate}
+------------------------
 
 There are 4 files that must be updated in order to include a new corsaro
 plugin:
@@ -266,7 +268,7 @@ Note that the order plugins are declared in this file is the _default_ order in
 which they will be run. That is, a plugin declared after all others will be
 given a packet to process once all other plugins have processed it.
 
-#### libcorsaro/plugins/Makefile.am ####
+### libcorsaro/plugins/Makefile.am ###
 
 Using the values defined by the `ED_WITH_PLUGIN` macro declaration in the
 `configure.ac` file, add the plugin to `libcorsaro/plugins/Makefile.am` as
@@ -307,7 +309,7 @@ Using the \ref plugins_pcap example again, the entry would be:
 #endif
 ~~~
 
-#### libcorsaro/corsaro_plugin.h ####
+### libcorsaro/corsaro_plugin.h ###
 
 The final change that must be made is to add a unique ID for the plugin to the
 \ref corsaro_plugin_id enum in `libcorsaro/corsaro_plugin.h`. 
@@ -327,7 +329,7 @@ For example, the ID definition for the \ref plugins_pcap plugin is:
 CORSARO_PLUGIN_ID_PCAP             = 1,
 ~~~
 
-#### Testing the Plugin ####
+### Testing the Plugin ###
 
 At this point, the (stub) plugin is fully integrated into Corsaro, and should
 compile cleanly. Because we have altered files needed by _autoconf_, the
@@ -349,13 +351,13 @@ take care of these tasks, and also build a distribution tarball that can be
 tested on another system.
 
 Implementing the Corsaro-Out API   {#tutorials_plugin_corsaro_out}
---------------------------------
+================================
 
 This section describes each of the functions that must be implemented to fully
 comply with the \ref arch_corsaro_out API. Each function has some code snippets
 that are almost always used. The actual function implementations will have
 `corsaro_<plugin_name>_` prefixed to the names. For example, the \ref
-plugins_pcap implementation of the \ref alloc function is called
+plugins_pcap implementation of the \ref alloc_output function is called
 `corsaro_pcap_alloc`.
 
 The required functions are:
@@ -366,7 +368,8 @@ The required functions are:
 5. \ref end_interval
 6. \ref process_packet
 
-### alloc ### {#alloc_output}
+alloc {#alloc_output}
+-----
 
 The _alloc_ function is called when the plugin manager needs to instantiate a
 new instance of a plugin. If you followed the steps earlier in this tutorial
@@ -393,7 +396,8 @@ corsaro_plugin_t *corsaro_pcap_alloc(corsaro_t *corsaro)
 }
 ~~~
 
-### init_output ### {#init_output}
+init_output {#init_output}
+-----------
 
 The _init_output_ function is called by Corsaro to ready a plugin for use in the
 \ref arch_corsaro_out mode. This event should be used to establish any state
@@ -442,7 +446,7 @@ Breaking it down, there are three important steps:
  -# Register the state structure with the plugin manager
  -# Open the output file
  
-#### Allocate Memory for State ####
+### Allocate Memory for State ###
 
 Because Corsaro is designed such that multiple instances of a plugin can be used
 at once, per-instance state must not be stored in static structures. Instead we
@@ -465,7 +469,7 @@ zero a block of memory. If the `malloc` fails, we issue a log message using \ref
 corsaro_log and jump to the `err` block which simply calls the
 `corsaro_dos_close_output` function described in the next section.
 
-#### Register State with Plugin Manager ####
+### Register State with Plugin Manager ###
 
 To register the newly created state structure with the plugin manager, we
 simply call the \ref corsaro_plugin_register_state function:
@@ -482,7 +486,7 @@ registering the state, and a void pointer to a state structure.  We use the
 `PLUGIN` macro which was described in \ref tutorials_plugin_bootstrap_impl to
 retrieve a pointer to the plugin structure.
 
-#### Open Output File ####
+### Open Output File ###
 
 ~~~{.c}
 /* open the output file */
@@ -509,7 +513,8 @@ stores a pointer in the state structure:
 state->attack_hash = kh_init(av);
 ~~~
 
-### close_output ### {#close_output}
+close_output {#close_output}
+------------
 
 The _close_output_ function should free any state that was established in the
 _init_output_ function (or during processing). The _close_output_ function
@@ -552,7 +557,8 @@ structure itself is freed by calling \ref corsaro_plugin_free_state and passing
 a pointer to the plugin manager, and to 'itself' - the structure for the current
 plugin.
 
-### start_interval ### {#start_interval}
+start_interval {#start_interval}
+--------------
 
 The _start_interval_ function is used by Corsaro to inform a plugin that a new
 interval (see the \ref arch_intervals section) has begun. The plugin may need to
@@ -560,7 +566,8 @@ initialize some per-interval state at this point. It is perfectly acceptable to
 ignore a _start_interval_ event (i.e. simply return `0`) if the plugin has no
 use for it.
 
-### end_interval ### {#end_interval}
+end_interval {#end_interval}
+------------
 
 The _end_interval_ function is used by Corsaro to inform a plugin that the
 current interval is ending. The plugin may need to write out aggregated data
@@ -568,7 +575,8 @@ current interval is ending. The plugin may need to write out aggregated data
 per-interval state at this point. As with the _start_interval_ event, a plugin
 may safely ignore an _end_interval_ event.
 
-### process_packet ### {#process_packet}
+process_packet {#process_packet}
+--------------
 
 The _process_packet_ event is likely where the majority of a plugin's analysis
 code will go. The function is called once for every packet that Corsaro
@@ -658,7 +666,7 @@ int corsaro_dos_process_packet(corsaro_t *corsaro,
 ~~~
 
 Implementing the Corsaro-In API   {#tutorials_plugin_corsaro_in}
--------------------------------
+===============================
 
 _Under Development_
 
@@ -669,8 +677,8 @@ corsaro_<plugin_name>_ prefixed to the names.
 
 This section assumes that the \a corsaro-in API has already been fully
 implemented (in order to have generated the data), but it is theoretically
-possible to only implement the \ref alloc function from that API and still have
-the \a corsaro-in API function correctly.
+possible to only implement the \ref alloc_output function from that API and
+still have the \a corsaro-in API function correctly.
 
 The required functions are:
 1. \ref probe_filename
@@ -680,19 +688,25 @@ The required functions are:
 5. \ref read_record
 6. \ref read_global_data_record
 
-### probe_filename ### {#probe_filename}
+probe_filename {#probe_filename}
+--------------
 
 @@ theres a nice function in corsaro_plugin.c that will probably do this for you
 if you followed the conventions about how to name the output file
 
-### probe_magic ### {#probe_magic}
+probe_magic {#probe_magic}
+-----------
 
 @@ provide the code snippet to demonstrate the peek function
 
-### init_input ### {#init_input}
+init_input {#init_input}
+----------
 
-### close_input ### {#close_input}
+close_input {#close_input}
+-----------
 
-### read_record ### {#read_record}
+read_record {#read_record}
+-----------
 
-### read_global_data_record ### {#read_global_data_record}
+read_global_data_record {#read_global_data_record}
+-----------------------

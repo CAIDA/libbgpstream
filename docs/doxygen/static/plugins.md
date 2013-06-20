@@ -300,7 +300,7 @@ Prefix Filter{#plugins_filterpfx}
 -------------
 
 The prefix filter plugin operates in much the same manner as the
-\plugins_filtergeo plugin, except it takes as input, a list of IPv4 prefixes. 
+\ref plugins_filtergeo plugin, except it takes as input, a list of IPv4 prefixes. 
 
 The plugin uses longest-prefix matching to determine whether the source (or
 destination of given the `-d` option) IP address of a packet is within one of

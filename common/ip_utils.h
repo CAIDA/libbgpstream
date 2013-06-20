@@ -31,13 +31,18 @@
  */
 typedef struct ip_prefix 
 {
+  /** The address component of the prefix */
   uint32_t addr;
+  /** The length of the prefix mask */
   uint8_t masklen;
 } ip_prefix_t;
 
+/** An element in a linked list of IP prefixes */
 typedef struct ip_prefix_list
 {
+  /** The prefix that this element represents */
   ip_prefix_t prefix;
+  /** The next prefix in the list */
   struct ip_prefix_list *next;
 } ip_prefix_list_t;
 

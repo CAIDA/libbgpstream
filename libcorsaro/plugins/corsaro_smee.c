@@ -121,6 +121,7 @@ struct corsaro_smee_state_t {
 #define PLUGIN(corsaro)						\
   (CORSARO_PLUGIN_PLUGIN(corsaro, CORSARO_PLUGIN_ID_SMEE))
 
+/** Parse a local address prefix */
 static int parse_local_address(corsaro_t *corsaro, char *address_str)
 {
   struct corsaro_smee_state_t *state = STATE(corsaro);
@@ -170,6 +171,7 @@ la = &(state->local_addresses[state->local_addresses_cnt++]);
   return 0;
 }
 
+/** Print plugin usage to stderr */
 static void usage(corsaro_t *corsaro)
 {
   fprintf(stderr, 
@@ -194,7 +196,9 @@ static void usage(corsaro_t *corsaro)
 	  );
 }
 
-/** @todo upgrade the address parsing to support IPv6 */
+/** Parse the arguments given to the plugin
+ * @todo upgrade the address parsing to support IPv6 
+ */
 static int parse_args(corsaro_t *corsaro)
 {
   corsaro_plugin_t *plugin = PLUGIN(corsaro);
@@ -258,6 +262,7 @@ static int parse_args(corsaro_t *corsaro)
   return 0;
 }
 
+/** Called by smee to log messages */
 static void smee_log_callback(void *user_data, int priority, int die, 
 			      const char *fmt, ...)
 {
@@ -272,6 +277,7 @@ static void smee_log_callback(void *user_data, int priority, int die,
     }
 }
 
+/** Helper macro for IO callbacks to write to a Corsaro file */
 #define CORSARO_SMEE_FPRINTF(outfile)			\
   va_list ap;						\
   corsaro_t *corsaro = (corsaro_t*)user_data;		\
@@ -283,23 +289,27 @@ static void smee_log_callback(void *user_data, int priority, int die,
   va_end(ap);						\
   return 0;
 
+/** Called by smee to write stats lines */
 static int smee_stat_callback(void *user_data, const char *fmt, ...)
 {
   CORSARO_SMEE_FPRINTF(STATE(corsaro)->statfile)
 }
 
+/** Called by smee to populate the summary file */
 static int smee_sum_callback(void *user_data, const char *fmt, ...)
 {
   CORSARO_SMEE_FPRINTF(STATE(corsaro)->sumfile)
 }
 
 #if 0
+/** Called by smee to populate the sources file */
 static int smee_src_callback(void *user_data, const char *fmt, ...)
 {
   CORSARO_SMEE_FPRINTF(STATE(corsaro)->srcfile)
 }
 #endif
 
+/** Called by smee to determine the number of dropped packets */
 static uint64_t smee_pkt_drops(void *user_data)
 {
   return corsaro_get_dropped_packets((corsaro_t*)user_data);
@@ -308,23 +318,27 @@ static uint64_t smee_pkt_drops(void *user_data)
 
 /* == PUBLIC PLUGIN FUNCS BELOW HERE == */
 
+/** Implements the alloc function of the plugin API */
 corsaro_plugin_t *corsaro_smee_alloc(corsaro_t *corsaro)
 {
   return &corsaro_smee_plugin;
 }
 
+/** Implements the probe_filename function of the plugin API */
 int corsaro_smee_probe_filename(const char *fname)
 {
   /* look for 'corsaro_smee' in the name */
   return corsaro_plugin_probe_filename(fname, &corsaro_smee_plugin);
 }
 
+/** Implements the probe_magic function of the plugin API */
 int corsaro_smee_probe_magic(corsaro_in_t *corsaro, corsaro_file_in_t *file)
 {
   /* once we know what the binary output will look like...*/
   return -1;
 }
 
+/** Implements the init_output function of the plugin API */
 int corsaro_smee_init_output(corsaro_t *corsaro)
 {
   struct corsaro_smee_state_t *state;
@@ -412,16 +426,19 @@ int corsaro_smee_init_output(corsaro_t *corsaro)
   return -1;
 }
 
+/** Implements the init_input function of the plugin API */
 int corsaro_smee_init_input(corsaro_in_t *corsaro)
 {
   return -1;
 }
 
+/** Implements the close_input function of the plugin API */
 int corsaro_smee_close_input(corsaro_in_t *corsaro)
 {
   return -1;
 }
 
+/** Implements the close_output function of the plugin API */
 int corsaro_smee_close_output(corsaro_t *corsaro)
 {
   struct corsaro_smee_state_t *state = STATE(corsaro);
@@ -464,6 +481,7 @@ int corsaro_smee_close_output(corsaro_t *corsaro)
   return 0;
 }
 
+/** Implements the read_record function of the plugin API */
 off_t corsaro_smee_read_record(struct corsaro_in *corsaro, 
 			  corsaro_in_record_type_t *record_type, 
 			  corsaro_in_record_t *record)
@@ -472,6 +490,7 @@ off_t corsaro_smee_read_record(struct corsaro_in *corsaro,
   return -1;
 }
 
+/** Implements the read_global_data_record function of the plugin API */
 off_t corsaro_smee_read_global_data_record(struct corsaro_in *corsaro, 
 			      enum corsaro_in_record_type *record_type, 
 			      struct corsaro_in_record *record)
@@ -480,6 +499,7 @@ off_t corsaro_smee_read_global_data_record(struct corsaro_in *corsaro,
   return -1;
 }
 
+/** Implements the start_interval function of the plugin API */
 int corsaro_smee_start_interval(corsaro_t *corsaro, corsaro_interval_t *int_start)
 {
   struct corsaro_smee_state_t *state = STATE(corsaro);
@@ -549,6 +569,7 @@ int corsaro_smee_start_interval(corsaro_t *corsaro, corsaro_interval_t *int_star
   return -1;
 }
 
+/** Implements the end_interval function of the plugin API */
 int corsaro_smee_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_end)
 {
   /* smee only supports ascii output right now, so be a little rude and
@@ -568,6 +589,7 @@ int corsaro_smee_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_end)
   return 0;
 }
 
+/** Implements the process_packet function of the plugin API */
 int corsaro_smee_process_packet(corsaro_t *corsaro, 
 			     corsaro_packet_t *packet)
 {

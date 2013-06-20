@@ -67,7 +67,9 @@
 /*#define CORSARO_PFX2AS_DEBUG*/
 
 #ifdef CORSARO_PFX2AS_DEBUG
+/** The number of cache hits */
 static int debug_cache_hits = 0;
+/** The number of cache misses */
 static int debug_cache_misses = 0;
 #endif
 
@@ -77,8 +79,9 @@ static int debug_cache_misses = 0;
 /** The name of this plugin - should match the file name */
 #define PLUGIN_NAME "pfx2as"
 
-/** Initialize the hash type (32bit keys, 32bit values) */
+/** Initialize the hash type (32bit keys, geo_record values) */
 KHASH_MAP_INIT_INT(32record, corsaro_geo_record_t *)
+/** Initialize the map type (string keys, geo_record values */
 KHASH_MAP_INIT_STR(strrec, corsaro_geo_record_t *)
 
 /** Common plugin information across all instances */
@@ -107,8 +110,10 @@ struct corsaro_pfx2as_state_t {
   char *pfx2as_file;
 };
 
+/** The length of the line buffer when reading pfx2as files */
 #define BUFFER_LEN 1024
 
+/** The number of columns in a pfx2as file */
 #define PFX2AS_COL_CNT 3
 
 /** Extends the generic plugin state convenience macro in corsaro_plugin.h */
@@ -118,6 +123,7 @@ struct corsaro_pfx2as_state_t {
 #define PLUGIN(corsaro)						\
   (CORSARO_PLUGIN_PLUGIN(corsaro, CORSARO_PLUGIN_ID_PFX2AS))
 
+/** Print plugin usage to stderr */
 static void usage(corsaro_plugin_t *plugin)
 {
   fprintf(stderr, 
@@ -127,6 +133,7 @@ static void usage(corsaro_plugin_t *plugin)
 	  plugin->argv[0]);
 }
 
+/** Parse the arguments given to the plugin */
 static int parse_args(corsaro_t *corsaro)
 {
   corsaro_plugin_t *plugin = PLUGIN(corsaro);
@@ -167,6 +174,7 @@ static int parse_args(corsaro_t *corsaro)
   return 0;
 }
 
+/** Parse an underscore-separated list of ASNs */
 static int parse_asn(char *asn_str, uint32_t **asn_arr)
 {
   int asn_cnt = 0;
@@ -207,11 +215,13 @@ static int parse_asn(char *asn_str, uint32_t **asn_arr)
   return asn_cnt;
 }
 
+/** Free a string (for use with the map) */
 static inline void str_free(const char *str)
 {
   free((char*)str);
 }
 
+/** Read the prefix2as file */
 static int read_routeviews(corsaro_t *corsaro, 
 			   corsaro_file_in_t *file)
 {
@@ -348,6 +358,7 @@ static int read_routeviews(corsaro_t *corsaro,
   
 }
 
+/** Get an ASN record from the cache given an IP address */
 static corsaro_geo_record_t *cache_get(kh_32record_t *hash, uint32_t ip)
 {
   khiter_t khiter;
@@ -360,6 +371,7 @@ static corsaro_geo_record_t *cache_get(kh_32record_t *hash, uint32_t ip)
   return kh_value(hash, khiter);
 }
 
+/** Add an ASN record to the hash for the given IP address */
 static void cache_add(kh_32record_t *hash, uint32_t ip, 
 		      corsaro_geo_record_t *record)
 {
@@ -371,6 +383,7 @@ static void cache_add(kh_32record_t *hash, uint32_t ip,
   kh_value(hash, khiter) = record;
 }
 
+/** Common code between process_packet and process_flowtuple */
 static int process_generic(corsaro_t *corsaro, corsaro_packet_state_t *state,
 			   uint32_t src_ip)
 {
@@ -442,23 +455,27 @@ if(plugin_state->cache_enabled != 0)
 
 /* == PUBLIC PLUGIN FUNCS BELOW HERE == */
 
+/** Implements the alloc function of the plugin API */
 corsaro_plugin_t *corsaro_pfx2as_alloc(corsaro_t *corsaro)
 {
   return &corsaro_pfx2as_plugin;
 }
 
+/** Implements the probe_filename function of the plugin API */
 int corsaro_pfx2as_probe_filename(const char *fname)
 {
   /* look for 'corsaro_pfx2as' in the name */
   return corsaro_plugin_probe_filename(fname, &corsaro_pfx2as_plugin);
 }
 
+/** Implements the probe_magic function of the plugin API */
 int corsaro_pfx2as_probe_magic(corsaro_in_t *corsaro, corsaro_file_in_t *file)
 {
   /* we write no output files, so dont even bother looking */
   return 0;
 }
 
+/** Implements the init_output function of the plugin API */
 int corsaro_pfx2as_init_output(corsaro_t *corsaro)
 {
   struct corsaro_pfx2as_state_t *state;
@@ -527,16 +544,19 @@ int corsaro_pfx2as_init_output(corsaro_t *corsaro)
   return -1;
 }
 
+/** Implements the init_input function of the plugin API */
 int corsaro_pfx2as_init_input(corsaro_in_t *corsaro)
 {
   return -1;
 }
 
+/** Implements the close_input function of the plugin API */
 int corsaro_pfx2as_close_input(corsaro_in_t *corsaro)
 {
   return -1;
 }
 
+/** Implements the close_output function of the plugin API */
 int corsaro_pfx2as_close_output(corsaro_t *corsaro)
 {
   struct corsaro_pfx2as_state_t *state = STATE(corsaro);
@@ -566,6 +586,7 @@ int corsaro_pfx2as_close_output(corsaro_t *corsaro)
   return 0;
 }
 
+/** Implements the read_record function of the plugin API */
 off_t corsaro_pfx2as_read_record(struct corsaro_in *corsaro, 
 				corsaro_in_record_type_t *record_type, 
 				corsaro_in_record_t *record)
@@ -574,6 +595,7 @@ off_t corsaro_pfx2as_read_record(struct corsaro_in *corsaro,
   return -1;
 }
 
+/** Implements the read_global_data_record function of the plugin API */
 off_t corsaro_pfx2as_read_global_data_record(struct corsaro_in *corsaro, 
 					    enum corsaro_in_record_type *record_type, 
 					    struct corsaro_in_record *record)
@@ -582,18 +604,22 @@ off_t corsaro_pfx2as_read_global_data_record(struct corsaro_in *corsaro,
   return -1;
 }
 
-int corsaro_pfx2as_start_interval(corsaro_t *corsaro, corsaro_interval_t *int_start)
+/** Implements the start_interval function of the plugin API */
+int corsaro_pfx2as_start_interval(corsaro_t *corsaro, 
+				  corsaro_interval_t *int_start)
 {
   /* we don't care */
   return 0;
 }
 
+/** Implements the end_interval function of the plugin API */
 int corsaro_pfx2as_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_end)
 {
   /* we don't care */
   return 0;
 }
 
+/** Implements the process_packet function of the plugin API */
 int corsaro_pfx2as_process_packet(corsaro_t *corsaro, 
 				 corsaro_packet_t *packet)
 {
@@ -609,6 +635,7 @@ int corsaro_pfx2as_process_packet(corsaro_t *corsaro,
 }
 
 #ifdef WITH_PLUGIN_SIXT
+/** Implements the process_flowtuple function of the plugin API */
 int corsaro_pfx2as_process_flowtuple(corsaro_t *corsaro,
 				     corsaro_flowtuple_t *flowtuple,
 				     corsaro_packet_state_t *state)
@@ -617,6 +644,7 @@ int corsaro_pfx2as_process_flowtuple(corsaro_t *corsaro,
 			 corsaro_flowtuple_get_source_ip(flowtuple));
 }
 
+/** Implements the process_flowtuple_class_start function of the plugin API */
 int corsaro_pfx2as_process_flowtuple_class_start(corsaro_t *corsaro,
 				   corsaro_flowtuple_class_start_t *class)
 {
@@ -624,6 +652,7 @@ int corsaro_pfx2as_process_flowtuple_class_start(corsaro_t *corsaro,
   return 0;
 }
 
+/** Implements the process_flowtuple_class_end function of the plugin API */
 int corsaro_pfx2as_process_flowtuple_class_end(corsaro_t *corsaro,
 				   corsaro_flowtuple_class_end_t *class)
 {

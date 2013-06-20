@@ -168,7 +168,7 @@ the template:
 %N.%s.%P.cors.gz
 ~~~
 
-the \ref plugin_ft plugin would open a file named:
+the \ref plugins_ft plugin would open a file named:
 
 ~~~
 ucsd-nt.1320969600.flowtuple.cors.gz
@@ -197,7 +197,7 @@ should be used.
  -# a pointer to the data to write
  -# the length of the data
  
- For example, the \ref plugins_ft plugin writes a \ref corsaro_flowtuple_t
+ For example, the \ref plugins_ft plugin writes a \ref corsaro_flowtuple
  record by calling:
  
  ~~~
@@ -216,7 +216,7 @@ should be used.
   -# a pointer to the format string (just like `fprintf(3)`)
   
 For example, the \ref plugins_ft plugin prints the contents of a \ref
-corsaro_flowtuple_t record by calling:
+corsaro_flowtuple record by calling:
 ~~~
 corsaro_file_printf(corsaro, file, "%s|%s"
 			   "|%"PRIu16"|%"PRIu16

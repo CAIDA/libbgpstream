@@ -182,13 +182,16 @@ typedef struct corsaro_geo_datastructure
   /** Pointer to init function */
   int (*init)(corsaro_t *corsaro, struct corsaro_geo_datastructure *ds);
   
+  /** Pointer to free function */
   void (*free)(struct corsaro_geo_datastructure *ds);
 
+  /** Pointer to add prefix function */
   int (*add_prefix)(corsaro_t *corsaro,
 		    struct corsaro_geo_datastructure *ds, 
 		    uint32_t addr, uint8_t mask,
 		    corsaro_geo_record_t *record);
 
+  /** Pointer to lookup record function */
   corsaro_geo_record_t *(*lookup_record)(corsaro_t *corsaro,
 					   struct corsaro_geo_datastructure *ds,
 					   uint32_t addr);
