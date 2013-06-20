@@ -90,23 +90,27 @@ struct corsaro_pcap_state_t {
 
 /* == PUBLIC PLUGIN FUNCS BELOW HERE == */
 
+/** Implements the alloc function of the plugin API */
 corsaro_plugin_t *corsaro_pcap_alloc(corsaro_t *corsaro)
 {
   return &corsaro_pcap_plugin;
 }
 
+/** Implements the probe_filename function of the plugin API */
 int corsaro_pcap_probe_filename(const char *fname)
 {
   /* cannot read raw pcap files using corsaro_in */
   return 0;
 }
 
+/** Implements the probe_magic function of the plugin API */
 int corsaro_pcap_probe_magic(corsaro_in_t *corsaro, corsaro_file_in_t *file)
 {
   /* cannot read raw pcap files using corsaro_in */
   return 0;
 }
 
+/** Implements the init_output function of the plugin API */
 int corsaro_pcap_init_output(corsaro_t *corsaro)
 {
   struct corsaro_pcap_state_t *state;
@@ -130,16 +134,19 @@ int corsaro_pcap_init_output(corsaro_t *corsaro)
   return -1;
 }
 
+/** Implements the init_output function of the plugin API */
 int corsaro_pcap_init_input(corsaro_in_t *corsaro)
 {
   return -1;
 }
 
+/** Implements the close_input function of the plugin API */
 int corsaro_pcap_close_input(corsaro_in_t *corsaro)
 {
   return -1;
 }
 
+/** Implements the close_output function of the plugin API */
 int corsaro_pcap_close_output(corsaro_t *corsaro)
 {
   int i;
@@ -164,6 +171,7 @@ int corsaro_pcap_close_output(corsaro_t *corsaro)
   return 0;
 }
 
+/** Implements the read_record function of the plugin API */
 off_t corsaro_pcap_read_record(struct corsaro_in *corsaro, 
 			       corsaro_in_record_type_t *record_type, 
 			       corsaro_in_record_t *record)
@@ -174,6 +182,7 @@ off_t corsaro_pcap_read_record(struct corsaro_in *corsaro,
   return -1;
 }
 
+/** Implements the read_global_data_record function of the plugin API */
 off_t corsaro_pcap_read_global_data_record(struct corsaro_in *corsaro, 
 			      enum corsaro_in_record_type *record_type, 
 			      struct corsaro_in_record *record)
@@ -182,6 +191,7 @@ off_t corsaro_pcap_read_global_data_record(struct corsaro_in *corsaro,
   return -1;
 }
 
+/** Implements the start_interval function of the plugin API */
 int corsaro_pcap_start_interval(corsaro_t *corsaro, corsaro_interval_t *int_start)
 {
   if(STATE(corsaro)->outfile == NULL)
@@ -207,6 +217,7 @@ int corsaro_pcap_start_interval(corsaro_t *corsaro, corsaro_interval_t *int_star
   return 0;
 }
 
+/** Implements the end_interval function of the plugin API */
 int corsaro_pcap_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_end)
 {
   struct corsaro_pcap_state_t *state = STATE(corsaro);
@@ -234,6 +245,7 @@ int corsaro_pcap_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_end)
   return 0;
 }
 
+/** Implements the process_packet function of the plugin API */
 int corsaro_pcap_process_packet(corsaro_t *corsaro, 
 				corsaro_packet_t *packet)
 {

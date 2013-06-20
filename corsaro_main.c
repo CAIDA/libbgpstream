@@ -51,26 +51,39 @@
  *
  */
 
+/** The number of intervals in CAIDA's legacy flowtuple files */
 #define LEGACY_INTERVAL_CNT 60
 
+/** Indicates that Corsaro is waiting to shutdown */
 volatile sig_atomic_t corsaro_shutdown = 0;
+
+/** The number of SIGINTs to catch before aborting */
 #define HARD_SHUTDOWN 3
 
 /* for when we are reading trace files */
+/** A pointer to a libtrace object */
 static libtrace_t *trace = NULL;
+/** A pointer to a libtrace packet */
 static libtrace_packet_t *packet = NULL;
+/** A pointer to a libtrace BPF filter */
 static libtrace_filter_t *filter = NULL;
 
 #ifdef WITH_PLUGIN_SIXT
 /* for when we are reading flowtuple files */
+/** A pointer to a corsaro_in object for use when reading flowtuple files */
 static corsaro_in_t *corsaro_in = NULL;
+/** A pointer to a corsaro record */
 static corsaro_in_record_t *record = NULL;
 #endif
 
+/** A pointer to the instance of corsaro that we will drive */
 static corsaro_t *corsaro = NULL;
+/** Should a live interface be set to promiscuous mode? */
 static int promisc = 0;
+/** The number of legacy intervals we have processed */
 static int legacy_intervals = 0;
 
+/** Handles SIGINT gracefully and shuts down */
 static void catch_sigint(int sig)
 {
   corsaro_shutdown++;
@@ -93,6 +106,7 @@ static void catch_sigint(int sig)
   signal(sig, catch_sigint);
 }
 
+/** Clean up all state before exit */
 static void clean()
 {
   if(packet != NULL)
@@ -115,6 +129,7 @@ static void clean()
     }
 }
 
+/** Prepare a new trace file for reading */
 static int init_trace(char *tracefile)
 {
   /* create a packet buffer */
@@ -155,6 +170,7 @@ static int init_trace(char *tracefile)
   return 0;
 }
 
+/** Close a trace file */
 static void close_trace()
 {
   if(trace != NULL)
@@ -164,6 +180,7 @@ static void close_trace()
     }
 }
 
+/** Process a trace file */
 static int process_trace(char *traceuri)
 {
   if(init_trace(traceuri) != 0)
@@ -202,6 +219,7 @@ static int process_trace(char *traceuri)
 }
 
 #ifdef WITH_PLUGIN_SIXT
+/** Prepare for processing a FlowTuple file */
 static int init_flowtuple(const char *tuplefile)
 {
   /* get the corsaro_in object we need to use to read the tuple file */
@@ -230,6 +248,7 @@ static int init_flowtuple(const char *tuplefile)
   return 0;
 }
 
+/** Close a flowtuple input file */
 static void close_flowtuple()
 {
   if(record != NULL)
@@ -245,6 +264,7 @@ static void close_flowtuple()
     }
 }
 
+/** Process a FlowTuple input file */
 static int process_corsaro(const char *corsuri)
 {
   off_t len = 0;
@@ -297,6 +317,7 @@ static int process_corsaro(const char *corsuri)
 }
 #endif
 
+/** Print usage information to stderr */
 static void usage(const char *name)
 {
   int i;
@@ -344,6 +365,7 @@ static void usage(const char *name)
   corsaro_free_plugin_names(plugin_names, plugin_cnt);
 }
 
+/** Entry point for the Corsaro tool */
 int main(int argc, char *argv[])
 { 	
   int opt;
