@@ -632,9 +632,6 @@ int corsaro_flowtuple_probe_magic(corsaro_in_t *corsaro,
   return 0;
 }
 
-/**
- * @todo dump full corsaro headers
- */
 int corsaro_flowtuple_init_output(corsaro_t *corsaro)
 {
   int i;
