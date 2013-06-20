@@ -32,11 +32,11 @@
 #include <inttypes.h>
 
 /** The encryption algorithm used */
-enum corsaro_anon_enc_type_t {
+typedef enum corsaro_anon_enc_type {
 	CORSARO_ANON_ENC_NONE,			         /**< No encryption */
 	CORSARO_ANON_ENC_PREFIX_SUBSTITUTION,	   /**< Substitute a prefix */
 	CORSARO_ANON_ENC_CRYPTOPAN	  /**< Prefix preserving encryption */
-	};
+} corsaro_anon_enc_type_t;
 
 /** Initialize the anonymization module 
  *
@@ -44,7 +44,7 @@ enum corsaro_anon_enc_type_t {
  * @param key       The encryption key to use
  * @return 0 if the plugin was successfully enabled, -1 otherwise
  */
-void corsaro_anon_init(enum corsaro_anon_enc_type_t type, char *key);
+void corsaro_anon_init(corsaro_anon_enc_type_t type, char *key);
 
 /** Anonymize an IP address
  *

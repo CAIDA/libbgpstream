@@ -50,7 +50,7 @@ static size_t strlcpy(char *dest, const char *src, size_t size)
 }
 #endif
 
-static enum corsaro_anon_enc_type_t enc_type = CORSARO_ANON_ENC_NONE;
+static corsaro_anon_enc_type_t enc_type = CORSARO_ANON_ENC_NONE;
 
 static uint32_t masks[33] = {
   0x00000000, 0x80000000, 0xC0000000, 0xe0000000, 0xf0000000,
@@ -65,6 +65,7 @@ static uint32_t masks[33] = {
 static uint32_t prefix;
 static uint32_t netmask;
 
+/** @todo change to detect invalid prefixes */
 static void init_prefix(const char *key)
 {
   int a,b,c,d;
@@ -97,7 +98,7 @@ static void update_in_cksum32(uint16_t *csum, uint32_t old, uint32_t new)
   update_in_cksum(csum,(uint16_t)(old&0xFFFF),(uint16_t)(new&0xFFFF));
 }
 
-void corsaro_anon_init(enum corsaro_anon_enc_type_t type, char *key)
+void corsaro_anon_init(corsaro_anon_enc_type_t type, char *key)
 {
   char cryptopan_key[32];
   memset(cryptopan_key,0,sizeof(cryptopan_key));
