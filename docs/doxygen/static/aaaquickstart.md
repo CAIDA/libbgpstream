@@ -24,8 +24,8 @@ configuration, assuming that _libtrace_ has been installed into a default
 location.
 
 ~~~
-tar zxf corsaro-1.0.0.tar.gz
-cd corsaro-1.0.0
+tar zxf corsaro-2.0.0.tar.gz
+cd corsaro-2.0.0
 ./configure
 make
 make install
@@ -43,7 +43,7 @@ Running Corsaro {#quick_run}
 ===============
 
 To run the \ref tool_corsaro tool on an existing pcap file to generate \ref
-plugins_ft and \ref plugins_dos output data, use the following command:
+plugins_ft output data, use the following command:
 
 ~~~
 corsaro -o /path/to/output/file.%P.cors.gz /path/to/pcap/file.pcap.gz
@@ -64,7 +64,7 @@ binary output files to a human-readable ASCII format.
 Running this command will process the given trace file and create four output
 files, using the output file template given. Each file will have the `%%P`
 replaced with the name of the component that created it.
-That is, `global`, `log`, `flowtuple`, and `dos`.
+That is, `global`, `log`, and `flowtuple`.
 
 Corsaro also supports processing packets directly from a live interface. To use
 this functionality, replace the pcap file path with:

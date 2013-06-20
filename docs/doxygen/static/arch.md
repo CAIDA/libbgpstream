@@ -124,7 +124,7 @@ described in \ref arch_corsaro_out.
 IO performance can be affected by several factors, such as disk speed. CPU speed
 can also significantly affect performance if compression is used. As such it is
 important to test Corsaro under peak-load if you plan to use it on a live
-interface
+interface.
 
 This section provides an introductory guide to the basic features of the Corasro
 IO framework, a more advanced tutorial is planned for future releases.
@@ -139,14 +139,45 @@ For example, the \ref plugins_ft plugin makes the following call:
 state->outfile = corsaro_io_prepare_file(corsaro, plugin->name)
 ~~~
 
-Which will open a file with the current compression method, and output format,
-and it will be named based on the template given to the \ref
-corsaro_alloc_output function as described in \ref arch_corsaro_out. In this
-case, the `%%P` in the template will be replaced by the name of the plugin
-(`flowtuple`).
+Which will open a file with the current compression method, and output
+format. 
+
+The file name of the opened file will be compiled based on the template given to
+the \ref corsaro_alloc_output function as described in \ref arch_corsaro_out.
+
+There are currently two Corsaro-specific specifiers that are supported in the
+template string:
+
+Specifier |  Description | Example
+----------|--------------|--------
+`%%P` | Plugin Name | `flowtuple`
+`%%N` | Monitor Name | `ucsd-nt`
+
+In addition to these, all format specifiers supported by `strftime(3)` are also
+recognized and will be populated with the start time of the first interval in
+the file. Output file rotation was added in the 2.0.0 release of
+Corsaro. Plugins should use the corsaro_is_rotate_interval function to determine
+whether to rotate their output files. See the \ref tutorials_plugin tutorial for
+more information about rotating output files.
+
+For example, given a monitor name of `ucsd-nt` (see \ref
+corsaro_set_monitorname), a first-interval start time of `2011-11-11 00:00`, and
+the template:
+
+~~~
+%N.%s.%P.cors.gz
+~~~
+
+the \ref plugin_ft plugin would open a file named:
+
+~~~
+ucsd-nt.1320969600.flowtuple.cors.gz
+~~~
 
 To determine which output mode the file has been opened in (and as such, which
 mode Corsaro is operating in), simply use the \ref CORSARO_FILE_MODE macro.
+If you need more control over the name of the file, or compression, mode, etc.,
+then the \ref corsaro_io_prepare_file_full function may be more appropriate.
 
 ### Writing to a File ###
 
@@ -207,6 +238,11 @@ corsaro_file_printf(corsaro, file, "%s|%s"
 To close an output file, simply call \ref corsaro_file_close and pass a pointer
 to the \ref corsaro state, and a pointer to the \ref corsaro_file_t structure
 which represents the file to be closed.
+
+Geolocation Framework {#arch_geodb}
+---------------------
+
+@todo write the geolocation backend section of the arch page
 
 Logging {#arch_logging}
 -------
@@ -293,6 +329,23 @@ has thus-far been made to make Corsaro thread-safe.
 Using this object, the user may then optionally call functions to set parameters
 such as \ref corsaro_set_traceuri, \ref corsaro_set_interval and
 \ref corsaro_set_monitorname.
+
+#### Enabling output rotation ####
+
+As of version 2.0.0, Corsaro supports the rotation of output files. 
+
+To enable output rotation for all files, call \ref corsaro_set_output_rotation
+and pass the number of intervals after which files should be rotated.
+
+To use a different rotation interval for the meta-data output files (\ref
+formats_global and Log File), use the \ref corsaro_set_meta_output_rotation
+function.
+
+To "align" the intervals to a multiple of the interval length use the \ref
+corsaro_set_interval_alignment function. For example, given a 1 minute interval,
+intervals will end at whole minute values (10:01, 10:02, etc.). If this option
+is _not_ used (the default), intervals will end based on the time of the first
+packet received.
 
 ### corsaro_start_output ###
 
@@ -434,6 +487,8 @@ longer be used.
 Plugins{#arch_plugins}
 =======
 
+@todo talk about how the run-time options work
+
 Corsaro has been designed to facilitate the easy addition of packet analysis
 logic. This is implemented by a set of plugins that each contain some
 specific logic for analyzing packets and generated aggregated output.
@@ -451,8 +506,10 @@ The events that Corsaro-Out issues to a plugin are:
   - Close all output files and free state.
 - Start Interval
   - Establish state for a new interval.
+  - Open any output files that were rotated.
 - End Interval
   - Write out any data for the current interval.
+  - Close any output files that must be rotated.
 - Process Packet
   - Analyze the given packet and possibly update state.
 

@@ -101,6 +101,13 @@ configured and plugins to be enabled or disabled, these include:
   - enable debugging mode
   - writes log output to STDERR as well as the log file
   
+\verbatim --disable-assert \endverbatim
+  - disable assertions
+  
+\verbatim --without-doxygen \endverbatim
+  - do not compile the doxygen generated documentation
+  - useful if the version of doxygen installed is too old (or too new)
+  
 \verbatim --with-monitorname=NAME \endverbatim
   - explicitly define the monitor name
   - defaults to the system hostname as given by the `hostname` command

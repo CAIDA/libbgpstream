@@ -137,8 +137,6 @@ analysis of the historical data archive for the
 To date, Corsaro has successfully processed over 35,000 hours of pcap data,
 generating close to 20 TiB of compressed metadata.
 
-Corsaro currently has limited functionality for capturing data from a live
-interface in realtime, but there are plans to extend this and provide a framwork
-for generating near-realtime reporting of darknet data. To facilitate this,
-Corsaro will be run 24/7 to capture both raw trace data, aggregated metadata,
-and realtime reporting data.
+The latest version of Corsaro also fully supports capturing data from a live
+interface in real time for generating reporting of darknet data. See the \ref
+tool_corsaro tools documentation for more information.

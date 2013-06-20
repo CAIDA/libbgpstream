@@ -231,4 +231,4 @@ There is a known bug in the binary output of the RS DoS plugin which causes it
 not to write a magic number to the output file. This has the unfortunate effect
 of requiring RS DoS files to be correctly named so that plugin detection does
 not need to inspect the file contents as described in the \ref arch_corsaro_in
-section.  This issue will be resolved for the next Corsaro release.
+section.
