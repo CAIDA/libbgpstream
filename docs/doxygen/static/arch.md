@@ -242,7 +242,124 @@ which represents the file to be closed.
 Geolocation Framework {#arch_geodb}
 ---------------------
 
-@todo write the geolocation backend section of the arch page
+Version 2.0.0 of Corsaro added a geolocation framework which simplifies the code
+needed for a plugin to augment a packet with geolocation-type meta-data. It also
+provides consumers a well-defined mechanism for retrieving the meta-data
+associated with packet.
+
+### Creating a Geolocation Provider ###
+
+The geolocation framework is comprised of three major pieces:
+ - Providers
+ - Data-Structures
+ - Records
+
+#### Providers ####
+
+A geolocation _provider_ is a supplier of geolocation information. A provider
+will likely implemented in a plugin and will provide a lookup from a specific
+database for each packet that is processed. For example, the \ref plugins_geodb
+plugin implements two providers: Maxmind Geolocation, and Net Acuity Edge
+Geolocation.
+
+A provider is registered with the geolocation framework using the \ref
+corsaro_geo_init_provider function, which requires 3 arguments:
+ -# a pointer to the current \ref corsaro object
+ -# the ID of the provider to be registered
+  - provider IDs are defined by the \ref corsaro_geo_provider_id enum
+ -# the ID of the data-structure to use
+  - data-structure IDs are defined by the \ref corsaro_geo_datastructure_id enum
+ -# a boolean value indicating whether to set this provider as the default
+   - if this is set to 1, this will be the provider returned by \ref
+     corsaro_geo_get_default (unless a later plugin also asks to be default)
+
+This will create a data-structure of the appropriate type and return an object
+that can then be used to fill the data-structure with \ref corsaro_geo_record
+objects.
+
+
+#### Data-Structures ####
+
+To further reduce the implementation cost for plugins, the geolocation framework
+abstracts the details of the underlying data-structure which is used to map from
+an IP address prefix (32 bit address and 8 bit mask) to a geolocation
+record. This allows different data-structure implementations to be used, and
+easily switched between by plugins. In the current release, the only implemented
+data-structure is a Patricia Trie.
+
+The specific data-structure used by a provider should not affect either the
+provider implementation, nor the consumer implementation, and is specified at
+run-time. This allows end-users to choose the most appropriate data-structure
+for their use-case.
+
+The implemented datastructures are listed in the \ref
+corsaro_geo_datastructure_id enum.
+
+#### Records ####
+
+A geolocation record represents a set of fields that can be associated with
+any number of IP addresses (prefixes).
+
+##### Initialization #####
+
+It is the responsibility of the provider to, at initialization time, create and
+insert all possible records into the data-structure. To demonstrate this
+process, consider the implementation of the `maxmind` geolocation provider.
+
+The `maxmind` geolocation databases are normalized into two tables. The first is
+a set of 'location' records which have fields (similar to those in \ref
+corsaro_geo_record) representing a physical location. The second table is a set
+of IP prefixes ('blocks'), and the location that each corresponds to.
+
+A packet is matched to a location by determining which prefix best matches the
+source IP address, and then retrieving the corresponding record. Therefore, when
+the \ref plugins_geodb plugin parses the _Locations_ table, it creates a \ref
+corsaro_geo_record for each row by calling \ref corsaro_geo_init_record, and
+caches these records temporarily in a hash which maps the ID of the record to
+the record object.
+
+The _Blocks_ file is then parsed, and the appropriate record is retrieved from
+the temporary hash by using the ID foreign key in the _Blocks_ file. At this
+point the record is associated with with the prefix by calling \ref
+corsaro_geo_provider_associate_record. Only one record may be associated with
+each prefix. When a record is associated with a prefix, it is inserted into the
+data-structure using the prefix as a key.
+
+##### Processing #####
+
+After the provider is initialized and all records have been inserted into the
+data-structure, packet processing will begin. When a provider processes a packet
+it must determine which (if any) record matches the address of the packet.
+
+To do this, the \ref corsaro_geo_provider_lookup_record function is used. The
+returned record can then be used to 'tag' the packet by calling \ref
+corsaro_geo_provider_add_record. Multiple records can be added for each packet.
+Also, note that the 'tagged' records are not cleared automatically. The provider
+must explicitly call \ref corsaro_geo_provider_clear to remove previously tagged
+records. This should be done before tagging the packet with new records.
+
+### Using a Geolocation Provider ###
+
+#### Retrieving a Provider ####
+
+If there is a specific provider that is needed (e.g. `pfx2as` provider is
+required by the \ref plugins_pfx2as plugin), then the \ref corsaro_geo_get_by_id
+or \ref corsaro_geo_get_by_name functions can be used. If the plugin can use any
+default provider, the \ref corsaro_geo_get_default function should be used. This
+will allow the end-user to use a different geolocation provider without altering
+the code.
+
+#### Retrieving Tagged Records ####
+
+Once a provider object has been retrieved, the head of the list of tagged \ref
+corsaro_geo_record objects which match the current packet can be obtained by
+calling \ref corsaro_geo_next_record function.
+
+In most cases it will be sufficient to call this function only once to get the
+first record, but there may be instances where there are multiple records
+tagged. (though currently there cannot be multiple records associated with a
+prefix in the data-structure.)
+
 
 Logging {#arch_logging}
 -------
@@ -487,11 +604,12 @@ longer be used.
 Plugins{#arch_plugins}
 =======
 
-@todo talk about how the run-time options work
-
 Corsaro has been designed to facilitate the easy addition of packet analysis
 logic. This is implemented by a set of plugins that each contain some
 specific logic for analyzing packets and generated aggregated output.
+
+Plugin Events
+-------------
 
 At a high level, the plugin interface is a simple set of event notifications
 from _libcorsaro_. There are also several other functions which can optionally
@@ -520,6 +638,17 @@ corsaro_packet structure passed with the event. Passing state between plugins
 minimizes rework. For example, the \ref plugins_dos plugin uses the class
 determined by the \ref plugins_ft plugin to detect when a packet has been
 classified as backscatter.
+
+Run-Time Options
+----------------
+
+As of version 2.0.0, plugins also support run-time options. Currently options
+are implemented using a string of command-line-style options which is given to
+the \ref corsaro_enable_plugin function along with the name of the plugin.
+
+This string will be parsed, and an `argv` array (along with `argc`) will be
+populated in the appropriate \ref corsaro_plugin structure. These may then be parsed using the standard
+`getopt(3)` functions.
 
 For more information about the structure of a plugin and instructions for
 creating a new plugin, see the \ref tutorials_plugin tutorial.
