@@ -285,11 +285,6 @@ this example, the first minute of data, which begins at 01/01/12 04:00 UTC
 Note, future versions of `cors-ft-aggregate` will directly support filters such
 as this to greatly improve processing speed.
 
-@todo extend to allow to write out to binary again 
-@todo respect the tuple classes for reaggregation (currently classes are 
-  discarded).
-@todo add a BPF-like filter
-
 cors-ft-timeseries.pl {#tool_timeseries}
 ==================
 

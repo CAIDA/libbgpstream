@@ -44,6 +44,11 @@
  *
  * @author Alistair King
  *
+ * @todo extend to allow to write out to binary again 
+ * @todo respect the tuple classes for reaggregation (currently classes are 
+ * discarded).
+ * @todo add a BPF-like filter
+ *
  */
 
 /** Initialize the hash functions and datatypes */
