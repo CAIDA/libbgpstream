@@ -263,5 +263,6 @@ AC_CONFIG_FILES([Makefile libcorsaro/Makefile libcorsaro/plugins/Makefile
 			  common/libanon/Makefile
 			  common/libpatricia/Makefile
 			  docs/Makefile 
-			  docs/corsaro.doxygen])
+			  docs/corsaro.doxygen
+			  docs/corsaro.caida.doxygen])
 AC_OUTPUT
