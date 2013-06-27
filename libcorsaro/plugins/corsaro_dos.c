@@ -832,10 +832,7 @@ int corsaro_dos_probe_magic(corsaro_in_t *corsaro, corsaro_file_in_t *file)
   return -1;
 }
 
-/** Implements the init_output function of the plugin API
- *
- * @todo dump full corsaro headers
- */
+/** Implements the init_output function of the plugin API */
 int corsaro_dos_init_output(corsaro_t *corsaro)
 {
   struct corsaro_dos_state_t *state;
