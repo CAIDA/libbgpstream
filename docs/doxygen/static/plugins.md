@@ -9,6 +9,16 @@ developing new plugins. These plugins can be loosely divided into three
 categories: \ref plugins_aggregation, \ref plugins_metadata, and \ref
 plugins_filters
 
+All plugins must support processing packet trace files, but they may also
+optionally support processing \ref plugins_ft files. Plugins that support
+processing FlowTuple data are:
+ - \ref plugins_ft
+ - \ref plugins_anon
+ - \ref plugins_pfx2as
+ - \ref plugins_geodb
+ - \ref plugins_filtergeo
+ - \ref plugins_filterpfx
+
 Aggregation/Analysis Plugins{#plugins_aggregation}
 ============================
 
