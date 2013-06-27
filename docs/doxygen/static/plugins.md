@@ -161,12 +161,35 @@ The pcap plugin currently has no run-time configuration options.
 Cryto-PAn Anonymization{#plugins_anon}
 -----------------------
 
-Kinda/sorta fits in the filter section too - tell them why
-@todo write this when anon plugin has cmd-line config
+The Crpyto-PAn anonymization plugin uses the Corsaro implementation of the
+[Crypto-PAn](http://www.cc.gatech.edu/computing/Telecomm/projects/cryptopan/)
+algorithm to anonymize source and/or destination IP addresses in packet headers.
+
+This implementation is adapted from the
+[traceanon](http://wand.net.nz/trac/libtrace/wiki/TraceAnon) tool distributed
+with [libtrace](http://research.wand.net.nz/software/libtrace.php).
+
+This plugin writes no output itself, but can be chained with other plugins (such
+as \ref plugins_ft or \ref plugins_pcap) to produce anonymized output.
 
 ### Run-time Options ###
 
-@todo paste the run-time options when there are run-time options
+~~~
+plugin usage: anon [-sd] [-t encryption_type] encryption_key[prefix]
+       -d            enable destination address encryption
+       -s            enable source address encryption
+       -t            encryption type (default: cryptopan)
+                     must be either 'cryptopan', or 'prefix'
+~~~
+
+The only mandatory argument is the encryption key (or prefix when using the
+prefix substitution mode). The key can be up to 32 bytes and will be padded with
+NULLs. If using prefix substitution, the prefix to substitute must be given.
+
+There are three optional arguments: `-d` enables encryption of the destination
+address, `-s` enables encryption of the source address (the default is no
+encryption), and `-t` specifies the encrpytion type (the default is
+`cryptopan`).
 
 Prefix-to-AS{#plugins_pfx2as}
 ------------
