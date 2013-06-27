@@ -219,7 +219,7 @@ off_t corsaro_flowtuple_class_start_fprint(corsaro_t *corsaro, corsaro_file_t *f
  *
  * @param class     The class start record to write out
  */
-void corsaro_flowtuple_class_start_print(corsaro_flowtuple_class_start_t *flowtuple);
+void corsaro_flowtuple_class_start_print(corsaro_flowtuple_class_start_t *class);
 
 /** Write a flowtuple class end record to the given corsaro file in ascii
  *
@@ -228,14 +228,15 @@ void corsaro_flowtuple_class_start_print(corsaro_flowtuple_class_start_t *flowtu
  * @param class       The class end record to write out
  * @return the number of bytes written, -1 if an error occurs
  */
-off_t corsaro_flowtuple_class_end_fprint(corsaro_t *corsaro, corsaro_file_t *file, 
-				      corsaro_flowtuple_class_end_t *class);
+off_t corsaro_flowtuple_class_end_fprint(corsaro_t *corsaro, 
+					 corsaro_file_t *file, 
+					 corsaro_flowtuple_class_end_t *class);
 
 /** Write a flowtuple class end record to stdout in ascii format
  *
  * @param class     The class end record to write out
  */
-void corsaro_flowtuple_class_end_print(corsaro_flowtuple_class_end_t *flowtuple);
+void corsaro_flowtuple_class_end_print(corsaro_flowtuple_class_end_t *class);
 
 /** Write a generic flowtuple record to the given corsaro file in ascii
  *

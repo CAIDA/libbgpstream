@@ -74,12 +74,15 @@
 /** The name of this plugin */
 #define PLUGIN_NAME "geodb"
 
+/** The name of the maxmind provider */
 #define MAXMIND_NAME \
   (corsaro_geo_get_provider_name(CORSARO_GEO_PROVIDER_MAXMIND))
 
+/** The name of the netacq edge provider */
 #define NETACQ_EDGE_NAME \
   (corsaro_geo_get_provider_name(CORSARO_GEO_PROVIDER_NETACQ_EDGE))
 
+/** The default provider name */
 #define DEFAULT_PROVIDER_NAME MAXMIND_NAME
 
 /** The length of the static line buffer */
@@ -143,6 +146,7 @@ struct corsaro_geodb_state_t {
 #define PLUGIN(corsaro)						\
   (CORSARO_PLUGIN_PLUGIN(corsaro, CORSARO_PLUGIN_ID_GEODB))
 
+/** Print usage information to stderr */
 static void usage(corsaro_plugin_t *plugin)
 {
   fprintf(stderr, 
@@ -160,7 +164,9 @@ static void usage(corsaro_plugin_t *plugin)
 	  NETACQ_EDGE_NAME);
 }
 
-/** @todo add option to choose datastructure */
+/** Parse the arguments given to the plugin
+ * @todo add option to choose datastructure 
+ */
 static int parse_args(corsaro_t *corsaro)
 {
   corsaro_plugin_t *plugin = PLUGIN(corsaro);
@@ -439,9 +445,10 @@ static int parse_maxmind_location_row(struct corsaro_geodb_state_t *state,
   return 0;
 }
 
+/** Read a maxmind locations file */
 static int read_maxmind_locations(corsaro_t *corsaro, 
 				  corsaro_geo_provider_t *provider,
-			  corsaro_file_in_t *file)
+				  corsaro_file_in_t *file)
 {
   char buffer[BUFFER_LEN];
   int linec = 0;
@@ -466,7 +473,9 @@ static int read_maxmind_locations(corsaro_t *corsaro,
   return 0;
 }
 
-/** @todo make use sscanf */
+/** Parse a netacq location row
+ * @todo make use sscanf 
+ */
 static int parse_netacq_edge_location_row(corsaro_geo_provider_t *provider, 
 					  char *row)
 {
@@ -570,6 +579,7 @@ static int parse_netacq_edge_location_row(corsaro_geo_provider_t *provider,
   return 0;
 }
 
+/** Read a Net Acuity Edge locations file */
 static int read_netacq_edge_locations(corsaro_t *corsaro, 
 				      corsaro_geo_provider_t *provider,
 				      corsaro_file_in_t *file)
@@ -597,7 +607,9 @@ static int read_netacq_edge_locations(corsaro_t *corsaro,
   return 0;
 }
 
-/** @todo make use scanf */
+/** Read a blocks file (maxmind or netacq) 
+ * @todo make use scanf 
+ */
 static int read_blocks(corsaro_t *corsaro, corsaro_file_in_t *file)
 {
   struct corsaro_geodb_state_t *state = STATE(corsaro);
@@ -729,6 +741,7 @@ static int read_blocks(corsaro_t *corsaro, corsaro_file_in_t *file)
   return 0;
 }
 
+/** Common code between process_packet and process_flowtuple */
 static int process_generic(corsaro_t *corsaro, corsaro_packet_state_t *state,
 			   uint32_t src_ip)
 {
@@ -739,10 +752,10 @@ static int process_generic(corsaro_t *corsaro, corsaro_packet_state_t *state,
 
   /* add this record to the provider */
   corsaro_geo_provider_add_record(plugin_state->provider, 
-				  corsaro_geo_provider_lookup_record(
-								     corsaro, 
-								     plugin_state->provider,
-								     src_ip));
+		  corsaro_geo_provider_lookup_record(
+						     corsaro, 
+						     plugin_state->provider,
+						     src_ip));
 
 #if 0
   /** todo move this into a nice generic 'geodump' plugin */
@@ -770,17 +783,20 @@ static int process_generic(corsaro_t *corsaro, corsaro_packet_state_t *state,
 
 /* == PUBLIC PLUGIN FUNCS BELOW HERE == */
 
+/** Implements the alloc function of the plugin API */
 corsaro_plugin_t *corsaro_geodb_alloc(corsaro_t *corsaro)
 {
   return &corsaro_geodb_plugin;
 }
 
+/** Implements the probe_filename function of the plugin API */
 int corsaro_geodb_probe_filename(const char *fname)
 {
   /* this writes no files! */
   return 0;
 }
 
+/** Implements the probe_magic function of the plugin API */
 int corsaro_geodb_probe_magic(corsaro_in_t *corsaro, 
 			      corsaro_file_in_t *file)
 {
@@ -788,6 +804,7 @@ int corsaro_geodb_probe_magic(corsaro_in_t *corsaro,
   return 0;
 }
 
+/** Implements the init_output function of the plugin API */
 int corsaro_geodb_init_output(corsaro_t *corsaro)
 {
   struct corsaro_geodb_state_t *state;
@@ -916,18 +933,21 @@ int corsaro_geodb_init_output(corsaro_t *corsaro)
   return -1;
 }
 
+/** Implements the init_input function of the plugin API */
 int corsaro_geodb_init_input(corsaro_in_t *corsaro)
 {
   assert(0);
   return -1;
 }
 
+/** Implements the close_input function of the plugin API */
 int corsaro_geodb_close_input(corsaro_in_t *corsaro)
 {
   assert(0);
   return -1;
 }
 
+/** Implements the close_output function of the plugin API */
 int corsaro_geodb_close_output(corsaro_t *corsaro)
 {  
   struct corsaro_geodb_state_t *state = STATE(corsaro);
@@ -956,6 +976,7 @@ int corsaro_geodb_close_output(corsaro_t *corsaro)
   return 0;
 }
 
+/** Implements the read_record function of the plugin API */
 off_t corsaro_geodb_read_record(struct corsaro_in *corsaro, 
 				corsaro_in_record_type_t *record_type, 
 				corsaro_in_record_t *record)
@@ -964,14 +985,16 @@ off_t corsaro_geodb_read_record(struct corsaro_in *corsaro,
   return -1;
 }
 
-off_t corsaro_geodb_read_global_data_record(struct corsaro_in *corsaro, 
-					    enum corsaro_in_record_type *record_type, 
-					    struct corsaro_in_record *record)
+/** Implements the read_global_data_record function of the plugin API */
+off_t corsaro_geodb_read_global_data_record(corsaro_in_t *corsaro, 
+				     corsaro_in_record_type_t *record_type, 
+				     corsaro_in_record_t *record)
 {
   /* we write nothing to the global file. someone messed up */
   return -1;
 }
 
+/** Implements the start_interval function of the plugin API */
 int corsaro_geodb_start_interval(corsaro_t *corsaro, 
 				 corsaro_interval_t *int_start)
 {
@@ -979,6 +1002,7 @@ int corsaro_geodb_start_interval(corsaro_t *corsaro,
   return 0;
 }
 
+/** Implements the end_interval function of the plugin API */
 int corsaro_geodb_end_interval(corsaro_t *corsaro, 
 			       corsaro_interval_t *int_end)
 {
@@ -986,6 +1010,7 @@ int corsaro_geodb_end_interval(corsaro_t *corsaro,
   return 0;
 }
 
+/** Implements the process_packet function of the plugin API */
 int corsaro_geodb_process_packet(corsaro_t *corsaro, 
 				 corsaro_packet_t *packet)
 {
@@ -1003,6 +1028,7 @@ int corsaro_geodb_process_packet(corsaro_t *corsaro,
 }
 
 #ifdef WITH_PLUGIN_SIXT
+/** Implements the process_flowtuple function of the plugin API */
 int corsaro_geodb_process_flowtuple(corsaro_t *corsaro,
 				    corsaro_flowtuple_t *flowtuple,
 				    corsaro_packet_state_t *state)
@@ -1011,6 +1037,7 @@ int corsaro_geodb_process_flowtuple(corsaro_t *corsaro,
 			 corsaro_flowtuple_get_source_ip(flowtuple));
 }
 
+/** Implements the process_flowtuple_class_start function of the plugin API */
 int corsaro_geodb_process_flowtuple_class_start(corsaro_t *corsaro,
 						corsaro_flowtuple_class_start_t *class)
 {
@@ -1018,6 +1045,7 @@ int corsaro_geodb_process_flowtuple_class_start(corsaro_t *corsaro,
   return 0;
 }
 
+/** Implements the process_flowtuple_class_end function of the plugin API */
 int corsaro_geodb_process_flowtuple_class_end(corsaro_t *corsaro,
 					      corsaro_flowtuple_class_end_t *class)
 {

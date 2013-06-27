@@ -57,29 +57,48 @@ KHASH_INIT(sixt_map, corsaro_flowtuple_t*, kh_64xx_t*, 1,
 KHASH_INIT(sixt_int, corsaro_flowtuple_t*, uint64_t, 1,
 	   corsaro_flowtuple_hash_func, corsaro_flowtuple_hash_equal);
 
+/** A map of aggregated flowtuple records */
 static kh_sixt_map_t *sixt_f = NULL;
+/** A hash of aggregated flowtuple records */
 static kh_sixt_int_t *sixt_v = NULL;
 
+/** The corsaro_in instance to read from */
 static corsaro_in_t *corsaro = NULL;
+/** The record object to read into */
 static corsaro_in_record_t *record = NULL;
 
 /** The amount of time to wait until we dump the hash */
 static int interval = 0;
 
-#define SRC_IP     0
-#define DST_IP     1
-#define SRC_PORT   2
-#define DST_PORT   3
-#define PROTO      4
-#define TTL        5
-#define TCP_FLAGS  6
-#define IP_LEN     7
-#define VALUE      8
+/** Set of FlowTuple fields that can be used for aggregation */
+typedef enum field_index {
+  /** The Source IP address field of the FlowTuple */
+  SRC_IP    = 0,
+  /** The Destination IP address field of the FlowTuple */
+  DST_IP    = 1,
+  /** The Source Port field of the FlowTuple */
+  SRC_PORT  = 2,
+  /** The Destination Port field of the FlowTuple */
+  DST_PORT  = 3,
+  /** The Protocol field of the FlowTuple */
+  PROTO     = 4,
+  /** The TTL field of the FlowTuple */
+  TTL       = 5,
+  /** The TCP Flags field of the FlowTuple */
+  TCP_FLAGS = 6,
+  /** The IP Length field of the FlowTuple */
+  IP_LEN    = 7,
+  /** The Packet Count field of the FlowTuple */
+  VALUE     = 8,
 
-#define FIELD_CNT  9
+  /** The number of possible FlowTuple fields */
+  FIELD_CNT = 9,
+} field_index_t;
 
+/** Value if field is enabled */
 #define FIELD_ENABLED 1
 
+/** Array of strings corresponding to FlowTuple fields */
 static char *field_names[] = {
   "src_ip",
   "dst_ip",
@@ -92,11 +111,14 @@ static char *field_names[] = {
   "packet_cnt",
 };
 
+/** Set if reading from a legacy FlowTuple file */
 static int legacy = 0;
 
-static int fields[FIELD_CNT];
+/** An array of enabled fields for aggregation */
+static field_index_t fields[FIELD_CNT];
 
-static int value_field = -1;
+/** The field to use as the value in aggregation */
+static field_index_t value_field = -1;
 
 /** The number of flowtuple records we have processed */
 static uint64_t flowtuple_cnt = 0;
@@ -119,6 +141,7 @@ static corsaro_interval_t last_interval_end = {
   0
 };
 
+/** Cleanup and free state */
 static void clean()
 { 
   if(record != NULL)
@@ -134,6 +157,7 @@ static void clean()
     }
 }
 
+/** Initialize a corsaro_in instance for the given input file name */
 static int init_corsaro(char *corsarouri)
 {
   /* get an corsaro_in object */
@@ -249,6 +273,7 @@ int add_inc_hash(kh_sixt_int_t *hash, corsaro_flowtuple_t *t, uint32_t increment
   return 0;
 }
 
+/** Print a flowtuple with a 64 bit value field */
 static void flowtuple_print_64(corsaro_flowtuple_t *flowtuple, uint64_t value)
 {
   char ip_a[16];
@@ -277,6 +302,7 @@ static void flowtuple_print_64(corsaro_flowtuple_t *flowtuple, uint64_t value)
 	 value);
 }
 
+/** Dump a map of flowtuple records */
 static void dump_hash_map(kh_sixt_map_t *hash)
 {
   khiter_t k;
@@ -303,6 +329,7 @@ static void dump_hash_map(kh_sixt_map_t *hash)
   kh_clear(sixt_map, hash);
 }
 
+/** Dump a hash of flowtuple records */
 static void dump_hash_int(kh_sixt_int_t *hash)
 {
   khiter_t k;
@@ -327,6 +354,7 @@ static void dump_hash_int(kh_sixt_int_t *hash)
   kh_clear(sixt_int, hash);
 }
 
+/** Dump the aggregated FlowTuple records */
 static void dump_hash()
 {
   assert(sixt_f || sixt_v);
@@ -352,6 +380,7 @@ static void dump_hash()
   last_dump_end.time = last_interval_end.time+1;
 }
 
+/** Process a FlowTuple record */
 static int process_flowtuple(corsaro_flowtuple_t *tuple)
 {
   int i;
@@ -458,6 +487,7 @@ static int process_flowtuple(corsaro_flowtuple_t *tuple)
   return 0;
 }
 
+/** Print usage information to stderr */
 static void usage(const char *name)
 {
   fprintf(stderr, 
@@ -475,6 +505,7 @@ static void usage(const char *name)
 	  name);
 }
 
+/** Entry point for the cors-ft-aggregate tool */
 int main(int argc, char *argv[])
 {
   int opt;

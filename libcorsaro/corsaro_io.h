@@ -52,12 +52,16 @@
 #define CORSARO_IO_TRAILER_BYTE_LEN sizeof(corsaro_trailer_t)
 /* (4+4+8+8+8+4+4+4+4) */
 
-/** The pattern to replace in the output file name with the name of the plugin */
+/** The character to replace with the name of the plugin */
 #define CORSARO_IO_PLUGIN_PATTERN  'P'
+/** The pattern to replace in the output file name with the name of the plugin */
 #define CORSARO_IO_PLUGIN_PATTERN_STR  "%P"
-/** The pattern to replace in the output file name with monitor name */
+
+/** The character to replace with the monitor name */
 #define CORSARO_IO_MONITOR_PATTERN 'N'
+/** The pattern to replace in the output file name with monitor name */
 #define CORSARO_IO_MONITOR_PATTERN_STR "%N"
+
 /** The name to use for the global 'plugin' file */
 #define CORSARO_IO_GLOBAL_NAME     "global"
 /** The name to use for the log 'plugin' file */
@@ -97,6 +101,7 @@ corsaro_file_t *corsaro_io_prepare_file(corsaro_t* corsaro,
 
 /** Validates a output file template for needed features
  *
+ * @param corsaro       The corsaro object associated with the template
  * @param template      The file template to be validated
  * @return 1 if the template is valid, 0 if it is invalid
  */
@@ -121,7 +126,8 @@ off_t corsaro_io_write_header(corsaro_t *corsaro, corsaro_file_t *file,
 
 /** Write the corsaro headers to stdout
  *
- * @param header      The header to write out
+ * @param plugin_manager  The plugin manager
+ * @param header          The header to write out
  */
 void corsaro_io_print_header(corsaro_plugin_manager_t *plugin_manager,
 			     corsaro_header_t *header);
@@ -178,19 +184,21 @@ void corsaro_io_print_interval_end(corsaro_interval_t *int_end);
  *
  * @param corsaro          The corsaro object associated with the file
  * @param file           The corsaro output file to write to
+ * @param plugin         The plugin object to write a start record for
  * @return The amount of data written, or -1 if an error occurs
  */
 off_t corsaro_io_write_plugin_start(corsaro_t *corsaro, corsaro_file_t *file, 
-				  corsaro_plugin_t *plugin);
+				    corsaro_plugin_t *plugin);
 
 /** Write the appropriate plugin trailer to the file
  *
- * @param corsaro          The corsaro object associated with the file
+ * @param corsaro        The corsaro object associated with the file
  * @param file           The corsaro output file to write to
+ * @param plugin         The plugin object to write an end record for
  * @return The amount of data written, or -1 if an error occurs
  */
 off_t corsaro_io_write_plugin_end(corsaro_t *corsaro, corsaro_file_t *file, 
-			      corsaro_plugin_t *plugin); 
+				  corsaro_plugin_t *plugin); 
 
 /** Write a generic corsaro record to the file
  *
@@ -206,6 +214,7 @@ off_t corsaro_io_write_record(corsaro_t *corsaro, corsaro_file_t *file,
 
 /** Print a generic corsaro record to stdout
  *
+ * @param plugin_manager The plugin manager associated with the record
  * @param record_type    The type of the record
  * @param record         The record to be written
  * @return 0 if the record_type was recognized, -1 if an error occurs
@@ -216,8 +225,10 @@ int corsaro_io_print_record(corsaro_plugin_manager_t *plugin_manager,
 
 /** Read an corsaro header from the file
  *
- * @param corsaro          The corsaro object associated with the file
- * @param file           The corsaro input file to read from
+ * @param corsaro           The corsaro object associated with the file
+ * @param file              The corsaro input file to read from
+ * @param[out] record_type  The record type read from the file
+ * @param[out] record       A record object to read into
  * @return The amount of data read, or -1 if an error occurs
  */
 off_t corsaro_io_read_header(corsaro_in_t *corsaro, corsaro_file_in_t *file,
@@ -226,8 +237,10 @@ off_t corsaro_io_read_header(corsaro_in_t *corsaro, corsaro_file_in_t *file,
 
 /** Read the corsaro trailers from the file
  *
- * @param corsaro          The corsaro object associated with the file
- * @param file           The corsaro input file to read from
+ * @param corsaro           The corsaro object associated with the file
+ * @param file              The corsaro input file to read from
+ * @param[out] record_type  The record type read from the file
+ * @param[out] record       A record object to read into
  * @return The amount of data read, or -1 if an error occurs
  */
 off_t corsaro_io_read_trailer(corsaro_in_t *corsaro, corsaro_file_in_t *file,
@@ -238,41 +251,53 @@ off_t corsaro_io_read_trailer(corsaro_in_t *corsaro, corsaro_file_in_t *file,
  *
  * @param corsaro          The corsaro object associated with the file
  * @param file           The corsaro input file to read from
+ * @param[out] record_type  The record type read from the file
+ * @param[out] record       A record object to read into
  * @return The amount of data read, or -1 if an error occurs
  */
-off_t corsaro_io_read_interval_start(corsaro_in_t *corsaro, corsaro_file_in_t *file,
-				   corsaro_in_record_type_t *record_type,
-				   corsaro_in_record_t *record);
+off_t corsaro_io_read_interval_start(corsaro_in_t *corsaro, 
+				     corsaro_file_in_t *file,
+				     corsaro_in_record_type_t *record_type,
+				     corsaro_in_record_t *record);
 
 /** Read the appropriate interval trailers from the file
  *
  * @param corsaro          The corsaro object associated with the file
  * @param file           The corsaro input file to read from
+ * @param[out] record_type  The record type read from the file
+ * @param[out] record       A record object to read into
  * @return The amount of data read, or -1 if an error occurs
  */
-off_t corsaro_io_read_interval_end(corsaro_in_t *corsaro, corsaro_file_in_t *file,
+off_t corsaro_io_read_interval_end(corsaro_in_t *corsaro, 
+				   corsaro_file_in_t *file,
 				 corsaro_in_record_type_t *record_type,
 				 corsaro_in_record_t *record);
 
 /** Read the appropriate plugin header from the file
  *
- * @param corsaro          The corsaro object associated with the file
- * @param file           The corsaro input file to read from
+ * @param corsaro           The corsaro object associated with the file
+ * @param file              The corsaro input file to read from
+ * @param[out] record_type  The record type read from the file
+ * @param[out] record       A record object to read into
  * @return The amount of data read, or -1 if an error occurs
  */
-off_t corsaro_io_read_plugin_start(corsaro_in_t *corsaro, corsaro_file_in_t *file, 
-				 corsaro_in_record_type_t *record_type,
-				 corsaro_in_record_t *record);
+off_t corsaro_io_read_plugin_start(corsaro_in_t *corsaro, 
+				   corsaro_file_in_t *file, 
+				   corsaro_in_record_type_t *record_type,
+				   corsaro_in_record_t *record);
 
 /** Read the appropriate plugin trailer from the file
  *
  * @param corsaro          The corsaro object associated with the file
  * @param file           The corsaro input file to read from
+ * @param[out] record_type  The record type read from the file
+ * @param[out] record       A record object to read into
  * @return The amount of data read, or -1 if an error occurs
  */
-off_t corsaro_io_read_plugin_end(corsaro_in_t *corsaro, corsaro_file_in_t *file, 
-			       corsaro_in_record_type_t *record_type,
-			       corsaro_in_record_t *record); 
+off_t corsaro_io_read_plugin_end(corsaro_in_t *corsaro, 
+				 corsaro_file_in_t *file, 
+				 corsaro_in_record_type_t *record_type,
+				 corsaro_in_record_t *record); 
 
 /** Read the given number of bytes into the record
  *

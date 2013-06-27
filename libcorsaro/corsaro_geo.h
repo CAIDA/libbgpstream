@@ -133,6 +133,7 @@ typedef enum corsaro_geo_provider_id
 
   } corsaro_geo_provider_id_t;
 
+/** Structure which represents a geolocation provider */
 typedef struct corsaro_geo_provider
 {
   /** The ID of the provider */
@@ -220,7 +221,9 @@ const char **corsaro_geo_get_provider_names();
 /** Allocate a geolocation provider object in the packet state
  *
  * @param corsaro       The corsaro object to alloc the provider for
- * @param provider_id     The unique ID of the geolocation provider
+ * @param provider_id   The unique ID of the geolocation provider
+ * @param ds_id         The type of datastructure to use
+ * @param set_default   Set this provider as the default
  * @return the provider object created, NULL if an error occurred
  *
  * Plugins which implement a geolocation provider should call this function
@@ -251,7 +254,7 @@ void corsaro_geo_free_provider(corsaro_t *corsaro,
 /** Allocate an empty geolocation record for the given id
  *
  * @param provider      The geolocation provider to associate the record with
- * @apram id            The id to use to inialize the record
+ * @param id            The id to use to inialize the record
  * @return the new geolocation record, NULL if an error occurred
  * 
  * @note Most geolocation providers will not want to allocate a record on the
@@ -267,7 +270,7 @@ corsaro_geo_record_t *corsaro_geo_init_record(corsaro_geo_provider_t *provider,
 /** Get the geolocation record for the given id
  *
  * @param provider      The geolocation provider to retrieve the record from
- * @apram id            The id of the record to retrieve
+ * @param id            The id of the record to retrieve
  * @return the corresponding geolocation record, NULL if an error occurred
  */
 corsaro_geo_record_t *corsaro_geo_get_record(corsaro_geo_provider_t *provider,
@@ -277,7 +280,7 @@ corsaro_geo_record_t *corsaro_geo_get_record(corsaro_geo_provider_t *provider,
  *  provider
  *
  * @param provider      The geolocation provider to retrieve the records from
- * @param(out) records  Returns an array of geolocation objects
+ * @param[out] records  Returns an array of geolocation objects
  * @return the number of records in the array, -1 if an error occurs
  *
  * @note This function allocates and populates the array dynamically, so do not
@@ -353,7 +356,7 @@ corsaro_geo_provider_t *corsaro_geo_get_default(corsaro_t *corsaro);
 
 /** Retrieve the provider object for the given provider ID
  *
- * @apram corsaro       The corsaro object to retrieve the provider object from
+ * @param corsaro       The corsaro object to retrieve the provider object from
  * @param id            The geolocation provider ID to retrieve
  * @return the provider object for the given ID, NULL if there are no matches
  */
@@ -362,8 +365,8 @@ corsaro_geo_provider_t *corsaro_geo_get_by_id(corsaro_t *corsaro,
 
 /** Retrieve the provider object for the given provider name
  *
- * @apram corsaro       The corsaro object to retrieve the provider object from
- * @param id            The geolocation provider name to retrieve
+ * @param corsaro       The corsaro object to retrieve the provider object from
+ * @param name          The geolocation provider name to retrieve
  * @return the provider object for the given name, NULL if there are no matches
  */
 corsaro_geo_provider_t *corsaro_geo_get_by_name(corsaro_t *corsaro,
@@ -404,7 +407,7 @@ const char *corsaro_geo_get_maxmind_iso2(int country_id);
 /** Get a list of all possible ISO-3166-1 2 character country codes that maxmind
  *  uses
  *
- * @param(out) countries     Returns a pointer to an array of country codes
+ * @param[out] countries     Returns a pointer to an array of country codes
  * @return the number of countries in the array
  */
 int corsaro_geo_get_maxmind_iso2_list(const char ***countries);
@@ -419,7 +422,7 @@ const char *corsaro_geo_get_maxmind_iso3(int country_id);
 /** Get a list of all possible ISO-3166-1 3 character country codes that maxmind
  *  uses
  *
- * @param(out) countries     Returns a pointer to an array of country codes
+ * @param[out] countries     Returns a pointer to an array of country codes
  * @return the number of countries in the array
  */
 int corsaro_geo_get_maxmind_iso3_list(const char ***countries);
@@ -433,7 +436,7 @@ const char *corsaro_geo_get_maxmind_country_name(int country_id);
 
 /** Get a list of all possible country names that maxmind uses
  *
- * @param(out) countries     Returns a pointer to an array of country codes
+ * @param[out] countries     Returns a pointer to an array of country codes
  * @return the number of countries in the array
  */
 int corsaro_geo_get_maxmind_country_name_list(const char ***countries);
@@ -447,7 +450,7 @@ const char *corsaro_geo_get_maxmind_continent(int country_id);
 
 /** Get a mapping of continent codes that maxmind uses
  *
- * @param(out) countries     Returns a pointer to an array of continent codes
+ * @param[out] continents     Returns a pointer to an array of continent codes
  * @return the number of countries in the array
  * 
  * @note The returned array should be used to map from the country array to

@@ -44,9 +44,13 @@
  *
  */
 
+/** The corsaro_in object for reading the input file */
 static corsaro_in_t *corsaro = NULL;
+
+/** The record object to read into */
 static corsaro_in_record_t *record = NULL;
 
+/** Cleanup and free state */
 static void clean()
 { 
   if(record != NULL)
@@ -62,6 +66,7 @@ static void clean()
     }
 }
 
+/** Initialize a corsaro_in object for the given file name */
 static int init_corsaro(char *corsarouri)
 {
   /* get an corsaro_in object */
@@ -90,12 +95,14 @@ static int init_corsaro(char *corsarouri)
   return 0;
 }
 
+/** Print usage information to stderr */
 static void usage(const char *name)
 {
   fprintf(stderr, 
 	  "usage: %s input_file\n", name);
 }
 
+/** Entry point for the cors2ascii tool */
 int main(int argc, char *argv[])
 { 	
   char *file = NULL;

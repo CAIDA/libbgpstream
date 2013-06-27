@@ -144,6 +144,7 @@ struct corsaro_flowtuple_in_state_t {
 #define PLUGIN(corsaro)						\
   (CORSARO_PLUGIN_PLUGIN(corsaro, CORSARO_PLUGIN_ID_FLOWTUPLE))
 
+/** Print usage information to stderr */
 static void usage(corsaro_plugin_t *plugin)
 {
   fprintf(stderr, 
@@ -152,6 +153,7 @@ static void usage(corsaro_plugin_t *plugin)
 	  plugin->argv[0]);
 }
 
+/** Parse the arguments given to the plugin */
 static int parse_args(corsaro_t *corsaro)
 {
   corsaro_plugin_t *plugin = PLUGIN(corsaro);
@@ -443,6 +445,7 @@ static int ascii_dump(corsaro_t *corsaro, corsaro_flowtuple_class_type_t dist)
   return 0;
 }
 
+/** Check that a class start record is valid */
 static int validate_class_start(corsaro_flowtuple_class_start_t *class)
 {
   /* byteswap the values */
@@ -459,6 +462,7 @@ static int validate_class_start(corsaro_flowtuple_class_start_t *class)
   return 1;
 }
 
+/** Read a class start record */
 static int read_class_start(corsaro_in_t *corsaro, 
 			    corsaro_in_record_type_t *record_type,
 			    corsaro_in_record_t *record)
@@ -509,6 +513,7 @@ static int read_class_start(corsaro_in_t *corsaro,
   return bytes_read;
 }
 
+/** Check that a class end record is valid */
 static int validate_class_end(corsaro_flowtuple_class_end_t *class)
 {
   /* byteswap the values */
@@ -524,6 +529,7 @@ static int validate_class_end(corsaro_flowtuple_class_end_t *class)
   return 1;
 }
 
+/** Read a class end record */
 static int read_class_end(corsaro_in_t *corsaro, 
 			  corsaro_in_record_type_t *record_type,
 			  corsaro_in_record_t *record)
@@ -560,12 +566,14 @@ static int read_class_end(corsaro_in_t *corsaro,
   return bytes_read;
 }
 
+/** Attempt to validate a flowtuple record (no-op) */
 static int validate_flowtuple(corsaro_flowtuple_t *flowtuple)
 {
   /* there is no real validation that can be done with this */
   return 1;
 }
 
+/** Read a flowtuple record */
 static int read_flowtuple(corsaro_in_t *corsaro, 
 			 corsaro_in_record_type_t *record_type,
 			 corsaro_in_record_t *record)
@@ -601,17 +609,20 @@ static int read_flowtuple(corsaro_in_t *corsaro,
 
 /* == PUBLIC PLUGIN FUNCS BELOW HERE == */
 
+/** Implements the alloc function of the plugin API */
 corsaro_plugin_t *corsaro_flowtuple_alloc(corsaro_t *corsaro)
 {
   return &corsaro_flowtuple_plugin;
 }
 
+/** Implements the probe_filename function of the plugin API */
 int corsaro_flowtuple_probe_filename(const char *fname)
 {
   /* look for 'corsaro_flowtuple' in the name */
   return corsaro_plugin_probe_filename(fname, &corsaro_flowtuple_plugin);
 }
 
+/** Implements the probe_magic function of the plugin API */
 int corsaro_flowtuple_probe_magic(corsaro_in_t *corsaro, 
 				  corsaro_file_in_t *file)
 {
@@ -632,6 +643,7 @@ int corsaro_flowtuple_probe_magic(corsaro_in_t *corsaro,
   return 0;
 }
 
+/** Implements the init_output function of the plugin API */
 int corsaro_flowtuple_init_output(corsaro_t *corsaro)
 {
   int i;
@@ -672,6 +684,7 @@ int corsaro_flowtuple_init_output(corsaro_t *corsaro)
   return -1;
 }
 
+/** Implements the init_input function of the plugin API */
 int corsaro_flowtuple_init_input(corsaro_in_t *corsaro)
 {
   struct corsaro_flowtuple_in_state_t *state;
@@ -698,6 +711,7 @@ int corsaro_flowtuple_init_input(corsaro_in_t *corsaro)
   return -1;
 }
 
+/** Implements the close_input function of the plugin API */
 int corsaro_flowtuple_close_input(corsaro_in_t *corsaro)
 {
   struct corsaro_flowtuple_in_state_t *state = STATE_IN(corsaro);
@@ -709,6 +723,7 @@ int corsaro_flowtuple_close_input(corsaro_in_t *corsaro)
   return 0;
 }
 
+/** Implements the close_output function of the plugin API */
 int corsaro_flowtuple_close_output(corsaro_t *corsaro)
 {
   int i;
@@ -741,6 +756,7 @@ int corsaro_flowtuple_close_output(corsaro_t *corsaro)
   return 0;
 }
 
+/** Implements the read_record function of the plugin API */
 off_t corsaro_flowtuple_read_record(struct corsaro_in *corsaro, 
 			       corsaro_in_record_type_t *record_type, 
 			       corsaro_in_record_t *record)
@@ -795,6 +811,7 @@ off_t corsaro_flowtuple_read_record(struct corsaro_in *corsaro,
   return bytes_read;
 }
 
+/** Implements the read_global_data_record function of the plugin API */
 off_t corsaro_flowtuple_read_global_data_record(struct corsaro_in *corsaro, 
 			      enum corsaro_in_record_type *record_type, 
 			      struct corsaro_in_record *record)
@@ -803,6 +820,7 @@ off_t corsaro_flowtuple_read_global_data_record(struct corsaro_in *corsaro,
   return -1;
 }
 
+/** Implements the start_interval function of the plugin API */
 int corsaro_flowtuple_start_interval(corsaro_t *corsaro, 
 				     corsaro_interval_t *int_start)
 {
@@ -825,6 +843,7 @@ int corsaro_flowtuple_start_interval(corsaro_t *corsaro,
   return 0;
 }
 
+/** Implements the end_interval function of the plugin API */
 int corsaro_flowtuple_end_interval(corsaro_t *corsaro, 
 				   corsaro_interval_t *int_end)
 {
@@ -884,6 +903,7 @@ int corsaro_flowtuple_end_interval(corsaro_t *corsaro,
   return 0;
 }
 
+/** Implements the process_packet function of the plugin API */
 int corsaro_flowtuple_process_packet(corsaro_t *corsaro,
 				     corsaro_packet_t *packet)
 {
@@ -967,6 +987,7 @@ int corsaro_flowtuple_process_packet(corsaro_t *corsaro,
   return 0;
 }
 
+/** Implements the process_flowtuple function of the plugin API */
 int corsaro_flowtuple_process_flowtuple(corsaro_t *corsaro,
 					corsaro_flowtuple_t *flowtuple,
 					corsaro_packet_state_t *state)
@@ -990,6 +1011,7 @@ int corsaro_flowtuple_process_flowtuple(corsaro_t *corsaro,
   return 0;
 }
 
+/** Implements the process_flowtuple_class_start function of the plugin API */
 int corsaro_flowtuple_process_flowtuple_class_start(corsaro_t *corsaro,
 					corsaro_flowtuple_class_start_t *class)
 {
@@ -997,6 +1019,7 @@ int corsaro_flowtuple_process_flowtuple_class_start(corsaro_t *corsaro,
   return 0;
 }
 
+/** Implements the process_flowtuple_class_end function of the plugin API */
 int corsaro_flowtuple_process_flowtuple_class_end(corsaro_t *corsaro,
 					corsaro_flowtuple_class_end_t *class)
 {
@@ -1006,6 +1029,7 @@ int corsaro_flowtuple_process_flowtuple_class_end(corsaro_t *corsaro,
 
 /* ==== FlowTuple External Convenience Functions ==== */
 
+/** Check if an input file is a FlowTuple file */
 int corsaro_flowtuple_probe_file(corsaro_in_t *corsaro, const char *fturi)
 {
   corsaro_file_in_t *ifile = NULL;
@@ -1028,6 +1052,7 @@ int corsaro_flowtuple_probe_file(corsaro_in_t *corsaro, const char *fturi)
   return res;
 }
 
+/** Convenience function to get the source IP address from a FlowTuple */
 uint32_t corsaro_flowtuple_get_source_ip(corsaro_flowtuple_t *flowtuple)
 {
   assert(flowtuple != NULL);
@@ -1035,6 +1060,7 @@ uint32_t corsaro_flowtuple_get_source_ip(corsaro_flowtuple_t *flowtuple)
   return flowtuple->src_ip;
 }
 
+/** Convenience function to get the destination IP address from a FlowTuple */
 uint32_t corsaro_flowtuple_get_destination_ip(corsaro_flowtuple_t *flowtuple)
 {
   assert(flowtuple != NULL);
@@ -1042,6 +1068,7 @@ uint32_t corsaro_flowtuple_get_destination_ip(corsaro_flowtuple_t *flowtuple)
   return CORSARO_FLOWTUPLE_SIXT_TO_IP(flowtuple);
 }
 
+/** Print a flowtuple to a file in ASCII format */
 off_t corsaro_flowtuple_fprint(corsaro_t *corsaro, corsaro_file_t *file,
 			   corsaro_flowtuple_t *flowtuple)
 {
@@ -1073,6 +1100,7 @@ off_t corsaro_flowtuple_fprint(corsaro_t *corsaro, corsaro_file_t *file,
 			   ntohl(flowtuple->packet_cnt)); 
 }
 
+/** Print a FlowTuple to stdout in ASCII format */
 void corsaro_flowtuple_print(corsaro_flowtuple_t *flowtuple)
 {
   char ip_a[16];
@@ -1101,8 +1129,10 @@ void corsaro_flowtuple_print(corsaro_flowtuple_t *flowtuple)
 	 ntohl(flowtuple->packet_cnt));
 }
 
-off_t corsaro_flowtuple_class_start_fprint(corsaro_t *corsaro, corsaro_file_t *file, 
-					corsaro_flowtuple_class_start_t *class)
+/** Print a class start record to a file in ASCII format */
+off_t corsaro_flowtuple_class_start_fprint(corsaro_t *corsaro, 
+				   corsaro_file_t *file, 
+				   corsaro_flowtuple_class_start_t *class)
 {
   return corsaro_file_printf(corsaro, file, 
 			   "START %s %"PRIu32"\n", 
@@ -1110,24 +1140,29 @@ off_t corsaro_flowtuple_class_start_fprint(corsaro_t *corsaro, corsaro_file_t *f
 			   class->count);
 }
 
+/** Print a class start record to stdout in ASCII format */
 void corsaro_flowtuple_class_start_print(corsaro_flowtuple_class_start_t *class)
 {
   fprintf(stdout, "START %s %"PRIu32"\n", class_names[class->class_type], 
 	  class->count);
 }
 
-off_t corsaro_flowtuple_class_end_fprint(corsaro_t *corsaro, corsaro_file_t *file, 
+/** Print a class end record to a file in ASCII format */
+off_t corsaro_flowtuple_class_end_fprint(corsaro_t *corsaro, 
+					 corsaro_file_t *file, 
 				      corsaro_flowtuple_class_end_t *class)
 {
   return corsaro_file_printf(corsaro, file, "END %s\n", 
 			   class_names[class->class_type]);
 }
 
+/** Print a class end record to stdout in ASCII format */
 void corsaro_flowtuple_class_end_print(corsaro_flowtuple_class_end_t *class)
 {
   fprintf(stdout, "END %s\n", class_names[class->class_type]);
 }
 
+/** Print a record to a file in ASCII format */
 off_t corsaro_flowtuple_record_fprint(corsaro_t *corsaro, corsaro_file_t *file, 
 				   corsaro_in_record_type_t record_type,
 				   corsaro_in_record_t *record)
@@ -1159,6 +1194,7 @@ off_t corsaro_flowtuple_record_fprint(corsaro_t *corsaro, corsaro_file_t *file,
   return -1;
 }
 
+/** Print a record to stdout in ASCII format */
 int corsaro_flowtuple_record_print(corsaro_in_record_type_t record_type,
 				corsaro_in_record_t *record)
 {
@@ -1188,7 +1224,8 @@ int corsaro_flowtuple_record_print(corsaro_in_record_type_t record_type,
   return 0;
 }
 
-void corsaro_flowtuple_free(corsaro_flowtuple_t *t)
+/** Free a FlowTuple record */
+void inline corsaro_flowtuple_free(corsaro_flowtuple_t *t)
 {
   free(t);
 }

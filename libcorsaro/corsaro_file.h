@@ -236,7 +236,6 @@ void corsaro_file_close(struct corsaro *corsaro, corsaro_file_t *file);
 
 /** Creates a new corsaro file reader and opens the provided file for reading.
  *
- * @param corsaro         The corsaro object the file is associated with
  * @param filename	The name of the file to open
  * @return A pointer to a new corsaro input file, or NULL if an error occurs
  *
@@ -249,7 +248,6 @@ corsaro_file_in_t *corsaro_file_ropen(const char *filename);
 
 /** Reads from an corsaro input file into the provided buffer.
  *
- * @param corsaro         The corsaro object the file is associated with
  * @param file		The file to read from
  * @param buffer	The buffer to read into
  * @param len		The size of the buffer
@@ -259,7 +257,6 @@ off_t corsaro_file_rread(corsaro_file_in_t *file, void *buffer, off_t len);
 
 /** Reads a string from an corsaro input file into the provided buffer.
  *
- * @param corsaro       The corsaro object the file is associated with
  * @param file		The file to read from
  * @param buffer	The buffer to read into
  * @param len		The size of the buffer
@@ -274,7 +271,6 @@ off_t corsaro_file_rgets(corsaro_file_in_t *file, void *buffer, off_t len);
 
 /** Read a libtrace packet from an corsaro input file
  *
- * @param corsaro         The corsaro object the file is associated with
  * @param file		The file to read from
  * @param packet 	The packet to read into
  * @param len		The size of the packet to be read
@@ -290,7 +286,6 @@ off_t corsaro_file_rread_packet(corsaro_file_in_t *file,
 /** Reads from an corsaro input file into the provided buffer, but does not
  * update the read pointer.
  *
- * @param corsaro         The corsaro object the file is associated with
  * @param file		The file to read from
  * @param buffer 	The buffer to read into
  * @param len		The size of the buffer
@@ -301,7 +296,6 @@ off_t corsaro_file_rpeek(corsaro_file_in_t *file, void *buffer, off_t len);
 /** Changes the read pointer offset to the specified value for an corsaro input
  * file.
  *
- * @param corsaro         The corsaro object the file is associated with
  * @param file		The file to adjust the read pointer for
  * @param offset	The new offset for the read pointer
  * @param whence	Indicates where to set the read pointer from. Can be 
@@ -315,7 +309,6 @@ off_t corsaro_file_rseek(corsaro_file_in_t *file, off_t offset, int whence);
 
 /** Returns the current offset of the read pointer for an corsaro input file. 
  *
- * @param corsaro         The corsaro object the file is associated with
  * @param file		The file to get the read offset for
  * @return The offset of the read pointer, or -1 if an error occurs
  */
@@ -323,7 +316,6 @@ off_t corsaro_file_rtell(corsaro_file_in_t *file);
 
 /** Closes an corsaro input file and frees the reader structure.
  *
- * @param corsaro         The corsaro object the file is associated with
  * @param file		The file to close
  */
 void corsaro_file_rclose(corsaro_file_in_t *file);

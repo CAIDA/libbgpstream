@@ -78,7 +78,7 @@ void corsaro_log_in(const char *func, corsaro_in_t *corsaro, const char *format,
 /** Write a formatted string to a generic log file
  *
  * @param func         The name of the calling function (__func__)
- * @param file         The file to log to (STDERR if NULL is passed)
+ * @param logfile      The file to log to (STDERR if NULL is passed)
  * @param format       The printf style formatting string
  * @param ...          Variable list of arguments to the format string
  *

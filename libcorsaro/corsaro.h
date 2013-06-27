@@ -245,8 +245,8 @@ int corsaro_start_output(corsaro_t *corsaro);
 
 /** Accessor function to enable/disable the alignment of the initial interval
  *
- * @param corsaro      The corsaro object to set the interval for
- * @param align        Enable or disable the alignment of interval end times
+ * @param corsaro         The corsaro object to set the interval for
+ * @param interval_align  Enable or disable the alignment of interval end times
  *
  * The end time of the first interval will be rounded down to the nearest 
  * integer multiple of the interval length. Interval rounding makes the most 
@@ -339,7 +339,7 @@ int corsaro_enable_plugin(corsaro_t *corsaro, const char *plugin_name,
 
 /** Return an array of the names of plugins which are compiled into corsaro
  *
- * @param[out]           A pointer to an array of plugin names
+ * @param[out] plugin_names   A pointer to an array of plugin names
  * @return the number of strings in the array, -1 if an error occurs
  *
  * Note that corsaro_free_plugin_names must be called to free the returned array
@@ -348,8 +348,8 @@ int corsaro_get_plugin_names(char ***plugin_names);
 
 /** Free the array of plugin names returned by corsaro_get_plugin_names
  *
- * @param                The array of plugin names
- * @param                The number of names in the array
+ * @param plugin_names  The array of plugin names
+ * @param plugin_cnt    The number of names in the array
  */
 void corsaro_free_plugin_names(char **plugin_names, int plugin_cnt);
 
@@ -419,7 +419,8 @@ int corsaro_per_packet(corsaro_t *corsaro, libtrace_packet_t *packet);
 /** Perform corsaro processing on a given corsaro record
  *
  * @param corsaro      The corsaro object used to process the packet
- * @param tuple       The record to process
+ * @param type         The type of the record
+ * @param record       The record to process
  * @return 0 if the record is successfully processed, -1 if an error occurs
  *
  * For each record, corsaro will simply hand it to each plugin which can process
@@ -493,8 +494,8 @@ void corsaro_in_free_record(corsaro_in_record_t *record);
 /** Read the next corsaro record from the given corsaro input file
  *
  * @param corsaro               The corsaro input object to read from
- * @param [in,out]record_type The type of the record to read
- * @param record              The generic corsaro input record pointer
+ * @param[in,out] record_type  The type of the record to read
+ * @param record                The generic corsaro input record pointer
  * @return 0 on EOF, -1 on error, number of bytes read when successful
  */
 off_t corsaro_in_read_record(corsaro_in_t *corsaro, 

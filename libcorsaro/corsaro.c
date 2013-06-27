@@ -50,6 +50,7 @@
  *
  */
 
+/** Allocate a corsaro packet wrapper structure */
 static corsaro_packet_t *corsaro_packet_alloc(corsaro_t *corsaro)
 {
   corsaro_packet_t *pkt;
@@ -63,6 +64,7 @@ static corsaro_packet_t *corsaro_packet_alloc(corsaro_t *corsaro)
   return pkt;
 }
 
+/** Reset the state for a the given corsaro packet wrapper */
 static inline void corsaro_packet_state_reset(corsaro_packet_t *packet)
 {
   assert(packet != NULL);
@@ -72,6 +74,7 @@ static inline void corsaro_packet_state_reset(corsaro_packet_t *packet)
   memset(&packet->state, 0, sizeof(corsaro_packet_state_t));
 }
 
+/** Free the given corsaro packet wrapper */
 static void corsaro_packet_free(corsaro_packet_t *packet)
 {
   /* we will assume that somebody else is taking care of the libtrace packet */
@@ -81,6 +84,7 @@ static void corsaro_packet_free(corsaro_packet_t *packet)
     }
 }
 
+/** Cleanup and free the given corsaro instance */
 static void corsaro_free(corsaro_t *corsaro)
 {
   corsaro_plugin_t *p = NULL;
@@ -142,8 +146,10 @@ static void corsaro_free(corsaro_t *corsaro)
   return;
 }
 
-static void populate_interval(corsaro_interval_t *interval, uint32_t number,
-			      uint32_t time)
+/** Fill the given interval object with the default values */
+static inline void populate_interval(corsaro_interval_t *interval, 
+				     uint32_t number,
+				     uint32_t time)
 {
   interval->corsaro_magic = CORSARO_MAGIC;
   interval->magic = CORSARO_MAGIC_INTERVAL;
@@ -151,6 +157,7 @@ static void populate_interval(corsaro_interval_t *interval, uint32_t number,
   interval->time = time;
 }
 
+/** Check if the meta output files should be rotated */
 static int is_meta_rotate_interval(corsaro_t *corsaro)
 {
   assert(corsaro != NULL);
@@ -171,6 +178,7 @@ static int is_meta_rotate_interval(corsaro_t *corsaro)
     }
 }
 
+/** Initialize a new corsaro object */
 static corsaro_t *corsaro_init(char *template, corsaro_file_mode_t mode)
 {
   corsaro_t *e;
@@ -259,6 +267,7 @@ static corsaro_t *corsaro_init(char *template, corsaro_file_mode_t mode)
   return NULL;
 }
 
+/** Start a new interval */
 static int start_interval(corsaro_t *corsaro, struct timeval int_start)
 {
   corsaro_plugin_t *tmp = NULL;
@@ -329,6 +338,7 @@ static int start_interval(corsaro_t *corsaro, struct timeval int_start)
   return 0;
 }
 
+/** End the current interval */
 static int end_interval(corsaro_t *corsaro, struct timeval int_end)
 {
   corsaro_plugin_t *tmp = NULL;
@@ -405,6 +415,7 @@ static int end_interval(corsaro_t *corsaro, struct timeval int_end)
   return 0;
 }
 
+/** Cleanup and free a corsaro_in instance */
 static void corsaro_in_free(corsaro_in_t *corsaro)
 {
   if(corsaro == NULL)
@@ -452,6 +463,7 @@ static void corsaro_in_free(corsaro_in_t *corsaro)
   free(corsaro);
 }
 
+/** Initialize a new corsaro_in instance */
 static corsaro_in_t *corsaro_in_init(const char *corsarouri)
 {
   corsaro_in_t *e;
@@ -497,6 +509,7 @@ static corsaro_in_t *corsaro_in_init(const char *corsarouri)
   return NULL;
 }
 
+/** Process the given corsaro packet */
 static inline int process_packet(corsaro_t *corsaro, corsaro_packet_t *packet)
 {
   corsaro_plugin_t *tmp = NULL;
@@ -513,6 +526,7 @@ static inline int process_packet(corsaro_t *corsaro, corsaro_packet_t *packet)
 }
 
 #ifdef WITH_PLUGIN_SIXT
+/** Process the given flowtuple record */
 static int per_flowtuple(corsaro_t *corsaro, corsaro_flowtuple_t *tuple)
 {
   /* ensure that the state is clear */
@@ -535,6 +549,7 @@ static int per_flowtuple(corsaro_t *corsaro, corsaro_flowtuple_t *tuple)
   return 0;
 }
 
+/** Process the given flowtuple class start record */
 static int per_flowtuple_class_start(corsaro_t *corsaro, 
 				     corsaro_flowtuple_class_start_t *class)
 {
@@ -554,6 +569,7 @@ static int per_flowtuple_class_start(corsaro_t *corsaro,
   return 0;
 }
 
+/** Process the given flowtuple class end record */
 static int per_flowtuple_class_end(corsaro_t *corsaro, 
 				   corsaro_flowtuple_class_end_t *class)
 {
@@ -574,6 +590,7 @@ static int per_flowtuple_class_end(corsaro_t *corsaro,
 }
 #endif
 
+/** Process an interval start record */
 static int per_interval_start(corsaro_t *corsaro, 
 			      corsaro_interval_t *interval)
 {
@@ -597,6 +614,7 @@ static int per_interval_start(corsaro_t *corsaro,
   return 0;
 }
 
+/** Process an interval end record */
 static int per_interval_end(corsaro_t *corsaro, 
 			    corsaro_interval_t *interval)
 {
@@ -614,6 +632,7 @@ static int per_interval_end(corsaro_t *corsaro,
   return 0;
 }
 
+/** Check if the filename is a global output file */
 static int check_global_filename(char *fname)
 {
   if(strstr(fname, CORSARO_IO_GLOBAL_NAME) != NULL)
@@ -623,6 +642,7 @@ static int check_global_filename(char *fname)
   return 0;
 }
 
+/** Check for the global output magic number in the given file */
 static int check_global_magic(corsaro_in_t *corsaro, corsaro_file_in_t *file)
 {
   char buffer[1024];
@@ -646,6 +666,7 @@ static int check_global_magic(corsaro_in_t *corsaro, corsaro_file_in_t *file)
   return 0;
 }
 
+/** Check if the next record is plugin data or an interval */
 static int is_plugin_data_or_interval(corsaro_in_t *corsaro)
 {
   char buffer[1024];
@@ -681,6 +702,7 @@ static int is_plugin_data_or_interval(corsaro_in_t *corsaro)
     }
 }
 
+/** Check if the next record is a trailer or an interval */
 static int is_trailer_or_interval(corsaro_in_t *corsaro)
 {
   char buffer[1024];
@@ -715,6 +737,7 @@ static int is_trailer_or_interval(corsaro_in_t *corsaro)
     }
 }
 
+/** Read a global file record */
 static off_t read_record(corsaro_in_t *corsaro, 
 			 corsaro_in_record_type_t *record_type, 
 			 corsaro_in_record_t *record)

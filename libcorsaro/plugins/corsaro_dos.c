@@ -329,7 +329,7 @@ struct corsaro_dos_in_state_t {
 /** Check if a vector has had a packet added to it recently 
  *
  * @param vector        The attack vector to check
- * @param ts            The current trace time
+ * @param time          The current trace time
  */
 static int attack_vector_is_expired(attack_vector_t *vector, 
 				    uint32_t time)
@@ -474,9 +474,9 @@ static void attack_vector_update_ppm_window(attack_vector_t *vector,
 
 /** Determine whether a vector is indeed an attack vector
  * 
- * @param corsaro         The corsaro object associated with the vector
+ * @param corsaro       The corsaro object associated with the vector
  * @param vector        The vector to check
- * @param ts            The current trace time
+ * @param time          The current trace time
  * @return 1 if the vector is an attack, 0 if non-attack, -1 if an error occurs
  */
 static int attack_vector_is_attack(corsaro_t *corsaro,
@@ -655,6 +655,7 @@ static int binary_dump(corsaro_t *corsaro, attack_vector_t *vector)
   return 0;
 }
 
+/** Read a dos header */
 static int read_header(corsaro_in_t *corsaro, 
 		       corsaro_in_record_type_t *record_type,
 		       corsaro_in_record_t *record)
@@ -687,6 +688,7 @@ static int read_header(corsaro_in_t *corsaro,
   return bytes_read;
 }
 
+/** Check an attack vector record is valid */
 static int validate_attack_vector(corsaro_dos_attack_vector_in_t *av)
 {
   /* short-circuit if the packet is empty */
@@ -717,6 +719,7 @@ static int validate_attack_vector(corsaro_dos_attack_vector_in_t *av)
   return 1;
 }
 
+/** Read an attack vector record */
 static int read_attack_vector(corsaro_in_t *corsaro, 
 			      corsaro_in_record_type_t *record_type,
 			      corsaro_in_record_t *record)
@@ -781,6 +784,7 @@ static int read_attack_vector(corsaro_in_t *corsaro,
   return bytes_read;
 }
 
+/** Check that a global file header record is valid */
 static int validate_global_header(corsaro_dos_global_header_t *g)
 {
   g->mismatched_pkt_cnt = ntohl(g->mismatched_pkt_cnt);
@@ -792,11 +796,13 @@ static int validate_global_header(corsaro_dos_global_header_t *g)
 
 /* == PUBLIC PLUGIN FUNCS BELOW HERE == */
 
+/** Implements the alloc function of the plugin API */
 corsaro_plugin_t *corsaro_dos_alloc(corsaro_t *corsaro)
 {
   return &corsaro_dos_plugin;
 }
 
+/** Implements the probe_filename function of the plugin API */
 int corsaro_dos_probe_filename(const char *fname)
 {
   /* look for 'corsaro_dos' in the name */
@@ -814,7 +820,8 @@ int corsaro_dos_probe_filename(const char *fname)
   return 0;
 }
 
-/**
+/** Implements the probe_magic function of the plugin API 
+ * 
  * @todo add a magic number and make it backwards compatible
  */
 int corsaro_dos_probe_magic(corsaro_in_t *corsaro, corsaro_file_in_t *file)
@@ -825,7 +832,8 @@ int corsaro_dos_probe_magic(corsaro_in_t *corsaro, corsaro_file_in_t *file)
   return -1;
 }
 
-/**
+/** Implements the init_output function of the plugin API
+ *
  * @todo dump full corsaro headers
  */
 int corsaro_dos_init_output(corsaro_t *corsaro)
@@ -861,6 +869,7 @@ int corsaro_dos_init_output(corsaro_t *corsaro)
   return -1;
 }
 
+/** Implements the init_input function of the plugin API */
 int corsaro_dos_init_input(corsaro_in_t *corsaro)
 {
   struct corsaro_dos_in_state_t *state;
@@ -888,6 +897,7 @@ int corsaro_dos_init_input(corsaro_in_t *corsaro)
   return -1;
 }
 
+/** Implements the close_input function of the plugin API */
 int corsaro_dos_close_input(corsaro_in_t *corsaro)
 {
   struct corsaro_dos_in_state_t *state = STATE_IN(corsaro);
@@ -899,6 +909,7 @@ int corsaro_dos_close_input(corsaro_in_t *corsaro)
   return 0;
 }
 
+/** Implements the close_output function of the plugin API */
 int corsaro_dos_close_output(corsaro_t *corsaro)
 {
   struct corsaro_dos_state_t *state = STATE(corsaro);
@@ -922,6 +933,7 @@ int corsaro_dos_close_output(corsaro_t *corsaro)
   return 0;
 }
 
+/** Implements the read_record function of the plugin API */
 off_t corsaro_dos_read_record(struct corsaro_in *corsaro, 
 			  corsaro_in_record_type_t *record_type, 
 			  corsaro_in_record_t *record)
@@ -971,6 +983,7 @@ off_t corsaro_dos_read_record(struct corsaro_in *corsaro,
   return bytes_read;
 }
 
+/** Implements the read_global_data_record function of the plugin API */
 off_t corsaro_dos_read_global_data_record(struct corsaro_in *corsaro, 
 			      enum corsaro_in_record_type *record_type, 
 			      struct corsaro_in_record *record)
@@ -1000,6 +1013,7 @@ off_t corsaro_dos_read_global_data_record(struct corsaro_in *corsaro,
   return bytes_read;
 }
 
+/** Implements the start_interval function of the plugin API */
 int corsaro_dos_start_interval(corsaro_t *corsaro, corsaro_interval_t *int_start)
 {
   /* open the output file if it has been closed */
@@ -1022,6 +1036,7 @@ int corsaro_dos_start_interval(corsaro_t *corsaro, corsaro_interval_t *int_start
   return 0;
 }
 
+/** Implements the end_interval function of the plugin API */
 int corsaro_dos_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_end)
 {
   int this_interval = int_end->time-STATE(corsaro)->first_interval;
@@ -1181,6 +1196,7 @@ int corsaro_dos_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_end)
   return 0;
 }
 
+/** Implements the process_packet function of the plugin API */
 int corsaro_dos_process_packet(corsaro_t *corsaro, 
 			     corsaro_packet_t *packet)
 {
@@ -1370,6 +1386,7 @@ int corsaro_dos_process_packet(corsaro_t *corsaro,
 
 /* ==== External Output Convenience Functions ==== */
 
+/** Extract the initial packet from an attack vector record */
 void corsaro_dos_attack_vector_get_packet(
 			    corsaro_dos_attack_vector_in_t *attack_vector, 
 			    libtrace_packet_t *packet)
@@ -1381,6 +1398,7 @@ void corsaro_dos_attack_vector_get_packet(
 			 attack_vector->initial_packet_len);
 }
 
+/** Print a global header record to stdout in ASCII format */
 off_t corsaro_dos_global_header_fprint(corsaro_t *corsaro, 
 				corsaro_file_t *file, 
 				corsaro_dos_global_header_t *header)
@@ -1399,6 +1417,7 @@ off_t corsaro_dos_global_header_fprint(corsaro_t *corsaro,
 
 }
 
+/** Print a global header record to a file in ASCII format */
 void corsaro_dos_global_header_print(corsaro_dos_global_header_t *header)
 {
   assert(header != NULL);
@@ -1411,7 +1430,8 @@ void corsaro_dos_global_header_print(corsaro_dos_global_header_t *header)
 	  header->non_attack_vector_cnt);
 }
 
-/**
+/** Print an attack vector record to stdout in ASCII format
+ *
  * @todo extend libpacketdump to allow to dump to a file
  */
 off_t corsaro_dos_attack_vector_fprint(corsaro_t *corsaro, 
@@ -1459,6 +1479,7 @@ off_t corsaro_dos_attack_vector_fprint(corsaro_t *corsaro,
   
 }
 
+/** Print an attack vector record to a file in ASCII format */
 void corsaro_dos_attack_vector_print(corsaro_dos_attack_vector_in_t *av)
 {
   uint32_t tmp;
@@ -1517,6 +1538,7 @@ void corsaro_dos_attack_vector_print(corsaro_dos_attack_vector_in_t *av)
 #endif
 }
 
+/** Print a header record to stdout in ASCII format */
 off_t corsaro_dos_header_fprint(corsaro_t *corsaro, 
 				corsaro_file_t *file, 
 				corsaro_dos_header_t *header)
@@ -1531,6 +1553,7 @@ off_t corsaro_dos_header_fprint(corsaro_t *corsaro,
 
 }
 
+/** Print a header record to a file in ASCII format */
 void corsaro_dos_header_print(corsaro_dos_header_t *header)
 {
   assert(header != NULL);
@@ -1539,6 +1562,7 @@ void corsaro_dos_header_print(corsaro_dos_header_t *header)
 
 }
 
+/** Print any DoS record to stdout in ASCII format */
 off_t corsaro_dos_record_fprint(corsaro_t *corsaro, 
 				corsaro_file_t *file, 
 				corsaro_in_record_type_t record_type,
@@ -1571,6 +1595,7 @@ off_t corsaro_dos_record_fprint(corsaro_t *corsaro,
   return -1;
 }
 
+/** Print any DoS record to a file in ASCII format */
 int corsaro_dos_record_print(corsaro_in_record_type_t record_type,
 			     corsaro_in_record_t *record)
 {

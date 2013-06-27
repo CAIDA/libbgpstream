@@ -113,6 +113,7 @@ struct corsaro_filtergeo_state_t {
 #define PLUGIN(corsaro)						\
   (CORSARO_PLUGIN_PLUGIN(corsaro, CORSARO_PLUGIN_ID_FILTERGEO))
 
+/** Print usage information to stderr */
 static void usage(corsaro_plugin_t *plugin)
 {
   fprintf(stderr, 
@@ -126,6 +127,7 @@ static void usage(corsaro_plugin_t *plugin)
 	  MAX_COMMAND_LINE_COUNTRIES);
 }
 
+/** Parse the arguments given to the plugin */
 static int parse_args(corsaro_t *corsaro)
 {
   corsaro_plugin_t *plugin = PLUGIN(corsaro);
@@ -191,6 +193,7 @@ static int parse_args(corsaro_t *corsaro)
   return 0;
 }
 
+/** Parse a country code string and add it to the hash */
 static int add_country(corsaro_t *corsaro, char *cc_str)
 {
   int khret;
@@ -214,6 +217,7 @@ static int add_country(corsaro_t *corsaro, char *cc_str)
   return 0;
 }
 
+/** Read a file containing a list of country codes */
 static int read_country_file(corsaro_t *corsaro, corsaro_file_in_t *file)
 {
   char buffer[BUFFER_LEN];
@@ -237,6 +241,7 @@ static int read_country_file(corsaro_t *corsaro, corsaro_file_in_t *file)
   return 0;
 }
 
+/** Common code between process_packet and process_flowtuple */
 static void process_generic(corsaro_t *corsaro, corsaro_packet_state_t *state)
 {
   struct corsaro_filtergeo_state_t *fg_state = STATE(corsaro);
@@ -286,6 +291,7 @@ static void process_generic(corsaro_t *corsaro, corsaro_packet_state_t *state)
   return;
 }
 
+/** Free a string (used to clear the hash) */
 static inline void str_free(const char *str)
 {
   free((char*)str);
@@ -293,23 +299,27 @@ static inline void str_free(const char *str)
 
 /* == PUBLIC PLUGIN FUNCS BELOW HERE == */
 
+/** Implements the alloc function of the plugin API */
 corsaro_plugin_t *corsaro_filtergeo_alloc(corsaro_t *corsaro)
 {
   return &corsaro_filtergeo_plugin;
 }
 
+/** Implements the probe_filename function of the plugin API */
 int corsaro_filtergeo_probe_filename(const char *fname)
 {
   /* this does not write files */
   return 0;
 }
 
+/** Implements the probe_magic function of the plugin API */
 int corsaro_filtergeo_probe_magic(corsaro_in_t *corsaro, corsaro_file_in_t *file)
 {
   /* this does not write files */
   return 0;
 }
 
+/** Implements the init_output function of the plugin API */
 int corsaro_filtergeo_init_output(corsaro_t *corsaro)
 {
   struct corsaro_filtergeo_state_t *state;
@@ -375,18 +385,21 @@ int corsaro_filtergeo_init_output(corsaro_t *corsaro)
   return -1;
 }
 
+/** Implements the init_input function of the plugin API */
 int corsaro_filtergeo_init_input(corsaro_in_t *corsaro)
 {
   assert(0);
   return -1;
 }
 
+/** Implements the close_input function of the plugin API */
 int corsaro_filtergeo_close_input(corsaro_in_t *corsaro)
 {
   assert(0);
   return -1;
 }
 
+/** Implements the close_output function of the plugin API */
 int corsaro_filtergeo_close_output(corsaro_t *corsaro)
 {
   struct corsaro_filtergeo_state_t *state = STATE(corsaro);
@@ -406,6 +419,7 @@ int corsaro_filtergeo_close_output(corsaro_t *corsaro)
   return 0;
 }
 
+/** Implements the read_record function of the plugin API */
 off_t corsaro_filtergeo_read_record(struct corsaro_in *corsaro, 
 			       corsaro_in_record_type_t *record_type, 
 			       corsaro_in_record_t *record)
@@ -414,6 +428,7 @@ off_t corsaro_filtergeo_read_record(struct corsaro_in *corsaro,
   return -1;
 }
 
+/** Implements the read_global_data_record function of the plugin API */
 off_t corsaro_filtergeo_read_global_data_record(struct corsaro_in *corsaro, 
 			      enum corsaro_in_record_type *record_type, 
 			      struct corsaro_in_record *record)
@@ -422,6 +437,7 @@ off_t corsaro_filtergeo_read_global_data_record(struct corsaro_in *corsaro,
   return -1;
 }
 
+/** Implements the start_interval function of the plugin API */
 int corsaro_filtergeo_start_interval(corsaro_t *corsaro, 
 				corsaro_interval_t *int_start)
 {
@@ -429,6 +445,7 @@ int corsaro_filtergeo_start_interval(corsaro_t *corsaro,
   return 0;
 }
 
+/** Implements the end_interval function of the plugin API */
 int corsaro_filtergeo_end_interval(corsaro_t *corsaro, 
 				corsaro_interval_t *int_end)
 {
@@ -436,6 +453,7 @@ int corsaro_filtergeo_end_interval(corsaro_t *corsaro,
   return 0;
 }
 
+/** Implements the process_packet function of the plugin API */
 int corsaro_filtergeo_process_packet(corsaro_t *corsaro, 
 				corsaro_packet_t *packet)
 {
@@ -443,7 +461,8 @@ int corsaro_filtergeo_process_packet(corsaro_t *corsaro,
   return 0;
 }
 
-#ifdef WITH_PLUGIN_SIXT
+#ifdef WITH_PLUGIN_SIX
+/** Implements the process_flowtuple function of the plugin API */
 int corsaro_filtergeo_process_flowtuple(corsaro_t *corsaro,
 					corsaro_flowtuple_t *flowtuple,
 					corsaro_packet_state_t *state)
@@ -452,6 +471,7 @@ int corsaro_filtergeo_process_flowtuple(corsaro_t *corsaro,
   return 0;
 }
 
+/** Implements the process_flowtuple_class_start function of the plugin API */
 int corsaro_filtergeo_process_flowtuple_class_start(corsaro_t *corsaro,
 				   corsaro_flowtuple_class_start_t *class)
 {
@@ -459,6 +479,7 @@ int corsaro_filtergeo_process_flowtuple_class_start(corsaro_t *corsaro,
   return 0;
 }
 
+/** Implements the process_flowtuple_class_end function of the plugin API */
 int corsaro_filtergeo_process_flowtuple_class_end(corsaro_t *corsaro,
 				   corsaro_flowtuple_class_end_t *class)
 {

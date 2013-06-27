@@ -109,6 +109,7 @@ struct corsaro_anon_state_t {
 #define PLUGIN(corsaro)						\
   (CORSARO_PLUGIN_PLUGIN(corsaro, CORSARO_PLUGIN_ID_ANON))
 
+/** Print usage information to stderr */
 static void usage(corsaro_plugin_t *plugin)
 {
   fprintf(stderr,
@@ -123,6 +124,7 @@ static void usage(corsaro_plugin_t *plugin)
 	  ENC_TYPE_PREFIX);
 }
 
+/** Parse the arguments given to the plugin */
 static int parse_args(corsaro_t *corsaro)
 {
   corsaro_plugin_t *plugin = PLUGIN(corsaro);
@@ -191,23 +193,27 @@ static int parse_args(corsaro_t *corsaro)
 
 /* == PUBLIC PLUGIN FUNCS BELOW HERE == */
 
+/** Implements the alloc function of the plugin API */
 corsaro_plugin_t *corsaro_anon_alloc(corsaro_t *corsaro)
 {
   return &corsaro_anon_plugin;
 }
 
+/** Implements the probe_filename function of the plugin API */
 int corsaro_anon_probe_filename(const char *fname)
 {
   /* this writes no files! */
   return 0;
 }
 
+/** Implements the probe_magic function of the plugin API */
 int corsaro_anon_probe_magic(corsaro_in_t *corsaro, corsaro_file_in_t *file)
 {
   /* this writes no files! */
   return 0;
 }
 
+/** Implements the init_output function of the plugin API */
 int corsaro_anon_init_output(corsaro_t *corsaro)
 {
   struct corsaro_anon_state_t *state;
@@ -244,23 +250,27 @@ int corsaro_anon_init_output(corsaro_t *corsaro)
   return -1;
 }
 
+/** Implements the init_input function of the plugin API */
 int corsaro_anon_init_input(corsaro_in_t *corsaro)
 {
   assert(0);
   return -1;
 }
 
+/** Implements the close_input function of the plugin API */
 int corsaro_anon_close_input(corsaro_in_t *corsaro)
 {
   assert(0);
   return -1;
 }
 
+/** Implements the close_output function of the plugin API */
 int corsaro_anon_close_output(corsaro_t *corsaro)
 {  
   return 0;
 }
 
+/** Implements the read_record function of the plugin API */
 off_t corsaro_anon_read_record(struct corsaro_in *corsaro, 
 			       corsaro_in_record_type_t *record_type, 
 			       corsaro_in_record_t *record)
@@ -269,6 +279,7 @@ off_t corsaro_anon_read_record(struct corsaro_in *corsaro,
   return -1;
 }
 
+/** Implements the read_global_data_record function of the plugin API */
 off_t corsaro_anon_read_global_data_record(struct corsaro_in *corsaro, 
 			      enum corsaro_in_record_type *record_type, 
 			      struct corsaro_in_record *record)
@@ -277,6 +288,7 @@ off_t corsaro_anon_read_global_data_record(struct corsaro_in *corsaro,
   return -1;
 }
 
+/** Implements the start_interval function of the plugin API */
 int corsaro_anon_start_interval(corsaro_t *corsaro, 
 				corsaro_interval_t *int_start)
 {
@@ -284,6 +296,7 @@ int corsaro_anon_start_interval(corsaro_t *corsaro,
   return 0;
 }
 
+/** Implements the end_interval function of the plugin API */
 int corsaro_anon_end_interval(corsaro_t *corsaro, 
 			      corsaro_interval_t *int_end)
 {
@@ -291,6 +304,7 @@ int corsaro_anon_end_interval(corsaro_t *corsaro,
   return 0;
 }
 
+/** Implements the process_packet function of the plugin API */
 int corsaro_anon_process_packet(corsaro_t *corsaro, 
 				corsaro_packet_t *packet)
 {
@@ -307,6 +321,7 @@ int corsaro_anon_process_packet(corsaro_t *corsaro,
 }
 
 #ifdef WITH_PLUGIN_SIXT
+/** Implements the process_flowtuple function of the plugin API */
 int corsaro_anon_process_flowtuple(corsaro_t *corsaro,
 				   corsaro_flowtuple_t *flowtuple,
 				   corsaro_packet_state_t *state)
@@ -323,6 +338,7 @@ int corsaro_anon_process_flowtuple(corsaro_t *corsaro,
   return 0;
 }
 
+/** Implements the process_flowtuple_class_start function of the plugin API */
 int corsaro_anon_process_flowtuple_class_start(corsaro_t *corsaro,
 				   corsaro_flowtuple_class_start_t *class)
 {
@@ -330,6 +346,7 @@ int corsaro_anon_process_flowtuple_class_start(corsaro_t *corsaro,
   return 0;
 }
 
+/** Implements the process_flowtuple_class_end function of the plugin API */
 int corsaro_anon_process_flowtuple_class_end(corsaro_t *corsaro,
 				   corsaro_flowtuple_class_end_t *class)
 {
