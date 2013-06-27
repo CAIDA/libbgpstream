@@ -24,7 +24,7 @@
 
 AC_PREREQ([2.68])
 
-AC_INIT([corsaro], [1.0.0], [corsaro-info@caida.org])
+AC_INIT([corsaro], [2.0.0], [corsaro-info@caida.org])
 
 # Corsaro versions...
 # this may need some re-thinking
@@ -37,7 +37,7 @@ AC_INIT([corsaro], [1.0.0], [corsaro-info@caida.org])
 # if the format changes
 # perhaps use the major version to indicate changes in file format
 
-CORSARO_MAJOR_VERSION=1
+CORSARO_MAJOR_VERSION=2
 CORSARO_MID_VERSION=0
 CORSARO_MINOR_VERSION=0
 

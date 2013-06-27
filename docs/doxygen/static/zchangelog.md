@@ -4,6 +4,26 @@ Change Log{#changelog}
 See the [Corsaro](http://www.caida.org/tools/measurement/corsaro/) website for
 download information.
 
+Corsaro 2.0.0
+=============
+@todo fix release date
+
+ - Released 2013-07-XX
+ - All users should upgrade to this release. Contact corsaro-info@caida.org for
+   help upgrading.
+
+Major Features
+--------------
+ - Adds several plugins
+   - Smee
+   - CryptoPAn Anonymization
+   - Prefix-to-AS
+   - Geolocation
+   - Geographic Filter
+   - Prefix Filter
+ - Adds geolocation framework
+ - Adds full realtime support (including output rotation)
+
 Corsaro 1.0.2
 =============
  - Released 2013-02-20

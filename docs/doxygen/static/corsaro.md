@@ -47,8 +47,9 @@ Download            {#download}
 ========
 
 The latest version of Corsaro is
-[$(CORSARO_VERSION)](http://www.caida.org/tools/mesurement/corsaro/downloads/corsaro-1.0.0.tar.gz),
-released on October 22 2012.
+[$(CORSARO_VERSION)](http://www.caida.org/tools/mesurement/corsaro/downloads/corsaro-2.0.0.tar.gz),
+released on MONTH DATE YEAR.
+@todo insert the date when we release
 
 We also maintain a detailed \ref changelog.
 

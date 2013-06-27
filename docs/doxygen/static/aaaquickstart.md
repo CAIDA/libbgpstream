@@ -10,7 +10,7 @@ Getting Corsaro {#quick_get}
 ===============
 
 The latest version of Corsaro is
-[$(CORSARO_VERSION)](http://www.caida.org/corsaro/downloads/corsaro-1.0.0.tar.gz).
+[$(CORSARO_VERSION)](http://www.caida.org/corsaro/downloads/corsaro-2.0.0.tar.gz).
 
 You will also need to have
 [libtrace](http://research.wand.net.nz/software/libtrace.php) installed before
