@@ -25,22 +25,34 @@ Usage
 -----
 
 ~~~
-usage: corsaro -o outfile [-i interval] [-m mode] [-n name]
-          [-p plugin] [-f filter] trace_uri [trace_uri...]
+usage: corsaro [-alP] -o outfile [-i interval] [-m mode] [-n name]
+               [-p plugin] [-f filter] [-r intervals] trace_uri [trace_uri...]
+       -a            align the end time of the first interval
        -o <outfile>  use <outfile> as a template for file names.
-                      %P will be replaced with the plugin name
-       -i <interval> distribution interval in seconds (default: 60)
-       -m <mode>     output in 'ascii' or 'binary'. (default: ascii)
-       -n <name>     monitor name (default: <hostname>)
-       -p <plugin>   enable the given plugin, -p can be used 
-                      multiple times (default: all)
+                      - %P => plugin name
+                      - %N => monitor name
+                      - see man strftime(3) for more options
        -f <filter>   BPF filter to apply to packets
+       -i <interval> distribution interval in seconds (default: 60)
+       -l            the input file has legacy intervals (FlowTuple only)
+       -m <mode>     output in 'ascii' or 'binary'. (default: binary)
+       -n <name>     monitor name (default: gibi.caida.org)
+       -p <plugin>   enable the given plugin, -p can be used multiple times (default: all)
+                     available plugins:
+                      - anon
+                      - flowtuple
+                     use -p "<plugin_name> -?" to see plugin options
+       -P            enable promiscuous mode on the input (if supported)
+       -r            rotate output files after n intervals
+       -R            rotate corsaro meta files after n intervals
 ~~~
 
 ### Required Arguments ###
 
 _corsaro_ takes two mandatory arguments: an output filename template, and an
 input trace URI. 
+
+#### Output Filename Template ####
 
 The output template must contain the string `%P` which will be expanded to the
 name of the plugin (and possibly a plugin-specific identifier) for each file
@@ -49,13 +61,27 @@ compression should be used when creating the file. A `gz` extension will cause
 `gzip` compression to be used, whereas a `bz2` compression will use `bzip`
 compression. Uncompressed files will be created for all other extensions.
 
+The template may optionally contain the string `%N` which will be expanded to
+the monitor name. The monitor name can either be specified using the `-n` option
+at run-time, or using the `--with-monitorname` option to `configure`.
+
+In addition, the template can contain any of the specifiers supported by
+`strftime(3)` which will be replaced with the appropriate representation of
+start time of the first interval in the file.
+
 For example, at CAIDA, we use: 
 ~~~
-/path/to/corsaro/data/telescope.<timestamp>.%P.cors.gz 
+/path/to/corsaro/data/%N.%s.%P.cors.gz 
 ~~~
 
-The input URI will most commonly just be the path to a pcap (or similar)
-file. The IO library (_libwandio_) used by _libcorsaro_ can automatically detect
+#### Input URI #### 
+
+The input URI will most commonly just be the path to a file of any format
+supported by `libtrace`. It can however also be a \ref plugins_ft file - this is
+useful for re-processing data using additional plugins (many of the \ref plugins
+support processing FlowTuple records). 
+
+The IO library (_libwandio_) used by _libcorsaro_ can automatically detect
 _gzip_ and _bzip_ compression if it is used. Multiple trace URIs can be supplied
 and will be processed in the order they are listed. Take care to ensure packets
 are sorted in chronological order - plugin behavior is undefined for unordered
@@ -66,22 +92,40 @@ packets.
 The remaining arguments are all optional and alter how the trace is
 processed. 
 
- - `interval`
+ - `-a` align
+  - aligns the end of the first interval (and therefore subsequent interval
+    start/ends) to a time that is a multiple of the interval time. For example,
+    if the interval length is 3600 (1hr), then the first interval will end at
+    the top of the hour, thus aligning all further intervals to the hour.	
+ - `-f` filter
+  - specify a BPF string to use to filter packets
+ - `-i` interval
   - determines the length of time (in seconds) included in each aggregation 
     interval
   - defaults to 60 (1 minute) 
   - see the \ref arch_intervals section of the \ref arch page 
- - `mode`
+ - `-l` legacy
+  - indicates that the input \ref plugins_ft file has legacy-format intervals
+ - `-m` mode
   - selects between output formats
   - `binary` and `ascii` are supported values
- - `name` 
-  - specifies the name of the monitor
-  - currently unused
- - `plugin` 
+  - defaults to `binary`
+ - `-n` name
+  - the monitor name to use (overrides the name given by `--with-monitorname`)
+  - will be inserted into output templates where the `%N` specifier is used
+ - `-p` plugin
   - specify a plugin to use for analysis
   - can be used multiple times to specify a list of plugins
- - `filter`
-  - specify a BPF string to use to filter packets
+ - `-P` promiscuous
+  - enables promiscuous mode on the capture interface
+  - used when capturing from a live interface
+ - `-r` rotate
+  - specify the number of intervals after which output files should be rotated
+  - defaults to no rotation
+ - `-R` meta-rotate
+  - specify the number of intervals after which meta-output (global and log)
+    files should be rotated
+  - defaults to the same value as `-r`
 
 The output files generated by the _corsaro_ tool can be viewed either with a
 standard text viewer (for the ASCII output format), or using the \ref
@@ -245,6 +289,40 @@ as this to greatly improve processing speed.
 @todo respect the tuple classes for reaggregation (currently classes are 
   discarded).
 @todo add a BPF-like filter
+
+cors-ft-timeseries.pl {#tool_timeseries}
+==================
+
+A simple script that reads ASCII flowtuple data from STDIN and sums the tuple
+values in each interval. The output is of the format:
+
+~~~
+<interval_start_time>,<value_sum>
+~~~
+
+This is useful for converting the output from \ref tool_corsagg into a simple
+time series. 
+
+Usage
+-----
+
+~~~
+usage: | cors-ft-timeseries.pl
+~~~		
+
+Because this script reads from STDIN, it should be piped the data to be
+converted. If you have an existing ASCII-format FlowTuple file, simple do
+something like:
+
+~~~
+cat <flowtuple_file> | cors-ft-timeseries.pl 
+~~~
+
+But more likely you will chain it directly to \ref tool_corsagg like so:
+
+~~~
+cors-ft-aggregate [options] <input_file> | cors-ft-timeseries.pl
+~~~
 
 cors-splitascii.pl {#tool_splitascii}
 ==================
