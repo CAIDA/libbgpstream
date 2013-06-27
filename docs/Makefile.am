@@ -11,7 +11,7 @@ EXTRA_DIST += $(DOXYGEN_FOLDERS)
 corsaro_doxygen=yes
 endif
 
-doxygen/caida-html: doxy
+doxygen/caida-html: doxy-caida
 
 doxygen/html: doxy
 
