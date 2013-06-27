@@ -292,7 +292,7 @@ provider implementation, nor the consumer implementation, and is specified at
 run-time. This allows end-users to choose the most appropriate data-structure
 for their use-case.
 
-The implemented datastructures are listed in the \ref
+The implemented data-structures are listed in the \ref
 corsaro_geo_datastructure_id enum.
 
 #### Records ####
