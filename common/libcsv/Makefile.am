@@ -22,35 +22,12 @@
 # along with corsaro.  If not, see <http://www.gnu.org/licenses/>.
 # 
 
-SUBDIRS = libpatricia libcsv
+AM_CPPFLAGS = 
 
-AM_CPPFLAGS = -I$(top_srcdir) \
-	-I$(top_srcdir)/common/libpatricia \
-	-I$(top_srcdir)/common/libcsv
+noinst_LTLIBRARIES = libcsv.la
 
-noinst_LTLIBRARIES = libcorsarocommon.la
-
-CONDITIONAL_LIBS=
-
-if WITH_LIBANON
-SUBDIRS += libanon
-CONDITIONAL_LIBS += $(top_builddir)/common/libanon/libanon.la
-AM_CPPFLAGS += -I$(top_srcdir)/common/libanon
-endif
-
-libcorsarocommon_la_SOURCES = \
-	utils.c \
-	utils.h \
-	ip_utils.c \
-	ip_utils.h \
-	parse_cmd.c \
-	parse_cmd.h \
-	khash.h \
-	ksort.h
-
-libcorsarocommon_la_LIBADD = $(top_builddir)/common/libpatricia/libpatricia.la \
-			$(top_builddir)/common/libpatricia/libcsv.la \
-			$(CONDITIONAL_LIBS)
+libcsv_la_SOURCES = \
+	libcsv.c csv.h
 
 ACLOCAL_AMFLAGS = -I m4
 
