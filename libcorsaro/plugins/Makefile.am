@@ -26,6 +26,7 @@ SUBDIRS =
 
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/common \
 	-I$(top_srcdir)/common/libpatricia \
+	-I$(top_srcdir)/common/libcsv \
 	-I$(top_srcdir)/common/libanon \
 	-I$(top_srcdir)/libcorsaro
 
