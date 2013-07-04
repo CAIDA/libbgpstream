@@ -16,7 +16,8 @@ extern "C" {
 #define CSV_EPARSE 1   /* Parse error in strict mode */
 #define CSV_ENOMEM 2   /* Out of memory while increasing buffer size */
 #define CSV_ETOOBIG 3  /* Buffer larger than SIZE_MAX needed */
-#define CSV_EINVALID 4 /* Invalid code,should never be received from csv_error*/
+#define CSV_EUSER 4    /* user parse error */
+#define CSV_EINVALID 5 /* Invalid code,should never be received from csv_error*/
 
 
 /* parser options */

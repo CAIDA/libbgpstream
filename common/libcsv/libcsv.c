@@ -44,26 +44,30 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define MEM_BLK_SIZE 128
 
-#define SUBMIT_FIELD(p) \
-  do { \
-   if (!quoted) \
-     entry_pos -= spaces; \
-   if (p->options & CSV_APPEND_NULL) \
-     ((p)->entry_buf[entry_pos]) = '\0'; \
-   if (cb1 && (p->options & CSV_EMPTY_IS_NULL) && !quoted && entry_pos == 0) \
-     cb1(NULL, entry_pos, data); \
-   else if (cb1) \
-     cb1(p->entry_buf, entry_pos, data); \
-   pstate = FIELD_NOT_BEGUN; \
-   entry_pos = quoted = spaces = 0; \
- } while (0)
+#define SUBMIT_FIELD(p)				\
+  do {						\
+  if (!quoted)					\
+    entry_pos -= spaces;			\
+  if (p->options & CSV_APPEND_NULL)		\
+    ((p)->entry_buf[entry_pos]) = '\0';					\
+  if (cb1 && (p->options & CSV_EMPTY_IS_NULL) && !quoted && entry_pos == 0) \
+    cb1(NULL, entry_pos, data);						\
+  else if (cb1)								\
+    cb1(p->entry_buf, entry_pos, data);					\
+  if(p->status != 0)							\
+    return entry_pos-1;							\
+  pstate = FIELD_NOT_BEGUN;						\
+  entry_pos = quoted = spaces = 0;					\
+  } while (0)
 
-#define SUBMIT_ROW(p, c) \
-  do { \
-    if (cb2) \
-      cb2(c, data); \
-    pstate = ROW_NOT_BEGUN; \
-    entry_pos = quoted = spaces = 0; \
+#define SUBMIT_ROW(p, c)						\
+  do {									\
+    if (cb2)								\
+      cb2(c, data);							\
+    if(p->status != 0)							\
+      return entry_pos-1;							\
+    pstate = ROW_NOT_BEGUN;						\
+    entry_pos = quoted = spaces = 0;					\
   } while (0)
 
 #define SUBMIT_CHAR(p, c) ((p)->entry_buf[entry_pos++] = (c))
@@ -72,6 +76,7 @@ static char *csv_errors[] = {"success",
                              "error parsing data while strict checking enabled",
                              "memory exhausted while increasing buffer size",
                              "data size too large",
+			     "user parse error",
                              "invalid status code"};
 
 int
