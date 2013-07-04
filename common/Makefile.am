@@ -49,7 +49,7 @@ libcorsarocommon_la_SOURCES = \
 	ksort.h
 
 libcorsarocommon_la_LIBADD = $(top_builddir)/common/libpatricia/libpatricia.la \
-			$(top_builddir)/common/libpatricia/libcsv.la \
+			$(top_builddir)/common/libcsv/libcsv.la \
 			$(CONDITIONAL_LIBS)
 
 ACLOCAL_AMFLAGS = -I m4
