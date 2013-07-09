@@ -1,11 +1,11 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
  * corsaro-info@caida.org
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
  *
  * corsaro is free software: you can redistribute it and/or modify
@@ -36,6 +36,7 @@
 
 #include "libtrace.h"
 
+#include "csv.h"
 #include "ip_utils.h"
 #include "khash.h"
 #include "patricia.h"
@@ -59,7 +60,7 @@
  * the Maxmind Geo CSV format databases. That is, a database which consists of
  * two tables: Blocks and Locations. See http://dev.maxmind.com/geoip/geolite
  * for the free GeoLite versions of these databases.
- * 
+ *
  * It has been extended to understand the NetAcuity Edge database also, but only
  * once it has been converted to this format. Contact corsaro-info@caida.org
  * for more information about this feature.
@@ -88,17 +89,99 @@
 /** The length of the static line buffer */
 #define BUFFER_LEN 1024
 
-/** The number of columns in the maxmind locations CSV file */
-#define MAXMIND_LOCATION_COL_CNT 9
+/** The columns in the maxmind locations CSV file */
+typedef enum maxmind_locations_cols {
+  /** ID */
+  MAXMIND_LOCATION_COL_ID     = 0,
+  /** 2 Char Country Code */
+  MAXMIND_LOCATION_COL_CC     = 1,
+  /** Region String */
+  MAXMIND_LOCATION_COL_REGION = 2,
+  /** City String */
+  MAXMIND_LOCATION_COL_CITY   = 3,
+  /** Postal Code String */
+  MAXMIND_LOCATION_COL_POSTAL = 4,
+  /** Latitude */
+  MAXMIND_LOCATION_COL_LAT    = 5,
+  /** Longitude */
+  MAXMIND_LOCATION_COL_LONG   = 6,
+  /** Metro Code */
+  MAXMIND_LOCATION_COL_METRO  = 7,
+  /** Area Code (phone) */
+  MAXMIND_LOCATION_COL_AREA   = 8,
+
+  /** Total number of columns in locations table */
+  MAXMIND_LOCATION_COL_COUNT  = 9
+} maxmind_locations_cols_t;
 
 /** The number of header rows in the maxmind CSV files */
 #define MAXMIND_HEADER_ROW_CNT 2
 
-/** The number of columns in the blocks CSV file */
-#define BLOCKS_COL_CNT 3
+/** The columns in the netacq_edge locations CSV file */
+typedef enum netacq_edge_locations_cols {
+  /** ID */
+  NETACQ_EDGE_LOCATION_COL_ID        = 0,
+  /** 3 Char Country Code */
+  NETACQ_EDGE_LOCATION_COL_CC3       = 1,   /* not used */
+  /** Region String */
+  NETACQ_EDGE_LOCATION_COL_REGION    = 2,   /* not used */
+  /** City String */
+  NETACQ_EDGE_LOCATION_COL_CITY      = 3,
+  /** Connection Speed String */
+  NETACQ_EDGE_LOCATION_COL_CONN      = 4,
+  /** Metro Code */
+  NETACQ_EDGE_LOCATION_COL_METRO     = 5,
+  /** Latitude */
+  NETACQ_EDGE_LOCATION_COL_LAT       = 6,
+  /** Longitude */
+  NETACQ_EDGE_LOCATION_COL_LONG      = 7,
+  /** Postal Code */
+  NETACQ_EDGE_LOCATION_COL_POSTAL    = 8,
+  /** Country Code */
+  NETACQ_EDGE_LOCATION_COL_CNTRYCODE = 9,   /* not used */
+  /** Region Code */
+  NETACQ_EDGE_LOCATION_COL_RCODE     = 10,  /* not used */
+  /** City Code */
+  NETACQ_EDGE_LOCATION_COL_CITYCODE  = 11,  /* not used */
+  /** Continent Code */
+  NETACQ_EDGE_LOCATION_COL_CONTCODE  = 12,
+  /** 2 Char Country Code */
+  NETACQ_EDGE_LOCATION_COL_CC        = 13,
+  /** Internal Code */
+  NETACQ_EDGE_LOCATION_COL_INTERNAL  = 14,  /* not used */
+  /** Area Codes (plural) */
+  NETACQ_EDGE_LOCATION_COL_AREACODES = 15,  /* not used */
+  /** Country-Conf ?? */
+  NETACQ_EDGE_LOCATION_COL_CNTRYCONF = 16,  /* not used */
+  /** Region-Conf ?? */
+  NETACQ_EDGE_LOCATION_COL_REGCONF   = 17,  /* not used */
+  /** City-Conf ?? */
+  NETACQ_EDGE_LOCATION_COL_CITYCONF  = 18,  /* not used */
+  /** Postal-Conf ?? */
+  NETACQ_EDGE_LOCATION_COL_POSTCONF  = 19,  /* not used */
+  /** GMT-Offset */
+  NETACQ_EDGE_LOCATION_COL_GMTOFF    = 20,  /* not used */
+  /** In CST */
+  NETACQ_EDGE_LOCATION_COL_INDST     = 21,  /* not used */
+  /** Trailing comma */
+  NETACQ_EDGE_LOCATION_COL_TRAIL     = 22,  /* not used */
 
-/** The number of columns in the netacq edge locations CSV file */
-#define NETACQ_EDGE_LOCATION_COL_CNT 23
+  /** Total number of columns in the locations table */
+  NETACQ_EDGE_LOCATION_COL_COUNT     = 23
+} netacq_edge_locations_cols_t;
+
+/** The columns in the maxmind locations CSV file */
+typedef enum blocks_cols {
+  /** Range Start IP */
+  BLOCKS_COL_STARTIP     = 0,
+  /** Range End IP */
+  BLOCKS_COL_ENDIP       = 1,
+  /** ID */
+  BLOCKS_COL_ID          = 2,
+
+  /** Total number of columns in blocks table */
+  BLOCKS_COL_COUNT  = 3
+} blocks_cols_t;
 
 /** The number of header rows in the netacq edge CSV files */
 #define NETACQ_EDGE_HEADER_ROW_CNT 1
@@ -109,7 +192,7 @@
 /** The default file name for the blocks file */
 #define BLOCKS_FILE_NAME "GeoLiteCity-Blocks.csv.gz"
 
-KHASH_INIT(u16u16, uint16_t, uint16_t, 1, 
+KHASH_INIT(u16u16, uint16_t, uint16_t, 1,
 	   kh_int_hash_func, kh_int_hash_equal)
 
 /** Common plugin information across all instances */
@@ -134,6 +217,16 @@ struct corsaro_geodb_state_t {
   char *locations_file;
   char *blocks_file;
 
+  /* State for CSV parser */
+  struct csv_parser parser;
+  int current_line;
+  int current_column;
+  corsaro_geo_record_t tmp_record;
+  uint16_t cntry_code;
+  uint32_t block_id;
+  ip_prefix_t block_lower;
+  ip_prefix_t block_upper;
+
   /* hash that maps from country code to continent code */
   khash_t(u16u16) *country_continent;
 };
@@ -149,7 +242,7 @@ struct corsaro_geodb_state_t {
 /** Print usage information to stderr */
 static void usage(corsaro_plugin_t *plugin)
 {
-  fprintf(stderr, 
+  fprintf(stderr,
 	  "plugin usage: %s [-p format] (-l locations -b blocks)|(-d directory)\n"
 	  "       -d            directory containing blocks and location files\n"
 	  "       -b            blocks file (must be used with -l)\n"
@@ -157,7 +250,7 @@ static void usage(corsaro_plugin_t *plugin)
 	  "       -p            database format (default: %s)\n"
 	  "                       format must be one of:\n"
 	  "                       - %s\n"
-	  "                       - %s\n",	  
+	  "                       - %s\n",
 	  plugin->argv[0],
 	  DEFAULT_PROVIDER_NAME,
 	  MAXMIND_NAME,
@@ -165,7 +258,7 @@ static void usage(corsaro_plugin_t *plugin)
 }
 
 /** Parse the arguments given to the plugin
- * @todo add option to choose datastructure 
+ * @todo add option to choose datastructure
  */
 static int parse_args(corsaro_t *corsaro)
 {
@@ -211,7 +304,7 @@ static int parse_args(corsaro_t *corsaro)
 	    {
 	      state->provider_id = CORSARO_GEO_PROVIDER_MAXMIND;
 	    }
-	  else if(strncasecmp(optarg, NETACQ_EDGE_NAME, 
+	  else if(strncasecmp(optarg, NETACQ_EDGE_NAME,
 			      strlen(NETACQ_EDGE_NAME)) == 0)
 	    {
 	      state->provider_id = CORSARO_GEO_PROVIDER_NETACQ_EDGE;
@@ -263,20 +356,20 @@ static int parse_args(corsaro_t *corsaro)
       /* malloc storage for the dir+/+file string */
       if((state->locations_file = malloc(
 					 strlen(directory)+1+
-					 strlen(LOCATIONS_FILE_NAME)+1)) 
+					 strlen(LOCATIONS_FILE_NAME)+1))
 	 == NULL)
 	{
-	  corsaro_log(__func__, corsaro, 
+	  corsaro_log(__func__, corsaro,
 		      "could not malloc location file string");
 	  return -1;
 	}
 
       if((state->blocks_file = malloc(
 				      strlen(directory)+1+
-				      strlen(BLOCKS_FILE_NAME)+1)) 
+				      strlen(BLOCKS_FILE_NAME)+1))
 	 == NULL)
 	{
-	  corsaro_log(__func__, corsaro, 
+	  corsaro_log(__func__, corsaro,
 		      "could not malloc blocks file string");
 	  return -1;
 	}
@@ -291,7 +384,7 @@ static int parse_args(corsaro_t *corsaro)
       ptr = stpncpy(state->blocks_file, directory, strlen(directory));
       *ptr++ = '/';
       ptr = stpncpy(ptr, BLOCKS_FILE_NAME, strlen(BLOCKS_FILE_NAME)+1);
-      
+
     }
 
   if(state->locations_file == NULL || state->blocks_file == NULL)
@@ -310,434 +403,712 @@ static int parse_args(corsaro_t *corsaro)
   return 0;
 }
 
-/** @todo make use sscanf */
-static int parse_maxmind_location_row(struct corsaro_geodb_state_t *state,
-				      corsaro_geo_provider_t *provider, 
-				      char *row)
+/* Parse a maxmind location cell */
+static void parse_maxmind_location_cell(void *s, size_t i, void *data)
 {
-  char *rowp = row;
-  char *tok = NULL;
-  int tokc = 0;
-  corsaro_geo_record_t tmp;
-  corsaro_geo_record_t *record;
+  corsaro_t *corsaro = (corsaro_t*)data;
+  struct corsaro_geodb_state_t *state = STATE(corsaro);
+  corsaro_geo_record_t *tmp = &(state->tmp_record);
+  char *tok = (char*)s;
 
-  uint16_t cntry_code = 0;
-  khiter_t khiter;
+  char *end;
 
-  /* make sure tmp is zeroed */
-  memset(&tmp, 0, sizeof(corsaro_geo_record_t));
-
-  while((tok = strsep(&rowp, ",")) != NULL)
+  /* skip the first two lines */
+  if(state->current_line < MAXMIND_HEADER_ROW_CNT)
     {
-      switch(tokc)
-	{
-	case 0:
-	  /* id */
-	  /* init this record */
-	  tmp.id = atoi(tok);
-	  break;
-
-	case 1:
-	  /* country code */
-	  if(tok[0] != '"' || tok[strlen(tok)-1] != '"')
-	    {
-	      return -1;
-	    }
-	  cntry_code = (tok[1]<<8) | tok[2];
-	  memcpy(&tmp.country_code, tok+1, 2);
-	  break;
-
-	case 2:
-	  /* region string */
-	  if(tok[0] != '"' || tok[strlen(tok)-1] != '"')
-	    {
-	      return -1;
-	    }
-	  if(tok[1] != '"' && tok[2] != '"')
-	    {
-	      tmp.region[2] = '\0';
-	      memcpy(&tmp.region, tok+1, 2);
-	    }
-	  else
-	    {
-	      tmp.region[0] = '\0';
-	    }
-	  break;
-	     
-	case 3:
-	  /* city */
-	  if(tok[0] != '"' || tok[strlen(tok)-1] != '"')
-	    {
-	      return -1;
-	    }
-	  tmp.city = strndup(tok+1, strlen(tok+1)-1);
-	  break;
-	      
-	case 4:
-	  /* postal code */
-	  if(tok[0] != '"' || tok[strlen(tok)-1] != '"')
-	    {
-	      return -1;
-	    }
-	  tmp.post_code = strndup(tok+1, strlen(tok+1)-1);
-	  break;
-
-	case 5:
-	  /* latitude */
-	  tmp.latitude = atof(tok);
-	  break;
-
-	case 6:
-	  /* longitude */
-	  tmp.longitude = atof(tok);
-	  break;
-
-	case 7:
-	  /* metro code - whatever the heck that is */
-	  tmp.metro_code = atoi(tok);
-	  break;
-	      
-	case 8:
-	  /* area code - (phone) */
-	  tmp.area_code = atoi(tok);
-	  break;
-
-	default:
-	  return -1;
-	  break;
-	}
-      tokc++;
+      return;
     }
 
-  /* at the end of successful row parsing, tokc will be 9 */
-  /* make sure we parsed exactly as many columns as we anticipated */
-  if(tokc != MAXMIND_LOCATION_COL_CNT)
+  /*
+  corsaro_log(__func__, corsaro, "row: %d, column: %d, tok: %s",
+	      state->current_line,
+	      state->current_column,
+	      tok);
+  */
+
+  switch(state->current_column)
     {
-      fprintf(stderr, "ERROR: Expecting %d columns in the locations file, "
-	      "but actually got %d\n", 
-	      MAXMIND_LOCATION_COL_CNT, tokc);
-      return -1;
+    case MAXMIND_LOCATION_COL_ID:
+      /* init this record */
+      tmp->id = strtol(tok, &end, 10);
+      if (end == tok || *end != '\0' || errno == ERANGE)
+	{
+	  corsaro_log(__func__, corsaro, "Invalid ID Value (%s)", tok);
+	  state->parser.status = CSV_EUSER;
+	  return;
+	}
+      break;
+
+    case MAXMIND_LOCATION_COL_CC:
+      /* country code */
+      if(tok == NULL || strlen(tok) != 2)
+	{
+	  corsaro_log(__func__, corsaro, "Invalid Country Code (%s)", tok);
+	  state->parser.status = CSV_EUSER;
+	  return;
+	}
+      state->cntry_code = (tok[0]<<8) | tok[1];
+      memcpy(tmp->country_code, tok, 2);
+      break;
+
+    case MAXMIND_LOCATION_COL_REGION:
+      /* region string */
+      if(tok == NULL || strlen(tok) == 0)
+	{
+	  tmp->region[0] = '\0';
+	}
+      else
+	{
+	  tmp->region[2] = '\0';
+	  memcpy(tmp->region, tok, 2);
+	}
+      break;
+
+    case MAXMIND_LOCATION_COL_CITY:
+      /* city */
+      tmp->city = strndup(tok, strlen(tok));
+      break;
+
+    case MAXMIND_LOCATION_COL_POSTAL:
+      /* postal code */
+      tmp->post_code = strndup(tok, strlen(tok));
+      break;
+
+    case MAXMIND_LOCATION_COL_LAT:
+      /* latitude */
+      tmp->latitude = strtof(tok, &end);
+      if (end == tok || *end != '\0' || errno == ERANGE)
+	{
+	  corsaro_log(__func__, corsaro, "Invalid Latitude Value (%s)", tok);
+	  state->parser.status = CSV_EUSER;
+	  return;
+	}
+      break;
+
+    case MAXMIND_LOCATION_COL_LONG:
+      /* longitude */
+      tmp->longitude = strtof(tok, &end);
+      if (end == tok || *end != '\0' || errno == ERANGE)
+	{
+	  corsaro_log(__func__, corsaro, "Invalid Longitude Value (%s)", tok);
+	  state->parser.status = CSV_EUSER;
+	  return;
+	}
+      break;
+
+    case MAXMIND_LOCATION_COL_METRO:
+      /* metro code - whatever the heck that is */
+      if(tok != NULL)
+	{
+	  tmp->metro_code = strtol(tok, &end, 10);
+	  if (end == tok || *end != '\0' || errno == ERANGE)
+	    {
+	      corsaro_log(__func__, corsaro, "Invalid Metro Value (%s)", tok);
+	      state->parser.status = CSV_EUSER;
+	      return;
+	    }
+	}
+      break;
+
+    case MAXMIND_LOCATION_COL_AREA:
+      /* area code - (phone) */
+      if(tok != NULL)
+	{
+	  tmp->area_code = strtol(tok, &end, 10);
+	  if (end == tok || *end != '\0' || errno == ERANGE)
+	    {
+	      corsaro_log(__func__, corsaro,
+			  "Invalid Area Code Value (%s)", tok);
+	      state->parser.status = CSV_EUSER;
+	      return;
+	    }
+	}
+      break;
+
+    default:
+      corsaro_log(__func__, corsaro, "Invalid Maxmind Location Column (%d:%d)",
+	     state->current_line, state->current_column);
+      state->parser.status = CSV_EUSER;
+      return;
+      break;
+    }
+
+  /* move on to the next column */
+  state->current_column++;
+}
+
+/** Handle an end-of-row event from the CSV parser */
+static void parse_maxmind_location_row(int c, void *data)
+{
+  corsaro_t *corsaro = (corsaro_t*)data;
+  struct corsaro_geodb_state_t *state = STATE(corsaro);
+  corsaro_geo_record_t *record;
+
+  khiter_t khiter;
+
+  /* skip the first two lines */
+  if(state->current_line < MAXMIND_HEADER_ROW_CNT)
+    {
+      state->current_line++;
+      return;
+    }
+
+  /* at the end of successful row parsing, current_column will be 9 */
+  /* make sure we parsed exactly as many columns as we anticipated */
+  if(state->current_column != MAXMIND_LOCATION_COL_COUNT)
+    {
+      corsaro_log(__func__, corsaro,
+		  "ERROR: Expecting %d columns in the locations file, "
+		  "but actually got %d",
+		  MAXMIND_LOCATION_COL_COUNT, state->current_column);
+      state->parser.status = CSV_EUSER;
+      return;
     }
 
   /* look up the continent code */
-  if((khiter = kh_get(u16u16, state->country_continent, cntry_code)) == 
+  if((khiter = kh_get(u16u16, state->country_continent, state->cntry_code)) ==
      kh_end(state->country_continent))
     {
-      fprintf(stderr, "ERROR: Invalid country code (%s)\n",
-	      tmp.country_code);
-      return -1;
+      corsaro_log(__func__, corsaro, "ERROR: Invalid country code (%s) (%x)",
+		  state->tmp_record.country_code,
+		  state->cntry_code);
+      state->parser.status = CSV_EUSER;
+      return;
     }
 
-  tmp.continent_code = kh_value(state->country_continent, khiter);
+  state->tmp_record.continent_code =
+    kh_value(state->country_continent, khiter);
 
   /*
   corsaro_log(__func__, NULL, "looking up %s (%x) got %x",
 	      tmp.country_code, cntry_code, tmp.continent_code);
   */
 
-  if((record = corsaro_geo_init_record(provider, tmp.id)) == NULL)
+  if((record = corsaro_geo_init_record(state->provider,
+				       state->tmp_record.id)) == NULL)
     {
-      return -1;
+      corsaro_log(__func__, corsaro, "ERROR: Could not initialize geo record");
+      state->parser.status = CSV_EUSER;
+      return;
     }
 
-  memcpy(record, &tmp, sizeof(corsaro_geo_record_t));
+  memcpy(record, &(state->tmp_record), sizeof(corsaro_geo_record_t));
 
-  return 0;
+  /* done processing the line */
+
+  /* increment the current line */
+  state->current_line++;
+  /* reset the current column */
+  state->current_column = 0;
+  /* reset the temp record */
+  memset(&(state->tmp_record), 0, sizeof(corsaro_geo_record_t));
+  /* reset the country code */
+  state->cntry_code = 0;
+
+  return;
 }
 
-/** Read a maxmind locations file */
-static int read_maxmind_locations(corsaro_t *corsaro, 
-				  corsaro_geo_provider_t *provider,
-				  corsaro_file_in_t *file)
+/** Parse a netacq location cell */
+static void parse_netacq_edge_location_cell(void *s, size_t i, void *data)
 {
-  char buffer[BUFFER_LEN];
-  int linec = 0;
-  
-  while(corsaro_file_rgets(file, &buffer, BUFFER_LEN) > 0)
+  corsaro_t *corsaro = (corsaro_t*)data;
+  struct corsaro_geodb_state_t *state = STATE(corsaro);
+  corsaro_geo_record_t *tmp = &(state->tmp_record);
+  char *tok = (char*)s;
+
+  char *end;
+
+  /* skip the first two lines */
+  if(state->current_line < NETACQ_EDGE_HEADER_ROW_CNT)
     {
-      /* skip the first two lines */
-      if(linec++ < MAXMIND_HEADER_ROW_CNT)
-	{
-	  continue;
-	}
-
-      chomp(buffer);
-
-      if(parse_maxmind_location_row(STATE(corsaro), provider, buffer) != 0)
-	{
-	  corsaro_log(__func__, corsaro, "invalid maxmind location file");
-	  return -1;
-	}
+      return;
     }
-  
-  return 0;
+
+  /*
+  corsaro_log(__func__, corsaro, "row: %d, column: %d, tok: %s",
+	      state->current_line,
+	      state->current_column,
+	      tok);
+  */
+
+  switch(state->current_column)
+    {
+    case NETACQ_EDGE_LOCATION_COL_ID:
+      /* init this record */
+      tmp->id = strtol(tok, &end, 10);
+      if (end == tok || *end != '\0' || errno == ERANGE)
+	{
+	  corsaro_log(__func__, corsaro, "Invalid ID Value (%s)", tok);
+	  state->parser.status = CSV_EUSER;
+	  return;
+	}
+      break;
+
+    case NETACQ_EDGE_LOCATION_COL_CC3:
+    case NETACQ_EDGE_LOCATION_COL_REGION:
+      break;
+
+    case NETACQ_EDGE_LOCATION_COL_CITY:
+      if(tok != NULL)
+	{
+	  tmp->city = strndup(tok, strlen(tok));
+	}
+      break;
+
+    case NETACQ_EDGE_LOCATION_COL_CONN:
+      if(tok != NULL)
+	{
+	  tmp->conn_speed = strndup(tok, strlen(tok));
+	}
+      break;
+
+    case NETACQ_EDGE_LOCATION_COL_METRO:
+      /* metro code - whatever the heck that is */
+      if(tok != NULL)
+	{
+	  tmp->metro_code = strtol(tok, &end, 10);
+	  if (end == tok || *end != '\0' || errno == ERANGE)
+	    {
+	      corsaro_log(__func__, corsaro, "Invalid Metro Value (%s)", tok);
+	      state->parser.status = CSV_EUSER;
+	      return;
+	    }
+	}
+      break;
+
+    case NETACQ_EDGE_LOCATION_COL_LAT:
+      tmp->latitude = strtof(tok, &end);
+      if (end == tok || *end != '\0' || errno == ERANGE)
+	{
+	  corsaro_log(__func__, corsaro, "Invalid Latitude Value (%s)", tok);
+	  state->parser.status = CSV_EUSER;
+	  return;
+	}
+      break;
+
+    case NETACQ_EDGE_LOCATION_COL_LONG:
+      /* longitude */
+      tmp->longitude = strtof(tok, &end);
+      if (end == tok || *end != '\0' || errno == ERANGE)
+	{
+	  corsaro_log(__func__, corsaro, "Invalid Longitude Value (%s)", tok);
+	  state->parser.status = CSV_EUSER;
+	  return;
+	}
+      break;
+
+    case NETACQ_EDGE_LOCATION_COL_POSTAL:
+      tmp->post_code = strndup(tok, strlen(tok));
+      break;
+
+    case NETACQ_EDGE_LOCATION_COL_CNTRYCODE:
+    case NETACQ_EDGE_LOCATION_COL_RCODE:
+    case NETACQ_EDGE_LOCATION_COL_CITYCODE:
+      break;
+
+    case NETACQ_EDGE_LOCATION_COL_CONTCODE:
+      if(tok != NULL)
+	{
+	  tmp->continent_code = strtol(tok, &end, 10);
+	  if (end == tok || *end != '\0' || errno == ERANGE)
+	    {
+	      corsaro_log(__func__, corsaro,
+			  "Invalid Continent Code Value (%s)", tok);
+	      state->parser.status = CSV_EUSER;
+	      return;
+	    }
+	}
+      break;
+
+    case NETACQ_EDGE_LOCATION_COL_CC:
+      if(tok == NULL || strlen(tok) != 2)
+	{
+	  corsaro_log(__func__, corsaro, "Invalid Country Code (%s)", tok);
+      corsaro_log(__func__, corsaro,
+		  "Invalid Net Acuity Edge Location Column (%d:%d)",
+	     state->current_line, state->current_column);
+	  state->parser.status = CSV_EUSER;
+	  return;
+	}
+      memcpy(tmp->country_code, tok, 2);
+      break;
+
+    case NETACQ_EDGE_LOCATION_COL_INTERNAL:
+    case NETACQ_EDGE_LOCATION_COL_AREACODES:
+    case NETACQ_EDGE_LOCATION_COL_CNTRYCONF:
+    case NETACQ_EDGE_LOCATION_COL_REGCONF:
+    case NETACQ_EDGE_LOCATION_COL_CITYCONF:
+    case NETACQ_EDGE_LOCATION_COL_POSTCONF:
+    case NETACQ_EDGE_LOCATION_COL_GMTOFF:
+    case NETACQ_EDGE_LOCATION_COL_INDST:
+    case NETACQ_EDGE_LOCATION_COL_TRAIL:
+      break;
+
+    default:
+      corsaro_log(__func__, corsaro,
+		  "Invalid Net Acuity Edge Location Column (%d:%d)",
+	     state->current_line, state->current_column);
+      state->parser.status = CSV_EUSER;
+      return;
+      break;
+    }
+
+  /* move on to the next column */
+  state->current_column++;
+
+  return;
 }
 
-/** Parse a netacq location row
- * @todo make use sscanf 
- */
-static int parse_netacq_edge_location_row(corsaro_geo_provider_t *provider, 
-					  char *row)
+/** Handle an end-of-row event from the CSV parser */
+static void parse_netacq_edge_location_row(int c, void *data)
 {
-  char *rowp = row;
-  char *tok = NULL;
-  int tokc = 0;
-  corsaro_geo_record_t tmp;
+  corsaro_t *corsaro = (corsaro_t*)data;
+  struct corsaro_geodb_state_t *state = STATE(corsaro);
   corsaro_geo_record_t *record;
 
-  /* make sure tmp is zeroed */
-  memset(&tmp, 0, sizeof(corsaro_geo_record_t));
-
-  while((tok = strsep(&rowp, ",")) != NULL)
+  /* skip the first two lines */
+  if(state->current_line < NETACQ_EDGE_HEADER_ROW_CNT)
     {
-      switch(tokc)
-	{
-	case 0:
-	  /* id */
-	  /* init this record */
-	  tmp.id = atoi(tok);
-	  break;
-
-	case 1: /* country 3 letter */
-	case 2: /* region string */
-	  break;
-
-	case 3: /* city string */
-	  tmp.city = strndup(tok, strlen(tok));
-	  break;
-
-	case 4: /* connection speed string */
-	  tmp.conn_speed = strndup(tok, strlen(tok));
-	  break;
-
-	case 5: /* metro code */
-	  /* metro code - whatever the heck that is */
-	  tmp.metro_code = atoi(tok);
-	  break;
-
-	case 6: /* latitude */
-	  tmp.latitude = atof(tok);
-	  break;
-
-	case 7: /* longitude */
-	  tmp.longitude = atof(tok);
-	  break;
-
-	case 8: /* postal code */
-	  tmp.post_code = strndup(tok, strlen(tok));
-	  break;
-
-	case 9: /* country code */
-	case 10: /* region code */
-	case 11: /* city code */
-	  break;
-
-	case 12: /* continent code */
-	  tmp.continent_code = atoi(tok);
-
-	case 13: /* country code - 2 letter */
-	  memcpy(&tmp.country_code, tok, 2);
-	  break;
-
-	case 14: /* internal code - wtf? */
-	case 15: /* area codes (plural) */
-	case 16: /* country-conf ?? */
-	case 17: /* region-conf */
-	case 18: /* city-conf */
-	case 19: /* postal-conf */
-	case 20: /* gmt-offset */
-	case 21: /* in-dst */
-	  break;
-
-	case 22: /* seems they use a trailing comma */
-	  break;
-
-	default:
-	  return -1;
-	  break;
-	}
-      tokc++;
+      state->current_line++;
+      return;
     }
 
-  /* at the end of successful row parsing, tokc will be 22 */
+  /* at the end of successful row parsing, current_column will be 9 */
   /* make sure we parsed exactly as many columns as we anticipated */
-  if(tokc != NETACQ_EDGE_LOCATION_COL_CNT)
+  if(state->current_column != NETACQ_EDGE_LOCATION_COL_COUNT)
     {
-      fprintf(stderr, "ERROR: Expecting %d columns in the locations file, "
-	      "but actually got %d\n", 
-	      NETACQ_EDGE_LOCATION_COL_CNT, tokc);
-      return -1;
+      corsaro_log(__func__, corsaro,
+		  "ERROR: Expecting %d columns in the locations file, "
+		  "but actually got %d",
+		  NETACQ_EDGE_LOCATION_COL_COUNT, state->current_column);
+      state->parser.status = CSV_EUSER;
+      return;
     }
 
-  if((record = corsaro_geo_init_record(provider, tmp.id)) == NULL)
+  if((record = corsaro_geo_init_record(state->provider,
+				       state->tmp_record.id)) == NULL)
     {
-      return -1;
+      corsaro_log(__func__, corsaro, "ERROR: Could not initialize geo record");
+      state->parser.status = CSV_EUSER;
+      return;
     }
 
-  memcpy(record, &tmp, sizeof(corsaro_geo_record_t));
+  memcpy(record, &(state->tmp_record), sizeof(corsaro_geo_record_t));
 
-  return 0;
+  /* done processing the line */
+
+  /* increment the current line */
+  state->current_line++;
+  /* reset the current column */
+  state->current_column = 0;
+  /* reset the temp record */
+  memset(&(state->tmp_record), 0, sizeof(corsaro_geo_record_t));
+  /* reset the country code */
+  state->cntry_code = 0;
+
+  return;
 }
 
-/** Read a Net Acuity Edge locations file */
-static int read_netacq_edge_locations(corsaro_t *corsaro, 
-				      corsaro_geo_provider_t *provider,
-				      corsaro_file_in_t *file)
-{
-  char buffer[BUFFER_LEN];
-  int linec = 0;
-  
-  while(corsaro_file_rgets(file, &buffer, BUFFER_LEN) > 0)
-    {
-      /* skip the first line (header) */
-      if(linec++ < NETACQ_EDGE_HEADER_ROW_CNT)
-	{
-	  continue;
-	}
-      
-      chomp(buffer);
-
-      if(parse_netacq_edge_location_row(provider, buffer) != 0)
-	{
-	  corsaro_log(__func__, corsaro, "invalid netacq location file");
-	  return -1;
-	}
-    }
-  
-  return 0;
-}
-
-/** Read a blocks file (maxmind or netacq) 
- * @todo make use scanf 
- */
-static int read_blocks(corsaro_t *corsaro, corsaro_file_in_t *file)
+/** Read a locations file */
+static int read_locations(corsaro_t *corsaro, corsaro_file_in_t *file)
 {
   struct corsaro_geodb_state_t *state = STATE(corsaro);
+
   char buffer[BUFFER_LEN];
-  int linec = 0;
+  int read = 0;
+
+  void (*cell_callback)(void *s, size_t i, void *data);
+  void (*row_callback)(int c, void *data);
+  const char *provider_name;
+  switch(STATE(corsaro)->provider_id)
+    {
+    case CORSARO_GEO_PROVIDER_MAXMIND:
+      cell_callback = parse_maxmind_location_cell;
+      row_callback = parse_maxmind_location_row;
+      provider_name = MAXMIND_NAME;
+      break;
+
+    case CORSARO_GEO_PROVIDER_NETACQ_EDGE:
+      cell_callback = parse_netacq_edge_location_cell;
+      row_callback = parse_netacq_edge_location_row;
+      provider_name = NETACQ_EDGE_NAME;
+      break;
+
+    default:
+      corsaro_log(__func__, corsaro, "Invalid provider type");
+      return -1;
+    }
+
+  /* reset the state variables before we start */
+  state->current_column = 0;
+  state->current_line = 0;
+  memset(&(state->tmp_record), 0, sizeof(corsaro_geo_record_t));
+  state->cntry_code = 0;
+
+  /* options for the csv parser */
+  int options = CSV_STRICT | CSV_REPALL_NL | CSV_STRICT_FINI |
+    CSV_APPEND_NULL | CSV_EMPTY_IS_NULL;
+
+  csv_init(&(state->parser), options);
+
+  while((read = corsaro_file_rread(file, &buffer, BUFFER_LEN)) > 0)
+    {
+      if(csv_parse(&(state->parser), buffer, read,
+		   cell_callback,
+		   row_callback,
+		   corsaro) != read)
+	{
+	  corsaro_log(__func__, corsaro,
+		      "Error parsing %s Location file", provider_name);
+	  corsaro_log(__func__, corsaro,
+		      "CSV Error: %s",
+		      csv_strerror(csv_error(&(state->parser))));
+	  return -1;
+	}
+    }
+
+  if(csv_fini(&(state->parser),
+	      cell_callback,
+	      row_callback,
+	      corsaro) != 0)
+    {
+      corsaro_log(__func__, corsaro,
+		  "Error parsing %s Location file", provider_name);
+      corsaro_log(__func__, corsaro,
+		  "CSV Error: %s",
+		  csv_strerror(csv_error(&(state->parser))));
+      return -1;
+    }
+
+  csv_free(&(state->parser));
+
+  return 0;
+}
+
+/** Parse a blocks cell */
+static void parse_blocks_cell(void *s, size_t i, void *data)
+{
+  corsaro_t *corsaro = (corsaro_t*)data;
+  struct corsaro_geodb_state_t *state = STATE(corsaro);
+  char *tok = (char*)s;
+  char *end;
 
   int skip = 0;
-  int offset = 0;
-
   switch(STATE(corsaro)->provider_id)
     {
     case CORSARO_GEO_PROVIDER_MAXMIND:
       skip = MAXMIND_HEADER_ROW_CNT;
-      offset = 1; /* skip over the " at the beginning of the string */
       break;
 
     case CORSARO_GEO_PROVIDER_NETACQ_EDGE:
       skip = NETACQ_EDGE_HEADER_ROW_CNT;
       break;
-      
+
     default:
-      return -1;
+      corsaro_log(__func__, corsaro, "Invalid provider type");
+      state->parser.status = CSV_EUSER;
+      return;
+    }
+  /* skip the first lines */
+  if(state->current_line < skip)
+    {
+      return;
     }
 
-  char *rowp;
-  char *tok = NULL;
-  int tokc = 0;
+  switch(state->current_column)
+    {
+    case BLOCKS_COL_STARTIP:
+      /* start ip */
+      state->block_lower.addr = strtol(tok, &end, 10);
+      if (end == tok || *end != '\0' || errno == ERANGE)
+	{
+	  corsaro_log(__func__, corsaro, "Invalid Start IP Value (%s)", tok);
+	  state->parser.status = CSV_EUSER;
+	}
+      break;
 
-  uint32_t id = 0;
+    case BLOCKS_COL_ENDIP:
+      /* end ip */
+      state->block_upper.addr = strtol(tok, &end, 10);
+      if (end == tok || *end != '\0' || errno == ERANGE)
+	{
+	  corsaro_log(__func__, corsaro, "Invalid End IP Value (%s)", tok);
+	  state->parser.status = CSV_EUSER;
+	}
+      break;
+
+    case BLOCKS_COL_ID:
+      /* id */
+      state->block_id = strtol(tok, &end, 10);
+      if (end == tok || *end != '\0' || errno == ERANGE)
+	{
+	  corsaro_log(__func__, corsaro, "Invalid ID Value (%s)", tok);
+	  state->parser.status = CSV_EUSER;
+	}
+      break;
+
+    default:
+      corsaro_log(__func__, corsaro, "Invalid Blocks Column (%d:%d)",
+		  state->current_line, state->current_column);
+      state->parser.status = CSV_EUSER;
+      break;
+    }
+
+  /* move on to the next column */
+  state->current_column++;
+}
+
+static void parse_blocks_row(int c, void *data)
+{
+  corsaro_t *corsaro = (corsaro_t*)data;
+  struct corsaro_geodb_state_t *state = STATE(corsaro);
 
   ip_prefix_list_t *pfx_list = NULL;
   ip_prefix_list_t *temp = NULL;
-  ip_prefix_t lower;
-  ip_prefix_t upper;
-
-  lower.masklen = 32;
-  upper.masklen = 32;
-
   corsaro_geo_record_t *record = NULL;
-  
-  while(corsaro_file_rgets(file, &buffer, BUFFER_LEN) > 0)
+
+  /* skip the first lines */
+  int skip = 0;
+  switch(STATE(corsaro)->provider_id)
     {
-      /* skip the first two lines */
-      if(linec++ < skip)
-	{
-	  continue;
-	}
+    case CORSARO_GEO_PROVIDER_MAXMIND:
+      skip = MAXMIND_HEADER_ROW_CNT;
+      break;
 
-      rowp = buffer;
-      tokc = 0;
+    case CORSARO_GEO_PROVIDER_NETACQ_EDGE:
+      skip = NETACQ_EDGE_HEADER_ROW_CNT;
+      break;
 
-      lower.addr = 0;
-      upper.addr = 0;
-
-      while((tok = strsep(&rowp, ",")) != NULL)
-	{
-	  switch(tokc)
-	    {
-	    case 0:
-	      /* start ip */
-	      lower.addr = atoi(tok+offset);
-	      break;
-	      
-	    case 1:
-	      /* end ip */
-	      upper.addr = atoi(tok+offset);
-	      break;
-	      
-	    case 2:
-	      /* id */
-	      id = atoi(tok+offset);
-	      break;
-	      
-	    default:
-	      corsaro_log(__func__, corsaro, "invalid blocks file");
-	      return -1;
-	      break;
-	    }
-	  tokc++;
-	}
-
-      /* make sure we parsed exactly as many columns as we anticipated */
-      if(tokc != BLOCKS_COL_CNT)
-	{
-	  corsaro_log(__func__, corsaro, "invalid blocks file");
-	  return -1;
-	}
-
-      assert(id > 0);
-     
-      /* convert the range to prefixes */
-      if(ip_range_to_prefix(lower, upper, &pfx_list) != 0)
-	{
-	  corsaro_log(__func__, corsaro, "could not convert range to pfxs");
-	  return -1;
-	}
-      assert(pfx_list != NULL);
-
-      /* get the record from the provider */
-      if((record = corsaro_geo_get_record(state->provider, id)) == NULL)
-	{
-	  corsaro_log(__func__, corsaro, "missing record for location %d",
-		      id);
-	  return -1;
-	}
-
-      /* iterate over and add each prefix to the trie */
-      while(pfx_list != NULL)
-	{
-	  if(corsaro_geo_provider_associate_record(corsaro,
-						   state->provider,
-						   htonl(pfx_list->prefix.addr),
-						   pfx_list->prefix.masklen,
-						   record) != 0)
-	    {
-	      corsaro_log(__func__, corsaro, "failed to associate record");
-	      return -1;
-	    }
-
-	  /* store this node so we can free it */
-	  temp = pfx_list;
-	  /* move on to the next pfx */
-	  pfx_list = pfx_list->next;
-	  /* free this node (saves us walking the list twice) */
-	  free(temp);
-	};
+    default:
+      corsaro_log(__func__, corsaro, "Invalid provider type");
+      state->parser.status = CSV_EUSER;
+      return;
     }
-  
+  if(state->current_line < skip)
+    {
+      state->current_line++;
+      return;
+    }
+
+  /* done processing the line */
+
+  /* make sure we parsed exactly as many columns as we anticipated */
+  if(state->current_column != BLOCKS_COL_COUNT)
+    {
+      corsaro_log(__func__, corsaro,
+		  "ERROR: Expecting %d columns in the blocks file, "
+		  "but actually got %d",
+		  BLOCKS_COL_COUNT, state->current_column);
+      state->parser.status = CSV_EUSER;
+      return;
+    }
+
+  assert(state->block_id > 0);
+
+  /* convert the range to prefixes */
+  if(ip_range_to_prefix(state->block_lower,
+			state->block_upper,
+			&pfx_list) != 0)
+    {
+      corsaro_log(__func__, corsaro,
+		  "ERROR: Could not convert range to pfxs");
+      state->parser.status = CSV_EUSER;
+      return;
+    }
+  assert(pfx_list != NULL);
+
+  /* get the record from the provider */
+  if((record = corsaro_geo_get_record(state->provider,
+				      state->block_id)) == NULL)
+    {
+      corsaro_log(__func__, corsaro,
+		  "ERROR: Missing record for location %d",
+		  state->block_id);
+      state->parser.status = CSV_EUSER;
+      return;
+    }
+
+  /* iterate over and add each prefix to the trie */
+  while(pfx_list != NULL)
+    {
+      if(corsaro_geo_provider_associate_record(corsaro,
+					       state->provider,
+					       htonl(pfx_list->prefix.addr),
+					       pfx_list->prefix.masklen,
+					       record) != 0)
+	{
+	  corsaro_log(__func__, corsaro,
+		      "ERROR: Failed to associate record");
+	  state->parser.status = CSV_EUSER;
+	  return;
+	}
+
+      /* store this node so we can free it */
+      temp = pfx_list;
+      /* move on to the next pfx */
+      pfx_list = pfx_list->next;
+      /* free this node (saves us walking the list twice) */
+      free(temp);
+    }
+
+  /* increment the current line */
+  state->current_line++;
+  /* reset the current column */
+  state->current_column = 0;
+}
+
+/** Read a blocks file (maxmind or netacq)  */
+static int read_blocks(corsaro_t *corsaro, corsaro_file_in_t *file)
+{
+  struct corsaro_geodb_state_t *state = STATE(corsaro);
+  char buffer[BUFFER_LEN];
+  int read = 0;
+
+  /* reset the state variables before we start */
+  state->current_column = 0;
+  state->current_line = 0;
+  state->block_id = 0;
+  state->block_lower.masklen = 32;
+  state->block_upper.masklen = 32;
+
+  /* options for the csv parser */
+  int options = CSV_STRICT | CSV_REPALL_NL | CSV_STRICT_FINI |
+    CSV_APPEND_NULL | CSV_EMPTY_IS_NULL;
+
+  csv_init(&(state->parser), options);
+
+
+  while((read = corsaro_file_rread(file, &buffer, BUFFER_LEN)) > 0)
+    {
+      if(csv_parse(&(state->parser), buffer, read,
+		   parse_blocks_cell,
+		   parse_blocks_row,
+		   corsaro) != read)
+	{
+	  corsaro_log(__func__, corsaro,
+		      "Error parsing Blocks file");
+	  corsaro_log(__func__, corsaro,
+		      "CSV Error: %s",
+		      csv_strerror(csv_error(&(state->parser))));
+	  return -1;
+	}
+    }
+
+  if(csv_fini(&(state->parser),
+	      parse_blocks_cell,
+	      parse_blocks_row,
+	      corsaro) != 0)
+    {
+      corsaro_log(__func__, corsaro,
+		  "Error parsing Maxmind Location file");
+      corsaro_log(__func__, corsaro,
+		  "CSV Error: %s",
+		  csv_strerror(csv_error(&(state->parser))));
+      return -1;
+    }
+
+  csv_free(&(state->parser));
+
   return 0;
 }
 
@@ -746,14 +1117,14 @@ static int process_generic(corsaro_t *corsaro, corsaro_packet_state_t *state,
 			   uint32_t src_ip)
 {
   struct corsaro_geodb_state_t *plugin_state = STATE(corsaro);
-  
+
   /* remove the old record from the provider */
   corsaro_geo_provider_clear(plugin_state->provider);
 
   /* add this record to the provider */
-  corsaro_geo_provider_add_record(plugin_state->provider, 
+  corsaro_geo_provider_add_record(plugin_state->provider,
 		  corsaro_geo_provider_lookup_record(
-						     corsaro, 
+						     corsaro,
 						     plugin_state->provider,
 						     src_ip));
 
@@ -797,7 +1168,7 @@ int corsaro_geodb_probe_filename(const char *fname)
 }
 
 /** Implements the probe_magic function of the plugin API */
-int corsaro_geodb_probe_magic(corsaro_in_t *corsaro, 
+int corsaro_geodb_probe_magic(corsaro_in_t *corsaro,
 			      corsaro_file_in_t *file)
 {
   /* this writes no files! */
@@ -825,7 +1196,7 @@ int corsaro_geodb_init_output(corsaro_t *corsaro)
 
   if((state = malloc_zero(sizeof(struct corsaro_geodb_state_t))) == NULL)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		  "could not malloc corsaro_maxmind_state_t");
       return -1;
     }
@@ -841,7 +1212,7 @@ int corsaro_geodb_init_output(corsaro_t *corsaro)
 	 && state->provider_id > 0);
 
   /* register us as a geolocation provider */
-  if((state->provider = 
+  if((state->provider =
       corsaro_geo_init_provider(corsaro,
 				state->provider_id,
 				CORSARO_GEO_DATASTRUCTURE_DEFAULT,
@@ -866,39 +1237,21 @@ int corsaro_geodb_init_output(corsaro_t *corsaro)
       khiter = kh_put(u16u16, state->country_continent, cntry_code, &khret);
       kh_value(state->country_continent, khiter) = cont_code;
     }
-  
+
 
   /* open the locations file */
   if((file = corsaro_file_ropen(state->locations_file)) == NULL)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		  "failed to open location file '%s'", state->locations_file);
       return -1;
     }
-  
+
   /* populate the locations hash */
-  switch(state->provider->id)
+  if(read_locations(corsaro, file) != 0)
     {
-    case CORSARO_GEO_PROVIDER_MAXMIND:
-      if(read_maxmind_locations(corsaro, state->provider, file) != 0)
-	{
-	  corsaro_log(__func__, corsaro, "failed to parse locations file");
-	  goto err;
-	}
-      break;
-
-    case CORSARO_GEO_PROVIDER_NETACQ_EDGE:
-      if(read_netacq_edge_locations(corsaro, state->provider, file) != 0)
-	{
-	  corsaro_log(__func__, corsaro, "failed to parse locations file");
-	  goto err;
-	}      
-      break;
-
-    default:
-      corsaro_log(__func__, corsaro, "invalid provider ID for this plugin");
+      corsaro_log(__func__, corsaro, "failed to parse locations file");
       goto err;
-      break;
     }
 
   /* close the locations file */
@@ -907,7 +1260,7 @@ int corsaro_geodb_init_output(corsaro_t *corsaro)
   /* open the blocks file */
   if((file = corsaro_file_ropen(state->blocks_file)) == NULL)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		  "failed to open blocks file '%s'", state->blocks_file);
       goto err;
     }
@@ -949,7 +1302,7 @@ int corsaro_geodb_close_input(corsaro_in_t *corsaro)
 
 /** Implements the close_output function of the plugin API */
 int corsaro_geodb_close_output(corsaro_t *corsaro)
-{  
+{
   struct corsaro_geodb_state_t *state = STATE(corsaro);
   if(state != NULL)
     {
@@ -977,8 +1330,8 @@ int corsaro_geodb_close_output(corsaro_t *corsaro)
 }
 
 /** Implements the read_record function of the plugin API */
-off_t corsaro_geodb_read_record(struct corsaro_in *corsaro, 
-				corsaro_in_record_type_t *record_type, 
+off_t corsaro_geodb_read_record(struct corsaro_in *corsaro,
+				corsaro_in_record_type_t *record_type,
 				corsaro_in_record_t *record)
 {
   assert(0);
@@ -986,8 +1339,8 @@ off_t corsaro_geodb_read_record(struct corsaro_in *corsaro,
 }
 
 /** Implements the read_global_data_record function of the plugin API */
-off_t corsaro_geodb_read_global_data_record(corsaro_in_t *corsaro, 
-				     corsaro_in_record_type_t *record_type, 
+off_t corsaro_geodb_read_global_data_record(corsaro_in_t *corsaro,
+				     corsaro_in_record_type_t *record_type,
 				     corsaro_in_record_t *record)
 {
   /* we write nothing to the global file. someone messed up */
@@ -995,7 +1348,7 @@ off_t corsaro_geodb_read_global_data_record(corsaro_in_t *corsaro,
 }
 
 /** Implements the start_interval function of the plugin API */
-int corsaro_geodb_start_interval(corsaro_t *corsaro, 
+int corsaro_geodb_start_interval(corsaro_t *corsaro,
 				 corsaro_interval_t *int_start)
 {
   /* we don't care */
@@ -1003,7 +1356,7 @@ int corsaro_geodb_start_interval(corsaro_t *corsaro,
 }
 
 /** Implements the end_interval function of the plugin API */
-int corsaro_geodb_end_interval(corsaro_t *corsaro, 
+int corsaro_geodb_end_interval(corsaro_t *corsaro,
 			       corsaro_interval_t *int_end)
 {
   /* we don't care */
@@ -1011,19 +1364,19 @@ int corsaro_geodb_end_interval(corsaro_t *corsaro,
 }
 
 /** Implements the process_packet function of the plugin API */
-int corsaro_geodb_process_packet(corsaro_t *corsaro, 
+int corsaro_geodb_process_packet(corsaro_t *corsaro,
 				 corsaro_packet_t *packet)
 {
   libtrace_packet_t *ltpacket = LT_PKT(packet);
   libtrace_ip_t  *ip_hdr  = NULL;
-  
+
   /* check for ipv4 */
   if((ip_hdr = trace_get_ip(ltpacket)) == NULL)
     {
       /* not an ip packet */
       return 0;
     }
-  
+
   return process_generic(corsaro, &packet->state, ip_hdr->ip_src.s_addr);
 }
 
@@ -1033,7 +1386,7 @@ int corsaro_geodb_process_flowtuple(corsaro_t *corsaro,
 				    corsaro_flowtuple_t *flowtuple,
 				    corsaro_packet_state_t *state)
 {
-  return process_generic(corsaro, state, 
+  return process_generic(corsaro, state,
 			 corsaro_flowtuple_get_source_ip(flowtuple));
 }
 
