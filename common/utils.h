@@ -31,6 +31,15 @@
 #ifndef __UTILS_H
 #define __UTILS_H
 
+#include <inttypes.h>
+
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+#ifdef HAVE_TIME_H
+#include <time.h>
+#endif
+
 /** @file
  *
  * @brief Header file for common utility functions
