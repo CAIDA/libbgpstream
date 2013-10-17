@@ -340,8 +340,10 @@ static void usage(const char *name)
 	  "                      - %%N => monitor name\n"
 	  "                      - see man strftime(3) for more options\n"
 	  "       -f <filter>   BPF filter to apply to packets\n"
+	  "       -G            disable the global metadata output file\n"
 	  "       -i <interval> distribution interval in seconds (default: %d)\n"
 	  "       -l            the input file has legacy intervals (FlowTuple only)\n"
+	  "       -L            disable logging to a file\n"
 	  "       -m <mode>     output in 'ascii' or 'binary'. (default: binary)\n"
 	  "       -n <name>     monitor name (default: "
 	  STR(CORSARO_MONITOR_NAME)")\n"
@@ -386,11 +388,13 @@ int main(int argc, char *argv[])
   int align = 0;
   int rotate = 0;
   int meta_rotate = -1;
+  int logfile_disable = 0;
+  int global_file_disable = 0;
 
   signal(SIGINT, catch_sigint);
 
   while(prevoptind = optind, 
-	(opt = getopt(argc, argv, ":f:i:m:n:o:p:r:R:alPv?")) >= 0)
+	(opt = getopt(argc, argv, ":f:i:m:n:o:p:r:R:aGlLPv?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
@@ -398,12 +402,20 @@ int main(int argc, char *argv[])
       }
       switch(opt)
 	{
+	case 'G':
+	  global_file_disable = 1;
+	  break;
+
 	case 'i':
 	  i = atoi(optarg);
 	  break;
 
 	case 'l':
 	  legacy_intervals = 1;
+	  break;
+
+	case 'L':
+	  logfile_disable = 1;
 	  break;
 
 	case 'm':
@@ -582,6 +594,16 @@ int main(int argc, char *argv[])
 	  usage(argv[0]);
 	  goto err;
 	}
+    }
+
+  if(logfile_disable != 0)
+    {
+      corsaro_disable_logfile(corsaro);
+    }
+
+  if(global_file_disable != 0)
+    {
+      corsaro_disable_globalfile(corsaro);
     }
 
   if(corsaro_start_output(corsaro) != 0)

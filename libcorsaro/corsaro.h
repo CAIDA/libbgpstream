@@ -323,6 +323,26 @@ int corsaro_set_trace(corsaro_t *corsaro, libtrace_t *trace);
  */
 int corsaro_set_traceuri(corsaro_t *corsaro, char *traceuri);
 
+/** Accessor function to disable logging to a file
+ *
+ * @param corsaro       The corsaro to disable logging to a file for
+ *
+ * This function may be called at any time, but if a log file is already created
+ * then it will continue to be used until a rotation interval is
+ * encountered. Normally it should be called before calling corsaro_start_output
+ */
+void corsaro_disable_logfile(corsaro_t *corsaro);
+
+/** Accessor function to disable the global metadata file
+ *
+ * @param corsaro       The corsaro to disable the global metadata file for
+ *
+ * This function may be called at any time, but if a metadata file is already
+ * created then it will continue to be used until a rotation interval is
+ * encountered. Normally it should be called before calling corsaro_start_output
+ */
+void corsaro_disable_globalfile(corsaro_t *corsaro);
+
 /** Attempt to enable a plugin using the given plugin name
  *
  * @param corsaro        The corsaro object to enable the plugin for

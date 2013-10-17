@@ -256,8 +256,14 @@ struct corsaro
   /** The corsaro output file to write global output to */
   corsaro_file_t *global_file;
 
+  /** Has the user asked us not to create a global output file? */
+  int global_file_disabled;
+
   /** The file to write log output to */
   corsaro_file_t *logfile;
+
+  /** Has the user asked us not to log to a file? */
+  int logfile_disabled;
 
   /** A pointer to the wrapper packet passed to the plugins */
   corsaro_packet_t *packet;

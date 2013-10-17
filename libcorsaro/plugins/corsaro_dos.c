@@ -1104,18 +1104,26 @@ int corsaro_dos_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_end)
 
   corsaro_io_write_interval_start(corsaro, STATE(corsaro)->outfile, 
 				  &corsaro->interval_start);
-  corsaro_io_write_plugin_start(corsaro, corsaro->global_file, PLUGIN(corsaro));
+  if(corsaro->global_file != NULL)
+    {
+      corsaro_io_write_plugin_start(corsaro, corsaro->global_file,
+				    PLUGIN(corsaro));
+    }
   if(CORSARO_FILE_MODE(STATE(corsaro)->outfile) == CORSARO_FILE_MODE_ASCII)
     {
-      /* global stats */
-      /* dump the number of mismatched packets and vectors */
-      corsaro_file_printf(corsaro, corsaro->global_file, 
-			"mismatch: %"PRIu32"\n"
-			"attack_vectors: %"PRIu32"\n"
-			"non-attack_vectors: %"PRIu32"\n", 
-			STATE(corsaro)->number_mismatched_packets,
-			attack_arr_cnt,
-			kh_size(STATE(corsaro)->attack_hash)-attack_arr_cnt);
+      if(corsaro->global_file != NULL)
+	{
+	  /* global stats */
+	  /* dump the number of mismatched packets and vectors */
+	  corsaro_file_printf(corsaro, corsaro->global_file, 
+			      "mismatch: %"PRIu32"\n"
+			      "attack_vectors: %"PRIu32"\n"
+			      "non-attack_vectors: %"PRIu32"\n", 
+			      STATE(corsaro)->number_mismatched_packets,
+			      attack_arr_cnt,
+			      kh_size(STATE(corsaro)->attack_hash)
+			      -attack_arr_cnt);
+	}
 
       /* dump the number of vectors */
       corsaro_file_printf(corsaro, STATE(corsaro)->outfile, "%"PRIu32"\n", 
@@ -1134,19 +1142,22 @@ int corsaro_dos_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_end)
     }
   else if(CORSARO_FILE_MODE(STATE(corsaro)->outfile) == CORSARO_FILE_MODE_BINARY)
       {
-	/* global stats */
-	bytes_htonl(&gbuf[0], STATE(corsaro)->number_mismatched_packets);
-	bytes_htonl(&gbuf[4], attack_arr_cnt);
-	bytes_htonl(&gbuf[8], 
-		    kh_size(STATE(corsaro)->attack_hash)-attack_arr_cnt);
-	if(corsaro_file_write(corsaro, corsaro->global_file,
-			    &gbuf[0], 12) != 12)
+	if(corsaro->global_file != NULL)
 	  {
-	    corsaro_log(__func__, corsaro, 
-			"could not dump global stats to file");
-	    return -1;
+	    /* global stats */
+	    bytes_htonl(&gbuf[0], STATE(corsaro)->number_mismatched_packets);
+	    bytes_htonl(&gbuf[4], attack_arr_cnt);
+	    bytes_htonl(&gbuf[8],
+			kh_size(STATE(corsaro)->attack_hash)-attack_arr_cnt);
+	    if(corsaro_file_write(corsaro, corsaro->global_file,
+				  &gbuf[0], 12) != 12)
+	      {
+		corsaro_log(__func__, corsaro,
+			    "could not dump global stats to file");
+		return -1;
+	      }
 	  }
-	
+
 	/* dump the number of vectors */
 	bytes_htonl(&cntbuf[0], attack_arr_cnt);
 	if(corsaro_file_write(corsaro, STATE(corsaro)->outfile, 
@@ -1172,7 +1183,11 @@ int corsaro_dos_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_end)
       corsaro_log(__func__, corsaro, "invalid mode");
       return -1;
     }
-  corsaro_io_write_plugin_end(corsaro, corsaro->global_file, PLUGIN(corsaro));
+  if(corsaro->global_file != NULL)
+    {
+      corsaro_io_write_plugin_end(corsaro, corsaro->global_file,
+				  PLUGIN(corsaro));
+    }
   corsaro_io_write_interval_end(corsaro, STATE(corsaro)->outfile, int_end);
 
   STATE(corsaro)->number_mismatched_packets = 0;

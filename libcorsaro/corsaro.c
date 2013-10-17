@@ -278,7 +278,7 @@ static int start_interval(corsaro_t *corsaro, struct timeval int_start)
 
   /* the following is to support file rotation */
   /* initialize the log file */
-  if(corsaro->logfile == NULL)
+  if(corsaro->logfile_disabled == 0 && corsaro->logfile == NULL)
     {
       /* if this is the first interval, let them know we are switching to
 	 logging to a file */
@@ -303,7 +303,7 @@ static int start_interval(corsaro_t *corsaro, struct timeval int_start)
     }
 
   /* initialize the global output file */
-  if(corsaro->global_file == NULL)
+  if(corsaro->global_file_disabled == 0 && corsaro->global_file == NULL)
     {
       if((corsaro->global_file = 
 	  corsaro_io_prepare_file(corsaro, 
@@ -349,10 +349,11 @@ static int end_interval(corsaro_t *corsaro, struct timeval int_end)
 		    int_end.tv_sec);
 
   /* write the global interval start header */
-  if(corsaro_io_write_interval_start(corsaro, corsaro->global_file,
+  if(corsaro->global_file != NULL &&
+     corsaro_io_write_interval_start(corsaro, corsaro->global_file,
 				   &corsaro->interval_start) <= 0)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		"could not write global interval start headers at %ld",
 		corsaro->interval_start.time);
       return -1;
@@ -368,7 +369,8 @@ static int end_interval(corsaro_t *corsaro, struct timeval int_end)
 	}
     }
   /* write the global interval end header */
-  if(corsaro_io_write_interval_end(corsaro, corsaro->global_file, 
+  if(corsaro->global_file != NULL &&
+     corsaro_io_write_interval_end(corsaro, corsaro->global_file,
 				 &interval_end) <= 0)
     {
       corsaro_log(__func__, corsaro, 
@@ -898,7 +900,7 @@ corsaro_t *corsaro_alloc_output(char *template, corsaro_file_mode_t mode)
       corsaro_log(__func__, NULL, "writing to stdout not supported");
       return NULL;
     }
-  
+
   /* initialize the corsaro object */
   if((corsaro = corsaro_init(template, mode)) == NULL)
     {
@@ -906,13 +908,26 @@ corsaro_t *corsaro_alloc_output(char *template, corsaro_file_mode_t mode)
       return NULL;
     }
 
+  /* 10/17/13 AK moves logging init to corsaro_start_output so that the user may
+     call corsaro_disable_logfile after alloc */
+
+  return corsaro;
+}
+
+int corsaro_start_output(corsaro_t *corsaro)
+{
+  corsaro_plugin_t *p = NULL;
+
+  assert(corsaro != NULL);
+
   /* only initialize the log file if there are no time format fields in the file
      name (otherwise they will get a log file with a zero timestamp. */
   /* Note that if indeed it does have a timestamp, the initialization error
      messages will not be logged to a file. In fact nothing will be logged until
      the first packet is received. */
   assert(corsaro->logfile == NULL);
-  if(corsaro_io_template_has_timestamp(corsaro) == 0)
+  if(corsaro->logfile_disabled == 0 &&
+     corsaro_io_template_has_timestamp(corsaro) == 0)
     {
       corsaro_log(
 		  __func__, corsaro, "now logging to file"
@@ -923,18 +938,9 @@ corsaro_t *corsaro_alloc_output(char *template, corsaro_file_mode_t mode)
 
       if(corsaro_log_init(corsaro) != 0)
 	{
-	  return NULL;
+	  return -1;
 	}
     }
-
-  return corsaro;
-}
-
-int corsaro_start_output(corsaro_t *corsaro)
-{
-  corsaro_plugin_t *p = NULL;
-
-  assert(corsaro != NULL);
 
   /* ask the plugin manager to start up */
   /* this allows it to remove disabled plugins */
@@ -1102,6 +1108,18 @@ int corsaro_set_traceuri(corsaro_t *corsaro, char *uri)
       return -1;
     }
   return 0;
+}
+
+void corsaro_disable_logfile(corsaro_t *corsaro)
+{
+  assert(corsaro != NULL);
+  corsaro->logfile_disabled = 1;
+}
+
+void corsaro_disable_globalfile(corsaro_t *corsaro)
+{
+  assert(corsaro != NULL);
+  corsaro->global_file_disabled = 1;
 }
 
 int corsaro_enable_plugin(corsaro_t *corsaro, const char *plugin_name,
