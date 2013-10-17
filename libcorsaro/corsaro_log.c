@@ -147,7 +147,7 @@ int corsaro_log_init(corsaro_t *corsaro)
 				    CORSARO_FILE_COMPRESS_NONE,
 				    0, O_CREAT)) == NULL)
     {
-      fprintf(stderr, "could not open log for writing");
+      fprintf(stderr, "could not open log for writing\n");
       return -1;
     }
   return 0;
