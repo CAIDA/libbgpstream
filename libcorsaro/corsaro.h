@@ -1,11 +1,11 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
  * corsaro-info@caida.org
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
  *
  * corsaro is free software: you can redistribute it and/or modify
@@ -81,13 +81,13 @@ typedef struct corsaro_flowtuple_class_end corsaro_flowtuple_class_end_t;
  *
  * @{ */
 
-/** Corsaro input record types 
+/** Corsaro input record types
  *
- * Use these types to request a specific record, or to cast a returned 
+ * Use these types to request a specific record, or to cast a returned
  * record, from corsaro_in_read_record
  *
  * You should be able to cast this by removing the 'type' and adding '_t'.
- * For example, CORSARO_IN_RECORD_TYPE_IO_HEADER becomes 
+ * For example, CORSARO_IN_RECORD_TYPE_IO_HEADER becomes
  * corsaro_in_record_io_header_t
  *
  * Additionally, the field immediately following 'TYPE' indicates the module
@@ -107,7 +107,7 @@ typedef enum corsaro_in_record_type
 
     /** The overall corsaro trailer (currently only in global) */
     CORSARO_IN_RECORD_TYPE_IO_TRAILER            = 3,
-    
+
     /** The start of an interval */
     CORSARO_IN_RECORD_TYPE_IO_INTERVAL_START     = 4,
 
@@ -116,7 +116,7 @@ typedef enum corsaro_in_record_type
 
     /** The start of a plugin data section */
     CORSARO_IN_RECORD_TYPE_IO_PLUGIN_START       = 6,
-    
+
     /** The end of a plugin data section */
     CORSARO_IN_RECORD_TYPE_IO_PLUGIN_END         = 7,
 
@@ -134,7 +134,7 @@ typedef enum corsaro_in_record_type
     CORSARO_IN_RECORD_TYPE_FLOWTUPLE_FLOWTUPLE     = 22,
 
     /* corsaro_dos has 30-39 */
-    
+
     /** The corsaro_dos global header record */
     CORSARO_IN_RECORD_TYPE_DOS_GLOBAL_HEADER     = 30,
 
@@ -192,7 +192,7 @@ typedef enum corsaro_interval_align
  * @name Corsaro output API functions
  *
  * These functions are used to generate corsaro output from libtrace packets
- * 
+ *
  * The basic process for using corsaro to generate output is:
  * -# init corsaro using corsaro_alloc_output
  * -# optionally call corsaro_set_interval to set the interval time
@@ -218,11 +218,11 @@ typedef enum corsaro_interval_align
  * @return a pointer to an opaque corsaro structure, or NULL if an error occurs
  *
  * The template must contain a pattern to be replaced with the plugin
- * names (%P). The output modes that make sense to use are 
- * CORSARO_FILE_MODE_ASCII and CORSARO_FILE_MODE_BINARY. Using 
- * CORSARO_FILE_MODE_TRACE will result in an error as not all plugins are 
+ * names (%P). The output modes that make sense to use are
+ * CORSARO_FILE_MODE_ASCII and CORSARO_FILE_MODE_BINARY. Using
+ * CORSARO_FILE_MODE_TRACE will result in an error as not all plugins are
  * expected to be able to write to generic packets
- * 
+ *
  * The returned object can then be used to set options (corsaro_set_*) before
  * calling corsaro_start_output to write headers to the output files ready
  * to process packets.
@@ -248,12 +248,12 @@ int corsaro_start_output(corsaro_t *corsaro);
  * @param corsaro         The corsaro object to set the interval for
  * @param interval_align  Enable or disable the alignment of interval end times
  *
- * The end time of the first interval will be rounded down to the nearest 
- * integer multiple of the interval length. Interval rounding makes the most 
+ * The end time of the first interval will be rounded down to the nearest
+ * integer multiple of the interval length. Interval rounding makes the most
  * sense when the interval length is evenly divisible into 1 hour.
  * The default is no interval alignment.
  */
-void corsaro_set_interval_alignment(corsaro_t *corsaro, 
+void corsaro_set_interval_alignment(corsaro_t *corsaro,
 				    corsaro_interval_align_t interval_align);
 
 /** Accessor function to set the interval length
@@ -275,7 +275,7 @@ void corsaro_set_interval(corsaro_t *corsaro, unsigned int interval);
  * If this is set to > 0, all output files will be rotated at the end of
  * n intervals. The default is 0 (no rotation).
  */
-void corsaro_set_output_rotation(corsaro_t *corsaro, 
+void corsaro_set_output_rotation(corsaro_t *corsaro,
 				 int intervals);
 
 /** Accessor function to set the rotation frequency of meta output files
@@ -285,10 +285,10 @@ void corsaro_set_output_rotation(corsaro_t *corsaro,
  *                     will be rotated
  *
  * If this is set to > 0, corsaro meta output files (global and log) will be
- * rotated at the end of n intervals. The default is to follow the output 
- * rotation interval specified by corsaro_set_output_rotation. 
+ * rotated at the end of n intervals. The default is to follow the output
+ * rotation interval specified by corsaro_set_output_rotation.
  */
-void corsaro_set_meta_output_rotation(corsaro_t *corsaro, 
+void corsaro_set_meta_output_rotation(corsaro_t *corsaro,
 				      int intervals);
 
 /** Convenience function to determine if the output files should be rotated
@@ -298,7 +298,7 @@ void corsaro_set_meta_output_rotation(corsaro_t *corsaro,
  *         interval, 0 if not
  */
 int corsaro_is_rotate_interval(corsaro_t *corsaro);
-			       
+
 
 /** Accessor function to set the trace pointer
  *
@@ -354,7 +354,7 @@ int corsaro_get_plugin_names(char ***plugin_names);
 void corsaro_free_plugin_names(char **plugin_names, int plugin_cnt);
 
 /** Accessor function to get the number of accepted packets in this interval
- * 
+ *
  * @param corsaro       The corsaro object to retrieve the packet count for
  * @return the number of packets libtrace reports as accepted in the current
  *         interval, or UINT64_MAX if this value is unavailable.
@@ -365,7 +365,7 @@ void corsaro_free_plugin_names(char **plugin_names, int plugin_cnt);
 uint64_t corsaro_get_accepted_packets(corsaro_t *corsaro);
 
 /** Accessor function to get the number of dropped packets in this interval
- * 
+ *
  * @param corsaro       The corsaro object to retrieve the packet count for
  * @return the number of packets libtrace reports as dropped in the current
  *         interval, or UINT64_MAX if this value is unavailable.
@@ -426,7 +426,7 @@ int corsaro_per_packet(corsaro_t *corsaro, libtrace_packet_t *packet);
  * For each record, corsaro will simply hand it to each plugin which can process
  * it and updates internal state.
  */
-int corsaro_per_record(corsaro_t *corsaro, 
+int corsaro_per_record(corsaro_t *corsaro,
 		       corsaro_in_record_type_t type,
 		       corsaro_in_record_t *record);
 
@@ -464,7 +464,7 @@ int corsaro_finalize_output(corsaro_t *corsaro);
  * === This comment is commented out... ===
  * The file uri can optionally contain a prefix which tells corsaro the type
  * of the file (ascii or binary) and the plugin which created it.
- * For example, binary:corsaro_flowtuple:/path/to/file.gz indicates that the 
+ * For example, binary:corsaro_flowtuple:/path/to/file.gz indicates that the
  * file is written in binary format, by the corsaro_flowtuple plugin.
  *
  * If no prefix is given, corsaro will attempt to guess the type and plugin.
@@ -487,7 +487,7 @@ corsaro_in_record_t *corsaro_in_alloc_record(corsaro_in_t *corsaro);
 
 /** Free an corsaro record object
  *
- * @param record         The record object to free 
+ * @param record         The record object to free
  */
 void corsaro_in_free_record(corsaro_in_record_t *record);
 
@@ -498,7 +498,7 @@ void corsaro_in_free_record(corsaro_in_record_t *record);
  * @param record                The generic corsaro input record pointer
  * @return 0 on EOF, -1 on error, number of bytes read when successful
  */
-off_t corsaro_in_read_record(corsaro_in_t *corsaro, 
+off_t corsaro_in_read_record(corsaro_in_t *corsaro,
 			     corsaro_in_record_type_t *record_type,
 			     corsaro_in_record_t *record);
 
@@ -517,5 +517,5 @@ void *corsaro_in_get_record_data(corsaro_in_record_t *record);
 int corsaro_finalize_input(corsaro_in_t *corsaro);
 
 /** @} */
-  
+
 #endif /* __CORSARO_H */
