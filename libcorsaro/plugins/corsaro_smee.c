@@ -175,10 +175,9 @@ la = &(state->local_addresses[state->local_addresses_cnt++]);
 static void usage(corsaro_t *corsaro)
 {
   fprintf(stderr, 
-	  "plugin usage: %s [-d] [-i interval] [-l meter_loc] [-L max_src_life] [-s max_srcs] -a prefix\n"
+	  "plugin usage: %s [-s] [-i interval] [-l meter_loc] [-L max_src_life] -a prefix\n"
 	  "       -a            local prefix "
 	  "(-a can be specified multiple times)\n"
-	  "       -d            write IAT distributions to a file\n"
 	  "       -i            interval between writing summary files (secs) "
 	  "(default: %d)\n"
 	  "       -l            meter location (default: %s)\n"
@@ -301,13 +300,11 @@ static int smee_sum_callback(void *user_data, const char *fmt, ...)
   CORSARO_SMEE_FPRINTF(STATE(corsaro)->sumfile)
 }
 
-#if 0
 /** Called by smee to populate the sources file */
-static int smee_src_callback(void *user_data, const char *fmt, ...)
+static int smee_sources_callback(void *user_data, const char *fmt, ...)
 {
   CORSARO_SMEE_FPRINTF(STATE(corsaro)->srcfile)
 }
-#endif
 
 /** Called by smee to determine the number of dropped packets */
 static uint64_t smee_pkt_drops(void *user_data)
@@ -407,17 +404,15 @@ int corsaro_smee_init_output(corsaro_t *corsaro)
 	   state->max_lifetime, /* mx_lifetime */
 	   state->max_sources, /*c_mx_sources */
 	   state->time_rec_interval, /* c_time_rec_interval */
-	   state->save_distributions,
 	   state->local_addresses,
 	   state->local_addresses_cnt,
 	   corsaro, /* c_user_data */
 	   smee_log_callback, /* c_log_msg */
 	   smee_stat_callback, /* c_stat_printf */
 	   smee_sum_callback, /* c_sum_printf */
+	   (state->save_distributions == 0 ? NULL : smee_sources_callback),
 	   smee_pkt_drops /* c_pkt_drops */
 	   );
-
-  /* @todo fix libsmee to do something with save_distributions */
 
   return 0;
 
