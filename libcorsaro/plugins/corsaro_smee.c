@@ -63,11 +63,11 @@
 #define PLUGIN_NAME "smee"
 
 /** The name for the stat file */
-#define CORSARO_SMEE_STATFILE PLUGIN_NAME"_stat"
+#define CORSARO_SMEE_STATFILE PLUGIN_NAME"-stat"
 /** The name for the sum file */
-#define CORSARO_SMEE_SUMFILE PLUGIN_NAME"_sum"
+#define CORSARO_SMEE_SUMFILE PLUGIN_NAME"-sum"
 /** The name for the src file */
-#define CORSARO_SMEE_SRCFILE PLUGIN_NAME"_sources"
+#define CORSARO_SMEE_SRCFILE PLUGIN_NAME"-sources"
 
 /** Default max lifetime for source to stay in hashtable */
 #define CORSARO_SMEE_MX_LIFETIME        3600
