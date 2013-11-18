@@ -186,7 +186,8 @@ static void usage(corsaro_t *corsaro)
 	  "(secs) (default: %d)\n"
 	  "       -m            memory size allocated for source hash table "
 	  "(in KB) (default: %d)\n"
-	  "       -s            write the source tables to a file\n",	  
+	  "       -s            write the source tables to a file "
+	  "(disables summary tables)\n",	  
 	  PLUGIN(corsaro)->argv[0],
 	  CORSARO_SMEE_TIME_REC_INTERVAL,
 	  corsaro_get_monitorname(corsaro),
@@ -398,6 +399,10 @@ int corsaro_smee_init_output(corsaro_t *corsaro)
       true to write iat distributions to a file
       (so that one can analyse their statistics offline).
   */
+
+  /* there is a 'feature' in libsmee which means that if smee_sources_callback
+     is given, then smee_sum_callback will never be called. We should detect if
+     this is the case and not open the sum file. */
   
   iat_init(corsaro_get_traceuri(corsaro), /* traceuri */
 	   state->meter_location, /* meterloc */
@@ -409,7 +414,7 @@ int corsaro_smee_init_output(corsaro_t *corsaro)
 	   corsaro, /* c_user_data */
 	   smee_log_callback, /* c_log_msg */
 	   smee_stat_callback, /* c_stat_printf */
-	   smee_sum_callback, /* c_sum_printf */
+	   (state->save_distributions == 0 ? smee_sum_callback : NULL),
 	   (state->save_distributions == 0 ? NULL : smee_sources_callback),
 	   smee_pkt_drops /* c_pkt_drops */
 	   );
@@ -531,8 +536,9 @@ int corsaro_smee_start_interval(corsaro_t *corsaro, corsaro_interval_t *int_star
       goto err;
     }
 
-  /* open the sum output file */
-  if(state->sumfile == NULL &&
+  /* open the sum output file (only if save_distributions is disabled) */
+  if(state->save_distributions == 0 &&
+     state->sumfile == NULL &&
      (state->sumfile = corsaro_io_prepare_file(corsaro, CORSARO_SMEE_SUMFILE,
 					       int_start)) 
      == NULL)
