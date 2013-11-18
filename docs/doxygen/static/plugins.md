@@ -127,12 +127,11 @@ information.
 ~~~
 plugin usage: smee [-d] [-i interval] [-l meter_loc] [-L max_src_life] [-s max_srcs] -a prefix
        -a            local prefix (-a can be specified multiple times)
-       -d            write IAT distributions to a file
        -i            interval between writing summary files (secs) (default: 3600)
-       -l            meter location (default: gibi.caida.org)
+       -l            meter location (default: XXX)
        -L            max lifetime for source to stay in hashtable (secs) (default: 3600)
        -m            memory size allocated for source hash table (in KB) (default: 4000000)
-       -s            write the source tables to a file
+       -s            write the source tables to a file (disables summary tables)
 ~~~
 
 ### Installation Instructions ###
