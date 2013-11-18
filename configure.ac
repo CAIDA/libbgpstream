@@ -236,7 +236,7 @@ fi
 # these are only used by libsmee
 if test "x$with_plugin_smee" == xyes; then
    AC_CHECK_LIB([smee], [iat_init], ,[
-   			AC_MSG_ERROR([libsmee >= 2.2.2 is required])
+   			AC_MSG_ERROR([libsmee >= 2.2.2 is required (see http://www.caida.org/tools/measurement/corsaro/docs/plugins.html@%:@plugins_smee)])
 		      ])
 fi
 
