@@ -31,7 +31,9 @@ make
 make install
 ~~~
 Note, you may need to use `sudo make install` if you do not have write access to
-`/usr/local/`.
+`/usr/local/`. If _libtrace_ is not installed into a default location, then you
+will need to instruct _configure_ where to find it. See \ref inst_compilers for
+more information.
 
 This will build Corsaro with the \ref plugins_ft and \ref plugins_dos plugins
 only.
