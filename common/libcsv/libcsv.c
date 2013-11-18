@@ -194,8 +194,15 @@ csv_fini(struct csv_parser *p, void (*cb1)(void *, size_t, void *), void (*cb2)(
   }
 
   /* Reset parser */
+
+  /* AK notes that gcc47 complains that this var never gets read. indeed it does
+     not here, but it is needed for the SUBMIT_FIELD and SUBMIT_ROW macros that
+     are used in other functions. not the best designed code, but this is an
+     easy workaround */
+  pstate = ROW_NOT_BEGUN;
+
   p->spaces = p->quoted = p->entry_pos = p->status = 0;
-  p->pstate = ROW_NOT_BEGUN;
+  p->pstate = pstate;
 
   return 0;
 }
