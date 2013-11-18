@@ -135,7 +135,47 @@ plugin usage: smee [-d] [-i interval] [-l meter_loc] [-L max_src_life] [-s max_s
        -s            write the source tables to a file
 ~~~
 
-@todo ask Nevil to provide some documentation for Smee
+### Installation Instructions ###
+
+Smee requires the third-party _libsmee_ library which is currently only
+available as a part of the Corsaro release. To use the Smee plugin, you will
+first need to install the _libsmee_ library located in the _thirdparty_
+directory of the Corsaro tarball (if you do not have root access see the note
+below).
+
+~~~{.sh}
+cd thirdparty
+tar zxf libsmee-2.2.2.tar.gz
+cd libsmee-2.2.2
+./configure
+make
+make install
+~~~
+
+At this point, you should be able to build Corsaro using the `--with-smee`
+option to _configure_. 
+
+#### Non-root Instructions ####
+
+If you are building Corsaro on a machine that you do not have root access to (or
+do not want to install _libsmee_ into a system-wide location), you can use the
+`--prefix` option to _configure_ when building smee, as follows:
+
+~~~{.sh}
+cd thirdparty
+tar zxf libsmee-2.2.2.tar.gz
+cd libsmee-2.2.2
+./configure --prefix=$HOME/libsmee
+make
+make install
+~~~
+
+And then when configuring Corsaro, do the following:
+
+~~~{.sh}
+./configure CPPFLAGS="-I$HOME/libsmee/include" LDFLAGS="-L$HOME/libsmee/lib" --with-smee"
+make
+~~~
 
 Meta-data Plugins{#plugins_metadata}
 =================
