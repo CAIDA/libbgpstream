@@ -36,7 +36,7 @@ corsaro_LDADD = -lcorsaro
 
 corsaro_LDFLAGS = -L$(top_builddir)/libcorsaro
 
-EXTRA_DIST = libtrace-3.0.13-wandio_export.patch
+EXTRA_DIST = libtrace-3.0.13-wandio_export.patch thirdparty/libsmee-2.2.2.tar.gz
 
 ACLOCAL_AMFLAGS = -I m4
 

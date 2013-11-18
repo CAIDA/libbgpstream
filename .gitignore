@@ -27,7 +27,7 @@ cors2ascii
 cors-ft-aggregate
 cors-ft-reports
 cors-trace2tuple
-*.tar.gz
+corsaro-*.tar.gz
 ChangeLog
 
 # doxygen files
