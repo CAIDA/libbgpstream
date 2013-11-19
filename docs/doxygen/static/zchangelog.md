@@ -6,9 +6,7 @@ download information.
 
 Corsaro 2.0.0
 =============
-@todo fix release date
-
- - Released 2013-07-XX
+ - Released 2013-11-21
  - All users should upgrade to this release. Contact corsaro-info@caida.org for
    help upgrading.
 
