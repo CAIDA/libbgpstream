@@ -39,7 +39,6 @@ usage: corsaro [-alP] -o outfile [-i interval] [-m mode] [-n name]
        -n <name>     monitor name (default: gibi.caida.org)
        -p <plugin>   enable the given plugin, -p can be used multiple times (default: all)
                      available plugins:
-                      - anon
                       - flowtuple
                      use -p "<plugin_name> -?" to see plugin options
        -P            enable promiscuous mode on the input (if supported)
