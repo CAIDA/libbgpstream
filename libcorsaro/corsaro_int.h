@@ -277,7 +277,7 @@ struct corsaro
   corsaro_interval_align_t interval_align;
 
   /** The number of seconds after which plugins will be asked to dump data */
-  unsigned int interval;
+  int interval;
 
   /** The output files will be rotated after n intervals if >0 */
   int output_rotate;

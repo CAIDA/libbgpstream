@@ -123,7 +123,7 @@ static int legacy = 0;
 static field_index_t fields[FIELD_CNT];
 
 /** The field to use as the value in aggregation */
-static field_index_t value_field = -1;
+static int value_field = -1;
 
 /** The number of flowtuple records we have processed */
 static uint64_t flowtuple_cnt = 0;
