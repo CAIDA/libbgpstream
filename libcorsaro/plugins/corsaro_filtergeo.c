@@ -461,7 +461,7 @@ int corsaro_filtergeo_process_packet(corsaro_t *corsaro,
   return 0;
 }
 
-#ifdef WITH_PLUGIN_SIX
+#ifdef WITH_PLUGIN_SIXT
 /** Implements the process_flowtuple function of the plugin API */
 int corsaro_filtergeo_process_flowtuple(corsaro_t *corsaro,
 					corsaro_flowtuple_t *flowtuple,
