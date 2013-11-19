@@ -39,6 +39,7 @@
 #include "panon.h"
 
 #ifndef HAVE_STRLCPY
+#if !HAVE_DECL_STRLCPY
 static size_t strlcpy(char *dest, const char *src, size_t size)
 {
   size_t ret;
@@ -48,6 +49,7 @@ static size_t strlcpy(char *dest, const char *src, size_t size)
   dest[ret++]='\0';
   return ret;
 }
+#endif
 #endif
 
 static corsaro_anon_enc_type_t enc_type = CORSARO_ANON_ENC_NONE;

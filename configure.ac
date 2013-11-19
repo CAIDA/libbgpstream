@@ -90,6 +90,10 @@ AM_CONDITIONAL(HAS_DOXYGEN, [test x"$corsaro_doxygen" = xyes])
 
 AC_CHECK_FUNCS([gettimeofday memset strdup strstr strsep strlcpy vasprintf])
 
+# OSX Mavericks has replaced strlcpy with a macro that is not found by
+# AC_CHECK_FUNCS
+AC_CHECK_DECLS([strlcpy])
+
 # should we dump debug output to stderr and not optmize the build?
 
 AC_MSG_CHECKING([whether to build with debug information])
