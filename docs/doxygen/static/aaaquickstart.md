@@ -14,32 +14,43 @@ The latest version of Corsaro is
 
 You will also need to have
 [libtrace](http://research.wand.net.nz/software/libtrace.php) installed before
-building Corsaro.
+building Corsaro (see below for instructions).
 
 Installation {#quick_inst}
 ============
 
-The following commands will build and install Corsaro with the default
-configuration, assuming that _libtrace_ has been installed into a default
-location.
+The following commands will build and install both libtrace and Corsaro into a
+custom directory, assuming that the user **does not** have root privileges.
+
+In these examples, we will install everything into `$HOME/corsaro`, meaning that
+all Corsaro and libtrace tools will be installed to `$HOME/corsaro/bin`.
+
+### libtrace ###
+
+~~~
+tar zxf libtrace-X.X.X.tar.bz2
+cd libtrace-X.X.X
+./configure --prefix=$HOME/corsaro
+make
+make install
+~~~
+
+### Corsaro ###
 
 ~~~
 tar zxf corsaro-2.0.0.tar.gz
 cd corsaro-2.0.0
-./configure
+./configure CPPFLAGS="-I$HOME/corsaro/include" LDFLAGS="-L$HOME/corsaro/lib"
 make
 make install
 ~~~
-Note, you may need to use `sudo make install` if you do not have write access to
-`/usr/local/`. If _libtrace_ is not installed into a default location, then you
-will need to instruct _configure_ where to find it. See \ref inst_compilers for
-more information.
 
-This will build Corsaro with the \ref plugins_ft and \ref plugins_dos plugins
-only.
+This will build Corsaro with the \ref plugins_ft plugin only.
 
 For a more detailed description of the configuration options (and to enable more
-plugins), see the \ref installation section.
+plugins), see the \ref installation section.  If you require the \ref
+plugins_smee plugin, you will need to install the included _libsmee_
+library. See the \ref plugins_smee page for more information.
 
 Running Corsaro {#quick_run}
 ===============
