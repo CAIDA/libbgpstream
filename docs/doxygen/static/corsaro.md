@@ -52,6 +52,11 @@ released on November 21 2013.
 
 We also maintain a detailed \ref changelog.
 
+Quick Start               {#qstart}
+===========
+
+If you want to just dive right in and get started using Corsaro, take a look at
+the \ref quickstart "Quick Start" guide.
 
 Dependencies        {#dependencies}
 ============
@@ -71,11 +76,6 @@ Corsaro has many different usage scenarios which are outlined in this manual,
 but if you are looking to just run the analysis engine with the bundled plugins,
 see the \ref tool_corsaro "Corsaro" section of the \ref tools "Tools" page.
 
-Quick Start               {#qstart}
-===========
-
-If you want to just dive right in and get started using Corsaro, take a look at
-the \ref quickstart "Quick Start" guide.
 
 Documentation       {#docs}
 =============
