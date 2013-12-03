@@ -596,7 +596,7 @@ const char *corsaro_geo_maxmind_country_code_iso2[] = {
   "TZ","UA","UG","UM","US","UY","UZ","VA","VC","VE",
   "VG","VI","VN","VU","WF","WS","YE","YT","RS","ZA",
   "ZM","ME","ZW","A1","A2","O1","AX","GG","IM","JE",
-  "BL","MF", "BQ", "SS", "O1",
+  "BL","MF", "BQ", "SS",
   /* Alistair adds AN because Maxmind does not include it, but uses it */
   "AN",
 };
@@ -628,7 +628,7 @@ const char *corsaro_geo_maxmind_country_code_iso3[] = {
   "TZA","UKR","UGA","UMI","USA","URY","UZB","VAT","VCT","VEN",
   "VGB","VIR","VNM","VUT","WLF","WSM","YEM","MYT","SRB","ZAF",
   "ZMB","MNE","ZWE","A1","A2","O1","ALA","GGY","IMN","JEY",
-  "BLM","MAF", "BES", "SSD", "O1",
+  "BLM","MAF", "BES", "SSD",
   /* see above about AN */
   "ANT",
 };
@@ -685,7 +685,7 @@ const char *corsaro_geo_maxmind_country_name[] = {
   "Yemen","Mayotte","Serbia","South Africa","Zambia","Montenegro","Zimbabwe",
   "Anonymous Proxy","Satellite Provider","Other","Aland Islands","Guernsey",
   "Isle of Man","Jersey","Saint Barthelemy","Saint Martin", 
-  "Bonaire, Saint Eustatius and Saba", "South Sudan", "Other",
+  "Bonaire, Saint Eustatius and Saba", "South Sudan",
   /* again, see above about AN */
   "Netherlands Antilles",
 };
@@ -716,7 +716,7 @@ const char *corsaro_geo_maxmind_country_continent[] = {
   "AF","EU","AF","OC","NA","SA","AS","EU","NA","SA",
   "NA","NA","AS","OC","OC","OC","AS","AF","EU","AF",
   "AF","EU","AF","--","--","--","EU","EU","EU","EU",
-  "NA","NA","NA","AF","--",
+  "NA","NA","NA","AF",
   /* see above about AN */
   "NA",
 };
