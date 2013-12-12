@@ -34,11 +34,12 @@
 #include <unistd.h>
 
 #include "libtrace.h"
+#include <libipmeta.h>
 
 #include "khash.h"
 #include "utils.h"
 
-#include "corsaro_geo.h"
+#include "corsaro_ipmeta.h"
 #include "corsaro_io.h"
 #include "corsaro_log.h"
 #include "corsaro_plugin.h"
@@ -245,21 +246,10 @@ static int read_country_file(corsaro_t *corsaro, corsaro_file_in_t *file)
 static void process_generic(corsaro_t *corsaro, corsaro_packet_state_t *state)
 {
   struct corsaro_filtergeo_state_t *fg_state = STATE(corsaro);
-  corsaro_geo_provider_t *provider;
-  corsaro_geo_record_t *record = NULL;
+  ipmeta_record_t *record = NULL;
   char *country = "--";
 
-  /* first, ask for the default geo provider */
-  if((provider = corsaro_geo_get_default(corsaro)) == NULL)
-    {
-      /* no provider? this can't be what they want */
-      corsaro_log(__func__, corsaro, "WARNING: No default geolocation "
-		  "provider is available");
-      return;
-    }
-
-  /* we will only look at the first record for this packet */
-  if((record = corsaro_geo_next_record(provider, NULL)) != NULL)
+  if((record = corsaro_ipmeta_get_default_record(state)) != NULL)
     {
       /* check the country */
       if(record->country_code != NULL)

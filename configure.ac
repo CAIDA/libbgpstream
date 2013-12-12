@@ -237,6 +237,12 @@ if test "x$with_plugin_ipmeta" == xyes; then
 		      ])
 fi
 
+# the filtergeo plugin requires the ipmeta plugin
+if test "x$with_plugin_filtergeo" == xyes &&
+   test "x$with_plugin_ipmeta" != xyes; then
+   AC_MSG_ERROR([corsaro_filtergeo plugin requires corsaro_ipmeta plugin])
+fi
+
 # the dos plugin needs flowtuple also
 if test "x$with_plugin_dos" == xyes && 
    test "x$with_plugin_flowtuple" != xyes; then
