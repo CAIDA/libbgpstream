@@ -130,6 +130,9 @@ static int parse_args(corsaro_t *corsaro)
   struct corsaro_ipmeta_state_t *state = STATE(corsaro);
   int opt;
 
+  char *default_provider_name = NULL;
+  ipmeta_provider_default_t is_default;
+
   char *provider_names[IPMETA_PROVIDER_MAX];
   int provider_names_cnt = 0;
   char *provider_arg_ptr = NULL;
@@ -146,10 +149,14 @@ static int parse_args(corsaro_t *corsaro)
   /* NB: remember to reset optind to 1 before using getopt! */
   optind = 1;
 
-  while((opt = getopt(plugin->argc, plugin->argv, ":p:?")) >= 0)
+  while((opt = getopt(plugin->argc, plugin->argv, ":d:p:?")) >= 0)
     {
       switch(opt)
 	{
+	case 'd':
+	  default_provider_name = strdup(optarg);
+	  break;
+
 	case 'p':
 	  provider_names[provider_names_cnt++] = strdup(optarg);
 	  break;
@@ -195,10 +202,20 @@ static int parse_args(corsaro_t *corsaro)
 	  goto err;
 	}
 
+      if(default_provider_name != NULL &&
+	 strcmp(default_provider_name, provider_names[i]) == 0)
+	{
+	  is_default = IPMETA_PROVIDER_DEFAULT_YES;
+	}
+      else
+	{
+	  is_default = IPMETA_PROVIDER_DEFAULT_NO;
+	}
+
       if(ipmeta_enable_provider(state->ipmeta, provider,
 				IPMETA_DS_DEFAULT,
 				provider_arg_ptr,
-				IPMETA_PROVIDER_DEFAULT_NO) != 0)
+				is_default) != 0)
 	{
 	  fprintf(stderr, "ERROR: Could not enable plugin %s\n",
 		  provider_names[i]);
@@ -206,12 +223,22 @@ static int parse_args(corsaro_t *corsaro)
 	}
 
       free(provider_names[i]);
+      provider_names[i] = NULL;
       state->enabled_providers[state->enabled_providers_cnt++] = provider;
+    }
+
+  if(default_provider_name != NULL)
+    {
+      free(default_provider_name);
     }
 
   return 0;
 
  err:
+  if(default_provider_name != NULL)
+    {
+      free(default_provider_name);
+    }
   for(i=0; i <provider_names_cnt; i++)
     {
       if(provider_names[i] != NULL)
@@ -229,6 +256,7 @@ static int process_generic(corsaro_t *corsaro, corsaro_packet_state_t *state,
 {
   struct corsaro_ipmeta_state_t *plugin_state = STATE(corsaro);
   ipmeta_provider_t *provider = NULL;
+  ipmeta_record_t *record = NULL;
   int i;
 
   /* ask each enabled provider to do a lookup on this ip */
@@ -236,8 +264,16 @@ static int process_generic(corsaro_t *corsaro, corsaro_packet_state_t *state,
     {
       provider = plugin_state->enabled_providers[i];
       assert(provider != NULL);
-      state->ipmeta_records[ipmeta_get_provider_id(provider)-1] =
-	ipmeta_lookup(provider, src_ip);
+      record = ipmeta_lookup(provider, src_ip);
+
+      /* set the record in the cache for this provider */
+      state->ipmeta_records[ipmeta_get_provider_id(provider)-1] = record;
+
+      /* if this provider is the default, set the cached record accordingly */
+      if(provider == ipmeta_get_default_provider(plugin_state->ipmeta))
+	{
+	  state->ipmeta_record_default = record;
+	}
     }
 
   return 0;
@@ -421,8 +457,16 @@ ipmeta_record_t *corsaro_ipmeta_get_record(struct corsaro_packet_state *pkt_stat
 					   ipmeta_provider_id_t provider_id)
 {
   assert(pkt_state != NULL);
-  assert(provider_id > 0 && provider_id <= IPMETA_PROVIDER_ID_MAX);
+  assert(provider_id > 0 && provider_id <= IPMETA_PROVIDER_MAX);
   return pkt_state->ipmeta_records[provider_id-1];
+}
+
+inline
+ipmeta_record_t *corsaro_ipmeta_get_default_record(
+				     struct corsaro_packet_state *pkt_state)
+{
+  assert(pkt_state != NULL);
+  return pkt_state->ipmeta_record_default;
 }
 
 #endif

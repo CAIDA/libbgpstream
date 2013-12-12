@@ -40,4 +40,7 @@ CORSARO_PLUGIN_GENERATE_FT_PROTO(corsaro_ipmeta)
 ipmeta_record_t *corsaro_ipmeta_get_record(struct corsaro_packet_state *pkt_state,
 					   ipmeta_provider_id_t provider_id);
 
+ipmeta_record_t *corsaro_ipmeta_get_default_record(
+				     struct corsaro_packet_state *pkt_state);
+
 #endif /* __CORSARO_IPMETA_H */

@@ -205,6 +205,9 @@ struct corsaro_packet_state
       to retrieve records from this array */
   /** @todo consider making this bi-directional, one for src, one for dst */
   ipmeta_record_t *ipmeta_records[IPMETA_PROVIDER_MAX];
+
+  /** Record that corresponds to the default ipmeta provider */
+  ipmeta_record_t *ipmeta_record_default;
 #endif
 };
 
