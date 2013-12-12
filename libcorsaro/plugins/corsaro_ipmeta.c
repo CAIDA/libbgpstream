@@ -236,7 +236,7 @@ static int process_generic(corsaro_t *corsaro, corsaro_packet_state_t *state,
     {
       provider = plugin_state->enabled_providers[i];
       assert(provider != NULL);
-      state->ipmeta_records[ipmeta_get_provider_id(provider)] =
+      state->ipmeta_records[ipmeta_get_provider_id(provider)-1] =
 	ipmeta_lookup(provider, src_ip);
     }
 
