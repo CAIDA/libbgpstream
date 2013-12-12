@@ -27,6 +27,8 @@
 #ifndef __CORSARO_IPMETA_H
 #define __CORSARO_IPMETA_H
 
+#include <libipmeta.h>
+
 #include "corsaro_plugin.h"
 
 CORSARO_PLUGIN_GENERATE_PROTOS(corsaro_ipmeta)
@@ -34,5 +36,8 @@ CORSARO_PLUGIN_GENERATE_PROTOS(corsaro_ipmeta)
 #ifdef WITH_PLUGIN_SIXT
 CORSARO_PLUGIN_GENERATE_FT_PROTO(corsaro_ipmeta)
 #endif
+
+ipmeta_record_t *corsaro_ipmeta_get_record(struct corsaro_packet_state *pkt_state,
+					   ipmeta_provider_id_t provider_id);
 
 #endif /* __CORSARO_IPMETA_H */

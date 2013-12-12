@@ -414,4 +414,15 @@ int corsaro_ipmeta_process_flowtuple_class_end(corsaro_t *corsaro,
   /* dont care */
   return 0;
 }
+
+/* ========== PUBLIC HELPER FUNCTIONS BELOW HERE ========== */
+inline
+ipmeta_record_t *corsaro_ipmeta_get_record(struct corsaro_packet_state *pkt_state,
+					   ipmeta_provider_id_t provider_id)
+{
+  assert(pkt_state != NULL);
+  assert(provider_id > 0 && provider_id <= IPMETA_PROVIDER_ID_MAX);
+  return pkt_state->ipmeta_records[provider_id-1];
+}
+
 #endif
