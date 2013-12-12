@@ -2,7 +2,7 @@
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
- * alistair@caida.org
+ * corsaro-info@caida.org
  * 
  * Copyright (C) 2012 The Regents of the University of California.
  * 
@@ -24,15 +24,15 @@
  */
 
 
-#ifndef __CORSARO_PFX2AS_H
-#define __CORSARO_PFX2AS_H
+#ifndef __CORSARO_IPMETA_H
+#define __CORSARO_IPMETA_H
 
 #include "corsaro_plugin.h"
 
-CORSARO_PLUGIN_GENERATE_PROTOS(corsaro_pfx2as)
+CORSARO_PLUGIN_GENERATE_PROTOS(corsaro_ipmeta)
 
 #ifdef WITH_PLUGIN_SIXT
-CORSARO_PLUGIN_GENERATE_FT_PROTO(corsaro_pfx2as)
+CORSARO_PLUGIN_GENERATE_FT_PROTO(corsaro_ipmeta)
 #endif
 
-#endif /* __CORSARO_PFX2AS_H */
+#endif /* __CORSARO_IPMETA_H */

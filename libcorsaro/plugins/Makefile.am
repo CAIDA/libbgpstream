@@ -53,11 +53,8 @@ endif
 if WITH_PLUGIN_ANON
 PLUGIN_SRC+=corsaro_anon.c corsaro_anon.h
 endif
-if WITH_PLUGIN_GEODB
-PLUGIN_SRC+=corsaro_geodb.c corsaro_geodb.h
-endif
-if WITH_PLUGIN_PFX2AS
-PLUGIN_SRC+=corsaro_pfx2as.c corsaro_pfx2as.h 
+if WITH_PLUGIN_IPMETA
+PLUGIN_SRC+=corsaro_ipmeta.c corsaro_ipmeta.h
 endif
 if WITH_PLUGIN_FILTERGEO
 PLUGIN_SRC+=corsaro_filtergeo.c corsaro_filtergeo.h 

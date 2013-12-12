@@ -26,14 +26,17 @@
 #ifndef __CORSARO_INT_H
 #define __CORSARO_INT_H
 
+#include "config.h"
+
 #include "libtrace.h"
 
-#include "config.h"
+#ifdef WITH_PLUGIN_IPMETA
+#include <libipmeta.h>
+#endif
 
 #include "corsaro.h"
 
 #include "corsaro_file.h"
-#include "corsaro_geo.h"
 #include "corsaro_plugin.h"
 
 /** @file
@@ -195,6 +198,14 @@ struct corsaro_packet_state
 {
   /** Features of the packet that have been identified by earlier plugins */
   uint8_t flags;
+
+#ifdef WITH_PLUGIN_IPMETA
+  /** Set of libipmeta records based on lookups performed by the corsaro_ipmeta
+      plugin. Other plugins should use the corsaro_ipmeta_get_record() function
+      to retrieve records from this array */
+  /** @todo consider making this bi-directional, one for src, one for dst */
+  ipmeta_record_t *ipmeta_records[IPMETA_PROVIDER_MAX];
+#endif
 };
 
 /** The possible packet state flags */
@@ -212,12 +223,6 @@ struct corsaro_packet
 {
   /** The corsaro state associated with this packet */
   corsaro_packet_state_t  state;
-
-  /** Array of geolocation provider objects associated with this packet */
-  corsaro_geo_provider_t *geo_providers[CORSARO_GEO_PROVIDER_MAX];
-
-  /** Default geolocation provider object associated with this packet */
-  corsaro_geo_provider_t *geo_provider_default;
 
   /** A pointer to the underlying libtrace packet */
   libtrace_packet_t    *ltpacket;

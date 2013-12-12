@@ -36,8 +36,6 @@ libcorsaro_la_SOURCES = 	\
 	corsaro.h 		\
 	corsaro_file.c 		\
 	corsaro_file.h 		\
-	corsaro_geo.c 		\
-	corsaro_geo.h 		\
 	corsaro_int.h 		\
 	corsaro_io.c 		\
 	corsaro_io.h 		\

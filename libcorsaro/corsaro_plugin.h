@@ -176,17 +176,14 @@ typedef enum corsaro_plugin_id
   /** IP address anonymization plugin */
   CORSARO_PLUGIN_ID_ANON             = 2,
 
-  /** CAIDA Prefix2AS lookup plugin */
-  CORSARO_PLUGIN_ID_PFX2AS           = 3,
+  /** libipmeta lookup plugin */
+  CORSARO_PLUGIN_ID_IPMETA           = 3,
 
   /** FilterGeo plugin */
   CORSARO_PLUGIN_ID_FILTERGEO        = 6,
 
   /** FilterPfx plugin */
   CORSARO_PLUGIN_ID_FILTERPFX        = 7,
-
-  /** Geolocation Database Lookup Plugin */
-  CORSARO_PLUGIN_ID_GEODB            = 9,
 
   /** FlowTuple plugin */
   CORSARO_PLUGIN_ID_FLOWTUPLE        = 20,

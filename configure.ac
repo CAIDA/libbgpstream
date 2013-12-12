@@ -204,8 +204,7 @@ AC_MSG_RESULT([$with_slash_eight])
 ## meta plugins. these do not write output, they add metadata to the packet
 ## seems that the most common use-case will be to run them first
 ED_WITH_PLUGIN([corsaro_anon],[anon],[ANON],[no])
-ED_WITH_PLUGIN([corsaro_pfx2as],[pfx2as],[PFX2AS],[no])
-ED_WITH_PLUGIN([corsaro_geodb],[geodb],[GEODB],[no])
+ED_WITH_PLUGIN([corsaro_ipmeta],[ipmeta],[IPMETA],[no])
 
 # filter plugins. these do not write output, they indicate which packets 
 # should [not] be written out
@@ -230,6 +229,13 @@ AC_DEFINE_UNQUOTED([ED_PLUGIN_INIT_ALL_ENABLED], $ED_PLUGIN_INIT_ALL_ENABLED,
 #------------------------------------------------------------------------------#
 # Extra tests or config needed for plugins should go below here                #
 #------------------------------------------------------------------------------#
+
+# the ipmeta plugin requires libipmeta
+if test "x$with_plugin_ipmeta" == xyes; then
+   AC_CHECK_LIB([ipmeta], [ipmeta_init], ,[
+   	AC_MSG_ERROR([libipmeta is required by the corsaro_ipmeta plugin])
+		      ])
+fi
 
 # the dos plugin needs flowtuple also
 if test "x$with_plugin_dos" == xyes && 

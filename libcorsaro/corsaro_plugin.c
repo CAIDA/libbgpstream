@@ -58,12 +58,8 @@
 #include "corsaro_anon.h"
 #endif
 
-#ifdef WITH_PLUGIN_GEODB
-#include "corsaro_geodb.h"
-#endif
-
-#ifdef WITH_PLUGIN_PFX2AS
-#include "corsaro_pfx2as.h"
+#ifdef WITH_PLUGIN_IPMETA
+#include "corsaro_ipmeta.h"
 #endif
 
 #ifdef WITH_PLUGIN_FILTERGEO
