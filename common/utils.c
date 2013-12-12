@@ -1,4 +1,4 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
@@ -9,9 +9,9 @@
  *
  * timeval_subtract code from
  *   http://www.gnu.org/software/libc/manual/html_node/Elapsed-Time.html
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
  *
  * corsaro is free software: you can redistribute it and/or modify
@@ -85,7 +85,7 @@ void *malloc_zero(const size_t size)
   return ptr;
 }
 
-int timeval_subtract (struct timeval *result, 
+int timeval_subtract (struct timeval *result,
 		      const struct timeval *a, const struct timeval *b)
 {
   struct timeval y = *b;
@@ -101,12 +101,12 @@ int timeval_subtract (struct timeval *result,
     y.tv_usec += 1000000 * nsec;
     y.tv_sec -= nsec;
   }
-     
+
   /* Compute the time remaining to wait.
      tv_usec is certainly positive. */
   result->tv_sec = a->tv_sec - y.tv_sec;
   result->tv_usec = a->tv_usec - y.tv_usec;
-     
+
   /* Return 1 if result is negative. */
   return a->tv_sec < y.tv_sec;
 }

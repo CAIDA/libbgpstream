@@ -1,13 +1,13 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
  * corsaro-info@caida.org
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
- * 
+ *
  * Code in this file is adapted from tracestats.c from libtrace:
  *   tracestats.c 1730 2011-09-20 02:23:33Z salcock
  *
@@ -26,7 +26,7 @@
  *
  */
 
-/* 
+/*
  * This program takes a series of traces and bpf filters and dumps a record
  * for each packet which is perhaps a cross between the coral t2 format and
  * the default tcpdump ascii output.
@@ -82,7 +82,7 @@ uint64_t totcount;
 uint64_t totbytes;
 
 /* Process a trace, counting packets that match filter(s) */
-static void run_trace(char *uri) 
+static void run_trace(char *uri)
 {
   struct libtrace_packet_t *packet = trace_create_packet();
   int i;
@@ -112,7 +112,7 @@ static void run_trace(char *uri)
     if ((psize = trace_read_packet(trace, packet)) <1) {
       break;
     }
-		
+
     if (done)
       break;
     wlen = trace_get_wire_length(packet);
@@ -139,14 +139,14 @@ static void run_trace(char *uri)
 	  {
 	    char src_ip[INET_ADDRSTRLEN];
 	    char dst_ip[INET_ADDRSTRLEN];
-	    
+
 	    inet_ntop(AF_INET, &ip_hdr->ip_src, &src_ip[0], INET_ADDRSTRLEN);
 	    inet_ntop(AF_INET, &ip_hdr->ip_dst, &dst_ip[0], INET_ADDRSTRLEN);
-	    
+
 	    printf("%f\t%s\t%s\t%"PRIu16"\t%"PRIu16"\t"
 		   "%"PRIu8"\t%"PRIu16"\t%"PRIu16"\n",
-		   trace_get_seconds(packet), src_ip, dst_ip, 
-		   trace_get_source_port(packet), 
+		   trace_get_seconds(packet), src_ip, dst_ip,
+		   trace_get_source_port(packet),
 		   trace_get_destination_port(packet),
 		   ip_hdr->ip_p,
 		   ntohs(ip_hdr->ip_id),
@@ -169,11 +169,11 @@ static void run_trace(char *uri)
   }
   packets=trace_get_received_packets(trace);
   if (packets!=UINT64_MAX)
-    fprintf(stderr,"%30s:\t%12" PRIu64"\n", 
+    fprintf(stderr,"%30s:\t%12" PRIu64"\n",
 	    "Input packets", packets);
   packets=trace_get_filtered_packets(trace);
   if (packets!=UINT64_MAX)
-    fprintf(stderr,"%30s:\t%12" PRIu64"\n", 
+    fprintf(stderr,"%30s:\t%12" PRIu64"\n",
 	    "Filtered packets", packets);
   packets=trace_get_dropped_packets(trace);
   if (packets!=UINT64_MAX)
@@ -218,7 +218,7 @@ int main(int argc, char *argv[]) {
       break;
 
     switch (c) {
-    case 'f': 
+    case 'f':
       ++filter_count;
       filters=realloc(filters,filter_count*sizeof(struct filter_t));
       filters[filter_count-1].expr=strdup(optarg);
@@ -255,7 +255,7 @@ int main(int argc, char *argv[]) {
   }
   if (optind+1<argc) {
     fprintf(stderr, "Grand total:\n");
-    fprintf(stderr, 
+    fprintf(stderr,
 	    "%30s:\t%12"PRIu64"\t%12" PRIu64 "\n",
 	    "Total",totcount,totbytes);
   }

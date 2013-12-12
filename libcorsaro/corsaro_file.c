@@ -1,11 +1,11 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
  * corsaro-info@caida.org
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
  *
  * corsaro is free software: you can redistribute it and/or modify
@@ -49,7 +49,7 @@ extern int vasprintf(char **, const char *, __va_list);
 /** The string to prefix file names with when creating trace files */
 #define CORSARO_FILE_TRACE_FORMAT "pcapfile:"
 
-corsaro_file_compress_t corsaro_file_detect_compression(corsaro_t *corsaro, 
+corsaro_file_compress_t corsaro_file_detect_compression(corsaro_t *corsaro,
 						    char *filename)
 {
   char *ptr = filename;
@@ -73,8 +73,8 @@ corsaro_file_compress_t corsaro_file_detect_compression(corsaro_t *corsaro,
   return CORSARO_FILE_COMPRESS_NONE;
 }
 
-corsaro_file_t *corsaro_file_open(corsaro_t *corsaro, 
-			      const char *filename, 
+corsaro_file_t *corsaro_file_open(corsaro_t *corsaro,
+			      const char *filename,
 			      corsaro_file_mode_t mode,
 			      corsaro_file_compress_t compress_type,
 			      int compress_level,
@@ -112,9 +112,9 @@ corsaro_file_t *corsaro_file_open(corsaro_t *corsaro,
       f->trace_io = trace_create_output(traceuri);
       free(traceuri);
 
-      if (trace_is_err_output(f->trace_io)) 
+      if (trace_is_err_output(f->trace_io))
 	{
-	  corsaro_log(__func__, corsaro, "trace_create_output failed for %s", 
+	  corsaro_log(__func__, corsaro, "trace_create_output failed for %s",
 		    filename);
 	  return NULL;
 	}
@@ -123,12 +123,12 @@ corsaro_file_t *corsaro_file_open(corsaro_t *corsaro,
 	 trace_config_output(f->trace_io, TRACE_OPTION_OUTPUT_COMPRESSTYPE,
 			     &compress_type) != 0)
 	{
-	  corsaro_log(__func__, corsaro, 
+	  corsaro_log(__func__, corsaro,
 		    "could not set compression levels for trace");
 	  return NULL;
 	}
       if (trace_start_output(f->trace_io) == -1) {
-	corsaro_log(__func__, corsaro, "trace_start_output failed for %s", 
+	corsaro_log(__func__, corsaro, "trace_start_output failed for %s",
 		  filename);
 	return NULL;
       }
@@ -137,10 +137,10 @@ corsaro_file_t *corsaro_file_open(corsaro_t *corsaro,
 
     case CORSARO_FILE_MODE_ASCII:
     case CORSARO_FILE_MODE_BINARY:
-      if((f->wand_io = wandio_wcreate(filename, compress_type, 
+      if((f->wand_io = wandio_wcreate(filename, compress_type,
 				      compress_level, flags)) == NULL)
 	{
-	  corsaro_log(__func__, corsaro, "wandio could not create file %s", 
+	  corsaro_log(__func__, corsaro, "wandio could not create file %s",
 		    filename);
 	  free(f);
 	  return NULL;
@@ -156,11 +156,11 @@ corsaro_file_t *corsaro_file_open(corsaro_t *corsaro,
   return f;
 }
 
-off_t corsaro_file_write(corsaro_t *corsaro, 
+off_t corsaro_file_write(corsaro_t *corsaro,
 		       corsaro_file_t *file, const void *buffer, off_t len)
 {
   /* let's not try and write raw bytes to a libtrace file... */
-  assert(file->mode == CORSARO_FILE_MODE_ASCII || 
+  assert(file->mode == CORSARO_FILE_MODE_ASCII ||
 	 file->mode == CORSARO_FILE_MODE_BINARY ||
 	 file->mode == CORSARO_FILE_MODE_UNKNOWN);
   assert(file->wand_io != NULL);
@@ -168,7 +168,7 @@ off_t corsaro_file_write(corsaro_t *corsaro,
   return wandio_wwrite(file->wand_io, buffer, len);
 }
 
-off_t corsaro_file_write_packet(corsaro_t *corsaro, 
+off_t corsaro_file_write_packet(corsaro_t *corsaro,
 			      corsaro_file_t *file, libtrace_packet_t *packet)
 {
   uint8_t *pkt_buf = NULL;
@@ -179,18 +179,18 @@ off_t corsaro_file_write_packet(corsaro_t *corsaro,
     case CORSARO_FILE_MODE_ASCII:
       assert(file->wand_io != NULL);
 #ifdef HAVE_LIBPACKETDUMP
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		"libpacketdump currently does not support dumping "
 		"to a file");
       return 0;
 #else
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		"corsaro must be built with libpacketdump to dump "
 		"a packet to ASCII");
       return 0;
 #endif
       break;
-      
+
     case CORSARO_FILE_MODE_BINARY:
       assert(file->wand_io != NULL);
       if((pkt_buf = trace_get_packet_buffer(packet,
@@ -199,13 +199,13 @@ off_t corsaro_file_write_packet(corsaro_t *corsaro,
 	  corsaro_log(__func__, corsaro, "could not get packet buffer");
 	  return -1;
 	}
-      return corsaro_file_write(corsaro, file, pkt_buf, 
+      return corsaro_file_write(corsaro, file, pkt_buf,
 			      trace_get_capture_length(packet));
 
     case CORSARO_FILE_MODE_TRACE:
         assert(file->trace_io != NULL);
       return trace_write_packet(file->trace_io, packet);
-      
+
     default:
       corsaro_log(__func__, corsaro, "invalid corsaro file mode %d", file->mode);
       return -1;
@@ -214,36 +214,36 @@ off_t corsaro_file_write_packet(corsaro_t *corsaro,
   return -1;
 }
 
-static size_t wiovprintf(iow_t *io, const char *fmt, va_list args) 
-{ 
-  char *buf; 
-  size_t len; 
+static size_t wiovprintf(iow_t *io, const char *fmt, va_list args)
+{
+  char *buf;
+  size_t len;
   int ret;
-  
-  if ((ret = vasprintf(&buf, fmt, args)) < 0) 
-    return ret; 
-  len = strlen(buf); 
-  len = len == (unsigned)len ? (size_t)wandio_wwrite(io, buf, 
-						     (unsigned)len) : 0; 
-  free(buf); 
-  return len; 
-} 
 
-off_t corsaro_file_vprintf(corsaro_t *corsaro, corsaro_file_t *file, 
+  if ((ret = vasprintf(&buf, fmt, args)) < 0)
+    return ret;
+  len = strlen(buf);
+  len = len == (unsigned)len ? (size_t)wandio_wwrite(io, buf,
+						     (unsigned)len) : 0;
+  free(buf);
+  return len;
+}
+
+off_t corsaro_file_vprintf(corsaro_t *corsaro, corsaro_file_t *file,
 			 const char *format, va_list args)
 {
   /* let's not try and print text to a libtrace file... */
   assert(file != NULL);
-  assert(file->mode == CORSARO_FILE_MODE_ASCII || 
+  assert(file->mode == CORSARO_FILE_MODE_ASCII ||
 	 file->mode == CORSARO_FILE_MODE_BINARY ||
 	 file->mode == CORSARO_FILE_MODE_UNKNOWN);
   assert(file->wand_io != NULL);
 
   return wiovprintf(file->wand_io, format, args);
-  
+
 }
 
-off_t corsaro_file_printf(corsaro_t *corsaro, 
+off_t corsaro_file_printf(corsaro_t *corsaro,
 			corsaro_file_t *file, const char *format, ...)
 {
   va_list ap;
@@ -308,7 +308,7 @@ corsaro_file_in_t *corsaro_file_ropen(const char *filename)
   if(strchr(filename, ':') != NULL)
     {
       f->mode = CORSARO_FILE_MODE_TRACE;
-      
+
       /* open this as a trace file */
       f->trace_io = trace_create(filename);
 
@@ -333,20 +333,20 @@ corsaro_file_in_t *corsaro_file_ropen(const char *filename)
 	  free(f);
 	  return NULL;
 	}
-      
+
       len = wandio_peek(f->wand_io, buffer, sizeof(buffer));
 
       /* an ASCII corsaro file will start with "# CORSARO_VERSION" */
-      if(len >= strlen(CORSARO_FILE_ASCII_CHECK) && 
-	 memcmp(CORSARO_FILE_ASCII_CHECK, buffer, 
+      if(len >= strlen(CORSARO_FILE_ASCII_CHECK) &&
+	 memcmp(CORSARO_FILE_ASCII_CHECK, buffer,
 		strlen(CORSARO_FILE_ASCII_CHECK)) == 0)
 	{
 	  f->mode = CORSARO_FILE_MODE_ASCII;
 	}
-      /* a binary corsaro file will start with an corsaro header "EDGRHEAD" but, 
+      /* a binary corsaro file will start with an corsaro header "EDGRHEAD" but,
 	 it is possible that an old binary corsaro file can just start with an
 	 interval header - "EDGRINTR", so we will only look for "EDGR" */
-      else if(len >= 4 && buffer[0] == 'E' && buffer[1] == 'D' && 
+      else if(len >= 4 && buffer[0] == 'E' && buffer[1] == 'D' &&
 	      buffer[2] == 'G' && buffer[3] == 'R')
 	{
 	  f->mode = CORSARO_FILE_MODE_BINARY;
@@ -360,7 +360,7 @@ corsaro_file_in_t *corsaro_file_ropen(const char *filename)
 
   return f;
 }
- 
+
 off_t corsaro_file_rread(corsaro_file_in_t *file, void *buffer, off_t len)
 {
   /* refuse to read from a libtrace file */
@@ -416,7 +416,7 @@ off_t corsaro_file_rgets(corsaro_file_in_t *file, void *buffer, off_t len)
   return i;
 }
 
-off_t corsaro_file_rread_packet(corsaro_file_in_t *file, 
+off_t corsaro_file_rread_packet(corsaro_file_in_t *file,
 				libtrace_packet_t *packet,
 				uint16_t len)
 {
@@ -435,7 +435,7 @@ off_t corsaro_file_rread_packet(corsaro_file_in_t *file,
 	  fprintf(stderr, "could not read packet into buffer\n");
 	  return -1;
 	}
-      trace_construct_packet(packet, TRACE_TYPE_ETH, 
+      trace_construct_packet(packet, TRACE_TYPE_ETH,
 			     pktbuf, len);
       return len;
       break;
@@ -489,7 +489,7 @@ off_t corsaro_file_rtell(corsaro_file_in_t *file)
 }
 
 void corsaro_file_rclose(corsaro_file_in_t *file)
-{  
+{
   switch(file->mode)
     {
     case CORSARO_FILE_MODE_ASCII:

@@ -1,11 +1,11 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
  * corsaro-info@caida.org
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
  *
  * corsaro is free software: you can redistribute it and/or modify
@@ -21,7 +21,7 @@
  * You should have received a copy of the GNU General Public License
  * along with corsaro.  If not, see <http://www.gnu.org/licenses/>.
  *
- * This file is a modified version of the 'ipanon.c' file included with 
+ * This file is a modified version of the 'ipanon.c' file included with
  * libtrace (http://research.wand.net.nz/software/libtrace.php)
  *
  */
@@ -87,8 +87,8 @@ static uint32_t prefix_substitute(uint32_t ip)
 /* Incrementally update a checksum */
 static void update_in_cksum(uint16_t *csum, uint16_t old, uint16_t new)
 {
-  uint32_t sum = (~htons(*csum) & 0xFFFF) 
-    + (~htons(old) & 0xFFFF) 
+  uint32_t sum = (~htons(*csum) & 0xFFFF)
+    + (~htons(old) & 0xFFFF)
     + htons(new);
   sum = (sum & 0xFFFF) + (sum >> 16);
   *csum = htons(~(sum + (sum >> 16)));
@@ -121,7 +121,7 @@ void corsaro_anon_init(corsaro_anon_enc_type_t type, char *key)
   }
 }
 
-uint32_t corsaro_anon_ip(uint32_t orig_addr) 
+uint32_t corsaro_anon_ip(uint32_t orig_addr)
 {
   switch (enc_type) {
   case CORSARO_ANON_ENC_NONE:
@@ -183,10 +183,10 @@ void corsaro_anon_ip_header(struct libtrace_ip *ip,
 
   if (icmp) {
     /* These are error codes that return the IP packet
-     * internally 
+     * internally
      */
-    if (icmp->type == 3 
-	|| icmp->type == 5 
+    if (icmp->type == 3
+	|| icmp->type == 5
 	|| icmp->type == 11) {
       corsaro_anon_ip_header((struct libtrace_ip*)icmp+
 			     sizeof(struct libtrace_icmp),

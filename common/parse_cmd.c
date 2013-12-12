@@ -36,7 +36,7 @@ static void skip_white(char **buf)
  * Side effects:
  *  updates *buf
  *  modified *buf
- * 
+ *
  * ' foo bar baz' => 'foo' 'bar baz'
  * ' "foo bar" baz' => 'foo bar' ' baz'
  */
@@ -59,7 +59,7 @@ static char * split_cmd(char **buf)
 			**buf='\0';
 			(*buf)++;
 		}
-	} else 
+	} else
 	{
 		ret=*buf;
 
@@ -78,14 +78,14 @@ static char * split_cmd(char **buf)
 /* Split a command line up into parc,parv
  * using command line rules
  */
-void parse_cmd(char *buf,int *parc, char *parv[], int MAXTOKENS, 
+void parse_cmd(char *buf,int *parc, char *parv[], int MAXTOKENS,
 	       const char *command_name)
 {
 	int i=0;
 	parv[0] = (char*) command_name;
 	*parc=1;
 
-	while(*buf) 
+	while(*buf)
 	{
 		parv[(*parc)++]=split_cmd(&buf);
 		if (*parc>(MAXTOKENS-1))

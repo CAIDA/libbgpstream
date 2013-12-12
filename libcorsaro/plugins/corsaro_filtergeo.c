@@ -1,11 +1,11 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
  * corsaro-info@caida.org
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
  *
  * corsaro is free software: you can redistribute it and/or modify
@@ -117,7 +117,7 @@ struct corsaro_filtergeo_state_t {
 /** Print usage information to stderr */
 static void usage(corsaro_plugin_t *plugin)
 {
-  fprintf(stderr, 
+  fprintf(stderr,
 	  "plugin usage: %s [-di] [-c country [-p country]] [-f country_file]\n"
 	  "       -c            country code to match against, -c can be used "
 	  "up to %d times\n"
@@ -159,7 +159,7 @@ static int parse_args(corsaro_t *corsaro)
 	    {
 	      fprintf(stderr, "ERROR: A maximum of %d countries can be "
 		      "specified using the -c option.\n"
-		      "Consider using the -f option instead\n", 
+		      "Consider using the -f option instead\n",
 		      MAX_COMMAND_LINE_COUNTRIES);
 	      usage(plugin);
 	      return -1;
@@ -186,7 +186,7 @@ static int parse_args(corsaro_t *corsaro)
 
   if(state->country_file != NULL && state->cmd_country_cnt > 0)
     {
-      fprintf(stderr, 
+      fprintf(stderr,
 	      "WARNING: both -f and -c used, all specified countries "
 	      "will be used\n");
     }
@@ -209,7 +209,7 @@ static int add_country(corsaro_t *corsaro, char *cc_str)
     }
 
   /* is it already in the hash ? */
-  if(kh_get(country, STATE(corsaro)->countries, cc_str) 
+  if(kh_get(country, STATE(corsaro)->countries, cc_str)
      == kh_end(STATE(corsaro)->countries))
     {
       kh_put(country, STATE(corsaro)->countries, strndup(cc_str, 2), &khret);
@@ -222,12 +222,12 @@ static int add_country(corsaro_t *corsaro, char *cc_str)
 static int read_country_file(corsaro_t *corsaro, corsaro_file_in_t *file)
 {
   char buffer[BUFFER_LEN];
-  
+
   while(corsaro_file_rgets(file, &buffer, BUFFER_LEN) > 0)
     {
       /* hack off the newline */
       chomp(buffer);
-      
+
       if(strnlen(buffer, BUFFER_LEN) == 0)
 	{
 	  continue;
@@ -238,7 +238,7 @@ static int read_country_file(corsaro_t *corsaro, corsaro_file_in_t *file)
 	  return -1;
 	}
     }
-  
+
   return 0;
 }
 
@@ -260,7 +260,7 @@ static void process_generic(corsaro_t *corsaro, corsaro_packet_state_t *state)
 
   /* now, country will either be "--", or a country code */
 
-  if(kh_get(country, fg_state->countries, country) 
+  if(kh_get(country, fg_state->countries, country)
      == kh_end(fg_state->countries))
     {
       /* this country is NOT in the hash */
@@ -276,7 +276,7 @@ static void process_generic(corsaro_t *corsaro, corsaro_packet_state_t *state)
 	{
 	  state->flags |= CORSARO_PACKET_STATE_IGNORE;
 	}
-    } 
+    }
 
   return;
 }
@@ -318,10 +318,10 @@ int corsaro_filtergeo_init_output(corsaro_t *corsaro)
   int i;
 
   assert(plugin != NULL);
- 
+
   if((state = malloc_zero(sizeof(struct corsaro_filtergeo_state_t))) == NULL)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		"could not malloc corsaro_filtergeo_state_t");
       goto err;
     }
@@ -341,9 +341,9 @@ int corsaro_filtergeo_init_output(corsaro_t *corsaro)
     {
       if((file = corsaro_file_ropen(state->country_file)) == NULL)
 	{
-	  corsaro_log(__func__, corsaro, 
+	  corsaro_log(__func__, corsaro,
 		      "failed to open country file '%s'", state->country_file);
-	  
+
 	  goto err;
 	}
 
@@ -405,13 +405,13 @@ int corsaro_filtergeo_close_output(corsaro_t *corsaro)
 
       corsaro_plugin_free_state(corsaro->plugin_manager, PLUGIN(corsaro));
     }
-  
+
   return 0;
 }
 
 /** Implements the read_record function of the plugin API */
-off_t corsaro_filtergeo_read_record(struct corsaro_in *corsaro, 
-			       corsaro_in_record_type_t *record_type, 
+off_t corsaro_filtergeo_read_record(struct corsaro_in *corsaro,
+			       corsaro_in_record_type_t *record_type,
 			       corsaro_in_record_t *record)
 {
   assert(0);
@@ -419,8 +419,8 @@ off_t corsaro_filtergeo_read_record(struct corsaro_in *corsaro,
 }
 
 /** Implements the read_global_data_record function of the plugin API */
-off_t corsaro_filtergeo_read_global_data_record(struct corsaro_in *corsaro, 
-			      enum corsaro_in_record_type *record_type, 
+off_t corsaro_filtergeo_read_global_data_record(struct corsaro_in *corsaro,
+			      enum corsaro_in_record_type *record_type,
 			      struct corsaro_in_record *record)
 {
   /* we write nothing to the global file. someone messed up */
@@ -428,7 +428,7 @@ off_t corsaro_filtergeo_read_global_data_record(struct corsaro_in *corsaro,
 }
 
 /** Implements the start_interval function of the plugin API */
-int corsaro_filtergeo_start_interval(corsaro_t *corsaro, 
+int corsaro_filtergeo_start_interval(corsaro_t *corsaro,
 				corsaro_interval_t *int_start)
 {
   /* we do not care */
@@ -436,7 +436,7 @@ int corsaro_filtergeo_start_interval(corsaro_t *corsaro,
 }
 
 /** Implements the end_interval function of the plugin API */
-int corsaro_filtergeo_end_interval(corsaro_t *corsaro, 
+int corsaro_filtergeo_end_interval(corsaro_t *corsaro,
 				corsaro_interval_t *int_end)
 {
   /* we do not care */
@@ -444,7 +444,7 @@ int corsaro_filtergeo_end_interval(corsaro_t *corsaro,
 }
 
 /** Implements the process_packet function of the plugin API */
-int corsaro_filtergeo_process_packet(corsaro_t *corsaro, 
+int corsaro_filtergeo_process_packet(corsaro_t *corsaro,
 				corsaro_packet_t *packet)
 {
   process_generic(corsaro, &packet->state);

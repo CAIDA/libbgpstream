@@ -1,4 +1,4 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
@@ -6,9 +6,9 @@
  *
  * Much of this code has been adapted from the iprange.c code available at
  *   http://www.cs.colostate.edu/~somlo/iprange.c
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
  *
  * corsaro is free software: you can redistribute it and/or modify
@@ -44,27 +44,27 @@
  *       calls to split_range();
  *       The maximum possible recursion depth is 32.
  */
-static int split_range(uint32_t addr, int masklen, 
+static int split_range(uint32_t addr, int masklen,
 		       uint32_t lo, uint32_t hi,
-		       ip_prefix_list_t **pfx_list) 
+		       ip_prefix_list_t **pfx_list)
 {
   uint32_t bc, lower_half, upper_half;
-  
+
   ip_prefix_list_t *new_node = NULL;
 
-  if ((masklen < 0) || (masklen > 32) || pfx_list == NULL) 
+  if ((masklen < 0) || (masklen > 32) || pfx_list == NULL)
     {
       return -1;
     }
 
   bc = ip_broadcast_addr(addr, masklen);
 
-  if ((lo < addr) || (hi > bc)) 
+  if ((lo < addr) || (hi > bc))
     {
       return -1;
     }
 
-  if ( (lo == addr) && (hi == bc) ) 
+  if ( (lo == addr) && (hi == bc) )
     {
       /* add this (addr, masklen) to the list */
       if((new_node = malloc(sizeof(ip_prefix_list_t))) == NULL)
@@ -73,30 +73,30 @@ static int split_range(uint32_t addr, int masklen,
 	}
       new_node->prefix.addr = addr;
       new_node->prefix.masklen = masklen;
-      
+
       /* this will work even for the first element in the list
        as pfx_list will be null */
       new_node->next = *pfx_list;
       *pfx_list = new_node;
-      
+
       return 0;
     }
 
   masklen++;
   lower_half = addr;
   upper_half = ip_set_bit(addr, masklen, 1);
-  
-  if (hi < upper_half) 
+
+  if (hi < upper_half)
     {
       return split_range(lower_half, masklen, lo, hi, pfx_list);
-    } 
-  else if (lo >= upper_half) 
+    }
+  else if (lo >= upper_half)
     {
       return split_range(upper_half, masklen, lo, hi, pfx_list);
-    } 
-  else 
+    }
+  else
     {
-      if(split_range(lower_half, masklen, lo, 
+      if(split_range(lower_half, masklen, lo,
 		     ip_broadcast_addr(lower_half, masklen), pfx_list) != 0)
       {
 	return -1;
@@ -110,7 +110,7 @@ static int split_range(uint32_t addr, int masklen,
 /**
  * Set a bit to a given value (0 or 1); MSB is bit 1, LSB is bit 32
  */
-uint32_t ip_set_bit(uint32_t addr, int bitno, int val) 
+uint32_t ip_set_bit(uint32_t addr, int bitno, int val)
 {
   if (val)
     return(addr | (1 << (32 - bitno)));
@@ -121,7 +121,7 @@ uint32_t ip_set_bit(uint32_t addr, int bitno, int val)
 /**
  * Compute netmask address given a prefix bit length
  */
-uint32_t ip_netmask(int masklen) 
+uint32_t ip_netmask(int masklen)
 {
   if ( masklen == 0 )
     return( ~((uint32_t) -1) );
@@ -132,7 +132,7 @@ uint32_t ip_netmask(int masklen)
 /**
  * Compute broadcast address given address and prefix
  */
-uint32_t ip_broadcast_addr(uint32_t addr, int masklen) 
+uint32_t ip_broadcast_addr(uint32_t addr, int masklen)
 {
   return(addr | ~ip_netmask(masklen));
 }
@@ -140,19 +140,19 @@ uint32_t ip_broadcast_addr(uint32_t addr, int masklen)
 /**
  * Compute network address given address and prefix
  */
-uint32_t ip_network_addr(uint32_t addr, int masklen) 
+uint32_t ip_network_addr(uint32_t addr, int masklen)
 {
   return(addr & ip_netmask(masklen));
 }
 
-int ip_range_to_prefix(ip_prefix_t lower, ip_prefix_t upper, 
+int ip_range_to_prefix(ip_prefix_t lower, ip_prefix_t upper,
 		       ip_prefix_list_t **pfx_list)
 {
   /* get the first address of the lower prefix */
   uint32_t lo = ip_network_addr(lower.addr, lower.masklen);
   /* get the last address of the upper prefix */
   uint32_t hi = ip_broadcast_addr(upper.addr, upper.masklen);
-  
+
   *pfx_list = NULL;
   return split_range(0, 0, lo, hi, pfx_list);
 }

@@ -1,11 +1,11 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
  * corsaro-info@caida.org
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
  *
  * corsaro is free software: you can redistribute it and/or modify
@@ -68,7 +68,7 @@ static corsaro_packet_t *corsaro_packet_alloc(corsaro_t *corsaro)
 static inline void corsaro_packet_state_reset(corsaro_packet_t *packet)
 {
   assert(packet != NULL);
-  
+
   /* This is dangerous to do field-by-field, new plugins may not be responsible
      and reset their own fields. Therefore we will do this by force */
   memset(&packet->state, 0, sizeof(corsaro_packet_state_t));
@@ -88,7 +88,7 @@ static void corsaro_packet_free(corsaro_packet_t *packet)
 static void corsaro_free(corsaro_t *corsaro)
 {
   corsaro_plugin_t *p = NULL;
-  
+
   if(corsaro == NULL)
     {
       /* nothing to be done... */
@@ -125,7 +125,7 @@ static void corsaro_free(corsaro_t *corsaro)
       free(corsaro->template);
       corsaro->template = NULL;
     }
- 
+
   if(corsaro->packet != NULL)
     {
       corsaro_packet_free(corsaro->packet);
@@ -147,7 +147,7 @@ static void corsaro_free(corsaro_t *corsaro)
 }
 
 /** Fill the given interval object with the default values */
-static inline void populate_interval(corsaro_interval_t *interval, 
+static inline void populate_interval(corsaro_interval_t *interval,
 				     uint32_t number,
 				     uint32_t time)
 {
@@ -167,7 +167,7 @@ static int is_meta_rotate_interval(corsaro_t *corsaro)
       return corsaro_is_rotate_interval(corsaro);
     }
   else if(corsaro->meta_output_rotate > 0 &&
-	  (corsaro->interval_start.number+1) % 
+	  (corsaro->interval_start.number+1) %
 	  corsaro->meta_output_rotate == 0)
     {
       return 1;
@@ -207,7 +207,7 @@ static corsaro_t *corsaro_init(char *template, corsaro_file_mode_t mode)
     }
   if((e->template = strdup(template)) == NULL)
     {
-      corsaro_log(__func__, e, 
+      corsaro_log(__func__, e,
 		"could not duplicate template string (no memory?)");
       goto err;
     }
@@ -255,7 +255,7 @@ static corsaro_t *corsaro_init(char *template, corsaro_file_mode_t mode)
   e->dropped_pkts = UINT64_MAX;
 
   /* the rest are zero, as they should be. */
- 
+
   /* ready to rock and roll! */
 
   return e;
@@ -305,8 +305,8 @@ static int start_interval(corsaro_t *corsaro, struct timeval int_start)
   /* initialize the global output file */
   if(corsaro->global_file_disabled == 0 && corsaro->global_file == NULL)
     {
-      if((corsaro->global_file = 
-	  corsaro_io_prepare_file(corsaro, 
+      if((corsaro->global_file =
+	  corsaro_io_prepare_file(corsaro,
 				  CORSARO_IO_GLOBAL_NAME,
 				  &corsaro->interval_start)) == NULL)
 	{
@@ -330,7 +330,7 @@ static int start_interval(corsaro_t *corsaro, struct timeval int_start)
     {
       if(tmp->start_interval(corsaro, &corsaro->interval_start) != 0)
 	{
-	  corsaro_log(__func__, corsaro, "%s failed to start interval at %ld", 
+	  corsaro_log(__func__, corsaro, "%s failed to start interval at %ld",
 		    tmp->name, int_start.tv_sec);
 	  return -1;
 	}
@@ -373,7 +373,7 @@ static int end_interval(corsaro_t *corsaro, struct timeval int_end)
      corsaro_io_write_interval_end(corsaro, corsaro->global_file,
 				 &interval_end) <= 0)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		"could not write global interval end headers at %ld",
 		interval_end.time);
       return -1;
@@ -385,10 +385,10 @@ static int end_interval(corsaro_t *corsaro, struct timeval int_end)
       if(corsaro->global_file != NULL)
 	{
 	  /* write headers to the global file */
-	  if(corsaro_io_write_trailer(corsaro, 
+	  if(corsaro_io_write_trailer(corsaro,
 				      corsaro->global_file, NULL) <= 0)
 	    {
-	      corsaro_log(__func__, corsaro, 
+	      corsaro_log(__func__, corsaro,
 			  "could not write global trailers");
 	      corsaro_free(corsaro);
 	      return -1;
@@ -423,8 +423,8 @@ static void corsaro_in_free(corsaro_in_t *corsaro)
   if(corsaro == NULL)
     {
       /* nothing to be done */
-      
-      corsaro_log_in(__func__, corsaro, 
+
+      corsaro_log_in(__func__, corsaro,
 		   "WARNING: corsaro_in_free called on NULL object; "
 		   "this could indicate a double-free");
       return;
@@ -445,7 +445,7 @@ static void corsaro_in_free(corsaro_in_t *corsaro)
       p->close_input(corsaro);
     }
   */
-  
+
   /* free the plugin manager */
   if(corsaro->plugin_manager != NULL)
     {
@@ -478,14 +478,14 @@ static corsaro_in_t *corsaro_in_init(const char *corsarouri)
 
   if((e->uridata = strdup(corsarouri)) == NULL)
     {
-      corsaro_log_in(__func__, e, 
+      corsaro_log_in(__func__, e,
 		"could not duplicate uri string (no memory?)");
       goto err;
     }
 
   /* set to null until we know if this is a global file or a plugin */
   e->expected_type = CORSARO_IN_RECORD_TYPE_NULL;
-  
+
   /* initialize the logging */
   if(corsaro_log_in_init(e) != 0)
     {
@@ -519,7 +519,7 @@ static inline int process_packet(corsaro_t *corsaro, corsaro_packet_t *packet)
     {
       if(tmp->process_packet(corsaro, packet) < 0)
 	{
-	  corsaro_log(__func__, corsaro, "%s failed to process packet", 
+	  corsaro_log(__func__, corsaro, "%s failed to process packet",
 		    tmp->name);
 	  return -1;
 	}
@@ -540,7 +540,7 @@ static int per_flowtuple(corsaro_t *corsaro, corsaro_flowtuple_t *tuple)
       if(tmp->process_flowtuple != NULL &&
 	 tmp->process_flowtuple(corsaro, tuple, &corsaro->packet->state) < 0)
 	{
-	  corsaro_log(__func__, corsaro, "%s failed to process flowtuple", 
+	  corsaro_log(__func__, corsaro, "%s failed to process flowtuple",
 		    tmp->name);
 	  return -1;
 	}
@@ -552,7 +552,7 @@ static int per_flowtuple(corsaro_t *corsaro, corsaro_flowtuple_t *tuple)
 }
 
 /** Process the given flowtuple class start record */
-static int per_flowtuple_class_start(corsaro_t *corsaro, 
+static int per_flowtuple_class_start(corsaro_t *corsaro,
 				     corsaro_flowtuple_class_start_t *class)
 {
   corsaro_plugin_t *tmp = NULL;
@@ -561,8 +561,8 @@ static int per_flowtuple_class_start(corsaro_t *corsaro,
       if(tmp->process_flowtuple_class_start != NULL &&
 	 tmp->process_flowtuple_class_start(corsaro, class) < 0)
 	{
-	  corsaro_log(__func__, corsaro, 
-		      "%s failed to process flowtuple class start", 
+	  corsaro_log(__func__, corsaro,
+		      "%s failed to process flowtuple class start",
 		    tmp->name);
 	  return -1;
 	}
@@ -572,7 +572,7 @@ static int per_flowtuple_class_start(corsaro_t *corsaro,
 }
 
 /** Process the given flowtuple class end record */
-static int per_flowtuple_class_end(corsaro_t *corsaro, 
+static int per_flowtuple_class_end(corsaro_t *corsaro,
 				   corsaro_flowtuple_class_end_t *class)
 {
   corsaro_plugin_t *tmp = NULL;
@@ -581,8 +581,8 @@ static int per_flowtuple_class_end(corsaro_t *corsaro,
       if(tmp->process_flowtuple_class_end != NULL &&
 	 tmp->process_flowtuple_class_end(corsaro, class) < 0)
 	{
-	  corsaro_log(__func__, corsaro, 
-		      "%s failed to process flowtuple class end", 
+	  corsaro_log(__func__, corsaro,
+		      "%s failed to process flowtuple class end",
 		    tmp->name);
 	  return -1;
 	}
@@ -593,13 +593,13 @@ static int per_flowtuple_class_end(corsaro_t *corsaro,
 #endif
 
 /** Process an interval start record */
-static int per_interval_start(corsaro_t *corsaro, 
+static int per_interval_start(corsaro_t *corsaro,
 			      corsaro_interval_t *interval)
 {
   struct timeval ts;
   ts.tv_usec = 0;
   ts.tv_sec = interval->time;
-  
+
   /* if this is the first interval start, mark the first time */
   if(corsaro->packet_cnt == 0)
     {
@@ -609,7 +609,7 @@ static int per_interval_start(corsaro_t *corsaro,
   corsaro->interval_start.number = interval->number;
   if(start_interval(corsaro, ts) != 0)
     {
-      corsaro_log(__func__, corsaro, "could not start interval at %ld", 
+      corsaro_log(__func__, corsaro, "could not start interval at %ld",
 		  interval->time);
       return -1;
     }
@@ -617,7 +617,7 @@ static int per_interval_start(corsaro_t *corsaro,
 }
 
 /** Process an interval end record */
-static int per_interval_end(corsaro_t *corsaro, 
+static int per_interval_end(corsaro_t *corsaro,
 			    corsaro_interval_t *interval)
 {
   struct timeval ts;
@@ -626,7 +626,7 @@ static int per_interval_end(corsaro_t *corsaro,
   corsaro->last_ts = ts;
   if(end_interval(corsaro, ts) != 0)
     {
-      corsaro_log(__func__, corsaro, "could not end interval at %ld", 
+      corsaro_log(__func__, corsaro, "could not end interval at %ld",
 		  interval->time);
       /* we don't free in case the client wants to try to carry on */
       return -1;
@@ -675,16 +675,16 @@ static int is_plugin_data_or_interval(corsaro_in_t *corsaro)
   int len;
 
   /* we need to peek and see if there is any plugin data */
-  len = corsaro_file_rpeek(corsaro->file, buffer, 
+  len = corsaro_file_rpeek(corsaro->file, buffer,
 			   sizeof(buffer));
-  if(len < sizeof(corsaro_plugin_data_t) 
+  if(len < sizeof(corsaro_plugin_data_t)
      && len < sizeof(corsaro_interval_t))
     {
-      corsaro_log_in(__func__, corsaro, 
+      corsaro_log_in(__func__, corsaro,
 		     "invalid corsaro global file");
       return -1;
     }
-	  
+
   /* a plugin data record will have 'EDGRDATA' */
   /* an interval start record will have 'EDGRINTR' */
   /* either way, use strncmp */
@@ -711,16 +711,16 @@ static int is_trailer_or_interval(corsaro_in_t *corsaro)
   int len;
 
   /* we need to peek and see if there is any plugin data */
-  len = corsaro_file_rpeek(corsaro->file, buffer, 
+  len = corsaro_file_rpeek(corsaro->file, buffer,
 			   sizeof(buffer));
-  if(len < sizeof(corsaro_trailer_t) 
+  if(len < sizeof(corsaro_trailer_t)
      && len < sizeof(corsaro_interval_t))
     {
-      corsaro_log_in(__func__, corsaro, 
+      corsaro_log_in(__func__, corsaro,
 		     "invalid corsaro global file");
       return -1;
     }
-	  
+
   /* a plugin data record will have 'EDGRFOOT' */
   /* an interval start record will have 'EDGRINTR' */
   /* either way, use strncmp */
@@ -740,8 +740,8 @@ static int is_trailer_or_interval(corsaro_in_t *corsaro)
 }
 
 /** Read a global file record */
-static off_t read_record(corsaro_in_t *corsaro, 
-			 corsaro_in_record_type_t *record_type, 
+static off_t read_record(corsaro_in_t *corsaro,
+			 corsaro_in_record_type_t *record_type,
 			 corsaro_in_record_t *record)
 {
   off_t bytes_read = -1;
@@ -762,7 +762,7 @@ static off_t read_record(corsaro_in_t *corsaro,
 
     case CORSARO_IN_RECORD_TYPE_IO_INTERVAL_START:
       /* ask the io subsystem to read it for us */
-      bytes_read = corsaro_io_read_interval_start(corsaro, corsaro->file, 
+      bytes_read = corsaro_io_read_interval_start(corsaro, corsaro->file,
 						  record_type, record);
       if(bytes_read == sizeof(corsaro_interval_t))
 	{
@@ -784,7 +784,7 @@ static off_t read_record(corsaro_in_t *corsaro,
 
     case CORSARO_IN_RECORD_TYPE_IO_PLUGIN_START:
       /* ask the io subsystem to read it for us */
-      bytes_read = corsaro_io_read_plugin_start(corsaro, corsaro->file, 
+      bytes_read = corsaro_io_read_plugin_start(corsaro, corsaro->file,
 						record_type, record);
       if(bytes_read == sizeof(corsaro_plugin_data_t))
 	{
@@ -803,12 +803,12 @@ static off_t read_record(corsaro_in_t *corsaro,
 	  else
 	    {
 	      /* we'll pass these over to the plugin */
-	      corsaro->expected_type = CORSARO_IN_RECORD_TYPE_INTERNAL_REDIRECT; 
-	    }	  
+	      corsaro->expected_type = CORSARO_IN_RECORD_TYPE_INTERNAL_REDIRECT;
+	    }
 	}
       else
 	{
-	  corsaro_log_in(__func__, corsaro, 
+	  corsaro_log_in(__func__, corsaro,
 			 "failed to read plugin data start");
 	  *record_type = CORSARO_IN_RECORD_TYPE_NULL;
 	}
@@ -972,13 +972,13 @@ int corsaro_start_output(corsaro_t *corsaro)
   return 0;
 }
 
-void corsaro_set_interval_alignment(corsaro_t *corsaro, 
+void corsaro_set_interval_alignment(corsaro_t *corsaro,
 				    corsaro_interval_align_t align)
 {
   assert(corsaro != NULL);
   /* you cant set interval alignment once corsaro has started */
   assert(corsaro->started == 0);
-  
+
   corsaro_log(__func__, corsaro, "setting interval alignment to %d",
 	      align);
 
@@ -1004,7 +1004,7 @@ void corsaro_set_output_rotation(corsaro_t *corsaro,
   /* you can't enable rotation once corsaro has been started */
   assert(corsaro->started == 0);
 
-  corsaro_log(__func__, corsaro, 
+  corsaro_log(__func__, corsaro,
 	      "setting output rotation after %d interval(s)",
 	      intervals);
 
@@ -1016,7 +1016,7 @@ void corsaro_set_output_rotation(corsaro_t *corsaro,
        * have debugging turned off */
       fprintf(stderr, "WARNING: using output rotation without any timestamp "
 	      "specifiers in the template.\n");
-      fprintf(stderr, 
+      fprintf(stderr,
 	      "WARNING: output files will be overwritten upon rotation\n");
       /* @todo consider making this a fatal error */
     }
@@ -1031,7 +1031,7 @@ void corsaro_set_meta_output_rotation(corsaro_t *corsaro,
   /* you can't enable rotation once corsaro has been started */
   assert(corsaro->started == 0);
 
-  corsaro_log(__func__, corsaro, 
+  corsaro_log(__func__, corsaro,
 	      "setting meta output rotation after %d intervals(s)",
 	      intervals);
 
@@ -1084,7 +1084,7 @@ int corsaro_set_traceuri(corsaro_t *corsaro, char *uri)
 
   if(corsaro->started != 0)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		"trace uri can only be set before "
 		"corsaro_start_output is called");
       return -1;
@@ -1103,7 +1103,7 @@ int corsaro_set_traceuri(corsaro_t *corsaro, char *uri)
 
   if((corsaro->uridata = strdup(uri)) == NULL)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		"could not duplicate uri string (no memory?)");
       return -1;
     }
@@ -1154,7 +1154,7 @@ int corsaro_get_plugin_names(char ***plugin_names)
     {
       return -1;
     }
-  
+
   while((tmp = corsaro_plugin_next(tmp_manager, tmp)) != NULL)
     {
       names[i] = strndup(tmp->name, strlen(tmp->name));
@@ -1187,15 +1187,15 @@ void corsaro_free_plugin_names(char **plugin_names, int plugin_cnt)
 
 uint64_t corsaro_get_accepted_packets(corsaro_t *corsaro)
 {
-  return corsaro->accepted_pkts == UINT64_MAX ? 
-    UINT64_MAX : 
+  return corsaro->accepted_pkts == UINT64_MAX ?
+    UINT64_MAX :
     trace_get_accepted_packets(corsaro->trace) - corsaro->accepted_pkts;
 }
 
 uint64_t corsaro_get_dropped_packets(corsaro_t *corsaro)
 {
-  return corsaro->dropped_pkts == UINT64_MAX ? 
-    UINT64_MAX : 
+  return corsaro->dropped_pkts == UINT64_MAX ?
+    UINT64_MAX :
     trace_get_dropped_packets(corsaro->trace) - corsaro->dropped_pkts;
 }
 
@@ -1210,7 +1210,7 @@ int corsaro_set_monitorname(corsaro_t *corsaro, char *name)
 
   if(corsaro->started != 0)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		"monitor name can only be set before "
 		"corsaro_start_output is called");
       return -1;
@@ -1218,7 +1218,7 @@ int corsaro_set_monitorname(corsaro_t *corsaro, char *name)
 
   if(corsaro->monitorname != NULL)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		  "updating monitor name from %s to %s",
 		  corsaro->monitorname, name);
     }
@@ -1230,7 +1230,7 @@ int corsaro_set_monitorname(corsaro_t *corsaro, char *name)
 
   if((corsaro->monitorname = strdup(name)) == NULL)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		"could not duplicate monitor name string (no memory?)");
       return -1;
     }
@@ -1257,7 +1257,7 @@ int corsaro_per_packet(corsaro_t *corsaro, libtrace_packet_t *ltpacket)
 
   /* ensure that the state is clear */
   corsaro_packet_state_reset(corsaro->packet);
-  
+
   /* this is now the latest packet we have seen */
   corsaro->last_ts = ts = trace_get_timeval(ltpacket);
 
@@ -1270,11 +1270,11 @@ int corsaro_per_packet(corsaro_t *corsaro, libtrace_packet_t *ltpacket)
       corsaro->first_ts = ts;
       if(start_interval(corsaro, ts) != 0)
 	{
-	  corsaro_log(__func__, corsaro, "could not start interval at %ld", 
+	  corsaro_log(__func__, corsaro, "could not start interval at %ld",
 		    ts.tv_sec);
 	  return -1;
 	}
-      
+
       corsaro->next_report = ts.tv_sec + corsaro->interval;
 
       /* if we are aligning our intervals, truncate the end down */
@@ -1290,14 +1290,14 @@ int corsaro_per_packet(corsaro_t *corsaro, libtrace_packet_t *ltpacket)
   while(corsaro->interval >= 0 && (uint32_t)ts.tv_sec >= corsaro->next_report)
     {
       /* we want to mark the end of the interval such that all pkt times are <=
-	 the time of the end of the interval. 
+	 the time of the end of the interval.
 	 because we deal in second granularity, we simply subtract one from the
 	 time */
       report.tv_sec = corsaro->next_report-1;
-      
+
       if(end_interval(corsaro, report) != 0)
 	{
-	  corsaro_log(__func__, corsaro, "could not end interval at %ld", 
+	  corsaro_log(__func__, corsaro, "could not end interval at %ld",
 		    ts.tv_sec);
 	  /* we don't free in case the client wants to try to carry on */
 	  return -1;
@@ -1309,7 +1309,7 @@ int corsaro_per_packet(corsaro_t *corsaro, libtrace_packet_t *ltpacket)
       report.tv_sec = corsaro->next_report;
       if(start_interval(corsaro, report) != 0)
 	{
-	  corsaro_log(__func__, corsaro, "could not start interval at %ld", 
+	  corsaro_log(__func__, corsaro, "could not start interval at %ld",
 		    ts.tv_sec);
 	  /* we don't free in case the client wants to try to carry on */
 	  return -1;
@@ -1324,7 +1324,7 @@ int corsaro_per_packet(corsaro_t *corsaro, libtrace_packet_t *ltpacket)
   return process_packet(corsaro, corsaro->packet);
 }
 
-int corsaro_per_record(corsaro_t *corsaro, 
+int corsaro_per_record(corsaro_t *corsaro,
 		       corsaro_in_record_type_t type,
 		       corsaro_in_record_t *record)
 {
@@ -1342,14 +1342,14 @@ int corsaro_per_record(corsaro_t *corsaro,
     {
       interval = (corsaro_interval_t *)
 	corsaro_in_get_record_data(record);
-      
+
       return per_interval_start(corsaro, interval);
     }
   else if(type == CORSARO_IN_RECORD_TYPE_IO_INTERVAL_END)
     {
       interval = (corsaro_interval_t *)
 	corsaro_in_get_record_data(record);
-      
+
       return per_interval_end(corsaro, interval);
     }
 #ifdef WITH_PLUGIN_SIXT
@@ -1357,21 +1357,21 @@ int corsaro_per_record(corsaro_t *corsaro,
     {
       flowtuple = (corsaro_flowtuple_t *)
 	corsaro_in_get_record_data(record);
-      
+
       return per_flowtuple(corsaro, flowtuple);
     }
   else if(type == CORSARO_IN_RECORD_TYPE_FLOWTUPLE_CLASS_START)
     {
       class_start = (corsaro_flowtuple_class_start_t *)
 	corsaro_in_get_record_data(record);
-      
+
       return per_flowtuple_class_start(corsaro, class_start);
     }
   else if(type == CORSARO_IN_RECORD_TYPE_FLOWTUPLE_CLASS_END)
     {
       class_end = (corsaro_flowtuple_class_end_t *)
 	corsaro_in_get_record_data(record);
-      
+
       return per_flowtuple_class_end(corsaro, class_end);
     }
 #endif
@@ -1387,10 +1387,10 @@ int corsaro_finalize_output(corsaro_t *corsaro)
     }
   if(corsaro->started != 0)
     {
-      if(corsaro->interval_end_needed != 0 && 
+      if(corsaro->interval_end_needed != 0 &&
 	 end_interval(corsaro, corsaro->last_ts) != 0)
 	{
-	  corsaro_log(__func__, corsaro, "could not end interval at %ld", 
+	  corsaro_log(__func__, corsaro, "could not end interval at %ld",
 		      corsaro->last_ts.tv_sec);
 	  corsaro_free(corsaro);
 	  return -1;
@@ -1398,13 +1398,13 @@ int corsaro_finalize_output(corsaro_t *corsaro)
       if(corsaro->global_file != NULL &&
 	 corsaro_io_write_trailer(corsaro, corsaro->global_file, NULL) <= 0)
 	{
-	  corsaro_log(__func__, corsaro, 
+	  corsaro_log(__func__, corsaro,
 		      "could not write global trailers");
 	  corsaro_free(corsaro);
 	  return -1;
 	}
     }
-  
+
   corsaro_free(corsaro);
   return 0;
 }
@@ -1414,7 +1414,7 @@ int corsaro_finalize_output(corsaro_t *corsaro)
 corsaro_in_t *corsaro_alloc_input(const char *corsarouri)
 {
   corsaro_in_t *corsaro;
-  
+
   /* initialize the corsaro object */
   if((corsaro = corsaro_in_init(corsarouri)) == NULL)
     {
@@ -1436,7 +1436,7 @@ int corsaro_start_input(corsaro_in_t *corsaro)
   /* open the file! */
   if((corsaro->file = corsaro_file_ropen(corsaro->uridata)) == NULL)
     {
-      corsaro_log_in(__func__, corsaro, "could not open input file %s", 
+      corsaro_log_in(__func__, corsaro, "could not open input file %s",
 		   corsaro->uridata);
       /* ak comments the following, leave it up to the caller to free
 	 the state object */
@@ -1445,13 +1445,13 @@ int corsaro_start_input(corsaro_in_t *corsaro)
     }
 
   /* determine the plugin which created this file */
-  while((p = corsaro_plugin_next(corsaro->plugin_manager, p)) != NULL && 
+  while((p = corsaro_plugin_next(corsaro->plugin_manager, p)) != NULL &&
 	corsaro->plugin == NULL)
     {
       if(p->probe_filename(corsaro->uridata) == 1)
 	{
-	  corsaro_log_in(__func__, corsaro, 
-		       "%s plugin selected to read %s (using file name)", 
+	  corsaro_log_in(__func__, corsaro,
+		       "%s plugin selected to read %s (using file name)",
 		       p->name, corsaro->uridata);
 	  corsaro->plugin = p;
 	}
@@ -1460,12 +1460,12 @@ int corsaro_start_input(corsaro_in_t *corsaro)
   /* if the previous method for detection failed, lets try peeking into
      the file */
   p = NULL;
-  while(corsaro->plugin == NULL && 
+  while(corsaro->plugin == NULL &&
 	(p = corsaro_plugin_next(corsaro->plugin_manager, p)) != NULL)
     {
       if(p->probe_magic(corsaro, corsaro->file) == 1)
 	{
-	  corsaro_log_in(__func__, corsaro, 
+	  corsaro_log_in(__func__, corsaro,
 		       "%s plugin selected to read %s (using magic)",
 		       p->name, corsaro->uridata);
 	  corsaro->plugin = p;
@@ -1475,14 +1475,14 @@ int corsaro_start_input(corsaro_in_t *corsaro)
   /* if corsaro->plugin is still NULL, see if this is the global output */
   if(corsaro->plugin == NULL)
     {
-      if(check_global_filename(corsaro->uridata) != 1 && 
+      if(check_global_filename(corsaro->uridata) != 1 &&
 	 check_global_magic(corsaro, corsaro->file) != 1)
 	{
 	  /* we have no idea what this file was created by */
-	  corsaro_log_in(__func__, corsaro, 
+	  corsaro_log_in(__func__, corsaro,
 			 "unable to find plugin to decode %s\n"
 		       " - is this a corsaro file?\n"
-		       " - is corsaro compiled with all needed plugins?", 
+		       " - is corsaro compiled with all needed plugins?",
 		       corsaro->uridata);
 	  return -1;
 	}
@@ -1500,7 +1500,7 @@ int corsaro_start_input(corsaro_in_t *corsaro)
       /* start up the plugin we detected */
       if(corsaro->plugin->init_input(corsaro) != 0)
 	{
-	  corsaro_log_in(__func__, corsaro, "could not initialize %s", 
+	  corsaro_log_in(__func__, corsaro, "could not initialize %s",
 		       corsaro->plugin->name);
 	  return -1;
 	}
@@ -1566,7 +1566,7 @@ off_t corsaro_in_read_record(corsaro_in_t *corsaro,
   /* the first check makes sure we don't have a plugin that we have assigned
      the file to, the second ensures that if there is a plugin, we will
      only directly use it when we're not in global mode */
-  if(corsaro->plugin != NULL 
+  if(corsaro->plugin != NULL
      && corsaro->expected_type == CORSARO_IN_RECORD_TYPE_NULL)
     {
       return corsaro->plugin->read_record(corsaro, record_type, record);
@@ -1576,7 +1576,7 @@ off_t corsaro_in_read_record(corsaro_in_t *corsaro,
       /* this is the global plugin, handle it ourselves */
       return read_record(corsaro, record_type, record);
     }
-  
+
   return -1;
 }
 

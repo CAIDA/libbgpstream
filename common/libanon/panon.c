@@ -1,11 +1,11 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
  * corsaro-info@caida.org
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
  *
  * corsaro is free software: you can redistribute it and/or modify
@@ -21,7 +21,7 @@
  * You should have received a copy of the GNU General Public License
  * along with corsaro.  If not, see <http://www.gnu.org/licenses/>.
  *
- * This file is a modified version of the 'panon.c' file included with 
+ * This file is a modified version of the 'panon.c' file included with
  * libtrace (http://research.wand.net.nz/software/libtrace.php)
  *
  */
@@ -49,7 +49,7 @@ static uint32_t fullcache[2][2];
    @todo remove the static variables, and free malloc'd memory
 */
 void panon_init_cache(void) {
-        if (enc_cache == 0) { 
+        if (enc_cache == 0) {
                 enc_cache = (uint32_t *)malloc(CACHESIZE * sizeof(uint32_t));
         }
         memset(enc_cache,0,(CACHESIZE * sizeof(uint32_t)));
@@ -68,9 +68,9 @@ static void cache_update(uint32_t scan) {
         int pos;
 
         memcpy(rin_input, m_pad, 16);
-        first4bytes_pad = (((uint32_t) m_pad[0]) << 24) + 
-                (((uint32_t) m_pad[1]) << 16 ) + 
-                (((uint32_t) m_pad[2]) << 8) + 
+        first4bytes_pad = (((uint32_t) m_pad[0]) << 24) +
+                (((uint32_t) m_pad[1]) << 16 ) +
+                (((uint32_t) m_pad[2]) << 8) +
                 (uint32_t) m_pad[3];
 
 
@@ -82,7 +82,7 @@ static void cache_update(uint32_t scan) {
                 if (pos == 0) {
                         first4bytes_input = first4bytes_pad;
                 } else {
-                        first4bytes_input = 
+                        first4bytes_input =
                                 ((orig_addr >> (32 - pos)) << (32 - pos)) |
                                 ((first4bytes_pad << pos) >> pos);
                 }
@@ -130,19 +130,19 @@ uint32_t pp_anonymize(const uint32_t orig_addr) {
         int pos;
 
         memcpy(rin_input, m_pad, 16);
-        first4bytes_pad = (((uint32_t) m_pad[0]) << 24) + 
-                (((uint32_t) m_pad[1]) << 16 ) + 
-                (((uint32_t) m_pad[2]) << 8) + 
+        first4bytes_pad = (((uint32_t) m_pad[0]) << 24) +
+                (((uint32_t) m_pad[1]) << 16 ) +
+                (((uint32_t) m_pad[2]) << 8) +
                 (uint32_t) m_pad[3];
 
-        // For each prefix with length 0 to 31, generate a bit using the 
-        // rijndael cipher, which is used as a pseudorandom function here. 
-        // The bits generated in every round are combined into a pseudorandom 
+        // For each prefix with length 0 to 31, generate a bit using the
+        // rijndael cipher, which is used as a pseudorandom function here.
+        // The bits generated in every round are combined into a pseudorandom
         // one-time-pad.
 
         for (pos = 0; pos <= 31; pos++) {
                 // Padding: The most significant pos bits are taken from orig_addr.
-                // The other 128-pos bits are taken from m_pad. The variables 
+                // The other 128-pos bits are taken from m_pad. The variables
                 // first4bytes_pad and first4bytes_input are used to handle the annoying
                 // byte order problem
 
@@ -172,7 +172,7 @@ uint32_t pp_anonymize(const uint32_t orig_addr) {
 uint32_t cpp_anonymize(const uint32_t orig_addr) {
         uint8_t rin_output[16];
         uint8_t rin_input[16];
-        
+
         //uint32_t firstnbits;
 
         uint32_t result = 0;
@@ -191,14 +191,14 @@ uint32_t cpp_anonymize(const uint32_t orig_addr) {
                 fullcache[0][1] = tmp;
                 return tmp;
         }
-        
+
         memcpy(rin_input, m_pad, 16);
-        first4bytes_pad = (((uint32_t) m_pad[0]) << 24) + 
-                (((uint32_t) m_pad[1]) << 16 ) + 
-                (((uint32_t) m_pad[2]) << 8) + 
+        first4bytes_pad = (((uint32_t) m_pad[0]) << 24) +
+                (((uint32_t) m_pad[1]) << 16 ) +
+                (((uint32_t) m_pad[2]) << 8) +
                 (uint32_t) m_pad[3];
 
-        // Look up the first CACHESIZE bits from enc_cache and start the 
+        // Look up the first CACHESIZE bits from enc_cache and start the
         // result with this, then proceed
 
         //firstnbits = (uint32_t) orig_addr >> (32 - CACHEBITS);
@@ -206,14 +206,14 @@ uint32_t cpp_anonymize(const uint32_t orig_addr) {
 
 
         result = (lookup_cache(orig_addr) << (32 - CACHEBITS));
-        // For each prefix with length CACHEBITS to 31, generate a bit using the 
-        // rijndael cipher, which is used as a pseudorandom function here. 
-        // The bits generated in every round are combined into a pseudorandom 
+        // For each prefix with length CACHEBITS to 31, generate a bit using the
+        // rijndael cipher, which is used as a pseudorandom function here.
+        // The bits generated in every round are combined into a pseudorandom
         // one-time-pad.
 
         for (pos = CACHEBITS ; pos <= 31; pos++) {
                 // Padding: The most significant pos bits are taken from orig_addr.
-                // The other 128-pos bits are taken from m_pad. The variables 
+                // The other 128-pos bits are taken from m_pad. The variables
                 // first4bytes_pad and first4bytes_input are used to handle the annoying
                 // byte order problem
 
@@ -235,18 +235,18 @@ uint32_t cpp_anonymize(const uint32_t orig_addr) {
                 // Combination: the bits are combined into a pseudorandom one-time-pad.
                 result |= (rin_output[0] >> 7) << (31 - pos);
         }
-        
+
         fullcache[1][0] = fullcache[0][0];
         fullcache[1][1] = fullcache[0][1];
         fullcache[0][0] = orig_addr;
         fullcache[0][1] = result ^ orig_addr;
-        
+
         return result ^ orig_addr;
 }
 
 uint32_t anonymize(const uint32_t orig_addr) {
-        uint8_t rin_output[16]; 
-        uint8_t rin_input[16]; 
+        uint8_t rin_output[16];
+        uint8_t rin_input[16];
 
         uint32_t result = 0;
 

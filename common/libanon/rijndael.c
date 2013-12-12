@@ -52,21 +52,21 @@ static UINT8     m_expandedKey[_MAX_ROUNDS+1][4][4];
 
 static UINT8 S[256]=
 {
-        99, 124, 119, 123, 242, 107, 111, 197,  48,   1, 103,  43, 254, 215, 171, 118, 
-        202, 130, 201, 125, 250,  89,  71, 240, 173, 212, 162, 175, 156, 164, 114, 192, 
-        183, 253, 147,  38,  54,  63, 247, 204,  52, 165, 229, 241, 113, 216,  49,  21, 
-        4, 199,  35, 195,  24, 150,   5, 154,   7,  18, 128, 226, 235,  39, 178, 117, 
-        9, 131,  44,  26,  27, 110,  90, 160,  82,  59, 214, 179,  41, 227,  47, 132, 
-        83, 209,   0, 237,  32, 252, 177,  91, 106, 203, 190,  57,  74,  76,  88, 207, 
-        208, 239, 170, 251,  67,  77,  51, 133,  69, 249,   2, 127,  80,  60, 159, 168, 
-        81, 163,  64, 143, 146, 157,  56, 245, 188, 182, 218,  33,  16, 255, 243, 210, 
-        205,  12,  19, 236,  95, 151,  68,  23, 196, 167, 126,  61, 100,  93,  25, 115, 
-        96, 129,  79, 220,  34,  42, 144, 136,  70, 238, 184,  20, 222,  94,  11, 219, 
-        224,  50,  58,  10,  73,   6,  36,  92, 194, 211, 172,  98, 145, 149, 228, 121, 
-        231, 200,  55, 109, 141, 213,  78, 169, 108,  86, 244, 234, 101, 122, 174,   8, 
-        186, 120,  37,  46,  28, 166, 180, 198, 232, 221, 116,  31,  75, 189, 139, 138, 
-        112,  62, 181, 102,  72,   3, 246,  14,  97,  53,  87, 185, 134, 193,  29, 158, 
-        225, 248, 152,  17, 105, 217, 142, 148, 155,  30, 135, 233, 206,  85,  40, 223, 
+        99, 124, 119, 123, 242, 107, 111, 197,  48,   1, 103,  43, 254, 215, 171, 118,
+        202, 130, 201, 125, 250,  89,  71, 240, 173, 212, 162, 175, 156, 164, 114, 192,
+        183, 253, 147,  38,  54,  63, 247, 204,  52, 165, 229, 241, 113, 216,  49,  21,
+        4, 199,  35, 195,  24, 150,   5, 154,   7,  18, 128, 226, 235,  39, 178, 117,
+        9, 131,  44,  26,  27, 110,  90, 160,  82,  59, 214, 179,  41, 227,  47, 132,
+        83, 209,   0, 237,  32, 252, 177,  91, 106, 203, 190,  57,  74,  76,  88, 207,
+        208, 239, 170, 251,  67,  77,  51, 133,  69, 249,   2, 127,  80,  60, 159, 168,
+        81, 163,  64, 143, 146, 157,  56, 245, 188, 182, 218,  33,  16, 255, 243, 210,
+        205,  12,  19, 236,  95, 151,  68,  23, 196, 167, 126,  61, 100,  93,  25, 115,
+        96, 129,  79, 220,  34,  42, 144, 136,  70, 238, 184,  20, 222,  94,  11, 219,
+        224,  50,  58,  10,  73,   6,  36,  92, 194, 211, 172,  98, 145, 149, 228, 121,
+        231, 200,  55, 109, 141, 213,  78, 169, 108,  86, 244, 234, 101, 122, 174,   8,
+        186, 120,  37,  46,  28, 166, 180, 198, 232, 221, 116,  31,  75, 189, 139, 138,
+        112,  62, 181, 102,  72,   3, 246,  14,  97,  53,  87, 185, 134, 193,  29, 158,
+        225, 248, 152,  17, 105, 217, 142, 148, 155,  30, 135, 233, 206,  85,  40, 223,
         140, 161, 137,  13, 191, 230,  66, 104,  65, 153,  45,  15, 176,  84, 187,  22
 };
 
@@ -956,7 +956,7 @@ static UINT8 U4[256][4]=
 };
 
 static UINT32 rcon[30]=
-{ 
+{
         0x01, 0x02, 0x04, 0x08, 0x10, 0x20,
         0x40, 0x80, 0x1b, 0x36, 0x6c, 0xd8,
         0xab, 0x4d, 0x9a, 0x2f, 0x5e, 0xbc,
@@ -979,7 +979,7 @@ int rijndael_init(Mode mode,Direction dir,const UINT8 * key,KeyLength keyLen,UIN
         int i;
         UINT32 uKeyLenInBytes;
         UINT8 keyMatrix[_MAX_KEY_COLUMNS][4];
-        UINT32 j; 
+        UINT32 j;
 
         /* Not initialized yet */
         m_state = Invalid;
@@ -1036,7 +1036,7 @@ int rijndael_init(Mode mode,Direction dir,const UINT8 * key,KeyLength keyLen,UIN
 
 
         for(j = 0; j < uKeyLenInBytes; j++)
-                keyMatrix[j >> 2][j & 3] = key[j]; 
+                keyMatrix[j >> 2][j & 3] = key[j];
 
         keySched(keyMatrix);
 
@@ -1060,7 +1060,7 @@ int blockEncrypt(const UINT8 *input,int inputLen,UINT8 *outBuffer)
         numBlocks = inputLen/128;
 
         switch(m_mode){
-                case ECB: 
+                case ECB:
                         for(i = numBlocks;i > 0;i--)
                         {
                                 r_encrypt(input,outBuffer);
@@ -1087,8 +1087,8 @@ int blockEncrypt(const UINT8 *input,int inputLen,UINT8 *outBuffer)
                         }
                         break;
                 case CFB1:
-#if STRICT_ALIGN 
-                        memcpy(iv,m_initVector,16); 
+#if STRICT_ALIGN
+                        memcpy(iv,m_initVector,16);
 #else  /* !STRICT_ALIGN */
                         *((UINT32*)iv[0]) = *((UINT32*)(m_initVector   ));
                         *((UINT32*)iv[1]) = *((UINT32*)(m_initVector + 4));
@@ -1146,7 +1146,7 @@ int padEncrypt(const UINT8 *input, int inputOctets, UINT8 *outBuffer)
 
         switch(m_mode)
         {
-                case ECB: 
+                case ECB:
                         for(i = numBlocks; i > 0; i--)
                         {
                                 r_encrypt(input, outBuffer);
@@ -1202,7 +1202,7 @@ int blockDecrypt(const UINT8 *input, int inputLen, UINT8 *outBuffer)
 
         switch(m_mode)
         {
-                case ECB: 
+                case ECB:
                         for (i = numBlocks; i > 0; i--)
                         {
                                 r_decrypt(input,outBuffer);
@@ -1211,8 +1211,8 @@ int blockDecrypt(const UINT8 *input, int inputLen, UINT8 *outBuffer)
                         }
                         break;
                 case CBC:
-#if STRICT_ALIGN 
-                        memcpy(iv,m_initVector,16); 
+#if STRICT_ALIGN
+                        memcpy(iv,m_initVector,16);
 #else
                         *((UINT32*)iv[0]) = *((UINT32*)(m_initVector  ));
                         *((UINT32*)iv[1]) = *((UINT32*)(m_initVector+ 4));
@@ -1240,8 +1240,8 @@ int blockDecrypt(const UINT8 *input, int inputLen, UINT8 *outBuffer)
                         }
                         break;
                 case CFB1:
-#if STRICT_ALIGN 
-                        memcpy(iv, m_initVector, 16); 
+#if STRICT_ALIGN
+                        memcpy(iv, m_initVector, 16);
 #else
                         *((UINT32*)iv[0]) = *((UINT32*)(m_initVector));
                         *((UINT32*)iv[1]) = *((UINT32*)(m_initVector+ 4));
@@ -1317,7 +1317,7 @@ int padDecrypt(const UINT8 *input, int inputOctets, UINT8 *outBuffer)
                                 if(block[i] != padLen)return RIJNDAEL_CORRUPTED_DATA;
                         }
                         memcpy(outBuffer, block, 16 - padLen);
-                        break;	
+                        break;
                 case CBC:
                         memcpy(iv, m_initVector, 16);
                         /* all blocks but last */
@@ -1437,7 +1437,7 @@ void keySched(UINT8 key[_MAX_KEY_COLUMNS][4])
                                 t = 0;
                         }
                 }
-        }		
+        }
 }
 
 void keyEncToDec(void)
@@ -1456,7 +1456,7 @@ void keyEncToDec(void)
                 w = m_expandedKey[r][3];
                 *((UINT32*)w) = *((UINT32*)U1[w[0]]) ^ *((UINT32*)U2[w[1]]) ^ *((UINT32*)U3[w[2]]) ^ *((UINT32*)U4[w[3]]);
         }
-}	
+}
 
 void r_encrypt(const UINT8 a[16], UINT8 b[16])
 {
@@ -1469,19 +1469,19 @@ void r_encrypt(const UINT8 a[16], UINT8 b[16])
         *((UINT32*)temp[3]) = *((UINT32*)(a+12)) ^ *((UINT32*)m_expandedKey[0][3]);
         *((UINT32*)(b    )) = *((UINT32*)T1[temp[0][0]])
                 ^ *((UINT32*)T2[temp[1][1]])
-                ^ *((UINT32*)T3[temp[2][2]]) 
+                ^ *((UINT32*)T3[temp[2][2]])
                 ^ *((UINT32*)T4[temp[3][3]]);
         *((UINT32*)(b + 4)) = *((UINT32*)T1[temp[1][0]])
                 ^ *((UINT32*)T2[temp[2][1]])
-                ^ *((UINT32*)T3[temp[3][2]]) 
+                ^ *((UINT32*)T3[temp[3][2]])
                 ^ *((UINT32*)T4[temp[0][3]]);
         *((UINT32*)(b + 8)) = *((UINT32*)T1[temp[2][0]])
                 ^ *((UINT32*)T2[temp[3][1]])
-                ^ *((UINT32*)T3[temp[0][2]]) 
+                ^ *((UINT32*)T3[temp[0][2]])
                 ^ *((UINT32*)T4[temp[1][3]]);
         *((UINT32*)(b +12)) = *((UINT32*)T1[temp[3][0]])
                 ^ *((UINT32*)T2[temp[0][1]])
-                ^ *((UINT32*)T3[temp[1][2]]) 
+                ^ *((UINT32*)T3[temp[1][2]])
                 ^ *((UINT32*)T4[temp[2][3]]);
         for(r = 1; r < (int)m_uRounds-1; r++)
         {
@@ -1492,19 +1492,19 @@ void r_encrypt(const UINT8 a[16], UINT8 b[16])
 
                 *((UINT32*)(b    )) = *((UINT32*)T1[temp[0][0]])
                         ^ *((UINT32*)T2[temp[1][1]])
-                        ^ *((UINT32*)T3[temp[2][2]]) 
+                        ^ *((UINT32*)T3[temp[2][2]])
                         ^ *((UINT32*)T4[temp[3][3]]);
                 *((UINT32*)(b + 4)) = *((UINT32*)T1[temp[1][0]])
                         ^ *((UINT32*)T2[temp[2][1]])
-                        ^ *((UINT32*)T3[temp[3][2]]) 
+                        ^ *((UINT32*)T3[temp[3][2]])
                         ^ *((UINT32*)T4[temp[0][3]]);
                 *((UINT32*)(b + 8)) = *((UINT32*)T1[temp[2][0]])
                         ^ *((UINT32*)T2[temp[3][1]])
-                        ^ *((UINT32*)T3[temp[0][2]]) 
+                        ^ *((UINT32*)T3[temp[0][2]])
                         ^ *((UINT32*)T4[temp[1][3]]);
                 *((UINT32*)(b +12)) = *((UINT32*)T1[temp[3][0]])
                         ^ *((UINT32*)T2[temp[0][1]])
-                        ^ *((UINT32*)T3[temp[1][2]]) 
+                        ^ *((UINT32*)T3[temp[1][2]])
                         ^ *((UINT32*)T4[temp[2][3]]);
         }
         *((UINT32*)temp[0]) = *((UINT32*)(b   )) ^ *((UINT32*)m_expandedKey[m_uRounds-1][0]);
@@ -1545,19 +1545,19 @@ void r_decrypt(const UINT8 a[16], UINT8 b[16])
 
         *((UINT32*)(b   )) = *((const UINT32*)T5[temp[0][0]])
                 ^ *((const UINT32*)T6[temp[3][1]])
-                ^ *((const UINT32*)T7[temp[2][2]]) 
+                ^ *((const UINT32*)T7[temp[2][2]])
                 ^ *((const UINT32*)T8[temp[1][3]]);
         *((UINT32*)(b+ 4)) = *((const UINT32*)T5[temp[1][0]])
                 ^ *((const UINT32*)T6[temp[0][1]])
-                ^ *((const UINT32*)T7[temp[3][2]]) 
+                ^ *((const UINT32*)T7[temp[3][2]])
                 ^ *((const UINT32*)T8[temp[2][3]]);
         *((UINT32*)(b+ 8)) = *((UINT32*)T5[temp[2][0]])
                 ^ *((const UINT32*)T6[temp[1][1]])
-                ^ *((const UINT32*)T7[temp[0][2]]) 
+                ^ *((const UINT32*)T7[temp[0][2]])
                 ^ *((const UINT32*)T8[temp[3][3]]);
         *((UINT32*)(b+12)) = *((UINT32*)T5[temp[3][0]])
                 ^ *((const UINT32*)T6[temp[2][1]])
-                ^ *((const UINT32*)T7[temp[1][2]]) 
+                ^ *((const UINT32*)T7[temp[1][2]])
                 ^ *((const UINT32*)T8[temp[0][3]]);
         for(r = m_uRounds-1; r > 1; r--)
         {
@@ -1567,19 +1567,19 @@ void r_decrypt(const UINT8 a[16], UINT8 b[16])
                 *((UINT32*)temp[3]) = *((UINT32*)(b+12)) ^ *((UINT32*)m_expandedKey[r][3]);
                 *((UINT32*)(b   )) = *((UINT32*)T5[temp[0][0]])
                         ^ *((UINT32*)T6[temp[3][1]])
-                        ^ *((UINT32*)T7[temp[2][2]]) 
+                        ^ *((UINT32*)T7[temp[2][2]])
                         ^ *((UINT32*)T8[temp[1][3]]);
                 *((UINT32*)(b+ 4)) = *((UINT32*)T5[temp[1][0]])
                         ^ *((UINT32*)T6[temp[0][1]])
-                        ^ *((UINT32*)T7[temp[3][2]]) 
+                        ^ *((UINT32*)T7[temp[3][2]])
                         ^ *((UINT32*)T8[temp[2][3]]);
                 *((UINT32*)(b+ 8)) = *((UINT32*)T5[temp[2][0]])
                         ^ *((UINT32*)T6[temp[1][1]])
-                        ^ *((UINT32*)T7[temp[0][2]]) 
+                        ^ *((UINT32*)T7[temp[0][2]])
                         ^ *((UINT32*)T8[temp[3][3]]);
                 *((UINT32*)(b+12)) = *((UINT32*)T5[temp[3][0]])
                         ^ *((UINT32*)T6[temp[2][1]])
-                        ^ *((UINT32*)T7[temp[1][2]]) 
+                        ^ *((UINT32*)T7[temp[1][2]])
                         ^ *((UINT32*)T8[temp[0][3]]);
         }
 

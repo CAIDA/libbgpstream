@@ -1,11 +1,11 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
  * corsaro-info@caida.org
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
  *
  * corsaro is free software: you can redistribute it and/or modify
@@ -44,8 +44,8 @@
  *
  * @author Alistair King
  *
- * @todo extend to allow to write out to binary again 
- * @todo respect the tuple classes for reaggregation (currently classes are 
+ * @todo extend to allow to write out to binary again
+ * @todo respect the tuple classes for reaggregation (currently classes are
  * discarded).
  * @todo add a BPF-like filter
  *
@@ -148,7 +148,7 @@ static corsaro_interval_t last_interval_end = {
 
 /** Cleanup and free state */
 static void clean()
-{ 
+{
   if(record != NULL)
     {
       corsaro_in_free_record(record);
@@ -172,7 +172,7 @@ static int init_corsaro(char *corsarouri)
       clean();
       return -1;
     }
-  
+
   /* get a record */
   if ((record = corsaro_in_alloc_record(corsaro)) == NULL) {
     fprintf(stderr, "could not alloc record\n");
@@ -246,7 +246,7 @@ int add_inc_hash(kh_sixt_int_t *hash, corsaro_flowtuple_t *t, uint32_t increment
   corsaro_flowtuple_t *new_6t = NULL;
 
   assert(hash != NULL);
-  
+
   /* check if this is in the hash already */
   if((khiter = kh_get(sixt_int, hash, t)) == kh_end(hash))
     {
@@ -296,14 +296,14 @@ static void flowtuple_print_64(corsaro_flowtuple_t *flowtuple, uint64_t value)
 	 "|%"PRIu16"|%"PRIu16
 	 "|%"PRIu8"|%"PRIu8"|0x%02"PRIx8
 	 "|%"PRIu16
-	 ",%"PRIu64"\n",					
+	 ",%"PRIu64"\n",
 	 ip_a, ip_b,
-	 ntohs(flowtuple->src_port), 
+	 ntohs(flowtuple->src_port),
 	 ntohs(flowtuple->dst_port),
-	 flowtuple->protocol, 
+	 flowtuple->protocol,
 	 flowtuple->ttl,
 	 flowtuple->tcp_flags,
-	 ntohs(flowtuple->ip_len), 
+	 ntohs(flowtuple->ip_len),
 	 value);
 }
 
@@ -312,7 +312,7 @@ static void dump_hash_map(kh_sixt_map_t *hash)
 {
   khiter_t k;
   corsaro_flowtuple_t *key;
-  
+
   /* dump the hash */
   if(kh_size(hash) > 0)
     {
@@ -322,7 +322,7 @@ static void dump_hash_map(kh_sixt_map_t *hash)
 	    {
 	      key = kh_key(hash, k);
 	      /*key->packet_cnt = htonl(kh_val(hash,k));*/
-	      flowtuple_print_64(key, kh_size(kh_val(hash, k)));	
+	      flowtuple_print_64(key, kh_size(kh_val(hash, k)));
 	      /* free the map while we still have a pointer to it */
 	      kh_destroy(64xx, kh_val(hash, k));
 	    }
@@ -339,7 +339,7 @@ static void dump_hash_int(kh_sixt_int_t *hash)
 {
   khiter_t k;
   corsaro_flowtuple_t *key;
-  
+
   /* dump the hash */
   if(kh_size(hash) > 0)
     {
@@ -389,7 +389,7 @@ static void dump_hash()
 static int process_flowtuple(corsaro_flowtuple_t *tuple)
 {
   int i;
-  
+
   int value;
 
   /* work out which field from the tuple we want to use as the value */
@@ -480,7 +480,7 @@ static int process_flowtuple(corsaro_flowtuple_t *tuple)
 	  return -1;
 	}
     }
-  else 
+  else
     {
       if(add_inc_map(sixt_f, tuple, value) != 0)
 	{
@@ -488,14 +488,14 @@ static int process_flowtuple(corsaro_flowtuple_t *tuple)
 	  return -1;
 	}
     }
-  
+
   return 0;
 }
 
 /** Print usage information to stderr */
 static void usage(const char *name)
 {
-  fprintf(stderr, 
+  fprintf(stderr,
 	  "usage: %s [-l] [-i interval] [-v value_field] [-f field]... file_list\n"
 	  "       -l            treat the input files as containing legacy format data\n"
 	  "       -i <interval> new distribution interval in seconds. (default: 0)\n"
@@ -567,7 +567,7 @@ int main(int argc, char *argv[])
 	    {
 	      fprintf(stderr, "WARNING: Multiple value fields detected\n"
 		      "Last specified will be used\n");
-	    }	  
+	    }
 	  /* figure out what value they have asked for */
 	  for(i = 0; i < FIELD_CNT; i++)
 	    {
@@ -590,12 +590,12 @@ int main(int argc, char *argv[])
 	}
     }
 
-  /* 
+  /*
    * ak comments this 10/11/12 after talking with Tanja
    * it seems to make sense to allow *no* fields to be set so that users
-   * can get 'overall' counts of field values 
+   * can get 'overall' counts of field values
    * e.g. specifying no fields and using a 'src_ip' value will give the total
-   * number of source ips in the interval 
+   * number of source ips in the interval
    */
   /*
   if(field_cnt < 1)
@@ -626,7 +626,7 @@ int main(int argc, char *argv[])
       value_field = VALUE;
     }
 
-  /* argv[1] is the list of corsaro files */	
+  /* argv[1] is the list of corsaro files */
   flist_name = argv[optind];
 
   /* read each file in the list */
@@ -650,7 +650,7 @@ int main(int argc, char *argv[])
     {
       sixt_f = kh_init(sixt_map);
     }
-  
+
   while(fgets(file, sizeof(file), flist) != NULL)
     {
       /* chomp off the newline */
@@ -671,7 +671,7 @@ int main(int argc, char *argv[])
 	{
 	  last_interval_end.time+=legacy;
 	}
-      
+
       while ((len = corsaro_in_read_record(corsaro, &type, record)) > 0) {
 	/* we want to know the current time, so we will watch for interval start
 	   records */
@@ -703,7 +703,7 @@ int main(int argc, char *argv[])
 		if(interval == 0)
 		  {
 		    dump_hash();
-		  } 
+		  }
 		else if(interval > 0)
 		  {
 		    while(interval_record->time >= next_interval)
@@ -712,7 +712,7 @@ int main(int argc, char *argv[])
 			next_interval += interval;
 		      }
 		  }
-		/* else, if interval < 0, only dump at the end */	
+		/* else, if interval < 0, only dump at the end */
 	      }
 	  }
 	else if(type == CORSARO_IN_RECORD_TYPE_IO_INTERVAL_END)
@@ -721,7 +721,7 @@ int main(int argc, char *argv[])
 	      corsaro_in_get_record_data(record);
 
 	    last_interval_end.time = interval_record->time;
-    
+
 	  }
 	else if(type == CORSARO_IN_RECORD_TYPE_FLOWTUPLE_FLOWTUPLE)
 	  {
@@ -730,23 +730,23 @@ int main(int argc, char *argv[])
 
 	    process_flowtuple(tuple);
 	  }
-	
+
 	/* reset the type to NULL to indicate we don't care */
 	type = CORSARO_IN_RECORD_TYPE_NULL;
       }
-      
+
       if(len < 0)
 	{
 	  fprintf(stderr, "corsaro_in_read_record failed to read record\n");
 	  clean();
 	  return -1;
 	}
-      
+
       clean();
     }
 
   /* dump again if the hash is not empty */
-  if((sixt_f != NULL && kh_size(sixt_f) > 0) 
+  if((sixt_f != NULL && kh_size(sixt_f) > 0)
      || (sixt_v != NULL && kh_size(sixt_v) > 0))
     {
       dump_hash();
@@ -765,7 +765,7 @@ int main(int argc, char *argv[])
       kh_destroy(sixt_int, sixt_v);
       sixt_v = NULL;
     }
-  
+
   fclose(flist);
   return 0;
 }

@@ -1,4 +1,4 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
@@ -6,9 +6,9 @@
  *
  * corsaro_log and timestamp_str functions adapted from scamper:
  *   http://www.wand.net.nz/scamper
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
  *
  * corsaro is free software: you can redistribute it and/or modify
@@ -68,7 +68,7 @@ static char *timestamp_str(char *buf, const size_t len)
   return buf;
 }
 
-void generic_log(const char *func, corsaro_file_t *logfile, const char *format, 
+void generic_log(const char *func, corsaro_file_t *logfile, const char *format,
 		 va_list ap)
 {
   char     message[512];
@@ -103,7 +103,7 @@ void generic_log(const char *func, corsaro_file_t *logfile, const char *format,
     }
 }
 
-void corsaro_log_va(const char *func, corsaro_t *corsaro, 
+void corsaro_log_va(const char *func, corsaro_t *corsaro,
 		  const char *format, va_list args)
 {
   corsaro_file_t *lf = (corsaro == NULL) ? NULL : corsaro->logfile;
@@ -118,7 +118,7 @@ void corsaro_log(const char *func, corsaro_t *corsaro, const char *format, ...)
   va_end(ap);
 }
 
-void corsaro_log_in(const char *func, corsaro_in_t *corsaro, 
+void corsaro_log_in(const char *func, corsaro_in_t *corsaro,
 		    const char *format, ...)
 {
 #ifdef DEBUG
@@ -129,7 +129,7 @@ void corsaro_log_in(const char *func, corsaro_in_t *corsaro,
 #endif
 }
 
-void corsaro_log_file(const char *func, corsaro_file_t *logfile, 
+void corsaro_log_file(const char *func, corsaro_file_t *logfile,
 		      const char *format, ...)
 {
   va_list ap;
@@ -140,7 +140,7 @@ void corsaro_log_file(const char *func, corsaro_file_t *logfile,
 
 int corsaro_log_init(corsaro_t *corsaro)
 {
-  if((corsaro->logfile = corsaro_io_prepare_file_full(corsaro, 
+  if((corsaro->logfile = corsaro_io_prepare_file_full(corsaro,
 				    CORSARO_IO_LOG_NAME,
 				    &corsaro->interval_start,
 				    CORSARO_FILE_MODE_ASCII,

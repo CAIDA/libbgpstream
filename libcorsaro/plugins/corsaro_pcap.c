@@ -1,11 +1,11 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
  * corsaro-info@caida.org
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
  *
  * corsaro is free software: you can redistribute it and/or modify
@@ -116,10 +116,10 @@ int corsaro_pcap_init_output(corsaro_t *corsaro)
   struct corsaro_pcap_state_t *state;
   corsaro_plugin_t *plugin = PLUGIN(corsaro);
   assert(plugin != NULL);
- 
+
   if((state = malloc_zero(sizeof(struct corsaro_pcap_state_t))) == NULL)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		"could not malloc corsaro_pcap_state_t");
       goto err;
     }
@@ -167,13 +167,13 @@ int corsaro_pcap_close_output(corsaro_t *corsaro)
 
       corsaro_plugin_free_state(corsaro->plugin_manager, PLUGIN(corsaro));
     }
-  
+
   return 0;
 }
 
 /** Implements the read_record function of the plugin API */
-off_t corsaro_pcap_read_record(struct corsaro_in *corsaro, 
-			       corsaro_in_record_type_t *record_type, 
+off_t corsaro_pcap_read_record(struct corsaro_in *corsaro,
+			       corsaro_in_record_type_t *record_type,
 			       corsaro_in_record_t *record)
 {
   /* This plugin can't read it's data back. just use libtrace */
@@ -183,8 +183,8 @@ off_t corsaro_pcap_read_record(struct corsaro_in *corsaro,
 }
 
 /** Implements the read_global_data_record function of the plugin API */
-off_t corsaro_pcap_read_global_data_record(struct corsaro_in *corsaro, 
-			      enum corsaro_in_record_type *record_type, 
+off_t corsaro_pcap_read_global_data_record(struct corsaro_in *corsaro,
+			      enum corsaro_in_record_type *record_type,
 			      struct corsaro_in_record *record)
 {
   /* we write nothing to the global file. someone messed up */
@@ -198,8 +198,8 @@ int corsaro_pcap_start_interval(corsaro_t *corsaro, corsaro_interval_t *int_star
     {
       /* open the output file */
       if((
-	  STATE(corsaro)->outfile_p[STATE(corsaro)->outfile_n] = 
-	  corsaro_io_prepare_file_full(corsaro, 
+	  STATE(corsaro)->outfile_p[STATE(corsaro)->outfile_n] =
+	  corsaro_io_prepare_file_full(corsaro,
 				       PLUGIN(corsaro)->name,
 				       int_start,
 				       CORSARO_FILE_MODE_TRACE,
@@ -207,7 +207,7 @@ int corsaro_pcap_start_interval(corsaro_t *corsaro, corsaro_interval_t *int_star
 				       corsaro->compress_level,
 				       0)) == NULL)
 	{
-	  corsaro_log(__func__, corsaro, "could not open %s output file", 
+	  corsaro_log(__func__, corsaro, "could not open %s output file",
 		      PLUGIN(corsaro)->name);
 	  return -1;
 	}
@@ -229,13 +229,13 @@ int corsaro_pcap_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_end)
       assert(state->outfile != NULL);
 
       /* move on to the next output pointer */
-      state->outfile_n = (state->outfile_n+1) % 
+      state->outfile_n = (state->outfile_n+1) %
 	OUTFILE_POINTERS;
 
       if(state->outfile_p[state->outfile_n] != NULL)
 	{
 	  /* we're gonna have to wait for this to close */
-	  corsaro_file_close(corsaro, 
+	  corsaro_file_close(corsaro,
 		   state->outfile_p[state->outfile_n]);
 	  state->outfile_p[state->outfile_n] =  NULL;
 	}
@@ -246,10 +246,10 @@ int corsaro_pcap_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_end)
 }
 
 /** Implements the process_packet function of the plugin API */
-int corsaro_pcap_process_packet(corsaro_t *corsaro, 
+int corsaro_pcap_process_packet(corsaro_t *corsaro,
 				corsaro_packet_t *packet)
 {
-  if(corsaro_file_write_packet(corsaro, STATE(corsaro)->outfile, 
+  if(corsaro_file_write_packet(corsaro, STATE(corsaro)->outfile,
 			       LT_PKT(packet)) <= 0)
     {
       corsaro_log(__func__, corsaro, "could not write packet");

@@ -1,11 +1,11 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
  * corsaro-info@caida.org
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
  *
  * corsaro is free software: you can redistribute it and/or modify
@@ -58,17 +58,17 @@
 /** Structure with pointers to output functions for a mode */
 typedef struct output_funcs
 {
-  int (*headers)(corsaro_t *corsaro, corsaro_file_t *file, 
+  int (*headers)(corsaro_t *corsaro, corsaro_file_t *file,
 		 corsaro_header_t *header);
   int (*interval_start)(corsaro_t *corsaro, corsaro_file_t *file,
 			corsaro_interval_t *int_start);
-  int (*interval_end)(corsaro_t *corsaro, corsaro_file_t *file, 
+  int (*interval_end)(corsaro_t *corsaro, corsaro_file_t *file,
 		      corsaro_interval_t *int_end);
-  int (*plugin_start)(corsaro_t *corsaro, corsaro_file_t *file, 
+  int (*plugin_start)(corsaro_t *corsaro, corsaro_file_t *file,
 		      corsaro_plugin_t *plugin);
-  int (*plugin_end)(corsaro_t *corsaro, corsaro_file_t *file, 
+  int (*plugin_end)(corsaro_t *corsaro, corsaro_file_t *file,
 		    corsaro_plugin_t *plugin);
-  int (*trailers)(corsaro_t *corsaro, corsaro_file_t *file, 
+  int (*trailers)(corsaro_t *corsaro, corsaro_file_t *file,
 		  corsaro_trailer_t *trailer);
 } output_funcs_t;
 
@@ -135,16 +135,16 @@ static int output_headers_ascii(corsaro_t *corsaro, corsaro_file_t *file,
     }
 
 
-  bytes_out += corsaro_file_printf(corsaro, file, 
-				   "# CORSARO_VERSION %"PRIu8".%"PRIu8"\n", 
+  bytes_out += corsaro_file_printf(corsaro, file,
+				   "# CORSARO_VERSION %"PRIu8".%"PRIu8"\n",
 				   ph->version_major, ph->version_minor);
-  bytes_out += corsaro_file_printf(corsaro, file, "# CORSARO_INITTIME %ld\n", 
+  bytes_out += corsaro_file_printf(corsaro, file, "# CORSARO_INITTIME %ld\n",
 				   ph->local_init_time);
-  bytes_out += corsaro_file_printf(corsaro, file, "# CORSARO_INTERVAL %d\n", 
+  bytes_out += corsaro_file_printf(corsaro, file, "# CORSARO_INTERVAL %d\n",
 				   ph->interval_length);
   if(ph->traceuri != NULL)
     {
-      bytes_out += corsaro_file_printf(corsaro, file, "# CORSARO_TRACEURI %s\n", 
+      bytes_out += corsaro_file_printf(corsaro, file, "# CORSARO_TRACEURI %s\n",
 				       ph->traceuri);
     }
 
@@ -152,8 +152,8 @@ static int output_headers_ascii(corsaro_t *corsaro, corsaro_file_t *file,
     {
       while((tmp = corsaro_plugin_next(corsaro->plugin_manager, tmp)) != NULL)
 	{
-	  bytes_out += corsaro_file_printf(corsaro, file, 
-					   "# CORSARO_PLUGIN %s\n", 
+	  bytes_out += corsaro_file_printf(corsaro, file,
+					   "# CORSARO_PLUGIN %s\n",
 					   tmp->name);
 	}
     }
@@ -161,7 +161,7 @@ static int output_headers_ascii(corsaro_t *corsaro, corsaro_file_t *file,
     {
       for(i=0;i<header->plugin_cnt;i++)
 	{
-	  bytes_out += corsaro_file_printf(corsaro, file, 
+	  bytes_out += corsaro_file_printf(corsaro, file,
 					   "# CORSARO_PLUGIN %s\n",
 					   corsaro_plugin_get_name_by_magic(
 									    corsaro->plugin_manager,
@@ -203,8 +203,8 @@ static int output_headers_binary(corsaro_t *corsaro, corsaro_file_t *file,
   /* interval length */
   bytes_htons(ptr, corsaro->interval);
 
-  if(corsaro_file_write(corsaro, file, &fbuffer[0], 
-			CORSARO_IO_HEADER_FIXED_BYTE_LEN) != 
+  if(corsaro_file_write(corsaro, file, &fbuffer[0],
+			CORSARO_IO_HEADER_FIXED_BYTE_LEN) !=
      CORSARO_IO_HEADER_FIXED_BYTE_LEN)
     {
       corsaro_log(__func__, corsaro, "could not dump byte array to file");
@@ -240,7 +240,7 @@ static int output_headers_binary(corsaro_t *corsaro, corsaro_file_t *file,
 	}
       bytes_out += 2;
     }
-  
+
   /* the plugin list */
   if(corsaro->plugin_manager->plugins_enabled != NULL)
     {
@@ -280,21 +280,21 @@ static int output_headers_binary(corsaro_t *corsaro, corsaro_file_t *file,
 static int output_interval_start_ascii(corsaro_t *corsaro, corsaro_file_t *file,
 				       corsaro_interval_t *int_start)
 {
-  return corsaro_file_printf(corsaro, file, 
-			     "# CORSARO_INTERVAL_START %d %ld\n", 
+  return corsaro_file_printf(corsaro, file,
+			     "# CORSARO_INTERVAL_START %d %ld\n",
 			     int_start->number, int_start->time);
 }
 
-static int output_interval_end_ascii(corsaro_t *corsaro, corsaro_file_t *file, 
+static int output_interval_end_ascii(corsaro_t *corsaro, corsaro_file_t *file,
 				     corsaro_interval_t *int_end)
 {
-  return corsaro_file_printf(corsaro, file, 
-			     "# CORSARO_INTERVAL_END %d %ld\n", 
-			     int_end->number, 
+  return corsaro_file_printf(corsaro, file,
+			     "# CORSARO_INTERVAL_END %d %ld\n",
+			     int_end->number,
 			     int_end->time);
 }
 
-static int write_interval_header_binary(corsaro_t * corsaro, corsaro_file_t *file, 
+static int write_interval_header_binary(corsaro_t * corsaro, corsaro_file_t *file,
 					corsaro_interval_t *interval)
 {
   corsaro_interval_t nint;
@@ -312,8 +312,8 @@ static int write_interval_header_binary(corsaro_t * corsaro, corsaro_file_t *fil
   iptr+=2;
   bytes_htonl(iptr, tv.tv_sec);
 
-  if(corsaro_file_write(corsaro, file, &ibuff[0], 
-			CORSARO_IO_INTERVAL_HEADER_BYTE_LEN) != 
+  if(corsaro_file_write(corsaro, file, &ibuff[0],
+			CORSARO_IO_INTERVAL_HEADER_BYTE_LEN) !=
      CORSARO_IO_INTERVAL_HEADER_BYTE_LEN)
     {
       corsaro_log(__func__, corsaro, "could not dump interval header to file");
@@ -327,7 +327,7 @@ static int write_interval_header_binary(corsaro_t * corsaro, corsaro_file_t *fil
   nint.magic = htonl(interval->magic);
   nint.number = htons(interval->number);
   nint.time = htonl(interval->time);
-  
+
   if(corsaro_file_write(corsaro, file, &nint, sizeof(corsaro_interval_t)) !=
      sizeof(corsaro_interval_t))
     {
@@ -344,29 +344,29 @@ static int output_interval_start_binary(corsaro_t *corsaro, corsaro_file_t *file
   return write_interval_header_binary(corsaro, file, int_start);
 }
 
-static int output_interval_end_binary(corsaro_t *corsaro, corsaro_file_t *file, 
+static int output_interval_end_binary(corsaro_t *corsaro, corsaro_file_t *file,
 				      corsaro_interval_t *int_end)
 {
   return write_interval_header_binary(corsaro, file, int_end);
 }
 
-static int output_plugin_start_ascii(corsaro_t *corsaro, corsaro_file_t *file, 
+static int output_plugin_start_ascii(corsaro_t *corsaro, corsaro_file_t *file,
 				     corsaro_plugin_t *plugin)
 {
-  return corsaro_file_printf(corsaro, file, 
-			     "# CORSARO_PLUGIN_DATA_START %s\n", 
+  return corsaro_file_printf(corsaro, file,
+			     "# CORSARO_PLUGIN_DATA_START %s\n",
 			     plugin->name);
 }
 
-static int output_plugin_end_ascii(corsaro_t *corsaro, corsaro_file_t *file, 
+static int output_plugin_end_ascii(corsaro_t *corsaro, corsaro_file_t *file,
 				   corsaro_plugin_t *plugin)
 {
-  return corsaro_file_printf(corsaro, file, 
-			     "# CORSARO_PLUGIN_DATA_END %s\n", 
+  return corsaro_file_printf(corsaro, file,
+			     "# CORSARO_PLUGIN_DATA_END %s\n",
 			     plugin->name);
 }
 
-static int write_plugin_header_binary(corsaro_t *corsaro, corsaro_file_t *file, 
+static int write_plugin_header_binary(corsaro_t *corsaro, corsaro_file_t *file,
 				      corsaro_plugin_t *plugin)
 {
   corsaro_plugin_data_t data = {
@@ -374,25 +374,25 @@ static int write_plugin_header_binary(corsaro_t *corsaro, corsaro_file_t *file,
     htonl(CORSARO_MAGIC_DATA),
     htonl(plugin->magic),
   };
- 
-  if(corsaro_file_write(corsaro, file, &data, 
-			sizeof(corsaro_plugin_data_t)) != 
+
+  if(corsaro_file_write(corsaro, file, &data,
+			sizeof(corsaro_plugin_data_t)) !=
      sizeof(corsaro_plugin_data_t))
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		  "could not dump interval data header to file");
       return -1;
     }
   return sizeof(corsaro_plugin_data_t);
 }
 
-static int output_plugin_start_binary(corsaro_t *corsaro, corsaro_file_t *file, 
+static int output_plugin_start_binary(corsaro_t *corsaro, corsaro_file_t *file,
 				      corsaro_plugin_t *plugin)
 {
   return write_plugin_header_binary(corsaro, file, plugin);
 }
 
-static int output_plugin_end_binary(corsaro_t *corsaro, corsaro_file_t *file, 
+static int output_plugin_end_binary(corsaro_t *corsaro, corsaro_file_t *file,
 				    corsaro_plugin_t *plugin)
 {
   return write_plugin_header_binary(corsaro, file, plugin);
@@ -415,32 +415,32 @@ static int output_trailers_ascii(corsaro_t *corsaro, corsaro_file_t *file,
 
   gettimeofday_wrap(&ts);
 
-  bytes_out += corsaro_file_printf(corsaro, file, 
-				   "# CORSARO_PACKETCNT %"PRIu64"\n", 
+  bytes_out += corsaro_file_printf(corsaro, file,
+				   "# CORSARO_PACKETCNT %"PRIu64"\n",
 				   corsaro->packet_cnt);
   if(acnt != UINT64_MAX)
     {
-      bytes_out += corsaro_file_printf(corsaro, file, 
-				       "# CORSARO_ACCEPTEDCNT %"PRIu64"\n", 
+      bytes_out += corsaro_file_printf(corsaro, file,
+				       "# CORSARO_ACCEPTEDCNT %"PRIu64"\n",
 				       acnt);
     }
   if(dcnt != UINT64_MAX)
     {
-      bytes_out += corsaro_file_printf(corsaro, file, 
-				       "# CORSARO_DROPPEDCNT %"PRIu64"\n", 
+      bytes_out += corsaro_file_printf(corsaro, file,
+				       "# CORSARO_DROPPEDCNT %"PRIu64"\n",
 				       dcnt);
     }
-  bytes_out += corsaro_file_printf(corsaro, file, "# CORSARO_FIRSTPKT %ld\n", 
+  bytes_out += corsaro_file_printf(corsaro, file, "# CORSARO_FIRSTPKT %ld\n",
 				   corsaro->first_ts.tv_sec);
-  bytes_out += corsaro_file_printf(corsaro, file, "# CORSARO_LASTPKT %ld\n", 
+  bytes_out += corsaro_file_printf(corsaro, file, "# CORSARO_LASTPKT %ld\n",
 				   corsaro->last_ts.tv_sec);
-  bytes_out += corsaro_file_printf(corsaro, file, "# CORSARO_FINALTIME %ld\n", 
+  bytes_out += corsaro_file_printf(corsaro, file, "# CORSARO_FINALTIME %ld\n",
 				   ts.tv_sec);
-  bytes_out += corsaro_file_printf(corsaro, file, "# CORSARO_RUNTIME %ld\n", 
+  bytes_out += corsaro_file_printf(corsaro, file, "# CORSARO_RUNTIME %ld\n",
 				   ts.tv_sec-corsaro->init_time.tv_sec);
 
   corsaro_log(__func__, corsaro, "pkt cnt: %"PRIu64, corsaro->packet_cnt);
-  
+
   return bytes_out;
 }
 
@@ -464,7 +464,7 @@ static int output_trailers_binary(corsaro_t *corsaro, corsaro_file_t *file,
 
   bytes_htonll(ptr, corsaro_get_accepted_packets(corsaro));
   ptr+=8;
-  
+
   bytes_htonll(ptr, corsaro_get_dropped_packets(corsaro));
   ptr+=8;
 
@@ -479,13 +479,13 @@ static int output_trailers_binary(corsaro_t *corsaro, corsaro_file_t *file,
 
   bytes_htonl(ptr, ts.tv_sec-corsaro->init_time.tv_sec);
 
-  if(corsaro_file_write(corsaro, file, &buff[0], CORSARO_IO_TRAILER_BYTE_LEN) != 
+  if(corsaro_file_write(corsaro, file, &buff[0], CORSARO_IO_TRAILER_BYTE_LEN) !=
      CORSARO_IO_TRAILER_BYTE_LEN)
     {
       corsaro_log(__func__, corsaro, "could not dump trailers to file");
       return -1;
     }
-  
+
   corsaro_log(__func__, corsaro, "pkt cnt: %"PRIu64, corsaro->packet_cnt);
   return CORSARO_IO_TRAILER_BYTE_LEN;
 }
@@ -503,7 +503,7 @@ static char *generate_file_name(corsaro_t *corsaro, const char *plugin,
 				corsaro_interval_t *interval,
 				corsaro_file_compress_t compress)
 {
-  /* some of the structure of this code is borrowed from the 
+  /* some of the structure of this code is borrowed from the
      FreeBSD implementation of strftime */
 
   /* the output buffer */
@@ -540,7 +540,7 @@ static char *generate_file_name(corsaro_t *corsaro, const char *plugin,
 
 	      /* BEWARE: if you add a new pattern here, you must also add it to
 	       * corsaro_io_template_has_timestamp */
-	      
+
 	    case CORSARO_IO_MONITOR_PATTERN:
 	      bufp = stradd(corsaro->monitorname, bufp, buflim);
 	      continue;
@@ -658,14 +658,14 @@ static int validate_trailer(corsaro_trailer_t *t)
   return 1;
 }
 
-off_t read_plugin_data(corsaro_in_t *corsaro, 
-		       corsaro_file_in_t *file, 
+off_t read_plugin_data(corsaro_in_t *corsaro,
+		       corsaro_file_in_t *file,
 		       corsaro_in_record_type_t *record_type,
 		       corsaro_in_record_t *record)
 {
   off_t bread = -1;
-  if((bread = corsaro_io_read_bytes(corsaro, record, 
-				    sizeof(corsaro_plugin_data_t))) != 
+  if((bread = corsaro_io_read_bytes(corsaro, record,
+				    sizeof(corsaro_plugin_data_t))) !=
      sizeof(corsaro_plugin_data_t))
     {
       *record_type = CORSARO_IN_RECORD_TYPE_NULL;
@@ -685,18 +685,18 @@ off_t read_plugin_data(corsaro_in_t *corsaro,
 
 /* == EXPORTED FUNCTIONS BELOW THIS POINT == */
 
-corsaro_file_t *corsaro_io_prepare_file(corsaro_t *corsaro, 
+corsaro_file_t *corsaro_io_prepare_file(corsaro_t *corsaro,
 					const char *plugin_name,
 					corsaro_interval_t *interval)
 {
   return corsaro_io_prepare_file_full(corsaro, plugin_name, interval,
 				      corsaro->output_mode,
-				      corsaro->compress, 
+				      corsaro->compress,
 				      corsaro->compress_level,
 				      O_CREAT);
 }
 
-corsaro_file_t *corsaro_io_prepare_file_full(corsaro_t *corsaro, 
+corsaro_file_t *corsaro_io_prepare_file_full(corsaro_t *corsaro,
 					     const char *plugin_name,
 					     corsaro_interval_t *interval,
 					     corsaro_file_mode_t mode,
@@ -708,22 +708,22 @@ corsaro_file_t *corsaro_io_prepare_file_full(corsaro_t *corsaro,
   char *outfileuri;
 
   /* generate a file name based on the plugin name */
-  if((outfileuri = generate_file_name(corsaro, plugin_name, 
+  if((outfileuri = generate_file_name(corsaro, plugin_name,
 				      interval, compress)) == NULL)
     {
-      corsaro_log(__func__, corsaro, "could not generate file name for %s", 
+      corsaro_log(__func__, corsaro, "could not generate file name for %s",
 		  plugin_name);
       return NULL;
     }
-  
-  if((f = corsaro_file_open(corsaro, 
-			    outfileuri, 
-			    mode, 
-			    compress, 
+
+  if((f = corsaro_file_open(corsaro,
+			    outfileuri,
+			    mode,
+			    compress,
 			    compress_level,
 			    flags)) == NULL)
     {
-      corsaro_log(__func__, corsaro, "could not open %s for writing", 
+      corsaro_log(__func__, corsaro, "could not open %s for writing",
 		  outfileuri);
       return NULL;
     }
@@ -781,7 +781,7 @@ int corsaro_io_template_has_timestamp(corsaro_t *corsaro)
 	}
     }
   return 0;
-  
+
 }
 
 off_t corsaro_io_write_header(corsaro_t *corsaro, corsaro_file_t *file,
@@ -792,17 +792,17 @@ off_t corsaro_io_write_header(corsaro_t *corsaro, corsaro_file_t *file,
   return output_funcs[CORSARO_FILE_MODE(file)].headers(corsaro, file, header);
 }
 
-void corsaro_io_print_header(corsaro_plugin_manager_t *plugin_manager, 
+void corsaro_io_print_header(corsaro_plugin_manager_t *plugin_manager,
 			     corsaro_header_t *header)
 {
   int i;
 
-  fprintf(stdout, "# CORSARO_VERSION %"PRIu8".%"PRIu8"\n", 
+  fprintf(stdout, "# CORSARO_VERSION %"PRIu8".%"PRIu8"\n",
 	  header->version_major, header->version_minor);
-  fprintf(stdout, "# CORSARO_INITTIME %"PRIu32"\n", 
+  fprintf(stdout, "# CORSARO_INITTIME %"PRIu32"\n",
 	  header->local_init_time);
   fprintf(stdout, "# CORSARO_INTERVAL %"PRIu16"\n", header->interval_length);
-  
+
   if(header->traceuri != NULL)
     {
       fprintf(stdout, "# CORSARO_TRACEURI %s\n", header->traceuri);
@@ -816,7 +816,7 @@ void corsaro_io_print_header(corsaro_plugin_manager_t *plugin_manager,
 					       )
 	      );
     }
-  
+
 }
 
 off_t corsaro_io_write_trailer(corsaro_t *corsaro, corsaro_file_t *file,
@@ -824,31 +824,31 @@ off_t corsaro_io_write_trailer(corsaro_t *corsaro, corsaro_file_t *file,
 {
   assert(CORSARO_FILE_MODE(file) == CORSARO_FILE_MODE_ASCII ||
 	 CORSARO_FILE_MODE(file) == CORSARO_FILE_MODE_BINARY);
-  return output_funcs[CORSARO_FILE_MODE(file)].trailers(corsaro, file, 
+  return output_funcs[CORSARO_FILE_MODE(file)].trailers(corsaro, file,
 							trailer);
 }
 
 void corsaro_io_print_trailer(corsaro_trailer_t *trailer)
 {
-  fprintf(stdout, "# CORSARO_PACKETCNT %"PRIu64"\n", 
+  fprintf(stdout, "# CORSARO_PACKETCNT %"PRIu64"\n",
 	  trailer->packet_cnt);
   if(trailer->accepted_cnt != UINT64_MAX)
     {
-      fprintf(stdout, "# CORSARO_ACCEPTEDCNT %"PRIu64"\n", 
+      fprintf(stdout, "# CORSARO_ACCEPTEDCNT %"PRIu64"\n",
 	      trailer->accepted_cnt);
     }
   if(trailer->dropped_cnt != UINT64_MAX)
     {
-      fprintf(stdout, "# CORSARO_DROPPEDCNT %"PRIu64"\n", 
+      fprintf(stdout, "# CORSARO_DROPPEDCNT %"PRIu64"\n",
 	      trailer->dropped_cnt);
     }
-  fprintf(stdout, "# CORSARO_FIRSTPKT %"PRIu32"\n", 
+  fprintf(stdout, "# CORSARO_FIRSTPKT %"PRIu32"\n",
 	  trailer->first_packet_time);
   fprintf(stdout, "# CORSARO_LASTPKT %"PRIu32"\n",
 	  trailer->last_packet_time);
-  fprintf(stdout, "# CORSARO_FINALTIME %"PRIu32"\n", 
+  fprintf(stdout, "# CORSARO_FINALTIME %"PRIu32"\n",
 	  trailer->local_final_time);
-  fprintf(stdout, "# CORSARO_RUNTIME %"PRIu32"\n", 
+  fprintf(stdout, "# CORSARO_RUNTIME %"PRIu32"\n",
 	  trailer->runtime);
 }
 
@@ -865,25 +865,25 @@ off_t corsaro_io_write_interval_start(corsaro_t *corsaro, corsaro_file_t *file,
 void corsaro_io_print_interval_start(corsaro_interval_t *int_start)
 {
   fprintf(stdout,
-	  "# CORSARO_INTERVAL_START %d %"PRIu32"\n", 
+	  "# CORSARO_INTERVAL_START %d %"PRIu32"\n",
 	  int_start->number, int_start->time);
 }
 
-off_t corsaro_io_write_interval_end(corsaro_t *corsaro, corsaro_file_t *file, 
+off_t corsaro_io_write_interval_end(corsaro_t *corsaro, corsaro_file_t *file,
 				    corsaro_interval_t *int_end)
 {
   assert(CORSARO_FILE_MODE(file) == CORSARO_FILE_MODE_ASCII ||
 	 CORSARO_FILE_MODE(file) == CORSARO_FILE_MODE_BINARY);
-  return (output_funcs[CORSARO_FILE_MODE(file)].interval_end)(corsaro, file, 
+  return (output_funcs[CORSARO_FILE_MODE(file)].interval_end)(corsaro, file,
 							      int_end);
 }
 
 void corsaro_io_print_interval_end(corsaro_interval_t *int_end)
 {
-  fprintf(stdout,  
-	  "# CORSARO_INTERVAL_END %d %"PRIu32"\n", 
-	  int_end->number, 
-	  int_end->time);  
+  fprintf(stdout,
+	  "# CORSARO_INTERVAL_END %d %"PRIu32"\n",
+	  int_end->number,
+	  int_end->time);
 }
 
 off_t corsaro_io_write_plugin_start(corsaro_t *corsaro, corsaro_file_t *file,
@@ -893,7 +893,7 @@ off_t corsaro_io_write_plugin_start(corsaro_t *corsaro, corsaro_file_t *file,
 	 CORSARO_FILE_MODE(file) == CORSARO_FILE_MODE_BINARY);
   assert(plugin != NULL);
 
-  return (output_funcs[CORSARO_FILE_MODE(file)].plugin_start)(corsaro, file, 
+  return (output_funcs[CORSARO_FILE_MODE(file)].plugin_start)(corsaro, file,
 							      plugin);
 }
 
@@ -902,20 +902,20 @@ void corsaro_io_print_plugin_start(corsaro_plugin_t *plugin)
   fprintf(stdout, "# CORSARO_PLUGIN_DATA_START %s\n", plugin->name);
 }
 
-off_t corsaro_io_write_plugin_end(corsaro_t *corsaro, corsaro_file_t *file, 
+off_t corsaro_io_write_plugin_end(corsaro_t *corsaro, corsaro_file_t *file,
 				  corsaro_plugin_t *plugin)
 {
   assert(CORSARO_FILE_MODE(file) == CORSARO_FILE_MODE_ASCII ||
 	 CORSARO_FILE_MODE(file) == CORSARO_FILE_MODE_BINARY);
   assert(plugin != NULL);
 
-  return (output_funcs[CORSARO_FILE_MODE(file)].plugin_end)(corsaro, file, 
+  return (output_funcs[CORSARO_FILE_MODE(file)].plugin_end)(corsaro, file,
 							    plugin);
 }
 
 void corsaro_io_print_plugin_end(corsaro_plugin_t *plugin)
 {
-  fprintf(stdout, "# CORSARO_PLUGIN_DATA_END %s\n", plugin->name); 
+  fprintf(stdout, "# CORSARO_PLUGIN_DATA_END %s\n", plugin->name);
 }
 
 /**
@@ -937,7 +937,7 @@ off_t corsaro_io_write_record(corsaro_t *corsaro, corsaro_file_t *file,
       */
       return 0;
       break;
-      
+
     case CORSARO_IN_RECORD_TYPE_IO_HEADER:
       return corsaro_io_write_header(corsaro, file,
 				     (corsaro_header_t *)record->buffer);
@@ -946,14 +946,14 @@ off_t corsaro_io_write_record(corsaro_t *corsaro, corsaro_file_t *file,
       return corsaro_io_write_trailer(corsaro, file,
 				      (corsaro_trailer_t *)record->buffer);
       break;
-      
+
     case CORSARO_IN_RECORD_TYPE_IO_INTERVAL_START:
-      return corsaro_io_write_interval_start(corsaro, file, 
+      return corsaro_io_write_interval_start(corsaro, file,
 					     (corsaro_interval_t *)record->buffer);
       break;
 
     case CORSARO_IN_RECORD_TYPE_IO_INTERVAL_END:
-      return corsaro_io_write_interval_end(corsaro, file, 
+      return corsaro_io_write_interval_end(corsaro, file,
 					   (corsaro_interval_t *)record->buffer);
       break;
 
@@ -1027,7 +1027,7 @@ int corsaro_io_print_record(corsaro_plugin_manager_t *plugin_manager,
 	fprintf(stderr, "refusing to write null record to file");
       */
       break;
-      
+
     case CORSARO_IN_RECORD_TYPE_IO_HEADER:
       corsaro_io_print_header(plugin_manager,
 			      (corsaro_header_t *)record->buffer);
@@ -1036,7 +1036,7 @@ int corsaro_io_print_record(corsaro_plugin_manager_t *plugin_manager,
     case CORSARO_IN_RECORD_TYPE_IO_TRAILER:
       corsaro_io_print_trailer((corsaro_trailer_t *)record->buffer);
       break;
-      
+
     case CORSARO_IN_RECORD_TYPE_IO_INTERVAL_START:
       corsaro_io_print_interval_start((corsaro_interval_t *)record->buffer);
       break;
@@ -1097,7 +1097,7 @@ int corsaro_io_print_record(corsaro_plugin_manager_t *plugin_manager,
       fprintf(stderr, "invalid record type %d\n", (int)record_type);
       return -1;
     }
-    
+
   return 0;
 }
 
@@ -1136,12 +1136,12 @@ off_t corsaro_io_read_header(corsaro_in_t *corsaro, corsaro_file_in_t *file,
   else
     {
       /* read the traceuri into the buffer */
-      if((bread += corsaro_io_read_bytes_offset(corsaro, record, 
+      if((bread += corsaro_io_read_bytes_offset(corsaro, record,
 						offset,
-						header->traceuri_len)) != 
+						header->traceuri_len)) !=
 	 (bsbread+=header->traceuri_len))
 	{
-	  corsaro_log_in(__func__, corsaro, 
+	  corsaro_log_in(__func__, corsaro,
 			 "failed to read traceuri from file");
 	  *record_type = CORSARO_IN_RECORD_TYPE_NULL;
 	  return bread;
@@ -1153,14 +1153,14 @@ off_t corsaro_io_read_header(corsaro_in_t *corsaro, corsaro_file_in_t *file,
     }
 
   /* now, read the plugin count */
-  if((bread += corsaro_io_read_bytes_offset(corsaro, record, 
+  if((bread += corsaro_io_read_bytes_offset(corsaro, record,
 					    CORSARO_IO_HEADER_FIXED_BYTE_LEN
 					    +sizeof(uint16_t)
 					    +sizeof(uint8_t*),
-					    sizeof(uint16_t))) != 
+					    sizeof(uint16_t))) !=
      (bsbread+=sizeof(uint16_t)))
     {
-      corsaro_log_in(__func__, corsaro, 
+      corsaro_log_in(__func__, corsaro,
 		     "failed to read plugin count from file");
       *record_type = CORSARO_IN_RECORD_TYPE_NULL;
       return bread;
@@ -1175,13 +1175,13 @@ off_t corsaro_io_read_header(corsaro_in_t *corsaro, corsaro_file_in_t *file,
   else
     {
       /* read the plugin array into the buffer */
-      if((bread += corsaro_io_read_bytes_offset(corsaro, record, 
+      if((bread += corsaro_io_read_bytes_offset(corsaro, record,
 						offset,
 						sizeof(uint32_t)
-						*header->plugin_cnt)) != 
+						*header->plugin_cnt)) !=
 	 (bsbread+=sizeof(uint32_t)*header->plugin_cnt))
 	{
-	  corsaro_log_in(__func__, corsaro, 
+	  corsaro_log_in(__func__, corsaro,
 			 "failed to read plugin magics from file");
 	  *record_type = CORSARO_IN_RECORD_TYPE_NULL;
 	  return bread;
@@ -1209,8 +1209,8 @@ off_t corsaro_io_read_trailer(corsaro_in_t *corsaro, corsaro_file_in_t *file,
 {
   off_t bytes_read;
 
-  if((bytes_read = corsaro_io_read_bytes(corsaro, record, 
-					 sizeof(corsaro_trailer_t))) != 
+  if((bytes_read = corsaro_io_read_bytes(corsaro, record,
+					 sizeof(corsaro_trailer_t))) !=
      sizeof(corsaro_trailer_t))
     {
       *record_type = CORSARO_IN_RECORD_TYPE_NULL;
@@ -1235,8 +1235,8 @@ off_t corsaro_io_read_interval_start(corsaro_in_t *corsaro, corsaro_file_in_t *f
 {
   off_t bread;
 
-  if((bread = corsaro_io_read_bytes(corsaro, record, 
-				    CORSARO_IO_INTERVAL_HEADER_BYTE_LEN)) != 
+  if((bread = corsaro_io_read_bytes(corsaro, record,
+				    CORSARO_IO_INTERVAL_HEADER_BYTE_LEN)) !=
      CORSARO_IO_INTERVAL_HEADER_BYTE_LEN)
     {
       *record_type = CORSARO_IN_RECORD_TYPE_NULL;
@@ -1263,8 +1263,8 @@ off_t corsaro_io_read_interval_end(corsaro_in_t *corsaro, corsaro_file_in_t *fil
 {
   off_t bread;
 
-  if((bread = corsaro_io_read_bytes(corsaro, record, 
-				    CORSARO_IO_INTERVAL_HEADER_BYTE_LEN)) != 
+  if((bread = corsaro_io_read_bytes(corsaro, record,
+				    CORSARO_IO_INTERVAL_HEADER_BYTE_LEN)) !=
      CORSARO_IO_INTERVAL_HEADER_BYTE_LEN)
     {
       *record_type = CORSARO_IN_RECORD_TYPE_NULL;
@@ -1285,8 +1285,8 @@ off_t corsaro_io_read_interval_end(corsaro_in_t *corsaro, corsaro_file_in_t *fil
   return bread;
 }
 
-off_t corsaro_io_read_plugin_start(corsaro_in_t *corsaro, 
-				   corsaro_file_in_t *file, 
+off_t corsaro_io_read_plugin_start(corsaro_in_t *corsaro,
+				   corsaro_file_in_t *file,
 				   corsaro_in_record_type_t *record_type,
 				   corsaro_in_record_t *record)
 {
@@ -1300,7 +1300,7 @@ off_t corsaro_io_read_plugin_start(corsaro_in_t *corsaro,
   return bread;
 }
 
-off_t corsaro_io_read_plugin_end(corsaro_in_t *corsaro, corsaro_file_in_t *file, 
+off_t corsaro_io_read_plugin_end(corsaro_in_t *corsaro, corsaro_file_in_t *file,
 				 corsaro_in_record_type_t *record_type,
 				 corsaro_in_record_t *record)
 {
@@ -1323,13 +1323,13 @@ off_t corsaro_io_read_bytes(corsaro_in_t *corsaro, corsaro_in_record_t *record,
   return corsaro_file_rread(corsaro->file, record->buffer, len);
 }
 
-off_t corsaro_io_read_bytes_offset(corsaro_in_t *corsaro, 
+off_t corsaro_io_read_bytes_offset(corsaro_in_t *corsaro,
 				   corsaro_in_record_t *record,
 				   off_t offset, off_t len)
 {
   /* fix this with a realloc later? */
   assert(record->buffer_len >= offset+len);
 
-  return corsaro_file_rread(corsaro->file, 
+  return corsaro_file_rread(corsaro->file,
 			    (record->buffer)+offset, len);
 }

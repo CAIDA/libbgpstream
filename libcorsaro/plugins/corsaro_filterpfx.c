@@ -1,11 +1,11 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
  * corsaro-info@caida.org
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
  *
  * corsaro is free software: you can redistribute it and/or modify
@@ -111,7 +111,7 @@ struct corsaro_filterpfx_state_t {
 /** Print usage information to stderr */
 static void usage(corsaro_plugin_t *plugin)
 {
-  fprintf(stderr, 
+  fprintf(stderr,
 	  "plugin usage: %s [-di] [-p pfx [-p pfx]] [-f pfx_file]\n"
 	  "       -d            use destination address (default: source)\n"
 	  "       -f            read prefixes from the given file\n"
@@ -155,7 +155,7 @@ static int parse_args(corsaro_t *corsaro)
 	    {
 	      fprintf(stderr, "ERROR: A maximum of %d prefixes can be "
 		      "specified using the -p option.\n"
-		      "Consider using the -f option instead\n", 
+		      "Consider using the -f option instead\n",
 		      MAX_COMMAND_LINE_PREFIXES);
 	      usage(plugin);
 	      return -1;
@@ -182,7 +182,7 @@ static int parse_args(corsaro_t *corsaro)
 
   if(state->pfx_file != NULL && state->cmd_prefix_cnt > 0)
     {
-      fprintf(stderr, 
+      fprintf(stderr,
 	      "WARNING: both -f and -p used, all specified prefixes "
 	      "will be used\n");
     }
@@ -201,13 +201,13 @@ static int add_prefix(corsaro_t *corsaro, char *pfx_str)
     {
       /* invalid prefix? */
       /* skip it, or explode? */
-      
+
       /* explode, but only if asserts are on */
       corsaro_log(__func__, corsaro, "failed to parse prefix '%s'",
 		  pfx_str);
       assert(0);
     }
-  
+
   /* shove it in the trie */
   if((trie_node = patricia_lookup(STATE(corsaro)->trie, pfx)) == NULL)
     {
@@ -222,18 +222,18 @@ static int add_prefix(corsaro_t *corsaro, char *pfx_str)
 static int read_pfx_file(corsaro_t *corsaro, corsaro_file_in_t *file)
 {
   char buffer[BUFFER_LEN];
-  
+
   while(corsaro_file_rgets(file, &buffer, BUFFER_LEN) > 0)
     {
       /* hack off the newline */
       chomp(buffer);
-      
+
       if(add_prefix(corsaro, buffer) != 0)
 	{
 	  return -1;
 	}
     }
-  
+
   return 0;
 }
 
@@ -249,7 +249,7 @@ static int process_generic(corsaro_t *corsaro, corsaro_packet_state_t *state,
   pfx.ref_count = 0;
   pfx.add.sin.s_addr = ip_addr;
 
-  if((node = patricia_search_best2(plugin_state->trie, 
+  if((node = patricia_search_best2(plugin_state->trie,
 				   &pfx, 1)) == NULL)
     {
       /* this address is NOT covered by a prefix */
@@ -285,7 +285,7 @@ int corsaro_filterpfx_probe_filename(const char *fname)
 }
 
 /** Implements the probe_magic function of the plugin API */
-int corsaro_filterpfx_probe_magic(corsaro_in_t *corsaro, 
+int corsaro_filterpfx_probe_magic(corsaro_in_t *corsaro,
 				    corsaro_file_in_t *file)
 {
   /* this writes no files! */
@@ -304,7 +304,7 @@ int corsaro_filterpfx_init_output(corsaro_t *corsaro)
 
   if((state = malloc_zero(sizeof(struct corsaro_filterpfx_state_t))) == NULL)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		  "could not malloc corsaro_maxmind_state_t");
       return -1;
     }
@@ -326,9 +326,9 @@ int corsaro_filterpfx_init_output(corsaro_t *corsaro)
     {
       if((file = corsaro_file_ropen(state->pfx_file)) == NULL)
 	{
-	  corsaro_log(__func__, corsaro, 
+	  corsaro_log(__func__, corsaro,
 		      "failed to open prefix file '%s'", state->pfx_file);
-	  
+
 	  goto err;
 	}
 
@@ -385,7 +385,7 @@ int corsaro_filterpfx_close_input(corsaro_in_t *corsaro)
 
 /** Implements the close_output function of the plugin API */
 int corsaro_filterpfx_close_output(corsaro_t *corsaro)
-{  
+{
   struct corsaro_filterpfx_state_t *state = STATE(corsaro);
   if(state != NULL)
     {
@@ -400,8 +400,8 @@ int corsaro_filterpfx_close_output(corsaro_t *corsaro)
 }
 
 /** Implements the read_record function of the plugin API */
-off_t corsaro_filterpfx_read_record(struct corsaro_in *corsaro, 
-				      corsaro_in_record_type_t *record_type, 
+off_t corsaro_filterpfx_read_record(struct corsaro_in *corsaro,
+				      corsaro_in_record_type_t *record_type,
 				      corsaro_in_record_t *record)
 {
   assert(0);
@@ -409,8 +409,8 @@ off_t corsaro_filterpfx_read_record(struct corsaro_in *corsaro,
 }
 
 /** Implements the read_global_data_record function of the plugin API */
-off_t corsaro_filterpfx_read_global_data_record(struct corsaro_in *corsaro, 
-				  enum corsaro_in_record_type *record_type, 
+off_t corsaro_filterpfx_read_global_data_record(struct corsaro_in *corsaro,
+				  enum corsaro_in_record_type *record_type,
 			          struct corsaro_in_record *record)
 {
   /* we write nothing to the global file. someone messed up */
@@ -418,7 +418,7 @@ off_t corsaro_filterpfx_read_global_data_record(struct corsaro_in *corsaro,
 }
 
 /** Implements the start_interval function of the plugin API */
-int corsaro_filterpfx_start_interval(corsaro_t *corsaro, 
+int corsaro_filterpfx_start_interval(corsaro_t *corsaro,
 				       corsaro_interval_t *int_start)
 {
   /* we don't care */
@@ -426,7 +426,7 @@ int corsaro_filterpfx_start_interval(corsaro_t *corsaro,
 }
 
 /** Implements the end_interval function of the plugin API */
-int corsaro_filterpfx_end_interval(corsaro_t *corsaro, 
+int corsaro_filterpfx_end_interval(corsaro_t *corsaro,
 				     corsaro_interval_t *int_end)
 {
   /* we don't care */
@@ -434,13 +434,13 @@ int corsaro_filterpfx_end_interval(corsaro_t *corsaro,
 }
 
 /** Implements the process_packet function of the plugin API */
-int corsaro_filterpfx_process_packet(corsaro_t *corsaro, 
+int corsaro_filterpfx_process_packet(corsaro_t *corsaro,
 				       corsaro_packet_t *packet)
 {
   libtrace_packet_t *ltpacket = LT_PKT(packet);
   libtrace_ip_t  *ip_hdr  = NULL;
   uint32_t ip_addr;
-  
+
   /* check for ipv4 */
   if((ip_hdr = trace_get_ip(ltpacket)) == NULL)
     {
@@ -450,7 +450,7 @@ int corsaro_filterpfx_process_packet(corsaro_t *corsaro,
 
   ip_addr = (STATE(corsaro)->destination == 0) ? ip_hdr->ip_src.s_addr :
     ip_hdr->ip_dst.s_addr;
-  
+
   return process_generic(corsaro, &packet->state, ip_addr);
 }
 
@@ -462,7 +462,7 @@ int corsaro_filterpfx_process_flowtuple(corsaro_t *corsaro,
 {
   uint32_t ip_addr;
 
-  ip_addr = (STATE(corsaro)->destination == 0) ? 
+  ip_addr = (STATE(corsaro)->destination == 0) ?
     corsaro_flowtuple_get_source_ip(flowtuple) :
     corsaro_flowtuple_get_destination_ip(flowtuple);
 

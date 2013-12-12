@@ -1,11 +1,11 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
  * corsaro-info@caida.org
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
  *
  * corsaro is free software: you can redistribute it and/or modify
@@ -266,13 +266,13 @@ int corsaro_anon_close_input(corsaro_in_t *corsaro)
 
 /** Implements the close_output function of the plugin API */
 int corsaro_anon_close_output(corsaro_t *corsaro)
-{  
+{
   return 0;
 }
 
 /** Implements the read_record function of the plugin API */
-off_t corsaro_anon_read_record(struct corsaro_in *corsaro, 
-			       corsaro_in_record_type_t *record_type, 
+off_t corsaro_anon_read_record(struct corsaro_in *corsaro,
+			       corsaro_in_record_type_t *record_type,
 			       corsaro_in_record_t *record)
 {
   assert(0);
@@ -280,8 +280,8 @@ off_t corsaro_anon_read_record(struct corsaro_in *corsaro,
 }
 
 /** Implements the read_global_data_record function of the plugin API */
-off_t corsaro_anon_read_global_data_record(struct corsaro_in *corsaro, 
-			      enum corsaro_in_record_type *record_type, 
+off_t corsaro_anon_read_global_data_record(struct corsaro_in *corsaro,
+			      enum corsaro_in_record_type *record_type,
 			      struct corsaro_in_record *record)
 {
   /* we write nothing to the global file. someone messed up */
@@ -289,7 +289,7 @@ off_t corsaro_anon_read_global_data_record(struct corsaro_in *corsaro,
 }
 
 /** Implements the start_interval function of the plugin API */
-int corsaro_anon_start_interval(corsaro_t *corsaro, 
+int corsaro_anon_start_interval(corsaro_t *corsaro,
 				corsaro_interval_t *int_start)
 {
   /* we don't care */
@@ -297,7 +297,7 @@ int corsaro_anon_start_interval(corsaro_t *corsaro,
 }
 
 /** Implements the end_interval function of the plugin API */
-int corsaro_anon_end_interval(corsaro_t *corsaro, 
+int corsaro_anon_end_interval(corsaro_t *corsaro,
 			      corsaro_interval_t *int_end)
 {
   /* we don't care */
@@ -305,15 +305,15 @@ int corsaro_anon_end_interval(corsaro_t *corsaro,
 }
 
 /** Implements the process_packet function of the plugin API */
-int corsaro_anon_process_packet(corsaro_t *corsaro, 
+int corsaro_anon_process_packet(corsaro_t *corsaro,
 				corsaro_packet_t *packet)
 {
   struct corsaro_anon_state_t *state = STATE(corsaro);
   libtrace_ip_t *iphdr = trace_get_ip(LT_PKT(packet));
-  
+
   if(iphdr != NULL && (state->encrypt_source || state->encrypt_destination))
     {
-      corsaro_anon_ip_header(iphdr, state->encrypt_source, 
+      corsaro_anon_ip_header(iphdr, state->encrypt_source,
 			     state->encrypt_destination);
     }
 
@@ -334,7 +334,7 @@ int corsaro_anon_process_flowtuple(corsaro_t *corsaro,
 
   flowtuple->src_ip = htonl(src_ip_anon);
   CORSARO_FLOWTUPLE_IP_TO_SIXT(htonl(dst_ip_anon), flowtuple);
-  
+
   return 0;
 }
 

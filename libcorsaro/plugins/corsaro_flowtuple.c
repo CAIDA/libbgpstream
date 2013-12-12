@@ -1,11 +1,11 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
  * corsaro-info@caida.org
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
  *
  * corsaro is free software: you can redistribute it and/or modify
@@ -105,7 +105,7 @@ KSORT_INIT(sixt, corsaro_flowtuple_t*, corsaro_flowtuple_lt);
 
 /** Initialize the hash functions and datatypes */
 /*KHASH_INIT(sixt, corsaro_flowtuple_t*, khint32_t, 1, */
-KHASH_INIT(sixt, corsaro_flowtuple_t*, char, 0, 
+KHASH_INIT(sixt, corsaro_flowtuple_t*, char, 0,
 	   corsaro_flowtuple_hash_func, corsaro_flowtuple_hash_equal);
 
 /** Holds the state for an instance of this plugin */
@@ -147,7 +147,7 @@ struct corsaro_flowtuple_in_state_t {
 /** Print usage information to stderr */
 static void usage(corsaro_plugin_t *plugin)
 {
-  fprintf(stderr, 
+  fprintf(stderr,
 	  "plugin usage: %s [-s]\n"
 	  "       -s            disable flowtuple output sorting\n",
 	  plugin->argv[0]);
@@ -195,13 +195,13 @@ static int parse_args(corsaro_t *corsaro)
 }
 
 /**
- * Determines the traffic class for a packet; possible options are 
+ * Determines the traffic class for a packet; possible options are
  * CORSARO_FLOWTUPLE_CLASS_BACKSCATTER, CORSARO_FLOWTUPLE_CLASS_ICMPREQ,
  * CLASS_OTHER
- * 
+ *
  * This code is ported from crl_attack_flow.c::get_traffic_type
  */
-static int flowtuple_classify_packet(corsaro_t *corsaro, 
+static int flowtuple_classify_packet(corsaro_t *corsaro,
 				     libtrace_packet_t *packet)
 {
   void *temp = NULL;
@@ -210,7 +210,7 @@ static int flowtuple_classify_packet(corsaro_t *corsaro,
 
   libtrace_tcp_t  *tcp_hdr  = NULL;
   libtrace_icmp_t *icmp_hdr = NULL;
-  
+
   /* 10/19/12 ak removed check for ipv4 because it is checked in per_packet */
 
   /* get the transport header */
@@ -265,7 +265,7 @@ static int flowtuple_classify_packet(corsaro_t *corsaro,
 }
 
 /** Given a st hash, malloc and return a sorted array of pointers */
-static int sort_hash(corsaro_t *corsaro, kh_sixt_t *hash, 
+static int sort_hash(corsaro_t *corsaro, kh_sixt_t *hash,
 		     corsaro_flowtuple_t ***sorted)
 {
   khiter_t i;
@@ -283,10 +283,10 @@ static int sort_hash(corsaro_t *corsaro, kh_sixt_t *hash,
       /* no need to try and sort an empty hash */
       return 0;
     }
-						
-  for(i = kh_begin(hash); i != kh_end(hash); ++i)			
-    {	
-      if(kh_exist(hash, i))					
+
+  for(i = kh_begin(hash); i != kh_end(hash); ++i)
+    {
+      if(kh_exist(hash, i))
 	{
 	  *ptr = kh_key(hash, i);
 	  ptr++;
@@ -320,11 +320,11 @@ static int binary_dump(corsaro_t *corsaro, corsaro_flowtuple_class_type_t dist)
 
   if(corsaro_file_write(corsaro, STATE(corsaro)->outfile, &hbuf[0], 10) != 10)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		  "could not dump byte flowtuple header to file");
       return -1;
     }
-  
+
   if(kh_size(h) > 0)
     {
       if(state->sort_enabled == CORSARO_FLOWTUPLE_SORT_ENABLED)
@@ -335,14 +335,14 @@ static int binary_dump(corsaro_t *corsaro, corsaro_flowtuple_class_type_t dist)
 	      corsaro_log(__func__, corsaro, "could not sort keys");
 	      return -1;
 	    }
-	  for(j = 0; j < kh_size(h); j++)			
+	  for(j = 0; j < kh_size(h); j++)
 	    {
 	      if(corsaro_file_write(corsaro, STATE(corsaro)->outfile,
-				    sorted_keys[j], 
-				    CORSARO_FLOWTUPLE_BYTECNT) != 
+				    sorted_keys[j],
+				    CORSARO_FLOWTUPLE_BYTECNT) !=
 		 CORSARO_FLOWTUPLE_BYTECNT)
 		{
-		  corsaro_log(__func__, corsaro, 
+		  corsaro_log(__func__, corsaro,
 			      "could not write flowtuple to file");
 		  return -1;
 		}
@@ -350,8 +350,8 @@ static int binary_dump(corsaro_t *corsaro, corsaro_flowtuple_class_type_t dist)
 	      free(sorted_keys[j]);
 	    }
 	  free(sorted_keys);
-	} 
-      else 
+	}
+      else
 	{
 	  /* do not sort the hash */
 	  for(i = kh_begin(h); i != kh_end(h); ++i)
@@ -359,11 +359,11 @@ static int binary_dump(corsaro_t *corsaro, corsaro_flowtuple_class_type_t dist)
 	      if(kh_exist(h, i))
 		{
 		  if(corsaro_file_write(corsaro, STATE(corsaro)->outfile,
-					kh_key(h, i), 
-					CORSARO_FLOWTUPLE_BYTECNT) != 
+					kh_key(h, i),
+					CORSARO_FLOWTUPLE_BYTECNT) !=
 		     CORSARO_FLOWTUPLE_BYTECNT)
 		    {
-		      corsaro_log(__func__, corsaro, 
+		      corsaro_log(__func__, corsaro,
 				  "could not write flowtuple to file");
 		      return -1;
 		    }
@@ -402,9 +402,9 @@ static int ascii_dump(corsaro_t *corsaro, corsaro_flowtuple_class_type_t dist)
   class_end.magic = CORSARO_FLOWTUPLE_MAGIC;
   class_end.class_type = dist;
 
-  corsaro_flowtuple_class_start_fprint(corsaro, STATE(corsaro)->outfile, 
+  corsaro_flowtuple_class_start_fprint(corsaro, STATE(corsaro)->outfile,
 				    &class_start);
-  
+
   if(kh_size(h) > 0)
     {
       if(state->sort_enabled == CORSARO_FLOWTUPLE_SORT_ENABLED)
@@ -415,9 +415,9 @@ static int ascii_dump(corsaro_t *corsaro, corsaro_flowtuple_class_type_t dist)
 	      corsaro_log(__func__, corsaro, "could not sort keys");
 	      return -1;
 	    }
-	  for(j = 0; j < kh_size(h); j++)			
-	    {		
-	      corsaro_flowtuple_fprint(corsaro, STATE(corsaro)->outfile, 
+	  for(j = 0; j < kh_size(h); j++)
+	    {
+	      corsaro_flowtuple_fprint(corsaro, STATE(corsaro)->outfile,
 				       sorted_keys[j]);
 
 	      free(sorted_keys[j]);
@@ -431,8 +431,8 @@ static int ascii_dump(corsaro_t *corsaro, corsaro_flowtuple_class_type_t dist)
 	    {
 	      if(kh_exist(h, i))
 		{
-		  corsaro_flowtuple_fprint(corsaro, 
-					   STATE(corsaro)->outfile, 
+		  corsaro_flowtuple_fprint(corsaro,
+					   STATE(corsaro)->outfile,
 					   kh_key(h, i));
 		  free(kh_key(h, i));
 		}
@@ -440,7 +440,7 @@ static int ascii_dump(corsaro_t *corsaro, corsaro_flowtuple_class_type_t dist)
 	}
     }
 
-  corsaro_flowtuple_class_end_fprint(corsaro, STATE(corsaro)->outfile, 
+  corsaro_flowtuple_class_end_fprint(corsaro, STATE(corsaro)->outfile,
 				     &class_end);
   return 0;
 }
@@ -454,8 +454,8 @@ static int validate_class_start(corsaro_flowtuple_class_start_t *class)
   class->count = ntohl(class->count);
 
   /* do some sanity checking */
-  if(class->magic != CORSARO_FLOWTUPLE_MAGIC || 
-     class->class_type > CORSARO_FLOWTUPLE_CLASS_MAX) 
+  if(class->magic != CORSARO_FLOWTUPLE_MAGIC ||
+     class->class_type > CORSARO_FLOWTUPLE_CLASS_MAX)
     {
       return 0;
     }
@@ -463,15 +463,15 @@ static int validate_class_start(corsaro_flowtuple_class_start_t *class)
 }
 
 /** Read a class start record */
-static int read_class_start(corsaro_in_t *corsaro, 
+static int read_class_start(corsaro_in_t *corsaro,
 			    corsaro_in_record_type_t *record_type,
 			    corsaro_in_record_t *record)
 {
   off_t bytes_read;
 
   if((bytes_read =
-      corsaro_io_read_bytes(corsaro, record, 
-			  sizeof(corsaro_flowtuple_class_start_t))) != 
+      corsaro_io_read_bytes(corsaro, record,
+			  sizeof(corsaro_flowtuple_class_start_t))) !=
      sizeof(corsaro_flowtuple_class_start_t))
     {
       *record_type = CORSARO_IN_RECORD_TYPE_NULL;
@@ -481,7 +481,7 @@ static int read_class_start(corsaro_in_t *corsaro,
   if(validate_class_start((corsaro_flowtuple_class_start_t *)record->buffer) != 1)
     {
       corsaro_log_in(__func__, corsaro, "could not validate flowtuple class");
-      corsaro_log_in(__func__, corsaro, 
+      corsaro_log_in(__func__, corsaro,
 		     "it is possible this flowtuple file was written "
 #ifdef CORSARO_SLASH_EIGHT
 		     "without /8 "
@@ -509,7 +509,7 @@ static int read_class_start(corsaro_in_t *corsaro,
   STATE_IN(corsaro)->expected_type = (STATE_IN(corsaro)->tuple_total == 0) ?
     CORSARO_IN_RECORD_TYPE_FLOWTUPLE_CLASS_END :
     CORSARO_IN_RECORD_TYPE_FLOWTUPLE_FLOWTUPLE;
-  
+
   return bytes_read;
 }
 
@@ -521,8 +521,8 @@ static int validate_class_end(corsaro_flowtuple_class_end_t *class)
   class->class_type = ntohs(class->class_type);
 
   /* do some sanity checking */
-  if(class->magic != CORSARO_FLOWTUPLE_MAGIC || 
-     class->class_type > CORSARO_FLOWTUPLE_CLASS_MAX) 
+  if(class->magic != CORSARO_FLOWTUPLE_MAGIC ||
+     class->class_type > CORSARO_FLOWTUPLE_CLASS_MAX)
     {
       return 0;
     }
@@ -530,15 +530,15 @@ static int validate_class_end(corsaro_flowtuple_class_end_t *class)
 }
 
 /** Read a class end record */
-static int read_class_end(corsaro_in_t *corsaro, 
+static int read_class_end(corsaro_in_t *corsaro,
 			  corsaro_in_record_type_t *record_type,
 			  corsaro_in_record_t *record)
 {
   off_t bytes_read;
 
   if((bytes_read =
-      corsaro_io_read_bytes(corsaro, record, 
-			  sizeof(corsaro_flowtuple_class_end_t))) != 
+      corsaro_io_read_bytes(corsaro, record,
+			  sizeof(corsaro_flowtuple_class_end_t))) !=
      sizeof(corsaro_flowtuple_class_end_t))
     {
       *record_type = CORSARO_IN_RECORD_TYPE_NULL;
@@ -556,13 +556,13 @@ static int read_class_end(corsaro_in_t *corsaro,
 
   *record_type = CORSARO_IN_RECORD_TYPE_FLOWTUPLE_CLASS_END;
   STATE_IN(corsaro)->expected_type = (((corsaro_flowtuple_class_end_t *)
-				     record->buffer)->class_type == 
-				    (uint16_t)CORSARO_FLOWTUPLE_CLASS_MAX) ? 
-    CORSARO_IN_RECORD_TYPE_IO_INTERVAL_END : 
+				     record->buffer)->class_type ==
+				    (uint16_t)CORSARO_FLOWTUPLE_CLASS_MAX) ?
+    CORSARO_IN_RECORD_TYPE_IO_INTERVAL_END :
     CORSARO_IN_RECORD_TYPE_FLOWTUPLE_CLASS_START;
   STATE_IN(corsaro)->tuple_total = 0;
   STATE_IN(corsaro)->tuple_cnt = 0;
-  
+
   return bytes_read;
 }
 
@@ -574,14 +574,14 @@ static int validate_flowtuple(corsaro_flowtuple_t *flowtuple)
 }
 
 /** Read a flowtuple record */
-static int read_flowtuple(corsaro_in_t *corsaro, 
+static int read_flowtuple(corsaro_in_t *corsaro,
 			 corsaro_in_record_type_t *record_type,
 			 corsaro_in_record_t *record)
 {
   off_t bytes_read;
 
-  if((bytes_read = corsaro_io_read_bytes(corsaro, record, 
-				       sizeof(corsaro_flowtuple_t))) != 
+  if((bytes_read = corsaro_io_read_bytes(corsaro, record,
+				       sizeof(corsaro_flowtuple_t))) !=
      sizeof(corsaro_flowtuple_t))
     {
       *record_type = CORSARO_IN_RECORD_TYPE_NULL;
@@ -623,7 +623,7 @@ int corsaro_flowtuple_probe_filename(const char *fname)
 }
 
 /** Implements the probe_magic function of the plugin API */
-int corsaro_flowtuple_probe_magic(corsaro_in_t *corsaro, 
+int corsaro_flowtuple_probe_magic(corsaro_in_t *corsaro,
 				  corsaro_file_in_t *file)
 {
   char buffer[1024];
@@ -633,8 +633,8 @@ int corsaro_flowtuple_probe_magic(corsaro_in_t *corsaro,
   len = corsaro_file_rpeek(file, buffer, sizeof(buffer));
 
   /* an corsaro flowtuple file will have 'SIX[TU]' at 14, 15, 16, 17 */
-  if(len >= CORSARO_IO_INTERVAL_HEADER_BYTE_LEN+4 && 
-     buffer[i++] == 'S' && buffer[i++] == 'I' && 
+  if(len >= CORSARO_IO_INTERVAL_HEADER_BYTE_LEN+4 &&
+     buffer[i++] == 'S' && buffer[i++] == 'I' &&
      buffer[i++] == 'X' && (buffer[i] == 'T' || buffer[i] == 'U'))
     {
       return 1;
@@ -653,7 +653,7 @@ int corsaro_flowtuple_init_output(corsaro_t *corsaro)
 
   if((state = malloc_zero(sizeof(struct corsaro_flowtuple_state_t))) == NULL)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		"could not malloc corsaro_flowtuple_state_t");
       goto err;
     }
@@ -676,7 +676,7 @@ int corsaro_flowtuple_init_output(corsaro_t *corsaro)
       state->st_hash[i] = kh_init(sixt);
       assert(state->st_hash[i] != NULL);
     }
-  
+
   return 0;
 
  err:
@@ -693,7 +693,7 @@ int corsaro_flowtuple_init_input(corsaro_in_t *corsaro)
 
   if((state = malloc_zero(sizeof(struct corsaro_flowtuple_in_state_t))) == NULL)
     {
-      corsaro_log_in(__func__, corsaro, 
+      corsaro_log_in(__func__, corsaro,
 		"could not malloc corsaro_flowtuple_state_t");
       goto err;
     }
@@ -703,7 +703,7 @@ int corsaro_flowtuple_init_input(corsaro_in_t *corsaro)
   state->expected_type = CORSARO_IN_RECORD_TYPE_IO_INTERVAL_START;
 
   /* don't set the tuple_cnt until we actually see a class start record */
-  
+
   return 0;
 
  err:
@@ -740,7 +740,7 @@ int corsaro_flowtuple_close_output(corsaro_t *corsaro)
 	      state->st_hash[i] = NULL;
 	    }
 	}
-      
+
       /* close all the outfile pointers */
       for(i = 0; i < OUTFILE_POINTERS; i++)
 	{
@@ -757,11 +757,11 @@ int corsaro_flowtuple_close_output(corsaro_t *corsaro)
 }
 
 /** Implements the read_record function of the plugin API */
-off_t corsaro_flowtuple_read_record(struct corsaro_in *corsaro, 
-			       corsaro_in_record_type_t *record_type, 
+off_t corsaro_flowtuple_read_record(struct corsaro_in *corsaro,
+			       corsaro_in_record_type_t *record_type,
 			       corsaro_in_record_t *record)
 {
-  
+
   struct corsaro_flowtuple_in_state_t *state = STATE_IN(corsaro);
 
   off_t bytes_read = -1;
@@ -771,7 +771,7 @@ off_t corsaro_flowtuple_read_record(struct corsaro_in *corsaro,
     {
     case CORSARO_IN_RECORD_TYPE_IO_INTERVAL_START:
       /* ask the io subsystem to read it for us */
-      bytes_read = corsaro_io_read_interval_start(corsaro, corsaro->file, 
+      bytes_read = corsaro_io_read_interval_start(corsaro, corsaro->file,
 					  record_type, record);
       if(bytes_read == sizeof(corsaro_interval_t))
 	{
@@ -812,8 +812,8 @@ off_t corsaro_flowtuple_read_record(struct corsaro_in *corsaro,
 }
 
 /** Implements the read_global_data_record function of the plugin API */
-off_t corsaro_flowtuple_read_global_data_record(struct corsaro_in *corsaro, 
-			      enum corsaro_in_record_type *record_type, 
+off_t corsaro_flowtuple_read_global_data_record(struct corsaro_in *corsaro,
+			      enum corsaro_in_record_type *record_type,
 			      struct corsaro_in_record *record)
 {
   /* we write nothing to the global file. someone messed up */
@@ -821,18 +821,18 @@ off_t corsaro_flowtuple_read_global_data_record(struct corsaro_in *corsaro,
 }
 
 /** Implements the start_interval function of the plugin API */
-int corsaro_flowtuple_start_interval(corsaro_t *corsaro, 
+int corsaro_flowtuple_start_interval(corsaro_t *corsaro,
 				     corsaro_interval_t *int_start)
 {
   if(STATE(corsaro)->outfile == NULL)
     {
-      if((	  
-	  STATE(corsaro)->outfile_p[STATE(corsaro)->outfile_n] = 
-	  corsaro_io_prepare_file(corsaro, 
+      if((
+	  STATE(corsaro)->outfile_p[STATE(corsaro)->outfile_n] =
+	  corsaro_io_prepare_file(corsaro,
 				  PLUGIN(corsaro)->name,
 				  int_start)) == NULL)
 	{
-	  corsaro_log(__func__, corsaro, "could not open %s output file", 
+	  corsaro_log(__func__, corsaro, "could not open %s output file",
 		      PLUGIN(corsaro)->name);
 	  return -1;
 	}
@@ -844,26 +844,26 @@ int corsaro_flowtuple_start_interval(corsaro_t *corsaro,
 }
 
 /** Implements the end_interval function of the plugin API */
-int corsaro_flowtuple_end_interval(corsaro_t *corsaro, 
+int corsaro_flowtuple_end_interval(corsaro_t *corsaro,
 				   corsaro_interval_t *int_end)
 {
   int i;
   struct corsaro_flowtuple_state_t *state = STATE(corsaro);
 
-  corsaro_io_write_interval_start(corsaro, state->outfile, 
+  corsaro_io_write_interval_start(corsaro, state->outfile,
 				  &corsaro->interval_start);
-  
+
   for(i = 0; i <= CORSARO_FLOWTUPLE_CLASS_MAX; i++)
     {
       assert(state->st_hash[i] != NULL);
 
       if(
-	 (CORSARO_FILE_MODE(state->outfile) 
-	  == CORSARO_FILE_MODE_BINARY && 
+	 (CORSARO_FILE_MODE(state->outfile)
+	  == CORSARO_FILE_MODE_BINARY &&
 	  binary_dump(corsaro, i) != 0)
 	 ||
-	 (CORSARO_FILE_MODE(state->outfile) 
-	  == CORSARO_FILE_MODE_ASCII && 
+	 (CORSARO_FILE_MODE(state->outfile)
+	  == CORSARO_FILE_MODE_ASCII &&
 	  ascii_dump(corsaro, i) != 0)
 	 )
 	{
@@ -873,7 +873,7 @@ int corsaro_flowtuple_end_interval(corsaro_t *corsaro,
 
       /* free all of the flowtuples */
       /* 10/25/12 ak optimizes slightly by moving the frees to the dump
-	 functions. makes it harder to maintain, but we dont have to 
+	 functions. makes it harder to maintain, but we dont have to
 	 walk the hash twice */
       /*kh_free(sixt, state->st_hash[i], &corsaro_flowtuple_free);*/
       kh_clear(sixt, state->st_hash[i]);
@@ -887,13 +887,13 @@ int corsaro_flowtuple_end_interval(corsaro_t *corsaro,
       assert(state->outfile != NULL);
 
       /* move on to the next output pointer */
-      state->outfile_n = (state->outfile_n+1) % 
+      state->outfile_n = (state->outfile_n+1) %
 	OUTFILE_POINTERS;
 
       if(state->outfile_p[state->outfile_n] != NULL)
 	{
 	  /* we're gonna have to wait for this to close */
-	  corsaro_file_close(corsaro, 
+	  corsaro_file_close(corsaro,
 		   state->outfile_p[state->outfile_n]);
 	  state->outfile_p[state->outfile_n] =  NULL;
 	}
@@ -937,7 +937,7 @@ int corsaro_flowtuple_process_packet(corsaro_t *corsaro,
 
   t.ttl = ip_hdr->ip_ttl;
 
-  if(ip_hdr->ip_p == TRACE_IPPROTO_ICMP && 
+  if(ip_hdr->ip_p == TRACE_IPPROTO_ICMP &&
      (icmp_hdr = trace_get_icmp(ltpacket)) != NULL)
     {
       t.src_port = htons(icmp_hdr->type);
@@ -945,7 +945,7 @@ int corsaro_flowtuple_process_packet(corsaro_t *corsaro,
     }
   else
     {
-      if(ip_hdr->ip_p == TRACE_IPPROTO_TCP && 
+      if(ip_hdr->ip_p == TRACE_IPPROTO_TCP &&
 	 (tcp_hdr = trace_get_tcp(ltpacket)) != NULL)
 	{
 	  /* we have ignore the NS flag because it doesn't fit in
@@ -977,10 +977,10 @@ int corsaro_flowtuple_process_packet(corsaro_t *corsaro,
     {
       packet->state.flags |= CORSARO_PACKET_STATE_FLAG_BACKSCATTER;
     }
-      
+
   if(corsaro_flowtuple_add_inc(STATE(corsaro)->st_hash[class], &t, 1) != 0)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		  "could not increment value for flowtuple");
       return -1;
     }
@@ -1000,11 +1000,11 @@ int corsaro_flowtuple_process_flowtuple(corsaro_t *corsaro,
     }
 
   if(corsaro_flowtuple_add_inc(STATE(corsaro)->
-			       st_hash[STATE(corsaro)->current_class], 
-			       flowtuple, 
+			       st_hash[STATE(corsaro)->current_class],
+			       flowtuple,
 			       ntohl(flowtuple->packet_cnt)) != 0)
 	{
-	  corsaro_log(__func__, corsaro, 
+	  corsaro_log(__func__, corsaro,
 		      "could not increment value for flowtuple");
 	  return -1;
 	}
@@ -1084,20 +1084,20 @@ off_t corsaro_flowtuple_fprint(corsaro_t *corsaro, corsaro_file_t *file,
   inet_ntop(AF_INET,&tmp, &ip_a[0], 16);
   tmp = CORSARO_FLOWTUPLE_SIXT_TO_IP(flowtuple);
   inet_ntop(AF_INET, &tmp, &ip_b[0], 16);
-  
+
   return corsaro_file_printf(corsaro, file, "%s|%s"
 			   "|%"PRIu16"|%"PRIu16
 			   "|%"PRIu8"|%"PRIu8"|0x%02"PRIx8
 			   "|%"PRIu16
-			   ",%"PRIu32"\n",					
+			   ",%"PRIu32"\n",
 			   ip_a, ip_b,
-			   ntohs(flowtuple->src_port), 
+			   ntohs(flowtuple->src_port),
 			   ntohs(flowtuple->dst_port),
-			   flowtuple->protocol, 
+			   flowtuple->protocol,
 			   flowtuple->ttl,
 			   flowtuple->tcp_flags,
-			   ntohs(flowtuple->ip_len), 
-			   ntohl(flowtuple->packet_cnt)); 
+			   ntohs(flowtuple->ip_len),
+			   ntohl(flowtuple->packet_cnt));
 }
 
 /** Print a FlowTuple to stdout in ASCII format */
@@ -1118,41 +1118,41 @@ void corsaro_flowtuple_print(corsaro_flowtuple_t *flowtuple)
 	 "|%"PRIu16"|%"PRIu16
 	 "|%"PRIu8"|%"PRIu8"|0x%02"PRIx8
 	 "|%"PRIu16
-	 ",%"PRIu32"\n",					
+	 ",%"PRIu32"\n",
 	 ip_a, ip_b,
-	 ntohs(flowtuple->src_port), 
+	 ntohs(flowtuple->src_port),
 	 ntohs(flowtuple->dst_port),
-	 flowtuple->protocol, 
+	 flowtuple->protocol,
 	 flowtuple->ttl,
 	 flowtuple->tcp_flags,
-	 ntohs(flowtuple->ip_len), 
+	 ntohs(flowtuple->ip_len),
 	 ntohl(flowtuple->packet_cnt));
 }
 
 /** Print a class start record to a file in ASCII format */
-off_t corsaro_flowtuple_class_start_fprint(corsaro_t *corsaro, 
-				   corsaro_file_t *file, 
+off_t corsaro_flowtuple_class_start_fprint(corsaro_t *corsaro,
+				   corsaro_file_t *file,
 				   corsaro_flowtuple_class_start_t *class)
 {
-  return corsaro_file_printf(corsaro, file, 
-			   "START %s %"PRIu32"\n", 
-			   class_names[class->class_type], 
+  return corsaro_file_printf(corsaro, file,
+			   "START %s %"PRIu32"\n",
+			   class_names[class->class_type],
 			   class->count);
 }
 
 /** Print a class start record to stdout in ASCII format */
 void corsaro_flowtuple_class_start_print(corsaro_flowtuple_class_start_t *class)
 {
-  fprintf(stdout, "START %s %"PRIu32"\n", class_names[class->class_type], 
+  fprintf(stdout, "START %s %"PRIu32"\n", class_names[class->class_type],
 	  class->count);
 }
 
 /** Print a class end record to a file in ASCII format */
-off_t corsaro_flowtuple_class_end_fprint(corsaro_t *corsaro, 
-					 corsaro_file_t *file, 
+off_t corsaro_flowtuple_class_end_fprint(corsaro_t *corsaro,
+					 corsaro_file_t *file,
 				      corsaro_flowtuple_class_end_t *class)
 {
-  return corsaro_file_printf(corsaro, file, "END %s\n", 
+  return corsaro_file_printf(corsaro, file, "END %s\n",
 			   class_names[class->class_type]);
 }
 
@@ -1163,14 +1163,14 @@ void corsaro_flowtuple_class_end_print(corsaro_flowtuple_class_end_t *class)
 }
 
 /** Print a record to a file in ASCII format */
-off_t corsaro_flowtuple_record_fprint(corsaro_t *corsaro, corsaro_file_t *file, 
+off_t corsaro_flowtuple_record_fprint(corsaro_t *corsaro, corsaro_file_t *file,
 				   corsaro_in_record_type_t record_type,
 				   corsaro_in_record_t *record)
 {
   switch(record_type)
     {
     case CORSARO_IN_RECORD_TYPE_FLOWTUPLE_CLASS_START:
-      return corsaro_flowtuple_class_start_fprint(corsaro, file, 
+      return corsaro_flowtuple_class_start_fprint(corsaro, file,
                             (corsaro_flowtuple_class_start_t *)record->buffer);
       break;
 
@@ -1180,7 +1180,7 @@ off_t corsaro_flowtuple_record_fprint(corsaro_t *corsaro, corsaro_file_t *file,
       break;
 
     case CORSARO_IN_RECORD_TYPE_FLOWTUPLE_FLOWTUPLE:
-      return corsaro_flowtuple_fprint(corsaro, file, 
+      return corsaro_flowtuple_fprint(corsaro, file,
 				   (corsaro_flowtuple_t *)record->buffer);
       break;
 
@@ -1231,7 +1231,7 @@ void inline corsaro_flowtuple_free(corsaro_flowtuple_t *t)
 }
 
 /** Either add the given flowtuple to the hash, or increment the current count */
-int corsaro_flowtuple_add_inc(void *h, corsaro_flowtuple_t *t, 
+int corsaro_flowtuple_add_inc(void *h, corsaro_flowtuple_t *t,
 			      uint32_t increment)
 {
   kh_sixt_t *hash = (kh_sixt_t *)h;
@@ -1240,7 +1240,7 @@ int corsaro_flowtuple_add_inc(void *h, corsaro_flowtuple_t *t,
   corsaro_flowtuple_t *new_6t = NULL;
 
   assert(hash != NULL);
-  
+
   /* check if this is in the hash already */
   if((khiter = kh_get(sixt, hash, t)) == kh_end(hash))
     {

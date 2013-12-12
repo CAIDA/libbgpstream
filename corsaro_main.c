@@ -1,11 +1,11 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
  * corsaro-info@caida.org
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
  *
  * corsaro is free software: you can redistribute it and/or modify
@@ -133,7 +133,7 @@ static void clean()
 static int init_trace(char *tracefile)
 {
   /* create a packet buffer */
-  if (packet == NULL && 
+  if (packet == NULL &&
       (packet = trace_create_packet()) == NULL) {
     perror("Creating libtrace packet");
     return -1;
@@ -155,7 +155,7 @@ static int init_trace(char *tracefile)
   /* enable promisc mode on the input if desired by the user */
   if(promisc == 1)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		  "switching input to promiscuous mode");
       if(trace_config(trace,TRACE_OPTION_PROMISC,&promisc)) {
 	trace_perror(trace,"ignoring: ");
@@ -202,19 +202,19 @@ static int process_trace(char *traceuri)
 	return -1;
       }
   }
-  
+
   if (trace_is_err(trace)) {
     trace_perror(trace,"Reading packets");
     corsaro_log(__func__, corsaro, "libtrace had an error reading packets");
     return 1;
   }
-  
+
   if(trace_get_dropped_packets(trace) != UINT64_MAX)
     {
       corsaro_log(__func__, corsaro, "dropped pkt cnt: %"PRIu64"\n",
 		  trace_get_dropped_packets(trace));
     }
-  
+
   return 0;
 }
 
@@ -273,20 +273,20 @@ static int process_corsaro(const char *corsuri)
 
   if(init_flowtuple(corsuri) != 0)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		  "could not init flowtuple reading for %s", corsuri);
       return -1;
     }
 
-  while (corsaro_shutdown == 0 && 
+  while (corsaro_shutdown == 0 &&
 	 (len = corsaro_in_read_record(corsaro_in, &type, record)) > 0) {
 
-    /* if we are in legacy interval mode, and this is an interval end 
-       record, then subtract one from the time, unless it is the last 
+    /* if we are in legacy interval mode, and this is an interval end
+       record, then subtract one from the time, unless it is the last
        interval in the input file */
     /* because only CAIDA has legacy flowtuple files, we make an assumption
        that every 60 intervals we will see a 'last interval' style interval */
-    if(legacy_intervals == 1 && 
+    if(legacy_intervals == 1 &&
        type == CORSARO_IN_RECORD_TYPE_IO_INTERVAL_END)
       {
 	int_end = (corsaro_interval_t*)corsaro_in_get_record_data(record);
@@ -298,16 +298,16 @@ static int process_corsaro(const char *corsuri)
 	    int_end->time--;
 	  }
       }
-    
+
     corsaro_per_record(corsaro, type, record);
-    
+
     /* reset the type to NULL to indicate we don't care */
     type = CORSARO_IN_RECORD_TYPE_NULL;
   }
-      
+
   if(len < 0)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		  "corsaro_in_read_record failed to read record\n");
       return -1;
     }
@@ -330,7 +330,7 @@ static void usage(const char *name)
       return;
     }
 
-  fprintf(stderr, 
+  fprintf(stderr,
 	  "usage: %s [-alP] -o outfile [-i interval] [-m mode] [-n name]\n"
 	  "               [-p plugin] [-f filter] [-r intervals]"
 	  " trace_uri [trace_uri...]\n"
@@ -349,7 +349,7 @@ static void usage(const char *name)
 	  STR(CORSARO_MONITOR_NAME)")\n"
 	  "       -p <plugin>   enable the given plugin, -p can be used "
 	  "multiple times (default: all)\n"
-	  "                     available plugins:\n", 
+	  "                     available plugins:\n",
 	  name, CORSARO_INTERVAL_DEFAULT);
 
   for(i = 0; i < plugin_cnt; i++)
@@ -369,7 +369,7 @@ static void usage(const char *name)
 
 /** Entry point for the Corsaro tool */
 int main(int argc, char *argv[])
-{ 	
+{
   int opt;
   int prevoptind;
   /* we MUST not use any of the getopt global vars outside of arg parsing */
@@ -393,7 +393,7 @@ int main(int argc, char *argv[])
 
   signal(SIGINT, catch_sigint);
 
-  while(prevoptind = optind, 
+  while(prevoptind = optind,
 	(opt = getopt(argc, argv, ":f:i:m:n:o:p:r:R:aGlLPv?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
@@ -430,7 +430,7 @@ int main(int argc, char *argv[])
 	    }
 	  else
 	    {
-	      fprintf(stderr, 
+	      fprintf(stderr,
 		      "ERROR: mode parameter must be 'ascii' or 'binary'\n");
 	      usage(argv[0]);
 	      exit(-1);
@@ -477,7 +477,7 @@ int main(int argc, char *argv[])
 
 	case '?':
 	case 'v':
-	  fprintf(stderr, "corsaro version %d.%d.%d\n", CORSARO_MAJOR_VERSION, 
+	  fprintf(stderr, "corsaro version %d.%d.%d\n", CORSARO_MAJOR_VERSION,
 		  CORSARO_MID_VERSION, CORSARO_MINOR_VERSION);
 	  usage(argv[0]);
 	  exit(0);
@@ -508,7 +508,7 @@ int main(int argc, char *argv[])
 
   tracefile_cnt = argc-lastopt;
 
-  /* argv[lastopt] is the pcap file */	
+  /* argv[lastopt] is the pcap file */
   /* if there is only one trace file, we want to tell corsaro what the uri was
      rather than the silly "Multiple Traces" default */
   if(tracefile_cnt == 1)
@@ -518,7 +518,7 @@ int main(int argc, char *argv[])
 
   if(tmpl == NULL)
     {
-      fprintf(stderr, 
+      fprintf(stderr,
 	      "ERROR: An output file template must be specified using -o\n");
       usage(argv[0]);
       goto err;
@@ -661,7 +661,7 @@ int main(int argc, char *argv[])
       if(plugins[i] != NULL)
 	free(plugins[i]);
     }
-  
+
   /* free the template string */
   if(tmpl != NULL)
     free(tmpl);
@@ -680,11 +680,11 @@ int main(int argc, char *argv[])
       if(plugins[i] != NULL)
 	free(plugins[i]);
     }
-  
+
   if(tmpl != NULL)
     free(tmpl);
 
   clean();
-  
+
   return -1;
 }

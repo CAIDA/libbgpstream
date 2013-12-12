@@ -1,11 +1,11 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
  * corsaro-info@caida.org
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
  *
  * corsaro is free software: you can redistribute it and/or modify
@@ -139,13 +139,13 @@ typedef struct ppm_window
   uint64_t max_ppm;
 } ppm_window_t;
 
-/** A record for a potential attack vector 
+/** A record for a potential attack vector
  *
  * All values are in HOST byte order
  */
 typedef struct attack_vector
 {
-  /** A copy of the packet that caused the vector to be created 
+  /** A copy of the packet that caused the vector to be created
    *
    * Can be reconstituted into a libtrace packet
    */
@@ -198,12 +198,12 @@ typedef struct attack_vector
 
 } attack_vector_t;
 
-/* need to create an attack_vector_in structure when we write the reading 
+/* need to create an attack_vector_in structure when we write the reading
    stuff */
 
-/** Create an attack vector object 
+/** Create an attack vector object
  *
- * @param corsaro      The corsaro object associated with the vector 
+ * @param corsaro      The corsaro object associated with the vector
  * @return an empty attack vector object
  */
 static attack_vector_t *attack_vector_init(corsaro_t *corsaro)
@@ -217,7 +217,7 @@ static attack_vector_t *attack_vector_init(corsaro_t *corsaro)
 
   av->attack_ip_hash = kh_init(32xx);
   assert(av->attack_ip_hash != NULL);
-  
+
   av->attack_port_hash = kh_init(32xx);
   assert(av->attack_port_hash != NULL);
 
@@ -227,7 +227,7 @@ static attack_vector_t *attack_vector_init(corsaro_t *corsaro)
   return av;
 }
 
-/** Free the memory allocated to an attack vector object 
+/** Free the memory allocated to an attack vector object
  *
  * @param av        The attack vector to be freed
  */
@@ -261,7 +261,7 @@ static void attack_vector_free(attack_vector_t *av)
   return;
 }
 
-/** Reset the per-interval counters in an attack vector 
+/** Reset the per-interval counters in an attack vector
  *
  * @param av        The attack vector to be reset
  */
@@ -279,9 +279,9 @@ static void attack_vector_reset(attack_vector_t *av)
 					(a)->target_ip == (b)->target_ip \
 									)
 
-/** Hash an attack vector 
+/** Hash an attack vector
  *
- * @param av         The attack vector to be hashed 
+ * @param av         The attack vector to be hashed
  */
 static inline khint32_t attack_vector_hash_func(attack_vector_t *av)
 {
@@ -289,7 +289,7 @@ static inline khint32_t attack_vector_hash_func(attack_vector_t *av)
 }
 
 /** Initialize the hash functions and datatypes */
-KHASH_INIT(av, attack_vector_t*, char, 0, 
+KHASH_INIT(av, attack_vector_t*, char, 0,
 	   attack_vector_hash_func, attack_vector_hash_equal);
 
 /** Holds the state for an instance of this plugin */
@@ -326,12 +326,12 @@ struct corsaro_dos_in_state_t {
 #define PLUGIN(corsaro)						\
   (CORSARO_PLUGIN_PLUGIN(corsaro, CORSARO_PLUGIN_ID_DOS))
 
-/** Check if a vector has had a packet added to it recently 
+/** Check if a vector has had a packet added to it recently
  *
  * @param vector        The attack vector to check
  * @param time          The current trace time
  */
-static int attack_vector_is_expired(attack_vector_t *vector, 
+static int attack_vector_is_expired(attack_vector_t *vector,
 				    uint32_t time)
 {
   if(vector->latest_time.tv_sec + CORSARO_DOS_VECTOR_TIMEOUT < time)
@@ -365,7 +365,7 @@ static void attack_vector_update_ppm(ppm_window_t *ppm_window)
  *
  * @param vector      The attack vector to update
  * @param tv          The time the packet arrived at
- * 
+ *
  * PPS Sliding Window
  *
  * In order to properly handle short-duration spikes in the PPS rate, we use
@@ -377,15 +377,15 @@ static void attack_vector_update_ppm(ppm_window_t *ppm_window)
  *
  * Updating the window:
  * When a packet is received, it is first checked to determine whether the
- * window must be moved. It will be moved if this packet arrived more than 
+ * window must be moved. It will be moved if this packet arrived more than
  * PPM_WINDOW_SIZE seconds after the ppm_window.window_size value. If this
  * is the case, the current bucket pointer is moved on one%PPS_BUCKET_CNT
  * this now has it pointing at the old start of the window, this value
- * is then zeroed and ppm_window.window_start is incremented by 
+ * is then zeroed and ppm_window.window_start is incremented by
  * PPM_WINDOW_PRECISION. This move is repeated until the new value falls
- * into the bucket pointed to by the current_bucket pointer 
+ * into the bucket pointed to by the current_bucket pointer
  * I.e. Its time, x, satisfies
- * (window_start+(PPM_WINDOW_PRECISION * (PPS_BUCKET_CNT-1))) <= x < 
+ * (window_start+(PPM_WINDOW_PRECISION * (PPS_BUCKET_CNT-1))) <= x <
  *         (window_start+(PPM_WINDOW_PRECISION * PPS_BUCKET_CNT))
  * The value of buckets[current_bucket] is then incremented by one
  *
@@ -406,17 +406,17 @@ static void attack_vector_update_ppm(ppm_window_t *ppm_window)
  * 4      | 8
  * 5      | 1
  *
- * the current bucket of 5 covers times from 
+ * the current bucket of 5 covers times from
  * (1320969600+(10*(6-1))) up to, but not including (1320969600+(10*6))
  * or, 1320969650 <= x < 1320969660
- *  
+ *
  * we receive a packet at 1320969665 which is 65 seconds after 1320969600
  * this means we will need to move the window,
- * we first compute the ppm for the window that just ended by summing all 
+ * we first compute the ppm for the window that just ended by summing all
  * buckets (12+2+3+6+8+1) is 32, not higher than the max so nothing is done
  * we then advance the window by setting the current bucket to (5+1)%6, or, 0
  * and then setting the value in this bucket to 0.
- * Because this example had the next packet arrive in the very next window, 
+ * Because this example had the next packet arrive in the very next window,
  * the window only needs to be advanced once, if it had been later, the window
  * would have been advanced multiple times until the packet fell into the last
  * window.
@@ -430,14 +430,14 @@ static void attack_vector_update_ppm(ppm_window_t *ppm_window)
  * delta: ((new_time) - (window_start+(PPM_WINDOW_SIZE)))
  * buckets to zero: min(PPS_BUCKET_CNT, (delta/PPM_WINDOW_PRECISION)+1))
  *     (assuming delta is > 0)
- * 
+ *
  * In our previous example, if the new packet had arrived at 1320969700,
  * the delta would be (1320969700-(1320969600+60)) = 40
  * we would need to zero (min(6, (40/10)+1)) = 5 buckets
  *
  * the truth is in the code, see attack_vector_update_ppm_window
  */
-static void attack_vector_update_ppm_window(attack_vector_t *vector, 
+static void attack_vector_update_ppm_window(attack_vector_t *vector,
 					   struct timeval tv)
 {
   int bucket_offset;
@@ -452,14 +452,14 @@ static void attack_vector_update_ppm_window(attack_vector_t *vector,
   if(bucket_offset > 0)
     {
       attack_vector_update_ppm(ppm_window);
- 
+
       /* zero out the first n buckets in the window */
       for(i = 0; i < bucket_offset && i < 6; i++)
 	{
-	  ppm_window->current_bucket = 
+	  ppm_window->current_bucket =
 	    (ppm_window->current_bucket+1) % CORSARO_DOS_PPS_BUCKET_CNT;
 	  ppm_window->buckets[ppm_window->current_bucket] = 0;
-	} 
+	}
       /* move the start of the window to the end of the zeroed buckets */
       ppm_window->window_start += bucket_offset*
 	CORSARO_DOS_PPM_WINDOW_PRECISION;
@@ -473,14 +473,14 @@ static void attack_vector_update_ppm_window(attack_vector_t *vector,
 }
 
 /** Determine whether a vector is indeed an attack vector
- * 
+ *
  * @param corsaro       The corsaro object associated with the vector
  * @param vector        The vector to check
  * @param time          The current trace time
  * @return 1 if the vector is an attack, 0 if non-attack, -1 if an error occurs
  */
 static int attack_vector_is_attack(corsaro_t *corsaro,
-				   attack_vector_t *vector, 
+				   attack_vector_t *vector,
 				   uint32_t time)
 {
   struct timeval duration;
@@ -492,7 +492,7 @@ static int attack_vector_is_attack(corsaro_t *corsaro,
       return 0;
     }
 
-  if(timeval_subtract(&duration, &vector->latest_time, 
+  if(timeval_subtract(&duration, &vector->latest_time,
 		      &vector->start_time) == 1)
     {
       corsaro_log(__func__, corsaro, "last packet seen before first packet!");
@@ -530,7 +530,7 @@ static int ascii_dump(corsaro_t *corsaro, attack_vector_t *vector)
   tmp = htonl(vector->target_ip);
   inet_ntop(AF_INET,&tmp, &t_ip[0], 16);
 
-  corsaro_file_printf(corsaro, STATE(corsaro)->outfile, 
+  corsaro_file_printf(corsaro, STATE(corsaro)->outfile,
 	  "%s"
 	  ",%"PRIu32
 	  ",%"PRIu32
@@ -546,17 +546,17 @@ static int ascii_dump(corsaro_t *corsaro, attack_vector_t *vector)
 	  "\n",
 	  t_ip,
 	  kh_size(vector->attack_ip_hash),
-	  kh_size(vector->attack_ip_hash)-vector->attack_ip_cnt, 
-	  kh_size(vector->attack_port_hash), 
+	  kh_size(vector->attack_ip_hash)-vector->attack_ip_cnt,
+	  kh_size(vector->attack_port_hash),
 	  kh_size(vector->target_port_hash),
 	  vector->packet_cnt,
 	  vector->interval_packet_cnt,
 	  vector->byte_cnt,
 	  vector->interval_byte_cnt,
 	  vector->ppm_window.max_ppm,
-	  (uint32_t)vector->start_time.tv_sec, 
+	  (uint32_t)vector->start_time.tv_sec,
 	  (uint32_t)vector->start_time.tv_usec,
-	  (uint32_t)vector->latest_time.tv_sec, 
+	  (uint32_t)vector->latest_time.tv_sec,
 	  (uint32_t)vector->latest_time.tv_usec);
   return 0;
 }
@@ -609,7 +609,7 @@ static int binary_dump(corsaro_t *corsaro, attack_vector_t *vector)
 
   bytes_htonll(ptr, vector->ppm_window.max_ppm);
   ptr+=8;
-  
+
   bytes_htonl(ptr, vector->start_time.tv_sec);
   ptr+=4;
 
@@ -636,35 +636,35 @@ static int binary_dump(corsaro_t *corsaro, attack_vector_t *vector)
   /* add the size of the packet to the byte array before we dump it */
   bytes_htonl(ptr, vector->initial_packet_len);
 
-  if(corsaro_file_write(corsaro, STATE(corsaro)->outfile, &av_bytes[0], 
-		      CORSARO_DOS_ATTACK_VECTOR_BYTECNT) != 
+  if(corsaro_file_write(corsaro, STATE(corsaro)->outfile, &av_bytes[0],
+		      CORSARO_DOS_ATTACK_VECTOR_BYTECNT) !=
      CORSARO_DOS_ATTACK_VECTOR_BYTECNT)
     {
       corsaro_log(__func__, corsaro, "could not dump vector byte array to file");
       return -1;
     }
 
-  if(corsaro_file_write(corsaro, STATE(corsaro)->outfile, vector->initial_packet, 
-		      vector->initial_packet_len) != 
+  if(corsaro_file_write(corsaro, STATE(corsaro)->outfile, vector->initial_packet,
+		      vector->initial_packet_len) !=
      vector->initial_packet_len)
     {
       corsaro_log(__func__, corsaro, "could not dump packet to file");
       return -1;
     }
-  
+
   return 0;
 }
 
 /** Read a dos header */
-static int read_header(corsaro_in_t *corsaro, 
+static int read_header(corsaro_in_t *corsaro,
 		       corsaro_in_record_type_t *record_type,
 		       corsaro_in_record_t *record)
 {
   off_t bytes_read;
 
   if((bytes_read =
-      corsaro_io_read_bytes(corsaro, record, 
-			  sizeof(corsaro_dos_header_t))) != 
+      corsaro_io_read_bytes(corsaro, record,
+			  sizeof(corsaro_dos_header_t))) !=
      sizeof(corsaro_dos_header_t))
     {
       corsaro_log_in(__func__, corsaro, "failed to read dos header from file");
@@ -672,7 +672,7 @@ static int read_header(corsaro_in_t *corsaro,
       return bytes_read;
     }
 
-  ((corsaro_dos_header_t *)record->buffer)->attack_vector_cnt = 
+  ((corsaro_dos_header_t *)record->buffer)->attack_vector_cnt =
   ntohl(((corsaro_dos_header_t *)record->buffer)->attack_vector_cnt);
 
   assert(bytes_read == sizeof(corsaro_dos_header_t));
@@ -684,7 +684,7 @@ static int read_header(corsaro_in_t *corsaro,
   STATE_IN(corsaro)->expected_type = (STATE_IN(corsaro)->vector_total == 0) ?
     CORSARO_IN_RECORD_TYPE_IO_INTERVAL_END :
     CORSARO_IN_RECORD_TYPE_DOS_ATTACK_VECTOR;
-  
+
   return bytes_read;
 }
 
@@ -720,12 +720,12 @@ static int validate_attack_vector(corsaro_dos_attack_vector_in_t *av)
 }
 
 /** Read an attack vector record */
-static int read_attack_vector(corsaro_in_t *corsaro, 
+static int read_attack_vector(corsaro_in_t *corsaro,
 			      corsaro_in_record_type_t *record_type,
 			      corsaro_in_record_t *record)
 {
   off_t bytes_read;
-  
+
   /* the number of bytes that should be read after the first read */
   /* this is the size of the attack vector less the size of the pointer */
   off_t bsbread = sizeof(corsaro_dos_attack_vector_in_t)
@@ -738,7 +738,7 @@ static int read_attack_vector(corsaro_in_t *corsaro,
 
   if((bytes_read = corsaro_io_read_bytes(corsaro, record, bsbread)) != bsbread)
     {
-      corsaro_log_in(__func__, corsaro, 
+      corsaro_log_in(__func__, corsaro,
 		     "failed to read dos attack vector from file");
       *record_type = CORSARO_IN_RECORD_TYPE_NULL;
       return bytes_read;
@@ -755,7 +755,7 @@ static int read_attack_vector(corsaro_in_t *corsaro,
 
   /* now read the packet into the buffer right after the attack vector */
   if((bytes_read +=
-      corsaro_io_read_bytes_offset(corsaro, record, 
+      corsaro_io_read_bytes_offset(corsaro, record,
 				   sizeof(corsaro_dos_attack_vector_in_t),
 				   av->initial_packet_len))
      != (bsbread += av->initial_packet_len))
@@ -820,8 +820,8 @@ int corsaro_dos_probe_filename(const char *fname)
   return 0;
 }
 
-/** Implements the probe_magic function of the plugin API 
- * 
+/** Implements the probe_magic function of the plugin API
+ *
  * @todo add a magic number and make it backwards compatible
  */
 int corsaro_dos_probe_magic(corsaro_in_t *corsaro, corsaro_file_in_t *file)
@@ -840,17 +840,17 @@ int corsaro_dos_init_output(corsaro_t *corsaro)
   corsaro_plugin_t *plugin = PLUGIN(corsaro);
   assert(plugin != NULL);
 
-  /* 
-   * allocate memory for the state structure which will hold a pointer to the 
-   * output file and other statistics 
+  /*
+   * allocate memory for the state structure which will hold a pointer to the
+   * output file and other statistics
    */
   if((state = malloc_zero(sizeof(struct corsaro_dos_state_t))) == NULL)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		"could not malloc corsaro_dos_state_t");
       goto err;
     }
-  /* 
+  /*
    * register the state structure with the plugin manager
    * this associates it with our plugin id so it can be retrieved later
    */
@@ -873,10 +873,10 @@ int corsaro_dos_init_input(corsaro_in_t *corsaro)
   corsaro_plugin_t *plugin = PLUGIN(corsaro);
   assert(plugin != NULL);
 
-  if((state = malloc_zero(sizeof(struct corsaro_dos_in_state_t))) 
+  if((state = malloc_zero(sizeof(struct corsaro_dos_in_state_t)))
      == NULL)
     {
-      corsaro_log_in(__func__, corsaro, 
+      corsaro_log_in(__func__, corsaro,
 		"could not malloc corsaro_dos_state_t");
       goto err;
     }
@@ -886,7 +886,7 @@ int corsaro_dos_init_input(corsaro_in_t *corsaro)
   state->expected_type = CORSARO_IN_RECORD_TYPE_IO_INTERVAL_START;
 
   /* don't set the vector_cnt until we actually see a header record */
-  
+
   return 0;
 
  err:
@@ -931,21 +931,21 @@ int corsaro_dos_close_output(corsaro_t *corsaro)
 }
 
 /** Implements the read_record function of the plugin API */
-off_t corsaro_dos_read_record(struct corsaro_in *corsaro, 
-			  corsaro_in_record_type_t *record_type, 
+off_t corsaro_dos_read_record(struct corsaro_in *corsaro,
+			  corsaro_in_record_type_t *record_type,
 			  corsaro_in_record_t *record)
 {
   struct corsaro_dos_in_state_t *state = STATE_IN(corsaro);
 
   off_t bytes_read = -1;
-  
+
   /* this code is adapted from corsaro_flowtuple.c */
   /* we have 5 different types of records that could be in this file */
   switch(state->expected_type)
     {
     case CORSARO_IN_RECORD_TYPE_IO_INTERVAL_START:
       /* ask the io subsystem to read it for us */
-      bytes_read = corsaro_io_read_interval_start(corsaro, corsaro->file, 
+      bytes_read = corsaro_io_read_interval_start(corsaro, corsaro->file,
 						  record_type, record);
       if(bytes_read == sizeof(corsaro_interval_t))
 	{
@@ -981,21 +981,21 @@ off_t corsaro_dos_read_record(struct corsaro_in *corsaro,
 }
 
 /** Implements the read_global_data_record function of the plugin API */
-off_t corsaro_dos_read_global_data_record(struct corsaro_in *corsaro, 
-			      enum corsaro_in_record_type *record_type, 
+off_t corsaro_dos_read_global_data_record(struct corsaro_in *corsaro,
+			      enum corsaro_in_record_type *record_type,
 			      struct corsaro_in_record *record)
 {
   off_t bytes_read;
 
-  if((bytes_read = corsaro_io_read_bytes(corsaro, record, 
-				   sizeof(corsaro_dos_global_header_t))) != 
+  if((bytes_read = corsaro_io_read_bytes(corsaro, record,
+				   sizeof(corsaro_dos_global_header_t))) !=
      sizeof(corsaro_dos_global_header_t))
     {
       *record_type = CORSARO_IN_RECORD_TYPE_NULL;
       return bytes_read;
     }
 
-  if(validate_global_header((corsaro_dos_global_header_t *)record->buffer) 
+  if(validate_global_header((corsaro_dos_global_header_t *)record->buffer)
      != 1)
     {
       corsaro_log_in(__func__, corsaro, "could not validate global header");
@@ -1014,12 +1014,12 @@ off_t corsaro_dos_read_global_data_record(struct corsaro_in *corsaro,
 int corsaro_dos_start_interval(corsaro_t *corsaro, corsaro_interval_t *int_start)
 {
   /* open the output file if it has been closed */
-  if(STATE(corsaro)->outfile == NULL && 
-     (STATE(corsaro)->outfile = 
+  if(STATE(corsaro)->outfile == NULL &&
+     (STATE(corsaro)->outfile =
       corsaro_io_prepare_file(corsaro, PLUGIN(corsaro)->name,
 			      int_start)) == NULL)
     {
-      corsaro_log(__func__, corsaro, "could not open %s output file", 
+      corsaro_log(__func__, corsaro, "could not open %s output file",
 		  PLUGIN(corsaro)->name);
       return -1;
     }
@@ -1063,20 +1063,20 @@ int corsaro_dos_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_end)
 
   /* malloc an array big enough to hold the entire hash even though we wont
      need it to be that big */
-  if((attack_arr = 
+  if((attack_arr =
       malloc(sizeof(attack_vector_t *)*
 	     kh_size(STATE(corsaro)->attack_hash))) == NULL)
     {
-      corsaro_log(__func__, corsaro, 
+      corsaro_log(__func__, corsaro,
 		  "could not malloc array for attack vectors");
       return -1;
     }
 
   /* classify the flows and dump the attack ones */
 
-  for(i = kh_begin(STATE(corsaro)->attack_hash); 
-      i != kh_end(STATE(corsaro)->attack_hash); ++i)			
-    {	
+  for(i = kh_begin(STATE(corsaro)->attack_hash);
+      i != kh_end(STATE(corsaro)->attack_hash); ++i)
+    {
       if(kh_exist(STATE(corsaro)->attack_hash, i))
 	{
 	  vector = kh_key(STATE(corsaro)->attack_hash, i);
@@ -1102,7 +1102,7 @@ int corsaro_dos_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_end)
 	}
     }
 
-  corsaro_io_write_interval_start(corsaro, STATE(corsaro)->outfile, 
+  corsaro_io_write_interval_start(corsaro, STATE(corsaro)->outfile,
 				  &corsaro->interval_start);
   if(corsaro->global_file != NULL)
     {
@@ -1115,10 +1115,10 @@ int corsaro_dos_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_end)
 	{
 	  /* global stats */
 	  /* dump the number of mismatched packets and vectors */
-	  corsaro_file_printf(corsaro, corsaro->global_file, 
+	  corsaro_file_printf(corsaro, corsaro->global_file,
 			      "mismatch: %"PRIu32"\n"
 			      "attack_vectors: %"PRIu32"\n"
-			      "non-attack_vectors: %"PRIu32"\n", 
+			      "non-attack_vectors: %"PRIu32"\n",
 			      STATE(corsaro)->number_mismatched_packets,
 			      attack_arr_cnt,
 			      kh_size(STATE(corsaro)->attack_hash)
@@ -1126,7 +1126,7 @@ int corsaro_dos_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_end)
 	}
 
       /* dump the number of vectors */
-      corsaro_file_printf(corsaro, STATE(corsaro)->outfile, "%"PRIu32"\n", 
+      corsaro_file_printf(corsaro, STATE(corsaro)->outfile, "%"PRIu32"\n",
 			attack_arr_cnt);
       /* dump the vectors */
       for(i = 0; i < attack_arr_cnt; i++)
@@ -1160,10 +1160,10 @@ int corsaro_dos_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_end)
 
 	/* dump the number of vectors */
 	bytes_htonl(&cntbuf[0], attack_arr_cnt);
-	if(corsaro_file_write(corsaro, STATE(corsaro)->outfile, 
+	if(corsaro_file_write(corsaro, STATE(corsaro)->outfile,
 			    &cntbuf[0], 4) != 4)
 	  {
-	    corsaro_log(__func__, corsaro, 
+	    corsaro_log(__func__, corsaro,
 			"could not dump vector count to file");
 	    return -1;
 	  }
@@ -1191,7 +1191,7 @@ int corsaro_dos_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_end)
   corsaro_io_write_interval_end(corsaro, STATE(corsaro)->outfile, int_end);
 
   STATE(corsaro)->number_mismatched_packets = 0;
-  
+
   free(attack_arr);
 
   /* if we are rotating, now is when we should do it */
@@ -1209,7 +1209,7 @@ int corsaro_dos_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_end)
 }
 
 /** Implements the process_packet function of the plugin API */
-int corsaro_dos_process_packet(corsaro_t *corsaro, 
+int corsaro_dos_process_packet(corsaro_t *corsaro,
 			     corsaro_packet_t *packet)
 {
   libtrace_packet_t *ltpacket = LT_PKT(packet);
@@ -1229,7 +1229,7 @@ int corsaro_dos_process_packet(corsaro_t *corsaro,
 
   uint16_t attacker_port = 0;
   uint16_t target_port = 0;
-  
+
   attack_vector_t findme;
 
   int khret;
@@ -1272,7 +1272,7 @@ int corsaro_dos_process_packet(corsaro_t *corsaro,
 	  icmp_hdr->type == 4  ||
 	  icmp_hdr->type == 5  ||
 	  icmp_hdr->type == 11 ||
-	  icmp_hdr->type == 12) && 
+	  icmp_hdr->type == 12) &&
 	 ((temp = trace_get_payload_from_icmp(icmp_hdr, &remaining)) != NULL
 	 && remaining >= 20 && (inner_ip_hdr = (libtrace_ip_t *)temp) &&
 	  inner_ip_hdr->ip_v == 4))
@@ -1301,8 +1301,8 @@ int corsaro_dos_process_packet(corsaro_t *corsaro,
 	  target_port = ntohs(icmp_hdr->type);
 	}
     }
-  else if((ip_hdr->ip_p == TRACE_IPPROTO_TCP || 
-	  ip_hdr->ip_p == TRACE_IPPROTO_UDP) && 
+  else if((ip_hdr->ip_p == TRACE_IPPROTO_TCP ||
+	  ip_hdr->ip_p == TRACE_IPPROTO_UDP) &&
 	  remaining >= 4)
     {
       findme.target_ip = ntohl(ip_hdr->ip_src.s_addr);
@@ -1320,7 +1320,7 @@ int corsaro_dos_process_packet(corsaro_t *corsaro,
 
   /* is this vector in the hash? */
   assert(STATE(corsaro)->attack_hash != NULL);
-  if((khiter = kh_get(av, STATE(corsaro)->attack_hash, &findme)) 
+  if((khiter = kh_get(av, STATE(corsaro)->attack_hash, &findme))
      != kh_end(STATE(corsaro)->attack_hash))
     {
       /* the vector is in the hash */
@@ -1366,7 +1366,7 @@ int corsaro_dos_process_packet(corsaro_t *corsaro,
       vector->attacker_ip = ntohl(ip_hdr->ip_dst.s_addr);
       vector->responder_ip = ntohl(ip_hdr->ip_src.s_addr);
       vector->target_ip = findme.target_ip;
-      
+
       vector->start_time = tv;
 
       vector->ppm_window.window_start = tv.tv_sec;
@@ -1385,10 +1385,10 @@ int corsaro_dos_process_packet(corsaro_t *corsaro,
   vector->latest_time = tv;
   /* update the pps window */
   attack_vector_update_ppm_window(vector, tv);
-  
+
   /* add the attacker ip to the hash */
   kh_put(32xx, vector->attack_ip_hash, ntohl(ip_hdr->ip_dst.s_addr), &khret);
-  
+
   /* add the ports to the hashes */
   kh_put(32xx, vector->attack_port_hash, attacker_port, &khret);
   kh_put(32xx, vector->target_port_hash, target_port, &khret);
@@ -1400,29 +1400,29 @@ int corsaro_dos_process_packet(corsaro_t *corsaro,
 
 /** Extract the initial packet from an attack vector record */
 void corsaro_dos_attack_vector_get_packet(
-			    corsaro_dos_attack_vector_in_t *attack_vector, 
+			    corsaro_dos_attack_vector_in_t *attack_vector,
 			    libtrace_packet_t *packet)
 {
   assert(packet != NULL);
 
-  trace_construct_packet(packet, TRACE_TYPE_ETH, 
-			 attack_vector->initial_packet, 
+  trace_construct_packet(packet, TRACE_TYPE_ETH,
+			 attack_vector->initial_packet,
 			 attack_vector->initial_packet_len);
 }
 
 /** Print a global header record to stdout in ASCII format */
-off_t corsaro_dos_global_header_fprint(corsaro_t *corsaro, 
-				corsaro_file_t *file, 
+off_t corsaro_dos_global_header_fprint(corsaro_t *corsaro,
+				corsaro_file_t *file,
 				corsaro_dos_global_header_t *header)
 {
   assert(corsaro != NULL);
   assert(file != NULL);
   assert(header != NULL);
 
-  return corsaro_file_printf(corsaro, file, 
+  return corsaro_file_printf(corsaro, file,
 			     "mismatch: %"PRIu32"\n"
 			     "attack_vectors: %"PRIu32"\n"
-			     "non-attack_vectors: %"PRIu32"\n", 
+			     "non-attack_vectors: %"PRIu32"\n",
 			     header->mismatched_pkt_cnt,
 			     header->attack_vector_cnt,
 			     header->non_attack_vector_cnt);
@@ -1433,10 +1433,10 @@ off_t corsaro_dos_global_header_fprint(corsaro_t *corsaro,
 void corsaro_dos_global_header_print(corsaro_dos_global_header_t *header)
 {
   assert(header != NULL);
-  
+
   fprintf(stdout, "mismatch: %"PRIu32"\n"
 	  "attack_vectors: %"PRIu32"\n"
-	  "non-attack_vectors: %"PRIu32"\n", 
+	  "non-attack_vectors: %"PRIu32"\n",
 	  header->mismatched_pkt_cnt,
 	  header->attack_vector_cnt,
 	  header->non_attack_vector_cnt);
@@ -1446,7 +1446,7 @@ void corsaro_dos_global_header_print(corsaro_dos_global_header_t *header)
  *
  * @todo extend libpacketdump to allow to dump to a file
  */
-off_t corsaro_dos_attack_vector_fprint(corsaro_t *corsaro, 
+off_t corsaro_dos_attack_vector_fprint(corsaro_t *corsaro,
 				       corsaro_file_t *file,
 				       corsaro_dos_attack_vector_in_t *av)
 {
@@ -1460,7 +1460,7 @@ off_t corsaro_dos_attack_vector_fprint(corsaro_t *corsaro,
   tmp = htonl(av->target_ip);
   inet_ntop(AF_INET,&tmp, &t_ip[0], 16);
 
-  return corsaro_file_printf(corsaro, file, 
+  return corsaro_file_printf(corsaro, file,
 			     "%s"
 			     ",%"PRIu32
 			     ",%"PRIu32
@@ -1476,19 +1476,19 @@ off_t corsaro_dos_attack_vector_fprint(corsaro_t *corsaro,
 			     "\n",
 			     t_ip,
 			     av->attacker_ip_cnt,
-			     av->interval_attacker_ip_cnt, 
-			     av->attack_port_cnt, 
+			     av->interval_attacker_ip_cnt,
+			     av->attack_port_cnt,
 			     av->target_port_cnt,
 			     av->packet_cnt,
 			     av->interval_packet_cnt,
 			     av->byte_cnt,
 			     av->interval_byte_cnt,
 			     av->max_ppm,
-			     av->start_time_sec, 
+			     av->start_time_sec,
 			     av->start_time_usec,
-			     av->latest_time_sec, 
+			     av->latest_time_sec,
 			     av->latest_time_usec);
-  
+
 }
 
 /** Print an attack vector record to a file in ASCII format */
@@ -1497,7 +1497,7 @@ void corsaro_dos_attack_vector_print(corsaro_dos_attack_vector_in_t *av)
   uint32_t tmp;
   char t_ip[16];
   libtrace_packet_t *packet;
- 
+
   assert(av != NULL);
 
   tmp = htonl(av->target_ip);
@@ -1519,17 +1519,17 @@ void corsaro_dos_attack_vector_print(corsaro_dos_attack_vector_in_t *av)
 	  "\n",
 	  t_ip,
 	  av->attacker_ip_cnt,
-	  av->interval_attacker_ip_cnt, 
-	  av->attack_port_cnt, 
+	  av->interval_attacker_ip_cnt,
+	  av->attack_port_cnt,
 	  av->target_port_cnt,
 	  av->packet_cnt,
 	  av->interval_packet_cnt,
 	  av->byte_cnt,
 	  av->interval_byte_cnt,
 	  av->max_ppm,
-	  av->start_time_sec, 
+	  av->start_time_sec,
 	  av->start_time_usec,
-	  av->latest_time_sec, 
+	  av->latest_time_sec,
 	  av->latest_time_usec);
 
   /* this may get slow if you are dumping *lots* of dos records */
@@ -1551,16 +1551,16 @@ void corsaro_dos_attack_vector_print(corsaro_dos_attack_vector_in_t *av)
 }
 
 /** Print a header record to stdout in ASCII format */
-off_t corsaro_dos_header_fprint(corsaro_t *corsaro, 
-				corsaro_file_t *file, 
+off_t corsaro_dos_header_fprint(corsaro_t *corsaro,
+				corsaro_file_t *file,
 				corsaro_dos_header_t *header)
 {
   assert(corsaro != NULL);
   assert(file != NULL);
   assert(header != NULL);
 
-  return corsaro_file_printf(corsaro, file, 
-			     "%"PRIu32"\n", 
+  return corsaro_file_printf(corsaro, file,
+			     "%"PRIu32"\n",
 			     header->attack_vector_cnt);
 
 }
@@ -1569,14 +1569,14 @@ off_t corsaro_dos_header_fprint(corsaro_t *corsaro,
 void corsaro_dos_header_print(corsaro_dos_header_t *header)
 {
   assert(header != NULL);
-  
+
   fprintf(stdout, "%"PRIu32"\n", header->attack_vector_cnt);
 
 }
 
 /** Print any DoS record to stdout in ASCII format */
-off_t corsaro_dos_record_fprint(corsaro_t *corsaro, 
-				corsaro_file_t *file, 
+off_t corsaro_dos_record_fprint(corsaro_t *corsaro,
+				corsaro_file_t *file,
 				corsaro_in_record_type_t record_type,
 				corsaro_in_record_t *record)
 {
@@ -1588,7 +1588,7 @@ off_t corsaro_dos_record_fprint(corsaro_t *corsaro,
       break;
 
     case CORSARO_IN_RECORD_TYPE_DOS_HEADER:
-      return corsaro_dos_header_fprint(corsaro, file, 
+      return corsaro_dos_header_fprint(corsaro, file,
                             (corsaro_dos_header_t *)record->buffer);
       break;
 
@@ -1629,7 +1629,7 @@ int corsaro_dos_record_print(corsaro_in_record_type_t record_type,
       break;
 
     default:
-      corsaro_log_file(__func__, NULL, 
+      corsaro_log_file(__func__, NULL,
 		       "record_type %d not a dos record",
 		       record_type);
       return -1;

@@ -1,11 +1,11 @@
-/* 
+/*
  * corsaro
  *
  * Alistair King, CAIDA, UC San Diego
  * corsaro-info@caida.org
- * 
+ *
  * Copyright (C) 2012 The Regents of the University of California.
- * 
+ *
  * This file is part of corsaro.
  *
  * corsaro is free software: you can redistribute it and/or modify
@@ -52,7 +52,7 @@ static corsaro_in_record_t *record = NULL;
 
 /** Cleanup and free state */
 static void clean()
-{ 
+{
   if(record != NULL)
     {
       corsaro_in_free_record(record);
@@ -76,7 +76,7 @@ static int init_corsaro(char *corsarouri)
       clean();
       return -1;
     }
-  
+
   /* get a record */
   if ((record = corsaro_in_alloc_record(corsaro)) == NULL) {
     fprintf(stderr, "could not alloc record\n");
@@ -98,13 +98,13 @@ static int init_corsaro(char *corsarouri)
 /** Print usage information to stderr */
 static void usage(const char *name)
 {
-  fprintf(stderr, 
+  fprintf(stderr,
 	  "usage: %s input_file\n", name);
 }
 
 /** Entry point for the cors2ascii tool */
 int main(int argc, char *argv[])
-{ 	
+{
   char *file = NULL;
 
   corsaro_in_record_type_t type = CORSARO_IN_RECORD_TYPE_NULL;
@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
       exit(-1);
     }
 
-  /* argv[1] is the corsaro file */	
+  /* argv[1] is the corsaro file */
   file = argv[1];
 
   /* this must be done before corsaro_init_output */
@@ -126,14 +126,14 @@ int main(int argc, char *argv[])
       clean();
       return -1;
     }
-  
+
   while ((len = corsaro_in_read_record(corsaro, &type, record)) > 0) {
     if(type == CORSARO_IN_RECORD_TYPE_NULL)
       {
 	clean();
 	return -1;
       }
-    
+
     corsaro_io_print_record(corsaro->plugin_manager, type, record);
 
     /* reset the type to NULL to indicate we don't care */
