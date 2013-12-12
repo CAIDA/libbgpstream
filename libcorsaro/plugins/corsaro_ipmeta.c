@@ -140,8 +140,7 @@ static int parse_args(corsaro_t *corsaro)
 
   if(plugin->argc == 1)
     {
-      usage(corsaro);
-      return -1;
+      goto err;
     }
 
   /* NB: remember to reset optind to 1 before using getopt! */
@@ -168,8 +167,7 @@ static int parse_args(corsaro_t *corsaro)
     {
       fprintf(stderr,
 	      "ERROR: At least one provider must be selected using -p\n");
-      usage(corsaro);
-      return -1;
+      goto err;
     }
 
   for(i=0;i<provider_names_cnt;i++)
@@ -194,8 +192,7 @@ static int parse_args(corsaro_t *corsaro)
 	{
 	  fprintf(stderr, "ERROR: Invalid provider name (%s)\n",
 		  provider_names[i]);
-	  usage(corsaro);
-	  return -1;
+	  goto err;
 	}
 
       if(ipmeta_enable_provider(state->ipmeta, provider,
@@ -205,8 +202,7 @@ static int parse_args(corsaro_t *corsaro)
 	{
 	  fprintf(stderr, "ERROR: Could not enable plugin %s\n",
 		  provider_names[i]);
-	  usage(corsaro);
-	  return -1;
+	  goto err;
 	}
 
       free(provider_names[i]);
@@ -214,6 +210,17 @@ static int parse_args(corsaro_t *corsaro)
     }
 
   return 0;
+
+ err:
+  for(i=0; i <provider_names_cnt; i++)
+    {
+      if(provider_names[i] != NULL)
+	{
+	  free(provider_names[i]);
+	}
+    }
+  usage(corsaro);
+  return -1;
 }
 
 /** Common code between process_packet and process_flowtuple */
