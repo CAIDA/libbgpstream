@@ -469,4 +469,13 @@ ipmeta_record_t *corsaro_ipmeta_get_default_record(
   return pkt_state->ipmeta_record_default;
 }
 
+ipmeta_provider_t *corsaro_ipmeta_get_provider(corsaro_t *corsaro,
+					       ipmeta_provider_id_t provider_id)
+{
+  assert(corsaro != NULL);
+  assert(provider_id > 0 && provider_id <= IPMETA_PROVIDER_MAX);
+
+  return ipmeta_get_provider_by_id(STATE(corsaro)->ipmeta, provider_id);
+}
+
 #endif

@@ -43,4 +43,7 @@ ipmeta_record_t *corsaro_ipmeta_get_record(struct corsaro_packet_state *pkt_stat
 ipmeta_record_t *corsaro_ipmeta_get_default_record(
 				     struct corsaro_packet_state *pkt_state);
 
+ipmeta_provider_t *corsaro_ipmeta_get_provider(corsaro_t *corsaro,
+					       ipmeta_provider_id_t provider_id);
+
 #endif /* __CORSARO_IPMETA_H */
