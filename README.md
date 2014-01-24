@@ -38,7 +38,7 @@ perform analysis on existing Corsaro results, see the [Tutorials](http://www.cai
 section.
 
 Corsaro can be used both as a library and as a stand-alone application for
-processing any format of trace data that \a libtrace supports. The Corsaro
+processing any format of trace data that _libtrace_ supports. The Corsaro
 distribution also includes several other supporting tools for basic analysis of
 Corsaro output data. For information on using the Corsaro application and the
 other tools included, see the [Tools](http://www.caida.org/tools/measurement/corsaro/docs/tools.html) section.
