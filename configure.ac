@@ -259,9 +259,6 @@ fi
 # unfortunately we have to generate all of these Makefiles because of make dist
 # they will not however be compiled into the binary unless they are used
 
-# libanon is only used by anon (for now)
-AM_CONDITIONAL([WITH_LIBANON], [test x$with_plugin_anon == xyes])
-
 ################################################################################
 # END PLUGIN CONFIGURATION                                                     #
 ################################################################################
@@ -275,11 +272,11 @@ AC_SUBST([CORSARO_MINOR_VERSION])
 AC_HEADER_ASSERT
 
 AC_CONFIG_FILES([Makefile libcorsaro/Makefile libcorsaro/plugins/Makefile
+			  libcorsaro/plugins/libanon/Makefile
 			  tools/Makefile common/Makefile
-			  common/libanon/Makefile
 			  common/libpatricia/Makefile
 			  common/libcsv/Makefile
-			  docs/Makefile 
+			  docs/Makefile
 			  docs/corsaro.doxygen
 			  docs/corsaro.caida.doxygen])
 AC_OUTPUT
