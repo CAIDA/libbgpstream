@@ -44,7 +44,7 @@ libcorsaro_la_SOURCES = 	\
 	corsaro_plugin.c 	\
 	corsaro_plugin.h 
 
-libcorsaro_la_LIBADD = $(top_builddir)/common/libcorsarocommon.la \
+libcorsaro_la_LIBADD = $(top_builddir)/common/libcccommon.la \
 	$(top_builddir)/libcorsaro/plugins/libcorsaroplugins.la
 
 libcorsaro_la_LDFLAGS = -version-info @CORSARO_MAJOR_VERSION@:@CORSARO_MINOR_VERSION@:@CORSARO_MID_VERSION@
