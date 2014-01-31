@@ -33,7 +33,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "wandio.h"
+#include <wandio.h>
+
+#include "wandio_utils.h"
 
 #include "corsaro_file.h"
 #include "corsaro_log.h"
@@ -49,28 +51,9 @@ extern int vasprintf(char **, const char *, __va_list);
 /** The string to prefix file names with when creating trace files */
 #define CORSARO_FILE_TRACE_FORMAT "pcapfile:"
 
-corsaro_file_compress_t corsaro_file_detect_compression(corsaro_t *corsaro,
-						    char *filename)
+corsaro_file_compress_t corsaro_file_detect_compression(char *filename)
 {
-  char *ptr = filename;
-
-  /* check for a .gz extension */
-  ptr += strlen(filename)-strlen(CORSARO_FILE_ZLIB_SUFFIX);
-  if(strncmp(ptr, CORSARO_FILE_ZLIB_SUFFIX, 4) == 0)
-    {
-      return CORSARO_FILE_COMPRESS_ZLIB;
-    }
-
-  ptr = filename;
-  /* check for a .bz2 extension */
-  ptr += strlen(filename)-strlen(CORSARO_FILE_BZ2_SUFFIX);
-  if(strncmp(ptr, CORSARO_FILE_BZ2_SUFFIX, 4) == 0)
-    {
-      return CORSARO_FILE_COMPRESS_BZ2;
-    }
-
-  /* this is a suffix we don't know. don't compress */
-  return CORSARO_FILE_COMPRESS_NONE;
+  return wandio_detect_compression_type(filename);
 }
 
 corsaro_file_t *corsaro_file_open(corsaro_t *corsaro,
@@ -214,21 +197,6 @@ off_t corsaro_file_write_packet(corsaro_t *corsaro,
   return -1;
 }
 
-static size_t wiovprintf(iow_t *io, const char *fmt, va_list args)
-{
-  char *buf;
-  size_t len;
-  int ret;
-
-  if ((ret = vasprintf(&buf, fmt, args)) < 0)
-    return ret;
-  len = strlen(buf);
-  len = len == (unsigned)len ? (size_t)wandio_wwrite(io, buf,
-						     (unsigned)len) : 0;
-  free(buf);
-  return len;
-}
-
 off_t corsaro_file_vprintf(corsaro_t *corsaro, corsaro_file_t *file,
 			 const char *format, va_list args)
 {
@@ -239,7 +207,7 @@ off_t corsaro_file_vprintf(corsaro_t *corsaro, corsaro_file_t *file,
 	 file->mode == CORSARO_FILE_MODE_UNKNOWN);
   assert(file->wand_io != NULL);
 
-  return wiovprintf(file->wand_io, format, args);
+  return wandio_vprintf(file->wand_io, format, args);
 
 }
 
@@ -381,39 +349,8 @@ off_t corsaro_file_rgets(corsaro_file_in_t *file, void *buffer, off_t len)
 	 file->mode == CORSARO_FILE_MODE_UNKNOWN);
   assert(file->wand_io != NULL);
 
-  char cbuf;
-  int rval;
-  int i;
-  int done = 0;
-
-  if(buffer == NULL || len <= 0)
-    {
-      return 0;
-    }
-
-  for(i=0; !done && i < len-1; i++)
-    {
-      if((rval = wandio_read(file->wand_io, &cbuf, 1)) < 0)
-	{
-	  return rval;
-	}
-      if(rval == 0)
-	{
-	  done = 1;
-	  i--;
-	}
-      else
-	{
-	  ((char*)buffer)[i] = cbuf;
-	  if(cbuf == '\n')
-	    {
-	      done = 1;
-	    }
-	}
-    }
-
-  ((char*)buffer)[i] = '\0';
-  return i;
+  /* just hand off to the helper func in wandio_utils (no chomp) */
+  return wandio_fgets(file->wand_io, buffer, len, 0);
 }
 
 off_t corsaro_file_rread_packet(corsaro_file_in_t *file,

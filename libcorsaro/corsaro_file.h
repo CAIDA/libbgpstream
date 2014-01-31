@@ -132,12 +132,10 @@ typedef struct corsaro_file_in
 
 /** Attempts to detect the type of compression for a file based on the suffix
  *
- * @param corsaro          The corsaro object the file is associated with
  * @param filename       The name of the file to check
  * @return the compression type to use, -1 if an error occurs
  */
-corsaro_file_compress_t corsaro_file_detect_compression(struct corsaro *corsaro,
-						    char *filename);
+corsaro_file_compress_t corsaro_file_detect_compression(char *filename);
 
 /** Creates a new corsaro file write and opens the provided file for writing.
  *

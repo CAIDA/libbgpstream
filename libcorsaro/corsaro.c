@@ -216,7 +216,7 @@ static corsaro_t *corsaro_init(char *template, corsaro_file_mode_t mode)
   e->output_mode = mode;
 
   /* check if compression should be used based on the file name */
-  e->compress = corsaro_file_detect_compression(e, e->template);
+  e->compress = corsaro_file_detect_compression(e->template);
 
   /* use the default compression level for now */
   e->compress_level = CORSARO_FILE_COMPRESS_LEVEL_DEFAULT;
