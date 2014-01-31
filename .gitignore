@@ -28,7 +28,6 @@ cors-ft-aggregate
 cors-ft-reports
 cors-trace2tuple
 corsaro-*.tar.gz
-ChangeLog
 
 # doxygen files
 docs/doxygen/caida-html
