@@ -210,6 +210,7 @@ ED_WITH_PLUGIN([corsaro_ipmeta],[ipmeta],[IPMETA],[no])
 # should [not] be written out
 ED_WITH_PLUGIN([corsaro_filtergeo],[filtergeo],[FILTERGEO],[no])
 ED_WITH_PLUGIN([corsaro_filterpfx],[filterpfx],[FILTERPFX],[no])
+ED_WITH_PLUGIN([corsaro_filterbpf],[filterbpf],[FILTERBPF],[no])
 
 #pass-through pcap plugin
 # the pcap plugin only makes sense in live mode, so disable it by default

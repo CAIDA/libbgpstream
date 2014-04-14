@@ -185,6 +185,9 @@ typedef enum corsaro_plugin_id
   /** FilterPfx plugin */
   CORSARO_PLUGIN_ID_FILTERPFX        = 7,
 
+  /** FilterBPF plugin */
+  CORSARO_PLUGIN_ID_FILTERBPF        = 8,
+
   /** FlowTuple plugin */
   CORSARO_PLUGIN_ID_FLOWTUPLE        = 20,
 

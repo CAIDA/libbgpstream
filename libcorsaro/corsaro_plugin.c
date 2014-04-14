@@ -70,6 +70,10 @@
 #include "corsaro_filterpfx.h"
 #endif
 
+#ifdef WITH_PLUGIN_FILTERBPF
+#include "corsaro_filterbpf.h"
+#endif
+
 /*
  * add new plugin includes below using:
  *

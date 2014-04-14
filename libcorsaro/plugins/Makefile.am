@@ -64,6 +64,9 @@ endif
 if WITH_PLUGIN_FILTERPFX
 PLUGIN_SRC+=corsaro_filterpfx.c corsaro_filterpfx.h 
 endif
+if WITH_PLUGIN_FILTERBPF
+PLUGIN_SRC+=corsaro_filterbpf.c corsaro_filterbpf.h
+endif
 
 ################################################################################
 # Add new plugins below here using:
