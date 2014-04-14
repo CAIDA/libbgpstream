@@ -122,7 +122,7 @@ AC_ARG_WITH(man,
 ])
 
 # Checks for typedefs, structures, and compiler characteristics.
-AC_C_INLINE
+#AC_C_INLINE # 2014-04-14 AK removes because it causes problems with clang3.4
 AC_TYPE_SIZE_T
 AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
