@@ -415,6 +415,13 @@ int corsaro_ipmeta_process_packet(corsaro_t *corsaro,
   libtrace_packet_t *ltpacket = LT_PKT(packet);
   libtrace_ip_t  *ip_hdr  = NULL;
 
+  /* no point carrying on if a previous plugin has already decided we should
+     ignore this packet */
+  if((packet->state.flags & CORSARO_PACKET_STATE_IGNORE) != 0)
+    {
+      return 0;
+    }
+
   /* check for ipv4 */
   if((ip_hdr = trace_get_ip(ltpacket)) == NULL)
     {
@@ -431,6 +438,12 @@ int corsaro_ipmeta_process_flowtuple(corsaro_t *corsaro,
 				    corsaro_flowtuple_t *flowtuple,
 				    corsaro_packet_state_t *state)
 {
+  /* no point carrying on if a previous plugin has already decided we should
+     ignore this tuple */
+  if((state->flags & CORSARO_PACKET_STATE_IGNORE) != 0)
+    {
+      return 0;
+    }
   return process_generic(corsaro, state,
 			 corsaro_flowtuple_get_source_ip(flowtuple));
 }
