@@ -323,8 +323,12 @@ int corsaro_flowtuple_record_print(corsaro_in_record_type_t record_type,
 /** Convenience macro to help with the hashing function */
 #define CORSARO_FLOWTUPLE_SHIFT_AND_XOR(value)  h ^= (h<<5) + (h>>27) + (value)
 
-/**
- * Hashes the flowtuple based on the following table 
+/** Hash the given flowtuple into a 32bit value
+ *
+ * @param ft            Pointer to the flowtuple record to hash
+ * @return the hashed value
+ *
+ * The flowtuple is hashed based on the following table:
  *
  * With slash eight optimization:
  *         --------------------------------
@@ -348,25 +352,7 @@ int corsaro_flowtuple_record_print(corsaro_in_record_type_t record_type,
  *         |  TTL  |TCP_FLG|PROTO|  LEN   |
  *         --------------------------------
  */
-static inline khint32_t corsaro_flowtuple_hash_func(struct corsaro_flowtuple *t)
-{
-  khint32_t h = (khint32_t)t->src_ip*59;
-#ifdef CORSARO_SLASH_EIGHT
-  CORSARO_FLOWTUPLE_SHIFT_AND_XOR((t->dst_ip.b<<24)|(t->dst_ip.c<<16)|
-			       (t->dst_ip.d<<8)|(t->protocol));
-#else
-  CORSARO_FLOWTUPLE_SHIFT_AND_XOR(t->dst_ip);
-#endif
-  CORSARO_FLOWTUPLE_SHIFT_AND_XOR(t->src_port<<16);
-  CORSARO_FLOWTUPLE_SHIFT_AND_XOR(t->dst_port);
-  CORSARO_FLOWTUPLE_SHIFT_AND_XOR((t->ttl<<24)|(t->tcp_flags<<16));
-#ifdef CORSARO_SLASH_EIGHT
-  CORSARO_FLOWTUPLE_SHIFT_AND_XOR(t->ip_len);
-#else
-  CORSARO_FLOWTUPLE_SHIFT_AND_XOR((t->protocol<<8)|(t->ip_len));
-#endif
-  return h;
-}
+khint32_t corsaro_flowtuple_hash_func(struct corsaro_flowtuple *ft);
 
 /** Tests two flowtuples for equality */
 #ifdef CORSARO_SLASH_EIGHT
