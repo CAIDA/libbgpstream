@@ -1,0 +1,46 @@
+#
+# libbgpstream
+#
+# Chiara Orsini, CAIDA, UC San Diego
+# chiara@caida.org
+#
+# Copyright (C) 2013 The Regents of the University of California.
+#
+# This file is part of libbgpstream.
+#
+# libbgpstream is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# libbgpstream is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with libbgpstream.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/lib 
+
+
+dist_bin_SCRIPTS =
+
+bin_PROGRAMS = bgp-test interface-test
+
+bgp_test_SOURCES = \
+	bgp-test.c
+
+bgp_test_LDADD = -lbgpstream -lbgpdump
+bgp_test_LDFLAGS = -L$(top_builddir)/lib
+
+interface_test_SOURCES = \
+	interface-test.c
+
+interface_test_LDADD = -lbgpstream -lbgpdump
+interface_test_LDFLAGS = -L$(top_builddir)/lib
+
+ACLOCAL_AMFLAGS = -I m4
+
+CLEANFILES = *~

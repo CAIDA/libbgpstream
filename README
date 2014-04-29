@@ -1,0 +1,39 @@
+
+
+# Structure of the program
+
+tools/
+	TODO
+
+lib/
+	TODO
+
+
+# How to build the program
+
+  1) ./bootstrap.sh
+  2) ./configure \
+      CFLAGS=-I/TODO \
+      LDFLAGS=-L/TODO
+
+      # CFLAGS and LDFLAGS search for external libraries
+      # (unless they are installed in
+      # some folder already in the PATH)
+      # Set the DYLD_LIBRARY_PATH (if it is a dynamic lib) - Mac OS X
+      # Set the LD_LIBRARY_PATH on FreeBSD
+
+
+  3) make
+
+  4) ./tools/todo
+
+
+
+# How to configure autotools
+
+See:
+	lib/Makefile.am
+	tools/Makefile.am
+	Makefile.am
+	configure.ac
+	bootstrap.sh
