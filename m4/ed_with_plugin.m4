@@ -54,7 +54,7 @@ fi
         AS_IF([test "x$with_plugin_$2" != xno],
               [
 		AC_DEFINE([WITH_PLUGIN_$3],[1],[Building with $2])
-		ED_PLUGIN_INIT_ALL_ENABLED+="PLUGIN_INIT_ADD($1);"
+		ED_PLUGIN_INIT_ALL_ENABLED="${ED_PLUGIN_INIT_ALL_ENABLED}PLUGIN_INIT_ADD($1);"
 	      ])
 	AC_MSG_RESULT([$with_plugin_$2])
 
