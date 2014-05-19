@@ -1033,7 +1033,7 @@ int corsaro_flowtuple_process_flowtuple_class_end(corsaro_t *corsaro,
 int corsaro_flowtuple_probe_file(corsaro_in_t *corsaro, const char *fturi)
 {
   corsaro_file_in_t *ifile = NULL;
-  int res;
+  int res = 0;
 
   if(corsaro_flowtuple_probe_filename(fturi) != 0)
     {
@@ -1046,7 +1046,11 @@ int corsaro_flowtuple_probe_file(corsaro_in_t *corsaro, const char *fturi)
       /* this simply means that it is likely a libtrace file */
       return 0;
     }
-  res = corsaro_flowtuple_probe_magic(corsaro, ifile);
+  /* We can only probe binary files */
+  if(CORSARO_FILE_MODE(ifile) == CORSARO_FILE_MODE_BINARY)
+   {
+      res = corsaro_flowtuple_probe_magic(corsaro, ifile);
+   }
 
   corsaro_file_rclose(ifile);
   return res;
