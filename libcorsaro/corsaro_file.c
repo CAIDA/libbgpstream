@@ -450,7 +450,8 @@ void corsaro_file_rclose(corsaro_file_in_t *file)
 	}
       /* just for sanity */
       file->wand_io = NULL;
-
+      break;
+            
     default:
       /* do nothing - it was already freed? */
       /* leave the assert here for when people are debugging */
