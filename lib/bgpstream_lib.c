@@ -26,30 +26,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "bgpstream_lib.h"
-#include "debug.h"
 #include <bgpdump_lib.h>
+#include "debug.h"
 
-
-int test_mylib(const char *filename){
-  
-  BGPDUMP *my_dump = bgpdump_open_dump(filename);
-  if(!my_dump){
-    return 1;
-  }
-  BGPDUMP_ENTRY *my_entry = bgpdump_read_next(my_dump);
-  bgpdump_free_mem(my_entry);
-  bgpdump_close_dump(my_dump);
-  return 0;
-
-}
-
-/* create a new bgpstream interface 
+/* allocate memory for a new bgpstream interface 
  */
 bgpstream_t *bgpstream_create() {
   debug("BS: create start");
-  bgpstream_t *bs = (bgpstream_t*) malloc(sizeof(bgpstream_t));
+  bgpstream_t *  bs = (bgpstream_t*) malloc(sizeof(bgpstream_t));
   if(bs == NULL) {
     return NULL; // can't allocate memory
+  }
+  bs->filter_mgr = bgpstream_filter_mgr_create(); 
+  if(bs->filter_mgr == NULL) {
+    bgpstream_destroy(bs);
+    bs = NULL;
+    return NULL;
+  }
+  bs->datasource_mgr = bgpstream_datasource_mgr_create(); 
+  if(bs->datasource_mgr == NULL) {
+    bgpstream_destroy(bs);
+    return NULL;
   }
   /* create an empty input mgr
    * the input queue will be populated when a
@@ -57,49 +54,117 @@ bgpstream_t *bgpstream_create() {
   bs->input_mgr = bgpstream_input_mgr_create();
   if(bs->input_mgr == NULL) {
     bgpstream_destroy(bs);
+    bs = NULL;
     return NULL;
   }
-  // default feeder plugin
-  bgpstream_set_feeder_plugin(bs,feeder_default, "", 0, 0);
-  bs->reader_mgr = bgpstream_reader_mgr_create(); 
+  bs->reader_mgr = bgpstream_reader_mgr_create(bs->filter_mgr); 
   if(bs->reader_mgr == NULL) {
     bgpstream_destroy(bs);
+    bs = NULL;
     return NULL;
   }
+  /* memory for the bgpstream interface has been
+   * allocated correctly */
+  bs->status = ALLOCATED;
   debug("BS: create end");
   return bs;
 }
-
-
-/* customize the bgpstream interface 
- * providing the right information
- * associated to the feeder plugin
+/* side note: filters are part of the bgpstream so they
+ * can be accessed both from the input_mgr and the
+ * reader_mgr (input_mgr use them to apply a coarse-grained 
+ * filtering, the reader_mgr applies a fine-grained filtering
+ * of the data provided by the input_mgr)
  */
-void bgpstream_set_feeder_plugin(bgpstream_t *bs, feeder_callback_t feeder_cb,
-				 const char * const feeder_name,
-				 const int min_date, const int min_ts) {
-  if(bs == NULL || bs->input_mgr == NULL) {
+
+
+
+/* configure filters in order to select a subset of the bgp data available */
+void bgpstream_set_filter(bgpstream_t * const bs, const char* filter_name,
+			  const char* filter_value) {
+  debug("BS: set_filter start");
+  if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return; // nothing to customize
   }
-  bs->input_mgr->feeder_cb = feeder_cb;
-  strcpy(bs->input_mgr->feeder_name, feeder_name);
-  bs->input_mgr->epoch_minimum_date = min_date;
-  bs->input_mgr->epoch_last_ts_input = min_ts;  
+  bgpstream_filter_mgr_filter_set(bs->filter_mgr, filter_name, filter_value);
+  debug("BS: set_filter end");
 }
 
 
-/* destroy a bgpstream interface istance
+/* configure the interface so that it blocks
+ * waiting for new data 
  */
-void bgpstream_destroy(bgpstream_t *bs){
-  debug("BS: destroy start");
-  if(bs == NULL) {
-    return; // nothing to destroy
+void bgpstream_set_blocking(bgpstream_t * const bs) {
+  debug("BS: set_blocking start");
+  if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
+    return; // nothing to customize
   }
-  bgpstream_input_mgr_destroy(bs->input_mgr);
-  bgpstream_reader_mgr_destroy(bs->reader_mgr);
-  free(bs);
-  bs = NULL;
-  debug("BS: destroy end");
+  bgpstream_datasource_mgr_set_blocking(bs->datasource_mgr);
+  debug("BS: set_blocking stop");
+
+}
+
+/* turn on the bgpstream interface, i.e.: 
+ * it makes the interface ready
+ * for a new get next call 
+*/
+int bgpstream_init(bgpstream_t * const bs) {
+  debug("BS: init start");
+  if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
+    return 0; // nothing to init
+  }
+  /* Note:
+   * so far, only one data source is available - mysql
+   * use set datasource in the future
+   */
+  // MySQL
+  bgpstream_datasource_mgr_init(bs->datasource_mgr, "mysql", bs->filter_mgr);
+  if(bs->datasource_mgr->status == DS_ON) {
+    bs->status = ON; // interface is on
+    debug("BS: init end: ok");
+    return 1;
+  }
+  else{
+    bs->status = ALLOCATED; // interface is not on (something wrong with datasource
+    debug("BS: init end: not ok");
+    return -1;
+  }
+}
+
+
+/* allocate memory for a bs_record */
+bgpstream_record_t *bgpstream_create_record() {
+  debug("BS: create record start");
+  bgpstream_record_t *bs_record = (bgpstream_record_t*) malloc(sizeof(bgpstream_record_t));
+  if(bs_record == NULL) {
+    return NULL; // can't allocate memory
+  }
+  bs_record->bd_entry = NULL;
+  bs_record->status = EMPTY_SOURCE;
+  strcpy(bs_record->attributes.dump_project, "");
+  strcpy(bs_record->attributes.dump_collector, "");
+  strcpy(bs_record->attributes.dump_type, "");
+  bs_record->attributes.dump_time = 0;
+  bs_record->attributes.record_time = 0;
+  debug("BS: create record end");
+  return bs_record;
+}
+
+
+/* free memory associated to a bs_record  */
+void bgpstream_destroy_record(bgpstream_record_t * const bs_record){
+  debug("BS: destroy record start");
+  if(bs_record == NULL) {
+    debug("BS: record destroy end");
+    return; // nothing to do
+  }
+  if(bs_record->bd_entry != NULL){
+    debug("BS - free bs_record->bgpdump_entry");
+    bgpdump_free_mem(bs_record->bd_entry);
+    bs_record->bd_entry = NULL;
+  }
+  debug("BS - free bs_record");
+  free(bs_record);
+  debug("BS: destroy record end");
 }
 
 
@@ -109,13 +174,16 @@ void bgpstream_destroy(bgpstream_t *bs){
  * an external source) or the reader_cqueue (i.e. list
  * of bgpdump currently open) are empty then it 
  * triggers a mechanism to populate the queues or
- * return NULL if nothing is available 
+ * return 0 if nothing is available 
  */
-bgpstream_record_t *bgpstream_get_next(bgpstream_t *bs) {
+int bgpstream_get_next(bgpstream_t * const bs, bgpstream_record_t * const bs_record) {
   debug("BS: get next");
-  bgpstream_record_t *bs_record = NULL;
+  if(bs == NULL || (bs != NULL && bs->status != ON)) {
+  return -1; // wrong status
+  }
+  // bgpstream_record_t *bs_record = NULL;
   int num_query_results = 0;
-  int bs_reader_set_ret = 0;
+  bgpstream_input_t *bs_in = NULL;
   while(bgpstream_reader_mgr_is_empty(bs->reader_mgr)) {
     debug("BS: reader mgr is empty");
     // get new data to process and set the reader_mgr
@@ -123,33 +191,55 @@ bgpstream_record_t *bgpstream_get_next(bgpstream_t *bs) {
       debug("BS: input mgr is empty");
       /* query the external source and append new
        * input objects to the input_mgr queue */
-      // num_query_results = my_empty_callback_function(bs->input_mgr);
-      num_query_results = bs->input_mgr->feeder_cb(bs->input_mgr);
+      num_query_results = bgpstream_datasource_mgr_update_input_queue(bs->datasource_mgr,
+								  bs->input_mgr);
       if(num_query_results == 0){
-	return NULL; // no data are available
+	debug("BS: no (more) data are available");
+	return 0; // no (more) data are available
       }
-      debug("BS: got results from callback");
+      debug("BS: got results from datasource");
     }
     debug("BS: input mgr not empty");
-    bgpstream_input_t *bs_in = bgpstream_input_get_queue_to_process(bs->input_mgr);
-    bs_reader_set_ret = bgpstream_reader_mgr_set(bs->reader_mgr,bs_in);
-    bgpstream_input_destroy_queue(bs_in);
-    if(bs_reader_set_ret == 0) {
-      // something strange is going on (the reader was empty, we try to create
-      // a new cqueue to process but it fails (e.g. it was not really empty?)
-      return NULL;
-    }
+    bs_in = bgpstream_input_mgr_get_queue_to_process(bs->input_mgr);
+    bgpstream_reader_mgr_add(bs->reader_mgr, bs_in, bs->filter_mgr);
+    bgpstream_input_mgr_destroy_queue(bs_in);    
+    bs_in = NULL;
   }
-  debug("BS: reader mgr not empty");
-  return bgpstream_reader_mgr_get_next_record(bs->reader_mgr);
+  debug("BS: reader mgr not empty");  
+  return bgpstream_reader_mgr_get_next_record(bs->reader_mgr, bs_record, bs->filter_mgr);
 }
 
 
-/* free memory associated to a bs_record 
+/* turn off the bgpstream interface */
+void bgpstream_close(bgpstream_t * const bs) {
+  debug("BS: close start");
+  if(bs == NULL || (bs != NULL && bs->status != ON)) {
+    return; // nothing to close
+  }
+  bgpstream_datasource_mgr_close(bs->datasource_mgr);
+  bs->status = OFF; // interface is off
+  debug("BS: close end");
+
+}
+
+
+/* destroy a bgpstream interface istance
  */
-void bgpstream_free_mem(bgpstream_record_t *bs_record){
-  debug("BS: free record start");
-  bgpstream_reader_destroy_record(bs_record);
-  bs_record = NULL;
-  debug("BS: free record end");
+void bgpstream_destroy(bgpstream_t * const bs){
+  debug("BS: destroy start");
+  if(bs == NULL) {
+    return; // nothing to destroy
+  }
+  bgpstream_input_mgr_destroy(bs->input_mgr);
+  bs->input_mgr = NULL;
+  bgpstream_reader_mgr_destroy(bs->reader_mgr);
+  bs->reader_mgr = NULL;
+  bgpstream_filter_mgr_destroy(bs->filter_mgr);
+  bs->filter_mgr = NULL;
+  bgpstream_datasource_mgr_destroy(bs->datasource_mgr);
+  bs->datasource_mgr = NULL;
+  free(bs);
+  debug("BS: destroy end");
 }
+
+

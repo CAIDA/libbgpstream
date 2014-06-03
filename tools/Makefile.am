@@ -1,3 +1,5 @@
+
+
 #
 # libbgpstream
 #
@@ -25,21 +27,18 @@
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/lib 
 
 
-dist_bin_SCRIPTS =
+bin_PROGRAMS =  bgp-test interface-test
 
-bin_PROGRAMS = bgp-test interface-test
-
-bgp_test_SOURCES = \
-	bgp-test.c
-
-bgp_test_LDADD = -lbgpstream -lbgpdump
+bgp_test_SOURCES = bgp-test.c process_bdump.c
+bgp_test_LDADD = -lbgpstream 
 bgp_test_LDFLAGS = -L$(top_builddir)/lib
 
-interface_test_SOURCES = \
-	interface-test.c
 
-interface_test_LDADD = -lbgpstream -lbgpdump
+interface_test_SOURCES = interface-test.c process_bdump.c
+interface_test_LDADD = -lbgpstream 
 interface_test_LDFLAGS = -L$(top_builddir)/lib
+
+
 
 ACLOCAL_AMFLAGS = -I m4
 

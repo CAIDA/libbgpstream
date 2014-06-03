@@ -23,18 +23,17 @@
  *
  */
 
-#ifndef _BGPSTREAM_FEEDER_PLUGINS_H
-#define _BGPSTREAM_FEEDER_PLUGINS_H
+#ifndef _BGPSTREAM_CONSTANTS_H
+#define _BGPSTREAM_CONSTANTS_H
 
-#include "bgpstream_input.h"
+// data source max length
+#define BGPSTREAM_DS_MAX_LEN 512
 
-int feeder_default(bgpstream_input_mgr_t * const input_mgr);
+// dump name max length
+#define BGPSTREAM_DUMP_MAX_LEN 1024
 
-// read data from sqlite database (db file in input_mgr->feeder_name)
-int sqlite_feeder(bgpstream_input_mgr_t * const input_mgr);
-
-
-
+// parameters/attribute/filters max length
+#define BGPSTREAM_PAR_MAX_LEN 512
 
 
-#endif /* _BGPSTREAM_FEEDER_PLUGINS */
+#endif /* _BGPSTREAM_CONSTANTS_H */

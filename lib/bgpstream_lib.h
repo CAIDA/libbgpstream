@@ -26,27 +26,67 @@
 #ifndef _BGPSTREAM_LIB_H
 #define _BGPSTREAM_LIB_H
 
+#include "bgpstream_datasource.h"
 #include "bgpstream_input.h"
 #include "bgpstream_reader.h"
-#include "bgpstream_feeder_plugins.h"
+#include "bgpstream_filter.h"
+#include "bgpstream_record.h"
 
+
+/* bgpstream_record_t type defined in
+ *  -> bgpstream_record.h 
+ */
+
+typedef enum {ALLOCATED, ON, OFF} bgpstream_status;
 
 typedef struct struct_bgpstream_t {  
   bgpstream_input_mgr_t *input_mgr;
   bgpstream_reader_mgr_t *reader_mgr;
-  // int status;  
+  bgpstream_filter_mgr_t *filter_mgr;
+  bgpstream_datasource_mgr_t *datasource_mgr;
+  bgpstream_status status;  
 } bgpstream_t;
 
 
 /* prototypes */
-int test_mylib(const char *filename);
+
+/* allocate memory for bgpstream interface */
 bgpstream_t *bgpstream_create();
-void bgpstream_set_feeder_plugin(bgpstream_t *bs, feeder_callback_t feeder_cb,
-				 const char * const feeder_name,
-				 const int min_date, const int min_ts);
-void bgpstream_destroy(bgpstream_t *bs);
-bgpstream_record_t *bgpstream_get_next(bgpstream_t *bs);
-void bgpstream_free_mem(bgpstream_record_t *bs_record);
+
+/* configure filters in order to select a subset of the bgp data available */
+void bgpstream_set_filter(bgpstream_t * const bs, const char* filter_name,
+			  const char* filter_value);
+
+
+/* configure the interface so that it blocks waiting for new data */
+void bgpstream_set_blocking(bgpstream_t * const bs);
+
+/* turn on the bgpstream interface, i.e.: it makes the interface ready
+ * for a new get next call */
+int bgpstream_init(bgpstream_t * const bs);
+
+/* allocate memory for a bs_record (the client can refer to this
+ * memory, however, if it has to save this object, it needs to
+ * copy the memory itself) */
+bgpstream_record_t *bgpstream_create_record();
+
+/* assign to bs_record the next record ordered by time among all those available
+ * (data collected are first filtered using the filters if set) 
+ * return:
+ * - > 0 if a new record has been read correctly
+ * -   0 if no new data are available
+ * - < 0 if an error occurred
+ */
+int bgpstream_get_next(bgpstream_t * const bs, bgpstream_record_t * const bs_record);
+
+/* deallocate memory for the bs_record */
+void bgpstream_destroy_record(bgpstream_record_t * const bs_record);
+
+/* turn off the bgpstream interface */
+void bgpstream_close(bgpstream_t * const bs);
+
+/* destroy the memory allocated for bgpstream interface */
+void bgpstream_destroy(bgpstream_t * const bs);
 
 
 #endif /* _BGPSTREAM_LIB_H */

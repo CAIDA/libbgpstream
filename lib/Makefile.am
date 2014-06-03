@@ -35,16 +35,26 @@ include_HEADERS = bgpstream_lib.h
 libbgpstream_la_SOURCES = 	\
 	bgpstream_lib.h		\
 	bgpstream_lib.c		\
+	bgpstream_record.h	\
+	bgpstream_constants.h	\
 	bgpstream_reader.h	\
 	bgpstream_reader.c	\
 	bgpstream_input.h	\
 	bgpstream_input.c	\
-	bgpstream_feeder_plugins.h	\
-	bgpstream_feeder_plugins.c	\
+	bgpstream_filter.h	\
+	bgpstream_filter.c	\
+	bgpstream_datasource.h	\
+	bgpstream_datasource.c	\
 	debug.h
 
 
-libbgpstream_la_LIBADD = -lbgpdump -lsqlite3
+
+libbgpstream_la_CFLAGS = -Wall
+#  $(MYSQL_CONFIG_CFLAGS)
+libbgpstream_la_CPPFLAGS=
+#$(MYSQL_CONFIG_CPPFLAGS)
+libbgpstream_la_LIBADD = 
+#-lbgpdump $(MYSQL_CONFIG_LIBS)
 
 libbgpstream_la_LDFLAGS = -version-info @LIBBGPSTREAM_MAJOR_VERSION@:@LIBBGPSTREAM_MINOR_VERSION@:@LIBBGPSTREAM_MID_VERSION@
 

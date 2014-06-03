@@ -97,9 +97,14 @@ AC_CHECK_LIB([bgpdump], [bgpdump_read_next], ,
                [AC_MSG_ERROR( [libbgpdump required ])])
 
 
+AC_CHECK_LIB([mysqlclient], [mysql_query], ,
+               [AC_MSG_ERROR( [libmysqlclient required ])])
+
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h inttypes.h limits.h math.h stdlib.h string.h \
 			      time.h sys/time.h])
+
+
 
 # we may want to come back later and add compile-time configuration for things
 # like datastructure providers, but for now it will all get compiled
