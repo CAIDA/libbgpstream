@@ -265,7 +265,7 @@ static void bgpstream_reader_export_record(bgpstream_reader_t * const bs_reader,
   default:
     bs_record->status = EMPTY_SOURCE;
   }
-  printf("Exported: %ld\t%ld\t%s\t%s\t%d\n", 		   
+  debug("Exported: %ld\t%ld\t%s\t%s\t%d\n", 		   
 		   bs_record->attributes.record_time,
 		   bs_record->attributes.dump_time,
 		   bs_record->attributes.dump_type, 
@@ -293,18 +293,18 @@ static void bgpstream_reader_destroy(bgpstream_reader_t * const bs_reader) {
   debug("\t\tBSR: destroy reader end");
 }
 
-
+/* //function used for debug
 static void print_reader_queue(const bgpstream_reader_t * const reader_queue) {
   const bgpstream_reader_t * iterator = reader_queue;
-  printf("QUEUE: start\n");
+  debug("QUEUE: start\n");
   while(iterator != NULL) {    
-    printf("\t%s(%d/%p)",iterator->dump_collector, iterator->status, iterator);
+    debug("\t%s(%d/%p)",iterator->dump_collector, iterator->status, iterator);
     iterator = iterator->next;
   }
   iterator = NULL;
-  printf("\nQUEUE: end\n");  
+  debug("\nQUEUE: end\n");  
 }
-
+*/
 
 
 
@@ -325,7 +325,6 @@ bgpstream_reader_mgr_t * bgpstream_reader_mgr_create(const bgpstream_filter_mgr_
   bs_reader_mgr->reader_queue = NULL;
   bs_reader_mgr->filter_mgr = filter_mgr;
   bs_reader_mgr->status = EMPTY_READER_MGR;
-  print_reader_queue(bs_reader_mgr->reader_queue);
   debug("\tBSR_MGR: create reader mgr: end");
   return bs_reader_mgr;
 }
@@ -406,7 +405,6 @@ static void bgpstream_reader_mgr_sorted_insert(bgpstream_reader_mgr_t * const bs
       }
     }  
   }
-  print_reader_queue(bs_reader_mgr->reader_queue);
   debug("\tBSR_MGR: sorted insert: end");
 }
 
@@ -429,13 +427,12 @@ void bgpstream_reader_mgr_add(bgpstream_reader_mgr_t * const bs_reader_mgr,
       bgpstream_reader_mgr_sorted_insert(bs_reader_mgr, bs_reader);
     }
     else{
-      printf("ERROR\n");
+      log_err("ERROR\n");
       return;
     }
     // go to the next input
     iterator = iterator->next;
   }
-  print_reader_queue(bs_reader_mgr->reader_queue);
   debug("\tBSR_MGR: add input: end");
 }
 
@@ -458,8 +455,6 @@ int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reade
     return 0;
   }
   // get head from reader queue 
-  debug("\tBSR_MGR: get_next_record: POP FROM QUEUE A");    
-  print_reader_queue(bs_reader_mgr->reader_queue);
   bgpstream_reader_t *bs_reader = bs_reader_mgr->reader_queue;
   bs_reader_mgr->reader_queue = bs_reader_mgr->reader_queue->next;
   if(bs_reader_mgr->reader_queue == NULL) { // check if last reader
@@ -467,8 +462,6 @@ int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reade
   }
   // disconnect reader from the queue
   bs_reader->next = NULL;
-  debug("\tBSR_MGR: get_next_record: POP FROM QUEUE B");    
-  print_reader_queue(bs_reader_mgr->reader_queue);
   // bgpstream_reader_export
   bgpstream_reader_export_record(bs_reader, bs_record);
   // if previous read was successful, we read next
@@ -489,8 +482,6 @@ int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reade
   else {
       bgpstream_reader_destroy(bs_reader);
   }
-  debug("\tBSR_MGR: get_next_record: POP FROM QUEUE C");    
-  print_reader_queue(bs_reader_mgr->reader_queue);
   debug("\tBSR_MGR: get_next_record: end");
   return 1; 
 }

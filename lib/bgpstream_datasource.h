@@ -42,6 +42,18 @@ typedef enum {DS_ON,    /* current data source is on */
 } bgpstream_datasource_status_t;
 
 
+typedef struct struct_bgpstream_customlist_datasource_t {
+  int list_read; // 1 if list has bee read, 0 otherwise
+  bgpstream_filter_mgr_t * filter_mgr;
+  char filename[BGPSTREAM_DUMP_MAX_LEN];
+  char project[BGPSTREAM_PAR_MAX_LEN];
+  char collector[BGPSTREAM_PAR_MAX_LEN];
+  char bgp_type[BGPSTREAM_PAR_MAX_LEN];
+  int filetime;
+} bgpstream_customlist_datasource_t;
+
+
+
 typedef struct struct_bgpstream_mysql_datasource_t {
   MYSQL * mysql_con;
   char sql_query[2048];
@@ -65,6 +77,7 @@ typedef struct struct_bgpstream_datasource_mgr_t {
   char datasource_name[BGPSTREAM_DS_MAX_LEN];
   // mysql datasource
   bgpstream_mysql_datasource_t *mysql_ds;
+  bgpstream_customlist_datasource_t *customlist_ds;
   // other datasources
   int blocking;
   bgpstream_datasource_status_t status;
@@ -92,12 +105,5 @@ void bgpstream_datasource_mgr_destroy(bgpstream_datasource_mgr_t *datasource_mgr
 
 
 
-// mysql functions (they should be static) // TODO CHANGE!
-bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter_mgr_t *filter_mgr);
-
-int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasource_t* mysql_ds,
-						  bgpstream_input_mgr_t *input_mgr);
-
-void bgpstream_mysql_datasource_destroy(bgpstream_mysql_datasource_t* mysql_ds);
 
 #endif /* _BGPSTREAM_DATASOURCE */

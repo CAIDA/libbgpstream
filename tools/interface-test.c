@@ -48,15 +48,16 @@ int main(){
     return 1;
   }
 
-  // doesnt work
-  bgpstream_set_filter(bs, "time_interval_start", "1401472800");
-  bgpstream_set_filter(bs, "time_interval_stop", "1401474060");
+  // test case
+  //bgpstream_set_filter(bs, "time_interval_start", "1401472800");
+  //bgpstream_set_filter(bs, "time_interval_stop", "1401474060");
 
   // other option
   //bgpstream_set_filter(bs, "project", "ris");
-  bgpstream_set_filter(bs, "project", "routeviews");
+  //  bgpstream_set_filter(bs, "project", "routeviews");
   //bgpstream_set_filter(bs, "collector", "route-views.saopaulo");
-  //bgpstream_set_filter(bs, "bgp_type", "updates");
+  bgpstream_set_filter(bs, "bgp_type", "updates");
+  bgpstream_set_filter(bs, "time_interval_start", "1401493500");
   // bgpstream_set_filter(bs, "bgp_type", "ribs");
   //bgpstream_set_filter(bs, "time_interval_start", "1401472800");
   //bgpstream_set_filter(bs, "time_interval_stop", "1401474060");
@@ -75,7 +76,7 @@ int main(){
   //bgpstream_set_blocking(bs);
 
   // turn on interface
-  int init_res = bgpstream_init(bs);
+  int init_res = bgpstream_init(bs, "customlist");
   if(init_res <= 0) {
     printf("Not able to turn on bs\n");   
     // deallocate memory for interface

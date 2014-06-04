@@ -27,6 +27,23 @@
 #include "debug.h"
 
 
+/* datasource specific functions declarations */
+
+// customlist datasource functions
+static bgpstream_customlist_datasource_t *bgpstream_customlist_datasource_create(bgpstream_filter_mgr_t *filter_mgr);
+static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customlist_datasource_t* customlist_ds,
+							      bgpstream_input_mgr_t *input_mgr);
+static void bgpstream_customlist_datasource_destroy(bgpstream_customlist_datasource_t* customlist_ds);
+
+// mysql datasource functions
+static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter_mgr_t *filter_mgr);
+static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasource_t* mysql_ds,
+							 bgpstream_input_mgr_t *input_mgr);
+static void bgpstream_mysql_datasource_destroy(bgpstream_mysql_datasource_t* mysql_ds);
+
+
+/* datasource mgr related functions */
+
 
 bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
   debug("\tBSDS_MGR: create start");
@@ -36,10 +53,11 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
   }
   // default values
   memset(datasource_mgr->datasource_name, 0, BGPSTREAM_DS_MAX_LEN);   
-  strcpy(datasource_mgr->datasource_name, "mysql");   
+  strcpy(datasource_mgr->datasource_name, "");   
   datasource_mgr->blocking = 0;
   // datasources (none of them is active)
   datasource_mgr->mysql_ds = NULL;
+  datasource_mgr->customlist_ds = NULL;
   datasource_mgr->status = DS_OFF;
   debug("\tBSDS_MGR: create end");
   return datasource_mgr;
@@ -64,6 +82,16 @@ void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
       datasource_mgr->status = DS_ON;
     }
   }
+  if (strcmp(datasource_name, "customlist") == 0) {
+    datasource_mgr->customlist_ds = bgpstream_customlist_datasource_create(filter_mgr);
+    if(datasource_mgr->customlist_ds == NULL) {
+      datasource_mgr->status = DS_ERROR;
+    } 
+    else {
+      datasource_mgr->status = DS_ON;
+    }
+  }
+  // if none of the datasources is matched the status of the DS is not set to ON
   debug("\tBSDS_MGR: init end");
 }
 
@@ -87,12 +115,17 @@ int bgpstream_datasource_mgr_update_input_queue(bgpstream_datasource_mgr_t *data
   int results = -1;
   if (strcmp(datasource_mgr->datasource_name, "mysql") == 0) {
     do{
-      if(results == 0) { // results = 0 => 2+ time and database did not give any error
+      results = bgpstream_mysql_datasource_update_input_queue(datasource_mgr->mysql_ds, input_mgr);
+      if(results == 0 && datasource_mgr->blocking) {
+	// results = 0 => 2+ time and database did not give any error
 	sleep(30);
       }
-      results = bgpstream_mysql_datasource_update_input_queue(datasource_mgr->mysql_ds, input_mgr);
       debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
     } while(datasource_mgr->blocking && results == 0);
+  }
+  if (strcmp(datasource_mgr->datasource_name, "customlist") == 0) {
+    results = bgpstream_customlist_datasource_update_input_queue(datasource_mgr->customlist_ds, input_mgr);
+    debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
   }
   debug("\tBSDS_MGR: get data end");
   return results; 
@@ -107,6 +140,10 @@ void bgpstream_datasource_mgr_close(bgpstream_datasource_mgr_t *datasource_mgr) 
   if (strcmp(datasource_mgr->datasource_name, "mysql") == 0) {
     bgpstream_mysql_datasource_destroy(datasource_mgr->mysql_ds);
     datasource_mgr->mysql_ds = NULL;
+  }
+  if (strcmp(datasource_mgr->datasource_name, "customlist") == 0) {
+    bgpstream_customlist_datasource_destroy(datasource_mgr->customlist_ds);
+    datasource_mgr->customlist_ds = NULL;
   }
   datasource_mgr->status = DS_OFF;
   debug("\tBSDS_MGR: close end");
@@ -129,10 +166,126 @@ void bgpstream_datasource_mgr_destroy(bgpstream_datasource_mgr_t *datasource_mgr
 
 
 
+/* ----------- customlist related functions ----------- */
+
+static bgpstream_customlist_datasource_t *bgpstream_customlist_datasource_create(bgpstream_filter_mgr_t *filter_mgr) {
+  debug("\t\tBSDS_CLIST: create customlist_ds start");  
+  bgpstream_customlist_datasource_t *customlist_ds = (bgpstream_customlist_datasource_t*) malloc(sizeof(bgpstream_customlist_datasource_t));
+  if(customlist_ds == NULL) {
+    log_err("\t\tBSDS_CLIST: create customlist_ds can't allocate memory");    
+    return NULL; // can't allocate memory
+  }
+  customlist_ds->filter_mgr = filter_mgr;
+  customlist_ds->list_read = 0;
+  debug("\t\tBSDS_CLIST: create customlist_ds end");
+  return customlist_ds;
+}
+
+
+static bool bgpstream_customlist_datasource_filter_ok(bgpstream_customlist_datasource_t* customlist_ds) {
+  debug("\t\tBSDS_CLIST: customlist_ds apply filter start");  
+  // project
+  if(strcmp(customlist_ds->filter_mgr->project,"") != 0 && 
+     strcmp(customlist_ds->filter_mgr->project, customlist_ds->project) !=0) {
+    return false;
+  }
+  // collector
+  if(strcmp(customlist_ds->filter_mgr->collector,"") != 0 &&
+     strcmp(customlist_ds->filter_mgr->collector, customlist_ds->collector) !=0) {
+    return false;
+  }
+  // filetype
+  if(strcmp(customlist_ds->filter_mgr->bgp_type,"") != 0 &&
+     strcmp(customlist_ds->filter_mgr->bgp_type, customlist_ds->bgp_type) !=0) {
+    return false;
+  }
+  // filetime (we consider 15 mins before to consider routeviews updates
+  // and 120 seconds to have some margins)
+  if(customlist_ds->filetime < (customlist_ds->filter_mgr->time_interval_start - 15*60 - 120) ||
+     customlist_ds->filetime > customlist_ds->filter_mgr->time_interval_stop) {
+    return false;
+  }
+  // if all the filters are passed
+  return true;
+}
+
+
+static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customlist_datasource_t* customlist_ds,
+							      bgpstream_input_mgr_t *input_mgr) {
+    debug("\t\tBSDS_CLIST: customlist_ds update input queue start");  
+    int num_results = 0;       
+    // if list has not been read yet, then we push these files in the input queue
+    if(customlist_ds->list_read == 0) {
+
+      // file 1:
+      strcpy(customlist_ds->filename, "./test-dumps/routeviews.route-views.jinx.ribs.1401487200.bz2");
+      strcpy(customlist_ds->project, "routeviews");
+      strcpy(customlist_ds->collector, "route-views.jinx");
+      strcpy(customlist_ds->bgp_type, "ribs");
+      customlist_ds->filetime = 1401487200;
+      if(bgpstream_customlist_datasource_filter_ok(customlist_ds)){
+	num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, customlist_ds->filename,
+							     customlist_ds->project, customlist_ds->collector,
+							     customlist_ds->bgp_type, customlist_ds->filetime);
+      }
+      // file 2:
+      strcpy(customlist_ds->filename, "./test-dumps/routeviews.route-views.jinx.updates.1401493500.bz2");
+      strcpy(customlist_ds->project, "routeviews");
+      strcpy(customlist_ds->collector, "route-views.jinx");
+      strcpy(customlist_ds->bgp_type, "updates");
+      customlist_ds->filetime = 1401493500;
+      if(bgpstream_customlist_datasource_filter_ok(customlist_ds)){
+	num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, customlist_ds->filename,
+							     customlist_ds->project, customlist_ds->collector,
+							     customlist_ds->bgp_type, customlist_ds->filetime);
+      }
+      // file 3:
+      strcpy(customlist_ds->filename, "./test-dumps/ris.rrc06.ribs.1400544000.gz");
+      strcpy(customlist_ds->project, "ris");
+      strcpy(customlist_ds->collector, "rrc06");
+      strcpy(customlist_ds->bgp_type, "ribs");
+      customlist_ds->filetime = 1400544000;
+      if(bgpstream_customlist_datasource_filter_ok(customlist_ds)){
+	num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, customlist_ds->filename,
+							     customlist_ds->project, customlist_ds->collector,
+							     customlist_ds->bgp_type, customlist_ds->filetime);
+      }
+      // file 4:
+      strcpy(customlist_ds->filename, "./test-dumps/ris.rrc06.updates.1401488100.gz");
+      strcpy(customlist_ds->project, "ris");
+      strcpy(customlist_ds->collector, "rrc06");
+      strcpy(customlist_ds->bgp_type, "updates");
+      customlist_ds->filetime = 1401488100;
+      if(bgpstream_customlist_datasource_filter_ok(customlist_ds)){
+	num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, customlist_ds->filename,
+							     customlist_ds->project, customlist_ds->collector,
+							     customlist_ds->bgp_type, customlist_ds->filetime);
+      }
+      // end of files
+    }
+    customlist_ds->list_read = 1;
+    debug("\t\tBSDS_CLIST: customlist_ds update input queue end");  
+    return num_results;
+}
+
+
+static void bgpstream_customlist_datasource_destroy(bgpstream_customlist_datasource_t* customlist_ds) {
+  debug("\t\tBSDS_CLIST: destroy customlist_ds start");  
+  if(customlist_ds == NULL) {
+    return; // nothing to destroy
+  }
+  customlist_ds->filter_mgr = NULL;
+  customlist_ds->list_read = 0;
+  free(customlist_ds);
+  debug("\t\tBSDS_CLIST: destroy customlist_ds end");  
+}
+
+
+
 
 /* ----------- mysql related functions ----------- */
 
-bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter_mgr_t *filter_mgr) {
+static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter_mgr_t *filter_mgr) {
   debug("\t\tBSDS_MYSQL: create mysql_ds start");
   bgpstream_mysql_datasource_t *mysql_ds = (bgpstream_mysql_datasource_t*) malloc(sizeof(bgpstream_mysql_datasource_t));
   if(mysql_ds == NULL) {
@@ -219,17 +372,10 @@ bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter
   // minimum timestamp is a placeholder
   strcat (mysql_ds->sql_query," AND UNIX_TIMESTAMP(ts) > ? AND UNIX_TIMESTAMP(ts) <= UNIX_TIMESTAMP(NOW())-1");
 
-
-  // DEBUG HEEEEEEEEEEEEEEEREEEEE - remove this line after debug
-  strcat (mysql_ds->sql_query," AND (collectors.name LIKE 'route-views.jinx' OR collectors.name LIKE 'route-views.saopaulo')");
-
-
-
   // order by filetime and bgptypes in reverse order: this way the 
   // input insertions are always "head" insertions, i.e. queue insertion is
   // faster
   strcat (mysql_ds->sql_query," ORDER BY file_time, bgp_types.name DESC");
-
 
   // printf("%s\n",mysql_ds->sql_query);
   debug("\t\tBSDS_MYSQL:  mysql query created");
@@ -333,7 +479,7 @@ bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter
 }
 
 
-int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasource_t* mysql_ds,
+static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasource_t* mysql_ds,
 						  bgpstream_input_mgr_t *input_mgr) {
   debug("\t\tBSDS_MYSQL: mysql_ds update input queue start ");
   
@@ -378,9 +524,7 @@ int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasource_t* 
 }
 
 
-
-
-void bgpstream_mysql_datasource_destroy(bgpstream_mysql_datasource_t* mysql_ds) {
+static void bgpstream_mysql_datasource_destroy(bgpstream_mysql_datasource_t* mysql_ds) {
   debug("\t\tBSDS_MYSQL: destroy mysql_ds start");
   if(mysql_ds == NULL) {
     return; // nothing to destroy

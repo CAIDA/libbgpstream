@@ -107,24 +107,21 @@ void bgpstream_set_blocking(bgpstream_t * const bs) {
  * it makes the interface ready
  * for a new get next call 
 */
-int bgpstream_init(bgpstream_t * const bs) {
+int bgpstream_init(bgpstream_t * const bs, const char *datasource_name) {
   debug("BS: init start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return 0; // nothing to init
   }
-  /* Note:
-   * so far, only one data source is available - mysql
-   * use set datasource in the future
-   */
-  // MySQL
-  bgpstream_datasource_mgr_init(bs->datasource_mgr, "mysql", bs->filter_mgr);
+
+  bgpstream_datasource_mgr_init(bs->datasource_mgr, datasource_name, bs->filter_mgr);
   if(bs->datasource_mgr->status == DS_ON) {
     bs->status = ON; // interface is on
     debug("BS: init end: ok");
     return 1;
   }
   else{
-    bs->status = ALLOCATED; // interface is not on (something wrong with datasource
+    bs->status = ALLOCATED; // interface is not on (something wrong with datasource)
+    debug("BS: init warning: check if the datasource provided is ok");
     debug("BS: init end: not ok");
     return -1;
   }

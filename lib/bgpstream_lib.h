@@ -63,7 +63,7 @@ void bgpstream_set_blocking(bgpstream_t * const bs);
 
 /* turn on the bgpstream interface, i.e.: it makes the interface ready
  * for a new get next call */
-int bgpstream_init(bgpstream_t * const bs);
+int bgpstream_init(bgpstream_t * const bs, const char *datasource_name);
 
 /* allocate memory for a bs_record (the client can refer to this
  * memory, however, if it has to save this object, it needs to
