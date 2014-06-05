@@ -48,17 +48,28 @@ int main(){
     return 1;
   }
 
-  // test case
-  //bgpstream_set_filter(bs, "time_interval_start", "1401472800");
-  //bgpstream_set_filter(bs, "time_interval_stop", "1401474060");
+  // test case: 1
+  // start -> Fri May 30 17:41:40 UTC 2014
+  // bgpstream_set_filter(bs, "time_interval_start", "1401471700");
+  // stop -> Fri May 30 18:21:00 UTC 2014
+  // bgpstream_set_filter(bs, "time_interval_stop", "1401474060");
+
+
+  // test case: 2
+  // start -> Tue, 31 Dec 2013 23:29:00 GMT
+  bgpstream_set_filter(bs, "time_interval_start", "1388532540");
+  // stop -> Wed, 01 Jan 2014 00:39:00 GMT
+  bgpstream_set_filter(bs, "time_interval_stop", "1388536740");
+
+
 
   // other option
   //bgpstream_set_filter(bs, "project", "ris");
-  //  bgpstream_set_filter(bs, "project", "routeviews");
+  //bgpstream_set_filter(bs, "project", "routeviews");
   //bgpstream_set_filter(bs, "collector", "route-views.saopaulo");
-  bgpstream_set_filter(bs, "bgp_type", "updates");
-  bgpstream_set_filter(bs, "time_interval_start", "1401493500");
-  // bgpstream_set_filter(bs, "bgp_type", "ribs");
+  //bgpstream_set_filter(bs, "bgp_type", "updates");
+  //bgpstream_set_filter(bs, "time_interval_start", "1401493500");
+  //bgpstream_set_filter(bs, "bgp_type", "ribs");
   //bgpstream_set_filter(bs, "time_interval_start", "1401472800");
   //bgpstream_set_filter(bs, "time_interval_stop", "1401474060");
   
@@ -75,8 +86,10 @@ int main(){
   // set blocking
   //bgpstream_set_blocking(bs);
 
-  // turn on interface
-  int init_res = bgpstream_init(bs, "customlist");
+  // turn on interface and set the datasource!
+  //int init_res = bgpstream_init(bs, "customlist");
+  int init_res = bgpstream_init(bs, "mysql");
+  
   if(init_res <= 0) {
     printf("Not able to turn on bs\n");   
     // deallocate memory for interface

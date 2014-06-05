@@ -293,18 +293,22 @@ static void bgpstream_reader_destroy(bgpstream_reader_t * const bs_reader) {
   debug("\t\tBSR: destroy reader end");
 }
 
-/* //function used for debug
+ //function used for debug
 static void print_reader_queue(const bgpstream_reader_t * const reader_queue) {
+#ifdef NDEBUG
   const bgpstream_reader_t * iterator = reader_queue;
-  debug("QUEUE: start\n");
+  debug("READER QUEUE: start");
+  int i = 1;
   while(iterator != NULL) {    
-    debug("\t%s(%d/%p)",iterator->dump_collector, iterator->status, iterator);
+    debug("\t%d %s %s %ld %ld %d",i, iterator->dump_collector, iterator->dump_type, iterator->dump_time, iterator->record_time, iterator->status);
     iterator = iterator->next;
+    i++;
   }
   iterator = NULL;
-  debug("\nQUEUE: end\n");  
+  debug("\nREADER QUEUE: end");  
+#endif
 }
-*/
+
 
 
 
@@ -433,6 +437,7 @@ void bgpstream_reader_mgr_add(bgpstream_reader_mgr_t * const bs_reader_mgr,
     // go to the next input
     iterator = iterator->next;
   }
+  print_reader_queue(bs_reader_mgr->reader_queue);
   debug("\tBSR_MGR: add input: end");
 }
 

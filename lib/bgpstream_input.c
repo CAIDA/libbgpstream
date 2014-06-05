@@ -30,6 +30,24 @@
 #include <string.h>
 
 
+ //function used for debug
+static void print_input_queue(const bgpstream_input_t * const input_queue) {
+#ifdef NDEBUG
+  const bgpstream_input_t * iterator = input_queue;
+  debug("INPUT QUEUE: start");
+  int i = 1;
+  while(iterator != NULL) {    
+    debug("\t%d %s %s %d",i, iterator->filecollector, 
+	  iterator->filetype, iterator->epoch_filetime);
+    iterator = iterator->next;
+    i++;
+  }
+  iterator = NULL;
+  debug("\nINPUT QUEUE: end");  
+#endif
+}
+
+
 /* Initialize the bgpstream input manager  
  */
 bgpstream_input_mgr_t *bgpstream_input_mgr_create() {
@@ -80,10 +98,6 @@ int bgpstream_input_mgr_push_input(bgpstream_input_mgr_t * const bs_input_mgr,
   }
   // initialize bgpstream_input fields
   bs_input->next = NULL;
-  memset(bs_input->filename, 0, BGPSTREAM_DUMP_MAX_LEN);
-  memset(bs_input->fileproject, 0, BGPSTREAM_PAR_MAX_LEN);
-  memset(bs_input->filecollector, 0, BGPSTREAM_PAR_MAX_LEN);
-  memset(bs_input->filetype, 0, BGPSTREAM_PAR_MAX_LEN);
   // initialization done
   strcpy(bs_input->filename, filename);
   strcpy(bs_input->fileproject, fileproject);
@@ -124,10 +138,6 @@ int bgpstream_input_mgr_push_sorted_input(bgpstream_input_mgr_t * const bs_input
   }
   // initialize bgpstream_input fields
   bs_input->next = NULL;
-  memset(bs_input->filename, 0, BGPSTREAM_DUMP_MAX_LEN);
-  memset(bs_input->fileproject, 0, BGPSTREAM_PAR_MAX_LEN);
-  memset(bs_input->filecollector, 0, BGPSTREAM_PAR_MAX_LEN);
-  memset(bs_input->filetype, 0, BGPSTREAM_PAR_MAX_LEN);
   // initialization done
   strcpy(bs_input->filename, filename);
   strcpy(bs_input->fileproject, fileproject);
@@ -211,8 +221,8 @@ static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * cons
   bs_input_mgr->last_to_process = NULL;
   bgpstream_input_t *iterator = bs_input_mgr->head;
   int rv_update = 0;
-  int rv_update_time = 
-  if(strcmp(iterator->filetype,"ribs") == 0) {
+  int rv_update_time = 0;
+  if(strcmp(bs_input_mgr->head->filetype,"ribs") == 0) {
     while( iterator != NULL &&						\
 	   strcmp(iterator->filetype,bs_input_mgr->head->filetype) == 0 && \
 	   iterator->epoch_filetime == bs_input_mgr->head->epoch_filetime ){
@@ -220,19 +230,19 @@ static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * cons
       iterator = iterator->next;
     }
   }
-  if(strcmp(iterator->filetype,"updates") == 0) {
+  if(strcmp(bs_input_mgr->head->filetype,"updates") == 0) {
     while( iterator != NULL &&						\
 	   strcmp(iterator->filetype,bs_input_mgr->head->filetype) == 0 && \
-	   iterator->epoch_filetime == bs_input_mgr->head->epoch_filetime ){
-      bs_input_mgr->last_to_process = iterator;
+	   iterator->epoch_filetime == bs_input_mgr->head->epoch_filetime ){   
       if(strcmp(iterator->fileproject,"routeviews") == 0) {
-	rv_update = 1;
+	rv_update = 1; // check if a routeviews update has been read and save its time
 	rv_update_time = iterator->epoch_filetime;
       }
+      bs_input_mgr->last_to_process = iterator;
       iterator = iterator->next;
     }
     if(rv_update == 1) {
-      // when a routeviews update is presen in the list, we also collect all
+      // when a routeviews update is present in the list, we also collect all
       // the ris updates within the same interval (i.e. rv_time already included,
       // plus rv_time + 5 mins plus rv_time + 10 mins). In fact, while routeviews
       // updates provides information related to a 15 mins interval, ris does
@@ -240,8 +250,8 @@ static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * cons
       while( iterator != NULL &&					\
 	     strcmp(iterator->filetype,bs_input_mgr->head->filetype) == 0 && \
 	     iterator->epoch_filetime <= (rv_update_time + 10 * 60)  ){
-      bs_input_mgr->last_to_process = iterator;
-      iterator = iterator->next;
+	bs_input_mgr->last_to_process = iterator;
+	iterator = iterator->next;
       }      
     }    
   }
@@ -277,6 +287,7 @@ bgpstream_input_t *bgpstream_input_mgr_get_queue_to_process(bgpstream_input_mgr_
     bs_input_mgr->tail = NULL;
     bs_input_mgr->status = EMPTY_INPUT_QUEUE;
   }
+  print_input_queue(to_process);
   debug("\tBSI_MGR: get subqueue to process end");
   return to_process;
 }

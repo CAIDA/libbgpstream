@@ -199,7 +199,7 @@ int bgpstream_get_next(bgpstream_t * const bs, bgpstream_record_t * const bs_rec
     debug("BS: input mgr not empty");
     bs_in = bgpstream_input_mgr_get_queue_to_process(bs->input_mgr);
     bgpstream_reader_mgr_add(bs->reader_mgr, bs_in, bs->filter_mgr);
-    bgpstream_input_mgr_destroy_queue(bs_in);    
+    bgpstream_input_mgr_destroy_queue(bs_in);        
     bs_in = NULL;
   }
   debug("BS: reader mgr not empty");  
