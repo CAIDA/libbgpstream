@@ -35,6 +35,7 @@
 #include <arpa/inet.h>
 #include <stdbool.h>
 
+
 // modified bgpdump process
 void bgpdump_process(BGPDUMP_ENTRY *my_entry);
 
@@ -57,10 +58,17 @@ int main(){
 
   // test case: 2
   // start -> Tue, 31 Dec 2013 23:29:00 GMT
-  bgpstream_set_filter(bs, "time_interval_start", "1388532540");
+  // bgpstream_set_filter(bs, "time_interval_start", "1388532540");
   // stop -> Wed, 01 Jan 2014 00:39:00 GMT
-  bgpstream_set_filter(bs, "time_interval_stop", "1388536740");
+  // bgpstream_set_filter(bs, "time_interval_stop", "1388536740");
 
+  // test case: 3
+  // start -> Thu, 05 Jun 2014 23:05:11 GMT
+  bgpstream_set_filter(bs, "time_interval_start", "1402009511");
+  // stop -> Fri, 06 Jun 2014 01:05:10 GMT - IN THE FUTURE
+  bgpstream_set_filter(bs, "time_interval_stop", "1402016710");
+  // set blocking
+  bgpstream_set_blocking(bs);
 
 
   // other option
@@ -102,26 +110,29 @@ int main(){
   int get_next_ret = 0;
   int counter = 0;
   char rstatus[50];
+  time_t result_time = time(NULL);
   strcpy(rstatus, "");
+
 
   // allocate memory for bs_record  
   bgpstream_record_t * const bs_record = bgpstream_create_record();
   if(bs_record != NULL) {
     do {
       get_next_ret = bgpstream_get_next(bs, bs_record);      
+      result_time = time(NULL);
       counter++;
       if(get_next_ret > 0) {	
 	if(bs_record->status == VALID_RECORD) {
 	  strcpy(rstatus, "VALID_RECORD");
 	  if(bs_record->bd_entry != NULL) {
 	    read++;
-	    printf("%d\t%ld\t%ld\t%s\t%s\t%s\n", 
+	    printf("%d\t%ld\t%ld\t%s\t%s\t%s\t%d\n", 
 		   counter, 
 		   bs_record->attributes.record_time,
 		   bs_record->attributes.dump_time,
 		   bs_record->attributes.dump_type, 
 		   bs_record->attributes.dump_collector,
-		   rstatus);
+		   rstatus, (int)result_time);
 	    
 	    // record_size = sizeof((bs_record->bd_entry)->body);
 	    // printf("\t\t\t--------------> 1 record of size: %zu READ\n", record_size);   
@@ -152,13 +163,13 @@ int main(){
 	  default:
 	    strcpy(rstatus, "WEIRD");
 	  }
-	  printf("%d\t%ld\t%ld\t%s\t%s\t%s\n", 
+	  printf("%d\t%ld\t%ld\t%s\t%s\t%s\t%d\n", 
 		 counter, 
 		 bs_record->attributes.record_time,
 		 bs_record->attributes.dump_time,
 		 bs_record->attributes.dump_type, 
 		 bs_record->attributes.dump_collector,
-		 rstatus);	  
+		 rstatus, (int)result_time);	  
 	}
       }
     } while(get_next_ret > 0);    
