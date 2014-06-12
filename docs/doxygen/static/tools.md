@@ -173,13 +173,16 @@ Usage
 -----
 
 ~~~
-usage: cors-ft-aggregate [-l] [-i interval] [-v value_field] -f field [-f field]... file_list
+usage: cors-ft-aggregate [-l] [-i interval] [-v value_field] [-f field]... [-F file_list] 
+       			 flowtuple_file [flowtuple_file]
        -l            treat the input files as containing legacy format data
-       -i <interval> new distribution interval in seconds. (default: 0)
-                      a value of -1 aggregates to a single interval
-                      a value of 0 uses the original interval
-       -v <value>    field to use as aggregation value (default: packet_cnt)
-       -f <field>    a tuple field to re-aggregate with
+       -i <interval>  new distribution interval in seconds. (default: 0)
+                       a value of -1 aggregates to a single interval
+                       a value of 0 uses the original interval
+       -v <value>     field to use as aggregation value (default: packet_cnt)
+       -f <field>     a tuple field to re-aggregate with
+       -F <file_list> a file with the list flowtuple files
+       	  	       use '-' to read the list from standard input
 
 Supported field names are:
  src_ip, dst_ip, src_port, dst_port, protocol, ttl, tcp_flags, 
@@ -192,10 +195,8 @@ Supported field names are:
    - include the specified field of the original tuple in the re-aggregated
      output
    - can be used multiple times to specify a list of fields
-  - `file_list`
-   - file containing an ordered list of \ref plugins_ft binary files to be
-     re-aggregated
-   - use `-` to read the list from stdin (for use with `find (1)` etc).
+  - `flowtuple_file`
+   - Is possibile specify multiple sorted files on the command line
    
 ### Optional Arguments ###
 
@@ -219,6 +220,9 @@ Supported field names are:
   - e.g. `src_ip` will give a value for each tuple which is the number of unique
     source IP addresses which match the sub-tuple (as specified by the `field`
     arguments)
+ - `file_list`
+   - a file with the list flowtuple files
+   - use `-` to read the list from standard input
 
 ### Example Uses ###
 
