@@ -597,15 +597,16 @@ int process_flowtuple_file(char *file)
 static void usage(const char *name)
 {
   fprintf(stderr,
-	  "usage: %s [-l] [-i interval] [-v value_field] [-f field]... flowtuple_file [flowtuple_file]\n"
+	  "usage: %s [-l] [-i interval] [-v value_field] [-f field]... [-F file_list] \n"
+	  "          flowtuple_file [flowtuple_file]\n"
 	  "       -l             treat the input files as containing legacy format data\n"
 	  "       -i <interval>  new distribution interval in seconds. (default: 0)\n"
 	  "                       a value of -1 aggregates to a single interval\n"
 	  "                       a value of 0 uses the original interval\n"
 	  "       -v <value>     field to use as aggregation value (default: packet_cnt)\n"
 	  "       -f <field>     a tuple field to re-aggregate with\n"
-	  "       -F <file_list> a file with the list of paths to the flowtuple files\n"
-	  "                       using '-' as file_list the tool read from standar input\n"
+	  "       -F <file_list> a file with the list flowtuple files\n"
+	  "                       use '-' to read the list from standard input\n"
 	  "\n"
 	  "Supported field names are:\n"
 	  " src_ip, dst_ip, src_port, dst_port, protocol, ttl, tcp_flags, \n"
