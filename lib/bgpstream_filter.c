@@ -37,13 +37,12 @@ bgpstream_filter_mgr_t *bgpstream_filter_mgr_create() {
   // default filters (i.e. no filtering)
   //  strcpy(bs_f->datasource, "mysql");
   memset(bs_filter_mgr->project, 0, BGPSTREAM_PAR_MAX_LEN);
-  memset(bs_filter_mgr->collector, 0, BGPSTREAM_PAR_MAX_LEN);
+  bs_filter_mgr->collectors = NULL;
   memset(bs_filter_mgr->bgp_type, 0, BGPSTREAM_PAR_MAX_LEN);
   memset(bs_filter_mgr->time_interval_start_str, 0, BGPSTREAM_PAR_MAX_LEN);
   memset(bs_filter_mgr->time_interval_stop_str, 0, BGPSTREAM_PAR_MAX_LEN);
   // memset done
   strcpy(bs_filter_mgr->project, "");
-  strcpy(bs_filter_mgr->collector, "");
   strcpy(bs_filter_mgr->bgp_type, "");
   /* min and max unix times that can be
    * represented by an integer */
@@ -73,7 +72,10 @@ void bgpstream_filter_mgr_filter_set(bgpstream_filter_mgr_t *bs_filter_mgr, cons
   }
   // collector
   if (strcmp(filter_name, "collector") == 0) {
-    strcpy(bs_filter_mgr->collector, filter_value);
+    bgpstream_filter_collectorfilter_t *col = (bgpstream_filter_collectorfilter_t*) malloc(sizeof(bgpstream_filter_collectorfilter_t));
+    strcpy(col->collector, filter_value);
+    col->next = bs_filter_mgr->collectors;
+    bs_filter_mgr->collectors = col;
   }
   // bgp_type
   if (strcmp(filter_name, "bgp_type") == 0) {
@@ -98,6 +100,12 @@ void bgpstream_filter_mgr_destroy(bgpstream_filter_mgr_t *bs_filter_mgr) {
   debug("\tBSF_MGR:: destroy start");
   if(bs_filter_mgr == NULL) {
     return; // nothing to destroy
+  }
+  bgpstream_filter_collectorfilter_t * c = NULL;
+  while(bs_filter_mgr->collectors!= NULL) {
+    c =  bs_filter_mgr->collectors;
+    bs_filter_mgr->collectors =  bs_filter_mgr->collectors->next;
+    free(c);
   }
   free(bs_filter_mgr);
   bs_filter_mgr = NULL;

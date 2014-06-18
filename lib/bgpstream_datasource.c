@@ -189,11 +189,19 @@ static bool bgpstream_customlist_datasource_filter_ok(bgpstream_customlist_datas
      strcmp(customlist_ds->filter_mgr->project, customlist_ds->project) !=0) {
     return false;
   }
-  // collector
-  if(strcmp(customlist_ds->filter_mgr->collector,"") != 0 &&
-     strcmp(customlist_ds->filter_mgr->collector, customlist_ds->collector) !=0) {
+
+  bool all_false = true;
+  bgpstream_filter_collectorfilter_t * c = customlist_ds->filter_mgr->collectors;
+  while(c!= NULL) {
+    if(strcmp(c->collector, customlist_ds->collector) ==0) {
+      all_false = false; // there is at least one match
+    }
+    c = c->next;
+  } 
+  if(customlist_ds->filter_mgr->collectors != NULL && all_false ) {
     return false;
   }
+
   // filetype
   if(strcmp(customlist_ds->filter_mgr->bgp_type,"") != 0 &&
      strcmp(customlist_ds->filter_mgr->bgp_type, customlist_ds->bgp_type) !=0) {
@@ -344,11 +352,26 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
     strcat (mysql_ds->sql_query, filter_mgr->project);
     strcat (mysql_ds->sql_query,"'");
   }
-  if(strcmp(filter_mgr->collector,"") != 0) {
-    strcat (mysql_ds->sql_query," AND collectors.name LIKE '");
-    strcat (mysql_ds->sql_query, filter_mgr->collector);
-    strcat (mysql_ds->sql_query,"'");
+  
+  bgpstream_filter_collectorfilter_t * c = filter_mgr->collectors;
+  if(filter_mgr->collectors != NULL) {
+    strcat (mysql_ds->sql_query," AND collectors.name IN (");
+    while(c!= NULL) {
+      strcat (mysql_ds->sql_query, c->collector);
+      c = c->next;
+      if(c!= NULL) {
+	strcat (mysql_ds->sql_query, ", ");      
+      }
+    }
+    strcat (mysql_ds->sql_query," )");
   }
+
+  /* if(strcmp(filter_mgr->collector,"") != 0) { */
+  /*   strcat (mysql_ds->sql_query," AND collectors.name LIKE '"); */
+  /*   strcat (mysql_ds->sql_query, filter_mgr->collector); */
+  /*   strcat (mysql_ds->sql_query,"'"); */
+  /* } */
+
   if(strcmp(filter_mgr->bgp_type,"") != 0) {
     strcat (mysql_ds->sql_query," AND bgp_types.name LIKE '");
     strcat (mysql_ds->sql_query, filter_mgr->bgp_type);

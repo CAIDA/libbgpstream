@@ -32,9 +32,15 @@
 #include<stdio.h>
 
 
+typedef struct struct_bgpstream_collectorfilter_t {
+  char collector[BGPSTREAM_PAR_MAX_LEN];
+  struct struct_bgpstream_collectorfilter_t * next;
+} bgpstream_filter_collectorfilter_t;
+
+
 typedef struct struct_bgpstream_filter_mgr_t {
   char project[BGPSTREAM_PAR_MAX_LEN];
-  char collector[BGPSTREAM_PAR_MAX_LEN];
+  bgpstream_filter_collectorfilter_t * collectors;
   char bgp_type[BGPSTREAM_PAR_MAX_LEN];
   int time_interval_start;
   char time_interval_start_str[BGPSTREAM_PAR_MAX_LEN];
