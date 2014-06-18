@@ -63,13 +63,22 @@ int main(){
   // bgpstream_set_filter(bs, "time_interval_stop", "1388536740");
 
   // test case: 3
-  // start -> Thu, 05 Jun 2014 23:05:11 GMT
-  bgpstream_set_filter(bs, "time_interval_start", "1402009511");
-  // stop -> Fri, 06 Jun 2014 01:05:10 GMT - IN THE FUTURE
-  bgpstream_set_filter(bs, "time_interval_stop", "1402016710");
+  // start -> Fri, 06 Jun 2014 04:22:37 GMT
+  // bgpstream_set_filter(bs, "time_interval_start", "1402028557");
+  // stop -> Fri, 06 Jun 2014 07:22:34 GMT
+  // bgpstream_set_filter(bs, "time_interval_stop", "1402039354");
+  // set blocking
+  // bgpstream_set_blocking(bs);
+
+  // test case: 4
+  bgpstream_set_filter(bs, "project", "routeviews");
+  bgpstream_set_filter(bs, "collector", "route-views.saopaulo");
+  bgpstream_set_filter(bs, "collector", "route-views2");
+
+  // start -> Sat, 07 Jun 2014 11:35:23 GMT
+  bgpstream_set_filter(bs, "time_interval_start", "1402140923");
   // set blocking
   bgpstream_set_blocking(bs);
-
 
   // other option
   //bgpstream_set_filter(bs, "project", "ris");

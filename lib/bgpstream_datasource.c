@@ -357,7 +357,9 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
   if(filter_mgr->collectors != NULL) {
     strcat (mysql_ds->sql_query," AND collectors.name IN (");
     while(c!= NULL) {
+      strcat (mysql_ds->sql_query, "'");
       strcat (mysql_ds->sql_query, c->collector);
+      strcat (mysql_ds->sql_query, "'");
       c = c->next;
       if(c!= NULL) {
 	strcat (mysql_ds->sql_query, ", ");      
