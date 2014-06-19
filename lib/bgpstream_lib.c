@@ -89,6 +89,18 @@ void bgpstream_set_filter(bgpstream_t * const bs, const char* filter_name,
   debug("BS: set_filter end");
 }
 
+/* configure the interface so that it connects
+ * to a specific datasource interface
+ */
+void bgpstream_set_data_interface(bgpstream_t * const bs, const char *datasource_name) {
+  debug("BS: set_data_interface start");
+  if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
+    return; // nothing to customize
+  }
+  bgpstream_datasource_mgr_set_data_interface(bs->datasource_mgr, datasource_name);
+  debug("BS: set_data_interface stop");
+}
+
 
 /* configure the interface so that it blocks
  * waiting for new data 
@@ -107,13 +119,13 @@ void bgpstream_set_blocking(bgpstream_t * const bs) {
  * it makes the interface ready
  * for a new get next call 
 */
-int bgpstream_init(bgpstream_t * const bs, const char *datasource_name) {
+int bgpstream_init(bgpstream_t * const bs) {
   debug("BS: init start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return 0; // nothing to init
   }
-
-  bgpstream_datasource_mgr_init(bs->datasource_mgr, datasource_name, bs->filter_mgr);
+  // turn on datasource interface
+  bgpstream_datasource_mgr_init(bs->datasource_mgr, bs->filter_mgr);
   if(bs->datasource_mgr->status == DS_ON) {
     bs->status = ON; // interface is on
     debug("BS: init end: ok");

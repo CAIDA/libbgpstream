@@ -64,16 +64,25 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
 }
 
 
+void bgpstream_datasource_mgr_set_data_interface(bgpstream_datasource_mgr_t *datasource_mgr,
+						 const char *datasource_name) {
+  debug("\tBSDS_MGR: set data interface start");
+  if(datasource_mgr == NULL) {
+    return; // no manager
+  }
+  strcpy(datasource_mgr->datasource_name, datasource_name);   
+  debug("\tBSDS_MGR: set  data interface end");
+}
+
+
 void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
-				   const char *datasource_name,
 				   bgpstream_filter_mgr_t *filter_mgr){
   debug("\tBSDS_MGR: init start");
   if(datasource_mgr == NULL) {
     return; // no manager
   }
-  strcpy(datasource_mgr->datasource_name, datasource_name);   
   // datasource_mgr->blocking can be set at any time
-  if (strcmp(datasource_name, "mysql") == 0) {
+  if (strcmp(datasource_mgr->datasource_name, "mysql") == 0) {
     datasource_mgr->mysql_ds = bgpstream_mysql_datasource_create(filter_mgr);
     if(datasource_mgr->mysql_ds == NULL) {
       datasource_mgr->status = DS_ERROR;
@@ -82,7 +91,7 @@ void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
       datasource_mgr->status = DS_ON;
     }
   }
-  if (strcmp(datasource_name, "customlist") == 0) {
+  if (strcmp(datasource_mgr->datasource_name, "customlist") == 0) {
     datasource_mgr->customlist_ds = bgpstream_customlist_datasource_create(filter_mgr);
     if(datasource_mgr->customlist_ds == NULL) {
       datasource_mgr->status = DS_ERROR;
@@ -367,12 +376,6 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
     }
     strcat (mysql_ds->sql_query," )");
   }
-
-  /* if(strcmp(filter_mgr->collector,"") != 0) { */
-  /*   strcat (mysql_ds->sql_query," AND collectors.name LIKE '"); */
-  /*   strcat (mysql_ds->sql_query, filter_mgr->collector); */
-  /*   strcat (mysql_ds->sql_query,"'"); */
-  /* } */
 
   if(strcmp(filter_mgr->bgp_type,"") != 0) {
     strcat (mysql_ds->sql_query," AND bgp_types.name LIKE '");

@@ -87,15 +87,17 @@ typedef struct struct_bgpstream_datasource_mgr_t {
 /* allocates memory for datasource_mgr */
 bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create();
 
+void bgpstream_datasource_mgr_set_data_interface(bgpstream_datasource_mgr_t *datasource_mgr,
+						 const char *datasource_name);
+
 /* init the datasource_mgr and start/init the selected datasource */
 void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
-				   const char *datasource_name, 
 				   bgpstream_filter_mgr_t *filter_mgr);
 
 void bgpstream_datasource_mgr_set_blocking(bgpstream_datasource_mgr_t *datasource_mgr);
 
 int bgpstream_datasource_mgr_update_input_queue(bgpstream_datasource_mgr_t *datasource_mgr,
-					    bgpstream_input_mgr_t *input_mgr);
+						bgpstream_input_mgr_t *input_mgr);
 
 /* stop the active data source */
 void bgpstream_datasource_mgr_close(bgpstream_datasource_mgr_t *datasource_mgr);

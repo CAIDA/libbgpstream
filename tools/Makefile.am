@@ -27,17 +27,16 @@
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/lib 
 
 
-bin_PROGRAMS =  bgp-test interface-test
+bin_PROGRAMS =  bgpstream-test bgpstream-best-collectors
 
-bgp_test_SOURCES = bgp-test.c process_bdump.c
-bgp_test_LDADD = -lbgpstream 
-bgp_test_LDFLAGS = -L$(top_builddir)/lib
+bgpstream_test_SOURCES = bgpstream-test.c process_bdump.c
+bgpstream_test_LDADD = -lbgpstream 
+bgpstream_test_LDFLAGS = -L$(top_builddir)/lib
 
 
-interface_test_SOURCES = interface-test.c process_bdump.c
-interface_test_LDADD = -lbgpstream 
-interface_test_LDFLAGS = -L$(top_builddir)/lib
-
+bgpstream_best_collectors_SOURCES = bgpstream-best-collectors.c process_bdump.c
+bgpstream_best_collectors_LDADD = -lbgpstream 
+bgpstream_best_collectors_LDFLAGS = -L$(top_builddir)/lib
 
 
 ACLOCAL_AMFLAGS = -I m4

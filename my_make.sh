@@ -25,6 +25,5 @@
 
 
 ./bootstrap.sh
-#./configure CPPFLAGS="-I/Users/chiara/Projects/satc/repository/tools/BGP/BGPdump" LDFLAGS="-L/Users/chiara/Projects/satc/repository/tools/BGP/BGPdump"
 ./configure CPPFLAGS="-I/Users/chiara/Projects/satc/repository/tools/BGP/BGPdump -I/opt/local/include/mysql55/mysql" LDFLAGS="-L/Users/chiara/Projects/satc/repository/tools/BGP/BGPdump -L/opt/local/lib/mysql55/mysql"
 make

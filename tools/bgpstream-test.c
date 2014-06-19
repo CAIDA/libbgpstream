@@ -4,7 +4,7 @@
  * Chiara Orsini, CAIDA, UC San Diego
  * chiara@caida.org
  *
- * Copyright (C) 2013 The Regents of the University of California.
+ * Copyright (C) 2014 The Regents of the University of California.
  *
  * This file is part of libbgpstream.
  *
@@ -49,63 +49,21 @@ int main(){
     return 1;
   }
 
-  // test case: 1
-  // start -> Fri May 30 17:41:40 UTC 2014
-  // bgpstream_set_filter(bs, "time_interval_start", "1401471700");
-  // stop -> Fri May 30 18:21:00 UTC 2014
-  // bgpstream_set_filter(bs, "time_interval_stop", "1401474060");
-
-
-  // test case: 2
-  // start -> Tue, 31 Dec 2013 23:29:00 GMT
-  // bgpstream_set_filter(bs, "time_interval_start", "1388532540");
-  // stop -> Wed, 01 Jan 2014 00:39:00 GMT
-  // bgpstream_set_filter(bs, "time_interval_stop", "1388536740");
-
-  // test case: 3
-  // start -> Fri, 06 Jun 2014 04:22:37 GMT
-  // bgpstream_set_filter(bs, "time_interval_start", "1402028557");
-  // stop -> Fri, 06 Jun 2014 07:22:34 GMT
-  // bgpstream_set_filter(bs, "time_interval_stop", "1402039354");
-  // set blocking
-  // bgpstream_set_blocking(bs);
-
-  // test case: 4
+  // test case
   bgpstream_set_filter(bs, "project", "routeviews");
-  bgpstream_set_filter(bs, "collector", "route-views.saopaulo");
-  bgpstream_set_filter(bs, "collector", "route-views2");
-
-  // start -> Sat, 07 Jun 2014 11:35:23 GMT
-  bgpstream_set_filter(bs, "time_interval_start", "1402140923");
-  // set blocking
-  bgpstream_set_blocking(bs);
-
-  // other option
-  //bgpstream_set_filter(bs, "project", "ris");
-  //bgpstream_set_filter(bs, "project", "routeviews");
-  //bgpstream_set_filter(bs, "collector", "route-views.saopaulo");
-  //bgpstream_set_filter(bs, "bgp_type", "updates");
-  //bgpstream_set_filter(bs, "time_interval_start", "1401493500");
-  //bgpstream_set_filter(bs, "bgp_type", "ribs");
-  //bgpstream_set_filter(bs, "time_interval_start", "1401472800");
-  //bgpstream_set_filter(bs, "time_interval_stop", "1401474060");
+  bgpstream_set_filter(bs, "bgp_type", "updates");
+  bgpstream_set_filter(bs, "collector", "route-views.jinx");
   
+  bgpstream_set_filter(bs, "time_interval_start", "1401494322");
+  bgpstream_set_filter(bs, "time_interval_stop", "1401494382");
 
-  // set filters
-  //bgpstream_set_filter(bs, "project", "routeviews");
-  //bgpstream_set_filter(bs, "collector", "route-views2");
-  //bgpstream_set_filter(bs, "bgp_type", "updates");
-  //bgpstream_set_filter(bs, "bgp_type", "ribs");
-  //bgpstream_set_filter(bs, "time_interval_start", "1401472800");
-  //bgpstream_set_filter(bs, "time_interval_stop", "1401474060");
-  //bgpstream_set_filter(bs, "time_interval_stop", "1357002000");
-  
   // set blocking
   //bgpstream_set_blocking(bs);
 
-  // turn on interface and set the datasource!
-  //int init_res = bgpstream_init(bs, "customlist");
-  int init_res = bgpstream_init(bs, "mysql");
+  // set datasource interface
+  bgpstream_set_data_interface(bs, "customlist");
+
+  int init_res = bgpstream_init(bs);
   
   if(init_res <= 0) {
     printf("Not able to turn on bs\n");   
@@ -135,19 +93,15 @@ int main(){
 	  strcpy(rstatus, "VALID_RECORD");
 	  if(bs_record->bd_entry != NULL) {
 	    read++;
-	    printf("%d\t%ld\t%ld\t%s\t%s\t%s\t%d\n", 
+	    printf("\t%d\t%ld\t%ld\t%s\t%s\t%s\t%d\n", 
 		   counter, 
 		   bs_record->attributes.record_time,
 		   bs_record->attributes.dump_time,
 		   bs_record->attributes.dump_type, 
 		   bs_record->attributes.dump_collector,
 		   rstatus, (int)result_time);
-	    
-	    // record_size = sizeof((bs_record->bd_entry)->body);
-	    // printf("\t\t\t--------------> 1 record of size: %zu READ\n", record_size);   
-
 	    // process entry and get bgpdump output
-	    //bgpdump_process(bs_record->bd_entry);
+	   bgpdump_process(bs_record->bd_entry);
 	  }	  
 	}
 	else {
@@ -172,7 +126,7 @@ int main(){
 	  default:
 	    strcpy(rstatus, "WEIRD");
 	  }
-	  printf("%d\t%ld\t%ld\t%s\t%s\t%s\t%d\n", 
+	  printf("\t%d\t%ld\t%ld\t%s\t%s\t%s\t%d\n", 
 		 counter, 
 		 bs_record->attributes.record_time,
 		 bs_record->attributes.dump_time,
