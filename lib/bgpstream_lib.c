@@ -79,15 +79,27 @@ bgpstream_t *bgpstream_create() {
 
 
 /* configure filters in order to select a subset of the bgp data available */
-void bgpstream_set_filter(bgpstream_t * const bs, const char* filter_name,
-			  const char* filter_value) {
+void bgpstream_add_filter(bgpstream_t * const bs, bgpstream_filter_type filter_type,
+			  const char* filter_value){
   debug("BS: set_filter start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return; // nothing to customize
   }
-  bgpstream_filter_mgr_filter_set(bs->filter_mgr, filter_name, filter_value);
+  bgpstream_filter_mgr_filter_add(bs->filter_mgr, filter_type, filter_value);
   debug("BS: set_filter end");
 }
+
+
+void bgpstream_add_interval_filter(bgpstream_t * const bs, bgpstream_filter_type filter_type,
+				   const char* filter_start, const char* filter_stop){
+  debug("BS: set_filter start");
+  if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
+    return; // nothing to customize
+  }
+  bgpstream_filter_mgr_interval_filter_add(bs->filter_mgr, filter_type, filter_start, filter_stop);
+  debug("BS: set_filter end");
+}
+
 
 /* configure the interface so that it connects
  * to a specific datasource interface

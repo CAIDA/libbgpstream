@@ -49,13 +49,11 @@ int main(){
     return 1;
   }
 
-  // test case
-  bgpstream_set_filter(bs, "project", "routeviews");
-  bgpstream_set_filter(bs, "bgp_type", "updates");
-  bgpstream_set_filter(bs, "collector", "route-views.jinx");
-  
-  bgpstream_set_filter(bs, "time_interval_start", "1401494322");
-  bgpstream_set_filter(bs, "time_interval_stop", "1401494382");
+  bgpstream_add_filter(bs, BS_PROJECT, "routeviews");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.jinx");
+  bgpstream_add_filter(bs, BS_BGP_TYPE, "updates");
+  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1401493400", "1401493600");
+
 
   // set blocking
   //bgpstream_set_blocking(bs);

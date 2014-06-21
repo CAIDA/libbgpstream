@@ -31,22 +31,30 @@
 #include <stdlib.h>
 #include<stdio.h>
 
+typedef enum {BS_PROJECT, BS_COLLECTOR, BS_BGP_TYPE, BS_TIME_INTERVAL} bgpstream_filter_type;
 
-typedef struct struct_bgpstream_collectorfilter_t {
-  char collector[BGPSTREAM_PAR_MAX_LEN];
-  struct struct_bgpstream_collectorfilter_t * next;
-} bgpstream_filter_collectorfilter_t;
+
+typedef struct struct_bgpstream_string_filter_t {
+  char value[BGPSTREAM_PAR_MAX_LEN];
+  struct struct_bgpstream_string_filter_t * next;
+} bgpstream_string_filter_t;
+
+typedef struct struct_bgpstream_interval_filter_t {
+  char start[BGPSTREAM_PAR_MAX_LEN];
+  int time_interval_start;
+  char stop[BGPSTREAM_PAR_MAX_LEN];
+  int time_interval_stop;
+  struct struct_bgpstream_interval_filter_t * next;
+} bgpstream_interval_filter_t;
+
 
 
 typedef struct struct_bgpstream_filter_mgr_t {
-  char project[BGPSTREAM_PAR_MAX_LEN];
-  bgpstream_filter_collectorfilter_t * collectors;
-  char bgp_type[BGPSTREAM_PAR_MAX_LEN];
-  int time_interval_start;
-  char time_interval_start_str[BGPSTREAM_PAR_MAX_LEN];
-  int time_interval_stop;
-  char time_interval_stop_str[BGPSTREAM_PAR_MAX_LEN];
-
+  
+  bgpstream_string_filter_t * projects;
+  bgpstream_string_filter_t * collectors;
+  bgpstream_string_filter_t * bgp_types;
+  bgpstream_interval_filter_t * time_intervals;
 } bgpstream_filter_mgr_t;
 
 
@@ -54,9 +62,15 @@ typedef struct struct_bgpstream_filter_mgr_t {
 bgpstream_filter_mgr_t *bgpstream_filter_mgr_create();
 
 /* configure filters in order to select a subset of the bgp data available */
-void bgpstream_filter_mgr_filter_set(bgpstream_filter_mgr_t *bs_filter_mgr,
-				     const char* filter_name,
+void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
+				     bgpstream_filter_type filter_type,
 				     const char* filter_value);
+
+void bgpstream_filter_mgr_interval_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
+					      bgpstream_filter_type filter_type,
+					      const char* filter_start,
+					      const char* filter_stop);
+
 
 /* destroy the memory allocated for bgpstream filter */
 void bgpstream_filter_mgr_destroy(bgpstream_filter_mgr_t *bs_filter_mgr);

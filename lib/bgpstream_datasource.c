@@ -193,34 +193,71 @@ static bgpstream_customlist_datasource_t *bgpstream_customlist_datasource_create
 
 static bool bgpstream_customlist_datasource_filter_ok(bgpstream_customlist_datasource_t* customlist_ds) {
   debug("\t\tBSDS_CLIST: customlist_ds apply filter start");  
-  // project
-  if(strcmp(customlist_ds->filter_mgr->project,"") != 0 && 
-     strcmp(customlist_ds->filter_mgr->project, customlist_ds->project) !=0) {
-    return false;
-  }
-
-  bool all_false = true;
-  bgpstream_filter_collectorfilter_t * c = customlist_ds->filter_mgr->collectors;
-  while(c!= NULL) {
-    if(strcmp(c->collector, customlist_ds->collector) ==0) {
-      all_false = false; // there is at least one match
+  bgpstream_string_filter_t * sf;
+  bgpstream_interval_filter_t * tif;
+  bool all_false;
+  // projects
+  all_false = true;
+  if(customlist_ds->filter_mgr->projects != NULL) {
+    sf = customlist_ds->filter_mgr->projects;
+    while(sf != NULL) {
+      if(strcmp(sf->value, customlist_ds->project) == 0) {
+	all_false = false;
+	break;
+      }
+      sf = sf->next;
     }
-    c = c->next;
-  } 
-  if(customlist_ds->filter_mgr->collectors != NULL && all_false ) {
-    return false;
+    if(all_false) {
+      return false; 
+    }
   }
-
-  // filetype
-  if(strcmp(customlist_ds->filter_mgr->bgp_type,"") != 0 &&
-     strcmp(customlist_ds->filter_mgr->bgp_type, customlist_ds->bgp_type) !=0) {
-    return false;
+  // collectors
+  all_false = true;
+  if(customlist_ds->filter_mgr->collectors != NULL) {
+    sf = customlist_ds->filter_mgr->collectors;
+    while(sf != NULL) {
+      if(strcmp(sf->value, customlist_ds->collector) == 0) {
+	all_false = false;
+	break;
+      }
+      sf = sf->next;
+    }
+    if(all_false) {
+      return false; 
+    }
   }
-  // filetime (we consider 15 mins before to consider routeviews updates
-  // and 120 seconds to have some margins)
-  if(customlist_ds->filetime < (customlist_ds->filter_mgr->time_interval_start - 15*60 - 120) ||
-     customlist_ds->filetime > customlist_ds->filter_mgr->time_interval_stop) {
-    return false;
+  // bgp_types
+  all_false = true;
+  if(customlist_ds->filter_mgr->bgp_types != NULL) {
+    sf = customlist_ds->filter_mgr->bgp_types;
+    while(sf != NULL) {
+      if(strcmp(sf->value, customlist_ds->bgp_type) == 0) {
+	all_false = false;
+	break;
+      }
+      sf = sf->next;
+    }
+    if(all_false) {
+      return false; 
+    }
+  }
+  // time_intervals
+  all_false = true;
+  if(customlist_ds->filter_mgr->time_intervals != NULL) {
+    tif = customlist_ds->filter_mgr->time_intervals;
+    while(tif != NULL) {      
+      // filetime (we consider 15 mins before to consider routeviews updates
+      // and 120 seconds to have some margins)
+      if(customlist_ds->filetime >= (tif->time_interval_start - 15*60 - 120) &&
+	 customlist_ds->filetime <= tif->time_interval_stop) {
+	all_false = false;
+	break;
+      }
+      tif = tif->next;
+    }
+    if(all_false) {
+      return false; 
+    }
   }
   // if all the filters are passed
   return true;
@@ -354,48 +391,82 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
                                collectors.project_id=on_web_frequency.project_id AND \
                                bgp_data.bgp_type_id= on_web_frequency.bgp_type_id");
 
-  // project, collector, and bgp_type are used as filters
+
+  // projects, collectors, bgp_types, and time_intervals are used as filters
   // only if they are provided by the user
-  if(strcmp(filter_mgr->project,"") != 0) {
-    strcat (mysql_ds->sql_query," AND projects.name LIKE '");
-    strcat (mysql_ds->sql_query, filter_mgr->project);
-    strcat (mysql_ds->sql_query,"'");
-  }
+  bgpstream_string_filter_t * sf;
+  bgpstream_interval_filter_t * tif;
   
-  bgpstream_filter_collectorfilter_t * c = filter_mgr->collectors;
+  // projects
+  if(filter_mgr->projects != NULL) {
+    sf = filter_mgr->projects;
+    strcat (mysql_ds->sql_query," AND projects.name IN (");
+    while(sf != NULL) {
+      strcat (mysql_ds->sql_query, "'");
+      strcat (mysql_ds->sql_query, sf->value);
+      strcat (mysql_ds->sql_query, "'");
+      sf = sf->next;
+      if(sf!= NULL) {
+	strcat (mysql_ds->sql_query, ", ");      
+      }
+    }
+    strcat (mysql_ds->sql_query," )");
+  }
+  // collectors
   if(filter_mgr->collectors != NULL) {
+    sf = filter_mgr->collectors;
     strcat (mysql_ds->sql_query," AND collectors.name IN (");
-    while(c!= NULL) {
+    while(sf != NULL) {
       strcat (mysql_ds->sql_query, "'");
-      strcat (mysql_ds->sql_query, c->collector);
+      strcat (mysql_ds->sql_query, sf->value);
       strcat (mysql_ds->sql_query, "'");
-      c = c->next;
-      if(c!= NULL) {
+      sf = sf->next;
+      if(sf!= NULL) {
+	strcat (mysql_ds->sql_query, ", ");      
+      }
+    }
+    strcat (mysql_ds->sql_query," )");
+  }
+  // bgp_types
+  if(filter_mgr->bgp_types != NULL) {
+    sf = filter_mgr->bgp_types;
+    strcat (mysql_ds->sql_query," AND bgp_types.name IN (");
+    while(sf != NULL) {
+      strcat (mysql_ds->sql_query, "'");
+      strcat (mysql_ds->sql_query, sf->value);
+      strcat (mysql_ds->sql_query, "'");
+      sf = sf->next;
+      if(sf!= NULL) {
 	strcat (mysql_ds->sql_query, ", ");      
       }
     }
     strcat (mysql_ds->sql_query," )");
   }
 
-  if(strcmp(filter_mgr->bgp_type,"") != 0) {
-    strcat (mysql_ds->sql_query," AND bgp_types.name LIKE '");
-    strcat (mysql_ds->sql_query, filter_mgr->bgp_type);
-    strcat (mysql_ds->sql_query,"'");
+  // time_intervals
+  if(filter_mgr->time_intervals != NULL) {
+    tif = filter_mgr->time_intervals;
+    strcat (mysql_ds->sql_query," AND ( ");
+    while(tif != NULL) {
+      strcat (mysql_ds->sql_query," (file_time >=  ");
+      strcat (mysql_ds->sql_query, tif->start);
+      strcat (mysql_ds->sql_query,"  - on_web_frequency.offset - 120");
+      strcat (mysql_ds->sql_query," AND file_time <=  ");
+      strcat (mysql_ds->sql_query, tif->stop);
+      strcat (mysql_ds->sql_query,") ");
+      tif = tif->next;
+      if(tif!= NULL) {
+	strcat (mysql_ds->sql_query, " OR ");      
+      }
+    }
+    strcat (mysql_ds->sql_query," )");
   }
-  
-  // filetime is always provided
-  strcat (mysql_ds->sql_query," AND file_time >=  ");
-  strcat (mysql_ds->sql_query, filter_mgr->time_interval_start_str);
   // comment on 120 seconds:
   // sometimes it happens that ribs or updates carry a filetime which is not
   // compliant with the expected filetime (e.g. :
   //  rib.23.59 instead of rib.00.00
   // in order to compensate for this kind of situations we 
   // retrieve data that are 120 seconds older than the requested 
-  // file_start_time
-  strcat (mysql_ds->sql_query,"  - on_web_frequency.offset - 120");
-  strcat (mysql_ds->sql_query," AND file_time <=  ");
-  strcat (mysql_ds->sql_query, filter_mgr->time_interval_stop_str);
 
   // minimum timestamp is a placeholder
   strcat (mysql_ds->sql_query," AND UNIX_TIMESTAMP(ts) > ? AND UNIX_TIMESTAMP(ts) <= UNIX_TIMESTAMP(NOW())-1");
@@ -408,11 +479,10 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
   // printf("%s\n",mysql_ds->sql_query);
   debug("\t\tBSDS_MYSQL:  mysql query created");
 
-
   // the first last_timestamp is 0
   mysql_ds->last_timestamp = 0;
   
-// Initialize the statement 
+  // Initialize the statement 
   mysql_ds->stmt = mysql_stmt_init(mysql_ds->mysql_con);
   if (!mysql_ds->stmt) {
     fprintf(stderr, " mysql_stmt_init(), out of memory\n");

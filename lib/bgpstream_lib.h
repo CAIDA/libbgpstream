@@ -54,8 +54,11 @@ typedef struct struct_bgpstream_t {
 bgpstream_t *bgpstream_create();
 
 /* configure filters in order to select a subset of the bgp data available */
-void bgpstream_set_filter(bgpstream_t * const bs, const char* filter_name,
+void bgpstream_add_filter(bgpstream_t * const bs, bgpstream_filter_type filter_type,
 			  const char* filter_value);
+void bgpstream_add_interval_filter(bgpstream_t * const bs, bgpstream_filter_type filter_type,
+				   const char* filter_start, const char* filter_stop);
+
 
 /* configure the data interface */
 void bgpstream_set_data_interface(bgpstream_t * const bs, const char *datasource_name);

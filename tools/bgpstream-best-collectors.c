@@ -49,32 +49,32 @@ int main(){
     return 1;
   }
   // all projects
-  // bgpstream_set_filter(bs, "project", "***");
+  // bgpstream_set_filter(bs, BS_PROJECT, "***");
 
   // all types
-  // bgpstream_set_filter(bs, "bgp_type", "***");
+  // bgpstream_set_filter(bs, BS_BGP_TYPE, "***");
 
   // best collectors (delay below 25 minutes, i.e. 1500 seconds)
-  bgpstream_set_filter(bs, "collector", "route-views.linx");
-  bgpstream_set_filter(bs, "collector", "route-views6");
-  bgpstream_set_filter(bs, "collector", "route-views.saopaulo");
-  bgpstream_set_filter(bs, "collector", "route-views.sydney");
-  bgpstream_set_filter(bs, "collector", "route-views2");
-  bgpstream_set_filter(bs, "collector", "route-views.perth");
-  bgpstream_set_filter(bs, "collector", "route-views.isc");
-  bgpstream_set_filter(bs, "collector", "route-views4");
-  bgpstream_set_filter(bs, "collector", "route-views3");
-  bgpstream_set_filter(bs, "collector", "route-views.telxatl");
-  bgpstream_set_filter(bs, "collector", "route-views.nwax");
-  bgpstream_set_filter(bs, "collector", "route-views.wide");
-  bgpstream_set_filter(bs, "collector", "rrc10");
-  bgpstream_set_filter(bs, "collector", "rrc11");
-  bgpstream_set_filter(bs, "collector", "rrc12");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.linx");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views6");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.saopaulo");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.sydney");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views2");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.perth");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.isc");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views4");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views3");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.telxatl");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.nwax");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.wide");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "rrc10");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "rrc11");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "rrc12");
 
-  // start -> Wed 18 Jun 2014 23:45:46 GMT
-  bgpstream_set_filter(bs, "time_interval_start", "1403135146");
-  // stop -> Thu, 19 Jun 2014 00:40:35 GMT
-  bgpstream_set_filter(bs, "time_interval_stop", "1403138435");
+
+  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1403229491", "1403236583");
+  // start -> Fri, 20 Jun 2014 01:58:11 GMT
+  // stop -> Fri, 20 Jun 2014 03:56:23 GMT
 
   // set blocking
   bgpstream_set_blocking(bs);
@@ -92,7 +92,7 @@ int main(){
     return 1;
   }
 
-  FILE *f = fopen("/scratch/satc/chiaras_test/june_18-19.txt", "w");
+  FILE *f = fopen("/scratch/satc/chiaras_test/june_20.txt", "w");
   if (f == NULL) {
     printf("Error opening file!\n");
     exit(1);

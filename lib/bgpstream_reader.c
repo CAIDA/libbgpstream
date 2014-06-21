@@ -36,20 +36,25 @@
 static bool bgpstream_reader_filter_bd_entry(const BGPDUMP_ENTRY * const bd_entry, 
 					     const bgpstream_filter_mgr_t * const filter_mgr) {
   debug("\t\tBSR: filter entry: start");  
-  bool res = false;
+  bgpstream_interval_filter_t * tif;
   if(bd_entry != NULL && filter_mgr != NULL) {
+    if(filter_mgr->time_intervals == NULL ) {
+        debug("\t\tBSR: filter entry: end");  
+	return true; // no time filtering, 
+    }
     long current_entry_time = (long) bd_entry->time;
-    if(current_entry_time >= filter_mgr->time_interval_start &&
-       current_entry_time <= filter_mgr->time_interval_stop) {
-      debug("\t\tBSR: filter entry: OK");  
-      res = true;
+    tif = filter_mgr->time_intervals;
+    while(tif != NULL) {      
+      if(current_entry_time >= tif->time_interval_start &&
+	 current_entry_time <= tif->time_interval_stop) {
+	debug("\t\tBSR: filter entry: OK");  
+	return true;
+      }
+      tif = tif->next;
     }
-    else{
-      debug("\t\tBSR: filter entry: DISCARDED");  
-    }
-  }
-  debug("\t\tBSR: filter entry: end");  
-  return res;
+  }  
+  debug("\t\tBSR: filter entry: DISCARDED");    
+  return false;
 }
 
 
@@ -265,7 +270,7 @@ static void bgpstream_reader_export_record(bgpstream_reader_t * const bs_reader,
   default:
     bs_record->status = EMPTY_SOURCE;
   }
-  debug("Exported: %ld\t%ld\t%s\t%s\t%d\n", 		   
+  debug("Exported: %ld\t%ld\t%s\t%s\t%d", 		   
 		   bs_record->attributes.record_time,
 		   bs_record->attributes.dump_time,
 		   bs_record->attributes.dump_type, 
