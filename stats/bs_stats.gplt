@@ -1,0 +1,59 @@
+#!/usr/bin/env gnuplot
+#
+# bgpanalyzer
+#
+# Chiara Orsini, CAIDA, UC San Diego
+# chiara@caida.org
+#
+# Copyright (C) 2014 The Regents of the University of California.
+#
+# This file is part of bgpanalyzer.
+#
+# bgpanalyzer is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# bgpanalyzer is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with bgpanalyzer.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+reset
+set terminal postscript eps enhanced color size 40cm,15cm font "Courier,18"
+load "./common.inc.gplt"
+
+set output "./info.eps"
+set title "June 20th test"
+set multiplot layout 2,2 rowsfirst
+set style data linespoints
+set ytics 0.1
+set yr[0:1]
+set xtics ("0" 0,"2m" 120,"5m" 300, "8m" 480, "10m" 600, "12m" 720, "15m" 900, "18m" 1080, "20m" 1200)
+set xlabel "delay(s)"
+set ylabel "CCDF"
+set title "ribs delay"
+plot 'venti/ribs_delay_dist.txt' u 1:5 ls 1 notitle
+set title "updates delay"
+plot 'venti/updates_delay_dist.txt' u 1:5 ls 2 notitle
+#
+set title "id vs. record time"
+set key inside top left
+set autoscale y
+set autoscale x
+set ytics auto
+set xtics 1
+set xlabel "id (M)"
+unset ylabel
+set ydata time
+set timefmt "%s"
+set format y  "%H:%M"
+set size 1,0.45
+plot '< cat venti/aggregated_rt.txt | grep updates' u ($1/1000000):2  ls 1 title "updates" , \
+'< cat venti/aggregated_rt.txt | grep ribs' u ($1/1000000):2  ls 2 title "ribs"
+#
+unset multiplot
