@@ -92,11 +92,11 @@ int main(){
     return 1;
   }
 
-  FILE *f = fopen("/scratch/satc/chiaras_test/june_20.txt", "w");
-  if (f == NULL) {
-    printf("Error opening file!\n");
-    exit(1);
-  }
+  /* FILE *f = fopen("/scratch/satc/chiaras_test/june_20.txt", "w"); */
+  /* if (f == NULL) { */
+  /*   printf("Error opening file!\n"); */
+  /*   exit(1); */
+  /* } */
 
 
   size_t record_size; 
@@ -120,7 +120,7 @@ int main(){
 	  strcpy(rstatus, "VALID_RECORD");
 	  if(bs_record->bd_entry != NULL) {
 	    read++;
-	    fprintf(f,"%d\t%ld\t%ld\t%s\t%s\t%s\t%d\n", 
+	    fprintf(stdout,"%d\t%ld\t%ld\t%s\t%s\t%s\t%d\n", 
 		   counter, 
 		   bs_record->attributes.record_time,
 		   bs_record->attributes.dump_time,
@@ -146,7 +146,7 @@ int main(){
 	  default:
 	    strcpy(rstatus, "WEIRD");
 	  }
-	  fprintf(f,"%d\t%ld\t%ld\t%s\t%s\t%s\t%d\n", 
+	  fprintf(stdout,"%d\t%ld\t%ld\t%s\t%s\t%s\t%d\n", 
 		 counter, 
 		 bs_record->attributes.record_time,
 		 bs_record->attributes.dump_time,
@@ -159,7 +159,7 @@ int main(){
   }
 
   // close file
-  fclose(f);
+  //  fclose(f);
 
   // de-allocate memory for bs_record
   bgpstream_destroy_record(bs_record);

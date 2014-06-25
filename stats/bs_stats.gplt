@@ -36,10 +36,10 @@ set yr[0:1]
 set xtics ("0" 0,"2m" 120,"5m" 300, "8m" 480, "10m" 600, "12m" 720, "15m" 900, "18m" 1080, "20m" 1200)
 set xlabel "delay(s)"
 set ylabel "CCDF"
-set title "ribs delay"
-plot 'venti/ribs_delay_dist.txt' u 1:5 ls 1 notitle
 set title "updates delay"
 plot 'venti/updates_delay_dist.txt' u 1:5 ls 2 notitle
+set title "ribs delay"
+plot 'venti/ribs_delay_dist.txt' u 1:5 ls 1 notitle
 #
 set title "id vs. record time"
 set key inside top left
