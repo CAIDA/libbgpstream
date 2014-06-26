@@ -38,6 +38,7 @@
 
 #include "corsaro_file.h"
 #include "corsaro_plugin.h"
+#include "corsaro_filter.h"
 
 /** @file
  *
@@ -199,6 +200,11 @@ struct corsaro_packet_state
   /** Features of the packet that have been identified by earlier plugins */
   uint8_t flags;
 
+  /** Mask of filters that have been matched by this packet.
+      corsaro_filter is responsible for dynamically allocating filter IDs based
+      on requests by plugins */
+  uint64_t filter_matches;
+
 #ifdef WITH_PLUGIN_IPMETA
   /** Set of libipmeta records based on lookups performed by the corsaro_ipmeta
       plugin. Other plugins should use the corsaro_ipmeta_get_record() function
@@ -279,6 +285,9 @@ struct corsaro
   /** A pointer to the corsaro plugin manager state */
   /* this is what gets passed to any function relating to plugin management */
   corsaro_plugin_manager_t *plugin_manager;
+
+  /** A pointer to the corsaro packet filter manager state */
+  corsaro_filter_manager_t *filter_manager;
 
   /** The first interval end will be rounded down to the nearest integer
       multiple of the interval length if enabled */

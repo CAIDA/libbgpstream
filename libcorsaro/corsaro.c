@@ -108,6 +108,13 @@ static void corsaro_free(corsaro_t *corsaro)
       corsaro->plugin_manager = NULL;
     }
 
+  /* free the filter manager */
+  if(corsaro->filter_manager != NULL)
+    {
+      corsaro_filter_manager_free(corsaro->filter_manager);
+      corsaro->filter_manager = NULL;
+    }
+
   if(corsaro->uridata != NULL)
     {
       free(corsaro->uridata);
@@ -235,6 +242,13 @@ static corsaro_t *corsaro_init(char *template, corsaro_file_mode_t mode)
   if((e->plugin_manager = corsaro_plugin_manager_init(e->logfile)) == NULL)
     {
       corsaro_log(__func__, e, "could not initialize plugin manager");
+      goto err;
+    }
+
+  /* get the filter manager started */
+  if((e->filter_manager = corsaro_filter_manager_init(e)) == NULL)
+    {
+      corsaro_log(__func__, e, "could not initialize filter manager");
       goto err;
     }
 
