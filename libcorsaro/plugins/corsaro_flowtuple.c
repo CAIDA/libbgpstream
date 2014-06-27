@@ -916,7 +916,8 @@ int corsaro_flowtuple_process_packet(corsaro_t *corsaro,
 
   /* no point carrying on if a previous plugin has already decided we should
      ignore this packet */
-  if((packet->state.flags & CORSARO_PACKET_STATE_IGNORE) != 0)
+  /* 2014-06-27 AK updates to allow all packets that match any filter */
+  if(corsaro_filter_is_match_any(&packet->state) == 0)
     {
       return 0;
     }
@@ -994,7 +995,7 @@ int corsaro_flowtuple_process_flowtuple(corsaro_t *corsaro,
 {
   /* no point carrying on if a previous plugin has already decided we should
      ignore this tuple */
-  if((state->flags & CORSARO_PACKET_STATE_IGNORE) != 0)
+  if(corsaro_filter_is_match_any(state) == 0)
     {
       return 0;
     }
