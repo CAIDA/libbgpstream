@@ -76,7 +76,8 @@ void corsaro_filter_manager_free(corsaro_filter_manager_t *manager)
   return;
 }
 
-corsaro_filter_t *corsaro_filter_init(corsaro_t *corsaro, const char *name)
+corsaro_filter_t *corsaro_filter_init(corsaro_t *corsaro, const char *name,
+				      void *user)
 {
   assert(corsaro != NULL);
 
@@ -109,6 +110,9 @@ corsaro_filter_t *corsaro_filter_init(corsaro_t *corsaro, const char *name)
 
   /* save us */
   filter->manager = manager;
+
+  /* save them */
+  filter->user = user;
 
   /* resize the array of filters to hold this one */
   if((manager->filters = realloc(corsaro, sizeof(corsaro_filter_t*) *
@@ -162,6 +166,10 @@ void corsaro_filter_free(corsaro_filter_t *filter)
       free(filter->name);
       filter->name = NULL;
     }
+
+  /* we do not own 'manager' */
+
+  /* we do not own 'user' */
 
   free(filter);
 }

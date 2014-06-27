@@ -61,6 +61,9 @@ typedef struct corsaro_filter
   /** Pointer to the filter manager that owns this filter */
   struct corsaro_filter_manager *manager;
 
+  /** User-provided void pointer */
+  void *user;
+
 } corsaro_filter_t;
 
 /** State for the filter manager */
@@ -91,6 +94,7 @@ void corsaro_filter_manager_free(corsaro_filter_manager_t *manager);
  *
  * @param corsaro       corsaro instance to create a new filter for
  * @param name          name of the filter to create
+ * @param user          void pointer for use by the filter owner
  *
  * @return a corsaro filter instance if the filter was allocated successfully,
  * NULL otherwise
@@ -98,7 +102,16 @@ void corsaro_filter_manager_free(corsaro_filter_manager_t *manager);
  * @note the name parameter must be unique within an instance of corsaro, the
  * initialization will fail if the name is already in use.
  */
-corsaro_filter_t *corsaro_filter_init(corsaro_t *corsaro, const char *name);
+corsaro_filter_t *corsaro_filter_init(corsaro_t *corsaro, const char *name,
+				      void *user);
+
+/** Free the given filter
+ *
+ * @param corsaro       pointer to the corsaro instance that the filter is
+ *                      associated with
+ * @param filter        pointer to the filter to free
+ */
+void corsaro_filter_free(corsaro_filter_t *filter);
 
 /** Get the filter that matches the given name
  *
@@ -112,13 +125,18 @@ corsaro_filter_t *corsaro_filter_init(corsaro_t *corsaro, const char *name);
  */
 corsaro_filter_t *corsaro_filter_get(corsaro_t *corsaro, const char *name);
 
-/** Free the given filter
+/** Get the filter that matches the given name
  *
- * @param corsaro       pointer to the corsaro instance that the filter is
- *                      associated with
- * @param filter        pointer to the filter to free
+ * @param corsaro       pointer to the corsaro instance to get the filter from
+ * @param name          name of the filter to retrieve
+ * @return the filter that matches the name given, NULL if there were no matches
+ *
+ * @note this function searches a list of filters, so it should not be run on a
+ * per-packet basis. i.e. keep a pointer to the filter that you are interested
+ * in.
  */
-void corsaro_filter_free(corsaro_filter_t *filter);
+corsaro_filter_t *corsaro_filter_get_all(corsaro_t *corsaro,
+					 corsaro_filter_t ***filters);
 
 /** Check if a packet matches the given filter
  *
