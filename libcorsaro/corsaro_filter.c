@@ -174,27 +174,29 @@ void corsaro_filter_free(corsaro_filter_t *filter)
   free(filter);
 }
 
-int corsaro_filter_is_match(corsaro_packet_t *packet, corsaro_filter_t *filter)
+int corsaro_filter_is_match(corsaro_packet_state_t *state,
+			    corsaro_filter_t *filter)
 {
   assert(packet != NULL);
   assert(filter != NULL);
   assert(filter->id <= CORSARO_FILTER_MAX_ID && filter->id > 0);
 
-  return packet->state.filter_matches & (1<<filter->id);
+  return state->filter_matches & (1<<filter->id);
 }
 
-int corsaro_filter_is_match_any(corsaro_packet_t *packet)
+int corsaro_filter_is_match_any(corsaro_packet_state_t *state)
 {
-  return packet->state.filter_matches;
+  return state->filter_matches;
 }
 
-void corsaro_filter_set_match(corsaro_packet_t *packet, corsaro_filter_t *filter,
-			     int match)
+void corsaro_filter_set_match(corsaro_packet_state_t *state,
+			      corsaro_filter_t *filter,
+			      int match)
 {
   assert(packet != NULL);
   assert(filter != NULL);
   assert(filter->id <= CORSARO_FILTER_MAX_ID && filter->id > 0);
 
-  packet->state.filter_matches |= (1<<filter->id);
+  state->filter_matches |= (1<<filter->id);
   return;
 }

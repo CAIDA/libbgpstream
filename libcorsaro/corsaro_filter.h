@@ -135,8 +135,7 @@ corsaro_filter_t *corsaro_filter_get(corsaro_t *corsaro, const char *name);
  * per-packet basis. i.e. keep a pointer to the filter that you are interested
  * in.
  */
-corsaro_filter_t *corsaro_filter_get_all(corsaro_t *corsaro,
-					 corsaro_filter_t ***filters);
+int corsaro_filter_get_all(corsaro_t *corsaro, corsaro_filter_t ***filters);
 
 /** Check if a packet matches the given filter
  *
@@ -147,7 +146,8 @@ corsaro_filter_t *corsaro_filter_get_all(corsaro_t *corsaro,
  * @note this function **does not** actually apply the filter, it simply checks
  * the result of a previous call to corsaro_filter_set_match.
  */
-int corsaro_filter_is_match(corsaro_packet_t *packet, corsaro_filter_t *filter);
+int corsaro_filter_is_match(corsaro_packet_state_t *state,
+			    corsaro_filter_t *filter);
 
 /** Check if a packet matches any current filter
  *
@@ -157,7 +157,7 @@ int corsaro_filter_is_match(corsaro_packet_t *packet, corsaro_filter_t *filter);
  * @note this function **does not** actually apply the filter, it simply checks
  * the results previous calls to corsaro_filter_set_match.
  */
-int corsaro_filter_is_match_any(corsaro_packet_t *packet);
+int corsaro_filter_is_match_any(corsaro_packet_state_t *state);
 
 /** Set whether a packet matches the given filter
  *
@@ -167,7 +167,8 @@ int corsaro_filter_is_match_any(corsaro_packet_t *packet);
  *
  * @return 0 if the packet was successfully updated, -1 otherwise
  */
-void corsaro_filter_set_match(corsaro_packet_t *packet, corsaro_filter_t *filter,
+void corsaro_filter_set_match(corsaro_packet_state_t *state,
+			      corsaro_filter_t *filter,
 			      int match);
 
 
