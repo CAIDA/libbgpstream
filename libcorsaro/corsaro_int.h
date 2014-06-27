@@ -222,9 +222,6 @@ enum
   {
     /** The packet is classified as backscatter */
     CORSARO_PACKET_STATE_FLAG_BACKSCATTER    = 0x01,
-
-    /** Plugins which write output should ignore this packet */
-    CORSARO_PACKET_STATE_IGNORE              = 0x02,
   };
 
 /** A lightweight wrapper around a libtrace packet */
