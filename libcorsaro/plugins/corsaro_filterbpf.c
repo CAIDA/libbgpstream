@@ -69,6 +69,8 @@
     if you have more than this, go away... */
 #define MAX_COMMAND_LINE_BPF 100
 
+#define BPF(x) (libtrace_filter_t *)((x)->user)
+
 /** Common plugin information across all instances */
 static corsaro_plugin_t corsaro_filterbpf_plugin = {
   PLUGIN_NAME,                                 /* name */
@@ -81,7 +83,7 @@ static corsaro_plugin_t corsaro_filterbpf_plugin = {
 /** Holds the state for an instance of this plugin */
 struct corsaro_filterbpf_state_t {
   /** The BPFs explicitly given on the command line*/
-  libtrace_filter_t *cmd_bpf[MAX_COMMAND_LINE_BPF];
+  corsaro_filter_t *cmd_bpf[MAX_COMMAND_LINE_BPF];
 
   /** The number of BPF given on the command line */
   int cmd_bpf_cnt;
@@ -100,10 +102,59 @@ static void usage(corsaro_plugin_t *plugin)
 {
   fprintf(stderr,
 	  "plugin usage: %s -f filter [-f filter]\n"
-	  "       -f            BPF filter to apply, -f can be used "
-	  "up to %d times\n",
+	  "       -f            BPF filter to apply.\n"
+	  "                     -f can be used up to %d times.\n"
+	  "                     If more than one filter is supplied, filters "
+	  "must be given\n"
+	  "                     a unique identifier by prepending the filter "
+	  "string with\n"
+	  "                     '<name>:'. For example, the filter 'tcp or "
+	  "udp' becomes\n"
+	  "                     'my_filter:tcp or udp'\n",
 	  plugin->argv[0],
 	  MAX_COMMAND_LINE_BPF);
+}
+
+static int create_filter(corsaro_t *corsaro,
+			 struct corsaro_filterbpf_state_t *state,
+			 char *filter_str)
+{
+  libtrace_filter_t *bpf_filter = NULL;
+  char *filter_str_name = NULL;
+  char *filter_str_bpf = NULL;
+
+  /* first, check if we were given a name */
+  if((filter_str_bpf = strchr(filter_str, ':')) != NULL)
+    {
+      *filter_str_bpf = '\0';
+      filter_str_bpf++;
+      filter_str_name = filter_str;
+    }
+  else
+    {
+      /* we concoct a name, but only once! */
+      filter_str_name = "filterbpf";
+      filter_str_bpf = filter_str;
+    }
+
+  assert(strlen(filter_str_name) > 0);
+  assert(strlen(filter_str_bpf) > 0);
+
+  corsaro_log(__func__, corsaro, "creating filter with name '%s' and bpf '%s'",
+	      filter_str_name, filter_str_bpf);
+
+  bpf_filter = trace_create_filter(filter_str_bpf);
+  assert(bpf_filter != NULL);
+  if((state->cmd_bpf[state->cmd_bpf_cnt] =
+      corsaro_filter_init(corsaro, filter_str_name, bpf_filter)) == NULL)
+    {
+      fprintf(stderr, "ERROR: could not allocate filter for %s.\n", filter_str_bpf);
+      fprintf(stderr, "ERROR: ensure all filters are uniquely named\n");
+      return -1;
+    }
+  state->cmd_bpf_cnt++;
+
+  return 0;
 }
 
 /** Parse the arguments given to the plugin */
@@ -133,8 +184,11 @@ static int parse_args(corsaro_t *corsaro)
 	      usage(plugin);
 	      return -1;
 	    }
-	  state->cmd_bpf[state->cmd_bpf_cnt] = trace_create_filter(optarg);
-	  state->cmd_bpf_cnt++;
+
+	  if(create_filter(corsaro, state, optarg) != 0)
+	    {
+	      return -1;
+	    }
 	  break;
 
 	case '?':
@@ -279,34 +333,24 @@ int corsaro_filterbpf_process_packet(corsaro_t *corsaro,
   struct corsaro_filterbpf_state_t *fb_state = STATE(corsaro);
   int i;
   int rc;
-  int matches = 0;
 
-  /* we try to observe the principle of least astonishment when applying the
-     filters. if a user supplied multiple BPF to tcpdump, then they would
-     probably expect to get packets which matched any of the filters, not all of
-     the filters. as such, we default to "ignore" and then apply filters until
-     one matches. this way, if none of the filters match, we will ignore the
-     packet, but if any match, then we will process it. clear as mud? */
+  /* now that other plugins can differentiate between filters that we apply, we
+     must apply all filters to every packet. we then ask the filter framework
+     to record those that we have matches for */
 
   for(i=0; i<fb_state->cmd_bpf_cnt; i++)
     {
-      assert(fb_state->cmd_bpf[i] != NULL);
-      rc = trace_apply_filter(fb_state->cmd_bpf[i], LT_PKT(packet));
+      assert(fb_state->cmd_bpf[i] != NULL &&
+	     BPF(fb_state->cmd_bpf[i]) != NULL);
+      rc = trace_apply_filter(BPF(fb_state->cmd_bpf[i]), LT_PKT(packet));
       if(rc < 0)
 	{
-	  corsaro_log(__func__, corsaro, "invalid bpf filter");
+	  corsaro_log(__func__, corsaro, "invalid bpf filter (%s)",
+		      fb_state->cmd_bpf[i]);
 	  return -1;
 	}
-      if(rc > 0)
-	{
-	  matches = 1;
-	  break;
-	}
-    }
-
-  if(matches == 0)
-    {
-      packet->state.flags |= CORSARO_PACKET_STATE_IGNORE;
+      /* mark this filter as a match, perhaps */
+      corsaro_filter_set_match(&packet->state, fb_state->cmd_bpf[i], rc);
     }
 
   return 0;
