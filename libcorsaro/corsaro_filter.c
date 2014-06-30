@@ -87,10 +87,9 @@ corsaro_filter_t *corsaro_filter_init(corsaro_t *corsaro, const char *name,
   assert(manager != NULL);
 
   /* now check that a filter with this name does not already exist */
-  if(corsaro_filter_get(corsaro, name) != NULL)
+  if((filter = corsaro_filter_get(corsaro, name)) != NULL)
     {
-      corsaro_log(__func__, corsaro, "filter with name '%s' already exists", name);
-      return NULL;
+      return filter;
     }
 
   if((filter = malloc(sizeof(corsaro_filter_t))) == NULL)
