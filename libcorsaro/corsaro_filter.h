@@ -45,10 +45,6 @@
  *
  */
 
-/** The maximum number of filters that we support (currently this is based on
-    the number of bits in corsaro_packet_state_t filter_matches) */
-#define CORSARO_FILTER_ID_MAX 64
-
 /** Instance of a single filter */
 typedef struct corsaro_filter
 {

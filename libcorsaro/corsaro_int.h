@@ -200,10 +200,19 @@ struct corsaro_packet_state
   /** Features of the packet that have been identified by earlier plugins */
   uint8_t flags;
 
-  /** Mask of filters that have been matched by this packet.
+  /** Array of boolean values indicating which filters have been matched by this packet.
       corsaro_filter is responsible for dynamically allocating filter IDs based
       on requests by plugins */
-  uint64_t filter_matches;
+  uint8_t *filter_matches;
+
+  /** Total number of filters in the filter_matches array (this is always the
+      same as the total number of filters allocated) */
+  int filter_matches_cnt;
+
+  /** Number of filters that are set to matching for the current packet.
+      Provides an efficient way to check if *any* filter matches the current
+      packet */
+  int filter_matches_set_cnt;
 
 #ifdef WITH_PLUGIN_IPMETA
   /** Set of libipmeta records based on lookups performed by the corsaro_ipmeta

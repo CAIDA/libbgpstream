@@ -86,16 +86,6 @@ corsaro_filter_t *corsaro_filter_init(corsaro_t *corsaro, const char *name,
 
   assert(manager != NULL);
 
-  /* first check if we have enough space to alloc this filter */
-  if(manager->filters_cnt == CORSARO_FILTER_ID_MAX)
-    {
-      corsaro_log(__func__, corsaro, "Maximum number of filters (%d) exceeded, "
-		  "cannot allocate filter (%s)",
-		  CORSARO_FILTER_ID_MAX,
-		  name);
-      return NULL;
-    }
-
   /* now check that a filter with this name does not already exist */
   if(corsaro_filter_get(corsaro, name) != NULL)
     {
@@ -131,6 +121,17 @@ corsaro_filter_t *corsaro_filter_init(corsaro_t *corsaro, const char *name,
     }
 
   manager->filters[filter->id] = filter;
+
+  /* resize the array of matched filters to hold this one */
+  if((corsaro->packet->state.filter_matches =
+      realloc(corsaro->packet->state.filter_matches,
+	      sizeof(uint8_t) * manager->filters_cnt)) == NULL)
+    {
+      corsaro_log(__func__, corsaro, "failed to malloc filter result array");
+      return NULL;
+    }
+  corsaro->packet->state.filter_matches[filter->id] = 0;
+  corsaro->packet->state.filter_matches_cnt = manager->filters_cnt;
 
   return filter;
 }
@@ -187,34 +188,36 @@ void corsaro_filter_free(corsaro_filter_t *filter)
 int corsaro_filter_is_match(corsaro_packet_state_t *state,
 			    corsaro_filter_t *filter)
 {
-  assert(packet != NULL);
+  assert(state != NULL);
   assert(filter != NULL);
-  assert(filter->id <= CORSARO_FILTER_MAX_ID && filter->id > 0);
+  assert(filter->id <= filter->manager->filters_cnt && filter->id > 0);
 
-  return state->filter_matches & (1<<filter->id);
+  return state->filter_matches[filter->id];
 }
 
 int corsaro_filter_is_match_any(corsaro_packet_state_t *state)
 {
-  return state->filter_matches;
+  return state->filter_matches_set_cnt;
 }
 
 void corsaro_filter_set_match(corsaro_packet_state_t *state,
 			      corsaro_filter_t *filter,
 			      int match)
 {
-  assert(packet != NULL);
+  assert(state != NULL);
   assert(filter != NULL);
-  assert(filter->id <= CORSARO_FILTER_MAX_ID && filter->id > 0);
+  assert(filter->id < filter->manager->filters_cnt);
 
-  #if 0
-  fprintf(stderr, "setting match for %s:%d at mask value %d to %d\n",
-	  filter->name, filter->id, (1<<filter->id), match);
-  #endif
+#if 0
+  fprintf(stderr, "setting match for %s:%d to %d (used to be %d)\n",
+	  filter->name, filter->id, match, state->filter_matches[filter->id]);
+#endif
 
   if(match != 0)
     {
-      state->filter_matches |= (1<<filter->id);
+      state->filter_matches_set_cnt++;
     }
+
+  state->filter_matches[filter->id] = match;
   return;
 }

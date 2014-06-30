@@ -67,16 +67,46 @@ static corsaro_packet_t *corsaro_packet_alloc(corsaro_t *corsaro)
 /** Reset the state for a the given corsaro packet wrapper */
 static inline void corsaro_packet_state_reset(corsaro_packet_t *packet)
 {
+  int i;
   assert(packet != NULL);
 
-  /* This is dangerous to do field-by-field, new plugins may not be responsible
-     and reset their own fields. Therefore we will do this by force */
-  memset(&packet->state, 0, sizeof(corsaro_packet_state_t));
+  /* now that we have added the corsaro_filter framework we can no longer do the
+     brute-force reset of the packet state to 0, each field MUST be individually
+     cleared. if you add a field to corsaro_packet_state_t, you MUST reset it
+     here */
+
+  /* reset the general flags */
+  packet->state.flags = 0;
+
+  /* reset each matched filter */
+  for(i=0; i<packet->state.filter_matches_cnt; i++)
+    {
+      packet->state.filter_matches[i] = 0;
+    }
+  /* reset the number of matched filters */
+  packet->state.filter_matches_set_cnt = 0;
+
+#ifdef WITH_PLUGIN_IPMETA
+  /* reset the matched ipmeta records */
+  for(i=0; i<IPMETA_PROVIDER_MAX; i++)
+    {
+      packet->state.ipmeta_records[i] = NULL;
+    }
+  /* reset the default match */
+  packet->state.ipmeta_record_default = NULL;
+#endif
 }
 
 /** Free the given corsaro packet wrapper */
 static void corsaro_packet_free(corsaro_packet_t *packet)
 {
+  if(packet->state.filter_matches != NULL)
+    {
+      free(packet->state.filter_matches);
+      packet->state.filter_matches = NULL;
+      packet->state.filter_matches_cnt = 0;
+    }
+
   /* we will assume that somebody else is taking care of the libtrace packet */
   if(packet != NULL)
     {
