@@ -38,7 +38,7 @@
 
 #include "corsaro_file.h"
 #include "corsaro_plugin.h"
-#include "corsaro_filter.h"
+#include "corsaro_tag.h"
 
 /** @file
  *
@@ -192,27 +192,25 @@ struct corsaro_plugin_data
  *
  * This is passed, along with the packet, to each plugin.
  * Plugins can add data to it, or check for data from earlier plugins.
- * Currently, this is used to filter packets based on criteria determined
- * by an earlier plugin
  */
 struct corsaro_packet_state
 {
   /** Features of the packet that have been identified by earlier plugins */
   uint8_t flags;
 
-  /** Array of boolean values indicating which filters have been matched by this packet.
-      corsaro_filter is responsible for dynamically allocating filter IDs based
-      on requests by plugins */
-  uint8_t *filter_matches;
+  /** Array of boolean values indicating which tags have been matched by this
+      packet.  corsaro_tag is responsible for dynamically allocating tag IDs
+      based on requests by plugins */
+  uint8_t *tag_matches;
 
-  /** Total number of filters in the filter_matches array (this is always the
-      same as the total number of filters allocated) */
-  int filter_matches_cnt;
+  /** Total number of tags in the tag_matches array (this is always the same as
+      the total number of tags allocated) */
+  int tag_matches_cnt;
 
-  /** Number of filters that are set to matching for the current packet.
-      Provides an efficient way to check if *any* filter matches the current
+  /** Number of tags that are set to matching for the current packet.
+      Provides an efficient way to check if *any* tag matches the current
       packet */
-  int filter_matches_set_cnt;
+  int tag_matches_set_cnt;
 
 #ifdef WITH_PLUGIN_IPMETA
   /** Set of libipmeta records based on lookups performed by the corsaro_ipmeta
@@ -231,6 +229,9 @@ enum
   {
     /** The packet is classified as backscatter */
     CORSARO_PACKET_STATE_FLAG_BACKSCATTER    = 0x01,
+
+    /** The packet should be ignored by filter-aware plugins */
+    CORSARO_PACKET_STATE_FLAG_IGNORE         = 0x02,
   };
 
 /** A lightweight wrapper around a libtrace packet */
@@ -292,8 +293,8 @@ struct corsaro
   /* this is what gets passed to any function relating to plugin management */
   corsaro_plugin_manager_t *plugin_manager;
 
-  /** A pointer to the corsaro packet filter manager state */
-  corsaro_filter_manager_t *filter_manager;
+  /** A pointer to the corsaro packet tag manager state */
+  corsaro_tag_manager_t *tag_manager;
 
   /** The first interval end will be rounded down to the nearest integer
       multiple of the interval length if enabled */

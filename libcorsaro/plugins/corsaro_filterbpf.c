@@ -40,6 +40,7 @@
 #include "corsaro_io.h"
 #include "corsaro_log.h"
 #include "corsaro_plugin.h"
+#include "corsaro_tag.h"
 
 #include "corsaro_filterbpf.h"
 
@@ -83,7 +84,7 @@ static corsaro_plugin_t corsaro_filterbpf_plugin = {
 /** Holds the state for an instance of this plugin */
 struct corsaro_filterbpf_state_t {
   /** The BPFs explicitly given on the command line*/
-  corsaro_filter_t *cmd_bpf[MAX_COMMAND_LINE_BPF];
+  corsaro_tag_t *cmd_bpf[MAX_COMMAND_LINE_BPF];
 
   /** The number of BPF given on the command line */
   int cmd_bpf_cnt;
@@ -140,15 +141,15 @@ static int create_filter(corsaro_t *corsaro,
   assert(strlen(filter_str_name) > 0);
   assert(strlen(filter_str_bpf) > 0);
 
-  corsaro_log(__func__, corsaro, "creating filter with name '%s' and bpf '%s'",
+  corsaro_log(__func__, corsaro, "creating tag with name '%s' and bpf '%s'",
 	      filter_str_name, filter_str_bpf);
 
   bpf_filter = trace_create_filter(filter_str_bpf);
   assert(bpf_filter != NULL);
   if((state->cmd_bpf[state->cmd_bpf_cnt] =
-      corsaro_filter_init(corsaro, filter_str_name, bpf_filter)) == NULL)
+      corsaro_tag_init(corsaro, filter_str_name, bpf_filter)) == NULL)
     {
-      fprintf(stderr, "ERROR: could not allocate filter for %s.\n", filter_str_bpf);
+      fprintf(stderr, "ERROR: could not allocate tag for %s.\n", filter_str_bpf);
       fprintf(stderr, "ERROR: ensure all filters are uniquely named\n");
       return -1;
     }
@@ -333,9 +334,10 @@ int corsaro_filterbpf_process_packet(corsaro_t *corsaro,
   struct corsaro_filterbpf_state_t *fb_state = STATE(corsaro);
   int i;
   int rc;
+  int ignore = 1;
 
-  /* now that other plugins can differentiate between filters that we apply, we
-     must apply all filters to every packet. we then ask the filter framework
+  /* now that other plugins can differentiate between tags that we apply, we
+     must apply all filters to every packet. we then ask the tag framework
      to record those that we have matches for */
 
   for(i=0; i<fb_state->cmd_bpf_cnt; i++)
@@ -349,8 +351,19 @@ int corsaro_filterbpf_process_packet(corsaro_t *corsaro,
 		      fb_state->cmd_bpf[i]);
 	  return -1;
 	}
-      /* mark this filter as a match, perhaps */
-      corsaro_filter_set_match(&packet->state, fb_state->cmd_bpf[i], rc);
+      if(rc > 0)
+	{
+	  /* mark this filter as a match */
+	  corsaro_tag_set_match(&packet->state, fb_state->cmd_bpf[i], rc);
+	  /* turn off the ignore flag */
+	  ignore = 0;
+	}
+    }
+
+  /* flip on the ignore bit if any of the filters match */
+  if(ignore != 0)
+    {
+      packet->state.flags |= CORSARO_PACKET_STATE_FLAG_IGNORE;
     }
 
   return 0;

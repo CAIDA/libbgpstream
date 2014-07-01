@@ -36,15 +36,15 @@ libcorsaro_la_SOURCES = 	\
 	corsaro.h 		\
 	corsaro_file.c 		\
 	corsaro_file.h 		\
-	corsaro_filter.c	\
-	corsaro_filter.h	\
 	corsaro_int.h 		\
 	corsaro_io.c 		\
 	corsaro_io.h 		\
 	corsaro_log.c 		\
 	corsaro_log.h 		\
 	corsaro_plugin.c 	\
-	corsaro_plugin.h
+	corsaro_plugin.h	\
+	corsaro_tag.c		\
+	corsaro_tag.h
 
 libcorsaro_la_LIBADD = $(top_builddir)/common/libcccommon.la \
 	$(top_builddir)/libcorsaro/plugins/libcorsaroplugins.la

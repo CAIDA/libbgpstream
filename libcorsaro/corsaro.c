@@ -36,6 +36,7 @@
 #include "corsaro_file.h"
 #include "corsaro_io.h"
 #include "corsaro_log.h"
+#include "corsaro_tag.h"
 #include "utils.h"
 
 #ifdef WITH_PLUGIN_SIXT
@@ -70,7 +71,7 @@ static inline void corsaro_packet_state_reset(corsaro_packet_t *packet)
   int i;
   assert(packet != NULL);
 
-  /* now that we have added the corsaro_filter framework we can no longer do the
+  /* now that we have added the corsaro_tag framework we can no longer do the
      brute-force reset of the packet state to 0, each field MUST be individually
      cleared. if you add a field to corsaro_packet_state_t, you MUST reset it
      here */
@@ -78,13 +79,13 @@ static inline void corsaro_packet_state_reset(corsaro_packet_t *packet)
   /* reset the general flags */
   packet->state.flags = 0;
 
-  /* reset each matched filter */
-  for(i=0; i<packet->state.filter_matches_cnt; i++)
+  /* reset each matched tag */
+  for(i=0; i<packet->state.tag_matches_cnt; i++)
     {
-      packet->state.filter_matches[i] = 0;
+      packet->state.tag_matches[i] = 0;
     }
-  /* reset the number of matched filters */
-  packet->state.filter_matches_set_cnt = 0;
+  /* reset the number of matched tag */
+  packet->state.tag_matches_set_cnt = 0;
 
 #ifdef WITH_PLUGIN_IPMETA
   /* reset the matched ipmeta records */
@@ -100,11 +101,11 @@ static inline void corsaro_packet_state_reset(corsaro_packet_t *packet)
 /** Free the given corsaro packet wrapper */
 static void corsaro_packet_free(corsaro_packet_t *packet)
 {
-  if(packet->state.filter_matches != NULL)
+  if(packet->state.tag_matches != NULL)
     {
-      free(packet->state.filter_matches);
-      packet->state.filter_matches = NULL;
-      packet->state.filter_matches_cnt = 0;
+      free(packet->state.tag_matches);
+      packet->state.tag_matches = NULL;
+      packet->state.tag_matches_cnt = 0;
     }
 
   /* we will assume that somebody else is taking care of the libtrace packet */
@@ -138,11 +139,11 @@ static void corsaro_free(corsaro_t *corsaro)
       corsaro->plugin_manager = NULL;
     }
 
-  /* free the filter manager */
-  if(corsaro->filter_manager != NULL)
+  /* free the tag manager */
+  if(corsaro->tag_manager != NULL)
     {
-      corsaro_filter_manager_free(corsaro->filter_manager);
-      corsaro->filter_manager = NULL;
+      corsaro_tag_manager_free(corsaro->tag_manager);
+      corsaro->tag_manager = NULL;
     }
 
   if(corsaro->uridata != NULL)
@@ -275,10 +276,10 @@ static corsaro_t *corsaro_init(char *template, corsaro_file_mode_t mode)
       goto err;
     }
 
-  /* get the filter manager started */
-  if((e->filter_manager = corsaro_filter_manager_init(e)) == NULL)
+  /* get the tag manager started */
+  if((e->tag_manager = corsaro_tag_manager_init(e)) == NULL)
     {
-      corsaro_log(__func__, e, "could not initialize filter manager");
+      corsaro_log(__func__, e, "could not initialize tag manager");
       goto err;
     }
 

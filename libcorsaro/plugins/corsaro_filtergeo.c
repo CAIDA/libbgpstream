@@ -266,7 +266,7 @@ static void process_generic(corsaro_t *corsaro, corsaro_packet_state_t *state)
       /* this country is NOT in the hash */
       if(fg_state->invert == 0)
 	{
-	  state->flags |= CORSARO_PACKET_STATE_IGNORE;
+	  state->flags |= CORSARO_PACKET_STATE_FLAG_IGNORE;
 	}
     }
   else
@@ -274,7 +274,7 @@ static void process_generic(corsaro_t *corsaro, corsaro_packet_state_t *state)
       /* this country IS in the hash */
       if(fg_state->invert != 0)
 	{
-	  state->flags |= CORSARO_PACKET_STATE_IGNORE;
+	  state->flags |= CORSARO_PACKET_STATE_FLAG_IGNORE;
 	}
     }
 
