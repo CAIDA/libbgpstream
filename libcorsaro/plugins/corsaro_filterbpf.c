@@ -283,12 +283,29 @@ int corsaro_filterbpf_close_input(corsaro_in_t *corsaro)
 /** Implements the close_output function of the plugin API */
 int corsaro_filterbpf_close_output(corsaro_t *corsaro)
 {
+  int i;
   struct corsaro_filterbpf_state_t *state = STATE(corsaro);
 
-  if(state != NULL)
+  assert(state != NULL);
+
+  if(state->cmd_bpf != NULL)
     {
-      corsaro_plugin_free_state(corsaro->plugin_manager, PLUGIN(corsaro));
+      for(i=0; i<state->cmd_bpf_cnt; i++)
+	{
+	  if(state->cmd_bpf[i] != NULL)
+	    {
+	      trace_destroy_filter(state->cmd_bpf[i]->user);
+	      state->cmd_bpf[i]->user = NULL;
+
+	      corsaro_tag_free(state->cmd_bpf[i]);
+	      state->cmd_bpf[i] = NULL;
+	    }
+	}
+
+      state->cmd_bpf_cnt = 0;
     }
+
+  corsaro_plugin_free_state(corsaro->plugin_manager, PLUGIN(corsaro));
 
   return 0;
 }
