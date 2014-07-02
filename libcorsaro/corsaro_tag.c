@@ -166,7 +166,12 @@ int corsaro_tag_get_all(corsaro_t *corsaro, corsaro_tag_t ***tags)
 
 void corsaro_tag_free(corsaro_tag_t *tag)
 {
-  assert(tag != NULL);
+  /* we will be nice and let people free tags that they created */
+  if(tag == NULL)
+    {
+      return;
+    }
+
   assert(tag->manager != NULL);
 
   tag->manager->tags[tag->id] = NULL;
@@ -189,7 +194,7 @@ int corsaro_tag_is_match(corsaro_packet_state_t *state,
 {
   assert(state != NULL);
   assert(tag != NULL);
-  assert(tag->id <= tag->manager->tags_cnt && tag->id > 0);
+  assert(tag->id <= tag->manager->tags_cnt);
 
   return state->tag_matches[tag->id];
 }

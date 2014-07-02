@@ -124,10 +124,6 @@ corsaro_tag_t *corsaro_tag_get(corsaro_t *corsaro, const char *name);
  * @param corsaro       pointer to the corsaro instance to get the tag from
  * @param name          name of the tag to retrieve
  * @return the tag that matches the name given, NULL if there were no matches
- *
- * @note this function searches a list of tags, so it should not be run on a
- * per-packet basis. i.e. keep a pointer to the tag that you are interested
- * in.
  */
 int corsaro_tag_get_all(corsaro_t *corsaro, corsaro_tag_t ***tags);
 
@@ -162,8 +158,8 @@ int corsaro_tag_is_match_any(corsaro_packet_state_t *state);
  * @return 0 if the packet was successfully updated, -1 otherwise
  */
 void corsaro_tag_set_match(corsaro_packet_state_t *state,
-			      corsaro_tag_t *tag,
-			      int match);
+			   corsaro_tag_t *tag,
+			   int match);
 
 
 #endif /* __CORSARO_TAG_H */
