@@ -60,6 +60,19 @@ void corsaro_tag_manager_free(corsaro_tag_manager_t *manager)
 
   assert(manager != NULL);
 
+  /* free all the groups that we have allocated */
+  if(manager->groups != NULL)
+    {
+      for(i=0; i<manager->groups_cnt; i++)
+	{
+	  corsaro_tag_group_free(manager->groups[i]);
+	  manager->groups[i] = NULL;
+	}
+      free(manager->groups);
+      manager->groups = NULL;
+      manager->groups_cnt = 0;
+    }
+
   /* free all the tags that we have allocated */
   if(manager->tags != NULL)
     {
@@ -373,6 +386,8 @@ int corsaro_tag_group_add_tag(corsaro_tag_group_t *group,
     }
 
   group->tags[group->tags_cnt++] = tag;
+
+  tag->group = group;
   return 0;
 }
 
