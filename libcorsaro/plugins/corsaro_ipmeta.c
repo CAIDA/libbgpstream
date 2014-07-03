@@ -489,6 +489,12 @@ ipmeta_provider_t *corsaro_ipmeta_get_provider(corsaro_t *corsaro,
   assert(corsaro != NULL);
   assert(provider_id > 0 && provider_id <= IPMETA_PROVIDER_MAX);
 
+  if(STATE(corsaro) == NULL)
+    {
+      corsaro_log(__func__, corsaro, "ipmeta plugin not enabled");
+      return NULL;
+    }
+
   return ipmeta_get_provider_by_id(STATE(corsaro)->ipmeta, provider_id);
 }
 
