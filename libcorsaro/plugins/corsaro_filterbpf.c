@@ -331,7 +331,7 @@ int corsaro_filterbpf_close_output(corsaro_t *corsaro)
 	      trace_destroy_filter(state->cmd_bpf[i]->user);
 	      state->cmd_bpf[i]->user = NULL;
 
-	      corsaro_tag_free(state->cmd_bpf[i]);
+	      /* the tag manger will free the tags and groups for us */
 	      state->cmd_bpf[i] = NULL;
 	    }
 	}
