@@ -67,6 +67,9 @@ endif
 if WITH_PLUGIN_FILTERBPF
 PLUGIN_SRC+=corsaro_filterbpf.c corsaro_filterbpf.h
 endif
+if WITH_PLUGIN_TAGSTATS
+PLUGIN_SRC+=corsaro_tagstats.c corsaro_tagstats.h
+endif
 
 ################################################################################
 # Add new plugins below here using:

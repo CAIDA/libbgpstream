@@ -220,6 +220,7 @@ ED_WITH_PLUGIN([corsaro_flowtuple],[flowtuple],[SIXT],[yes])
 # optional plugins
 ED_WITH_PLUGIN([corsaro_dos],[dos],[DOS],[no])
 ED_WITH_PLUGIN([corsaro_smee],[smee],[SMEE],[no])
+ED_WITH_PLUGIN([corsaro_tagstats],[tagstats],[TAGSTATS],[no])
 
 # this MUST go after all the ED_WITH_PLUGIN macro calls
 AC_DEFINE_UNQUOTED([ED_PLUGIN_INIT_ALL_ENABLED], $ED_PLUGIN_INIT_ALL_ENABLED,
