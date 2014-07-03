@@ -198,19 +198,8 @@ struct corsaro_packet_state
   /** Features of the packet that have been identified by earlier plugins */
   uint8_t flags;
 
-  /** Array of boolean values indicating which tags have been matched by this
-      packet.  corsaro_tag is responsible for dynamically allocating tag IDs
-      based on requests by plugins */
-  uint8_t *tag_matches;
-
-  /** Total number of tags in the tag_matches array (this is always the same as
-      the total number of tags allocated) */
-  int tag_matches_cnt;
-
-  /** Number of tags that are set to matching for the current packet.
-      Provides an efficient way to check if *any* tag matches the current
-      packet */
-  int tag_matches_set_cnt;
+  /** Tag state */
+  corsaro_tag_state_t tags;
 
 #ifdef WITH_PLUGIN_IPMETA
   /** Set of libipmeta records based on lookups performed by the corsaro_ipmeta

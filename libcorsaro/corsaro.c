@@ -79,13 +79,7 @@ static inline void corsaro_packet_state_reset(corsaro_packet_t *packet)
   /* reset the general flags */
   packet->state.flags = 0;
 
-  /* reset each matched tag */
-  for(i=0; i<packet->state.tag_matches_cnt; i++)
-    {
-      packet->state.tag_matches[i] = 0;
-    }
-  /* reset the number of matched tag */
-  packet->state.tag_matches_set_cnt = 0;
+  corsaro_tag_state_reset(&packet->state);
 
 #ifdef WITH_PLUGIN_IPMETA
   /* reset the matched ipmeta records */
@@ -101,12 +95,7 @@ static inline void corsaro_packet_state_reset(corsaro_packet_t *packet)
 /** Free the given corsaro packet wrapper */
 static void corsaro_packet_free(corsaro_packet_t *packet)
 {
-  if(packet->state.tag_matches != NULL)
-    {
-      free(packet->state.tag_matches);
-      packet->state.tag_matches = NULL;
-      packet->state.tag_matches_cnt = 0;
-    }
+  corsaro_tag_state_free(&packet->state);
 
   /* we will assume that somebody else is taking care of the libtrace packet */
   if(packet != NULL)
