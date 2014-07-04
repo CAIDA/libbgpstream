@@ -133,7 +133,7 @@ corsaro_tag_t *corsaro_tag_init(corsaro_t *corsaro, const char *name,
       return tag;
     }
 
-  if((tag = malloc(sizeof(corsaro_tag_t))) == NULL)
+  if((tag = malloc_zero(sizeof(corsaro_tag_t))) == NULL)
     {
       corsaro_log(__func__, corsaro, "failed to malloc tag");
       return NULL;
@@ -287,7 +287,7 @@ corsaro_tag_group_t *corsaro_tag_group_init(corsaro_t *corsaro,
       return group;
     }
 
-  if((group = malloc(sizeof(corsaro_tag_group_t))) == NULL)
+  if((group = malloc_zero(sizeof(corsaro_tag_group_t))) == NULL)
     {
       corsaro_log(__func__, corsaro, "failed to malloc group");
       return NULL;
@@ -387,6 +387,10 @@ int corsaro_tag_group_add_tag(corsaro_tag_group_t *group,
 
   group->tags[group->tags_cnt++] = tag;
 
+  if(tag->group != NULL)
+    {
+      return -1;
+    }
   tag->group = group;
   return 0;
 }
