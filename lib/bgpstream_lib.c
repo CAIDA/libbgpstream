@@ -213,7 +213,7 @@ int bgpstream_get_next(bgpstream_t * const bs, bgpstream_record_t * const bs_rec
       /* query the external source and append new
        * input objects to the input_mgr queue */
       num_query_results = bgpstream_datasource_mgr_update_input_queue(bs->datasource_mgr,
-								  bs->input_mgr);
+								      bs->input_mgr);
       if(num_query_results == 0){
 	debug("BS: no (more) data are available");
 	return 0; // no (more) data are available

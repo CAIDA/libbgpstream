@@ -161,7 +161,7 @@ void bgpstream_filter_mgr_destroy(bgpstream_filter_mgr_t *bs_filter_mgr) {
   }
   // time_intervals
   tif = NULL;
-  while(bs_filter_mgr->bgp_types != NULL) {
+  while(bs_filter_mgr->time_intervals != NULL) {
     tif =  bs_filter_mgr->time_intervals;
     bs_filter_mgr->time_intervals =  bs_filter_mgr->time_intervals->next;
     free(tif);

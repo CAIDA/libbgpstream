@@ -25,6 +25,6 @@
 
 
 ./bootstrap.sh
-./configure CPPFLAGS="-I/home/chiara/Projects/satc/repository/tools/BGP/BGPdump -I/usr/local/include/mysql" LDFLAGS="-L/home/chiara/Projects/satc/repository/tools/BGP/BGPdump -L/usr/local/lib/mysql"
+./configure CPPFLAGS="-I/home/chiara/Projects/satc/repository/tools/BGP/BGPdump -I/usr/local/include/mysql" LDFLAGS="-L/home/chiara/Projects/satc/repository/tools/BGP/BGPdump -L/usr/local/lib/mysql"  --prefix="/home/chiara/Projects/satc/repository/tools/bgpanalyzer/bgpstream/trunk/exe"
 make
 
