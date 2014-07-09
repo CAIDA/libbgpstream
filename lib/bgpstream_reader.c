@@ -23,12 +23,14 @@
  *
  */
 
-#include "bgpstream_reader.h"
-#include "bgpstream_input.h"
-
 #include <stdlib.h>
 #include <stdio.h>
-#include "debug.h"
+
+
+#include "bgpstream_reader.h"
+#include "bgpstream_input.h"
+#include "bgpstream_debug.h"
+
 
 
 /* -------------- Reader functions -------------- */

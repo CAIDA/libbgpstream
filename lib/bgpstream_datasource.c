@@ -24,7 +24,7 @@
  */
 
 #include "bgpstream_datasource.h"
-#include "debug.h"
+#include "bgpstream_debug.h"
 
 
 /* datasource specific functions declarations */

@@ -24,7 +24,7 @@
  */
 
 #include "bgpstream_filter.h"
-#include "debug.h"
+#include "bgpstream_debug.h"
 
 
 /* allocate memory for a new bgpstream filter */

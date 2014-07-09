@@ -24,7 +24,7 @@
  */
 
 #include "bgpstream_input.h"
-#include "debug.h"
+#include "bgpstream_debug.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

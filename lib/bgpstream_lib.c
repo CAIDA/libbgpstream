@@ -25,9 +25,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "bgpstream_lib.h"
 #include <bgpdump_lib.h>
-#include "debug.h"
+
+#include "bgpstream_lib.h"
+#include "bgpstream_debug.h"
+
 
 /* allocate memory for a new bgpstream interface 
  */
