@@ -31,10 +31,14 @@
 #include "bgpstream_reader.h"
 #include "bgpstream_filter.h"
 #include "bgpstream_record.h"
+#include "bgpstream_elem.h"
 
 
 /* bgpstream_record_t type defined in
  *  -> bgpstream_record.h 
+ *
+ * bgpstream_elem_t type defined in
+ *  -> bgpstream_elem.h 
  */
 
 typedef enum {ALLOCATED, ON, OFF} bgpstream_status;
@@ -82,7 +86,13 @@ bgpstream_record_t *bgpstream_create_record();
  * -   0 if no new data are available
  * - < 0 if an error occurred
  */
-int bgpstream_get_next(bgpstream_t * const bs, bgpstream_record_t * const bs_record);
+int bgpstream_get_next_record(bgpstream_t * const bs, bgpstream_record_t * const bs_record);
+
+/* extract a list of elements from the bgpstream record  */
+bgpstream_elem_t * bgpstream_get_elem_queue(bgpstream_record_t * const bs_record);
+
+/* destroy the queue */
+void bgpstream_destroy_elem_queue(bgpstream_elem_t * bse_queue);
 
 /* deallocate memory for the bs_record */
 void bgpstream_destroy_record(bgpstream_record_t * const bs_record);

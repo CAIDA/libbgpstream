@@ -112,7 +112,7 @@ int main(){
   bgpstream_record_t * const bs_record = bgpstream_create_record();
   if(bs_record != NULL) {
     do {
-      get_next_ret = bgpstream_get_next(bs, bs_record);      
+      get_next_ret = bgpstream_get_next_record(bs, bs_record);      
       result_time = time(NULL);
       counter++;
       if(get_next_ret > 0) {	

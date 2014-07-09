@@ -45,6 +45,8 @@ libbgpstream_la_SOURCES = 	\
 	bgpstream_filter.c	\
 	bgpstream_datasource.h	\
 	bgpstream_datasource.c	\
+	bgpstream_elem.h	\
+	bgpstream_elem.c	\
 	debug.h
 
 

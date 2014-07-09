@@ -38,6 +38,7 @@
 
 // modified bgpdump process
 void bgpdump_process(BGPDUMP_ENTRY *my_entry);
+void print_elem_queue(bgpstream_elem_t * elem_queue);
 
 
 int main(){
@@ -77,13 +78,13 @@ int main(){
   char rstatus[50];
   time_t result_time = time(NULL);
   strcpy(rstatus, "");
-
+  bgpstream_elem_t * bs_elem_queue;
 
   // allocate memory for bs_record  
   bgpstream_record_t * const bs_record = bgpstream_create_record();
   if(bs_record != NULL) {
     do {
-      get_next_ret = bgpstream_get_next(bs, bs_record);      
+      get_next_ret = bgpstream_get_next_record(bs, bs_record);      
       result_time = time(NULL);
       counter++;
       if(get_next_ret > 0) {	
@@ -100,6 +101,10 @@ int main(){
 		   rstatus, (int)result_time);
 	    // process entry and get bgpdump output
 	   bgpdump_process(bs_record->bd_entry);
+	   bs_elem_queue = bgpstream_get_elem_queue(bs_record);
+	   print_elem_queue(bs_elem_queue);
+	   bgpstream_destroy_elem_queue(bs_elem_queue);
+
 	  }	  
 	}
 	else {

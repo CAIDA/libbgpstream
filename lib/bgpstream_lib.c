@@ -197,7 +197,7 @@ void bgpstream_destroy_record(bgpstream_record_t * const bs_record){
  * triggers a mechanism to populate the queues or
  * return 0 if nothing is available 
  */
-int bgpstream_get_next(bgpstream_t * const bs, bgpstream_record_t * const bs_record) {
+int bgpstream_get_next_record(bgpstream_t * const bs, bgpstream_record_t * const bs_record) {
   debug("BS: get next");
   if(bs == NULL || (bs != NULL && bs->status != ON)) {
   return -1; // wrong status
