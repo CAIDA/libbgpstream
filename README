@@ -1,0 +1,8 @@
+== libBGPdump ==
+
+A C library designed to help with analyzing dump
+files produced by Zebra/Quagga or MRT. Documenation
+is available at:
+
+https://bitbucket.org/ripencc/bgpdump/wiki/Home
+

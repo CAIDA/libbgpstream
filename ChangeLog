@@ -1,0 +1,194 @@
+==========================================================
+The current maintainer of this library is the
+RIPE NCC information services department.
+
+You can reach us at https://bitbucket.org/ripencc/bgpdump
+
+PLEASE DO NOT E-MAIL INDIVIDUAL DEVELOPERS ABOUT
+ISSUES, AS YOUR E-MAIL MAY BE LOST
+==========================================================
+
+2011-01-25 Devin Bayer <dbayer@ripe.net>
+	* move development to bitbucket
+
+2010-10-21 Devin Bayer <dbayer@ripe.net> v1.4.99.13
+	* fix configure script for Darwin
+
+2010-09-24 Devin Bayer <dbayer@ripe.net> v1.4.99.12
+	* Remove --disable-ipv6 flag
+        * Fix parsing of IPv6 NEXT_HOP attributes
+        * Add clearer command-line options
+        * Add logging to STDERR
+        * Add dumping to files instead of STDOUT
+        * Add regression test suite
+
+2009-11-24 Roman Kalyakin <roman@ripe.net> v1.4.99.11
+	* Fixed incorrect output when running with -m which was
+	  introduced by a change in one of the previous versions.
+	  (issue IS-439)
+
+2009-10-13 Ruben van Staveren <ruben@ripe.net>
+	* Fix segfaults with empty AS path on -m/-M 
+	  (issue IS-292)
+	  Patch contributed by Lorenzo Colitti <lorenzo@google.com> 
+
+2009-07-29 Erik Romijn <eromijn@ripe.net>
+	* Fixing incorrect as path length count in case of AS_(CONFED_)SEQUENCE
+	  (issue IS-141)
+	  Patch contributed by Toby Ehrenkranz <tehrenkr@cs.uoregon.edu>
+	* Added support for the ORIGINATOR_ID and CLUSTER_LIST attributes
+	  (issue IS-181)
+	  Patch contributed by Maurizio Pizzonia <pizzonia@dia.uniroma3.it>
+	* Fixed signedness of MED and localpref (issue IS-180)
+	  Patch contributed by Steve Hill <cheesy@sackheads.org>
+	* Implemented conditional checking for compression libraries (issue IS-179)
+	  Patch contributed by Steve Hill <cheesy@sackheads.org>
+
+2009-07-27 Ruben van Staveren <ruben@ripe.net>
+	* Enabled extra compiler warnings
+	* Fixed some potentially unsafe constructs (pointer arithmetic,
+	  signed/unsigned comparisons, shadowed variables) 
+
+2009-07-22 Ruben van Staveren <ruben@ripe.net>
+	* Fixed a case where during -M dumps aspaths where printed for entries that
+	  did not have their BGP_ATTR_AS_PATH flag set. Such entries will now print
+	  an empty field. Reported by many people.
+	* Changed -fpic to -fPIC: newer gccs coerce -fpic to -fPIC any way.
+	  difference is that with -fpic the global offset table has a maximum size
+	* Fixed nit in getopt handling
+	* Added distclean target
+	* In bgpdump_free_mp_info(), set pointers to NULL after freeing them.
+	  Reported by Robert Kisteleki <robertk@ripe.net>
+	* Default output for 32bit ASN numbers is now ASPLAIN
+
+2008-02-01 Erik Romijn <eromijn@ripe.net>
+	* Fixed a few memleaks based on a patch from
+	  Antony Antony <antony@phenome.org>
+	  (Ticket NCC#2007064868)
+	* Fixed compiling with --disable-ipv6 based on a patch
+	  from Haniff Rahbari <hnrahbari@yahoo.com>
+	  (Ticket NCC#2007111325)
+	* Fixed a few warnings, mostly based on a patch from
+	  Bruno Quoitin <bruno.quoitin@uclouvain.be>
+	  (Ticket NCC#2007123069)
+	* Made bgpdump's usage message nicer
+
+2007-06-21 Erik Romijn <eromijn@ripe.net>
+    * Fixed incorrect dump time display for some cases
+
+2007-06-06 Erik Romijn <eromijn@ripe.net>
+    * Set proper compile options to work on Mac OS X 10.4
+
+2007-06-01 Erik Romijn <eromijn@ripe.net>
+    * Fixed several bugs in 64-bit PC support and added
+	  bzip2 support, credit goes to
+	  Bernhard Tellenbach <betellen@tik.ee.ethz.ch>
+	  for providing patches.
+	* Fixed incorrect IPv6 nexthops in -M/-m output
+
+2007-03-29 Erik Romijn <eromijn@ripe.net>
+	* Fixed a serious segfault in the insertion of update dumps
+
+2007-03-28 Erik Romijn <eromijn@ripe.net>
+	* Fixed a large memory leak in TABLE_DUMP_V2 processing
+
+2007-03-27 Erik Romijn <eromijn@ripe.net>
+	* Fixed a bug causing segfaults on processing some MP_REACH_NLRI's
+
+2007-03-09 Erik Romijn <eromijn@ripe.net>
+	* Updated TABLE_DUMP_V2 support to comply with draft-ietf-grow-mrt-04
+
+2007-03-07 Erik Romijn <eromijn@ripe.net>
+	* Built in TABLE_DUMP_V2 support
+	* Rename ..MESSAGE32 to ..MESSAGE_AS4
+	* Fixed bug where -M always crashed
+
+2007-02-01 Erik Romijn <eromijn@ripe.net>
+	* Minor fix in ASN32 support
+
+2006-10-20 Lorenzo Colitti <lorenzo@ripe.net>
+	* Implement ASN32 support
+
+2005-11-08 Young Hyun <youngh@caida.org>
+	* IPv6 prefixes were not printed properly by bgpdump.
+
+2004-02-10 Lorenzo Colitti <lorenzo@ripe.net>
+	* Fix a stupid crash when reading truncated prefixes.
+
+2004-02-09 Lorenzo Colitti <lorenzo@ripe.net>
+	* Decode unknown attributes properly.
+	* Fix a crash when reading truncated prefixes.
+
+2004-02-04 Hong-wei Kong  <hong-wei_kong@agilent.com>
+        * Add a new option (-t dump|change) to bgpdump. If '-t dump' is 
+	  specified, then the decoding result with '-m' / '-M' option will
+	  show the timestamp when these routes are dumped. If '-t change' is
+	  specified, then the decoding result with '-m' / '-M' option will
+	  show the timestamp when the routes were last time changed. This 
+	  option only works with routing table dumps.
+
+2004-01-16 Lorenzo Colitti <lorenzo@ripe.net>
+	* Fix compile errors under cygwin (only IPv4 works though)
+
+2003-12-18 Hong-Wei Kong <hong-wei_kong@agilent.com>
+	* Added support for dumping BGP routing table entries in
+	  machine-readable format (-m). Previously -m was only supported
+	  for BGP messages
+
+2003-12-16 Shufu Mao <msf98@mails.tsinghua.edu.cn>
+	* Revised the decoding of BGP routing table dump to make the result
+	  identical to route_btoa
+
+2003-12-15  Lorenzo Colitti <lorenzo@ripe.net>
+	* Proper autoconf support: check for features instead of target
+	  systems, remove extra .h files and only use configure.in, use
+	  Makefile.in instead of Make.include, link both static and
+	  shared library, check for ar and ranlib, etc.
+	* Changed INET6 to BGPDUMP_HAVE_IPV6
+	  (N.B. Docs are not updated yet)
+	* Fixed possible endianness issues on Sparc.
+	* Fixed a crash while decoding NOTIFICATION messages
+
+2003-11-26  Shufu Mao <msf98@mails.tsinghua.edu.cn>
+
+	* Workaround for zebra "NOIP" bug
+	* Preliminary autoconf support (./configure; make)
+	* Added option to disable IPv6. If this option is specified to
+	  ./configure, the library is compiled without IPv6 support.
+	  The default is to turn on IPv6 if the necessary headers are
+	  available.
+
+2003-11-25  Lorenzo Colitti <lorenzo@ripe.net>
+
+	* Added support for OPEN and NOTIFICATION messages.
+	* Better workarounds for corrupt data produced by zebra/quagga bugs.
+	* The library now keeps track of how many records were parsed and how
+	  many were successfully parsed.
+	* Better error reporting. Now an error will be logged through syslog
+	  whenever a record cannot be decoded.
+	* Agilent Labs contributed bgpdump, a tool which emulates route_btoa
+	  using libbgpdump. This should be a drop-in replacement for people
+	  currently using route_btoa and supports IPv6 on all platforms.
+
+2003-10-15  Lorenzo Colitti <lorenzo@ripe.net>
+
+	* 1.3.1 beta released
+	* Added support for reading from gzipped input files and gzipped stdin.
+	  NOTE: this means you must now link with zlib!
+	* Changed Makefile to build a shared library by default.
+	* Renamed test program from test2 to testbgpdump.
+
+2003-10-15  Lorenzo Colitti <lorenzo@ripe.net>
+
+	* 1.3 beta released
+	* Added IPv6 support. Note that this changes some interfaces!
+	  See README.ipv6 for details.
+	* Set announce and withdraw arrays to NULL to avoid segfaults if there
+	  is a parse error.
+	* Change mstream behaviour so it always returns zero bytes if reading
+	  past the end of a packet. This eliminates non-deterministic
+	  behaviour (random segfaults, infinite loops, ...) when parsing
+	  corrupt data, including the consequences of the zebra "update packet
+	  truncated at 4096 bytes" bug.
+	* Other fixes to handle corrupt data better.
+	* Other miscellaneous fixes.
