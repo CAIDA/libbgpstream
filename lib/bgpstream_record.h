@@ -31,6 +31,11 @@
 #include <stdbool.h>
 
 
+typedef enum {BGPSTREAM_UPDATE,
+	      BGPSTREAM_RIB
+} bgpstream_record_dump_type_t;
+
+
 typedef enum {VALID_RECORD,        /* valid entry found in dump */
 	      FILTERED_SOURCE,    /* fltered source: source is not empty, but no valid record found */
 	      EMPTY_SOURCE,       /* empty source: source has no entries */
@@ -43,9 +48,10 @@ typedef struct struct_bgpstream_record_attributes_t {
   // define a list of useful attributes to associate to bgp dump entry
   char dump_project[BGPSTREAM_PAR_MAX_LEN];  // project name
   char dump_collector[BGPSTREAM_PAR_MAX_LEN];  // collector name
-  char dump_type[BGPSTREAM_PAR_MAX_LEN];  // type of bgpdump (rib or update)
-  long dump_time;       // timestamp associated to the time the bgp data was aggregated
-  long record_time; 
+  //  char dump_type[BGPSTREAM_PAR_MAX_LEN];  // type of bgpdump (rib or update)
+  bgpstream_record_dump_type_t dump_type;
+  long dump_time;   // timestamp associated with the time the bgp data was aggregated
+  long record_time; // timestamp associated with the time the bgp data was generated
 } bgpstream_record_attributes_t;
 
 typedef struct struct_bgpstream_record_t {

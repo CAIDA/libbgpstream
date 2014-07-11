@@ -165,7 +165,8 @@ bgpstream_record_t *bgpstream_create_record() {
   bs_record->status = EMPTY_SOURCE;
   strcpy(bs_record->attributes.dump_project, "");
   strcpy(bs_record->attributes.dump_collector, "");
-  strcpy(bs_record->attributes.dump_type, "");
+  // strcpy(bs_record->attributes.dump_type, "");
+  bs_record->attributes.dump_type = BGPSTREAM_UPDATE;
   bs_record->attributes.dump_time = 0;
   bs_record->attributes.record_time = 0;
   debug("BS: create record end");

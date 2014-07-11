@@ -140,7 +140,7 @@ static void bgpstream_reader_read_new_data(bgpstream_reader_t * const bs_reader,
 	      bs_reader->status = FILTERED_DUMP;
 	    }
 	    else {
-	      // something valid has bee read before
+	      // something valid has been read before
 	      // reached the end of file
 	      bs_reader->status = END_OF_DUMP;	
 	    }
@@ -245,11 +245,17 @@ static void bgpstream_reader_export_record(bgpstream_reader_t * const bs_reader,
   bs_reader->bd_entry = NULL;
   memset(bs_record->attributes.dump_project, 0, BGPSTREAM_PAR_MAX_LEN);
   memset(bs_record->attributes.dump_collector, 0, BGPSTREAM_PAR_MAX_LEN);
-  memset(bs_record->attributes.dump_type, 0, BGPSTREAM_PAR_MAX_LEN);
+  //memset(bs_record->attributes.dump_type, 0, BGPSTREAM_PAR_MAX_LEN);
   debug("\t\tBSR: export record: copying attributes");    
   strcpy(bs_record->attributes.dump_project, bs_reader->dump_project);
   strcpy(bs_record->attributes.dump_collector, bs_reader->dump_collector);
-  strcpy(bs_record->attributes.dump_type, bs_reader->dump_type);
+  //   strcpy(bs_record->attributes.dump_type, bs_reader->dump_type);
+  if(strcmp(bs_reader->dump_type, "ribs") == 0) {
+    bs_record->attributes.dump_type = BGPSTREAM_RIB;
+  }
+  else {
+    bs_record->attributes.dump_type = BGPSTREAM_UPDATE;
+  }
   bs_record->attributes.dump_time = bs_reader->dump_time;
   bs_record->attributes.record_time = bs_reader->record_time;
   debug("\t\tBSR: export record: copying status");    

@@ -120,7 +120,7 @@ int main(){
 	  strcpy(rstatus, "VALID_RECORD");
 	  if(bs_record->bd_entry != NULL) {
 	    read++;
-	    fprintf(stdout,"%d\t%ld\t%ld\t%s\t%s\t%s\t%d\n", 
+	    fprintf(stdout,"%d\t%ld\t%ld\t%d\t%s\t%s\t%d\n", 
 		   counter, 
 		   bs_record->attributes.record_time,
 		   bs_record->attributes.dump_time,
@@ -146,7 +146,7 @@ int main(){
 	  default:
 	    strcpy(rstatus, "WEIRD");
 	  }
-	  fprintf(stdout,"%d\t%ld\t%ld\t%s\t%s\t%s\t%d\n", 
+	  fprintf(stdout,"%d\t%ld\t%ld\t%d\t%s\t%s\t%d\n", 
 		 counter, 
 		 bs_record->attributes.record_time,
 		 bs_record->attributes.dump_time,
