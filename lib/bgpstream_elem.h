@@ -77,9 +77,8 @@ typedef struct struct_bgpstream_elem_t {
   
   bgpstream_ip_address_t nexthop;       // next hop ip address
 
-  char aspath[1024];        // as path
-  // uint32_t origin_asnumber; // first prepended AS, i.e. AS announcing the prefix 
-  char origin_asnumber[1024];
+  char aspath[1024];        // as path 
+  char origin_asnumber[1024]; // first prepended AS, i.e. AS announcing the prefix 
 
 
   int old_state;            // RIS peer status variables
