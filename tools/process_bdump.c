@@ -96,7 +96,7 @@ void bgpdump_process(BGPDUMP_ENTRY *my_entry) {
 
   mode=1;  // m option - H = 0, m =1, M =2
   timetype=0; // dump = 0 [default], change = 1
-  log_to_stderr();
+  //  log_to_stderr();
   
   // processing entry
   if(my_entry) {

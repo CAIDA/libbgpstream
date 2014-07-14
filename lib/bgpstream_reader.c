@@ -258,6 +258,12 @@ static void bgpstream_reader_export_record(bgpstream_reader_t * const bs_reader,
   }
   bs_record->attributes.dump_time = bs_reader->dump_time;
   bs_record->attributes.record_time = bs_reader->record_time;
+  if(bs_reader->valid_read == 1 ) {
+    bs_record->dump_pos = DUMP_START;    
+  }
+  else {
+    bs_record->dump_pos = DUMP_MIDDLE;    
+  }
   debug("\t\tBSR: export record: copying status");    
   switch(bs_reader->status){
   case VALID_ENTRY:
@@ -489,6 +495,7 @@ int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reade
     // if end of dump is reached after a successful read (already exported)
     // we destroy the reader
     if(bs_reader->status == END_OF_DUMP) {
+      bs_record->dump_pos = DUMP_END;
       bgpstream_reader_destroy(bs_reader);
     }
     // otherwise we insert the reader in the queue again
@@ -498,7 +505,8 @@ int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reade
   }
   // otherwise we destroy the reader
   else {
-      bgpstream_reader_destroy(bs_reader);
+    bs_record->dump_pos = DUMP_END;
+    bgpstream_reader_destroy(bs_reader);
   }
   debug("\tBSR_MGR: get_next_record: end");
   return 1; 

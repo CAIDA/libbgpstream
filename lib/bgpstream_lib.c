@@ -163,6 +163,7 @@ bgpstream_record_t *bgpstream_create_record() {
   }
   bs_record->bd_entry = NULL;
   bs_record->status = EMPTY_SOURCE;
+  bs_record->dump_pos = DUMP_START;
   strcpy(bs_record->attributes.dump_project, "");
   strcpy(bs_record->attributes.dump_collector, "");
   // strcpy(bs_record->attributes.dump_type, "");

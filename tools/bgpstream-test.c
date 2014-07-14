@@ -88,6 +88,9 @@ int main(){
       result_time = time(NULL);
       counter++;
       if(get_next_ret > 0) {	
+	if(bs_record->dump_pos == DUMP_START) {
+	  printf("\nDUMP START\n");
+	}
 	if(bs_record->status == VALID_RECORD) {
 	  strcpy(rstatus, "VALID_RECORD");
 	  if(bs_record->bd_entry != NULL) {
@@ -137,6 +140,11 @@ int main(){
 		 bs_record->attributes.dump_collector,
 		 rstatus, (int)result_time);	  
 	}
+
+	if(bs_record->dump_pos == DUMP_END) {
+	  printf("\nDUMP END\n");
+	}
+
       }
     } while(get_next_ret > 0);    
   }

@@ -35,6 +35,11 @@ typedef enum {BGPSTREAM_UPDATE,
 	      BGPSTREAM_RIB
 } bgpstream_record_dump_type_t;
 
+typedef enum {DUMP_START,        /* first entry in dump */
+	      DUMP_MIDDLE,       /* intermediate entry in dump */
+	      DUMP_END           /* last entry in dump */
+} bgpstream_dump_position_t;
+
 
 typedef enum {VALID_RECORD,        /* valid entry found in dump */
 	      FILTERED_SOURCE,    /* fltered source: source is not empty, but no valid record found */
@@ -58,6 +63,7 @@ typedef struct struct_bgpstream_record_t {
   BGPDUMP_ENTRY *bd_entry;
   bgpstream_record_attributes_t attributes;
   bgpstream_record_status_t status; 
+  bgpstream_dump_position_t dump_pos; 
 } bgpstream_record_t;
 
 #endif /* _BGPSTREAM_RECORD_H */
