@@ -78,6 +78,8 @@ static bgpstream_elem_t * bd2bi_create_route_info() {
   
   ri->old_state = 0;  
   ri->new_state = 0;  
+  
+  ri->next = NULL;
 
   return ri;
 }
@@ -95,7 +97,9 @@ static bgpstream_elem_t * bd2bi_add_new_route_info(bgpstream_elem_t ** lifo_queu
 
 
 static void bd2bi_destroy_route_info(bgpstream_elem_t * ri) {
-  free(ri);
+  if(ri != NULL) {
+    free(ri);
+  }
 }
 
 static void bd2bi_destroy_route_info_queue(bgpstream_elem_t * lifo_queue) {
@@ -109,12 +113,6 @@ static void bd2bi_destroy_route_info_queue(bgpstream_elem_t * lifo_queue) {
     bd2bi_destroy_route_info(ri);
   }
 }
-
-
-void bgpstream_destroy_elem_queue(bgpstream_elem_t * ri_queue) {
-  bd2bi_destroy_route_info_queue(ri_queue);
-}
-
 
 
 
@@ -182,6 +180,13 @@ bgpstream_elem_t * bgpstream_get_elem_queue(bgpstream_record_t * const bs_record
   }
   return NULL;
 }
+
+
+void bgpstream_destroy_elem_queue(bgpstream_elem_t * ri_queue) {
+  bd2bi_destroy_route_info_queue(ri_queue);
+}
+
+
 
 
 /* ribs related functions */  

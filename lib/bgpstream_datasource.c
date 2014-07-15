@@ -628,7 +628,9 @@ static void bgpstream_mysql_datasource_destroy(bgpstream_mysql_datasource_t* mys
     return; // nothing to destroy
   }
   // closing statement
-  mysql_stmt_close(mysql_ds->stmt);
+  if(mysql_ds->stmt != NULL) {
+    mysql_stmt_close(mysql_ds->stmt);
+  }
   mysql_ds->stmt = NULL;
   // closing mysql connection
   mysql_close(mysql_ds->mysql_con);
