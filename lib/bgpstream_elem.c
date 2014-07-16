@@ -73,8 +73,8 @@ static bgpstream_elem_t * bd2bi_create_route_info() {
 
   // ri->next_hop;
   
-  strcpy(ri->aspath, "");
-  strcpy(ri->origin_asnumber, "");
+  ri->aspath = NULL;
+  ri->origin_asnumber = NULL;
   
   ri->old_state = 0;  
   ri->new_state = 0;  
@@ -98,6 +98,12 @@ static bgpstream_elem_t * bd2bi_add_new_route_info(bgpstream_elem_t ** lifo_queu
 
 static void bd2bi_destroy_route_info(bgpstream_elem_t * ri) {
   if(ri != NULL) {
+    if(ri->aspath !=NULL) {
+      free(ri->aspath);
+    }
+    if(ri->origin_asnumber !=NULL) {
+      free(ri->origin_asnumber);
+    }
     free(ri);
   }
 }
@@ -116,18 +122,59 @@ static void bd2bi_destroy_route_info_queue(bgpstream_elem_t * lifo_queue) {
 
 
 
-/* extract origin AS from AS path */
 
-static void get_origin_AS(char * aspath, char * origin_AS) {
+static void get_aspath_and_origin(char * aspath_str, char ** aspath, char ** origin_as){
   char * tok = NULL;
-  char path_copy[1024];
-  strcpy(path_copy, aspath);
-  tok = strtok(path_copy, " ");
+  char aspath_copy[1024];
+  char origin_copy[256];
+  strcpy(aspath_copy, aspath_str);
+  tok = strtok(aspath_copy, " ");
   while (tok) {        
-    strcpy(origin_AS, tok);      
+    strcpy(origin_copy, tok);      
     tok = strtok(NULL, " ");
   }
+  // allocating minimum memory and copying data
+  *aspath = (char *)realloc(*aspath, (strlen(aspath_copy)+1) * sizeof(char));
+  strcpy(*aspath, aspath_copy);
+
+  *origin_as = (char *)realloc(*origin_as, (strlen(origin_copy)+1) * sizeof(char));
+  strcpy(*origin_as, origin_copy);
 }
+
+
+
+/* /\* copy  AS path *\/ */
+
+/* static void copy_ASpath(char * aspath, char * aspath_str) { */
+/*   char * tok = NULL; */
+/*   char path_copy[1024]; */
+/*   char origin_copy[256]; */
+/*   strcpy(path_copy, aspath); */
+/*   tok = strtok(path_copy, " "); */
+/*   while (tok) {         */
+/*     strcpy(origin_copy, tok);       */
+/*     tok = strtok(NULL, " "); */
+/*   } */
+/*   origin_AS = (char *)realloc((strlen(origin_copy)+1) * sizeof(char)); */
+/*   strcpy(origin_AS, origin_copy); */
+/* } */
+
+
+/* /\* extract origin AS from AS path *\/ */
+
+/* static void get_origin_AS(char * aspath, char ** origin_AS) { */
+/*   char * tok = NULL; */
+/*   char path_copy[1024]; */
+/*   char origin_copy[256]; */
+/*   strcpy(path_copy, aspath); */
+/*   tok = strtok(path_copy, " "); */
+/*   while (tok) {         */
+/*     strcpy(origin_copy, tok);       */
+/*     tok = strtok(NULL, " "); */
+/*   } */
+/*   origin_AS = (char *)realloc((strlen(origin_copy)+1) * sizeof(char)); */
+/*   strcpy(origin_AS, origin_copy); */
+/* } */
 
 
 /* ribs */
@@ -220,8 +267,9 @@ bgpstream_elem_t * table_line_mrtd_route(BGPDUMP_ENTRY *entry) {
   // as path
   if(entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) && 
      entry->attr->aspath && entry->attr->aspath->str) {
-    strcpy(ri->aspath, entry->attr->aspath->str);	 
-    get_origin_AS(ri->aspath, ri->origin_asnumber);	 
+    get_aspath_and_origin(entry->attr->aspath->str, &(ri->aspath), &(ri->origin_asnumber));
+    // strcpy(ri->aspath, entry->attr->aspath->str);	 
+    // get_origin_AS(ri->aspath, ri->origin_asnumber);	 
   }
   // nextop
 #ifdef BGPDUMP_HAVE_IPV6
@@ -288,8 +336,9 @@ bgpstream_elem_t * table_line_dump_v2_prefix(BGPDUMP_ENTRY *entry) {
     ri->prefix_len = e->prefix_length;
     // as path
     if (attr->aspath) {
-      strcpy(ri->aspath, attr->aspath->str);
-      get_origin_AS(ri->aspath, ri->origin_asnumber);	 
+      get_aspath_and_origin(attr->aspath->str, &(ri->aspath), &(ri->origin_asnumber));
+      // strcpy(ri->aspath, attr->aspath->str);
+      // get_origin_AS(ri->aspath, ri->origin_asnumber);	 
     }
     // next hop
  #ifdef BGPDUMP_HAVE_IPV6
@@ -549,8 +598,9 @@ bgpstream_elem_t * table_line_announce(struct prefix *prefix, int count, BGPDUMP
     // as path
     if(entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) && 
        entry->attr->aspath && entry->attr->aspath->str) {
-      strcpy(ri->aspath, entry->attr->aspath->str);	 
-      get_origin_AS(ri->aspath, ri->origin_asnumber);	 
+      get_aspath_and_origin(entry->attr->aspath->str, &(ri->aspath), &(ri->origin_asnumber));
+      // strcpy(ri->aspath, entry->attr->aspath->str);	 
+      // get_origin_AS(ri->aspath, ri->origin_asnumber);	 
     }
   }
   return ri_queue;
@@ -593,8 +643,9 @@ bgpstream_elem_t * table_line_announce_1(struct mp_nlri *prefix, int count, BGPD
     // as path
     if(entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) && 
        entry->attr->aspath && entry->attr->aspath->str) {
-      strcpy(ri->aspath, entry->attr->aspath->str);	 
-      get_origin_AS(ri->aspath, ri->origin_asnumber);	 
+      get_aspath_and_origin(entry->attr->aspath->str, &(ri->aspath), &(ri->origin_asnumber));
+      // strcpy(ri->aspath, entry->attr->aspath->str);	 
+      // get_origin_AS(ri->aspath, ri->origin_asnumber);	 
     }
   }
   return ri_queue;
@@ -638,8 +689,9 @@ bgpstream_elem_t * table_line_announce6(struct mp_nlri *prefix,int count,BGPDUMP
     // aspath
     if(entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) && 
        entry->attr->aspath && entry->attr->aspath->str) {
-      strcpy(ri->aspath, entry->attr->aspath->str);	 
-      get_origin_AS(ri->aspath, ri->origin_asnumber);	 
+      get_aspath_and_origin(entry->attr->aspath->str, &(ri->aspath), &(ri->origin_asnumber));
+      // strcpy(ri->aspath, entry->attr->aspath->str);	 
+      // get_origin_AS(ri->aspath, ri->origin_asnumber);	 
     }    
   }
   return ri_queue;
