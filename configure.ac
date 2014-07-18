@@ -22,8 +22,6 @@
 # along with corsaro.  If not, see <http://www.gnu.org/licenses/>.
 # 
 
-AC_PREREQ([2.68])
-
 AC_INIT([corsaro], [2.0.0], [corsaro-info@caida.org])
 
 # Corsaro versions...
