@@ -49,18 +49,40 @@
  */
 
 /* GCC optimizations */
-#if __GNUC__ >= 3 
-#  define DEPRECATED __attribute__((deprecated))
-#  define SIMPLE_FUNCTION __attribute__((pure))
-#  define UNUSED __attribute__((unused))
-#  define PACKED __attribute__((packed))
-#  define PRINTF(formatpos,argpos) __attribute__((format(printf,formatpos,argpos)))
+/** @todo either make use of those that libtrace defines, or copy the way that
+    libtrace does this*/
+#if __GNUC__ >= 3
+#  ifndef DEPRECATED
+#    define DEPRECATED __attribute__((deprecated))
+#  endif
+#  ifndef SIMPLE_FUNCTION
+#    define SIMPLE_FUNCTION __attribute__((pure))
+#  endif
+#  ifndef UNUSED
+#    define UNUSED __attribute__((unused))
+#  endif
+#  ifndef PACKED
+#    define PACKED __attribute__((packed))
+#  endif
+#  ifndef PRINTF
+#    define PRINTF(formatpos,argpos) __attribute__((format(printf,formatpos,argpos)))
+#  endif
 #else
-#  define DEPRECATED
-#  define SIMPLE_FUNCTION
-#  define UNUSED
-#  define PACKED 
-#  define PRINTF(formatpos,argpos) 
+#  ifndef DEPRECATED
+#    define DEPRECATED
+#  endif
+#  ifndef SIMPLE_FUNCTION
+#    define SIMPLE_FUNCTION
+#  endif
+#  ifndef UNUSED
+#    define UNUSED
+#  endif
+#  ifndef PACKED
+#    define PACKED
+#  endif
+#  ifndef PRINTF
+#    define PRINTF(formatpos,argpos)
+#  endif
 #endif
 
 /**
