@@ -1098,6 +1098,9 @@ char aspath_delimiter_char (u_char type, u_char which) {
 
 
 void process_attr_community_string(struct community *com) {
+  if(com == NULL) {
+    return;
+  }
 
   char buf[BUFSIZ];
   int i;
