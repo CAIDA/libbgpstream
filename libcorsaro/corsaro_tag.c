@@ -108,11 +108,12 @@ void corsaro_tag_state_reset(corsaro_packet_state_t *state)
 
 void corsaro_tag_state_free(corsaro_packet_state_t *state)
 {
-  assert(state->tags.tag_matches != NULL);
-
-  free(state->tags.tag_matches);
-  state->tags.tag_matches = NULL;
-  state->tags.tag_matches_cnt = 0;
+  if(state->tags.tag_matches != NULL)
+    {
+      free(state->tags.tag_matches);
+      state->tags.tag_matches = NULL;
+      state->tags.tag_matches_cnt = 0;
+    }
 }
 
 /* ========== TAGS ========== */
@@ -321,6 +322,8 @@ corsaro_tag_group_t *corsaro_tag_group_init(corsaro_t *corsaro,
 
 void corsaro_tag_group_free(corsaro_tag_group_t *group)
 {
+  int i;
+
   /* we will be nice and let people free groups that they created */
   if(group == NULL)
     {
@@ -335,6 +338,17 @@ void corsaro_tag_group_free(corsaro_tag_group_t *group)
     {
       free(group->name);
       group->name = NULL;
+    }
+
+  /* we don't free the tags, but remove the ref cnt */
+  for(i=0; i<group->tags_cnt; i++)
+    {
+      if(group->tags[i] != NULL)
+	{
+	  assert(group->tags[i]->groups_cnt >= 1);
+	  group->tags[i]->groups_cnt--;
+	}
+      group->tags[i] = NULL;
     }
 
   /* we do not own 'manager' */
@@ -387,11 +401,7 @@ int corsaro_tag_group_add_tag(corsaro_tag_group_t *group,
 
   group->tags[group->tags_cnt++] = tag;
 
-  if(tag->group != NULL)
-    {
-      return -1;
-    }
-  tag->group = group;
+  tag->groups_cnt++;
   return 0;
 }
 

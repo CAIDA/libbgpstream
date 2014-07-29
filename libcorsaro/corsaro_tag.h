@@ -68,8 +68,8 @@ typedef struct corsaro_tag
   /** Pointer to the tag manager that owns this tag */
   struct corsaro_tag_manager *manager;
 
-  /** Pointer to the group that owns this tag */
-  struct corsaro_tag_group *group;
+  /** Number of groups that this tag belongs to */
+  int groups_cnt;
 
   /** User-provided void pointer */
   void *user;

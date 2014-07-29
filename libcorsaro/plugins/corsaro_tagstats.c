@@ -194,7 +194,7 @@ int corsaro_tagstats_init_output(corsaro_t *corsaro)
   corsaro_plugin_register_state(corsaro->plugin_manager, plugin, state);
 
   /* get all the groups that are registered */
-  if((state->groups_cnt = corsaro_tag_group_get_all(corsaro, &groups)) <= 0)
+  if((state->groups_cnt = corsaro_tag_group_get_all(corsaro, &groups)) < 0)
     {
       fprintf(stderr, "ERROR: Could not retrieve tag groups\n");
       goto err;
@@ -281,7 +281,7 @@ int corsaro_tagstats_close_output(corsaro_t *corsaro)
   {
     ts = &state->tags[i];
     assert(ts != NULL);
-    if(ts->tag->group == NULL)
+    if(ts->tag->groups_cnt == 0)
       {
 	fprintf(stdout, "\t%s\t%"PRIu64"\t%"PRIu64"\n",
 		ts->tag->name, ts->pkts_matched_total, ts->pkts_unmatched_total);
@@ -380,7 +380,7 @@ int corsaro_tagstats_end_interval(corsaro_t *corsaro, corsaro_interval_t *int_en
   {
     ts = &state->tags[i];
     assert(ts != NULL);
-    if(ts->tag->group == NULL)
+    if(ts->tag->groups_cnt == 0)
       {
 	fprintf(stdout, "\t%s\t%"PRIu64"\t%"PRIu64"\n",
 		ts->tag->name, ts->pkts_matched, ts->pkts_unmatched);

@@ -70,6 +70,9 @@
     if you have more than this, go away... */
 #define MAX_COMMAND_LINE_BPF 100
 
+/** The max number of groups that each filter can be assigned to */
+#define MAX_FILTER_GROUPS 10
+
 #define BPF(x) (libtrace_filter_t *)((x)->user)
 
 /** Common plugin information across all instances */
@@ -109,7 +112,7 @@ static void usage(corsaro_plugin_t *plugin)
 	  "must be given\n"
 	  "                     a unique identifier by prepending the filter "
 	  "string with\n"
-	  "                     '[<group>.]<name>:'. For example, the filter 'tcp or "
+	  "                     '[<group<,group>>|]<name>:'. For example, the filter 'tcp or "
 	  "udp' becomes\n"
 	  "                     'my_group.my_filter:tcp or udp'\n",
 	  plugin->argv[0],
@@ -123,9 +126,12 @@ static int create_filter(corsaro_t *corsaro,
   corsaro_tag_group_t *group = NULL;
   corsaro_tag_t *tag = NULL;
   libtrace_filter_t *bpf_filter = NULL;
-  char *filter_str_group = NULL;
+  char *filter_str_group[MAX_FILTER_GROUPS];
+  int filter_str_group_cnt = 0;
   char *filter_str_name = NULL;
   char *filter_str_bpf = NULL;
+  char *ptr = NULL;
+  int i;
 
   /* first, check if we were given a name */
   if((filter_str_bpf = strchr(filter_str, ':')) != NULL)
@@ -133,11 +139,27 @@ static int create_filter(corsaro_t *corsaro,
       *filter_str_bpf = '\0';
       filter_str_bpf++;
       /* now, check if we were given a group */
-      if((filter_str_name = strchr(filter_str, '.')) != NULL)
+      if((filter_str_name = strchr(filter_str, '|')) != NULL)
 	{
 	  *filter_str_name = '\0';
 	  filter_str_name++;
-	  filter_str_group = filter_str;
+
+	  if(filter_str_group_cnt == MAX_FILTER_GROUPS)
+	    {
+	      fprintf(stderr,
+		      "ERROR: A filter may be associated with a maximum of %d "
+		      "groups\n",
+		      MAX_FILTER_GROUPS);
+	      return -1;
+	    }
+
+	  /* now, check if this was a list of groups */
+	  /* for each , in filter_str, assign to a filter group */
+	  ptr = filter_str;
+	  while((filter_str_group[filter_str_group_cnt++] =
+		 strsep(&ptr, ",")) != NULL);
+	  /* we don't care to look at the last nul byte */
+	  filter_str_group_cnt--;
 	}
       else
 	{
@@ -147,28 +169,16 @@ static int create_filter(corsaro_t *corsaro,
     }
   else
     {
-      /* we concoct a name, but only once! */
-      filter_str_name = "filterbpf";
+      /* we use the bpf as the name */
+      filter_str_name = filter_str;
       filter_str_bpf = filter_str;
     }
 
   assert(strlen(filter_str_name) > 0);
   assert(strlen(filter_str_bpf) > 0);
 
-  corsaro_log(__func__, corsaro, "creating tag with group '%s', name '%s' and bpf '%s'",
-	      filter_str_group, filter_str_name, filter_str_bpf);
-
-  /* if the group string is not null, then we need to either create a group, or
-     get an existing group with that name.  luckily we can just ask for a new
-     group and we will be given the old group if it exists */
-  if(filter_str_group != NULL &&
-     (group = corsaro_tag_group_init(corsaro, filter_str_group,
-				     CORSARO_TAG_GROUP_MATCH_MODE_ANY, NULL))
-     == NULL)
-    {
-      fprintf(stderr, "ERROR: could not create group for %s.\n", filter_str_group);
-      return -1;
-    }
+  corsaro_log(__func__, corsaro, "creating tag with name '%s' and bpf '%s'",
+	      filter_str_name, filter_str_bpf);
 
   bpf_filter = trace_create_filter(filter_str_bpf);
   assert(bpf_filter != NULL);
@@ -181,12 +191,33 @@ static int create_filter(corsaro_t *corsaro,
   state->cmd_bpf[state->cmd_bpf_cnt] = tag;
   state->cmd_bpf_cnt++;
 
-  if(group != NULL &&
-     corsaro_tag_group_add_tag(group, tag) != 0)
+  for(i=0; i<filter_str_group_cnt; i++)
     {
-      fprintf(stderr, "ERROR: could not add tag '%s' to group '%s'.\n",
-	      filter_str_name, filter_str_group);
-      return -1;
+      corsaro_log(__func__, corsaro, "adding tag '%s' to group '%s'",
+		  filter_str_name, filter_str_group[i]);
+
+      /* if the group string is not null, then we need to either create a group,
+	 or get an existing group with that name.  luckily we can just ask for a
+	 new group and we will be given the old group if it exists */
+      assert(filter_str_group[i] != NULL);
+      if((group =
+	  corsaro_tag_group_init(corsaro, filter_str_group[i],
+				 CORSARO_TAG_GROUP_MATCH_MODE_ANY,
+				 NULL)) == NULL)
+	{
+	  fprintf(stderr, "ERROR: could not create group for %s.\n",
+		  filter_str_group[i]);
+	  return -1;
+	}
+
+	assert(group != NULL);
+
+	if(corsaro_tag_group_add_tag(group, tag) != 0)
+	  {
+	    fprintf(stderr, "ERROR: could not add tag '%s' to group '%s'.\n",
+		    filter_str_name, filter_str_group[i]);
+	    return -1;
+	  }
     }
 
   return 0;
@@ -320,7 +351,10 @@ int corsaro_filterbpf_close_output(corsaro_t *corsaro)
   int i;
   struct corsaro_filterbpf_state_t *state = STATE(corsaro);
 
-  assert(state != NULL);
+  if(state == NULL)
+    {
+      return 0;
+    }
 
   if(state->cmd_bpf != NULL)
     {
@@ -398,8 +432,8 @@ int corsaro_filterbpf_process_packet(corsaro_t *corsaro,
       rc = trace_apply_filter(BPF(fb_state->cmd_bpf[i]), LT_PKT(packet));
       if(rc < 0)
 	{
-	  corsaro_log(__func__, corsaro, "invalid bpf filter (%s)",
-		      fb_state->cmd_bpf[i]);
+	  corsaro_log(__func__, corsaro, "invalid bpf filter for tag '%s'",
+		      fb_state->cmd_bpf[i]->name);
 	  return -1;
 	}
       if(rc > 0)
