@@ -300,6 +300,9 @@ corsaro_tag_group_t *corsaro_tag_group_init(corsaro_t *corsaro,
   /* save the name */
   group->name = strdup(name);
 
+  /* the match mode */
+  group->mode = mode;
+
   /* save us */
   group->manager = manager;
 

@@ -73,6 +73,15 @@
 /** The max number of groups that each filter can be assigned to */
 #define MAX_FILTER_GROUPS 10
 
+/** All filters in a group must match for the group to match */
+#define MATCH_MODE_ANY "any"
+
+/** Any filters in the group may match for the group to match */
+#define MATCH_MODE_ALL "all"
+
+/** The default match mode (ANY) */
+#define MATCH_MODE_DEFAULT MATCH_MODE_ANY
+
 #define BPF(x) (libtrace_filter_t *)((x)->user)
 
 /** Common plugin information across all instances */
@@ -91,6 +100,9 @@ struct corsaro_filterbpf_state_t {
 
   /** The number of BPF given on the command line */
   int cmd_bpf_cnt;
+
+  /** The match mode */
+  corsaro_tag_group_match_mode_t match_mode;
 };
 
 /** Extends the generic plugin state convenience macro in corsaro_plugin.h */
@@ -105,7 +117,7 @@ struct corsaro_filterbpf_state_t {
 static void usage(corsaro_plugin_t *plugin)
 {
   fprintf(stderr,
-	  "plugin usage: %s -f filter [-f filter]\n"
+	  "plugin usage: %s [-m mode] -f filter [-f filter]\n"
 	  "       -f            BPF filter to apply.\n"
 	  "                     -f can be used up to %d times.\n"
 	  "                     If more than one filter is supplied, filters "
@@ -114,9 +126,14 @@ static void usage(corsaro_plugin_t *plugin)
 	  "string with\n"
 	  "                     '[<group<,group>>|]<name>:'. For example, the filter 'tcp or "
 	  "udp' becomes\n"
-	  "                     'my_group.my_filter:tcp or udp'\n",
+	  "                     'my_group.my_filter:tcp or udp'\n"
+	  "       -m             Match mode for grouped tags.\n"
+	  "                      Either '%s' or '%s' may be used (default: %s)\n",
 	  plugin->argv[0],
-	  MAX_COMMAND_LINE_BPF);
+	  MAX_COMMAND_LINE_BPF,
+	  MATCH_MODE_ALL,
+	  MATCH_MODE_ANY,
+	  MATCH_MODE_DEFAULT);
 }
 
 static int create_filter(corsaro_t *corsaro,
@@ -202,7 +219,7 @@ static int create_filter(corsaro_t *corsaro,
       assert(filter_str_group[i] != NULL);
       if((group =
 	  corsaro_tag_group_init(corsaro, filter_str_group[i],
-				 CORSARO_TAG_GROUP_MATCH_MODE_ANY,
+				 state->match_mode,
 				 NULL)) == NULL)
 	{
 	  fprintf(stderr, "ERROR: could not create group for %s.\n",
@@ -236,7 +253,7 @@ static int parse_args(corsaro_t *corsaro)
   /* NB: remember to reset optind to 1 before using getopt! */
   optind = 1;
 
-  while((opt = getopt(plugin->argc, plugin->argv, "c:f:i?")) >= 0)
+  while((opt = getopt(plugin->argc, plugin->argv, ":f:m:?")) >= 0)
     {
       switch(opt)
 	{
@@ -253,6 +270,24 @@ static int parse_args(corsaro_t *corsaro)
 
 	  if(create_filter(corsaro, state, optarg) != 0)
 	    {
+	      return -1;
+	    }
+	  break;
+
+	case 'm':
+	  if(strcmp(optarg, MATCH_MODE_ANY) == 0)
+	    {
+	      state->match_mode = CORSARO_TAG_GROUP_MATCH_MODE_ANY;
+	    }
+	  else if(strcmp(optarg, MATCH_MODE_ALL) == 0)
+	    {
+	      state->match_mode = CORSARO_TAG_GROUP_MATCH_MODE_ALL;
+	    }
+	  else
+	    {
+	      fprintf(stderr, "ERROR: Invalid match mode specified: %s\n",
+		      optarg);
+	      usage(plugin);
 	      return -1;
 	    }
 	  break;
@@ -313,6 +348,9 @@ int corsaro_filterbpf_init_output(corsaro_t *corsaro)
       goto err;
     }
   corsaro_plugin_register_state(corsaro->plugin_manager, plugin, state);
+
+  /* make all the default match mode */
+  state->match_mode = CORSARO_TAG_GROUP_MATCH_MODE_DEFAULT;
 
   /* parse the arguments */
   if(parse_args(corsaro) != 0)
