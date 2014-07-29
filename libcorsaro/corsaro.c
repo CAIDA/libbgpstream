@@ -68,7 +68,10 @@ static corsaro_packet_t *corsaro_packet_alloc(corsaro_t *corsaro)
 /** Reset the state for a the given corsaro packet wrapper */
 static inline void corsaro_packet_state_reset(corsaro_packet_t *packet)
 {
+#ifdef WITH_PLUGIN_IPMETA
   int i;
+#endif
+
   assert(packet != NULL);
 
   /* now that we have added the corsaro_tag framework we can no longer do the
