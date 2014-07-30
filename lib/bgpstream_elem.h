@@ -49,6 +49,16 @@ typedef struct struct_bgpstream_ip_address_t {
 } bgpstream_ip_address_t;
 
 
+typedef enum {BST_STRING_ASPATH, BST_UINT32_ASPATH} bgpstream_aspath_type;
+
+typedef struct struct_bgpstream_aspath_t {
+  bgpstream_aspath_type type;
+  int hop_count; // number of hops in the AS path
+  union {
+    char * str_aspath;
+    uint32_t * numeric_aspath;
+  };
+} bgpstream_aspath_t;
 
 /* bgp_state_name  */
 /* 0	"Unknown", */
@@ -76,12 +86,7 @@ typedef struct struct_bgpstream_elem_t {
   uint8_t prefix_len;     // prefix length
   
   bgpstream_ip_address_t nexthop;       // next hop ip address
-
-  //  char aspath[1024];        // as path 
-  // char origin_asnumber[1024]; // first prepended AS, i.e. AS announcing the prefix 
-
-  char * aspath;          // as path 
-  char * origin_asnumber; // first prepended AS, i.e. AS announcing the prefix 
+  bgpstream_aspath_t aspath;           // aspath
 
   int old_state;            // RIS peer status variables
   int new_state;            // 6 = peer up, != 6 peer is not up (either down, or waking up)
