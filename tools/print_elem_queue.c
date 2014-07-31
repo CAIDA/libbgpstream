@@ -32,17 +32,18 @@
 static void print_ip_address(bgpstream_ip_address_t * peer_address, char * peer_address_str){
 
   switch (peer_address->type){
-  case 0:
+  case BST_IPV4:
     inet_ntop(AF_INET, &(peer_address->address.v4_addr), peer_address_str, INET6_ADDRSTRLEN);
     break;
-  case 1:
+  case BST_IPV6:
     inet_ntop(AF_INET6, &(peer_address->address.v6_addr), peer_address_str, INET6_ADDRSTRLEN);
     break;
   default:
     printf("Error!\n");
   }
-
 }
+
+
 
 static char * print_aspath(char * ap_str, bgpstream_aspath_t aspath) {
   int i;
@@ -75,53 +76,54 @@ void print_elem_queue(bgpstream_elem_t * ri_queue) {
   bgpstream_elem_t * ri = ri_queue;
   uint32_t origin_asnumber;
   char * ap_str = NULL;
+  char peer_address[INET6_ADDRSTRLEN];
+  char prefix_number[INET6_ADDRSTRLEN];
+  char nexthop[INET6_ADDRSTRLEN];
   while(ri != NULL) {
-    char peer_address[INET6_ADDRSTRLEN];
-    char prefix_address[INET6_ADDRSTRLEN];    
-    char nexthop[INET6_ADDRSTRLEN];
     print_ip_address(&ri->peer_address, peer_address);
-    if(ri->type != 2) {
-      print_ip_address(&ri->prefix, prefix_address);      
-      print_ip_address(&ri->nexthop, nexthop);      
-    }     
     switch(ri->type) {
-    case 0:
+    case BST_RIB:
       origin_asnumber = -1;
       if(ri->aspath.type == BST_UINT32_ASPATH) {
 	origin_asnumber = ri->aspath.numeric_aspath[ri->aspath.hop_count-1];
       }
+      print_ip_address(&ri->prefix.number, prefix_number);      
+      print_ip_address(&ri->nexthop, nexthop);      
       printf("RIB|%ld|%s|%u|%s/%d|%s|%"PRIu32"|%s|\n",
 	     ri->timestamp, peer_address, ri->peer_asnumber, 
-	     prefix_address, ri->prefix_len, 
+	     prefix_number, ri->prefix.len, 
 	     print_aspath(ap_str, ri->aspath), origin_asnumber,
 	     nexthop);
       if(ri->aspath.type == BST_UINT32_ASPATH) {
 	free(ap_str);
       }
       break;
-    case 1:
+    case BST_ANNOUNCEMENT:
       origin_asnumber = -1;
       if(ri->aspath.type == BST_UINT32_ASPATH) {
 	origin_asnumber = ri->aspath.numeric_aspath[ri->aspath.hop_count-1];
       }
+      print_ip_address(&ri->prefix.number, prefix_number);      
       printf("ANNOUNCE|%ld|%s|%u|%s/%d|%s|%"PRIu32"|%s|\n",
 	     ri->timestamp, peer_address, ri->peer_asnumber, 
-	     prefix_address, ri->prefix_len, 
+	     prefix_number, ri->prefix.len, 
 	     print_aspath(ap_str, ri->aspath), origin_asnumber,
 	     nexthop);
       if(ri->aspath.type == BST_UINT32_ASPATH) {
 	free(ap_str);
       }
       break;
-    case -1:
+    case BST_WITHDRAWAL:
+      print_ip_address(&ri->prefix.number, prefix_number);      
       printf("WITHDRAWAL|%ld|%s|%u|%s/%d|\n",
 	     ri->timestamp, peer_address, ri->peer_asnumber, 
-	     prefix_address, ri->prefix_len);
+	     prefix_number, ri->prefix.len);
       break;
-    case 2:
+    case BST_STATE:
       printf("STATE|%ld|%s|%u|\n", ri->timestamp, peer_address, ri->peer_asnumber);
       break;
-
+    default:
+      printf("Warning: case not allowed\n");
     }
     ri = ri->next;
   }

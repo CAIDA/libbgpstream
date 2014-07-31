@@ -43,38 +43,41 @@ typedef union union_bgpstream_address_number_t {
     struct in6_addr	v6_addr;
 } bgpstream_address_number_t;
 
+typedef enum {BST_IPV4, BST_IPV6} bgpstream_ip_version_t;
+
 typedef struct struct_bgpstream_ip_address_t {
   bgpstream_address_number_t address;
-  uint8_t type; // 0 ipv4, 1 ipv6
+  bgpstream_ip_version_t type;
 } bgpstream_ip_address_t;
 
+typedef struct struct_bgpstream_prefix_t {  
+  bgpstream_ip_address_t number;
+  uint8_t len; // prefix length
+} bgpstream_prefix_t;
 
-typedef enum {BST_STRING_ASPATH, BST_UINT32_ASPATH} bgpstream_aspath_type;
+
+typedef enum {BST_STRING_ASPATH, BST_UINT32_ASPATH} bgpstream_aspath_type_t;
 
 typedef struct struct_bgpstream_aspath_t {
-  bgpstream_aspath_type type;
-  int hop_count; // number of hops in the AS path
+  bgpstream_aspath_type_t type;
+  uint8_t hop_count; // number of hops in the AS path
   union {
     char * str_aspath;
     uint32_t * numeric_aspath;
   };
 } bgpstream_aspath_t;
 
-/* bgp_state_name  */
-/* 0	"Unknown", */
-/* 1	"Idle", */
-/* 2	"Connect", */
-/* 3	"Active", */
-/* 4	"Opensent", */
-/* 5	"Openconfirm", */
-/* 6	"Established", */
-/* 7	NULL */
+
+typedef enum {BST_RIB, BST_ANNOUNCEMENT, BST_WITHDRAWAL, BST_STATE} bgpstream_elem_type_t;
+typedef enum {BST_UNKNOWN, BST_IDLE, BST_CONNECT, BST_ACTIVE,
+	      BST_OPENSENT, BST_OPENCONFIRM, BST_ESTABLISHED, 
+	      BST_NULL} bgpstream_peer_state_t;
 
 
 typedef struct struct_bgpstream_elem_t {
 
   // 0 rib, -1 withdraw, 1 announcement, 2 state
-  int type;
+  bgpstream_elem_type_t type;
 
   // "time of record dump" (see -m option, default time in bgpdump.c file)
   long int timestamp;
@@ -82,14 +85,14 @@ typedef struct struct_bgpstream_elem_t {
   bgpstream_ip_address_t peer_address;  // peer IP address
   uint32_t peer_asnumber;           // peer AS number
 
-  bgpstream_ip_address_t prefix;
-  uint8_t prefix_len;     // prefix length
+  bgpstream_prefix_t prefix;
   
   bgpstream_ip_address_t nexthop;       // next hop ip address
   bgpstream_aspath_t aspath;           // aspath
 
-  int old_state;            // RIS peer status variables
-  int new_state;            // 6 = peer up, != 6 peer is not up (either down, or waking up)
+  bgpstream_peer_state_t old_state;            // RIS peer status variables
+  bgpstream_peer_state_t new_state;            // 6 = peer up,
+  // != 6 peer is not up (either down, or waking up)
 
   struct struct_bgpstream_elem_t * next; 
   // forget about other attributes

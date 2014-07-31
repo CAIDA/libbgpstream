@@ -52,8 +52,9 @@ int main(){
 
   bgpstream_add_filter(bs, BS_PROJECT, "routeviews");
   bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.jinx");
+  bgpstream_add_filter(bs, BS_BGP_TYPE, "ribs");
   bgpstream_add_filter(bs, BS_BGP_TYPE, "updates");
-  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1401493400", "1401493600");
+  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1401487200", "1401493600");
 
 
   // set blocking
