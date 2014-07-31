@@ -962,6 +962,7 @@ void aspath_error(struct aspath *as) {
 }
 
 void process_attr_aspath_string(struct aspath *as) {
+ 
     const int MAX_ASPATH_LEN = 8000;  
     as->str = malloc(MAX_ASPATH_LEN);
     
