@@ -35,6 +35,12 @@ static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customli
 							      bgpstream_input_mgr_t *input_mgr);
 static void bgpstream_customlist_datasource_destroy(bgpstream_customlist_datasource_t* customlist_ds);
 
+// csvfile datasource functions
+static bgpstream_csvfile_datasource_t *bgpstream_csvfile_datasource_create(bgpstream_filter_mgr_t *filter_mgr);
+static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_datasource_t* csvfile_ds,
+							   bgpstream_input_mgr_t *input_mgr);
+static void bgpstream_csvfile_datasource_destroy(bgpstream_csvfile_datasource_t* csvfile_ds);
+
 // mysql datasource functions
 static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter_mgr_t *filter_mgr);
 static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasource_t* mysql_ds,
@@ -58,6 +64,7 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
   // datasources (none of them is active)
   datasource_mgr->mysql_ds = NULL;
   datasource_mgr->customlist_ds = NULL;
+  datasource_mgr->csvfile_ds = NULL;
   datasource_mgr->status = DS_OFF;
   debug("\tBSDS_MGR: create end");
   return datasource_mgr;
@@ -100,6 +107,15 @@ void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
       datasource_mgr->status = DS_ON;
     }
   }
+  if (strcmp(datasource_mgr->datasource_name, "csvfile") == 0) {
+    datasource_mgr->csvfile_ds = bgpstream_csvfile_datasource_create(filter_mgr);
+    if(datasource_mgr->csvfile_ds == NULL) {
+      datasource_mgr->status = DS_ERROR;
+    } 
+    else {
+      datasource_mgr->status = DS_ON;
+    }
+  }
   // if none of the datasources is matched the status of the DS is not set to ON
   debug("\tBSDS_MGR: init end");
 }
@@ -136,6 +152,11 @@ int bgpstream_datasource_mgr_update_input_queue(bgpstream_datasource_mgr_t *data
     results = bgpstream_customlist_datasource_update_input_queue(datasource_mgr->customlist_ds, input_mgr);
     debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
   }
+  if (strcmp(datasource_mgr->datasource_name, "csvfile") == 0) {
+    results = bgpstream_csvfile_datasource_update_input_queue(datasource_mgr->csvfile_ds, input_mgr);
+    debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
+  }
+
   debug("\tBSDS_MGR: get data end");
   return results; 
 }
@@ -154,6 +175,11 @@ void bgpstream_datasource_mgr_close(bgpstream_datasource_mgr_t *datasource_mgr) 
     bgpstream_customlist_datasource_destroy(datasource_mgr->customlist_ds);
     datasource_mgr->customlist_ds = NULL;
   }
+  if (strcmp(datasource_mgr->datasource_name, "csvfile") == 0) {
+    bgpstream_csvfile_datasource_destroy(datasource_mgr->csvfile_ds);
+    datasource_mgr->csvfile_ds = NULL;
+  }
+
   datasource_mgr->status = DS_OFF;
   debug("\tBSDS_MGR: close end");
 }
@@ -164,10 +190,18 @@ void bgpstream_datasource_mgr_destroy(bgpstream_datasource_mgr_t *datasource_mgr
   if(datasource_mgr == NULL) {
     return; // no manager to destroy
   }
-  // destroy any active datasource (if they have not been destroyed before
+  // destroy any active datasource (if they have not been destroyed before)
   if(datasource_mgr->mysql_ds != NULL) {
     bgpstream_mysql_datasource_destroy(datasource_mgr->mysql_ds);
     datasource_mgr->mysql_ds = NULL;
+  }
+  if(datasource_mgr->customlist_ds != NULL) {
+    bgpstream_customlist_datasource_destroy(datasource_mgr->customlist_ds);
+    datasource_mgr->customlist_ds = NULL;
+  }
+  if(datasource_mgr->csvfile_ds != NULL) {
+    bgpstream_csvfile_datasource_destroy(datasource_mgr->csvfile_ds);
+    datasource_mgr->csvfile_ds = NULL;
   }
   free(datasource_mgr);  
   debug("\tBSDS_MGR: destroy end");
@@ -335,6 +369,150 @@ static void bgpstream_customlist_datasource_destroy(bgpstream_customlist_datasou
 }
 
 
+/* ----------- read_from_file related functions ----------- */
+
+/* ----------- csvfile related functions ----------- */
+
+static bgpstream_csvfile_datasource_t *bgpstream_csvfile_datasource_create(bgpstream_filter_mgr_t *filter_mgr) {
+  debug("\t\tBSDS_CLIST: create csvfile_ds start");  
+  bgpstream_csvfile_datasource_t *csvfile_ds = (bgpstream_csvfile_datasource_t*) malloc(sizeof(bgpstream_csvfile_datasource_t));
+  if(csvfile_ds == NULL) {
+    log_err("\t\tBSDS_CSVFILE: create csvfile_ds can't allocate memory");    
+    return NULL; // can't allocate memory
+  }
+  csvfile_ds->filter_mgr = filter_mgr;
+  csvfile_ds->csvfile_read = 0;
+  debug("\t\tBSDS_CSVFILE: create csvfile_ds end");
+  return csvfile_ds;
+}
+
+
+static bool bgpstream_csvfile_datasource_filter_ok(bgpstream_csvfile_datasource_t* csvfile_ds) {
+  debug("\t\tBSDS_CSVFILE: csvfile_ds apply filter start");  
+  bgpstream_string_filter_t * sf;
+  bgpstream_interval_filter_t * tif;
+  bool all_false;
+  // projects
+  all_false = true;
+  if(csvfile_ds->filter_mgr->projects != NULL) {
+    sf = csvfile_ds->filter_mgr->projects;
+    while(sf != NULL) {
+      if(strcmp(sf->value, csvfile_ds->project) == 0) {
+	all_false = false;
+	break;
+      }
+      sf = sf->next;
+    }
+    if(all_false) {
+      return false; 
+    }
+  }
+  // collectors
+  all_false = true;
+  if(csvfile_ds->filter_mgr->collectors != NULL) {
+    sf = csvfile_ds->filter_mgr->collectors;
+    while(sf != NULL) {
+      if(strcmp(sf->value, csvfile_ds->collector) == 0) {
+	all_false = false;
+	break;
+      }
+      sf = sf->next;
+    }
+    if(all_false) {
+      return false; 
+    }
+  }
+  // bgp_types
+  all_false = true;
+  if(csvfile_ds->filter_mgr->bgp_types != NULL) {
+    sf = csvfile_ds->filter_mgr->bgp_types;
+    while(sf != NULL) {
+      if(strcmp(sf->value, csvfile_ds->bgp_type) == 0) {
+	all_false = false;
+	break;
+      }
+      sf = sf->next;
+    }
+    if(all_false) {
+      return false; 
+    }
+  }
+  // time_intervals
+  all_false = true;
+  if(csvfile_ds->filter_mgr->time_intervals != NULL) {
+    tif = csvfile_ds->filter_mgr->time_intervals;
+    while(tif != NULL) {      
+      // filetime (we consider 15 mins before to consider routeviews updates
+      // and 120 seconds to have some margins)
+      if(csvfile_ds->filetime >= (tif->time_interval_start - 15*60 - 120) &&
+	 csvfile_ds->filetime <= tif->time_interval_stop) {
+	all_false = false;
+	break;
+      }
+      tif = tif->next;
+    }
+    if(all_false) {
+      return false; 
+    }
+  }
+  // if all the filters are passed
+  return true;
+}
+
+
+
+static const char* getfield(char* tmp, int num) {
+    const char* tok;
+    char * line = (char*) malloc(sizeof(char) * (strlen(tmp)+1));
+    strcpy(line, tmp);
+    for (tok = strtok(line, ","); tok && *tok;  tok = strtok(NULL, ",\n")) {
+      if (!--num)
+	return tok;
+    }
+    free(line);
+    return NULL;
+}
+
+static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_datasource_t* csvfile_ds,
+							   bgpstream_input_mgr_t *input_mgr) {
+    debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue start");  
+    int num_results = 0;       
+    FILE* stream;
+    char line[1024];
+    // if list has not been read yet, then we push these files in the input queue
+    if(csvfile_ds->csvfile_read == 0) {
+      stream = fopen("/Users/chiara/Projects/satc/repository/tools/bgpanalyzer/bgpdownloader/utilities/test/bgp_data.csv", "r");
+      while (fgets(line, 1024, stream)) {
+        char* tmp = strdup(line);
+	strcpy(csvfile_ds->filename, getfield(tmp, 1));
+	strcpy(csvfile_ds->project, getfield(tmp, 2));
+	strcpy(csvfile_ds->collector, getfield(tmp, 3));
+	strcpy(csvfile_ds->bgp_type, getfield(tmp, 4));
+	csvfile_ds->filetime = atoi(getfield(tmp, 5));
+	if(bgpstream_csvfile_datasource_filter_ok(csvfile_ds)){
+	  num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, csvfile_ds->filename,
+							       csvfile_ds->project, csvfile_ds->collector,
+							       csvfile_ds->bgp_type, csvfile_ds->filetime);
+	}
+      }
+      fclose(stream);
+    }
+    csvfile_ds->csvfile_read = 1;
+    debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue end");  
+    return num_results;
+}
+
+
+static void bgpstream_csvfile_datasource_destroy(bgpstream_csvfile_datasource_t* csvfile_ds) {
+  debug("\t\tBSDS_CSVFILE: destroy csvfile_ds start");  
+  if(csvfile_ds == NULL) {
+    return; // nothing to destroy
+  }
+  csvfile_ds->filter_mgr = NULL;
+  csvfile_ds->csvfile_read = 0;
+  free(csvfile_ds);
+  debug("\t\tBSDS_CSVFILE: destroy csvfile_ds end");  
+}
 
 
 /* ----------- mysql related functions ----------- */

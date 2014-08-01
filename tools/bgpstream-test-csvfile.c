@@ -38,6 +38,7 @@
 
 // modified bgpdump process
 void bgpdump_process(BGPDUMP_ENTRY *my_entry);
+void print_elem_queue(bgpstream_elem_t * elem_queue);
 
 
 int main(){
@@ -48,41 +49,20 @@ int main(){
     printf("Not able to create bs\n");   
     return 1;
   }
-  // all projects
-  // bgpstream_set_filter(bs, BS_PROJECT, "***");
 
-  // all types
-  // bgpstream_set_filter(bs, BS_BGP_TYPE, "***");
-
-  // best collectors (delay below 25 minutes, i.e. 1500 seconds)
-  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.linx");
-  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views6");
-  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.saopaulo");
-  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.sydney");
-  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views2");
-  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.perth");
-  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.isc");
-  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views4");
-  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views3");
-  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.telxatl");
-  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.nwax");
-  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.wide");
-  bgpstream_add_filter(bs, BS_COLLECTOR, "rrc10");
-  bgpstream_add_filter(bs, BS_COLLECTOR, "rrc11");
-  bgpstream_add_filter(bs, BS_COLLECTOR, "rrc12");
-
-
-  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1403229491", "1403236583");
-  // start -> Fri, 20 Jun 2014 01:58:11 GMT
-  // stop -> Fri, 20 Jun 2014 03:56:23 GMT
+  bgpstream_add_filter(bs, BS_PROJECT, "routeviews");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.kixp");
+  // bgpstream_add_filter(bs, BS_BGP_TYPE, "ribs");
+  bgpstream_add_filter(bs, BS_BGP_TYPE, "updates");
+  // Tue, 15 Jul 2014 03:00:00 GMT -> Tue, 15 Jul 2014 21:00:00 GMT
+  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1405393200", "1405458000");
 
   // set blocking
-  bgpstream_set_blocking(bs);
+  //bgpstream_set_blocking(bs);
 
   // set datasource interface
-  bgpstream_set_data_interface(bs, "mysql");
+  bgpstream_set_data_interface(bs, "csvfile");
 
-  // turn on interface
   int init_res = bgpstream_init(bs);
   
   if(init_res <= 0) {
@@ -99,7 +79,7 @@ int main(){
   char rstatus[50];
   time_t result_time = time(NULL);
   strcpy(rstatus, "");
-
+  bgpstream_elem_t * bs_elem_queue;
 
   // allocate memory for bs_record  
   bgpstream_record_t * const bs_record = bgpstream_create_record();
@@ -109,20 +89,34 @@ int main(){
       result_time = time(NULL);
       counter++;
       if(get_next_ret > 0) {	
+	if(bs_record->dump_pos == DUMP_START) {
+	  printf("\nDUMP START\n");
+	}
 	if(bs_record->status == VALID_RECORD) {
 	  strcpy(rstatus, "VALID_RECORD");
 	  if(bs_record->bd_entry != NULL) {
 	    read++;
-	    fprintf(stdout,"%d\t%ld\t%ld\t%d\t%s\t%s\t%d\n", 
+	    printf("\t%d\t%ld\t%ld\t%d\t%s\t%s\t%d\n", 
 		   counter, 
 		   bs_record->attributes.record_time,
 		   bs_record->attributes.dump_time,
 		   bs_record->attributes.dump_type, 
 		   bs_record->attributes.dump_collector,
 		   rstatus, (int)result_time);
+	    // process entry and get bgpdump output
+	   bgpdump_process(bs_record->bd_entry);
+	   bs_elem_queue = bgpstream_get_elem_queue(bs_record);
+	   print_elem_queue(bs_elem_queue);
+	   bgpstream_destroy_elem_queue(bs_elem_queue);
+
 	  }	  
 	}
 	else {
+	  /* 
+	   *  printf("%s - %s - %s - %ld - %ld - ", bs_record->attributes.dump_project, 
+	   *     bs_record->attributes.dump_collector, bs_record->attributes.dump_type,
+	   *     bs_record->attributes.dump_time, bs_record->attributes.record_time);	  
+	   */
 	  switch(bs_record->status){
 	  case CORRUPTED_RECORD:
 	    strcpy(rstatus, "CORRUPTED_RECORD");
@@ -139,7 +133,7 @@ int main(){
 	  default:
 	    strcpy(rstatus, "WEIRD");
 	  }
-	  fprintf(stdout,"%d\t%ld\t%ld\t%d\t%s\t%s\t%d\n", 
+	  printf("\t%d\t%ld\t%ld\t%d\t%s\t%s\t%d\n", 
 		 counter, 
 		 bs_record->attributes.record_time,
 		 bs_record->attributes.dump_time,
@@ -147,12 +141,14 @@ int main(){
 		 bs_record->attributes.dump_collector,
 		 rstatus, (int)result_time);	  
 	}
+
+	if(bs_record->dump_pos == DUMP_END) {
+	  printf("\nDUMP END\n");
+	}
+
       }
     } while(get_next_ret > 0);    
   }
-
-  // close file
-  //  fclose(f);
 
   // de-allocate memory for bs_record
   bgpstream_destroy_record(bs_record);
@@ -162,7 +158,6 @@ int main(){
   
   // deallocate memory for interface
   bgpstream_destroy(bs);
-
 
   printf("Read %d values\n", read);
 

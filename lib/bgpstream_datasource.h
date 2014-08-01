@@ -53,6 +53,16 @@ typedef struct struct_bgpstream_customlist_datasource_t {
 } bgpstream_customlist_datasource_t;
 
 
+typedef struct struct_bgpstream_csvfile_datasource_t {
+  int csvfile_read; // 1 if list has bee read, 0 otherwise
+  bgpstream_filter_mgr_t * filter_mgr;
+  char filename[BGPSTREAM_DUMP_MAX_LEN];
+  char project[BGPSTREAM_PAR_MAX_LEN];
+  char collector[BGPSTREAM_PAR_MAX_LEN];
+  char bgp_type[BGPSTREAM_PAR_MAX_LEN];
+  int filetime;
+} bgpstream_csvfile_datasource_t;
+
 
 typedef struct struct_bgpstream_mysql_datasource_t {
   MYSQL * mysql_con;
@@ -78,6 +88,7 @@ typedef struct struct_bgpstream_datasource_mgr_t {
   // mysql datasource
   bgpstream_mysql_datasource_t *mysql_ds;
   bgpstream_customlist_datasource_t *customlist_ds;
+  bgpstream_csvfile_datasource_t *csvfile_ds;
   // other datasources
   int blocking;
   bgpstream_datasource_status_t status;
