@@ -104,6 +104,7 @@ void print_elem_queue(bgpstream_elem_t * ri_queue) {
 	origin_asnumber = ri->aspath.numeric_aspath[ri->aspath.hop_count-1];
       }
       print_ip_address(&ri->prefix.number, prefix_number);      
+      print_ip_address(&ri->nexthop, nexthop);      
       printf("ANNOUNCE|%ld|%s|%u|%s/%d|%s|%"PRIu32"|%s|\n",
 	     ri->timestamp, peer_address, ri->peer_asnumber, 
 	     prefix_number, ri->prefix.len, 

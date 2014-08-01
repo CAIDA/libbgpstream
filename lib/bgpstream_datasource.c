@@ -458,7 +458,6 @@ static bool bgpstream_csvfile_datasource_filter_ok(bgpstream_csvfile_datasource_
 }
 
 
-
 static char* getfield(char* tmp, int num) {
     const char* tok;
     char * ret_memory;
@@ -494,15 +493,14 @@ static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_dat
 	strcpy(csvfile_ds->project, ret_memory);
 	free(ret_memory);
 	ret_memory = getfield(tmp, 3);
-	strcpy(csvfile_ds->collector, ret_memory);
+	strcpy(csvfile_ds->bgp_type, ret_memory);
 	free(ret_memory);
 	ret_memory = getfield(tmp, 4);
-	strcpy(csvfile_ds->bgp_type, ret_memory);
+	strcpy(csvfile_ds->collector, ret_memory);
 	free(ret_memory);
 	ret_memory = getfield(tmp, 5);
 	csvfile_ds->filetime = atoi(ret_memory);
 	free(ret_memory);
-	printf("%s - %d\n", csvfile_ds->filename, csvfile_ds->filetime);
 	if(bgpstream_csvfile_datasource_filter_ok(csvfile_ds)){
 	  num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, csvfile_ds->filename,
 							       csvfile_ds->project, csvfile_ds->collector,
