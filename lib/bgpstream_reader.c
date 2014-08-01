@@ -284,7 +284,7 @@ static void bgpstream_reader_export_record(bgpstream_reader_t * const bs_reader,
   default:
     bs_record->status = EMPTY_SOURCE;
   }
-  debug("Exported: %ld\t%ld\t%s\t%s\t%d", 		   
+  debug("Exported: %ld\t%ld\t%d\t%s\t%d", 		   
 		   bs_record->attributes.record_time,
 		   bs_record->attributes.dump_time,
 		   bs_record->attributes.dump_type, 

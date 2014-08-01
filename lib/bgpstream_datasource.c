@@ -369,12 +369,10 @@ static void bgpstream_customlist_datasource_destroy(bgpstream_customlist_datasou
 }
 
 
-/* ----------- read_from_file related functions ----------- */
-
 /* ----------- csvfile related functions ----------- */
 
 static bgpstream_csvfile_datasource_t *bgpstream_csvfile_datasource_create(bgpstream_filter_mgr_t *filter_mgr) {
-  debug("\t\tBSDS_CLIST: create csvfile_ds start");  
+  debug("\t\tBSDS_CSVFILE: create csvfile_ds start");  
   bgpstream_csvfile_datasource_t *csvfile_ds = (bgpstream_csvfile_datasource_t*) malloc(sizeof(bgpstream_csvfile_datasource_t));
   if(csvfile_ds == NULL) {
     log_err("\t\tBSDS_CSVFILE: create csvfile_ds can't allocate memory");    
@@ -461,13 +459,17 @@ static bool bgpstream_csvfile_datasource_filter_ok(bgpstream_csvfile_datasource_
 
 
 
-static const char* getfield(char* tmp, int num) {
+static char* getfield(char* tmp, int num) {
     const char* tok;
+    char * ret_memory;
     char * line = (char*) malloc(sizeof(char) * (strlen(tmp)+1));
     strcpy(line, tmp);
     for (tok = strtok(line, ","); tok && *tok;  tok = strtok(NULL, ",\n")) {
-      if (!--num)
-	return tok;
+      if (!--num){
+	ret_memory = (char*) malloc(sizeof(char) * (strlen(tok)+1));
+	strcpy(ret_memory, tok);    
+	return ret_memory;
+      }
     }
     free(line);
     return NULL;
@@ -479,16 +481,28 @@ static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_dat
     int num_results = 0;       
     FILE* stream;
     char line[1024];
+    char * ret_memory = NULL;
     // if list has not been read yet, then we push these files in the input queue
     if(csvfile_ds->csvfile_read == 0) {
       stream = fopen("/Users/chiara/Projects/satc/repository/tools/bgpanalyzer/bgpdownloader/utilities/test/bgp_data.csv", "r");
       while (fgets(line, 1024, stream)) {
         char* tmp = strdup(line);
-	strcpy(csvfile_ds->filename, getfield(tmp, 1));
-	strcpy(csvfile_ds->project, getfield(tmp, 2));
-	strcpy(csvfile_ds->collector, getfield(tmp, 3));
-	strcpy(csvfile_ds->bgp_type, getfield(tmp, 4));
-	csvfile_ds->filetime = atoi(getfield(tmp, 5));
+	ret_memory = getfield(tmp, 1);
+	strcpy(csvfile_ds->filename, ret_memory);
+	free(ret_memory);
+	ret_memory = getfield(tmp, 2);
+	strcpy(csvfile_ds->project, ret_memory);
+	free(ret_memory);
+	ret_memory = getfield(tmp, 3);
+	strcpy(csvfile_ds->collector, ret_memory);
+	free(ret_memory);
+	ret_memory = getfield(tmp, 4);
+	strcpy(csvfile_ds->bgp_type, ret_memory);
+	free(ret_memory);
+	ret_memory = getfield(tmp, 5);
+	csvfile_ds->filetime = atoi(ret_memory);
+	free(ret_memory);
+	printf("%s - %d\n", csvfile_ds->filename, csvfile_ds->filetime);
 	if(bgpstream_csvfile_datasource_filter_ok(csvfile_ds)){
 	  num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, csvfile_ds->filename,
 							       csvfile_ds->project, csvfile_ds->collector,
