@@ -54,7 +54,6 @@ int main(){
   // all types
   // bgpstream_set_filter(bs, BS_BGP_TYPE, "***");
 
-  // best collectors (delay below 25 minutes, i.e. 1500 seconds)
   bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.linx");
   bgpstream_add_filter(bs, BS_COLLECTOR, "route-views6");
   bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.saopaulo");
@@ -67,10 +66,20 @@ int main(){
   bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.telxatl");
   bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.nwax");
   bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.wide");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.sg");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "rrc00");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "rrc01");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "rrc03");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "rrc04");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "rrc05");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "rrc06");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "rrc07");
   bgpstream_add_filter(bs, BS_COLLECTOR, "rrc10");
   bgpstream_add_filter(bs, BS_COLLECTOR, "rrc11");
   bgpstream_add_filter(bs, BS_COLLECTOR, "rrc12");
-
+  bgpstream_add_filter(bs, BS_COLLECTOR, "rrc13");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "rrc14");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "rrc15");
 
   bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1403229491", "1403236583");
   // start -> Fri, 20 Jun 2014 01:58:11 GMT
