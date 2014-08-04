@@ -1,5 +1,3 @@
 #!/bin/sh
 
-autoheader
-autoconf
-./configure
+autoreconf --force --install -I config -I m4
