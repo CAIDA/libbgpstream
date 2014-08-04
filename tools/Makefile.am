@@ -29,7 +29,7 @@ AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/lib
 
 bin_PROGRAMS =  bgpstream-test-customlist bgpstream-test-csvfile bgpstream-best-collectors
 
-bgpstream_test_customlist_SOURCES = bgpstream-test-csvfile.c process_bdump.c print_elem_queue.c
+bgpstream_test_customlist_SOURCES = bgpstream-test-customlist.c process_bdump.c print_elem_queue.c
 bgpstream_test_customlist_LDADD = -lbgpstream 
 bgpstream_test_customlist_LDFLAGS = -L$(top_builddir)/lib
 

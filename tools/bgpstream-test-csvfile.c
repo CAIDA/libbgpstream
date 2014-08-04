@@ -51,14 +51,11 @@ int main(){
   }
 
   bgpstream_add_filter(bs, BS_PROJECT, "routeviews");
-  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.kixp");
-  // bgpstream_add_filter(bs, BS_BGP_TYPE, "ribs");
+  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views2");
+  bgpstream_add_filter(bs, BS_BGP_TYPE, "ribs");
   bgpstream_add_filter(bs, BS_BGP_TYPE, "updates");
-  // Tue, 15 Jul 2014 03:00:00 GMT -> Tue, 15 Jul 2014 21:00:00 GMT
-  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1405393200", "1405458000");
-
-  // set blocking
-  //bgpstream_set_blocking(bs);
+  // Tue, 15 Jul 2014 05:30:00 GMT -> Tue, 15 Jul 2014 18:30:00 GMT
+  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1405402200", "1405449000");
 
   // set datasource interface
   bgpstream_set_data_interface(bs, "csvfile");

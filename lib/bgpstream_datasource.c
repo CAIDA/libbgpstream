@@ -459,33 +459,38 @@ static bool bgpstream_csvfile_datasource_filter_ok(bgpstream_csvfile_datasource_
 
 
 static char* getfield(char* tmp, int num) {
-    const char* tok;
-    char * ret_memory;
-    char * line = (char*) malloc(sizeof(char) * (strlen(tmp)+1));
-    strcpy(line, tmp);
-    for (tok = strtok(line, ","); tok && *tok;  tok = strtok(NULL, ",\n")) {
-      if (!--num){
-	ret_memory = (char*) malloc(sizeof(char) * (strlen(tok)+1));
-	strcpy(ret_memory, tok);    
-	return ret_memory;
-      }
-    }
-    free(line);
+  if(tmp == NULL) { 
     return NULL;
+  }
+  const char* tok;
+  char * ret_memory;
+  char * line = (char*) malloc(sizeof(char) * (strlen(tmp)+1));
+  strcpy(line, tmp);
+  for (tok = strtok(line, ","); tok && *tok;  tok = strtok(NULL, ",\n")) {
+    if (!--num){
+      ret_memory = (char*) malloc(sizeof(char) * (strlen(tok)+1));
+      strcpy(ret_memory, tok);    
+      return ret_memory;
+    }
+  }
+  free(line);
+  return NULL;
 }
+
 
 static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_datasource_t* csvfile_ds,
 							   bgpstream_input_mgr_t *input_mgr) {
-    debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue start");  
-    int num_results = 0;       
-    FILE* stream;
-    char line[1024];
-    char * ret_memory = NULL;
-    // if list has not been read yet, then we push these files in the input queue
-    if(csvfile_ds->csvfile_read == 0) {
-      stream = fopen("/Users/chiara/Projects/satc/repository/tools/bgpanalyzer/bgpdownloader/utilities/test/bgp_data.csv", "r");
+  debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue start");  
+  int num_results = 0;       
+  FILE* stream;
+  char line[1024];
+  char * ret_memory = NULL;
+  // if list has not been read yet, then we push these files in the input queue
+  if(csvfile_ds->csvfile_read == 0) {
+    stream = fopen("/Users/chiara/Desktop/local_db/bgp_data.csv", "r");
+    if(stream != NULL) {
       while (fgets(line, 1024, stream)) {
-        char* tmp = strdup(line);
+	char* tmp = strdup(line);
 	ret_memory = getfield(tmp, 1);
 	strcpy(csvfile_ds->filename, ret_memory);
 	free(ret_memory);
@@ -507,11 +512,12 @@ static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_dat
 							       csvfile_ds->bgp_type, csvfile_ds->filetime);
 	}
       }
-      fclose(stream);
     }
-    csvfile_ds->csvfile_read = 1;
-    debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue end");  
-    return num_results;
+    fclose(stream);
+  }
+  csvfile_ds->csvfile_read = 1;
+  debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue end");  
+  return num_results;
 }
 
 
