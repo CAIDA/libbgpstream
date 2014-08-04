@@ -485,12 +485,13 @@ static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_dat
   FILE* stream;
   char line[1024];
   char * ret_memory = NULL;
+  char* tmp;
   // if list has not been read yet, then we push these files in the input queue
   if(csvfile_ds->csvfile_read == 0) {
     stream = fopen("/Users/chiara/Desktop/local_db/bgp_data.csv", "r");
     if(stream != NULL) {
       while (fgets(line, 1024, stream)) {
-	char* tmp = strdup(line);
+	tmp = strdup(line);
 	ret_memory = getfield(tmp, 1);
 	strcpy(csvfile_ds->filename, ret_memory);
 	free(ret_memory);
@@ -506,14 +507,16 @@ static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_dat
 	ret_memory = getfield(tmp, 5);
 	csvfile_ds->filetime = atoi(ret_memory);
 	free(ret_memory);
+	// strdup malloc memory
+	free(tmp);
 	if(bgpstream_csvfile_datasource_filter_ok(csvfile_ds)){
 	  num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, csvfile_ds->filename,
 							       csvfile_ds->project, csvfile_ds->collector,
 							       csvfile_ds->bgp_type, csvfile_ds->filetime);
 	}
       }
+      fclose(stream);
     }
-    fclose(stream);
   }
   csvfile_ds->csvfile_read = 1;
   debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue end");  
