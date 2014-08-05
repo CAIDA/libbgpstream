@@ -39,6 +39,10 @@
  *
  * bgpstream_elem_t type defined in
  *  -> bgpstream_elem.h 
+ *
+ * bgpstream_filter_type defined in 
+ * -> bgpstream_filter.h
+ *
  */
 
 typedef enum {ALLOCATED, ON, OFF} bgpstream_status;
@@ -62,7 +66,6 @@ void bgpstream_add_filter(bgpstream_t * const bs, bgpstream_filter_type filter_t
 			  const char* filter_value);
 void bgpstream_add_interval_filter(bgpstream_t * const bs, bgpstream_filter_type filter_type,
 				   const char* filter_start, const char* filter_stop);
-
 
 /* configure the data interface */
 void bgpstream_set_data_interface(bgpstream_t * const bs, const char *datasource_name);

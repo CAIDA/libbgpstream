@@ -23,7 +23,31 @@
 # along with libbgpstream.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-#autoheader
-#autoconf
-autoreconf -vfi
+
+mac_sql_inc="/opt/local/include/mysql55/mysql"
+mac_sql_lib="/opt/local/lib/mysql55/mysql"
+
+thor_sql_inc="$HOME/localmysql/include"
+thor_sql_lib="$HOME/localmysql/lib"
+
+bgpa_prefix="$HOME/Projects/satc/repository/tools/bgpanalyzer/usr"
+bgpa_inc="$bgpa_prefix/include"
+bgpa_lib="$bgpa_prefix/lib"
+
+
+if [ -d "$mac_sql_inc" ]; then
+    all_includes="-I$mac_sql_inc -I$bgpa_inc"
+    all_libs="-L$mac_sql_lib -L$bgpa_lib"
+fi
+
+if [ -d "$thor_sql_inc" ]; then
+    all_includes="-I$thor_sql_inc -I$bgpa_inc"
+    all_libs="-L$thor_sql_lib -L$bgpa_lib"
+fi
+
+./autogen.sh
+./configure CPPFLAGS="$all_includes" LDFLAGS="$all_libs" --prefix="$bgpa_prefix"
+make
+make install
+
 

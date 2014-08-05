@@ -126,8 +126,8 @@ void bgpstream_set_blocking(bgpstream_t * const bs) {
   }
   bgpstream_datasource_mgr_set_blocking(bs->datasource_mgr);
   debug("BS: set_blocking stop");
-
 }
+
 
 /* turn on the bgpstream interface, i.e.: 
  * it makes the interface ready

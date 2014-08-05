@@ -27,7 +27,7 @@ Original Author: Shufu Mao(msf98@mails.tsinghua.edu.cn)
 
 #include "bgpdump-config.h"
 #include "bgpdump_lib.h"
-#include "util.h"
+#include "bgpdump_util.h"
 
 #include <time.h>
 #include <unistd.h>
