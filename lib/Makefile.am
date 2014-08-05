@@ -52,11 +52,8 @@ libbgpstream_la_SOURCES = 	\
 
 
 libbgpstream_la_CFLAGS = -Wall
-#  $(MYSQL_CONFIG_CFLAGS)
 libbgpstream_la_CPPFLAGS=
-#$(MYSQL_CONFIG_CPPFLAGS)
 libbgpstream_la_LIBADD = 
-#-lbgpdump $(MYSQL_CONFIG_LIBS)
 
 libbgpstream_la_LDFLAGS = -version-info @LIBBGPSTREAM_MAJOR_VERSION@:@LIBBGPSTREAM_MINOR_VERSION@:@LIBBGPSTREAM_MID_VERSION@
 

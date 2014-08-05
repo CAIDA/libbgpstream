@@ -488,7 +488,8 @@ static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_dat
   char* tmp;
   // if list has not been read yet, then we push these files in the input queue
   if(csvfile_ds->csvfile_read == 0) {
-    stream = fopen("/Users/chiara/Desktop/local_db/bgp_data.csv", "r");
+    //stream = fopen("/Users/chiara/Desktop/local_db/bgp_data.csv", "r");
+    stream = fopen("/scratch/satc/chiaras_test/local_db/bgp_data.csv", "r");
     if(stream != NULL) {
       while (fgets(line, 1024, stream)) {
 	tmp = strdup(line);
