@@ -24,10 +24,10 @@ this license is included with libbgpdump.
 */
 
 #include "bgpdump-config.h"
-#include "cfile_tools.h"
+#include "bgpdump_cfile_tools.h"
 #include "bgpdump_lib.h"
 #include "bgpdump_mstream.h"
-#include "util.h"
+#include "bgpdump_util.h"
 
 #include <sys/stat.h>
 #include <stdlib.h>

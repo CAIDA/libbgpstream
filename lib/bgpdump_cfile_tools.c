@@ -22,7 +22,7 @@
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
-#include "cfile_tools.h"
+#include "bgpdump_cfile_tools.h"
 
 // Concrete formats. remember to adjust CFR_NUM_FORMATS if changed!
 // Note: 0, 1 are special entries.
