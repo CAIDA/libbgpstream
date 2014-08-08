@@ -398,4 +398,25 @@ struct corsaro_in_record
 
 };
 
+#ifdef WITH_PLUGIN_TIMING
+/* Helper macros for doing timing */
+
+/** Start a timer with the given name */
+#define TIMER_START(timer)			\
+  struct timeval timer_start;			\
+  do {						\
+  gettimeofday_wrap(&timer_start);		\
+  } while(0)
+
+#define TIMER_END(timer)					\
+  struct timeval timer_end, timer_diff;				\
+  do {								\
+    gettimeofday_wrap(&timer_end);				\
+    timeval_subtract(&timer_diff, &timer_end, &timer_start);	\
+  } while(0)
+
+#define TIMER_VAL(timer)			\
+  ((timer_diff.tv_sec*1000000) + timer_diff.tv_usec)
+#endif
+
 #endif /* __CORSARO_INT_H */

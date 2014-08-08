@@ -365,12 +365,19 @@ static int start_interval(corsaro_t *corsaro, struct timeval int_start)
   /* plugins should rotate their files now too */
   while((tmp = corsaro_plugin_next(corsaro->plugin_manager, tmp)) != NULL)
     {
+#ifdef WITH_PLUGIN_TIMING
+      TIMER_START(start_interval);
+#endif
       if(tmp->start_interval(corsaro, &corsaro->interval_start) != 0)
 	{
 	  corsaro_log(__func__, corsaro, "%s failed to start interval at %ld",
 		    tmp->name, int_start.tv_sec);
 	  return -1;
 	}
+#ifdef WITH_PLUGIN_TIMING
+      TIMER_END(start_interval);
+      tmp->start_interval_usec += TIMER_VAL(start_interval);
+#endif
     }
   return 0;
 }
@@ -398,12 +405,19 @@ static int end_interval(corsaro_t *corsaro, struct timeval int_end)
   /* ask each plugin to end the current interval */
   while((tmp = corsaro_plugin_next(corsaro->plugin_manager, tmp)) != NULL)
     {
+#ifdef WITH_PLUGIN_TIMING
+      TIMER_START(end_interval);
+#endif
       if(tmp->end_interval(corsaro, &interval_end) != 0)
 	{
 	  corsaro_log(__func__, corsaro, "%s failed to end interval at %ld",
 		    tmp->name, int_end.tv_sec);
 	  return -1;
 	}
+#ifdef WITH_PLUGIN_TIMING
+      TIMER_END(end_interval);
+      tmp->end_interval_usec += TIMER_VAL(end_interval);
+#endif
     }
   /* write the global interval end header */
   if(corsaro->global_file != NULL &&
@@ -554,12 +568,19 @@ static inline int process_packet(corsaro_t *corsaro, corsaro_packet_t *packet)
   corsaro_plugin_t *tmp = NULL;
   while((tmp = corsaro_plugin_next(corsaro->plugin_manager, tmp)) != NULL)
     {
+#ifdef WITH_PLUGIN_TIMING
+      TIMER_START(process_packet);
+#endif
       if(tmp->process_packet(corsaro, packet) < 0)
 	{
 	  corsaro_log(__func__, corsaro, "%s failed to process packet",
 		    tmp->name);
 	  return -1;
 	}
+#ifdef WITH_PLUGIN_TIMING
+      TIMER_END(process_packet);
+      tmp->process_packet_usec += TIMER_VAL(process_packet);
+#endif
     }
   return 0;
 }
@@ -993,6 +1014,9 @@ int corsaro_start_output(corsaro_t *corsaro)
      that is, the traceuri etc is set */
   while((p = corsaro_plugin_next(corsaro->plugin_manager, p)) != NULL)
     {
+#ifdef WITH_PLUGIN_TIMING
+      TIMER_START(init_output);
+#endif
       if(p->init_output(corsaro) != 0)
 	{
 	  /* 02/25/13 - ak comments debug message */
@@ -1002,6 +1026,10 @@ int corsaro_start_output(corsaro_t *corsaro)
 	  /*	  corsaro_free(corsaro); */
 	  return -1;
 	}
+#ifdef WITH_PLUGIN_TIMING
+      TIMER_END(init_output);
+      p->init_output_usec += TIMER_VAL(init_output);
+#endif
     }
 
   corsaro->started = 1;
@@ -1418,6 +1446,14 @@ int corsaro_per_record(corsaro_t *corsaro,
 
 int corsaro_finalize_output(corsaro_t *corsaro)
 {
+#ifdef WITH_PLUGIN_TIMING
+  corsaro_plugin_t *p = NULL;
+  struct timeval total_end, total_diff;
+  gettimeofday_wrap(&total_end);
+  timeval_subtract(&total_diff, &total_end, &corsaro->init_time);
+  uint64_t total_time_usec = ((total_diff.tv_sec*1000000) + total_diff.tv_usec);
+#endif
+
   if(corsaro == NULL)
     {
       return 0;
@@ -1441,6 +1477,36 @@ int corsaro_finalize_output(corsaro_t *corsaro)
 	  return -1;
 	}
     }
+
+#ifdef WITH_PLUGIN_TIMING
+  fprintf(stderr, "========================================\n");
+  fprintf(stderr, "Plugin Timing\n");
+  while((p = corsaro_plugin_next(corsaro->plugin_manager, p)) != NULL)
+    {
+      fprintf(stderr, "----------------------------------------\n");
+      fprintf(stderr, "%s\n", p->name);
+      fprintf(stderr, "\tinit_output    %"PRIu64" (%0.2f%%)\n",
+	      p->init_output_usec,
+	      p->init_output_usec*100.0/total_time_usec);
+      fprintf(stderr, "\tprocess_packet %"PRIu64" (%0.2f%%)\n",
+	      p->process_packet_usec,
+	      p->process_packet_usec*100.0/total_time_usec);
+      fprintf(stderr, "\tstart_interval %"PRIu64" (%0.2f%%)\n",
+	      p->start_interval_usec,
+	      p->start_interval_usec*100.0/total_time_usec);
+      fprintf(stderr, "\tend_interval   %"PRIu64" (%0.2f%%)\n",
+	      p->end_interval_usec,
+	      p->end_interval_usec*100.0/total_time_usec);
+      fprintf(stderr, "\ttotal   %"PRIu64" (%0.2f%%)\n",
+	      p->init_output_usec + p->process_packet_usec +
+	      p->start_interval_usec + p->end_interval_usec,
+	      (p->init_output_usec + p->process_packet_usec +
+	       p->start_interval_usec + p->end_interval_usec)*
+	      100.0/total_time_usec);
+    }
+  fprintf(stderr, "========================================\n");
+  fprintf(stderr, "Total Time (usec): %"PRIu64"\n", total_time_usec);
+#endif
 
   corsaro_free(corsaro);
   return 0;

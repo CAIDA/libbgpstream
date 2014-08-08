@@ -183,6 +183,23 @@ AS_IF([test "x$with_slash_eight" != xno],
 
 AC_MSG_RESULT([$with_slash_eight])
 
+# are we going to dump some plugin timing information? (useful for debugging
+# where corsaro spends its time given a complicated plugin chain)
+AC_MSG_CHECKING([whether to monitor plugin runtimes])
+AC_ARG_WITH([plugin-timing],
+	[AS_HELP_STRING([--with-plugin-timing],
+	  [time how long each plugin takes to process packets (defaults to no)])],
+	  [],
+	  [with_plugin_timing=no])
+
+AS_IF([test "x$with_plugin_timing" != xno],
+	[
+	    AC_DEFINE_UNQUOTED([WITH_PLUGIN_TIMING],[1],
+		[Monitor plugin timing])
+	])
+
+AC_MSG_RESULT([$with_plugin_timing])
+
 # configure options to disable plugins
 #AC_DEFINE([ED_PLUGIN_INIT_ALL_ENABLED],[],[Plugin init functions])
 

@@ -386,7 +386,24 @@ typedef struct corsaro_plugin
    * It is the responsibility of the plugin to do something sensible with it
    */
   char **argv;
-  
+
+#ifdef WITH_PLUGIN_TIMING
+  /* variables that hold timing information for this plugin */
+
+  /** Number of usec spent in the init_output function */
+  uint64_t init_output_usec;
+
+  /** Number of usec spent in the process_packet or process_flowtuple
+      functions */
+  uint64_t process_packet_usec;
+
+  /** Number of usec spent in the start_interval function */
+  uint64_t start_interval_usec;
+
+  /** Number of usec spent in the end_interval function */
+  uint64_t end_interval_usec;
+#endif
+
 } corsaro_plugin_t;
 
 /** Holds the metadata for the plugin manager
