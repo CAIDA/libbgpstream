@@ -772,7 +772,7 @@ int main(int argc, char *argv[])
           exit(-1);
 	}
       /* iterate over all the files on the command line */
-      for (int i = optind; i < argc; i++)
+      for(i = optind; i < argc; i++)
 	{
 	  if(process_flowtuple_file(argv[i]) == -1)
 	    {
