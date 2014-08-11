@@ -243,9 +243,8 @@ static void bgpstream_reader_export_record(bgpstream_reader_t * const bs_reader,
   bs_record->bd_entry = bs_reader->bd_entry;
   // disconnect reader from exported entry
   bs_reader->bd_entry = NULL;
-  memset(bs_record->attributes.dump_project, 0, BGPSTREAM_PAR_MAX_LEN);
-  memset(bs_record->attributes.dump_collector, 0, BGPSTREAM_PAR_MAX_LEN);
-  //memset(bs_record->attributes.dump_type, 0, BGPSTREAM_PAR_MAX_LEN);
+  // memset(bs_record->attributes.dump_project, 0, BGPSTREAM_PAR_MAX_LEN);
+  // memset(bs_record->attributes.dump_collector, 0, BGPSTREAM_PAR_MAX_LEN);
   debug("\t\tBSR: export record: copying attributes");    
   strcpy(bs_record->attributes.dump_project, bs_reader->dump_project);
   strcpy(bs_record->attributes.dump_collector, bs_reader->dump_collector);
@@ -506,6 +505,7 @@ int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reade
   // otherwise we destroy the reader
   else {
     bs_record->dump_pos = DUMP_END;
+    printf("destroy reader\n");
     bgpstream_reader_destroy(bs_reader);
   }
   debug("\tBSR_MGR: get_next_record: end");

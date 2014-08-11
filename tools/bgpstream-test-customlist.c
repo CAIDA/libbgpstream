@@ -61,7 +61,7 @@ int main(){
   //bgpstream_set_blocking(bs);
 
   // set datasource interface
-  bgpstream_set_data_interface(bs, "customlist");
+  bgpstream_set_data_interface(bs, BS_CUSTOMLIST);
 
   int init_res = bgpstream_init(bs);
   
@@ -105,9 +105,9 @@ int main(){
 		   rstatus, (int)result_time);
 	    // process entry and get bgpdump output
 	   bgpdump_process(bs_record->bd_entry);
-	   bs_elem_queue = bgpstream_get_elem_queue(bs_record);
-	   print_elem_queue(bs_elem_queue);
-	   bgpstream_destroy_elem_queue(bs_elem_queue);
+	   // bs_elem_queue = bgpstream_get_elem_queue(bs_record);
+	   // print_elem_queue(bs_elem_queue);
+	   // bgpstream_destroy_elem_queue(bs_elem_queue);
 
 	  }	  
 	}

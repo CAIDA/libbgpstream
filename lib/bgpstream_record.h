@@ -26,9 +26,11 @@
 #ifndef _BGPSTREAM_RECORD_H
 #define _BGPSTREAM_RECORD_H
 
-#include "bgpstream_constants.h"
 #include <bgpdump_lib.h>
 #include <stdbool.h>
+
+
+#define BGPSTREAM_PAR_LEN 512
 
 
 typedef enum {BGPSTREAM_UPDATE,
@@ -40,24 +42,23 @@ typedef enum {DUMP_START,        /* first entry in dump */
 	      DUMP_END           /* last entry in dump */
 } bgpstream_dump_position_t;
 
-
-typedef enum {VALID_RECORD,        /* valid entry found in dump */
+typedef enum {VALID_RECORD,       /* valid entry found in dump */
 	      FILTERED_SOURCE,    /* fltered source: source is not empty, but no valid record found */
 	      EMPTY_SOURCE,       /* empty source: source has no entries */
 	      CORRUPTED_SOURCE,   /* corrupted source: error in opening dump */	      
-	      CORRUPTED_RECORD   /* corrupted record: dump corrupted at some point */	      
+	      CORRUPTED_RECORD    /* corrupted record: dump corrupted at some point */	      
 } bgpstream_record_status_t;
 
 
 typedef struct struct_bgpstream_record_attributes_t {
   // define a list of useful attributes to associate to bgp dump entry
-  char dump_project[BGPSTREAM_PAR_MAX_LEN];  // project name
-  char dump_collector[BGPSTREAM_PAR_MAX_LEN];  // collector name
-  //  char dump_type[BGPSTREAM_PAR_MAX_LEN];  // type of bgpdump (rib or update)
-  bgpstream_record_dump_type_t dump_type;
-  long dump_time;   // timestamp associated with the time the bgp data was aggregated
-  long record_time; // timestamp associated with the time the bgp data was generated
+  char dump_project[BGPSTREAM_PAR_LEN];    // project name
+  char dump_collector[BGPSTREAM_PAR_LEN];  // collector name
+  bgpstream_record_dump_type_t dump_type;  // dump type
+  long dump_time;   // timestamp associated with the time the bgp data was "aggregated"
+  long record_time; // timestamp associated with the time the bgp data was last seen 
 } bgpstream_record_attributes_t;
+
 
 typedef struct struct_bgpstream_record_t {
   BGPDUMP_ENTRY *bd_entry;

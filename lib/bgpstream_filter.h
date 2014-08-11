@@ -28,10 +28,10 @@
 
 
 #include "bgpstream_constants.h"
+#include "bgpstream_options.h"
 #include <stdlib.h>
 #include<stdio.h>
 
-typedef enum {BS_PROJECT, BS_COLLECTOR, BS_BGP_TYPE, BS_TIME_INTERVAL} bgpstream_filter_type;
 
 
 typedef struct struct_bgpstream_string_filter_t {
@@ -46,7 +46,6 @@ typedef struct struct_bgpstream_interval_filter_t {
   int time_interval_stop;
   struct struct_bgpstream_interval_filter_t * next;
 } bgpstream_interval_filter_t;
-
 
 
 typedef struct struct_bgpstream_filter_mgr_t {

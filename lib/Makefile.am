@@ -30,11 +30,14 @@ AM_CPPFLAGS =
 lib_LTLIBRARIES = libbgpstream.la
 
 # Public header files that need to be installed in order for people to use the library.
-include_HEADERS = bgpstream_lib.h bgpstream_record.h bgpstream_constants.h bgpstream_reader.h bgpstream_input.h bgpstream_filter.h bgpstream_datasource.h bgpstream_elem.h bgpstream_debug.h
+include_HEADERS = bgpstream_lib.h bgpstream_record.h bgpstream_elem.h bgpstream_options.h
 
 libbgpstream_la_SOURCES = 	\
 	bgpstream_lib.h		\
+	bgpstream_int.h		\
 	bgpstream_lib.c		\
+	bgpstream_options.h	\
+	bgpstream_elem.h	\
 	bgpstream_record.h	\
 	bgpstream_constants.h	\
 	bgpstream_reader.h	\
@@ -45,7 +48,6 @@ libbgpstream_la_SOURCES = 	\
 	bgpstream_filter.c	\
 	bgpstream_datasource.h	\
 	bgpstream_datasource.c	\
-	bgpstream_elem.h	\
 	bgpstream_elem.c	\
 	bgpstream_debug.h
 

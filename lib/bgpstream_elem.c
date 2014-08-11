@@ -1,4 +1,3 @@
-
 /*
  Copyright (c) 2007 - 2010 RIPE NCC - All Rights Reserved
  
@@ -50,11 +49,12 @@ Original Author: Shufu Mao(msf98@mails.tsinghua.edu.cn)
  *
  */
 
+#include "bgpdump_lib.h"
+#include "bgpdump-config.h"
+
 #include "bgpstream_elem.h"
 #include "bgpstream_record.h"
 
-#include "bgpdump-config.h"
-#include "bgpdump_lib.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -73,7 +73,7 @@ static bgpstream_elem_t * bd2bi_create_route_info() {
   ri->peer_asnumber = 0;
   // ri->prefix;
   // ri->next_hop;  
-  memset(&ri->aspath, 0, sizeof(bgpstream_aspath_t));  
+  // memset(&ri->aspath, 0, sizeof(bgpstream_aspath_t));  
   ri->old_state = BST_UNKNOWN;  
   ri->new_state = BST_UNKNOWN;    
   ri->next = NULL;
@@ -131,9 +131,9 @@ static void get_aspath_struct(struct aspath * ap, bgpstream_aspath_t * ap_struct
   ap_struct->numeric_aspath = NULL;
   char * tok = NULL;
   char * aspath_copy = (char *)malloc((strlen(ap->str)+1) * sizeof(char));
+  strcpy(aspath_copy, ap->str);
   char origin_copy[16];
   uint8_t it;
-  strcpy(aspath_copy, ap->str);
   // check if there are sets or confederations
   while (*c) {
     if(strchr(invalid_characters, *c)) {
@@ -282,11 +282,13 @@ bgpstream_elem_t * table_line_dump_v2_prefix(BGPDUMP_ENTRY *entry) {
     attributes_t *attr = e->entries[i].attr;
     if(! attr)
       continue;
+
     ri  =  bd2bi_add_new_route_info(&ri_queue);
     if(ri == NULL) {
       // warning
       return ri_queue;
     }
+
     // general info
     ri->type = BST_RIB;
     ri->timestamp = entry->time;
@@ -300,6 +302,9 @@ bgpstream_elem_t * table_line_dump_v2_prefix(BGPDUMP_ENTRY *entry) {
       if(e->entries[i].peer->afi == AFI_IP6){
 	ri->peer_address.type = BST_IPV6;
 	ri->peer_address.address.v6_addr = e->entries[i].peer->peer_ip.v6_addr;
+      }
+      else {
+	printf("ERROR____bgpstream-elem__________\n");
       }
     }
 #endif
@@ -480,8 +485,8 @@ bgpstream_elem_t * table_line_withdraw(struct prefix *prefix, int count, BGPDUMP
   bgpstream_elem_t * ri_queue = NULL;
   bgpstream_elem_t * ri;
   int idx;
-  for (idx=0;idx<count;idx++) {
-    ri  =  bd2bi_add_new_route_info(&ri_queue);
+  for(idx=0;idx<count;idx++) {
+    ri = bd2bi_add_new_route_info(&ri_queue);
     if(ri == NULL) {
       // warning
       return ri_queue;

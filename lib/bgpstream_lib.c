@@ -28,6 +28,8 @@
 #include <bgpdump_lib.h>
 
 #include "bgpstream_lib.h"
+
+#include "bgpstream_int.h"
 #include "bgpstream_debug.h"
 
 
@@ -106,12 +108,12 @@ void bgpstream_add_interval_filter(bgpstream_t * const bs, bgpstream_filter_type
 /* configure the interface so that it connects
  * to a specific datasource interface
  */
-void bgpstream_set_data_interface(bgpstream_t * const bs, const char *datasource_name) {
+void bgpstream_set_data_interface(bgpstream_t * const bs, const bgpstream_datasource_type datasource) {
   debug("BS: set_data_interface start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return; // nothing to customize
   }
-  bgpstream_datasource_mgr_set_data_interface(bs->datasource_mgr, datasource_name);
+  bgpstream_datasource_mgr_set_data_interface(bs->datasource_mgr, datasource);
   debug("BS: set_data_interface stop");
 }
 
@@ -166,7 +168,6 @@ bgpstream_record_t *bgpstream_create_record() {
   bs_record->dump_pos = DUMP_START;
   strcpy(bs_record->attributes.dump_project, "");
   strcpy(bs_record->attributes.dump_collector, "");
-  // strcpy(bs_record->attributes.dump_type, "");
   bs_record->attributes.dump_type = BGPSTREAM_UPDATE;
   bs_record->attributes.dump_time = 0;
   bs_record->attributes.record_time = 0;

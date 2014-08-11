@@ -89,7 +89,7 @@ int main(){
   bgpstream_set_blocking(bs);
 
   // set datasource interface
-  bgpstream_set_data_interface(bs, "mysql");
+  bgpstream_set_data_interface(bs, BS_MYSQL);
 
   // turn on interface
   int init_res = bgpstream_init(bs);

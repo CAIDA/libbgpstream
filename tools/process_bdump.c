@@ -1559,8 +1559,13 @@ static void table_line_dump_v2_prefix(BGPDUMP_TABLE_DUMP_V2_PREFIX *e,BGPDUMP_EN
         if(e->entries[i].peer->afi == AFI_IP){
             fmt_ipv4(e->entries[i].peer->peer_ip, peer);
 #ifdef BGPDUMP_HAVE_IPV6
-        } else if(e->entries[i].peer->afi == AFI_IP6){
+        } else{
+	  if(e->entries[i].peer->afi == AFI_IP6){
             fmt_ipv6(e->entries[i].peer->peer_ip, peer);
+	  }
+	  else {
+	    printf("error on bgpdump!\n");
+	  }
 #endif
         }
         

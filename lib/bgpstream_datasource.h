@@ -26,6 +26,7 @@
 #ifndef _BGPSTREAM_DATASOURCE_H
 #define _BGPSTREAM_DATASOURCE_H
 
+#include "bgpstream_options.h"
 #include "bgpstream_constants.h"
 #include "bgpstream_input.h"
 #include "bgpstream_filter.h"
@@ -84,7 +85,8 @@ typedef struct struct_bgpstream_mysql_datasource_t {
 
 
 typedef struct struct_bgpstream_datasource_mgr_t {
-  char datasource_name[BGPSTREAM_DS_MAX_LEN];
+  // char datasource_name[BGPSTREAM_DS_MAX_LEN];
+  bgpstream_datasource_type datasource;
   // mysql datasource
   bgpstream_mysql_datasource_t *mysql_ds;
   bgpstream_customlist_datasource_t *customlist_ds;
@@ -99,7 +101,7 @@ typedef struct struct_bgpstream_datasource_mgr_t {
 bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create();
 
 void bgpstream_datasource_mgr_set_data_interface(bgpstream_datasource_mgr_t *datasource_mgr,
-						 const char *datasource_name);
+						 const bgpstream_datasource_type datasource);
 
 /* init the datasource_mgr and start/init the selected datasource */
 void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,

@@ -26,37 +26,14 @@
 #ifndef _BGPSTREAM_LIB_H
 #define _BGPSTREAM_LIB_H
 
-#include "bgpstream_datasource.h"
-#include "bgpstream_input.h"
-#include "bgpstream_reader.h"
-#include "bgpstream_filter.h"
 #include "bgpstream_record.h"
 #include "bgpstream_elem.h"
+#include "bgpstream_options.h"
 
 
-/* bgpstream_record_t type defined in
- *  -> bgpstream_record.h 
- *
- * bgpstream_elem_t type defined in
- *  -> bgpstream_elem.h 
- *
- * bgpstream_filter_type defined in 
- * -> bgpstream_filter.h
- *
- */
+// Opaque Data Structures
+typedef struct struct_bgpstream_t bgpstream_t;
 
-typedef enum {ALLOCATED, ON, OFF} bgpstream_status;
-
-typedef struct struct_bgpstream_t {  
-  bgpstream_input_mgr_t *input_mgr;
-  bgpstream_reader_mgr_t *reader_mgr;
-  bgpstream_filter_mgr_t *filter_mgr;
-  bgpstream_datasource_mgr_t *datasource_mgr;
-  bgpstream_status status;  
-} bgpstream_t;
-
-
-/* prototypes */
 
 /* allocate memory for bgpstream interface */
 bgpstream_t *bgpstream_create();
@@ -68,7 +45,7 @@ void bgpstream_add_interval_filter(bgpstream_t * const bs, bgpstream_filter_type
 				   const char* filter_start, const char* filter_stop);
 
 /* configure the data interface */
-void bgpstream_set_data_interface(bgpstream_t * const bs, const char *datasource_name);
+void bgpstream_set_data_interface(bgpstream_t * const bs, const bgpstream_datasource_type datasource);
 
 /* configure the interface so that it blocks waiting for new data */
 void bgpstream_set_blocking(bgpstream_t * const bs);

@@ -55,10 +55,12 @@ int main(){
   bgpstream_add_filter(bs, BS_BGP_TYPE, "ribs");
   bgpstream_add_filter(bs, BS_BGP_TYPE, "updates");
   // Tue, 15 Jul 2014 05:30:00 GMT -> Tue, 15 Jul 2014 18:30:00 GMT
-  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1405402200", "1405449000");
+  //  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1405402200", "1405449000");
+  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1405411223", "1405411223");
+
 
   // set datasource interface
-  bgpstream_set_data_interface(bs, "csvfile");
+  bgpstream_set_data_interface(bs, BS_CSVFILE);
 
   int init_res = bgpstream_init(bs);
   
@@ -93,19 +95,20 @@ int main(){
 	  strcpy(rstatus, "VALID_RECORD");
 	  if(bs_record->bd_entry != NULL) {
 	    read++;
-	    printf("\t%d\t%ld\t%ld\t%d\t%s\t%s\t%d\n", 
+	    if(read >= 13814) {
+	      printf("\t%d\t%ld\t%ld\t%d\t%s\t%s\t%d\n", 
 		   counter, 
 		   bs_record->attributes.record_time,
 		   bs_record->attributes.dump_time,
 		   bs_record->attributes.dump_type, 
 		   bs_record->attributes.dump_collector,
 		   rstatus, (int)result_time);
-	    // process entry and get bgpdump output
-	   bgpdump_process(bs_record->bd_entry);
-	   bs_elem_queue = bgpstream_get_elem_queue(bs_record);
-	   print_elem_queue(bs_elem_queue);
-	   bgpstream_destroy_elem_queue(bs_elem_queue);
-
+	      // process entry and get bgpdump output
+	      bgpdump_process(bs_record->bd_entry);
+	      // bs_elem_queue = bgpstream_get_elem_queue(bs_record);
+	      // print_elem_queue(bs_elem_queue);
+	      // bgpstream_destroy_elem_queue(bs_elem_queue);
+	    }
 	  }	  
 	}
 	else {
@@ -156,7 +159,7 @@ int main(){
   // deallocate memory for interface
   bgpstream_destroy(bs);
 
-  printf("Read %d values\n", read);
+  printf("Read %d values - counter: %d\n", read, counter);
 
   return 0;
 }

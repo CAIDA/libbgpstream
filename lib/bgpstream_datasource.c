@@ -58,8 +58,7 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
     return NULL; // can't allocate memory
   }
   // default values
-  memset(datasource_mgr->datasource_name, 0, BGPSTREAM_DS_MAX_LEN);   
-  strcpy(datasource_mgr->datasource_name, "");   
+  datasource_mgr->datasource = BS_MYSQL; // default data source
   datasource_mgr->blocking = 0;
   // datasources (none of them is active)
   datasource_mgr->mysql_ds = NULL;
@@ -70,14 +69,13 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
   return datasource_mgr;
 }
 
-
 void bgpstream_datasource_mgr_set_data_interface(bgpstream_datasource_mgr_t *datasource_mgr,
-						 const char *datasource_name) {
+						 const bgpstream_datasource_type datasource) {
   debug("\tBSDS_MGR: set data interface start");
   if(datasource_mgr == NULL) {
     return; // no manager
   }
-  strcpy(datasource_mgr->datasource_name, datasource_name);   
+  datasource_mgr->datasource = datasource;   
   debug("\tBSDS_MGR: set  data interface end");
 }
 
@@ -89,7 +87,7 @@ void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
     return; // no manager
   }
   // datasource_mgr->blocking can be set at any time
-  if (strcmp(datasource_mgr->datasource_name, "mysql") == 0) {
+  if (datasource_mgr->datasource == BS_MYSQL) {
     datasource_mgr->mysql_ds = bgpstream_mysql_datasource_create(filter_mgr);
     if(datasource_mgr->mysql_ds == NULL) {
       datasource_mgr->status = DS_ERROR;
@@ -98,7 +96,7 @@ void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
       datasource_mgr->status = DS_ON;
     }
   }
-  if (strcmp(datasource_mgr->datasource_name, "customlist") == 0) {
+  if (datasource_mgr->datasource == BS_CUSTOMLIST) {
     datasource_mgr->customlist_ds = bgpstream_customlist_datasource_create(filter_mgr);
     if(datasource_mgr->customlist_ds == NULL) {
       datasource_mgr->status = DS_ERROR;
@@ -107,7 +105,7 @@ void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
       datasource_mgr->status = DS_ON;
     }
   }
-  if (strcmp(datasource_mgr->datasource_name, "csvfile") == 0) {
+  if (datasource_mgr->datasource == BS_CSVFILE) {
     datasource_mgr->csvfile_ds = bgpstream_csvfile_datasource_create(filter_mgr);
     if(datasource_mgr->csvfile_ds == NULL) {
       datasource_mgr->status = DS_ERROR;
@@ -138,7 +136,7 @@ int bgpstream_datasource_mgr_update_input_queue(bgpstream_datasource_mgr_t *data
     return -1; // no datasource manager
   }
   int results = -1;
-  if (strcmp(datasource_mgr->datasource_name, "mysql") == 0) {
+  if(datasource_mgr->datasource == BS_MYSQL) {
     do{
       results = bgpstream_mysql_datasource_update_input_queue(datasource_mgr->mysql_ds, input_mgr);
       if(results == 0 && datasource_mgr->blocking) {
@@ -148,11 +146,11 @@ int bgpstream_datasource_mgr_update_input_queue(bgpstream_datasource_mgr_t *data
       debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
     } while(datasource_mgr->blocking && results == 0);
   }
-  if (strcmp(datasource_mgr->datasource_name, "customlist") == 0) {
+  if(datasource_mgr->datasource == BS_CUSTOMLIST) {
     results = bgpstream_customlist_datasource_update_input_queue(datasource_mgr->customlist_ds, input_mgr);
     debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
   }
-  if (strcmp(datasource_mgr->datasource_name, "csvfile") == 0) {
+  if(datasource_mgr->datasource == BS_CSVFILE) {
     results = bgpstream_csvfile_datasource_update_input_queue(datasource_mgr->csvfile_ds, input_mgr);
     debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
   }
@@ -167,15 +165,15 @@ void bgpstream_datasource_mgr_close(bgpstream_datasource_mgr_t *datasource_mgr) 
   if(datasource_mgr == NULL) {
     return; // no manager to destroy
   }
-  if (strcmp(datasource_mgr->datasource_name, "mysql") == 0) {
+  if (datasource_mgr->datasource == BS_MYSQL) {
     bgpstream_mysql_datasource_destroy(datasource_mgr->mysql_ds);
     datasource_mgr->mysql_ds = NULL;
   }
-  if (strcmp(datasource_mgr->datasource_name, "customlist") == 0) {
+  if (datasource_mgr->datasource == BS_CUSTOMLIST) {
     bgpstream_customlist_datasource_destroy(datasource_mgr->customlist_ds);
     datasource_mgr->customlist_ds = NULL;
   }
-  if (strcmp(datasource_mgr->datasource_name, "csvfile") == 0) {
+  if (datasource_mgr->datasource == BS_CSVFILE) {
     bgpstream_csvfile_datasource_destroy(datasource_mgr->csvfile_ds);
     datasource_mgr->csvfile_ds = NULL;
   }
@@ -488,8 +486,8 @@ static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_dat
   char* tmp;
   // if list has not been read yet, then we push these files in the input queue
   if(csvfile_ds->csvfile_read == 0) {
-    //stream = fopen("/Users/chiara/Desktop/local_db/bgp_data.csv", "r");
-    stream = fopen("/scratch/satc/chiaras_test/local_db/bgp_data.csv", "r");
+    stream = fopen("/Users/chiara/Desktop/local_db/bgp_data.csv", "r");
+    //stream = fopen("/scratch/satc/chiaras_test/local_db/bgp_data.csv", "r");
     if(stream != NULL) {
       while (fgets(line, 1024, stream)) {
 	tmp = strdup(line);
