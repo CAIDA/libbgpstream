@@ -22,20 +22,17 @@ TAGS
 #publish_docs.sh
 
 # Compiled programs
-corsaro
-cors2ascii
-cors-ft-aggregate
-cors-ft-reports
-cors-trace2tuple
-corsaro-*.tar.gz
+bgpcorsaro
+bc2ascii
+bgpcorsaro-*.tar.gz
 
 # doxygen files
 docs/doxygen/caida-html
 docs/doxygen/html
 docs/doxygen/latex
 docs/doxygen/man
-docs/corsaro.caida.doxygen
-docs/corsaro.doxygen
+docs/bgpcorsaro.caida.doxygen
+docs/bgpcorsaro.doxygen
 
 # Autotools files
 # http://www.gnu.org/software/automake

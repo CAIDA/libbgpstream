@@ -22,11 +22,34 @@
 # along with bgpcorsaro.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-SUBDIRS = common docs lib tools
-AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/lib -I$(top_srcdir)/common \
+SUBDIRS = plugins
+AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/common \
+	-I$(top_srcdir)/common/libpatricia \
 	-I$(top_srcdir)/lib/plugins
 
-EXTRA_DIST =
+lib_LTLIBRARIES = libbgpcorsaro.la
+
+include_HEADERS = bgpcorsaro.h bgpcorsaro_log.h bgpcorsaro_io.h
+
+libbgpcorsaro_la_SOURCES = 	\
+	bgpcorsaro.c 		\
+	bgpcorsaro.h 		\
+	bgpcorsaro_file.c	\
+	bgpcorsaro_file.h	\
+	bgpcorsaro_int.h 	\
+	bgpcorsaro_io.c 	\
+	bgpcorsaro_io.h 	\
+	bgpcorsaro_log.c	\
+	bgpcorsaro_log.h	\
+	bgpcorsaro_plugin.c 	\
+	bgpcorsaro_plugin.h	\
+	bgpcorsaro_tag.c	\
+	bgpcorsaro_tag.h
+
+libbgpcorsaro_la_LIBADD = $(top_builddir)/common/libcccommon.la \
+	$(top_builddir)/lib/plugins/libbgpcorsaroplugins.la
+
+libbgpcorsaro_la_LDFLAGS = -version-info @BGPCORSARO_MAJOR_VERSION@:@BGPCORSARO_MINOR_VERSION@:@BGPCORSARO_MID_VERSION@
 
 ACLOCAL_AMFLAGS = -I m4
 
