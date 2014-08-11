@@ -73,7 +73,9 @@ static bgpstream_elem_t * bd2bi_create_route_info() {
   ri->peer_asnumber = 0;
   // ri->prefix;
   // ri->next_hop;  
-  // memset(&ri->aspath, 0, sizeof(bgpstream_aspath_t));  
+  ri->aspath.type = BST_UINT32_ASPATH;
+  ri->aspath.hop_count = 0;
+  ri->aspath.numeric_aspath = NULL;  
   ri->old_state = BST_UNKNOWN;  
   ri->new_state = BST_UNKNOWN;    
   ri->next = NULL;

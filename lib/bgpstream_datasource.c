@@ -508,6 +508,7 @@ static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_dat
 	free(ret_memory);
 	// strdup malloc memory
 	free(tmp);
+	printf("%s = %s = %s = %d\n", csvfile_ds->filename, csvfile_ds->bgp_type, csvfile_ds->collector, csvfile_ds->filetime);
 	if(bgpstream_csvfile_datasource_filter_ok(csvfile_ds)){
 	  num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, csvfile_ds->filename,
 							       csvfile_ds->project, csvfile_ds->collector,

@@ -505,7 +505,6 @@ int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reade
   // otherwise we destroy the reader
   else {
     bs_record->dump_pos = DUMP_END;
-    printf("destroy reader\n");
     bgpstream_reader_destroy(bs_reader);
   }
   debug("\tBSR_MGR: get_next_record: end");
