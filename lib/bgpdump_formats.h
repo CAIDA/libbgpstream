@@ -245,6 +245,7 @@ typedef struct struct_BGPDUMP_ENTRY {
     BGPDUMP_BODY 	body;
   // comments here
   struct struct_BGPDUMP * dump;
+  BGPDUMP_TABLE_DUMP_V2_PEER_INDEX_TABLE *table_dump_v2_peer_index_table;
 } BGPDUMP_ENTRY;
 
 #endif

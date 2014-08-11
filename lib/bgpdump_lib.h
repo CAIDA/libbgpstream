@@ -57,7 +57,8 @@ typedef struct struct_BGPDUMP {
   // this object used to be a global variable, now it is part of 
   // BGPDUMP so that multiple BGPDUMP objects can be used simultaneously 
   // without collisions
-    BGPDUMP_TABLE_DUMP_V2_PEER_INDEX_TABLE *table_dump_v2_peer_index_table;
+  BGPDUMP_TABLE_DUMP_V2_PEER_INDEX_TABLE *table_dump_v2_peer_index_table;
+  BGPDUMP_ENTRY * current_entry;
 } BGPDUMP;
 
 /* prototypes */
