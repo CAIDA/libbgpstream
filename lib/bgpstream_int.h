@@ -36,13 +36,13 @@
 
 typedef enum {ALLOCATED, ON, OFF} bgpstream_status;
 
-typedef struct struct_bgpstream_t {  
+struct struct_bgpstream_t {  
   bgpstream_input_mgr_t *input_mgr;
   bgpstream_reader_mgr_t *reader_mgr;
   bgpstream_filter_mgr_t *filter_mgr;
   bgpstream_datasource_mgr_t *datasource_mgr;
   bgpstream_status status;  
-} bgpstream_t;
+};
 
 
 
