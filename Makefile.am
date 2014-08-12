@@ -22,7 +22,7 @@
 # along with bgpcorsaro.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-SUBDIRS = common docs lib tools
+SUBDIRS = common lib tools
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/lib -I$(top_srcdir)/common \
 	-I$(top_srcdir)/lib/plugins
 
