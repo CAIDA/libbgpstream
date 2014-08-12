@@ -26,6 +26,14 @@
 #include "bgpstream_datasource.h"
 #include "bgpstream_debug.h"
 
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
 
 /* datasource specific functions declarations */
 
@@ -481,12 +489,20 @@ static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_dat
   debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue start");  
   int num_results = 0;       
   FILE* stream;
+  int fd;
   char line[1024];
   char * ret_memory = NULL;
   char* tmp;
   // if list has not been read yet, then we push these files in the input queue
   if(csvfile_ds->csvfile_read == 0) {
     stream = fopen("/Users/chiara/Desktop/local_db/bgp_data.csv", "r");
+    fd = fileno(stream);
+    // lock file using the file descriptor fileno(stream) returns int
+    if (flock(fd, LOCK_EX) == -1) {
+      log_err("lockf failed");
+      exit(EXIT_FAILURE);
+    }
+    fseek(stream, 0, SEEK_SET );
     //stream = fopen("/scratch/satc/chiaras_test/local_db/bgp_data.csv", "r");
     if(stream != NULL) {
       while (fgets(line, 1024, stream)) {
@@ -508,12 +524,16 @@ static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_dat
 	free(ret_memory);
 	// strdup malloc memory
 	free(tmp);
-	printf("%s = %s = %s = %d\n", csvfile_ds->filename, csvfile_ds->bgp_type, csvfile_ds->collector, csvfile_ds->filetime);
+	// printf("%s = %s = %s = %d\n", csvfile_ds->filename, csvfile_ds->bgp_type, csvfile_ds->collector, csvfile_ds->filetime);
 	if(bgpstream_csvfile_datasource_filter_ok(csvfile_ds)){
 	  num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, csvfile_ds->filename,
 							       csvfile_ds->project, csvfile_ds->collector,
 							       csvfile_ds->bgp_type, csvfile_ds->filetime);
 	}
+      }
+      if (flock(fd, LOCK_UN) == -1) {
+	log_err("u-lockf failed");
+	exit(EXIT_FAILURE);
       }
       fclose(stream);
     }
