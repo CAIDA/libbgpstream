@@ -1,5 +1,3 @@
-AC_PREREQ([2.68])
-
 AC_INIT([libbgpdump], [1.4.99.14], [ris@ripe.net])
 
 LIBBGPDUMP_MAJOR_VERSION=0
@@ -61,7 +59,6 @@ AC_CHECK_FUNCS(inet_ntop, [], AC_CHECK_LIB(nsl, inet_ntop, [], AC_MSG_ERROR([ine
 
 
 # Checks for typedefs, structures, and compiler characteristics.
-AC_C_INLINE
 AC_TYPE_SIZE_T
 AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
