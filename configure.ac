@@ -54,6 +54,7 @@ AC_CONFIG_MACRO_DIR([m4])
 
 AC_CONFIG_SRCDIR([lib/bgpcorsaro.c])
 AC_CONFIG_HEADERS([config.h])
+#AX_PREFIX_CONFIG_H([lib/bgpcorsaro_config.h])
 
 # Checks for programs.
 AC_PROG_LIBTOOL
@@ -136,6 +137,8 @@ AX_LIB_SOCKET_NSL
 # Checks for libraries.
 AC_CHECK_LIB([bgpstream], [bgpstream_create], ,[AC_MSG_ERROR(
 		      [libbgpstream required])])
+AC_CHECK_LIB([bgpdump], [bgpdump_read_next], ,
+	               [AC_MSG_ERROR( [libbgpdump required ])])
 AC_SEARCH_LIBS([wandio_create], [wandio trace], ,[AC_MSG_ERROR(
 		 [libwandio required (included with libtrace since 3.0.15)]
 		 )])
@@ -202,7 +205,7 @@ ED_WITH_PLUGIN([bgpcorsaro_filtergeo],[filtergeo],[FILTERGEO],[no])
 ED_WITH_PLUGIN([bgpcorsaro_filterpfx],[filterpfx],[FILTERPFX],[no])
 
 # default plugins
-ED_WITH_PLUGIN([bgpcorsaro_flowtuple],[flowtuple],[SIXT],[yes])
+ED_WITH_PLUGIN([bgpcorsaro_dump],[dump],[DUMP],[yes])
 
 # optional plugins
 ED_WITH_PLUGIN([bgpcorsaro_tagstats],[tagstats],[TAGSTATS],[no])

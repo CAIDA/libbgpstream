@@ -1,30 +1,30 @@
 /*
- * corsaro
+ * bgpcorsaro
  *
  * Alistair King, CAIDA, UC San Diego
  * corsaro-info@caida.org
  *
  * Copyright (C) 2012 The Regents of the University of California.
  *
- * This file is part of corsaro.
+ * This file is part of bgpcorsaro.
  *
- * corsaro is free software: you can redistribute it and/or modify
+ * bgpcorsaro is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * corsaro is distributed in the hope that it will be useful,
+ * bgpcorsaro is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with corsaro.  If not, see <http://www.gnu.org/licenses/>.
+ * along with bgpcorsaro.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "config.h"
-#include "corsaro_int.h"
+#include "bgpcorsaro_int.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -32,21 +32,21 @@
 
 #include "utils.h"
 
-#include "corsaro_log.h"
+#include "bgpcorsaro_log.h"
 
-#include "corsaro_tag.h"
+#include "bgpcorsaro_tag.h"
 
 /** ==== PUBLIC API FUNCTIONS BELOW HERE ==== */
 
 /* ========== TAG MANAGER ========== */
 
-corsaro_tag_manager_t *corsaro_tag_manager_init(corsaro_t *corsaro)
+bgpcorsaro_tag_manager_t *bgpcorsaro_tag_manager_init(bgpcorsaro_t *bgpcorsaro)
 {
-  corsaro_tag_manager_t *manager;
+  bgpcorsaro_tag_manager_t *manager;
 
-  if((manager = malloc_zero(sizeof(corsaro_tag_manager_t))) == NULL)
+  if((manager = malloc_zero(sizeof(bgpcorsaro_tag_manager_t))) == NULL)
     {
-      corsaro_log(__func__, corsaro, "failed to malloc tag manager");
+      bgpcorsaro_log(__func__, bgpcorsaro, "failed to malloc tag manager");
       return NULL;
     }
 
@@ -54,7 +54,7 @@ corsaro_tag_manager_t *corsaro_tag_manager_init(corsaro_t *corsaro)
   return manager;
 }
 
-void corsaro_tag_manager_free(corsaro_tag_manager_t *manager)
+void bgpcorsaro_tag_manager_free(bgpcorsaro_tag_manager_t *manager)
 {
   int i;
 
@@ -65,7 +65,7 @@ void corsaro_tag_manager_free(corsaro_tag_manager_t *manager)
     {
       for(i=0; i<manager->groups_cnt; i++)
 	{
-	  corsaro_tag_group_free(manager->groups[i]);
+	  bgpcorsaro_tag_group_free(manager->groups[i]);
 	  manager->groups[i] = NULL;
 	}
       free(manager->groups);
@@ -78,7 +78,7 @@ void corsaro_tag_manager_free(corsaro_tag_manager_t *manager)
     {
       for(i=0; i<manager->tags_cnt; i++)
 	{
-	  corsaro_tag_free(manager->tags[i]);
+	  bgpcorsaro_tag_free(manager->tags[i]);
 	  manager->tags[i] = NULL;
 	}
       free(manager->tags);
@@ -94,7 +94,7 @@ void corsaro_tag_manager_free(corsaro_tag_manager_t *manager)
 
 /* ========== TAG STATE ========== */
 
-void corsaro_tag_state_reset(corsaro_packet_state_t *state)
+void bgpcorsaro_tag_state_reset(bgpcorsaro_record_state_t *state)
 {
   int i;
   /* reset each matched tag */
@@ -106,7 +106,7 @@ void corsaro_tag_state_reset(corsaro_packet_state_t *state)
   state->tags.tag_matches_set_cnt = 0;
 }
 
-void corsaro_tag_state_free(corsaro_packet_state_t *state)
+void bgpcorsaro_tag_state_free(bgpcorsaro_record_state_t *state)
 {
   if(state->tags.tag_matches != NULL)
     {
@@ -118,25 +118,25 @@ void corsaro_tag_state_free(corsaro_packet_state_t *state)
 
 /* ========== TAGS ========== */
 
-corsaro_tag_t *corsaro_tag_init(corsaro_t *corsaro, const char *name,
-				void *user)
+bgpcorsaro_tag_t *bgpcorsaro_tag_init(bgpcorsaro_t *bgpcorsaro, const char *name,
+				      void *user)
 {
-  assert(corsaro != NULL);
+  assert(bgpcorsaro != NULL);
 
-  corsaro_tag_t *tag;
-  corsaro_tag_manager_t *manager = corsaro->tag_manager;
+  bgpcorsaro_tag_t *tag;
+  bgpcorsaro_tag_manager_t *manager = bgpcorsaro->tag_manager;
 
   assert(manager != NULL);
 
   /* now check that a tag with this name does not already exist */
-  if((tag = corsaro_tag_get(corsaro, name)) != NULL)
+  if((tag = bgpcorsaro_tag_get(bgpcorsaro, name)) != NULL)
     {
       return tag;
     }
 
-  if((tag = malloc_zero(sizeof(corsaro_tag_t))) == NULL)
+  if((tag = malloc_zero(sizeof(bgpcorsaro_tag_t))) == NULL)
     {
-      corsaro_log(__func__, corsaro, "failed to malloc tag");
+      bgpcorsaro_log(__func__, bgpcorsaro, "failed to malloc tag");
       return NULL;
     }
 
@@ -153,35 +153,35 @@ corsaro_tag_t *corsaro_tag_init(corsaro_t *corsaro, const char *name,
   tag->user = user;
 
   /* resize the array of tags to hold this one */
-  if((manager->tags = realloc(manager->tags, sizeof(corsaro_tag_t*) *
-				 manager->tags_cnt)) == NULL)
+  if((manager->tags = realloc(manager->tags, sizeof(bgpcorsaro_tag_t*) *
+			      manager->tags_cnt)) == NULL)
     {
-      corsaro_log(__func__, corsaro, "failed to malloc tag array");
-      corsaro_tag_free(tag);
+      bgpcorsaro_log(__func__, bgpcorsaro, "failed to malloc tag array");
+      bgpcorsaro_tag_free(tag);
       return NULL;
     }
 
   manager->tags[tag->id] = tag;
 
   /* resize the array of matched tags to hold this one */
-  if((corsaro->packet->state.tags.tag_matches =
-      realloc(corsaro->packet->state.tags.tag_matches,
+  if((bgpcorsaro->record->state.tags.tag_matches =
+      realloc(bgpcorsaro->record->state.tags.tag_matches,
 	      sizeof(uint8_t) * manager->tags_cnt)) == NULL)
     {
-      corsaro_log(__func__, corsaro, "failed to malloc tag result array");
+      bgpcorsaro_log(__func__, bgpcorsaro, "failed to malloc tag result array");
       return NULL;
     }
-  corsaro->packet->state.tags.tag_matches[tag->id] = 0;
-  corsaro->packet->state.tags.tag_matches_cnt = manager->tags_cnt;
+  bgpcorsaro->record->state.tags.tag_matches[tag->id] = 0;
+  bgpcorsaro->record->state.tags.tag_matches_cnt = manager->tags_cnt;
 
   return tag;
 }
 
-corsaro_tag_t *corsaro_tag_get(corsaro_t *corsaro, const char *name)
+bgpcorsaro_tag_t *bgpcorsaro_tag_get(bgpcorsaro_t *bgpcorsaro, const char *name)
 {
-  assert(corsaro != NULL);
-  assert(corsaro->tag_manager != NULL);
-  corsaro_tag_manager_t *manager = corsaro->tag_manager;
+  assert(bgpcorsaro != NULL);
+  assert(bgpcorsaro->tag_manager != NULL);
+  bgpcorsaro_tag_manager_t *manager = bgpcorsaro->tag_manager;
 
   int i;
 
@@ -198,15 +198,15 @@ corsaro_tag_t *corsaro_tag_get(corsaro_t *corsaro, const char *name)
   return NULL;
 }
 
-int corsaro_tag_get_all(corsaro_t *corsaro, corsaro_tag_t ***tags)
+int bgpcorsaro_tag_get_all(bgpcorsaro_t *bgpcorsaro, bgpcorsaro_tag_t ***tags)
 {
-  assert(corsaro != NULL);
-  assert(corsaro->tag_manager != NULL);
-  *tags = corsaro->tag_manager->tags;
-  return corsaro->tag_manager->tags_cnt;
+  assert(bgpcorsaro != NULL);
+  assert(bgpcorsaro->tag_manager != NULL);
+  *tags = bgpcorsaro->tag_manager->tags;
+  return bgpcorsaro->tag_manager->tags_cnt;
 }
 
-void corsaro_tag_free(corsaro_tag_t *tag)
+void bgpcorsaro_tag_free(bgpcorsaro_tag_t *tag)
 {
   /* we will be nice and let people free tags that they created */
   if(tag == NULL)
@@ -231,8 +231,8 @@ void corsaro_tag_free(corsaro_tag_t *tag)
   free(tag);
 }
 
-int corsaro_tag_is_match(corsaro_packet_state_t *state,
-			    corsaro_tag_t *tag)
+int bgpcorsaro_tag_is_match(bgpcorsaro_record_state_t *state,
+			    bgpcorsaro_tag_t *tag)
 {
   assert(state != NULL);
   assert(tag != NULL);
@@ -241,13 +241,13 @@ int corsaro_tag_is_match(corsaro_packet_state_t *state,
   return state->tags.tag_matches[tag->id];
 }
 
-int corsaro_tag_is_match_any(corsaro_packet_state_t *state)
+int bgpcorsaro_tag_is_match_any(bgpcorsaro_record_state_t *state)
 {
   return state->tags.tag_matches_set_cnt;
 }
 
-void corsaro_tag_set_match(corsaro_packet_state_t *state,
-			      corsaro_tag_t *tag,
+void bgpcorsaro_tag_set_match(bgpcorsaro_record_state_t *state,
+			      bgpcorsaro_tag_t *tag,
 			      int match)
 {
   assert(state != NULL);
@@ -270,27 +270,27 @@ void corsaro_tag_set_match(corsaro_packet_state_t *state,
 
 /* ========== TAG GROUPS ========== */
 
-corsaro_tag_group_t *corsaro_tag_group_init(corsaro_t *corsaro,
-					    const char *name,
-					    corsaro_tag_group_match_mode_t mode,
-					    void *user)
+bgpcorsaro_tag_group_t *bgpcorsaro_tag_group_init(bgpcorsaro_t *bgpcorsaro,
+						  const char *name,
+						  bgpcorsaro_tag_group_match_mode_t mode,
+						  void *user)
 {
-  assert(corsaro != NULL);
+  assert(bgpcorsaro != NULL);
 
-  corsaro_tag_group_t *group;
-  corsaro_tag_manager_t *manager = corsaro->tag_manager;
+  bgpcorsaro_tag_group_t *group;
+  bgpcorsaro_tag_manager_t *manager = bgpcorsaro->tag_manager;
 
   assert(manager != NULL);
 
   /* now check that a group with this name does not already exist */
-  if((group = corsaro_tag_group_get(corsaro, name)) != NULL)
+  if((group = bgpcorsaro_tag_group_get(bgpcorsaro, name)) != NULL)
     {
       return group;
     }
 
-  if((group = malloc_zero(sizeof(corsaro_tag_group_t))) == NULL)
+  if((group = malloc_zero(sizeof(bgpcorsaro_tag_group_t))) == NULL)
     {
-      corsaro_log(__func__, corsaro, "failed to malloc group");
+      bgpcorsaro_log(__func__, bgpcorsaro, "failed to malloc group");
       return NULL;
     }
 
@@ -310,11 +310,11 @@ corsaro_tag_group_t *corsaro_tag_group_init(corsaro_t *corsaro,
   group->user = user;
 
   /* resize the array of tags to hold this one */
-  if((manager->groups = realloc(manager->groups, sizeof(corsaro_tag_group_t*) *
+  if((manager->groups = realloc(manager->groups, sizeof(bgpcorsaro_tag_group_t*) *
 				manager->groups_cnt)) == NULL)
     {
-      corsaro_log(__func__, corsaro, "failed to malloc group array");
-      corsaro_tag_group_free(group);
+      bgpcorsaro_log(__func__, bgpcorsaro, "failed to malloc group array");
+      bgpcorsaro_tag_group_free(group);
       return NULL;
     }
 
@@ -323,7 +323,7 @@ corsaro_tag_group_t *corsaro_tag_group_init(corsaro_t *corsaro,
   return group;
 }
 
-void corsaro_tag_group_free(corsaro_tag_group_t *group)
+void bgpcorsaro_tag_group_free(bgpcorsaro_tag_group_t *group)
 {
   int i;
 
@@ -361,11 +361,11 @@ void corsaro_tag_group_free(corsaro_tag_group_t *group)
   free(group);
 }
 
-corsaro_tag_group_t *corsaro_tag_group_get(corsaro_t *corsaro, const char *name)
+bgpcorsaro_tag_group_t *bgpcorsaro_tag_group_get(bgpcorsaro_t *bgpcorsaro, const char *name)
 {
-  assert(corsaro != NULL);
-  assert(corsaro->tag_manager != NULL);
-  corsaro_tag_manager_t *manager = corsaro->tag_manager;
+  assert(bgpcorsaro != NULL);
+  assert(bgpcorsaro->tag_manager != NULL);
+  bgpcorsaro_tag_manager_t *manager = bgpcorsaro->tag_manager;
 
   int i;
 
@@ -382,21 +382,21 @@ corsaro_tag_group_t *corsaro_tag_group_get(corsaro_t *corsaro, const char *name)
   return NULL;
 }
 
-int corsaro_tag_group_get_all(corsaro_t *corsaro, corsaro_tag_group_t ***groups)
+int bgpcorsaro_tag_group_get_all(bgpcorsaro_t *bgpcorsaro, bgpcorsaro_tag_group_t ***groups)
 {
-  assert(corsaro != NULL);
-  assert(corsaro->tag_manager != NULL);
-  *groups = corsaro->tag_manager->groups;
-  return corsaro->tag_manager->groups_cnt;
+  assert(bgpcorsaro != NULL);
+  assert(bgpcorsaro->tag_manager != NULL);
+  *groups = bgpcorsaro->tag_manager->groups;
+  return bgpcorsaro->tag_manager->groups_cnt;
 }
 
-int corsaro_tag_group_add_tag(corsaro_tag_group_t *group,
-			      corsaro_tag_t *tag)
+int bgpcorsaro_tag_group_add_tag(bgpcorsaro_tag_group_t *group,
+				 bgpcorsaro_tag_t *tag)
 {
   assert(group != NULL);
   assert(tag != NULL);
 
-  if((group->tags = realloc(group->tags, sizeof(corsaro_tag_t*) *
+  if((group->tags = realloc(group->tags, sizeof(bgpcorsaro_tag_t*) *
 			    (group->tags_cnt+1))) == NULL)
     {
       return -1;
@@ -408,16 +408,16 @@ int corsaro_tag_group_add_tag(corsaro_tag_group_t *group,
   return 0;
 }
 
-int corsaro_tag_group_get_tags(corsaro_tag_group_t *group,
-			       corsaro_tag_t ***tags)
+int bgpcorsaro_tag_group_get_tags(bgpcorsaro_tag_group_t *group,
+				  bgpcorsaro_tag_t ***tags)
 {
   assert(group != NULL);
   *tags = group->tags;
   return group->tags_cnt;
 }
 
-int corsaro_tag_group_is_match(corsaro_packet_state_t *state,
-			       corsaro_tag_group_t *group)
+int bgpcorsaro_tag_group_is_match(bgpcorsaro_record_state_t *state,
+				  bgpcorsaro_tag_group_t *group)
 {
   int i;
   int matches = 0;
@@ -427,7 +427,7 @@ int corsaro_tag_group_is_match(corsaro_packet_state_t *state,
 
   for(i=0; i<group->tags_cnt; i++)
     {
-      if(corsaro_tag_is_match(state, group->tags[i]) > 0)
+      if(bgpcorsaro_tag_is_match(state, group->tags[i]) > 0)
 	{
 	  matches++;
 	}
@@ -435,11 +435,11 @@ int corsaro_tag_group_is_match(corsaro_packet_state_t *state,
 
   switch(group->mode)
     {
-    case CORSARO_TAG_GROUP_MATCH_MODE_ANY:
+    case BGPCORSARO_TAG_GROUP_MATCH_MODE_ANY:
       return matches;
       break;
 
-    case CORSARO_TAG_GROUP_MATCH_MODE_ALL:
+    case BGPCORSARO_TAG_GROUP_MATCH_MODE_ALL:
       return matches == group->tags_cnt;
       break;
 

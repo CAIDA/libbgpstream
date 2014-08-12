@@ -34,8 +34,6 @@ include_HEADERS = bgpcorsaro.h bgpcorsaro_log.h bgpcorsaro_io.h
 libbgpcorsaro_la_SOURCES = 	\
 	bgpcorsaro.c 		\
 	bgpcorsaro.h 		\
-	bgpcorsaro_file.c	\
-	bgpcorsaro_file.h	\
 	bgpcorsaro_int.h 	\
 	bgpcorsaro_io.c 	\
 	bgpcorsaro_io.h 	\

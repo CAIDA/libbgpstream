@@ -27,7 +27,7 @@ AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/common -I$(top_srcdir)/lib \
 
 dist_bin_SCRIPTS =
 
-bin_PROGRAMS = bc2ascii bgpcorsaro
+bin_PROGRAMS = bgpcorsaro
 
 # main bgpcorsaro program
 bgpcorsaro_SOURCES = \
@@ -36,12 +36,6 @@ bgpcorsaro_SOURCES = \
 bgpcorsaro_LDADD = -lbgpcorsaro
 
 bgpcorsaro_LDFLAGS = -L$(top_builddir)/lib
-
-# bc2ascii program
-bc2ascii_SOURCES = \
-	bc2ascii.c
-bc2ascii_LDADD = -lbgpcorsaro
-bc2ascii_LDFLAGS = -L$(top_builddir)/lib
 
 ACLOCAL_AMFLAGS = -I m4
 

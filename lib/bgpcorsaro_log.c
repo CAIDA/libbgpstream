@@ -1,33 +1,33 @@
 /*
- * corsaro
+ * bgpcorsaro
  *
  * Alistair King, CAIDA, UC San Diego
  * corsaro-info@caida.org
  *
- * corsaro_log and timestamp_str functions adapted from scamper:
+ * bgpcorsaro_log and timestamp_str functions adapted from scamper:
  *   http://www.wand.net.nz/scamper
  *
  * Copyright (C) 2012 The Regents of the University of California.
  *
- * This file is part of corsaro.
+ * This file is part of bgpcorsaro.
  *
- * corsaro is free software: you can redistribute it and/or modify
+ * bgpcorsaro is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * corsaro is distributed in the hope that it will be useful,
+ * bgpcorsaro is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with corsaro.  If not, see <http://www.gnu.org/licenses/>.
+ * along with bgpcorsaro.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "config.h"
-#include "corsaro_int.h"
+#include "bgpcorsaro_int.h"
 
 #include <assert.h>
 #include <stdarg.h>
@@ -43,11 +43,11 @@
 #include <time.h>
 #endif
 
-#include "corsaro_file.h"
-#include "corsaro_io.h"
 #include "utils.h"
+#include "wandio_utils.h"
 
-#include "corsaro_log.h"
+#include "bgpcorsaro_io.h"
+#include "bgpcorsaro_log.h"
 
 static char *timestamp_str(char *buf, const size_t len)
 {
@@ -68,7 +68,7 @@ static char *timestamp_str(char *buf, const size_t len)
   return buf;
 }
 
-void generic_log(const char *func, corsaro_file_t *logfile, const char *format,
+void generic_log(const char *func, iow_t *logfile, const char *format,
 		 va_list ap)
 {
   char     message[512];
@@ -91,9 +91,8 @@ void generic_log(const char *func, corsaro_file_t *logfile, const char *format,
     }
   else
     {
-      /* we're special. we know that corsaro_file_printf can do without corsaro */
-      corsaro_file_printf(NULL, logfile, "%s%s%s\n", ts, fs, message);
-      corsaro_file_flush(NULL, logfile);
+      wandio_printf(logfile, "%s%s%s\n", ts, fs, message);
+      /*wandio_flush(logfile);*/
 
 #ifdef DEBUG
       /* we've been asked to dump debugging information */
@@ -103,34 +102,24 @@ void generic_log(const char *func, corsaro_file_t *logfile, const char *format,
     }
 }
 
-void corsaro_log_va(const char *func, corsaro_t *corsaro,
+void bgpcorsaro_log_va(const char *func, bgpcorsaro_t *bgpcorsaro,
 		  const char *format, va_list args)
 {
-  corsaro_file_t *lf = (corsaro == NULL) ? NULL : corsaro->logfile;
+  iow_t *lf = (bgpcorsaro == NULL) ? NULL : bgpcorsaro->logfile;
   generic_log(func, lf, format, args);
 }
 
-void corsaro_log(const char *func, corsaro_t *corsaro, const char *format, ...)
-{
-  va_list ap;
-  va_start(ap, format);
-  corsaro_log_va(func, corsaro, format, ap);
-  va_end(ap);
-}
-
-void corsaro_log_in(const char *func, corsaro_in_t *corsaro,
+void bgpcorsaro_log(const char *func, bgpcorsaro_t *bgpcorsaro,
 		    const char *format, ...)
 {
-#ifdef DEBUG
   va_list ap;
   va_start(ap, format);
-  generic_log(func, NULL, format, ap);
+  bgpcorsaro_log_va(func, bgpcorsaro, format, ap);
   va_end(ap);
-#endif
 }
 
-void corsaro_log_file(const char *func, corsaro_file_t *logfile,
-		      const char *format, ...)
+void bgpcorsaro_log_file(const char *func, iow_t *logfile,
+			 const char *format, ...)
 {
   va_list ap;
   va_start(ap, format);
@@ -138,13 +127,12 @@ void corsaro_log_file(const char *func, corsaro_file_t *logfile,
   va_end(ap);
 }
 
-int corsaro_log_init(corsaro_t *corsaro)
+int bgpcorsaro_log_init(bgpcorsaro_t *bgpcorsaro)
 {
-  if((corsaro->logfile = corsaro_io_prepare_file_full(corsaro,
-				    CORSARO_IO_LOG_NAME,
-				    &corsaro->interval_start,
-				    CORSARO_FILE_MODE_ASCII,
-				    CORSARO_FILE_COMPRESS_NONE,
+  if((bgpcorsaro->logfile = bgpcorsaro_io_prepare_file_full(bgpcorsaro,
+				    BGPCORSARO_IO_LOG_NAME,
+				    &bgpcorsaro->interval_start,
+				    WANDIO_COMPRESS_NONE,
 				    0, O_CREAT)) == NULL)
     {
       fprintf(stderr, "could not open log for writing\n");
@@ -153,25 +141,13 @@ int corsaro_log_init(corsaro_t *corsaro)
   return 0;
 }
 
-int corsaro_log_in_init(corsaro_in_t *corsaro)
+void bgpcorsaro_log_close(bgpcorsaro_t *bgpcorsaro)
 {
-  /* nothing to do, corsaro_log_in only logs to stderr, and iff --enable-debug
-     is passed to configure */
-  return 0;
-}
-
-void corsaro_log_close(corsaro_t *corsaro)
-{
-  if(corsaro->logfile != NULL)
+  if(bgpcorsaro->logfile != NULL)
     {
-      corsaro_file_close(NULL, corsaro->logfile);
-      corsaro->logfile = NULL;
+      wandio_wdestroy( bgpcorsaro->logfile);
+      bgpcorsaro->logfile = NULL;
     }
-}
-
-void corsaro_log_in_close(corsaro_in_t *corsaro)
-{
-  /* nothing to be done */
 }
 
 

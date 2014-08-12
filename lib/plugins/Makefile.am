@@ -35,9 +35,9 @@ include_HEADERS =
 PLUGIN_SRC=
 PLUGIN_LIBS=
 
-if WITH_PLUGIN_SIXT
-PLUGIN_SRC+=bgpcorsaro_flowtuple.c bgpcorsaro_flowtuple.h
-include_HEADERS+=bgpcorsaro_flowtuple.h
+if WITH_PLUGIN_DUMP
+PLUGIN_SRC+=bgpcorsaro_dump.c bgpcorsaro_dump.h
+include_HEADERS+=bgpcorsaro_dump.h
 endif
 if WITH_PLUGIN_IPMETA
 PLUGIN_SRC+=bgpcorsaro_ipmeta.c bgpcorsaro_ipmeta.h
