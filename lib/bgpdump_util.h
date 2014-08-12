@@ -19,20 +19,18 @@
  Created by Devin Bayer on 9/1/10.
 */
 
-#ifndef _UTIL_H
-#define _UTIL_H
+#ifndef _BGPDUMP_UTIL_H
+#define _BGPDUMP_UTIL_H
 #include <time.h>
 
 #include "bgpdump_attr.h"
 
-/*
 void log_to_stderr(void);
 void log_to_syslog(void);
 
 void err(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 void warn(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 void debug(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
-*/
 
 // system inet_ntop() functions format IPv6 addresses
 // inconsistently, so use these versions

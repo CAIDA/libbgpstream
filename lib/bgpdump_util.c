@@ -19,7 +19,7 @@
  Created by Devin Bayer on 9/1/10.
 */
 
-#include "util.h"
+#include "bgpdump_util.h"
 
 #include <stdlib.h>
 #include <stdio.h>
