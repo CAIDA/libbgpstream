@@ -37,11 +37,11 @@
 
 static bool bgpstream_reader_filter_bd_entry(const BGPDUMP_ENTRY * const bd_entry, 
 					     const bgpstream_filter_mgr_t * const filter_mgr) {
-  debug("\t\tBSR: filter entry: start");  
+  bgpstream_debug("\t\tBSR: filter entry: start");  
   bgpstream_interval_filter_t * tif;
   if(bd_entry != NULL && filter_mgr != NULL) {
     if(filter_mgr->time_intervals == NULL ) {
-        debug("\t\tBSR: filter entry: end");  
+        bgpstream_debug("\t\tBSR: filter entry: end");  
 	return true; // no time filtering, 
     }
     long current_entry_time = (long) bd_entry->time;
@@ -49,13 +49,13 @@ static bool bgpstream_reader_filter_bd_entry(const BGPDUMP_ENTRY * const bd_entr
     while(tif != NULL) {      
       if(current_entry_time >= tif->time_interval_start &&
 	 current_entry_time <= tif->time_interval_stop) {
-	debug("\t\tBSR: filter entry: OK");  
+	bgpstream_debug("\t\tBSR: filter entry: OK");  
 	return true;
       }
       tif = tif->next;
     }
   }  
-  debug("\t\tBSR: filter entry: DISCARDED");    
+  bgpstream_debug("\t\tBSR: filter entry: DISCARDED");    
   return false;
 }
 
@@ -63,18 +63,18 @@ static bool bgpstream_reader_filter_bd_entry(const BGPDUMP_ENTRY * const bd_entr
 static void bgpstream_reader_read_new_data(bgpstream_reader_t * const bs_reader,
 					   const bgpstream_filter_mgr_t * const filter_mgr) {
   bool significant_entry = false;
-  debug("\t\tBSR: read new data: start");  
+  bgpstream_debug("\t\tBSR: read new data: start");  
   if(bs_reader == NULL) {
-    debug("\t\tBSR: read new data: invalid reader provided");    
+    bgpstream_debug("\t\tBSR: read new data: invalid reader provided");    
     return;
   }  
   if(bs_reader->status != VALID_ENTRY) {
-    debug("\t\tBSR: read new data: reader cannot read new data (previous read was not successful)");    
+    bgpstream_debug("\t\tBSR: read new data: reader cannot read new data (previous read was not successful)");    
     return;
   }  
   // if a valid record was read before (or it is the first time we read something)
   // assert(bs_reader->status == VALID_ENTRY)
-  debug("\t\tBSR: read new data: bd_entry has to be set to NULL");
+  bgpstream_debug("\t\tBSR: read new data: bd_entry has to be set to NULL");
   // entry should not be destroyed, otherwise we could destroy
   // what is in the current record, the next export record will take
   // care of it
@@ -82,20 +82,20 @@ static void bgpstream_reader_read_new_data(bgpstream_reader_t * const bs_reader,
   // check if the end of the file was already reached before
   // reading a new value
   if(bs_reader->bd_mgr->eof != 0) {
-    debug("\t\tBSR: read new data: end of file reached");      
+    bgpstream_debug("\t\tBSR: read new data: end of file reached");      
     bs_reader->status = END_OF_DUMP;
     return;
   }
-  debug("\t\tBSR: read new data (previous): %ld\t%ld\t%s\t%s\t%d",  
+  bgpstream_debug("\t\tBSR: read new data (previous): %ld\t%ld\t%s\t%s\t%d",  
 	bs_reader->record_time,
 	bs_reader->dump_time,
 	bs_reader->dump_type, 
 	bs_reader->dump_collector,
 	bs_reader->status);
-  debug("\t\tBSR: read new data: reading new entry (or entries) in bgpdump");   
-  debug("\t\tBSR: read new data: from %s", bs_reader->dump_name);
+  bgpstream_debug("\t\tBSR: read new data: reading new entry (or entries) in bgpdump");   
+  bgpstream_debug("\t\tBSR: read new data: from %s", bs_reader->dump_name);
   while(!significant_entry) {
-    debug("\t\t\tBSR: read new data: reading");   
+    bgpstream_debug("\t\t\tBSR: read new data: reading");   
     bs_reader->bd_entry = bgpdump_read_next(bs_reader->bd_mgr);   
     // check if an entry has been read
     if(bs_reader->bd_entry != NULL) {
@@ -156,27 +156,27 @@ static void bgpstream_reader_read_new_data(bgpstream_reader_t * const bs_reader,
   }
   // a significant entry has been found
   // and the reader has been updated accordingly
-  debug("\t\tBSR: read new data: end");  
+  bgpstream_debug("\t\tBSR: read new data: end");  
   return;
 }
 
 
 static bgpstream_reader_t * bgpstream_reader_create(const bgpstream_input_t * const bs_input,
 						    const bgpstream_filter_mgr_t * const filter_mgr) {
-  debug("\t\tBSR: create reader start");
+  bgpstream_debug("\t\tBSR: create reader start");
   if(bs_input == NULL) {
-    debug("\t\tBSR: create reader: empty bs_input provided");
-    debug("\t\tBSR: create reader end");
+    bgpstream_debug("\t\tBSR: create reader: empty bs_input provided");
+    bgpstream_debug("\t\tBSR: create reader end");
     return NULL; // no input to read
   }
   // allocate memory for reader
   bgpstream_reader_t *bs_reader = (bgpstream_reader_t*) malloc(sizeof(bgpstream_reader_t));
   if(bs_reader == NULL) {
-    debug("\t\tBSR: create reader: can't allocate memory for reader");
-    debug("\t\tBSR: create reader end"); 
+    bgpstream_debug("\t\tBSR: create reader: can't allocate memory for reader");
+    bgpstream_debug("\t\tBSR: create reader end"); 
     return NULL; // can't allocate memory for reader
   }
-  debug("\t\tBSR: create reader: initialize fields");
+  bgpstream_debug("\t\tBSR: create reader: initialize fields");
   // fields initialization
   bs_reader->next = NULL;
   bs_reader->bd_mgr = NULL;
@@ -196,17 +196,17 @@ static bgpstream_reader_t * bgpstream_reader_create(const bgpstream_input_t * co
   bs_reader->valid_read = 0;
   bs_reader->successful_read = 0;
   // open bgpdump
-  debug("\t\tBSR: create reader: bgpdump_open");
+  bgpstream_debug("\t\tBSR: create reader: bgpdump_open");
   bs_reader->bd_mgr = bgpdump_open_dump(bs_reader->dump_name);   
   if(bs_reader->bd_mgr == NULL) {     
-    debug("\t\tBSR: create reader: bgpdump_open_dump fails to open");
+    bgpstream_debug("\t\tBSR: create reader: bgpdump_open_dump fails to open");
     bs_reader->status = CANT_OPEN_DUMP;
     return bs_reader; // can't open bgpdump
   }
   // call bgpstream_reader_read_new_data
-  debug("\t\tBSR: create reader: read new data");
+  bgpstream_debug("\t\tBSR: create reader: read new data");
   bgpstream_reader_read_new_data(bs_reader, filter_mgr);
-  debug("\t\tBSR: create reader: end");  
+  bgpstream_debug("\t\tBSR: create reader: end");  
   // return reader
   return bs_reader;
 }
@@ -215,37 +215,37 @@ static bgpstream_reader_t * bgpstream_reader_create(const bgpstream_input_t * co
 
 static void bgpstream_reader_export_record(bgpstream_reader_t * const bs_reader, 
 					   bgpstream_record_t * const bs_record) {
-  debug("\t\tBSR: export record: start");    
+  bgpstream_debug("\t\tBSR: export record: start");    
   if(bs_reader == NULL) {
-    debug("\t\tBSR: export record: invalid reader provided");    
+    bgpstream_debug("\t\tBSR: export record: invalid reader provided");    
     return;
   }  
   if(bs_record == NULL) {
-    debug("\t\tBSR: export record: invalid record provided");    
+    bgpstream_debug("\t\tBSR: export record: invalid record provided");    
     return;
   }  
   // if bs_reader status is END_OF_DUMP we shouldn't have called this
   // function
   if(bs_reader->status == END_OF_DUMP) {
-    debug("\t\tBSR: export record: end of dump was reached");    
+    bgpstream_debug("\t\tBSR: export record: end of dump was reached");    
     return;
   }  
   // if bs_record contains an initialized bgpdump entry we destroy it
   if(bs_record->bd_entry != NULL) {
-    debug("\t\tBSR: export record: free memory for bgpdump entry");    
+    bgpstream_debug("\t\tBSR: export record: free memory for bgpdump entry");    
     // at this point the client/user has already used (or made a
     // a copy of) the record
     bgpdump_free_mem(bs_record->bd_entry);
     bs_record->bd_entry = NULL;
   }
   // read bgpstream_reader field and copy them to a bs_record
-  debug("\t\tBSR: export record: copying bd_entry");    
+  bgpstream_debug("\t\tBSR: export record: copying bd_entry");    
   bs_record->bd_entry = bs_reader->bd_entry;
   // disconnect reader from exported entry
   bs_reader->bd_entry = NULL;
   // memset(bs_record->attributes.dump_project, 0, BGPSTREAM_PAR_MAX_LEN);
   // memset(bs_record->attributes.dump_collector, 0, BGPSTREAM_PAR_MAX_LEN);
-  debug("\t\tBSR: export record: copying attributes");    
+  bgpstream_debug("\t\tBSR: export record: copying attributes");    
   strcpy(bs_record->attributes.dump_project, bs_reader->dump_project);
   strcpy(bs_record->attributes.dump_collector, bs_reader->dump_collector);
   //   strcpy(bs_record->attributes.dump_type, bs_reader->dump_type);
@@ -263,7 +263,7 @@ static void bgpstream_reader_export_record(bgpstream_reader_t * const bs_reader,
   else {
     bs_record->dump_pos = DUMP_MIDDLE;    
   }
-  debug("\t\tBSR: export record: copying status");    
+  bgpstream_debug("\t\tBSR: export record: copying status");    
   switch(bs_reader->status){
   case VALID_ENTRY:
     bs_record->status = VALID_RECORD;
@@ -283,20 +283,20 @@ static void bgpstream_reader_export_record(bgpstream_reader_t * const bs_reader,
   default:
     bs_record->status = EMPTY_SOURCE;
   }
-  debug("Exported: %ld\t%ld\t%d\t%s\t%d", 		   
+  bgpstream_debug("Exported: %ld\t%ld\t%d\t%s\t%d", 		   
 		   bs_record->attributes.record_time,
 		   bs_record->attributes.dump_time,
 		   bs_record->attributes.dump_type, 
 		   bs_record->attributes.dump_collector,
 		   bs_record->status);
-  debug("\t\tBSR: export record: end");    
+  bgpstream_debug("\t\tBSR: export record: end");    
 }
 
 
 static void bgpstream_reader_destroy(bgpstream_reader_t * const bs_reader) {
-  debug("\t\tBSR: destroy reader start");
+  bgpstream_debug("\t\tBSR: destroy reader start");
   if(bs_reader == NULL) {
-    debug("\t\tBSR: destroy reader: null reader provided");    
+    bgpstream_debug("\t\tBSR: destroy reader: null reader provided");    
     return;
   }
   // we do not deallocate memory for bd_entry
@@ -308,22 +308,22 @@ static void bgpstream_reader_destroy(bgpstream_reader_t * const bs_reader) {
   bs_reader->bd_mgr = NULL;  
   // deallocate all memory for reader
   free(bs_reader);
-  debug("\t\tBSR: destroy reader end");
+  bgpstream_debug("\t\tBSR: destroy reader end");
 }
 
  //function used for debug
 static void print_reader_queue(const bgpstream_reader_t * const reader_queue) {
 #ifdef NDEBUG
   const bgpstream_reader_t * iterator = reader_queue;
-  debug("READER QUEUE: start");
+  bgpstream_debug("READER QUEUE: start");
   int i = 1;
   while(iterator != NULL) {    
-    debug("\t%d %s %s %ld %ld %d",i, iterator->dump_collector, iterator->dump_type, iterator->dump_time, iterator->record_time, iterator->status);
+    bgpstream_debug("\t%d %s %s %ld %ld %d",i, iterator->dump_collector, iterator->dump_type, iterator->dump_time, iterator->record_time, iterator->status);
     iterator = iterator->next;
     i++;
   }
   iterator = NULL;
-  debug("\nREADER QUEUE: end");  
+  bgpstream_debug("\nREADER QUEUE: end");  
 #endif
 }
 
@@ -334,36 +334,36 @@ static void print_reader_queue(const bgpstream_reader_t * const reader_queue) {
 
 
 bgpstream_reader_mgr_t * bgpstream_reader_mgr_create(const bgpstream_filter_mgr_t * const filter_mgr) {
-  debug("\tBSR_MGR: create reader mgr: start");
+  bgpstream_debug("\tBSR_MGR: create reader mgr: start");
   // allocate memory and initialize fields
   bgpstream_reader_mgr_t *bs_reader_mgr = (bgpstream_reader_mgr_t*) malloc(sizeof(bgpstream_reader_mgr_t));
   if(bs_reader_mgr == NULL) {
-    debug("\tBSR_MGR: create reader mgr: can't allocate memory for reader mgr");
-    debug("\tBSR_MGR: create reader mgr end");
+    bgpstream_debug("\tBSR_MGR: create reader mgr: can't allocate memory for reader mgr");
+    bgpstream_debug("\tBSR_MGR: create reader mgr end");
     return NULL; // can't allocate memory for reader
   }
   // mgr initialization
-  debug("\tBSR_MGR: create reader mgr: initialization");
+  bgpstream_debug("\tBSR_MGR: create reader mgr: initialization");
   bs_reader_mgr->reader_queue = NULL;
   bs_reader_mgr->filter_mgr = filter_mgr;
   bs_reader_mgr->status = EMPTY_READER_MGR;
-  debug("\tBSR_MGR: create reader mgr: end");
+  bgpstream_debug("\tBSR_MGR: create reader mgr: end");
   return bs_reader_mgr;
 }
 
 
 bool bgpstream_reader_mgr_is_empty(const bgpstream_reader_mgr_t * const bs_reader_mgr) {
-  debug("\tBSR_MGR: is_empty start");
+  bgpstream_debug("\tBSR_MGR: is_empty start");
   if(bs_reader_mgr == NULL) {
-  debug("\tBSR_MGR: is_empty end: empty!");
+  bgpstream_debug("\tBSR_MGR: is_empty end: empty!");
     return true;
   }
   if(bs_reader_mgr->status == EMPTY_READER_MGR) {
-    debug("\tBSR_MGR: is_empty end: empty!");
+    bgpstream_debug("\tBSR_MGR: is_empty end: empty!");
     return true;
   }
   else {
-    debug("\tBSR_MGR: is_empty end: non-empty!");
+    bgpstream_debug("\tBSR_MGR: is_empty end: non-empty!");
     return false;
   }
 }
@@ -371,13 +371,13 @@ bool bgpstream_reader_mgr_is_empty(const bgpstream_reader_mgr_t * const bs_reade
 
 static void bgpstream_reader_mgr_sorted_insert(bgpstream_reader_mgr_t * const bs_reader_mgr, 
 					       bgpstream_reader_t * const bs_reader) {
-  debug("\tBSR_MGR: sorted insert:start");
+  bgpstream_debug("\tBSR_MGR: sorted insert:start");
   if(bs_reader_mgr == NULL) {
-    debug("\tBSR_MGR: sorted insert: null reader mgr provided");    
+    bgpstream_debug("\tBSR_MGR: sorted insert: null reader mgr provided");    
     return;
   }
   if(bs_reader == NULL) {
-    debug("\tBSR_MGR: sorted insert: null reader provided");    
+    bgpstream_debug("\tBSR_MGR: sorted insert: null reader provided");    
     return;
   }  
 
@@ -427,7 +427,7 @@ static void bgpstream_reader_mgr_sorted_insert(bgpstream_reader_mgr_t * const bs
       }
     }  
   }
-  debug("\tBSR_MGR: sorted insert: end");
+  bgpstream_debug("\tBSR_MGR: sorted insert: end");
 }
 
 
@@ -435,12 +435,12 @@ static void bgpstream_reader_mgr_sorted_insert(bgpstream_reader_mgr_t * const bs
 void bgpstream_reader_mgr_add(bgpstream_reader_mgr_t * const bs_reader_mgr, 
 			      const bgpstream_input_t * const toprocess_queue,
 			      const bgpstream_filter_mgr_t * const filter_mgr) {
-  debug("\tBSR_MGR: add input: start");
+  bgpstream_debug("\tBSR_MGR: add input: start");
   const bgpstream_input_t * iterator = toprocess_queue;
   bgpstream_reader_t * bs_reader = NULL;
   // foreach  bgpstream input:
   while(iterator != NULL) {
-    debug("\tBSR_MGR: add input: i");
+    bgpstream_debug("\tBSR_MGR: add input: i");
     // a) create a new reader (create includes the first read)
     bs_reader = bgpstream_reader_create(iterator, filter_mgr);
     // if it creates correctly
@@ -449,14 +449,14 @@ void bgpstream_reader_mgr_add(bgpstream_reader_mgr_t * const bs_reader_mgr,
       bgpstream_reader_mgr_sorted_insert(bs_reader_mgr, bs_reader);
     }
     else{
-      log_err("ERROR\n");
+      bgpstream_log_err("ERROR\n");
       return;
     }
     // go to the next input
     iterator = iterator->next;
   }
   print_reader_queue(bs_reader_mgr->reader_queue);
-  debug("\tBSR_MGR: add input: end");
+  bgpstream_debug("\tBSR_MGR: add input: end");
 }
 
 
@@ -464,17 +464,17 @@ void bgpstream_reader_mgr_add(bgpstream_reader_mgr_t * const bs_reader_mgr,
 int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reader_mgr, 
 					 bgpstream_record_t *const bs_record,
 					 const bgpstream_filter_mgr_t * const filter_mgr) {
-  debug("\tBSR_MGR: get_next_record: start");
+  bgpstream_debug("\tBSR_MGR: get_next_record: start");
   if(bs_reader_mgr == NULL) {
-    debug("\tBSR_MGR: get_next_record: null reader mgr provided");    
+    bgpstream_debug("\tBSR_MGR: get_next_record: null reader mgr provided");    
     return -1;
   }
   if(bs_record == NULL) {
-    debug("BSR_MGR: get_next_record: null record provided");    
+    bgpstream_debug("BSR_MGR: get_next_record: null record provided");    
     return -1;
   }
   if(bs_reader_mgr->status == EMPTY_READER_MGR) {
-    debug("\tBSR_MGR: get_next_record: empty reader mgr");    
+    bgpstream_debug("\tBSR_MGR: get_next_record: empty reader mgr");    
     return 0;
   }
   // get head from reader queue 
@@ -507,19 +507,19 @@ int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reade
     bs_record->dump_pos = DUMP_END;
     bgpstream_reader_destroy(bs_reader);
   }
-  debug("\tBSR_MGR: get_next_record: end");
+  bgpstream_debug("\tBSR_MGR: get_next_record: end");
   return 1; 
 }
 
 
 void bgpstream_reader_mgr_destroy(bgpstream_reader_mgr_t * const bs_reader_mgr) {
-  debug("\tBSR_MGR: destroy reader mgr: start");
+  bgpstream_debug("\tBSR_MGR: destroy reader mgr: start");
   if(bs_reader_mgr == NULL) {
-    debug("\tBSR_MGR: destroy reader mgr:  null reader mgr provided");    
+    bgpstream_debug("\tBSR_MGR: destroy reader mgr:  null reader mgr provided");    
     return;
   }
   bs_reader_mgr->filter_mgr = NULL;
-  debug("\tBSR_MGR: destroy reader mgr:  destroying reader queue");    
+  bgpstream_debug("\tBSR_MGR: destroy reader mgr:  destroying reader queue");    
   // foreach reader in queue: destroy reader
   bgpstream_reader_t *iterator;
   while(bs_reader_mgr->reader_queue !=NULL){
@@ -531,6 +531,6 @@ void bgpstream_reader_mgr_destroy(bgpstream_reader_mgr_t * const bs_reader_mgr) 
   }
   bs_reader_mgr->status = EMPTY_READER_MGR;
   free(bs_reader_mgr);
-  debug("\tBSR_MGR: destroy reader mgr: end");
+  bgpstream_debug("\tBSR_MGR: destroy reader mgr: end");
 }
 

@@ -29,7 +29,7 @@
 
 /* allocate memory for a new bgpstream filter */
 bgpstream_filter_mgr_t *bgpstream_filter_mgr_create() {
-  debug("\tBSF_MGR: create start");
+  bgpstream_debug("\tBSF_MGR: create start");
   bgpstream_filter_mgr_t *bs_filter_mgr = (bgpstream_filter_mgr_t*) malloc(sizeof(bgpstream_filter_mgr_t));
   if(bs_filter_mgr == NULL) {
     return NULL; // can't allocate memory
@@ -38,7 +38,7 @@ bgpstream_filter_mgr_t *bgpstream_filter_mgr_create() {
   bs_filter_mgr->collectors = NULL;
   bs_filter_mgr->bgp_types = NULL;
   bs_filter_mgr->time_intervals = NULL;
-  debug("\tBSF_MGR: create end");
+  bgpstream_debug("\tBSF_MGR: create end");
   return bs_filter_mgr;
 }
 
@@ -47,15 +47,15 @@ bgpstream_filter_mgr_t *bgpstream_filter_mgr_create() {
 void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
 				     bgpstream_filter_type filter_type,
 				     const char* filter_value) {
-  debug("\tBSF_MGR:: add_filter start");
+  bgpstream_debug("\tBSF_MGR:: add_filter start");
   if(bs_filter_mgr == NULL) {
     return; // nothing to customize
   }
   // create a new filter structure
   bgpstream_string_filter_t *f = (bgpstream_string_filter_t*) malloc(sizeof(bgpstream_string_filter_t));
   if(f == NULL) {
-    debug("\tBSF_MGR:: add_filter malloc failed");
-    log_warn("\tBSF_MGR: can't allocate memory");       
+    bgpstream_debug("\tBSF_MGR:: add_filter malloc failed");
+    bgpstream_log_warn("\tBSF_MGR: can't allocate memory");       
     return; 
   }
   // copying filter value
@@ -76,14 +76,14 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
     break;
   case BS_TIME_INTERVAL:    
     free(f);
-    log_warn("\tBSF_MGR: wrong interval filter request - ignoring");   
+    bgpstream_log_warn("\tBSF_MGR: wrong interval filter request - ignoring");   
     break;
   default:
     free(f);
-    log_warn("\tBSF_MGR: unknown filter - ignoring");   
+    bgpstream_log_warn("\tBSF_MGR: unknown filter - ignoring");   
     return;
   }
-  debug("\tBSF_MGR:: add_filter stop");  
+  bgpstream_debug("\tBSF_MGR:: add_filter stop");  
 }
 
 
@@ -92,15 +92,15 @@ void bgpstream_filter_mgr_interval_filter_add(bgpstream_filter_mgr_t *bs_filter_
 					      bgpstream_filter_type filter_type,
 					      const char* filter_start,
 					      const char* filter_stop){  
-  debug("\tBSF_MGR:: add_filter start");
+  bgpstream_debug("\tBSF_MGR:: add_filter start");
   if(bs_filter_mgr == NULL) {
     return; // nothing to customize
   }
   // create a new filter structure
   bgpstream_interval_filter_t *f = (bgpstream_interval_filter_t*) malloc(sizeof(bgpstream_interval_filter_t));
   if(f == NULL) {
-    debug("\tBSF_MGR:: add_filter malloc failed");
-    log_warn("\tBSF_MGR: can't allocate memory");       
+    bgpstream_debug("\tBSF_MGR:: add_filter malloc failed");
+    bgpstream_log_warn("\tBSF_MGR: can't allocate memory");       
     return; 
   }
   // copying filter values
@@ -117,21 +117,21 @@ void bgpstream_filter_mgr_interval_filter_add(bgpstream_filter_mgr_t *bs_filter_
   case BS_COLLECTOR:
   case BS_BGP_TYPE:    
     free(f);
-    log_warn("\tBSF_MGR: wrong filter request - ignoring");   
+    bgpstream_log_warn("\tBSF_MGR: wrong filter request - ignoring");   
     break;
   default:
     free(f);
-    log_warn("\tBSF_MGR: unknown filter - ignoring");   
+    bgpstream_log_warn("\tBSF_MGR: unknown filter - ignoring");   
     return;
   }
-  debug("\tBSF_MGR:: add_filter stop");  
+  bgpstream_debug("\tBSF_MGR:: add_filter stop");  
 }
 
 
 
 /* destroy the memory allocated for bgpstream filter */
 void bgpstream_filter_mgr_destroy(bgpstream_filter_mgr_t *bs_filter_mgr) {
-  debug("\tBSF_MGR:: destroy start");
+  bgpstream_debug("\tBSF_MGR:: destroy start");
   if(bs_filter_mgr == NULL) {
     return; // nothing to destroy
   }
@@ -169,7 +169,7 @@ void bgpstream_filter_mgr_destroy(bgpstream_filter_mgr_t *bs_filter_mgr) {
   // free the mgr structure
   free(bs_filter_mgr);
   bs_filter_mgr = NULL;
-  debug("\tBSF_MGR:: destroy end");
+  bgpstream_debug("\tBSF_MGR:: destroy end");
 }
 
 

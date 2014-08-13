@@ -34,16 +34,16 @@
 static void print_input_queue(const bgpstream_input_t * const input_queue) {
 #ifdef NDEBUG
   const bgpstream_input_t * iterator = input_queue;
-  debug("INPUT QUEUE: start");
+  bgpstream_debug("INPUT QUEUE: start");
   int i = 1;
   while(iterator != NULL) {    
-    debug("\t%d %s %s %d",i, iterator->filecollector, 
+    bgpstream_debug("\t%d %s %s %d",i, iterator->filecollector, 
 	  iterator->filetype, iterator->epoch_filetime);
     iterator = iterator->next;
     i++;
   }
   iterator = NULL;
-  debug("\nINPUT QUEUE: end");  
+  bgpstream_debug("\nINPUT QUEUE: end");  
 #endif
 }
 
@@ -51,7 +51,7 @@ static void print_input_queue(const bgpstream_input_t * const input_queue) {
 /* Initialize the bgpstream input manager  
  */
 bgpstream_input_mgr_t *bgpstream_input_mgr_create() {
-  debug("\tBSI_MGR: create input mgr start");
+  bgpstream_debug("\tBSI_MGR: create input mgr start");
   bgpstream_input_mgr_t *bs_input_mgr = (bgpstream_input_mgr_t*) malloc(sizeof(bgpstream_input_mgr_t));
   if(bs_input_mgr == NULL) {
     return NULL; // can't allocate memory
@@ -62,7 +62,7 @@ bgpstream_input_mgr_t *bgpstream_input_mgr_create() {
   bs_input_mgr->status = EMPTY_INPUT_QUEUE;
   bs_input_mgr->epoch_minimum_date = 0;
   bs_input_mgr->epoch_last_ts_input = 0;
-  debug("\tBSI_MGR: create input mgr end ");
+  bgpstream_debug("\tBSI_MGR: create input mgr end ");
   return bs_input_mgr;
 }
 
@@ -70,12 +70,12 @@ bgpstream_input_mgr_t *bgpstream_input_mgr_create() {
 /* Check if the current status is EMPTY 
  */
 bool bgpstream_input_mgr_is_empty(const bgpstream_input_mgr_t * const bs_input_mgr) {
-  debug("\tBSI_MGR: is empty start");
+  bgpstream_debug("\tBSI_MGR: is empty start");
   if(bs_input_mgr != NULL && bs_input_mgr->status != EMPTY_INPUT_QUEUE) {
-    debug("\tBSI_MGR: is empty end: not empty!");
+    bgpstream_debug("\tBSI_MGR: is empty end: not empty!");
     return false;
   }
-  debug("\tBSI_MGR: is empty end: empty!");
+  bgpstream_debug("\tBSI_MGR: is empty end: empty!");
   return true;
 }
 
@@ -87,7 +87,7 @@ int bgpstream_input_mgr_push_input(bgpstream_input_mgr_t * const bs_input_mgr,
 			       const char * const filename, const char * fileproject,
 			       const char * filecollector, const char * const filetype,
 			       const int epoch_filetime) {
-  debug("\tBSI_MGR: push input start");
+  bgpstream_debug("\tBSI_MGR: push input start");
   if(bs_input_mgr == NULL) {
     return 0; // if the bs_input_mgr is not initialized, then we cannot insert any new input
   }
@@ -114,7 +114,7 @@ int bgpstream_input_mgr_push_input(bgpstream_input_mgr_t * const bs_input_mgr,
     bs_input_mgr->tail->next = bs_input;
     bs_input_mgr->tail = bs_input;
   }
-  debug("\tBSI_MGR: push input mgr end");
+  bgpstream_debug("\tBSI_MGR: push input mgr end");
   return 1;
 }
 
@@ -127,7 +127,7 @@ int bgpstream_input_mgr_push_sorted_input(bgpstream_input_mgr_t * const bs_input
 			       const char * const filename, const char * fileproject,
 			       const char * filecollector, const char * const filetype,
 			       const int epoch_filetime) {
-  debug("\t\tBSI: push input start");
+  bgpstream_debug("\t\tBSI: push input start");
   if(bs_input_mgr == NULL) {
     return 0; // if the bs_input_mgr is not initialized, then we cannot insert any new input
   }
@@ -198,8 +198,8 @@ int bgpstream_input_mgr_push_sorted_input(bgpstream_input_mgr_t * const bs_input
       }
     }
   }
-  debug("\tBSI_MGR: sorted push: %s",filename);
-  debug("\tBSI_MGR: sorted push input mgr end");
+  bgpstream_debug("\tBSI_MGR: sorted push: %s",filename);
+  bgpstream_debug("\tBSI_MGR: sorted push input mgr end");
   return 1;
 }
 
@@ -209,7 +209,7 @@ int bgpstream_input_mgr_push_sorted_input(bgpstream_input_mgr_t * const bs_input
  * the function is static: it is not visible outside this file
  */
 static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * const bs_input_mgr){
-  debug("\tBSI_MGR: last to process set start");
+  bgpstream_debug("\tBSI_MGR: last to process set start");
   /* !!! multiple policies can be implemented !!!
    * Here we consider a unique policy: we process 
    * files with the same filetype, then if type:
@@ -255,7 +255,7 @@ static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * cons
       }      
     }    
   }
-  debug("\tBSI_MGR: last to process set end");
+  bgpstream_debug("\tBSI_MGR: last to process set end");
 }
 
 
@@ -263,7 +263,7 @@ static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * cons
  * from the FIFO queue managed by the bgpstream input manager 
  */
 bgpstream_input_t *bgpstream_input_mgr_get_queue_to_process(bgpstream_input_mgr_t * const bs_input_mgr) {
-  debug("\tBSI_MGR: get subqueue to process start");
+  bgpstream_debug("\tBSI_MGR: get subqueue to process start");
   if(bs_input_mgr == NULL) {
     return NULL; // if the bs_input_mgr is not initialized, then we cannot remove any input
   }
@@ -288,7 +288,7 @@ bgpstream_input_t *bgpstream_input_mgr_get_queue_to_process(bgpstream_input_mgr_
     bs_input_mgr->status = EMPTY_INPUT_QUEUE;
   }
   print_input_queue(to_process);
-  debug("\tBSI_MGR: get subqueue to process end");
+  bgpstream_debug("\tBSI_MGR: get subqueue to process end");
   return to_process;
 }
 
@@ -297,7 +297,7 @@ bgpstream_input_t *bgpstream_input_mgr_get_queue_to_process(bgpstream_input_mgr_
  * queue
  */
 void bgpstream_input_mgr_destroy_queue(bgpstream_input_t *queue) {
-  debug("\tBSI_MGR: subqueue destroy start");
+  bgpstream_debug("\tBSI_MGR: subqueue destroy start");
   bgpstream_input_t *iterator = queue;
   bgpstream_input_t *current = NULL;
   while(iterator!=NULL) {
@@ -306,14 +306,14 @@ void bgpstream_input_mgr_destroy_queue(bgpstream_input_t *queue) {
     // deallocating memory for current bgpstream_input object
     free(current);
   }
-  debug("\tBSI_MGR: subqueue destroy end");
+  bgpstream_debug("\tBSI_MGR: subqueue destroy end");
 }
 
 
 /* Destroy the bgpstream_input manager 
 */
 void bgpstream_input_mgr_destroy(bgpstream_input_mgr_t *bs_input_mgr){
-  debug("\tBSI_MGR: input mgr destroy start");
+  bgpstream_debug("\tBSI_MGR: input mgr destroy start");
   if(bs_input_mgr == NULL){
     return; // already empty
   }  
@@ -323,6 +323,6 @@ void bgpstream_input_mgr_destroy(bgpstream_input_mgr_t *bs_input_mgr){
   bs_input_mgr->last_to_process = NULL;
   // free bgpstream_input_mgr
   free(bs_input_mgr);
-  debug("\tBSI_MGR: input mgr destroy end");
+  bgpstream_debug("\tBSI_MGR: input mgr destroy end");
 }
 

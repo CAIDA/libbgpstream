@@ -36,7 +36,7 @@
 /* allocate memory for a new bgpstream interface 
  */
 bgpstream_t *bgpstream_create() {
-  debug("BS: create start");
+  bgpstream_debug("BS: create start");
   bgpstream_t *  bs = (bgpstream_t*) malloc(sizeof(bgpstream_t));
   if(bs == NULL) {
     return NULL; // can't allocate memory
@@ -70,7 +70,7 @@ bgpstream_t *bgpstream_create() {
   /* memory for the bgpstream interface has been
    * allocated correctly */
   bs->status = ALLOCATED;
-  debug("BS: create end");
+  bgpstream_debug("BS: create end");
   return bs;
 }
 /* side note: filters are part of the bgpstream so they
@@ -85,23 +85,23 @@ bgpstream_t *bgpstream_create() {
 /* configure filters in order to select a subset of the bgp data available */
 void bgpstream_add_filter(bgpstream_t * const bs, bgpstream_filter_type filter_type,
 			  const char* filter_value){
-  debug("BS: set_filter start");
+  bgpstream_debug("BS: set_filter start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return; // nothing to customize
   }
   bgpstream_filter_mgr_filter_add(bs->filter_mgr, filter_type, filter_value);
-  debug("BS: set_filter end");
+  bgpstream_debug("BS: set_filter end");
 }
 
 
 void bgpstream_add_interval_filter(bgpstream_t * const bs, bgpstream_filter_type filter_type,
 				   const char* filter_start, const char* filter_stop){
-  debug("BS: set_filter start");
+  bgpstream_debug("BS: set_filter start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return; // nothing to customize
   }
   bgpstream_filter_mgr_interval_filter_add(bs->filter_mgr, filter_type, filter_start, filter_stop);
-  debug("BS: set_filter end");
+  bgpstream_debug("BS: set_filter end");
 }
 
 
@@ -109,12 +109,12 @@ void bgpstream_add_interval_filter(bgpstream_t * const bs, bgpstream_filter_type
  * to a specific datasource interface
  */
 void bgpstream_set_data_interface(bgpstream_t * const bs, const bgpstream_datasource_type datasource) {
-  debug("BS: set_data_interface start");
+  bgpstream_debug("BS: set_data_interface start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return; // nothing to customize
   }
   bgpstream_datasource_mgr_set_data_interface(bs->datasource_mgr, datasource);
-  debug("BS: set_data_interface stop");
+  bgpstream_debug("BS: set_data_interface stop");
 }
 
 
@@ -122,12 +122,12 @@ void bgpstream_set_data_interface(bgpstream_t * const bs, const bgpstream_dataso
  * waiting for new data 
  */
 void bgpstream_set_blocking(bgpstream_t * const bs) {
-  debug("BS: set_blocking start");
+  bgpstream_debug("BS: set_blocking start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return; // nothing to customize
   }
   bgpstream_datasource_mgr_set_blocking(bs->datasource_mgr);
-  debug("BS: set_blocking stop");
+  bgpstream_debug("BS: set_blocking stop");
 }
 
 
@@ -136,7 +136,7 @@ void bgpstream_set_blocking(bgpstream_t * const bs) {
  * for a new get next call 
 */
 int bgpstream_init(bgpstream_t * const bs) {
-  debug("BS: init start");
+  bgpstream_debug("BS: init start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return 0; // nothing to init
   }
@@ -144,13 +144,13 @@ int bgpstream_init(bgpstream_t * const bs) {
   bgpstream_datasource_mgr_init(bs->datasource_mgr, bs->filter_mgr);
   if(bs->datasource_mgr->status == DS_ON) {
     bs->status = ON; // interface is on
-    debug("BS: init end: ok");
+    bgpstream_debug("BS: init end: ok");
     return 1;
   }
   else{
     bs->status = ALLOCATED; // interface is not on (something wrong with datasource)
-    debug("BS: init warning: check if the datasource provided is ok");
-    debug("BS: init end: not ok");
+    bgpstream_debug("BS: init warning: check if the datasource provided is ok");
+    bgpstream_debug("BS: init end: not ok");
     return -1;
   }
 }
@@ -158,7 +158,7 @@ int bgpstream_init(bgpstream_t * const bs) {
 
 /* allocate memory for a bs_record */
 bgpstream_record_t *bgpstream_create_record() {
-  debug("BS: create record start");
+  bgpstream_debug("BS: create record start");
   bgpstream_record_t *bs_record = (bgpstream_record_t*) malloc(sizeof(bgpstream_record_t));
   if(bs_record == NULL) {
     return NULL; // can't allocate memory
@@ -171,26 +171,26 @@ bgpstream_record_t *bgpstream_create_record() {
   bs_record->attributes.dump_type = BGPSTREAM_UPDATE;
   bs_record->attributes.dump_time = 0;
   bs_record->attributes.record_time = 0;
-  debug("BS: create record end");
+  bgpstream_debug("BS: create record end");
   return bs_record;
 }
 
 
 /* free memory associated to a bs_record  */
 void bgpstream_destroy_record(bgpstream_record_t * const bs_record){
-  debug("BS: destroy record start");
+  bgpstream_debug("BS: destroy record start");
   if(bs_record == NULL) {
-    debug("BS: record destroy end");
+    bgpstream_debug("BS: record destroy end");
     return; // nothing to do
   }
   if(bs_record->bd_entry != NULL){
-    debug("BS - free bs_record->bgpdump_entry");
+    bgpstream_debug("BS - free bs_record->bgpdump_entry");
     bgpdump_free_mem(bs_record->bd_entry);
     bs_record->bd_entry = NULL;
   }
-  debug("BS - free bs_record");
+  bgpstream_debug("BS - free bs_record");
   free(bs_record);
-  debug("BS: destroy record end");
+  bgpstream_debug("BS: destroy record end");
 }
 
 
@@ -203,7 +203,7 @@ void bgpstream_destroy_record(bgpstream_record_t * const bs_record){
  * return 0 if nothing is available 
  */
 int bgpstream_get_next_record(bgpstream_t * const bs, bgpstream_record_t * const bs_record) {
-  debug("BS: get next");
+  bgpstream_debug("BS: get next");
   if(bs == NULL || (bs != NULL && bs->status != ON)) {
   return -1; // wrong status
   }
@@ -211,40 +211,40 @@ int bgpstream_get_next_record(bgpstream_t * const bs, bgpstream_record_t * const
   int num_query_results = 0;
   bgpstream_input_t *bs_in = NULL;
   while(bgpstream_reader_mgr_is_empty(bs->reader_mgr)) {
-    debug("BS: reader mgr is empty");
+    bgpstream_debug("BS: reader mgr is empty");
     // get new data to process and set the reader_mgr
     while(bgpstream_input_mgr_is_empty(bs->input_mgr)) {
-      debug("BS: input mgr is empty");
+      bgpstream_debug("BS: input mgr is empty");
       /* query the external source and append new
        * input objects to the input_mgr queue */
       num_query_results = bgpstream_datasource_mgr_update_input_queue(bs->datasource_mgr,
 								      bs->input_mgr);
       if(num_query_results == 0){
-	debug("BS: no (more) data are available");
+	bgpstream_debug("BS: no (more) data are available");
 	return 0; // no (more) data are available
       }
-      debug("BS: got results from datasource");
+      bgpstream_debug("BS: got results from datasource");
     }
-    debug("BS: input mgr not empty");
+    bgpstream_debug("BS: input mgr not empty");
     bs_in = bgpstream_input_mgr_get_queue_to_process(bs->input_mgr);
     bgpstream_reader_mgr_add(bs->reader_mgr, bs_in, bs->filter_mgr);
     bgpstream_input_mgr_destroy_queue(bs_in);        
     bs_in = NULL;
   }
-  debug("BS: reader mgr not empty");  
+  bgpstream_debug("BS: reader mgr not empty");  
   return bgpstream_reader_mgr_get_next_record(bs->reader_mgr, bs_record, bs->filter_mgr);
 }
 
 
 /* turn off the bgpstream interface */
 void bgpstream_close(bgpstream_t * const bs) {
-  debug("BS: close start");
+  bgpstream_debug("BS: close start");
   if(bs == NULL || (bs != NULL && bs->status != ON)) {
     return; // nothing to close
   }
   bgpstream_datasource_mgr_close(bs->datasource_mgr);
   bs->status = OFF; // interface is off
-  debug("BS: close end");
+  bgpstream_debug("BS: close end");
 
 }
 
@@ -252,7 +252,7 @@ void bgpstream_close(bgpstream_t * const bs) {
 /* destroy a bgpstream interface istance
  */
 void bgpstream_destroy(bgpstream_t * const bs){
-  debug("BS: destroy start");
+  bgpstream_debug("BS: destroy start");
   if(bs == NULL) {
     return; // nothing to destroy
   }
@@ -265,7 +265,7 @@ void bgpstream_destroy(bgpstream_t * const bs){
   bgpstream_datasource_mgr_destroy(bs->datasource_mgr);
   bs->datasource_mgr = NULL;
   free(bs);
-  debug("BS: destroy end");
+  bgpstream_debug("BS: destroy end");
 }
 
 

@@ -60,7 +60,7 @@ static void bgpstream_mysql_datasource_destroy(bgpstream_mysql_datasource_t* mys
 
 
 bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
-  debug("\tBSDS_MGR: create start");
+  bgpstream_debug("\tBSDS_MGR: create start");
   bgpstream_datasource_mgr_t *datasource_mgr = (bgpstream_datasource_mgr_t*) malloc(sizeof(bgpstream_datasource_mgr_t));
   if(datasource_mgr == NULL) {
     return NULL; // can't allocate memory
@@ -73,24 +73,24 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
   datasource_mgr->customlist_ds = NULL;
   datasource_mgr->csvfile_ds = NULL;
   datasource_mgr->status = DS_OFF;
-  debug("\tBSDS_MGR: create end");
+  bgpstream_debug("\tBSDS_MGR: create end");
   return datasource_mgr;
 }
 
 void bgpstream_datasource_mgr_set_data_interface(bgpstream_datasource_mgr_t *datasource_mgr,
 						 const bgpstream_datasource_type datasource) {
-  debug("\tBSDS_MGR: set data interface start");
+  bgpstream_debug("\tBSDS_MGR: set data interface start");
   if(datasource_mgr == NULL) {
     return; // no manager
   }
   datasource_mgr->datasource = datasource;   
-  debug("\tBSDS_MGR: set  data interface end");
+  bgpstream_debug("\tBSDS_MGR: set  data interface end");
 }
 
 
 void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
 				   bgpstream_filter_mgr_t *filter_mgr){
-  debug("\tBSDS_MGR: init start");
+  bgpstream_debug("\tBSDS_MGR: init start");
   if(datasource_mgr == NULL) {
     return; // no manager
   }
@@ -123,23 +123,23 @@ void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
     }
   }
   // if none of the datasources is matched the status of the DS is not set to ON
-  debug("\tBSDS_MGR: init end");
+  bgpstream_debug("\tBSDS_MGR: init end");
 }
 
 
 void bgpstream_datasource_mgr_set_blocking(bgpstream_datasource_mgr_t *datasource_mgr){
-  debug("\tBSDS_MGR: set blocking start");
+  bgpstream_debug("\tBSDS_MGR: set blocking start");
   if(datasource_mgr == NULL) {
     return; // no manager
   }
   datasource_mgr->blocking = 1;
-  debug("\tBSDS_MGR: set blocking end");
+  bgpstream_debug("\tBSDS_MGR: set blocking end");
 }
 
 
 int bgpstream_datasource_mgr_update_input_queue(bgpstream_datasource_mgr_t *datasource_mgr,
 						bgpstream_input_mgr_t *input_mgr) {
-  debug("\tBSDS_MGR: get data start");
+  bgpstream_debug("\tBSDS_MGR: get data start");
   if(datasource_mgr == NULL) {
     return -1; // no datasource manager
   }
@@ -151,25 +151,25 @@ int bgpstream_datasource_mgr_update_input_queue(bgpstream_datasource_mgr_t *data
 	// results = 0 => 2+ time and database did not give any error
 	sleep(30);
       }
-      debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
+      bgpstream_debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
     } while(datasource_mgr->blocking && results == 0);
   }
   if(datasource_mgr->datasource == BS_CUSTOMLIST) {
     results = bgpstream_customlist_datasource_update_input_queue(datasource_mgr->customlist_ds, input_mgr);
-    debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
+    bgpstream_debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
   }
   if(datasource_mgr->datasource == BS_CSVFILE) {
     results = bgpstream_csvfile_datasource_update_input_queue(datasource_mgr->csvfile_ds, input_mgr);
-    debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
+    bgpstream_debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
   }
 
-  debug("\tBSDS_MGR: get data end");
+  bgpstream_debug("\tBSDS_MGR: get data end");
   return results; 
 }
 
 
 void bgpstream_datasource_mgr_close(bgpstream_datasource_mgr_t *datasource_mgr) {
-  debug("\tBSDS_MGR: close start");
+  bgpstream_debug("\tBSDS_MGR: close start");
   if(datasource_mgr == NULL) {
     return; // no manager to destroy
   }
@@ -187,12 +187,12 @@ void bgpstream_datasource_mgr_close(bgpstream_datasource_mgr_t *datasource_mgr) 
   }
 
   datasource_mgr->status = DS_OFF;
-  debug("\tBSDS_MGR: close end");
+  bgpstream_debug("\tBSDS_MGR: close end");
 }
 
 
 void bgpstream_datasource_mgr_destroy(bgpstream_datasource_mgr_t *datasource_mgr) {
-  debug("\tBSDS_MGR: destroy start");
+  bgpstream_debug("\tBSDS_MGR: destroy start");
   if(datasource_mgr == NULL) {
     return; // no manager to destroy
   }
@@ -210,7 +210,7 @@ void bgpstream_datasource_mgr_destroy(bgpstream_datasource_mgr_t *datasource_mgr
     datasource_mgr->csvfile_ds = NULL;
   }
   free(datasource_mgr);  
-  debug("\tBSDS_MGR: destroy end");
+  bgpstream_debug("\tBSDS_MGR: destroy end");
 }
 
 
@@ -218,21 +218,21 @@ void bgpstream_datasource_mgr_destroy(bgpstream_datasource_mgr_t *datasource_mgr
 /* ----------- customlist related functions ----------- */
 
 static bgpstream_customlist_datasource_t *bgpstream_customlist_datasource_create(bgpstream_filter_mgr_t *filter_mgr) {
-  debug("\t\tBSDS_CLIST: create customlist_ds start");  
+  bgpstream_debug("\t\tBSDS_CLIST: create customlist_ds start");  
   bgpstream_customlist_datasource_t *customlist_ds = (bgpstream_customlist_datasource_t*) malloc(sizeof(bgpstream_customlist_datasource_t));
   if(customlist_ds == NULL) {
-    log_err("\t\tBSDS_CLIST: create customlist_ds can't allocate memory");    
+    bgpstream_log_err("\t\tBSDS_CLIST: create customlist_ds can't allocate memory");    
     return NULL; // can't allocate memory
   }
   customlist_ds->filter_mgr = filter_mgr;
   customlist_ds->list_read = 0;
-  debug("\t\tBSDS_CLIST: create customlist_ds end");
+  bgpstream_debug("\t\tBSDS_CLIST: create customlist_ds end");
   return customlist_ds;
 }
 
 
 static bool bgpstream_customlist_datasource_filter_ok(bgpstream_customlist_datasource_t* customlist_ds) {
-  debug("\t\tBSDS_CLIST: customlist_ds apply filter start");  
+  bgpstream_debug("\t\tBSDS_CLIST: customlist_ds apply filter start");  
   bgpstream_string_filter_t * sf;
   bgpstream_interval_filter_t * tif;
   bool all_false;
@@ -306,7 +306,7 @@ static bool bgpstream_customlist_datasource_filter_ok(bgpstream_customlist_datas
 
 static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customlist_datasource_t* customlist_ds,
 							      bgpstream_input_mgr_t *input_mgr) {
-    debug("\t\tBSDS_CLIST: customlist_ds update input queue start");  
+    bgpstream_debug("\t\tBSDS_CLIST: customlist_ds update input queue start");  
     int num_results = 0;       
     // if list has not been read yet, then we push these files in the input queue
     if(customlist_ds->list_read == 0) {
@@ -358,41 +358,41 @@ static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customli
       // end of files
     }
     customlist_ds->list_read = 1;
-    debug("\t\tBSDS_CLIST: customlist_ds update input queue end");  
+    bgpstream_debug("\t\tBSDS_CLIST: customlist_ds update input queue end");  
     return num_results;
 }
 
 
 static void bgpstream_customlist_datasource_destroy(bgpstream_customlist_datasource_t* customlist_ds) {
-  debug("\t\tBSDS_CLIST: destroy customlist_ds start");  
+  bgpstream_debug("\t\tBSDS_CLIST: destroy customlist_ds start");  
   if(customlist_ds == NULL) {
     return; // nothing to destroy
   }
   customlist_ds->filter_mgr = NULL;
   customlist_ds->list_read = 0;
   free(customlist_ds);
-  debug("\t\tBSDS_CLIST: destroy customlist_ds end");  
+  bgpstream_debug("\t\tBSDS_CLIST: destroy customlist_ds end");  
 }
 
 
 /* ----------- csvfile related functions ----------- */
 
 static bgpstream_csvfile_datasource_t *bgpstream_csvfile_datasource_create(bgpstream_filter_mgr_t *filter_mgr) {
-  debug("\t\tBSDS_CSVFILE: create csvfile_ds start");  
+  bgpstream_debug("\t\tBSDS_CSVFILE: create csvfile_ds start");  
   bgpstream_csvfile_datasource_t *csvfile_ds = (bgpstream_csvfile_datasource_t*) malloc(sizeof(bgpstream_csvfile_datasource_t));
   if(csvfile_ds == NULL) {
-    log_err("\t\tBSDS_CSVFILE: create csvfile_ds can't allocate memory");    
+    bgpstream_log_err("\t\tBSDS_CSVFILE: create csvfile_ds can't allocate memory");    
     return NULL; // can't allocate memory
   }
   csvfile_ds->filter_mgr = filter_mgr;
   csvfile_ds->csvfile_read = 0;
-  debug("\t\tBSDS_CSVFILE: create csvfile_ds end");
+  bgpstream_debug("\t\tBSDS_CSVFILE: create csvfile_ds end");
   return csvfile_ds;
 }
 
 
 static bool bgpstream_csvfile_datasource_filter_ok(bgpstream_csvfile_datasource_t* csvfile_ds) {
-  debug("\t\tBSDS_CSVFILE: csvfile_ds apply filter start");  
+  bgpstream_debug("\t\tBSDS_CSVFILE: csvfile_ds apply filter start");  
   bgpstream_string_filter_t * sf;
   bgpstream_interval_filter_t * tif;
   bool all_false;
@@ -486,7 +486,7 @@ static char* getfield(char* tmp, int num) {
 
 static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_datasource_t* csvfile_ds,
 							   bgpstream_input_mgr_t *input_mgr) {
-  debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue start");  
+  bgpstream_debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue start");  
   int num_results = 0;       
   FILE* stream;
   int fd;
@@ -499,7 +499,7 @@ static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_dat
     fd = fileno(stream);
     // lock file using the file descriptor fileno(stream) returns int
     if (flock(fd, LOCK_EX) == -1) {
-      log_err("lockf failed");
+      bgpstream_log_err("lockf failed");
       exit(EXIT_FAILURE);
     }
     fseek(stream, 0, SEEK_SET );
@@ -532,40 +532,40 @@ static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_dat
 	}
       }
       if (flock(fd, LOCK_UN) == -1) {
-	log_err("u-lockf failed");
+	bgpstream_log_err("u-lockf failed");
 	exit(EXIT_FAILURE);
       }
       fclose(stream);
     }
   }
   csvfile_ds->csvfile_read = 1;
-  debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue end");  
+  bgpstream_debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue end");  
   return num_results;
 }
 
 
 static void bgpstream_csvfile_datasource_destroy(bgpstream_csvfile_datasource_t* csvfile_ds) {
-  debug("\t\tBSDS_CSVFILE: destroy csvfile_ds start");  
+  bgpstream_debug("\t\tBSDS_CSVFILE: destroy csvfile_ds start");  
   if(csvfile_ds == NULL) {
     return; // nothing to destroy
   }
   csvfile_ds->filter_mgr = NULL;
   csvfile_ds->csvfile_read = 0;
   free(csvfile_ds);
-  debug("\t\tBSDS_CSVFILE: destroy csvfile_ds end");  
+  bgpstream_debug("\t\tBSDS_CSVFILE: destroy csvfile_ds end");  
 }
 
 
 /* ----------- mysql related functions ----------- */
 
 static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter_mgr_t *filter_mgr) {
-  debug("\t\tBSDS_MYSQL: create mysql_ds start");
+  bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds start");
   bgpstream_mysql_datasource_t *mysql_ds = (bgpstream_mysql_datasource_t*) malloc(sizeof(bgpstream_mysql_datasource_t));
   if(mysql_ds == NULL) {
     return NULL; // can't allocate memory
   }
   // Initialize a MySQL object suitable for connection
-  debug("\t\tBSDS_MYSQL: create mysql_ds mysql connection init");
+  bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds mysql connection init");
   mysql_ds->mysql_con = mysql_init(NULL);
   if (mysql_ds->mysql_con == NULL) {
     fprintf(stderr, "%s\n", mysql_error(mysql_ds->mysql_con));
@@ -575,7 +575,7 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
     return NULL;
   }  
   // Establish a connection to the database
-  debug("\t\tBSDS_MYSQL: create mysql_ds mysql connection establishment");
+  bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds mysql connection establishment");
   if (mysql_real_connect(mysql_ds->mysql_con, "localhost", "routing", NULL, 
 			   "bgparchive", 0,
 			   "/usr/local/jail/charthouse/tmp/mysql.sock", 0) == NULL) {
@@ -588,10 +588,10 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
 
   // set time_zone = UTC
   if(mysql_query(mysql_ds->mysql_con, "set time_zone='+0:0'") == 0) {
-    debug("\t\tBSDS_MYSQL: create mysql_ds set time_zone");
+    bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds set time_zone");
   }
   else{
-    debug("\t\tBSDS_MYSQL: create mysql_ds set time_zone something wrong"); 
+    bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds set time_zone something wrong"); 
   }
     
   // initialize sql query
@@ -696,7 +696,7 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
   strcat (mysql_ds->sql_query," ORDER BY file_time, bgp_types.name DESC");
 
   //printf("%s\n",mysql_ds->sql_query);
-  debug("\t\tBSDS_MYSQL:  mysql query created");
+  bgpstream_debug("\t\tBSDS_MYSQL:  mysql query created");
 
   // the first last_timestamp is 0
   mysql_ds->last_timestamp = 0;
@@ -791,14 +791,14 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
     return NULL;
   }
 
-  debug("\t\tBSDS_MYSQL: create mysql_ds end");
+  bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds end");
   return mysql_ds;
 }
 
 
 static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasource_t* mysql_ds,
 						  bgpstream_input_mgr_t *input_mgr) {
-  debug("\t\tBSDS_MYSQL: mysql_ds update input queue start ");
+  bgpstream_debug("\t\tBSDS_MYSQL: mysql_ds update input queue start ");
   
   int num_results = 0;
   // memset binded results
@@ -823,8 +823,8 @@ static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasou
 						       mysql_ds->bgp_type_res,
 						       mysql_ds->filetime_res);
       //DEBUG printf("%s\n", mysql_ds->filename_res);
-      debug("\t\tBSDS_MYSQL: added %d new inputs to input queue", num_results);
-      debug("\t\tBSDS_MYSQL: %s - %s - %d", 
+      bgpstream_debug("\t\tBSDS_MYSQL: added %d new inputs to input queue", num_results);
+      bgpstream_debug("\t\tBSDS_MYSQL: %s - %s - %d", 
 	    mysql_ds->filename_res, mysql_ds->bgp_type_res, mysql_ds->filetime_res);
       // here
       memset(mysql_ds->filename_res, 0, BGPSTREAM_DUMP_MAX_LEN);
@@ -836,13 +836,13 @@ static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasou
     // after this timestamp
     mysql_ds->last_timestamp = mysql_ds->max_timestamp_res;
   }
-  debug("\t\tBSDS_MYSQL: mysql_ds update input queue end");
+  bgpstream_debug("\t\tBSDS_MYSQL: mysql_ds update input queue end");
   return num_results;
 }
 
 
 static void bgpstream_mysql_datasource_destroy(bgpstream_mysql_datasource_t* mysql_ds) {
-  debug("\t\tBSDS_MYSQL: destroy mysql_ds start");
+  bgpstream_debug("\t\tBSDS_MYSQL: destroy mysql_ds start");
   if(mysql_ds == NULL) {
     return; // nothing to destroy
   }
@@ -856,7 +856,7 @@ static void bgpstream_mysql_datasource_destroy(bgpstream_mysql_datasource_t* mys
   mysql_ds->mysql_con = NULL;
   // free memory allocated for mysql datasource
   free(mysql_ds);
-  debug("\t\tBSDS_MYSQL: destroy mysql_ds end");
+  bgpstream_debug("\t\tBSDS_MYSQL: destroy mysql_ds end");
   return;
 }
 
