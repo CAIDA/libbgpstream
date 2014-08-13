@@ -30,14 +30,14 @@
 #include <time.h>
 #include <string.h>
 
-static bool use_syslog = true;
+static bool bgpdump_use_syslog = true;
 
-void log_to_syslog() {
-    use_syslog = true;
+void bgpdump_log_to_syslog() {
+    bgpdump_use_syslog = true;
 }
 
-void log_to_stderr() {
-    use_syslog = false;
+void bgpdump_log_to_stderr() {
+    bgpdump_use_syslog = false;
 }
 
 #define log(lvl, lvl_str) \
@@ -53,7 +53,7 @@ static char *now_str() {
 }
 
 static void _log(int lvl, char *lvl_str, const char *fmt, va_list args) {
-    if(use_syslog) {
+    if(bgpdump_use_syslog) {
         syslog(lvl, fmt, args);
     } else {
         char prefix[strlen(fmt) + 1000];
@@ -62,11 +62,11 @@ static void _log(int lvl, char *lvl_str, const char *fmt, va_list args) {
     }
 }
 
-void err(const char *fmt, ...) { log(ERR, error); }
-void warn(const char *fmt, ...) { log(WARNING, warn); }
-void debug(const char *fmt, ...) { log(INFO, info); }
+void bgpdump_err(const char *fmt, ...) { log(ERR, error); }
+void bgpdump_warn(const char *fmt, ...) { log(WARNING, warn); }
+void bgpdump_debug(const char *fmt, ...) { log(INFO, info); }
 
-void time2str(struct tm* date,char *time_str)
+void bgpdump_time2str(struct tm* date,char *time_str)
 {
     char tmp_str[10];
     
@@ -130,9 +130,10 @@ static void ti2s(uint32_t value) {
     printf("%s =?= %s (%i)\n", ref, buf, len);
 }
 
-void test_utils()
+void bgpdump_test_utils()
 {
     ti2s(0);
     ti2s(99999);
     ti2s(4294967295L);
 }
+

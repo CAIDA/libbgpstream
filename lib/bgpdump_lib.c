@@ -166,8 +166,8 @@ BGPDUMP_ENTRY*	bgpdump_read_next(BGPDUMP *dump) {
     if(bytes_read > 0) {
       /* Malformed record */
       dump->parsed++;
-      err("bgpdump_read_next: incomplete MRT header (%d bytes read, expecting 12)",
-	  bytes_read);	    
+      bgpdump_err("bgpdump_read_next: incomplete MRT header (%d bytes read, expecting 12)",
+		  bytes_read);	    
       dump->corrupted_read = true;
     }
     /* Nothing more to read, quit */
@@ -190,8 +190,8 @@ BGPDUMP_ENTRY*	bgpdump_read_next(BGPDUMP *dump) {
   buffer = malloc(this_entry->length);
   bytes_read = cfr_read_n(dump->f, buffer, this_entry->length);
   if(bytes_read != this_entry->length) {
-    err("bgpdump_read_next: incomplete dump record (%d bytes read, expecting %d)",
-	bytes_read, this_entry->length);
+    bgpdump_err("bgpdump_read_next: incomplete dump record (%d bytes read, expecting %d)",
+		bytes_read, this_entry->length);
     dump->corrupted_read = true;
     //printf("case 2\n");
     free(this_entry);
@@ -375,7 +375,7 @@ int process_mrtd_table_dump(struct mstream *s,BGPDUMP_ENTRY *entry) {
     break;
 #endif
   default:
-    warn("process_mrtd_table_dump: unknown AFI %d",  afi);
+    bgpdump_warn("process_mrtd_table_dump: unknown AFI %d",  afi);
     mstream_get(s, NULL, mstream_can_read(s));
     return 0;
   }
@@ -462,7 +462,7 @@ int process_mrtd_table_dump_v2_peer_index_table(struct mstream *s,BGPDUMP_ENTRY 
 
   // view_name_len is without trailing \0
   if(view_name_len+1 > BGPDUMP_TYPE_TABLE_DUMP_V2_MAX_VIEWNAME_LEN) {
-    warn("process_mrtd_table_dump_v2_peer_index_table: view name length more than maximum length (%d), ignoring view name", BGPDUMP_TYPE_TABLE_DUMP_V2_MAX_VIEWNAME_LEN);
+    bgpdump_warn("process_mrtd_table_dump_v2_peer_index_table: view name length more than maximum length (%d), ignoring view name", BGPDUMP_TYPE_TABLE_DUMP_V2_MAX_VIEWNAME_LEN);
   } else {
     mstream_get(s, t->view_name, view_name_len);
     t->view_name[view_name_len] = 0;
@@ -472,7 +472,7 @@ int process_mrtd_table_dump_v2_peer_index_table(struct mstream *s,BGPDUMP_ENTRY 
 
   t->entries = malloc(sizeof(BGPDUMP_TABLE_DUMP_V2_PEER_INDEX_TABLE_ENTRY) * t->peer_count);
   if(t->entries == NULL){
-    err("process_mrtd_table_dump_v2_peer_index_table: failed to allocate memory for index table");
+    bgpdump_err("process_mrtd_table_dump_v2_peer_index_table: failed to allocate memory for index table");
     return 0;
   }
 
@@ -520,7 +520,7 @@ int process_mrtd_table_dump_v2_ipv4_unicast(struct mstream *s, BGPDUMP_ENTRY *en
 
   prefixdata->entries = malloc(sizeof(BGPDUMP_TABLE_DUMP_V2_ROUTE_ENTRY) * prefixdata->entry_count);
   if(prefixdata->entries == NULL){
-    err("process_mrtd_table_dump_v2_ipv4_unicast: failed to allocate memory for entry table");
+    bgpdump_err("process_mrtd_table_dump_v2_ipv4_unicast: failed to allocate memory for entry table");
     return 0;
   }
 
@@ -558,7 +558,7 @@ int process_mrtd_table_dump_v2_ipv6_unicast(struct mstream *s, BGPDUMP_ENTRY *en
 
   prefixdata->entries = malloc(sizeof(BGPDUMP_TABLE_DUMP_V2_ROUTE_ENTRY) * prefixdata->entry_count);
   if(prefixdata->entries == NULL){
-    err("process_mrtd_table_dump_v2_ipv6_unicast: failed to allocate memory for entry table");
+    bgpdump_err("process_mrtd_table_dump_v2_ipv6_unicast: failed to allocate memory for entry table");
     return 0;
   }
 
@@ -592,7 +592,7 @@ int process_zebra_bgp(struct mstream *s,BGPDUMP_ENTRY *entry) {
   case BGPDUMP_SUBTYPE_ZEBRA_BGP_SNAPSHOT:
     return process_zebra_bgp_snapshot(s, entry);
   default:
-    warn("process_zebra_bgp: unknown subtype %d", entry->subtype);
+    bgpdump_warn("process_zebra_bgp: unknown subtype %d", entry->subtype);
     return 0;
   }
 }
@@ -604,7 +604,7 @@ int process_zebra_bgp_state_change(struct mstream *s,BGPDUMP_ENTRY *entry, u_int
   /* Work around Zebra dump corruption.
    * N.B. I don't see this in quagga 0.96.4 any more. Is it fixed? */
   if (entry->length == 8) {
-    warn("process_zebra_bgp_state_change: 8-byte state change (zebra bug?)");
+    bgpdump_warn("process_zebra_bgp_state_change: 8-byte state change (zebra bug?)");
 
     mstream_getw(s,&entry->body.zebra_state_change.old_state);
     mstream_getw(s,&entry->body.zebra_state_change.new_state);
@@ -625,7 +625,7 @@ int process_zebra_bgp_state_change(struct mstream *s,BGPDUMP_ENTRY *entry, u_int
   case AFI_IP:
     // length could be 20 or 24 (asn16 vs asn32)
     if(entry->length != 20 && entry->length != 24) {
-      warn("process_zebra_bgp_state_change: bad length %d",
+      bgpdump_warn("process_zebra_bgp_state_change: bad length %d",
 	   entry->length);
       return 0;
     }
@@ -637,7 +637,7 @@ int process_zebra_bgp_state_change(struct mstream *s,BGPDUMP_ENTRY *entry, u_int
   case AFI_IP6:
     // length could be 44 or 48 (asn16 vs asn32)
     if(entry->length != 44 && entry->length != 48) {
-      warn("process_zebra_bgp_state_change: bad length %d",
+      bgpdump_warn("process_zebra_bgp_state_change: bad length %d",
 	   entry->length);
       return 0;
     }
@@ -647,7 +647,7 @@ int process_zebra_bgp_state_change(struct mstream *s,BGPDUMP_ENTRY *entry, u_int
     break;
 #endif
   default:
-    warn("process_zebra_bgp_state_change: unknown AFI %d",
+    bgpdump_warn("process_zebra_bgp_state_change: unknown AFI %d",
 	 entry->body.zebra_state_change.address_family);
     return 0;
   }
@@ -699,14 +699,14 @@ int process_zebra_bgp_message(struct mstream *s,BGPDUMP_ENTRY *entry, u_int8_t a
      * the address family is unsupported (since FFFF is not a valid address family) */
   default:
     /* unsupported address family */
-    warn("process_zebra_bgp_message: unsupported AFI %d",
+    bgpdump_warn("process_zebra_bgp_message: unsupported AFI %d",
 	 entry->body.zebra_message.address_family);
     return 0;
   }
 
   if(memcmp(marker, "\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377", 16) != 0) {
     /* bad marker... ignore packet */
-    warn(
+    bgpdump_warn(
 	 "bgp_message: bad marker: %02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x",
 	 marker[0],marker[1],marker[2],marker[3],marker[4],marker[5],marker[6],marker[7],
 	 marker[8],marker[9],marker[10],marker[11],marker[12],marker[13],marker[14],marker[15]);
@@ -733,15 +733,15 @@ int process_zebra_bgp_message(struct mstream *s,BGPDUMP_ENTRY *entry, u_int8_t a
     return 1;
   case BGP_MSG_ROUTE_REFRESH_01:
     /* Not implemented yet */
-    warn("bgp_message: MSG_ROUTE_REFRESH_01 not implemented yet");
+    bgpdump_warn("bgp_message: MSG_ROUTE_REFRESH_01 not implemented yet");
     return 0;
   case BGP_MSG_ROUTE_REFRESH:
     /* Not implemented yet */
-    warn("bgp_message: MSG_ROUTE_REFRESH not implemented yet");
+    bgpdump_warn("bgp_message: MSG_ROUTE_REFRESH not implemented yet");
     return 0;
   default:
-    warn("bgp_message: unknown BGP message type %d",
-	 entry->body.zebra_message.type);
+    bgpdump_warn("bgp_message: unknown BGP message type %d",
+		 entry->body.zebra_message.type);
     return 0;
   }
 }
@@ -792,12 +792,12 @@ int process_zebra_bgp_message_update(struct mstream *s, BGPDUMP_ENTRY *entry, u_
 }
 
 int process_zebra_bgp_entry(struct mstream *s, BGPDUMP_ENTRY *entry) {
-  warn("process_zebra_bgp_entry: record type not implemented yet");
+  bgpdump_warn("process_zebra_bgp_entry: record type not implemented yet");
   return 0;
 }
 
 int process_zebra_bgp_snapshot(struct mstream *s, BGPDUMP_ENTRY *entry) {
-  warn("process_zebra_bgp_snapshot: record type not implemented yet");
+  bgpdump_warn("process_zebra_bgp_snapshot: record type not implemented yet");
   return 0;
 }
 
@@ -869,7 +869,7 @@ static void process_one_attr(struct mstream *outer_stream, attributes_t *attr, u
 
   mstream_t ms = mstream_copy(outer_stream, len), *s = &ms;
   if(mstream_can_read(s) != len) {
-    warn("ERROR attribute is truncated: expected=%u remaining=%u\n", len, mstream_can_read(s));
+    bgpdump_warn("ERROR attribute is truncated: expected=%u remaining=%u\n", len, mstream_can_read(s));
     return;
   }
     
@@ -961,7 +961,7 @@ attributes_t *process_attributes(struct mstream *s, u_int8_t asn_len, struct zeb
   mstream_t copy = mstream_copy(s, total);
 
   if(mstream_can_read(&copy) != total)
-    warn("entry is truncated: expected=%u remaining=%u", total, mstream_can_read(&copy));
+    bgpdump_warn("entry is truncated: expected=%u remaining=%u", total, mstream_can_read(&copy));
     
   while(mstream_can_read(&copy))
     process_one_attr(&copy, attr, asn_len, incomplete);
@@ -1199,7 +1199,7 @@ static struct mp_nlri *get_nexthop(struct mstream *s, u_int16_t afi) {
     /* Is there also a link-local address? */
     mstream_get(s, &nlri->nexthop_local.v6_addr.s6_addr, 16);
   } else if(nlri->nexthop_len != 16) {
-    warn("process_mp_announce: unknown MP nexthop length %d", nlri->nexthop_len);
+    bgpdump_warn("process_mp_announce: unknown MP nexthop length %d", nlri->nexthop_len);
   }
 #endif
   return nlri;
@@ -1220,12 +1220,12 @@ void process_mp_announce(struct mstream *s, struct mp_info *info, struct zebra_i
   mstream_getc(s, &safi);
         
   if(afi > BGPDUMP_MAX_AFI || safi > BGPDUMP_MAX_SAFI) {
-    warn("process_mp_announce: unknown protocol(AFI=%d, SAFI=%d)!", afi, safi);
+    bgpdump_warn("process_mp_announce: unknown protocol(AFI=%d, SAFI=%d)!", afi, safi);
     return;
   }
 
   if(info->announce[afi][safi] != NULL) {
-    warn("process_mp_announce: two MP_NLRI for the same protocol(%d, %d)!", afi, safi);
+    bgpdump_warn("process_mp_announce: two MP_NLRI for the same protocol(%d, %d)!", afi, safi);
     return;
   }
 
@@ -1234,7 +1234,7 @@ void process_mp_announce(struct mstream *s, struct mp_info *info, struct zebra_i
   // SNPA is defunct and num_snpa should always be 0
   u_int8_t num_snpa;
   if(mstream_getc(s, &num_snpa))
-    warn("process_mp_announce: MP_NLRI contains SNPAs, skipping");
+    bgpdump_warn("process_mp_announce: MP_NLRI contains SNPAs, skipping");
   for(; num_snpa > 0; --num_snpa) {
     mstream_get(s, NULL, mstream_getc(s, NULL));
   }
@@ -1252,13 +1252,13 @@ void process_mp_withdraw(struct mstream *s, struct mp_info *info, struct zebra_i
 
   /* Do we know about this address family? */
   if(afi > BGPDUMP_MAX_AFI || safi > BGPDUMP_MAX_SAFI) {
-    warn("process_mp_withdraw: unknown AFI,SAFI %d,%d!", afi, safi);
+    bgpdump_warn("process_mp_withdraw: unknown AFI,SAFI %d,%d!", afi, safi);
     return;
   }
 
   /* If there are 2 NLRI's for the same protocol, fail but don't burn and die */
   if(info->withdraw[afi][safi] != NULL) {
-    warn("process_mp_withdraw: update contains more than one MP_NLRI with AFI,SAFI %d,%d!", afi, safi);
+    bgpdump_warn("process_mp_withdraw: update contains more than one MP_NLRI with AFI,SAFI %d,%d!", afi, safi);
     return;
   }
 
@@ -1302,7 +1302,7 @@ static int read_prefix_list(struct mstream *s, u_int16_t afi, struct prefix *pre
   }
     
   if(count > MAX_PREFIXES) {
-    err("too many prefixes (%i > %i)", count, MAX_PREFIXES);
+    bgpdump_err("too many prefixes (%i > %i)", count, MAX_PREFIXES);
     return MAX_PREFIXES;
   }
     
@@ -1333,7 +1333,7 @@ int check_new_aspath(struct aspath *aspath) {
       segment < (struct assegment *) (aspath->data + aspath->length);
       segment = (struct assegment *) ((char *) segment + sizeof(*segment) + segment->length * ASN32_LEN)) {
     if(segment->type == AS_CONFED_SEQUENCE || segment->type == AS_CONFED_SET) {
-      warn("check_new_aspath: invalid segment of type AS_CONFED_%s in NEW_AS_PATH",
+      bgpdump_warn("check_new_aspath: invalid segment of type AS_CONFED_%s in NEW_AS_PATH",
 	   segment->type == AS_CONFED_SET ? "SET" : "SEQUENCE");
       return 0;
     }
@@ -1345,10 +1345,10 @@ void process_asn32_trans(attributes_t *attr, u_int8_t asn_len) {
   if(asn_len == ASN32_LEN) {
     /* These attributes "SHOULD NOT" be used with ASN32. */
     if(attr->flag & ATTR_FLAG_BIT(BGP_ATTR_NEW_AS_PATH))
-      warn("process_asn32_trans: ASN32 message contains NEW_AS_PATH attribute");
+      bgpdump_warn("process_asn32_trans: ASN32 message contains NEW_AS_PATH attribute");
 
     if(attr->flag & ATTR_FLAG_BIT(BGP_ATTR_NEW_AGGREGATOR))
-      warn("process_asn32_trans: ASN32 message contains NEW_AGGREGATOR attribute");
+      bgpdump_warn("process_asn32_trans: ASN32 message contains NEW_AGGREGATOR attribute");
 
     /* Don't compute anything, just leave AS_PATH and AGGREGATOR as they are */
     return;

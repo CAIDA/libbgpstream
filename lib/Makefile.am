@@ -14,12 +14,12 @@ libbgpdump_la_SOURCES = bgpdump_attr.h    \
 			bgpdump_lib.h     \
 			bgpdump_mstream.h \
 			bgpdump_cfile_tools.h     \
-			bgpdump_util.h            \
+			bgpdump_util.h    \
 			bgpdump_lib.c     \
 			bgpdump_mstream.c \
 			bgpdump_cfile_tools.c     \
 			bgpdump_inet_ntop.c       \
-			bgpdump_util.c            \
+			bgpdump_util.c    \
 			bgpdump-config.h
 
 

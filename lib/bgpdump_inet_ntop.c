@@ -109,7 +109,7 @@ const char OCTETS[][4] = {
     "253", "254", "255"
 };
 
-char *fmt_ipv4(BGPDUMP_IP_ADDRESS addr, char *buffer)
+char * bgpdump_fmt_ipv4(BGPDUMP_IP_ADDRESS addr, char *buffer)
 {
     assert(buffer);
     uint8_t *ap = (uint8_t *)&addr.v4_addr.s_addr;
@@ -129,7 +129,7 @@ char *fmt_ipv4(BGPDUMP_IP_ADDRESS addr, char *buffer)
     return buffer;
 }
 
-char *fmt_ipv6(BGPDUMP_IP_ADDRESS addr, char *buffer)
+char *bgpdump_fmt_ipv6(BGPDUMP_IP_ADDRESS addr, char *buffer)
 {    
     static const char hexchars[] = "0123456789abcdef";
 
@@ -142,7 +142,7 @@ char *fmt_ipv6(BGPDUMP_IP_ADDRESS addr, char *buffer)
         char buffer2[100];
         BGPDUMP_IP_ADDRESS mapped = { .v4_addr.s_addr = ((uint32_t *)addr.v6_addr.s6_addr)[3] };
         
-        sprintf(buffer, "::%s%s", m ? "ffff:" : "", fmt_ipv4(mapped, buffer2));
+        sprintf(buffer, "::%s%s", m ? "ffff:" : "", bgpdump_fmt_ipv4(mapped, buffer2));
         return buffer;
     }
     
@@ -245,11 +245,11 @@ static void test_roundtrip(char *str)
     BGPDUMP_IP_ADDRESS addr;
     inet_pton(AF_INET6, str, &addr.v6_addr);
     char tmp[1000];
-    fmt_ipv6(addr, tmp);
+    bgpdump_fmt_ipv6(addr, tmp);
     printf("%s -> %s [%s]\n", str, tmp, strcmp(str, tmp) ? "ERROR" : "ok");
 }
 
-void test_fmt_ip()
+void bgpdump_test_fmt_ip()
 {
     test_roundtrip("fe80::");
     test_roundtrip("2001:db8::1");

@@ -25,21 +25,21 @@
 
 #include "bgpdump_attr.h"
 
-void log_to_stderr(void);
-void log_to_syslog(void);
+void bgpdump_log_to_stderr(void);
+void bgpdump_log_to_syslog(void);
 
-void err(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
-void warn(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
-void debug(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+void bgpdump_err(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+void bgpdump_warn(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+void bgpdump_debug(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 
 // system inet_ntop() functions format IPv6 addresses
 // inconsistently, so use these versions
-char *fmt_ipv4(BGPDUMP_IP_ADDRESS addr, char *buffer);
-char *fmt_ipv6(BGPDUMP_IP_ADDRESS addr, char *buffer);
-void test_fmt_ip(void);
+char * bgpdump_fmt_ipv4(BGPDUMP_IP_ADDRESS addr, char *buffer);
+char * bgpdump_fmt_ipv6(BGPDUMP_IP_ADDRESS addr, char *buffer);
+void bgpdump_test_fmt_ip(void);
 
-void time2str(struct tm* date,char *time_str);
+void bgpdump_time2str(struct tm* date,char *time_str);
 int bgpdump_int2str(uint32_t value, char* str);
-void test_utils(void);
+void bgpdump_test_utils(void);
 
 #endif
