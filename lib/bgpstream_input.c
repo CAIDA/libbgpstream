@@ -99,10 +99,13 @@ int bgpstream_input_mgr_push_input(bgpstream_input_mgr_t * const bs_input_mgr,
   // initialize bgpstream_input fields
   bs_input->next = NULL;
   // initialization done
-  strcpy(bs_input->filename, filename);
-  strcpy(bs_input->fileproject, fileproject);
-  strcpy(bs_input->filecollector, filecollector);
-  strcpy(bs_input->filetype, filetype);
+
+  if((bs_input->filename = strdup(filename)) == NULL ||
+     (bs_input->fileproject = strdup(fileproject)) == NULL ||
+     (bs_input->filecollector = strdup(filecollector)) == NULL ||
+     (bs_input->filetype = strdup(filetype)) == NULL) {
+    return 0;
+  }
   bs_input->epoch_filetime = epoch_filetime;
   // update the bs_input_mgr
   if(bs_input_mgr->status == EMPTY_INPUT_QUEUE) {
@@ -139,10 +142,14 @@ int bgpstream_input_mgr_push_sorted_input(bgpstream_input_mgr_t * const bs_input
   // initialize bgpstream_input fields
   bs_input->next = NULL;
   // initialization done
-  strcpy(bs_input->filename, filename);
-  strcpy(bs_input->fileproject, fileproject);
-  strcpy(bs_input->filecollector, filecollector);
-  strcpy(bs_input->filetype, filetype);
+
+  bs_input->filename = filename; /* we already own the buffer */
+  if((bs_input->fileproject = strdup(fileproject)) == NULL ||
+     (bs_input->filecollector = strdup(filecollector)) == NULL ||
+     (bs_input->filetype = strdup(filetype)) == NULL) {
+    return 0;
+  }
+
   bs_input->epoch_filetime = epoch_filetime;
   // update the bs_input_mgr
   if(bs_input_mgr->status == EMPTY_INPUT_QUEUE) {
@@ -161,16 +168,18 @@ int bgpstream_input_mgr_push_sorted_input(bgpstream_input_mgr_t * const bs_input
     while(current != NULL && current->epoch_filetime <= epoch_filetime) {
       // if the file is already in queue we do not add a 
       // duplicate
-      if(current->epoch_filetime == epoch_filetime && 
-	 strcmp(current->filename,filename) == 0) {
+      if(current->epoch_filetime == epoch_filetime &&
+	 strcmp(current->filecollector, filecollector) == 0 &&
+	 strcmp(current->fileproject, fileproject) == 0 &&
+	 strcmp(current->filetype, filetype) == 0) {
 	return 0;
       }
       // ribs have higher priority (ribs and updates are grouped
       // together, ribs come before updates - if they have the same
       // filetime)
-      if(current->epoch_filetime == epoch_filetime && 
-	 strcmp(filetype, "ribs") == 0 &&
-	 strcmp(current->filetype, "updates") == 0) {
+      if(current->epoch_filetime == epoch_filetime &&
+	 filetype[0] == 'r' && /* "ribs" */
+	 current->filetype[0] == 'u') { /* "updates" */
 	break;
       }
       else{
@@ -304,6 +313,10 @@ void bgpstream_input_mgr_destroy_queue(bgpstream_input_t *queue) {
     current = iterator;
     iterator = iterator->next;
     // deallocating memory for current bgpstream_input object
+    free(current->filename);
+    free(current->fileproject);
+    free(current->filecollector);
+    free(current->filetype);
     free(current);
   }
   bgpstream_debug("\tBSI_MGR: subqueue destroy end");

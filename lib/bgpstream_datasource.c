@@ -593,22 +593,20 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
   else{
     bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds set time_zone something wrong"); 
   }
-    
-  // initialize sql query
-  strcpy(mysql_ds->sql_query, "SELECT CONCAT_WS('', \
-                                CONCAT_WS('/',projects.path, collectors.path, bgp_types.path, \
-                                         FROM_UNIXTIME(file_time,'%Y/%m/%d/')), \
-                                CONCAT_WS('.',projects.name, collectors.name, bgp_types.name, \
-                                          file_time, projects.file_ext)) as filename, \
-                                projects.name, collectors.name, bgp_types.name, file_time, \
-                                UNIX_TIMESTAMP(NOW())-1 \
-                         FROM bgp_data join bgp_types join collectors join projects join \
-                              on_web_frequency \
-                         WHERE bgp_data.collector_id=collectors.id AND \
-                               bgp_data.bgp_type_id=bgp_types.id   AND \
-                               collectors.project_id=projects.id   AND \
-                               collectors.project_id=on_web_frequency.project_id AND \
-                               bgp_data.bgp_type_id= on_web_frequency.bgp_type_id");
+
+  strcpy(mysql_ds->sql_query,
+	 "SELECT "
+	 "projects.path, collectors.path, bgp_types.path, "
+	 "projects.name, collectors.name, bgp_types.name, projects.file_ext, "
+	 "file_time, UNIX_TIMESTAMP(NOW())-1 "
+	 "FROM bgp_data "
+	 "JOIN bgp_types  ON bgp_types.id  = bgp_data.bgp_type_id "
+	 "JOIN collectors ON collectors.id = bgp_data.collector_id "
+	 "JOIN projects   ON projects.id   = collectors.project_id "
+	 "JOIN on_web_frequency "
+	 "     ON on_web_frequency.project_id  = projects.id AND "
+	 "        on_web_frequency.bgp_type_id = bgp_types.id"
+	 );
 
 
   // projects, collectors, bgp_types, and time_intervals are used as filters
@@ -693,9 +691,9 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
   // order by filetime and bgptypes in reverse order: this way the 
   // input insertions are always "head" insertions, i.e. queue insertion is
   // faster
-  strcat (mysql_ds->sql_query," ORDER BY file_time, bgp_types.name DESC");
+  strcat (mysql_ds->sql_query," ORDER BY file_time DESC, bgp_types.name DESC");
 
-  //printf("%s\n",mysql_ds->sql_query);
+  printf("%s\n",mysql_ds->sql_query);
   bgpstream_debug("\t\tBSDS_MYSQL:  mysql query created");
 
   // the first last_timestamp is 0
@@ -744,41 +742,56 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
 
   /* bind results to bgpstream_sql variables */
 
+  /* PROJECT PATH */
   mysql_ds->results[0].buffer_type= MYSQL_TYPE_VAR_STRING;
-  mysql_ds->results[0].buffer = mysql_ds->filename_res;
-  mysql_ds->results[0].buffer_length = BGPSTREAM_DUMP_MAX_LEN;
+  mysql_ds->results[0].buffer = mysql_ds->proj_path_res;
+  mysql_ds->results[0].buffer_length = BGPSTREAM_PAR_MAX_LEN;
   mysql_ds->results[0].is_null = 0;
-  //  mysql_ds->results[0].length = &data_length;
-
+  /* COLLECTOR PATH */
   mysql_ds->results[1].buffer_type= MYSQL_TYPE_VAR_STRING;
-  mysql_ds->results[1].buffer = mysql_ds->project_res;
+  mysql_ds->results[1].buffer = mysql_ds->coll_path_res;
   mysql_ds->results[1].buffer_length = BGPSTREAM_PAR_MAX_LEN;
   mysql_ds->results[1].is_null = 0;
-  //  mysql_ds->results[0].length = &data_length;
-
+  /* TYPE PATH */
   mysql_ds->results[2].buffer_type= MYSQL_TYPE_VAR_STRING;
-  mysql_ds->results[2].buffer = mysql_ds->collector_res;
+  mysql_ds->results[2].buffer = mysql_ds->type_path_res;
   mysql_ds->results[2].buffer_length = BGPSTREAM_PAR_MAX_LEN;
   mysql_ds->results[2].is_null = 0;
-  //  mysql_ds->results[0].length = &data_length;
 
+  /* PROJECT NAME */
   mysql_ds->results[3].buffer_type= MYSQL_TYPE_VAR_STRING;
-  mysql_ds->results[3].buffer = mysql_ds->bgp_type_res;
+  mysql_ds->results[3].buffer = mysql_ds->proj_name_res;
   mysql_ds->results[3].buffer_length = BGPSTREAM_PAR_MAX_LEN;
   mysql_ds->results[3].is_null = 0;
-  //  mysql_ds->results[0].length = &data_length;
-
-  mysql_ds->results[4].buffer_type = MYSQL_TYPE_LONG;
-  mysql_ds->results[4].buffer = (void *) &(mysql_ds->filetime_res);
-  mysql_ds->results[4].is_unsigned = 0;
+  /* COLLECTOR NAME */
+  mysql_ds->results[4].buffer_type= MYSQL_TYPE_VAR_STRING;
+  mysql_ds->results[4].buffer = mysql_ds->coll_name_res;
+  mysql_ds->results[4].buffer_length = BGPSTREAM_PAR_MAX_LEN;
   mysql_ds->results[4].is_null = 0;
-  mysql_ds->results[4].length = 0;
-
-  mysql_ds->results[5].buffer_type = MYSQL_TYPE_LONG;
-  mysql_ds->results[5].buffer = (void *) &(mysql_ds->max_timestamp_res);
-  mysql_ds->results[5].is_unsigned = 0;
+  /* TYPE NAME */
+  mysql_ds->results[5].buffer_type= MYSQL_TYPE_VAR_STRING;
+  mysql_ds->results[5].buffer = mysql_ds->type_name_res;
+  mysql_ds->results[5].buffer_length = BGPSTREAM_PAR_MAX_LEN;
   mysql_ds->results[5].is_null = 0;
-  mysql_ds->results[5].length = 0;
+  /* FILE EXT */
+  mysql_ds->results[6].buffer_type= MYSQL_TYPE_VAR_STRING;
+  mysql_ds->results[6].buffer = mysql_ds->file_ext_res;
+  mysql_ds->results[6].buffer_length = BGPSTREAM_PAR_MAX_LEN;
+  mysql_ds->results[6].is_null = 0;
+
+  /* FILETIME */
+  mysql_ds->results[7].buffer_type = MYSQL_TYPE_LONG;
+  mysql_ds->results[7].buffer = (void *) &(mysql_ds->filetime_res);
+  mysql_ds->results[7].is_unsigned = 0;
+  mysql_ds->results[7].is_null = 0;
+  mysql_ds->results[7].length = 0;
+
+  /* MAX TIMESTAMP */
+  mysql_ds->results[8].buffer_type = MYSQL_TYPE_LONG;
+  mysql_ds->results[8].buffer = (void *) &(mysql_ds->max_timestamp_res);
+  mysql_ds->results[8].is_unsigned = 0;
+  mysql_ds->results[8].is_null = 0;
+  mysql_ds->results[8].length = 0;
 
   /* Bind the results buffer */
   if (mysql_stmt_bind_result(mysql_ds->stmt, mysql_ds->results) != 0) {
@@ -795,17 +808,43 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
   return mysql_ds;
 }
 
+static char *build_filename(bgpstream_mysql_datasource_t *ds) {
+  char *filename = NULL;
+  char date[11]; /* "YYYY/MM/DD" */
+  long tmp = ds->filetime_res;
+
+  if(strftime(date, 11, "%Y/%m/%d", gmtime(&tmp)) == 0) {
+    return NULL;
+  }
+
+  asprintf(&filename, "%s/%s/%s/%s/%s.%s.%s.%d.%s",
+	   ds->proj_path_res, ds->coll_path_res,
+	   ds->type_path_res, date,
+	   ds->proj_name_res, ds->coll_name_res,
+	   ds->type_name_res, ds->filetime_res,
+	   ds->file_ext_res
+	   );
+
+  return filename;
+}
+
 
 static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasource_t* mysql_ds,
 						  bgpstream_input_mgr_t *input_mgr) {
-  bgpstream_debug("\t\tBSDS_MYSQL: mysql_ds update input queue start ");
-  
+  char *filename = NULL;
   int num_results = 0;
-  // memset binded results
-  memset(mysql_ds->filename_res, 0, BGPSTREAM_DUMP_MAX_LEN);
-  memset(mysql_ds->project_res, 0, BGPSTREAM_PAR_MAX_LEN);
-  memset(mysql_ds->collector_res, 0, BGPSTREAM_PAR_MAX_LEN);
-  memset(mysql_ds->bgp_type_res, 0, BGPSTREAM_PAR_MAX_LEN);
+
+  bgpstream_debug("\t\tBSDS_MYSQL: mysql_ds update input queue start ");
+
+  /* just to be safe, we clear all the strings */
+  mysql_ds->proj_path_res[0] = '\0';
+  mysql_ds->coll_path_res[0] = '\0';
+  mysql_ds->type_path_res[0] = '\0';
+  mysql_ds->proj_name_res[0] = '\0';
+  mysql_ds->coll_name_res[0] = '\0';
+  mysql_ds->type_name_res[0] = '\0';
+  mysql_ds->file_ext_res[0] = '\0';
+
   // mysql_ds->last_timestamp is the only parameter for the query
   /* Execute the statement */
   if (mysql_stmt_execute(mysql_ds->stmt)) {
@@ -816,21 +855,34 @@ static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasou
   else{
     /* Print our results */
     while(mysql_stmt_fetch (mysql_ds->stmt) == 0) {
-      num_results += bgpstream_input_mgr_push_sorted_input(input_mgr,
-						       mysql_ds->filename_res,
-						       mysql_ds->project_res,
-						       mysql_ds->collector_res,
-						       mysql_ds->bgp_type_res,
-						       mysql_ds->filetime_res);
+
+      /* build the filename from pieces given by sql */
+      if((filename = build_filename(mysql_ds)) == NULL) {
+	fprintf(stderr, "could not build file name\n");
+	return -1;
+      }
+
+      num_results +=
+	bgpstream_input_mgr_push_sorted_input(input_mgr,
+					      filename,
+					      mysql_ds->proj_name_res,
+					      mysql_ds->coll_name_res,
+					      mysql_ds->type_name_res,
+					      mysql_ds->filetime_res
+					      );
       //DEBUG printf("%s\n", mysql_ds->filename_res);
       bgpstream_debug("\t\tBSDS_MYSQL: added %d new inputs to input queue", num_results);
       bgpstream_debug("\t\tBSDS_MYSQL: %s - %s - %d", 
 	    mysql_ds->filename_res, mysql_ds->bgp_type_res, mysql_ds->filetime_res);
       // here
-      memset(mysql_ds->filename_res, 0, BGPSTREAM_DUMP_MAX_LEN);
-      memset(mysql_ds->project_res, 0, BGPSTREAM_PAR_MAX_LEN);
-      memset(mysql_ds->collector_res, 0, BGPSTREAM_PAR_MAX_LEN);
-      memset(mysql_ds->bgp_type_res, 0, BGPSTREAM_PAR_MAX_LEN);
+      /* clear all the strings... just in case */
+      mysql_ds->proj_path_res[0] = '\0';
+      mysql_ds->coll_path_res[0] = '\0';
+      mysql_ds->type_path_res[0] = '\0';
+      mysql_ds->proj_name_res[0] = '\0';
+      mysql_ds->coll_name_res[0] = '\0';
+      mysql_ds->type_name_res[0] = '\0';
+      mysql_ds->file_ext_res[0] = '\0';
     }
     // the next time we will pull data that has been written 
     // after this timestamp

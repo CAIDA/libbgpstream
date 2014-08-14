@@ -33,10 +33,10 @@
 
 typedef struct struct_bgpstream_input_t {
   struct struct_bgpstream_input_t *next;
-  char filename[BGPSTREAM_DUMP_MAX_LEN]; // name of bgpdump 
-  char fileproject[BGPSTREAM_PAR_MAX_LEN]; // bgpdump project
-  char filecollector[BGPSTREAM_PAR_MAX_LEN]; // bgpdump collector
-  char filetype[BGPSTREAM_PAR_MAX_LEN]; // type of bgpdump (rib or update)
+  char *filename; // name of bgpdump 
+  char *fileproject; // bgpdump project
+  char *filecollector; // bgpdump collector
+  char *filetype; // type of bgpdump (rib or update)
   int epoch_filetime; // timestamp associated to the time the bgp data was generated
 } bgpstream_input_t;
 
