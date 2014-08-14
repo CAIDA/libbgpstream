@@ -91,7 +91,8 @@ BGPDUMP *bgpdump_open_dump(const char *filename) {
 
   CFRFILE *f = cfr_open(filename);
   if(! f) {
-    perror("can't open dumpfile");
+    fprintf(stderr, "Cannot open dumpfile %s: ", filename);
+    perror("");
     return NULL;
   }
     
