@@ -242,16 +242,16 @@ void process(BGPDUMP_ENTRY *entry) {
 	    		printf("PREFIX: %s/%d\n",prefix, e->prefix_length);
     			printf("SEQUENCE: %d\n",e->seq);
 
-				if(e->entries[i].peer->afi == AFI_IP){
-					bgpdump_fmt_ipv4(e->entries[i].peer->peer_ip, peer_ip);
+				if(e->entries[i].peer.afi == AFI_IP){
+					bgpdump_fmt_ipv4(e->entries[i].peer.peer_ip, peer_ip);
 #ifdef BGPDUMP_HAVE_IPV6
-				} else if (e->entries[i].peer->afi == AFI_IP6){
-					bgpdump_fmt_ipv6(e->entries[i].peer->peer_ip, peer_ip);
+				} else if (e->entries[i].peer.afi == AFI_IP6){
+					bgpdump_fmt_ipv6(e->entries[i].peer.peer_ip, peer_ip);
 #endif
 				} else {
 					sprintf(peer_ip, "[N/A, unsupported AF]");
 				}
-    			printf("FROM: %s AS%u\n", peer_ip, e->entries[i].peer->peer_as);
+    			printf("FROM: %s AS%u\n", peer_ip, e->entries[i].peer.peer_as);
 				time_t time_temp = (time_t)((e->entries[i]).originated_time);
 				bgpdump_time2str(gmtime(&time_temp),time_str);
 				printf("ORIGINATED: %s\n",time_str); 	
@@ -1556,12 +1556,12 @@ static void table_line_dump_v2_prefix(BGPDUMP_TABLE_DUMP_V2_PREFIX *e,BGPDUMP_EN
         char *aspath_str = (attr->aspath) ? attr->aspath->str: "";
         char *aggregate = attr->flag & ATTR_FLAG_BIT(BGP_ATTR_ATOMIC_AGGREGATE) ? "AG" : "NAG";
         
-        if(e->entries[i].peer->afi == AFI_IP){
-            bgpdump_fmt_ipv4(e->entries[i].peer->peer_ip, peer);
+        if(e->entries[i].peer.afi == AFI_IP){
+            bgpdump_fmt_ipv4(e->entries[i].peer.peer_ip, peer);
 #ifdef BGPDUMP_HAVE_IPV6
         } else{
-	  if(e->entries[i].peer->afi == AFI_IP6){
-            bgpdump_fmt_ipv6(e->entries[i].peer->peer_ip, peer);
+	  if(e->entries[i].peer.afi == AFI_IP6){
+            bgpdump_fmt_ipv6(e->entries[i].peer.peer_ip, peer);
 	  }
 	  else {
 	    printf("error on bgpdump!\n");
@@ -1580,9 +1580,9 @@ static void table_line_dump_v2_prefix(BGPDUMP_TABLE_DUMP_V2_PREFIX *e,BGPDUMP_EN
         if (mode == 1)
         {
             if(timetype==0){
-                printf("TABLE_DUMP2|%ld|B|%s|%u|",entry->time,peer,e->entries[i].peer->peer_as);
+                printf("TABLE_DUMP2|%ld|B|%s|%u|",entry->time,peer,e->entries[i].peer.peer_as);
             }else if(timetype==1){
-                printf("TABLE_DUMP2|%u|B|%s|%u|",e->entries[i].originated_time,peer,e->entries[i].peer->peer_as);
+                printf("TABLE_DUMP2|%u|B|%s|%u|",e->entries[i].originated_time,peer,e->entries[i].peer.peer_as);
             }
             printf("%s/%d|%s|%s|",prefix,e->prefix_length,aspath_str,origin);
             
@@ -1624,7 +1624,7 @@ static void table_line_dump_v2_prefix(BGPDUMP_TABLE_DUMP_V2_PREFIX *e,BGPDUMP_EN
                 date=gmtime(&time_temp);
             }
             bgpdump_time2str(date,time_str);	
-            printf("TABLE_DUMP_V2|%s|A|%s|%u|",time_str,peer,e->entries[i].peer->peer_as);
+            printf("TABLE_DUMP_V2|%s|A|%s|%u|",time_str,peer,e->entries[i].peer.peer_as);
             printf("%s/%d|%s|%s\n",prefix,e->prefix_length,aspath_str,origin);
             
         }

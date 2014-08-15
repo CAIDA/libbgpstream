@@ -56,18 +56,14 @@ typedef struct struct_bgpstream_input_mgr_t {
 /* prototypes */
 bgpstream_input_mgr_t *bgpstream_input_mgr_create();
 bool bgpstream_input_mgr_is_empty(const bgpstream_input_mgr_t * const bs_input_mgr);
-int bgpstream_input_mgr_push_input( bgpstream_input_mgr_t * const bs_input_mgr, 
-				const char * const filename, 
-				const char * const fileproject, 
-				const char * const filecollector, 
-				const char * const filetype, 
-				const int epoch_filetime);
-int bgpstream_input_mgr_push_sorted_input( bgpstream_input_mgr_t * const bs_input_mgr, 
-				const char * const filename, 
-				const char * const fileproject, 
-				const char * const filecollector, 
-				const char * const filetype, 
-				const int epoch_filetime);
+int bgpstream_input_mgr_push_input(bgpstream_input_mgr_t * const bs_input_mgr, 
+				   char * filename, char * fileproject,
+				   char * filecollector, char * const filetype,
+				   const int epoch_filetime);
+int bgpstream_input_mgr_push_sorted_input(bgpstream_input_mgr_t * const bs_input_mgr, 
+					  char * filename, char * fileproject,
+					  char * filecollector, char * const filetype,
+					  const int epoch_filetime);
 bgpstream_input_t *bgpstream_input_mgr_get_queue_to_process(bgpstream_input_mgr_t * const bs_input_mgr);
 void bgpstream_input_mgr_destroy_queue(bgpstream_input_t *queue);
 void bgpstream_input_mgr_destroy(bgpstream_input_mgr_t *bs_input_mgr);

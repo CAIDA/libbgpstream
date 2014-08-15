@@ -318,9 +318,11 @@ static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customli
       strcpy(customlist_ds->bgp_type, "ribs");
       customlist_ds->filetime = 1401487200;
       if(bgpstream_customlist_datasource_filter_ok(customlist_ds)){
-	num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, customlist_ds->filename,
-							     customlist_ds->project, customlist_ds->collector,
-							     customlist_ds->bgp_type, customlist_ds->filetime);
+	num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, strdup(customlist_ds->filename),
+							     strdup(customlist_ds->project),
+							     strdup(customlist_ds->collector),
+							     strdup(customlist_ds->bgp_type),
+							     customlist_ds->filetime);
       }
       // file 2:
       strcpy(customlist_ds->filename, "./test-dumps/routeviews.route-views.jinx.updates.1401493500.bz2");
@@ -329,9 +331,11 @@ static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customli
       strcpy(customlist_ds->bgp_type, "updates");
       customlist_ds->filetime = 1401493500;
       if(bgpstream_customlist_datasource_filter_ok(customlist_ds)){
-	num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, customlist_ds->filename,
-							     customlist_ds->project, customlist_ds->collector,
-							     customlist_ds->bgp_type, customlist_ds->filetime);
+	num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, strdup(customlist_ds->filename),
+							     strdup(customlist_ds->project),
+							     strdup(customlist_ds->collector),
+							     strdup(customlist_ds->bgp_type),
+							     customlist_ds->filetime);
       }
       // file 3:
       strcpy(customlist_ds->filename, "./test-dumps/ris.rrc06.ribs.1400544000.gz");
@@ -340,9 +344,11 @@ static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customli
       strcpy(customlist_ds->bgp_type, "ribs");
       customlist_ds->filetime = 1400544000;
       if(bgpstream_customlist_datasource_filter_ok(customlist_ds)){
-	num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, customlist_ds->filename,
-							     customlist_ds->project, customlist_ds->collector,
-							     customlist_ds->bgp_type, customlist_ds->filetime);
+	num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, strdup(customlist_ds->filename),
+							     strdup(customlist_ds->project),
+							     strdup(customlist_ds->collector),
+							     strdup(customlist_ds->bgp_type),
+							     customlist_ds->filetime);
       }
       // file 4:
       strcpy(customlist_ds->filename, "./test-dumps/ris.rrc06.updates.1401488100.gz");
@@ -351,9 +357,11 @@ static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customli
       strcpy(customlist_ds->bgp_type, "updates");
       customlist_ds->filetime = 1401488100;
       if(bgpstream_customlist_datasource_filter_ok(customlist_ds)){
-	num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, customlist_ds->filename,
-							     customlist_ds->project, customlist_ds->collector,
-							     customlist_ds->bgp_type, customlist_ds->filetime);
+	num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, strdup(customlist_ds->filename),
+							     strdup(customlist_ds->project),
+							     strdup(customlist_ds->collector),
+							     strdup(customlist_ds->bgp_type),
+							     customlist_ds->filetime);
       }
       // end of files
     }
@@ -464,79 +472,70 @@ static bool bgpstream_csvfile_datasource_filter_ok(bgpstream_csvfile_datasource_
 }
 
 
-static char* getfield(char* tmp, int num) {
-  if(tmp == NULL) { 
-    return NULL;
-  }
-  const char* tok;
-  char * ret_memory;
-  char * line = (char*) malloc(sizeof(char) * (strlen(tmp)+1));
-  strcpy(line, tmp);
-  for (tok = strtok(line, ","); tok && *tok;  tok = strtok(NULL, ",\n")) {
-    if (!--num){
-      ret_memory = (char*) malloc(sizeof(char) * (strlen(tok)+1));
-      strcpy(ret_memory, tok);    
-      return ret_memory;
-    }
-  }
-  free(line);
-  return NULL;
-}
-
-
 static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_datasource_t* csvfile_ds,
 							   bgpstream_input_mgr_t *input_mgr) {
   bgpstream_debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue start");  
   int num_results = 0;       
-  FILE* stream;
-  int fd;
-  char line[1024];
-  char * ret_memory = NULL;
-  char* tmp;
+  FILE * stream;
+  // char line[1024];
+  char * line = NULL;
+  char * tok;
+  int i;
   // if list has not been read yet, then we push these files in the input queue
   if(csvfile_ds->csvfile_read == 0) {
     stream = fopen("/Users/chiara/Desktop/local_db/bgp_data.csv", "r");
-    fd = fileno(stream);
-    // lock file using the file descriptor fileno(stream) returns int
-    if (flock(fd, LOCK_EX) == -1) {
-      bgpstream_log_err("lockf failed");
-      exit(EXIT_FAILURE);
-    }
-    fseek(stream, 0, SEEK_SET );
     //stream = fopen("/scratch/satc/chiaras_test/local_db/bgp_data.csv", "r");
     if(stream != NULL) {
+      /* The flockfile function acquires the internal locking object associated
+       * with the stream stream. This ensures that no other thread can explicitly
+       * through flockfile/ftrylockfile or implicit through a call of a stream 
+       * function lock the stream. The thread will block until the lock is acquired. 
+       */
+      flock(fileno(stream),LOCK_EX);
+      fseek (stream , 0, SEEK_SET);
+      line = (char *) malloc(1024 * sizeof(char));
       while (fgets(line, 1024, stream)) {
-	tmp = strdup(line);
-	ret_memory = getfield(tmp, 1);
-	strcpy(csvfile_ds->filename, ret_memory);
-	free(ret_memory);
-	ret_memory = getfield(tmp, 2);
-	strcpy(csvfile_ds->project, ret_memory);
-	free(ret_memory);
-	ret_memory = getfield(tmp, 3);
-	strcpy(csvfile_ds->bgp_type, ret_memory);
-	free(ret_memory);
-	ret_memory = getfield(tmp, 4);
-	strcpy(csvfile_ds->collector, ret_memory);
-	free(ret_memory);
-	ret_memory = getfield(tmp, 5);
-	csvfile_ds->filetime = atoi(ret_memory);
-	free(ret_memory);
-	// strdup malloc memory
-	free(tmp);
+	// printf("%s\n", line);
+	i = 0;
+	while((tok = strsep(&line, ",")) != NULL) {
+	  // printf("%s\n", tok);	
+	  switch(i) {
+	  case 0:
+	    strcpy(csvfile_ds->filename, tok);	  
+	    break;
+	  case 1:
+	    strcpy(csvfile_ds->project, tok);	  
+	    break;
+	  case 2:
+	    strcpy(csvfile_ds->bgp_type, tok);	  
+	    break;
+	  case 3:
+	    strcpy(csvfile_ds->collector, tok);	  
+	    break;
+	  case 4:
+	    csvfile_ds->filetime = atoi(tok);	
+	    break;
+	  default:
+	    continue;
+	  }
+	  ++i;	  
+	}
 	// printf("%s = %s = %s = %d\n", csvfile_ds->filename, csvfile_ds->bgp_type, csvfile_ds->collector, csvfile_ds->filetime);
 	if(bgpstream_csvfile_datasource_filter_ok(csvfile_ds)){
-	  num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, csvfile_ds->filename,
-							       csvfile_ds->project, csvfile_ds->collector,
-							       csvfile_ds->bgp_type, csvfile_ds->filetime);
+	  num_results += bgpstream_input_mgr_push_sorted_input(input_mgr,
+							       strdup(csvfile_ds->filename),
+							       strdup(csvfile_ds->project),
+							       strdup(csvfile_ds->collector),
+							       strdup(csvfile_ds->bgp_type),
+							       csvfile_ds->filetime);
 	}
+	line = realloc(line,1024 * sizeof(char));      	  	
+
       }
-      if (flock(fd, LOCK_UN) == -1) {
-	bgpstream_log_err("u-lockf failed");
-	exit(EXIT_FAILURE);
-      }
+      free(line);
+      funlockfile(stream);
       fclose(stream);
-    }
+    }    
   }
   csvfile_ds->csvfile_read = 1;
   bgpstream_debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue end");  
@@ -830,7 +829,7 @@ static char *build_filename(bgpstream_mysql_datasource_t *ds) {
 
 
 static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasource_t* mysql_ds,
-						  bgpstream_input_mgr_t *input_mgr) {
+							 bgpstream_input_mgr_t *input_mgr) {
   char *filename = NULL;
   int num_results = 0;
 
@@ -865,15 +864,15 @@ static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasou
       num_results +=
 	bgpstream_input_mgr_push_sorted_input(input_mgr,
 					      filename,
-					      mysql_ds->proj_name_res,
-					      mysql_ds->coll_name_res,
-					      mysql_ds->type_name_res,
+					      strdup(mysql_ds->proj_name_res),
+					      strdup(mysql_ds->coll_name_res),
+					      strdup(mysql_ds->type_name_res),
 					      mysql_ds->filetime_res
 					      );
       //DEBUG printf("%s\n", mysql_ds->filename_res);
       bgpstream_debug("\t\tBSDS_MYSQL: added %d new inputs to input queue", num_results);
       bgpstream_debug("\t\tBSDS_MYSQL: %s - %s - %d", 
-	    mysql_ds->filename_res, mysql_ds->bgp_type_res, mysql_ds->filetime_res);
+	    filename, mysql_ds->type_name_res, mysql_ds->filetime_res);
       // here
       /* clear all the strings... just in case */
       mysql_ds->proj_path_res[0] = '\0';

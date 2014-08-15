@@ -152,11 +152,9 @@ static void get_aspath_struct(struct aspath * ap, bgpstream_aspath_t * ap_struct
     // ap_struct->type == BST_UINT32_ASPATH;
     it = 0;
     ap_struct->numeric_aspath = (uint32_t *)malloc(ap_struct->hop_count * sizeof(uint32_t));
-    tok = strtok(aspath_copy, " ");
-    while (tok) {
+    while((tok = strsep(&aspath_copy, " ")) != NULL) {
       strcpy(origin_copy, tok);
       ap_struct->numeric_aspath[it] = strtoul(origin_copy, NULL, 10);
-      tok = strtok(NULL, " ");
       it++;
     }
     free(aspath_copy);
@@ -295,22 +293,22 @@ bgpstream_elem_t * table_line_dump_v2_prefix(BGPDUMP_ENTRY *entry) {
     ri->type = BST_RIB;
     ri->timestamp = entry->time;
     // peer
-    if(e->entries[i].peer->afi == AFI_IP){
+    if(e->entries[i].peer.afi == AFI_IP){
       ri->peer_address.type = BST_IPV4;
-      ri->peer_address.address.v4_addr = e->entries[i].peer->peer_ip.v4_addr;
+      ri->peer_address.address.v4_addr = e->entries[i].peer.peer_ip.v4_addr;
     }
 #ifdef BGPDUMP_HAVE_IPV6
     else {
-      if(e->entries[i].peer->afi == AFI_IP6){
+      if(e->entries[i].peer.afi == AFI_IP6){
 	ri->peer_address.type = BST_IPV6;
-	ri->peer_address.address.v6_addr = e->entries[i].peer->peer_ip.v6_addr;
+	ri->peer_address.address.v6_addr = e->entries[i].peer.peer_ip.v6_addr;
       }
       else {
 	printf("ERROR____bgpstream-elem__________\n");
       }
     }
 #endif
-    ri->peer_asnumber = e->entries[i].peer->peer_as;
+    ri->peer_asnumber = e->entries[i].peer.peer_as;
     // prefix
     if(e->afi == AFI_IP) {
       ri->prefix.number.type = BST_IPV4;

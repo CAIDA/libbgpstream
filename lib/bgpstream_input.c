@@ -84,9 +84,10 @@ bool bgpstream_input_mgr_is_empty(const bgpstream_input_mgr_t * const bs_input_m
  * by the bgpstream input manager 
  */
 int bgpstream_input_mgr_push_input(bgpstream_input_mgr_t * const bs_input_mgr, 
-			       const char * const filename, const char * fileproject,
-			       const char * filecollector, const char * const filetype,
-			       const int epoch_filetime) {
+				   char * filename, char * fileproject,
+				   char * filecollector, char * const filetype,
+				   const int epoch_filetime) {
+
   bgpstream_debug("\tBSI_MGR: push input start");
   if(bs_input_mgr == NULL) {
     return 0; // if the bs_input_mgr is not initialized, then we cannot insert any new input
@@ -100,13 +101,14 @@ int bgpstream_input_mgr_push_input(bgpstream_input_mgr_t * const bs_input_mgr,
   bs_input->next = NULL;
   // initialization done
 
-  if((bs_input->filename = strdup(filename)) == NULL ||
-     (bs_input->fileproject = strdup(fileproject)) == NULL ||
-     (bs_input->filecollector = strdup(filecollector)) == NULL ||
-     (bs_input->filetype = strdup(filetype)) == NULL) {
-    return 0;
-  }
+ /* we already own the buffers */
+  bs_input->filename = filename;
+  bs_input->fileproject = fileproject;
+  bs_input->filecollector = filecollector;
+  bs_input->filetype = filetype;
+
   bs_input->epoch_filetime = epoch_filetime;
+
   // update the bs_input_mgr
   if(bs_input_mgr->status == EMPTY_INPUT_QUEUE) {
     bs_input_mgr->head = bs_input;
@@ -127,9 +129,9 @@ int bgpstream_input_mgr_push_input(bgpstream_input_mgr_t * const bs_input_mgr,
  * (bgpstream objects are sorted by filetime)
  */
 int bgpstream_input_mgr_push_sorted_input(bgpstream_input_mgr_t * const bs_input_mgr, 
-			       const char * const filename, const char * fileproject,
-			       const char * filecollector, const char * const filetype,
-			       const int epoch_filetime) {
+					  char * filename, char * fileproject,
+					  char * filecollector, char * const filetype,
+					  const int epoch_filetime) {
   bgpstream_debug("\t\tBSI: push input start");
   if(bs_input_mgr == NULL) {
     return 0; // if the bs_input_mgr is not initialized, then we cannot insert any new input
@@ -143,14 +145,14 @@ int bgpstream_input_mgr_push_sorted_input(bgpstream_input_mgr_t * const bs_input
   bs_input->next = NULL;
   // initialization done
 
-  bs_input->filename = filename; /* we already own the buffer */
-  if((bs_input->fileproject = strdup(fileproject)) == NULL ||
-     (bs_input->filecollector = strdup(filecollector)) == NULL ||
-     (bs_input->filetype = strdup(filetype)) == NULL) {
-    return 0;
-  }
+ /* we already own the buffers */
+  bs_input->filename = filename;
+  bs_input->fileproject = fileproject;
+  bs_input->filecollector = filecollector;
+  bs_input->filetype = filetype;
 
   bs_input->epoch_filetime = epoch_filetime;
+
   // update the bs_input_mgr
   if(bs_input_mgr->status == EMPTY_INPUT_QUEUE) {
     // if the queue is empty a new input is added
