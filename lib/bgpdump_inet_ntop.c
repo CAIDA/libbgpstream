@@ -140,7 +140,8 @@ char *bgpdump_fmt_ipv6(BGPDUMP_IP_ADDRESS addr, char *buffer)
     bool c = IN6_IS_ADDR_V4COMPAT(&addr.v6_addr);
     if (m || c) {
         char buffer2[100];
-        BGPDUMP_IP_ADDRESS mapped = { .v4_addr.s_addr = ((uint32_t *)addr.v6_addr.s6_addr)[3] };
+        BGPDUMP_IP_ADDRESS mapped;
+	memcpy(&mapped.v4_addr.s_addr, &addr.v6_addr.s6_addr[12], 4);
         
         sprintf(buffer, "::%s%s", m ? "ffff:" : "", bgpdump_fmt_ipv4(mapped, buffer2));
         return buffer;
