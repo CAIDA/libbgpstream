@@ -991,6 +991,9 @@ void process_attr_aspath_string(struct aspath *as) {
   caddr_t pnt = as->data;
   caddr_t end = pnt + as->length;
   struct assegment *segment = NULL;
+
+  u_int16_t tmp16;
+  u_int32_t tmp32;
     
   while (pnt < end) {
     int i;
@@ -1058,10 +1061,12 @@ void process_attr_aspath_string(struct aspath *as) {
 	int asn_pos = i * as->asn_len;
 	switch(as->asn_len) {
 	case ASN16_LEN:
-	  asn = ntohs (*(u_int16_t *) (segment->data + asn_pos));
+	  memcpy(&tmp16, &segment->data+asn_pos, sizeof(u_int16_t));
+	  asn = ntohs (tmp16);
 	  break;
 	case ASN32_LEN:
-	  asn = ntohl (*(u_int32_t *) (segment->data + asn_pos));
+	  memcpy(&tmp32, &segment->data+asn_pos, sizeof(u_int32_t));
+	  asn = ntohl (tmp32);
 	  break;
 	default:
 	  assert("invalid asn_len" && false);
@@ -1383,7 +1388,7 @@ struct aspath *asn32_merge_paths(struct aspath *path, struct aspath *newpath) {
     /* Copy segment over. AS_PATH contains 16-bit ASes, so expand */
     mergedsegment->type = segment->type;
     mergedsegment->length = segment->length;
-    asn32_expand_16_to_32(mergedsegment->data, segment->data, segment->length);
+    asn32_expand_16_to_32(&mergedsegment->data, &segment->data, segment->length);
 
     /* Update length */
     mergedpath->length = newlen;

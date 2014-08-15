@@ -180,7 +180,7 @@ struct assegment
 {
   u_char type;
   u_char length;
-  char data[0];
+  char   data;
 };
 
 struct mp_info {
