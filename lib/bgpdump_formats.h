@@ -129,7 +129,7 @@ typedef struct struct_BGPDUMP_TABLE_DUMP_V2_PEER_INDEX_TABLE {
 typedef struct struct_BGPDUMP_TABLE_DUMP_V2_ROUTE_ENTRY {
 	uint16_t            peer_index;
 	uint32_t            originated_time;
-	BGPDUMP_TABLE_DUMP_V2_PEER_INDEX_TABLE_ENTRY *peer;
+	BGPDUMP_TABLE_DUMP_V2_PEER_INDEX_TABLE_ENTRY peer;
         attributes_t        *attr;
 } BGPDUMP_TABLE_DUMP_V2_ROUTE_ENTRY;
 
@@ -237,15 +237,14 @@ typedef union union_BGPDUMP_BODY {
 
 /* The MRT header. Common to all records. */
 typedef struct struct_BGPDUMP_ENTRY {
-    time_t		time;
-    u_int16_t		type;
-    u_int16_t		subtype;
-    u_int32_t		length;
-    attributes_t       *attr;
-    BGPDUMP_BODY 	body;
-  // comments here
+  time_t		time;
+  u_int16_t		type;
+  u_int16_t		subtype;
+  u_int32_t		length;
+  attributes_t       *attr;
+  BGPDUMP_BODY 	body;
+  // link to the current bgpdump structure, or NULL
   struct struct_BGPDUMP * dump;
-  BGPDUMP_TABLE_DUMP_V2_PEER_INDEX_TABLE *table_dump_v2_peer_index_table;
 } BGPDUMP_ENTRY;
 
 #endif

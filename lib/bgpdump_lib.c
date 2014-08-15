@@ -107,56 +107,52 @@ BGPDUMP *bgpdump_open_dump(const char *filename) {
   this_dump->parsed = 0;
   this_dump->parsed_ok = 0;
   this_dump->corrupted_read = false;
-
-  // double link with current bgpdump_entry + index table
+  
+  // peer index table shared among entries
   this_dump->table_dump_v2_peer_index_table = NULL;
-  this_dump->current_entry = NULL;
 
   return this_dump;
 }
 
+
 void bgpdump_close_dump(BGPDUMP *dump) {
+
   if(dump!=NULL) {
-    /* if there is a current bgpdump entry
-     * unlink it, 
-     * then last dump entry destroys peer table  */
-    if(dump->current_entry != NULL) {
-      dump->current_entry->dump = NULL;
-      dump->current_entry = NULL;
+    // destroy current index table, if any
+    if(dump->table_dump_v2_peer_index_table){
+      if(dump->table_dump_v2_peer_index_table->entries) {
+	free(dump->table_dump_v2_peer_index_table->entries);
+	dump->table_dump_v2_peer_index_table->entries = NULL;
+      }
+      free(dump->table_dump_v2_peer_index_table);
       dump->table_dump_v2_peer_index_table = NULL;
     }
-    // otherwise the dump destroys the table
-    else {
-      if(dump->table_dump_v2_peer_index_table){
-	if(dump->table_dump_v2_peer_index_table->entries) {
-	  free(dump->table_dump_v2_peer_index_table->entries);
-	  dump->table_dump_v2_peer_index_table->entries = NULL;
-	}
-	free(dump->table_dump_v2_peer_index_table);
-	dump->table_dump_v2_peer_index_table = NULL;
-      }
-    }
-    cfr_close(dump->f);
-    free(dump);
   }
+  cfr_close(dump->f);
+  free(dump);
 }
 
+
+BGPDUMP_ENTRY* bgpdump_entry_create(BGPDUMP *dump){
+  BGPDUMP_ENTRY *this_entry = malloc(sizeof(BGPDUMP_ENTRY));
+  memset(this_entry, 0, sizeof(BGPDUMP_ENTRY));
+  this_entry->dump = dump;
+  return this_entry;
+}
+
+
 BGPDUMP_ENTRY*	bgpdump_read_next(BGPDUMP *dump) {
+
   assert(dump);
 
-  BGPDUMP_ENTRY *this_entry = NULL;
   struct mstream s;
   u_char *buffer;
   int ok=0;
   u_int32_t bytes_read;
 
-  this_entry = malloc(sizeof(BGPDUMP_ENTRY));
-
-  // link dump and dump_entry
-  dump->current_entry = this_entry;
-  this_entry->dump = dump;
-  this_entry->table_dump_v2_peer_index_table = dump->table_dump_v2_peer_index_table;
-
+  BGPDUMP_ENTRY *this_entry = bgpdump_entry_create(dump);
+  
+  // initialize corrupted_read
   dump->corrupted_read = false;
 	
   bytes_read = cfr_read_n(dump->f, &(this_entry->time), 4);
@@ -172,7 +168,7 @@ BGPDUMP_ENTRY*	bgpdump_read_next(BGPDUMP *dump) {
       dump->corrupted_read = true;
     }
     /* Nothing more to read, quit */
-    free(this_entry);
+    bgpdump_free_mem(this_entry);
     dump->eof=1;
     //printf("case 1\n");
     return(NULL);
@@ -185,9 +181,7 @@ BGPDUMP_ENTRY*	bgpdump_read_next(BGPDUMP *dump) {
   this_entry->subtype=ntohs(this_entry->subtype);
   this_entry->time=ntohl(this_entry->time);
   this_entry->length=ntohl(this_entry->length);
-
   this_entry->attr=NULL;
-
   buffer = malloc(this_entry->length);
   bytes_read = cfr_read_n(dump->f, buffer, this_entry->length);
   if(bytes_read != this_entry->length) {
@@ -195,12 +189,11 @@ BGPDUMP_ENTRY*	bgpdump_read_next(BGPDUMP *dump) {
 		bytes_read, this_entry->length);
     dump->corrupted_read = true;
     //printf("case 2\n");
-    free(this_entry);
+    bgpdump_free_mem(this_entry);
     free(buffer);
     dump->eof=1;
     return(NULL);
   }
-
 
   ok=0;
   mstream_init(&s,buffer,this_entry->length);
@@ -230,6 +223,7 @@ BGPDUMP_ENTRY*	bgpdump_read_next(BGPDUMP *dump) {
   return this_entry;
 }
 
+
 static void bgpdump_free_mp_info(struct mp_info *info) {
   u_int16_t afi;
   u_int8_t safi;
@@ -249,12 +243,11 @@ static void bgpdump_free_mp_info(struct mp_info *info) {
   free(info);
 }
 
+
 void bgpdump_free_mem(BGPDUMP_ENTRY *entry) {
 
   if(entry!=NULL) {
-
     bgpdump_free_attr(entry->attr);
-
     switch(entry->type) {
     case BGPDUMP_TYPE_ZEBRA_BGP:
       switch(entry->subtype) {
@@ -288,29 +281,11 @@ void bgpdump_free_mem(BGPDUMP_ENTRY *entry) {
       break;
     }
 
-    /* if there is a current bgpdump
-     * structure, then do not destroy the index table,
-     * just unlink it */
-    if(entry->dump != NULL) {      
-      entry->dump->current_entry = NULL;
-      entry->dump = NULL;
-      entry->table_dump_v2_peer_index_table = NULL;
-    }
-    // otherwise the entry destroys the table
-    else {
-      // entry->dump == NULL, i.e. already de-allocated
-      if(entry->table_dump_v2_peer_index_table){
-	if(entry->table_dump_v2_peer_index_table->entries) {
-	  free(entry->table_dump_v2_peer_index_table->entries);
-	  entry->table_dump_v2_peer_index_table->entries = NULL;
-	}
-	free(entry->table_dump_v2_peer_index_table);
-	entry->table_dump_v2_peer_index_table = NULL;
-      }
-    }
+    entry->dump = NULL;
     free(entry);
   }
 }
+
 
 void bgpdump_free_attr(attributes_t *attr){
   if(attr != NULL) {
@@ -440,20 +415,22 @@ int process_mrtd_table_dump_v2(struct mstream *s,BGPDUMP_ENTRY *entry) {
 }
 
 int process_mrtd_table_dump_v2_peer_index_table(struct mstream *s,BGPDUMP_ENTRY *entry) {
+
+  assert(entry->dump);
+
   BGPDUMP_TABLE_DUMP_V2_PEER_INDEX_TABLE *t;
   uint16_t i;
   uint8_t peertype;
   uint16_t view_name_len;
 
-  if(entry->table_dump_v2_peer_index_table){
-    if(entry->table_dump_v2_peer_index_table->entries)
-      free(entry->table_dump_v2_peer_index_table->entries);
-    free(entry->table_dump_v2_peer_index_table);
+  if(entry->dump->table_dump_v2_peer_index_table){
+    if(entry->dump->table_dump_v2_peer_index_table->entries)
+      free(entry->dump->table_dump_v2_peer_index_table->entries);
+    free(entry->dump->table_dump_v2_peer_index_table);
   }
 
-  entry->table_dump_v2_peer_index_table = malloc(sizeof(BGPDUMP_TABLE_DUMP_V2_PEER_INDEX_TABLE));
-  entry->dump->table_dump_v2_peer_index_table = entry->table_dump_v2_peer_index_table; // update link to index table
-  t = entry->table_dump_v2_peer_index_table;
+  entry->dump->table_dump_v2_peer_index_table = malloc(sizeof(BGPDUMP_TABLE_DUMP_V2_PEER_INDEX_TABLE));
+  t = entry->dump->table_dump_v2_peer_index_table;
   t->entries = NULL;
 
   t->local_bgp_id = mstream_get_ipv4(s);
@@ -530,7 +507,7 @@ int process_mrtd_table_dump_v2_ipv4_unicast(struct mstream *s, BGPDUMP_ENTRY *en
     e = &prefixdata->entries[i];
 
     mstream_getw(s, &e->peer_index);
-    e->peer = &(entry->table_dump_v2_peer_index_table->entries[e->peer_index]);
+    e->peer = entry->dump->table_dump_v2_peer_index_table->entries[e->peer_index];
     mstream_getl(s, &e->originated_time);
             
     e->attr = process_attributes(s, 4, NULL);
@@ -568,7 +545,7 @@ int process_mrtd_table_dump_v2_ipv6_unicast(struct mstream *s, BGPDUMP_ENTRY *en
     e = &prefixdata->entries[i];
 
     mstream_getw(s, &e->peer_index);
-    e->peer = &(entry->table_dump_v2_peer_index_table->entries[e->peer_index]);
+    e->peer = entry->dump->table_dump_v2_peer_index_table->entries[e->peer_index];
     mstream_getl(s, &e->originated_time);
 
     e->attr = process_attributes(s, 4, NULL);

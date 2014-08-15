@@ -211,17 +211,17 @@ if(entry->type == BGPDUMP_TYPE_ZEBRA_BGP && entry->subtype == BGPDUMP_SUBTYPE_ZE
     		printf("    SEQUENCE    : %d\n",e->seq);
     		printf("    PREFIX      : %s/%d\n",prefix,e->prefix_length);
 
-			if(e->entries[i].peer->afi == AFI_IP){
-				inet_ntop(AF_INET, &e->entries[i].peer->peer_ip, peer_ip, INET6_ADDRSTRLEN);
+			if(e->entries[i].peer.afi == AFI_IP){
+				inet_ntop(AF_INET, &e->entries[i].peer.peer_ip, peer_ip, INET6_ADDRSTRLEN);
 #ifdef BGPDUMP_HAVE_IPV6
-			} else if (e->entries[i].peer->afi == AFI_IP6){
-				inet_ntop(AF_INET6, &e->entries[i].peer->peer_ip, peer_ip, INET6_ADDRSTRLEN);
+			} else if (e->entries[i].peer.afi == AFI_IP6){
+				inet_ntop(AF_INET6, &e->entries[i].peer.peer_ip, peer_ip, INET6_ADDRSTRLEN);
 #endif
 			} else {
 				sprintf(peer_ip, "N/A, unsupported AF");
 			}
     		printf("    PEER IP     : %s\n",peer_ip);
-    		printf("    PEER AS     : %u\n",e->entries[i].peer->peer_as);
+    		printf("    PEER AS     : %u\n",e->entries[i].peer.peer_as);
 
    			show_attr(e->entries[i].attr);
 		}
