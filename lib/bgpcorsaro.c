@@ -227,7 +227,7 @@ static bgpcorsaro_t *bgpcorsaro_init(char *template)
   e->compress = wandio_detect_compression_type(e->template);
 
   /* use the default compression level for now */
-  e->compress_level = WANDIO_COMPRESS_NONE;
+  e->compress_level = 6;
 
   /* lets get us a wrapper record ready */
   if((e->record = bgpcorsaro_record_alloc(e)) == NULL)
