@@ -29,6 +29,7 @@
 #include <syslog.h>
 #include <time.h>
 #include <string.h>
+#include <inttypes.h>
 
 static bool bgpdump_use_syslog = true;
 
@@ -110,17 +111,8 @@ void bgpdump_time2str(struct tm* date,char *time_str)
 
 int bgpdump_int2str(uint32_t value, char* str)
 {
-    const int LEN = 11;
-    char b[LEN+1];      // LEN --> LEN + 1 , with this modifications this code works on mac os x
-    int i = LEN;
-    b[i--] = '\0';
-    
-    do {
-        b[i--] = (char)(48 + (value % 10));
-    } while (value /= 10);
-
-    memcpy(str, b + i + 1, LEN - i);
-    return LEN - i - 1;
+  const int MAX_UINT32_STRLEN = 11; /* 2**32-1 => 4294967295 */
+  return snprintf(str, MAX_UINT32_STRLEN, "%"PRIu32, value);
 }
 
 static void ti2s(uint32_t value) {
