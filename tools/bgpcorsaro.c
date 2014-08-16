@@ -460,11 +460,6 @@ int main(int argc, char *argv[])
       bgpstream_set_blocking(stream);
     }
 
-  bgpstream_add_filter(stream, BS_COLLECTOR, "route-views2");
-
-  bgpstream_add_interval_filter(stream, BS_TIME_INTERVAL,
-				"1403229491", "1403236583");
-
   if(bgpstream_init(stream) < 0) {
     fprintf(stderr, "ERROR: Could not init BGPStream\n");
     return -1;
