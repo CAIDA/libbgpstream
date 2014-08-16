@@ -257,17 +257,18 @@ static void table_line_announce6(bgpcorsaro_t *bgpcorsaro,
 		 ==0)
 		nmed=0;
 
-	      printf("BGP4MP|%ld|A|%s|%u|%s/%d|%s|%s|%s|%u|%u|",
-		     entry->time,
-		     bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,buf1),
-		     entry->body.zebra_message.source_as,
-		     bgpdump_fmt_ipv6(prefix->nlri[idx].address,buf2),
-		     prefix->nlri[idx].len,
-		     attr_aspath(entry->attr),
-		     tmp1,
-		     bgpdump_fmt_ipv6(prefix->nexthop,buf),
-		     npref,
-		     nmed);
+	      wandio_printf(state->outfile,
+			    "BGP4MP|%ld|A|%s|%u|%s/%d|%s|%s|%s|%u|%u|",
+			    entry->time,
+			    bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,buf1),
+			    entry->body.zebra_message.source_as,
+			    bgpdump_fmt_ipv6(prefix->nlri[idx].address,buf2),
+			    prefix->nlri[idx].len,
+			    attr_aspath(entry->attr),
+			    tmp1,
+			    bgpdump_fmt_ipv6(prefix->nexthop,buf),
+			    npref,
+			    nmed);
 	      break;
 	    case AFI_IP:
 	    default:
@@ -280,8 +281,8 @@ static void table_line_announce6(bgpcorsaro_t *bgpcorsaro,
 		 ==0)
 		nmed=0;
 
-	      //printf("%s|%d|%d|",inet_ntoa(entry->attr->nexthop),nprof,nmed);
-	      printf("BGP4MP|%ld|A|%s|%u|%s/%d|%s|%s|%s|%u|%u|",
+	      //wandio_printf(state->outfile, "%s|%d|%d|",inet_ntoa(entry->attr->nexthop),nprof,nmed);
+	      wandio_printf(state->outfile, "BGP4MP|%ld|A|%s|%u|%s/%d|%s|%s|%s|%u|%u|",
 		     entry->time,
 		     bgpdump_fmt_ipv4(entry->body.zebra_message.source_ip,buf1),
 		     entry->body.zebra_message.source_as,
@@ -294,19 +295,19 @@ static void table_line_announce6(bgpcorsaro_t *bgpcorsaro,
 	      break;
 	    }
 	  if((entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_COMMUNITIES)) !=0)
-	    printf("%s|%s|",
+	    wandio_printf(state->outfile, "%s|%s|",
 		   entry->attr->community->str+1,
 		   tmp2);
 	  else
-	    printf("|%s|",tmp2);
+	    wandio_printf(state->outfile, "|%s|",tmp2);
 
 
 	  if (entry->attr->aggregator_addr.s_addr != -1)
-	    printf("%u %s|\n",
+	    wandio_printf(state->outfile, "%u %s|\n",
 		   entry->attr->aggregator_as,
 		   inet_ntoa(entry->attr->aggregator_addr));
 	  else
-	    printf("|\n");
+	    wandio_printf(state->outfile, "|\n");
 
 	}
       else
@@ -314,11 +315,11 @@ static void table_line_announce6(bgpcorsaro_t *bgpcorsaro,
 	  switch(entry->body.zebra_message.address_family)
 	    {
 	    case AFI_IP6:
-	      printf("BGP4MP|%s|A|%s|%u|%s/%d|%s|%s\n",time_str,bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,buf1),entry->body.zebra_message.source_as,bgpdump_fmt_ipv6(prefix->nlri[idx].address,buf),prefix->nlri[idx].len,attr_aspath(entry->attr),tmp1);
+	      wandio_printf(state->outfile, "BGP4MP|%s|A|%s|%u|%s/%d|%s|%s\n",time_str,bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,buf1),entry->body.zebra_message.source_as,bgpdump_fmt_ipv6(prefix->nlri[idx].address,buf),prefix->nlri[idx].len,attr_aspath(entry->attr),tmp1);
 	      break;
 	    case AFI_IP:
 	    default:
-	      printf("BGP4MP|%s|A|%s|%u|%s/%d|%s|%s\n",time_str,bgpdump_fmt_ipv4(entry->body.zebra_message.source_ip,buf1),entry->body.zebra_message.source_as,bgpdump_fmt_ipv6(prefix->nlri[idx].address,buf),prefix->nlri[idx].len,attr_aspath(entry->attr),tmp1);
+	      wandio_printf(state->outfile, "BGP4MP|%s|A|%s|%u|%s/%d|%s|%s\n",time_str,bgpdump_fmt_ipv4(entry->body.zebra_message.source_ip,buf1),entry->body.zebra_message.source_as,bgpdump_fmt_ipv6(prefix->nlri[idx].address,buf),prefix->nlri[idx].len,attr_aspath(entry->attr),tmp1);
 	      break;
 	    }
 	}
@@ -374,15 +375,15 @@ static void table_line_announce_1(bgpcorsaro_t *bgpcorsaro,
 		{
 #ifdef BGPDUMP_HAVE_IPV6
 		case AFI_IP6:
-		  printf("BGP4MP|%ld|A|%s|%u|",entry->time,bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,buf),entry->body.zebra_message.source_as);
+		  wandio_printf(state->outfile, "BGP4MP|%ld|A|%s|%u|",entry->time,bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,buf),entry->body.zebra_message.source_as);
 		  break;
 #endif
 		case AFI_IP:
 		default:
-		  printf("BGP4MP|%ld|A|%s|%u|",entry->time,inet_ntoa(entry->body.zebra_message.source_ip.v4_addr),entry->body.zebra_message.source_as);
+		  wandio_printf(state->outfile, "BGP4MP|%ld|A|%s|%u|",entry->time,inet_ntoa(entry->body.zebra_message.source_ip.v4_addr),entry->body.zebra_message.source_as);
 		  break;
 		}
-	      printf("%s/%d|%s|%s|",inet_ntoa(prefix->nlri[idx].address.v4_addr),prefix->nlri[idx].len,attr_aspath(entry->attr),tmp1);
+	      wandio_printf(state->outfile, "%s/%d|%s|%s|",inet_ntoa(prefix->nlri[idx].address.v4_addr),prefix->nlri[idx].len,attr_aspath(entry->attr),tmp1);
 
 	      npref=entry->attr->local_pref;
 	      if( (entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_LOCAL_PREF) ) ==0)
@@ -391,12 +392,12 @@ static void table_line_announce_1(bgpcorsaro_t *bgpcorsaro,
 	      if( (entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_MULTI_EXIT_DISC) ) ==0)
 		nmed=0;
 
-	      printf("%s|%d|%d|",inet_ntoa(entry->attr->nexthop),npref,nmed);
-	      //printf("%s|%d|%d|",inet_ntoa(prefix->nexthop.v4_addr),entry->attr->local_pref,entry->attr->med);
+	      wandio_printf(state->outfile, "%s|%d|%d|",inet_ntoa(entry->attr->nexthop),npref,nmed);
+	      //wandio_printf(state->outfile, "%s|%d|%d|",inet_ntoa(prefix->nexthop.v4_addr),entry->attr->local_pref,entry->attr->med);
 	      if( (entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_COMMUNITIES) ) !=0)
-		printf("%s|%s|",entry->attr->community->str+1,tmp2);
+		wandio_printf(state->outfile, "%s|%s|",entry->attr->community->str+1,tmp2);
 	      else
-		printf("|%s|",tmp2);
+		wandio_printf(state->outfile, "|%s|",tmp2);
 
 	    }
 	  else
@@ -405,15 +406,15 @@ static void table_line_announce_1(bgpcorsaro_t *bgpcorsaro,
 		{
 #ifdef BGPDUMP_HAVE_IPV6
 		case AFI_IP6:
-		  printf("BGP4MP|%ld|A|%s|%u|",entry->time,bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,buf),entry->body.zebra_message.source_as);
+		  wandio_printf(state->outfile, "BGP4MP|%ld|A|%s|%u|",entry->time,bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,buf),entry->body.zebra_message.source_as);
 		  break;
 #endif
 		case AFI_IP:
 		default:
-		  printf("BGP4MP|%ld|A|%s|%u|",entry->time,inet_ntoa(entry->body.zebra_message.source_ip.v4_addr),entry->body.zebra_message.source_as);
+		  wandio_printf(state->outfile, "BGP4MP|%ld|A|%s|%u|",entry->time,inet_ntoa(entry->body.zebra_message.source_ip.v4_addr),entry->body.zebra_message.source_as);
 		  break;
 		}
-	      printf("%s/%d|%s|%s|",inet_ntoa(prefix->nlri[idx].address.v4_addr),prefix->nlri[idx].len,attr_aspath(entry->attr),tmp1);
+	      wandio_printf(state->outfile, "%s/%d|%s|%s|",inet_ntoa(prefix->nlri[idx].address.v4_addr),prefix->nlri[idx].len,attr_aspath(entry->attr),tmp1);
 
 	      npref=entry->attr->local_pref;
 	      if( (entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_LOCAL_PREF) ) ==0)
@@ -422,19 +423,19 @@ static void table_line_announce_1(bgpcorsaro_t *bgpcorsaro,
 	      if( (entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_MULTI_EXIT_DISC) ) ==0)
 		nmed=0;
 
-	      printf("%s|%d|%d|",inet_ntoa(entry->attr->nexthop),npref,nmed);
-	      //printf("%s|%d|%d|",inet_ntoa(entry->attr->nexthop),entry->attr->local_pref,entry->attr->med);
+	      wandio_printf(state->outfile, "%s|%d|%d|",inet_ntoa(entry->attr->nexthop),npref,nmed);
+	      //wandio_printf(state->outfile, "%s|%d|%d|",inet_ntoa(entry->attr->nexthop),entry->attr->local_pref,entry->attr->med);
 	      if( (entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_COMMUNITIES) ) !=0)
-		printf("%s|%s|",entry->attr->community->str+1,tmp2);
+		wandio_printf(state->outfile, "%s|%s|",entry->attr->community->str+1,tmp2);
 	      else
-		printf("|%s|",tmp2);
+		wandio_printf(state->outfile, "|%s|",tmp2);
 
 
 	    }
 	  if (entry->attr->aggregator_addr.s_addr != -1)
-	    printf("%u %s|\n",entry->attr->aggregator_as,inet_ntoa(entry->attr->aggregator_addr));
+	    wandio_printf(state->outfile, "%u %s|\n",entry->attr->aggregator_as,inet_ntoa(entry->attr->aggregator_addr));
 	  else
-	    printf("|\n");
+	    wandio_printf(state->outfile, "|\n");
 	}
       else
 	{
@@ -442,15 +443,15 @@ static void table_line_announce_1(bgpcorsaro_t *bgpcorsaro,
 	    {
 #ifdef BGPDUMP_HAVE_IPV6
 	    case AFI_IP6:
-	      printf("BGP4MP|%s|A|%s|%u|",time_str,bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,buf),entry->body.zebra_message.source_as);
+	      wandio_printf(state->outfile, "BGP4MP|%s|A|%s|%u|",time_str,bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,buf),entry->body.zebra_message.source_as);
 	      break;
 #endif
 	    case AFI_IP:
 	    default:
-	      printf("BGP4MP|%s|A|%s|%u|",time_str,inet_ntoa(entry->body.zebra_message.source_ip.v4_addr),entry->body.zebra_message.source_as);
+	      wandio_printf(state->outfile, "BGP4MP|%s|A|%s|%u|",time_str,inet_ntoa(entry->body.zebra_message.source_ip.v4_addr),entry->body.zebra_message.source_as);
 	      break;
 	    }
-	  printf("%s/%d|%s|%s\n",inet_ntoa(prefix->nlri[idx].address.v4_addr),prefix->nlri[idx].len,attr_aspath(entry->attr),tmp1);
+	  wandio_printf(state->outfile, "%s/%d|%s|%s\n",inet_ntoa(prefix->nlri[idx].address.v4_addr),prefix->nlri[idx].len,attr_aspath(entry->attr),tmp1);
 
 	}
     }
@@ -501,15 +502,15 @@ static void table_line_announce(bgpcorsaro_t *bgpcorsaro,
 	    {
 #ifdef BGPDUMP_HAVE_IPV6
 	    case AFI_IP6:
-	      printf("BGP4MP|%ld|A|%s|%u|",entry->time,bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,buf),entry->body.zebra_message.source_as);
+	      wandio_printf(state->outfile, "BGP4MP|%ld|A|%s|%u|",entry->time,bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,buf),entry->body.zebra_message.source_as);
 	      break;
 #endif
 	    case AFI_IP:
 	    default:
-	      printf("BGP4MP|%ld|A|%s|%u|",entry->time,inet_ntoa(entry->body.zebra_message.source_ip.v4_addr),entry->body.zebra_message.source_as);
+	      wandio_printf(state->outfile, "BGP4MP|%ld|A|%s|%u|",entry->time,inet_ntoa(entry->body.zebra_message.source_ip.v4_addr),entry->body.zebra_message.source_as);
 	      break;
 	    }
-	  printf("%s/%d|%s|%s|",inet_ntoa(prefix[idx].address.v4_addr),prefix[idx].len,attr_aspath(entry->attr),tmp1);
+	  wandio_printf(state->outfile, "%s/%d|%s|%s|",inet_ntoa(prefix[idx].address.v4_addr),prefix[idx].len,attr_aspath(entry->attr),tmp1);
 	  npref=entry->attr->local_pref;
 	  if( (entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_LOCAL_PREF) ) ==0)
 	    npref=0;
@@ -517,16 +518,16 @@ static void table_line_announce(bgpcorsaro_t *bgpcorsaro,
 	  if( (entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_MULTI_EXIT_DISC) ) ==0)
 	    nmed=0;
 
-	  printf("%s|%u|%u|",inet_ntoa(entry->attr->nexthop),npref,nmed);
+	  wandio_printf(state->outfile, "%s|%u|%u|",inet_ntoa(entry->attr->nexthop),npref,nmed);
 	  if( (entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_COMMUNITIES) ) !=0)
-	    printf("%s|%s|",entry->attr->community->str+1,tmp2);
+	    wandio_printf(state->outfile, "%s|%s|",entry->attr->community->str+1,tmp2);
 	  else
-	    printf("|%s|",tmp2);
+	    wandio_printf(state->outfile, "|%s|",tmp2);
 
 	  if (entry->attr->aggregator_addr.s_addr != -1)
-	    printf("%u %s|\n",entry->attr->aggregator_as,inet_ntoa(entry->attr->aggregator_addr));
+	    wandio_printf(state->outfile, "%u %s|\n",entry->attr->aggregator_as,inet_ntoa(entry->attr->aggregator_addr));
 	  else
-	    printf("|\n");
+	    wandio_printf(state->outfile, "|\n");
 	}
       else
 	{
@@ -534,15 +535,15 @@ static void table_line_announce(bgpcorsaro_t *bgpcorsaro,
 	    {
 #ifdef BGPDUMP_HAVE_IPV6
 	    case AFI_IP6:
-	      printf("BGP4MP|%s|A|%s|%u|",time_str,bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,buf),entry->body.zebra_message.source_as);
+	      wandio_printf(state->outfile, "BGP4MP|%s|A|%s|%u|",time_str,bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,buf),entry->body.zebra_message.source_as);
 	      break;
 #endif
 	    case AFI_IP:
 	    default:
-	      printf("BGP4MP|%s|A|%s|%u|",time_str,inet_ntoa(entry->body.zebra_message.source_ip.v4_addr),entry->body.zebra_message.source_as);
+	      wandio_printf(state->outfile, "BGP4MP|%s|A|%s|%u|",time_str,inet_ntoa(entry->body.zebra_message.source_ip.v4_addr),entry->body.zebra_message.source_as);
 	      break;
 	    }
-	  printf("%s/%d|%s|%s\n",inet_ntoa(prefix[idx].address.v4_addr),prefix[idx].len,attr_aspath(entry->attr),tmp1);
+	  wandio_printf(state->outfile, "%s/%d|%s|%s\n",inet_ntoa(prefix[idx].address.v4_addr),prefix[idx].len,attr_aspath(entry->attr),tmp1);
 
 	}
     }
@@ -568,7 +569,7 @@ static void table_line_withdraw(bgpcorsaro_t *bgpcorsaro,
 	    {
 #ifdef BGPDUMP_HAVE_IPV6
 	    case AFI_IP6:
-	      printf("BGP4MP|%ld|W|%s|%u|",
+	      wandio_printf(state->outfile, "BGP4MP|%ld|W|%s|%u|",
 		     entry->time,
 		     bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,buf),
 		     entry->body.zebra_message.source_as);
@@ -576,13 +577,13 @@ static void table_line_withdraw(bgpcorsaro_t *bgpcorsaro,
 #endif
 	    case AFI_IP:
 	    default:
-	      printf("BGP4MP|%ld|W|%s|%u|",
+	      wandio_printf(state->outfile, "BGP4MP|%ld|W|%s|%u|",
 		     entry->time,
 		     inet_ntoa(entry->body.zebra_message.source_ip.v4_addr),
 		     entry->body.zebra_message.source_as);
 	      break;
 	    }
-	  printf("%s/%d\n",inet_ntoa(prefix[idx].address.v4_addr),prefix[idx].len);
+	  wandio_printf(state->outfile, "%s/%d\n",inet_ntoa(prefix[idx].address.v4_addr),prefix[idx].len);
 	}
       else
 	{
@@ -590,7 +591,7 @@ static void table_line_withdraw(bgpcorsaro_t *bgpcorsaro,
 	    {
 #ifdef BGPDUMP_HAVE_IPV6
 	    case AFI_IP6:
-	      printf("BGP4MP|%s|W|%s|%u|",
+	      wandio_printf(state->outfile, "BGP4MP|%s|W|%s|%u|",
 		     time_str,
 		     bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,buf),
 		     entry->body.zebra_message.source_as);
@@ -598,13 +599,13 @@ static void table_line_withdraw(bgpcorsaro_t *bgpcorsaro,
 #endif
 	    case AFI_IP:
 	    default:
-	      printf("BGP4MP|%s|W|%s|%u|",
+	      wandio_printf(state->outfile, "BGP4MP|%s|W|%s|%u|",
 		     time_str,
 		     inet_ntoa(entry->body.zebra_message.source_ip.v4_addr),
 		     entry->body.zebra_message.source_as);
 	      break;
 	    }
-	  printf("%s/%d\n",inet_ntoa(prefix[idx].address.v4_addr),prefix[idx].len);
+	  wandio_printf(state->outfile, "%s/%d\n",inet_ntoa(prefix[idx].address.v4_addr),prefix[idx].len);
 	}
 
     }
@@ -631,7 +632,7 @@ static void table_line_withdraw6(bgpcorsaro_t *bgpcorsaro,
 	  switch(entry->body.zebra_message.address_family)
 	    {
 	    case AFI_IP6:
-	      printf("BGP4MP|%ld|W|%s|%u|%s/%d\n",
+	      wandio_printf(state->outfile, "BGP4MP|%ld|W|%s|%u|%s/%d\n",
 		     entry->time,
 		     bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,buf1),
 		     entry->body.zebra_message.source_as,
@@ -639,7 +640,7 @@ static void table_line_withdraw6(bgpcorsaro_t *bgpcorsaro,
 	      break;
 	    case AFI_IP:
 	    default:
-	      printf("BGP4MP|%ld|W|%s|%u|%s/%d\n",
+	      wandio_printf(state->outfile, "BGP4MP|%ld|W|%s|%u|%s/%d\n",
 		     entry->time,
 		     bgpdump_fmt_ipv4(entry->body.zebra_message.source_ip,buf1),
 		     entry->body.zebra_message.source_as,
@@ -652,7 +653,7 @@ static void table_line_withdraw6(bgpcorsaro_t *bgpcorsaro,
 	  switch(entry->body.zebra_message.address_family)
 	    {
 	    case AFI_IP6:
-	      printf("BGP4MP|%s|W|%s|%u|%s/%d\n",
+	      wandio_printf(state->outfile, "BGP4MP|%s|W|%s|%u|%s/%d\n",
 		     time_str,
 		     bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,buf1),
 		     entry->body.zebra_message.source_as,
@@ -660,7 +661,7 @@ static void table_line_withdraw6(bgpcorsaro_t *bgpcorsaro,
 	      break;
 	    case AFI_IP:
 	    default:
-	      printf("BGP4MP|%s|W|%s|%u|%s/%d\n",
+	      wandio_printf(state->outfile, "BGP4MP|%s|W|%s|%u|%s/%d\n",
 		     time_str,
 		     bgpdump_fmt_ipv4(entry->body.zebra_message.source_ip,buf1),
 		     entry->body.zebra_message.source_as,
@@ -673,19 +674,32 @@ static void table_line_withdraw6(bgpcorsaro_t *bgpcorsaro,
 }
 #endif
 
-void show_prefixes(int count,struct prefix *prefix) {
-int i;
-for(i=0;i<count;i++)
-  printf("  %s/%d\n",inet_ntoa(prefix[i].address.v4_addr),prefix[i].len);
-}
-#ifdef BGPDUMP_HAVE_IPV6
-void show_prefixes6(int count,struct prefix *prefix)
+void show_prefixes(bgpcorsaro_t *bgpcorsaro,
+		   int count,
+		   struct prefix *prefix)
 {
-int i;
-char buf[128];
+  struct bgpcorsaro_dump_state_t *state = STATE(bgpcorsaro);
+  int i;
+  for(i=0;i<count;i++)
+    {
+      wandio_printf(state->outfile,
+		    "  %s/%d\n",
+		    inet_ntoa(prefix[i].address.v4_addr),
+		    prefix[i].len);
+    }
+}
 
-for (i=0;i<count;i++)
-  printf("  %s/%d\n",bgpdump_fmt_ipv6(prefix[i].address,buf),prefix[i].len);
+#ifdef BGPDUMP_HAVE_IPV6
+void show_prefixes6(bgpcorsaro_t* bgpcorsaro,
+		    int count,
+		    struct prefix *prefix)
+{
+  struct bgpcorsaro_dump_state_t *state = STATE(bgpcorsaro);
+  int i;
+ char buf[128];
+
+ for (i=0;i<count;i++)
+   wandio_printf(state->outfile, "  %s/%d\n",bgpdump_fmt_ipv6(prefix[i].address,buf),prefix[i].len);
 }
 #endif
 
@@ -737,11 +751,11 @@ static void table_line_dump_v2_prefix(bgpcorsaro_t *bgpcorsaro,
     if (state->dump_mode == 1)
       {
 	if(state->timestamp_mode==0){
-	  printf("TABLE_DUMP2|%ld|B|%s|%u|",entry->time,peer,e->entries[i].peer.peer_as);
+	  wandio_printf(state->outfile, "TABLE_DUMP2|%ld|B|%s|%u|",entry->time,peer,e->entries[i].peer.peer_as);
 	}else if(state->timestamp_mode==1){
-	  printf("TABLE_DUMP2|%u|B|%s|%u|",e->entries[i].originated_time,peer,e->entries[i].peer.peer_as);
+	  wandio_printf(state->outfile, "TABLE_DUMP2|%u|B|%s|%u|",e->entries[i].originated_time,peer,e->entries[i].peer.peer_as);
 	}
-	printf("%s/%d|%s|%s|",prefix,e->prefix_length,aspath_str,origin);
+	wandio_printf(state->outfile, "%s/%d|%s|%s|",prefix,e->prefix_length,aspath_str,origin);
 
 	npref=attr->local_pref;
 	if( (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_LOCAL_PREF) ) ==0)
@@ -760,17 +774,17 @@ static void table_line_dump_v2_prefix(bgpcorsaro_t *bgpcorsaro,
 	  {
 	    strncpy(nexthop, inet_ntoa(attr->nexthop), BGPDUMP_ADDRSTRLEN);
 	  }
-	printf("%s|%u|%u|",nexthop,npref,nmed);
+	wandio_printf(state->outfile, "%s|%u|%u|",nexthop,npref,nmed);
 
 	if( (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_COMMUNITIES) ) !=0)
-	  printf("%s|%s|",attr->community->str+1,aggregate);
+	  wandio_printf(state->outfile, "%s|%s|",attr->community->str+1,aggregate);
 	else
-	  printf("|%s|",aggregate);
+	  wandio_printf(state->outfile, "|%s|",aggregate);
 
 	if (attr->aggregator_addr.s_addr != -1)
-	  printf("%u %s|\n",attr->aggregator_as,inet_ntoa(attr->aggregator_addr));
+	  wandio_printf(state->outfile, "%u %s|\n",attr->aggregator_as,inet_ntoa(attr->aggregator_addr));
 	else
-	  printf("|\n");
+	  wandio_printf(state->outfile, "|\n");
       }
     else
       {
@@ -781,8 +795,8 @@ static void table_line_dump_v2_prefix(bgpcorsaro_t *bgpcorsaro,
 	  date=gmtime(&time_temp);
 	}
 	bgpdump_time2str(date,time_str);
-	printf("TABLE_DUMP_V2|%s|A|%s|%u|",time_str,peer,e->entries[i].peer.peer_as);
-	printf("%s/%d|%s|%s\n",prefix,e->prefix_length,aspath_str,origin);
+	wandio_printf(state->outfile, "TABLE_DUMP_V2|%s|A|%s|%u|",time_str,peer,e->entries[i].peer.peer_as);
+	wandio_printf(state->outfile, "%s/%d|%s|%s\n",prefix,e->prefix_length,aspath_str,origin);
 
       }
   }
@@ -838,11 +852,11 @@ static void table_line_mrtd_route(bgpcorsaro_t *bgpcorsaro,
   if (state->dump_mode == 1)
     {
       if(state->timestamp_mode==0){
-	printf("TABLE_DUMP|%ld|B|%s|%u|",entry->time,peer,route->peer_as);
+	wandio_printf(state->outfile, "TABLE_DUMP|%ld|B|%s|%u|",entry->time,peer,route->peer_as);
       }else if(state->timestamp_mode==1){
-	printf("TABLE_DUMP|%ld|B|%s|%u|",route->uptime,peer,route->peer_as);
+	wandio_printf(state->outfile, "TABLE_DUMP|%ld|B|%s|%u|",route->uptime,peer,route->peer_as);
       }
-      printf("%s/%d|%s|%s|",prefix,route->mask,attr_aspath(entry->attr),tmp1);
+      wandio_printf(state->outfile, "%s/%d|%s|%s|",prefix,route->mask,attr_aspath(entry->attr),tmp1);
 
       npref=entry->attr->local_pref;
       if( (entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_LOCAL_PREF) ) ==0)
@@ -861,17 +875,17 @@ static void table_line_mrtd_route(bgpcorsaro_t *bgpcorsaro,
 	{
 	  strncpy(nexthop, inet_ntoa(entry->attr->nexthop), BGPDUMP_ADDRSTRLEN);
 	}
-      printf("%s|%u|%u|",nexthop,npref,nmed);
+      wandio_printf(state->outfile, "%s|%u|%u|",nexthop,npref,nmed);
 
       if( (entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_COMMUNITIES) ) !=0)
-	printf("%s|%s|",entry->attr->community->str+1,tmp2);
+	wandio_printf(state->outfile, "%s|%s|",entry->attr->community->str+1,tmp2);
       else
-	printf("|%s|",tmp2);
+	wandio_printf(state->outfile, "|%s|",tmp2);
 
       if (entry->attr->aggregator_addr.s_addr != -1)
-	printf("%u %s|\n",entry->attr->aggregator_as,inet_ntoa(entry->attr->aggregator_addr));
+	wandio_printf(state->outfile, "%u %s|\n",entry->attr->aggregator_as,inet_ntoa(entry->attr->aggregator_addr));
       else
-	printf("|\n");
+	wandio_printf(state->outfile, "|\n");
     }
   else
     {
@@ -881,14 +895,15 @@ static void table_line_mrtd_route(bgpcorsaro_t *bgpcorsaro,
 	date=gmtime(&route->uptime);
       }
       bgpdump_time2str(date,time_str);
-      printf("TABLE_DUMP|%s|A|%s|%u|",time_str,peer,route->peer_as);
-      printf("%s/%d|%s|%s\n",prefix,route->mask,attr_aspath(entry->attr),tmp1);
+      wandio_printf(state->outfile, "TABLE_DUMP|%s|A|%s|%u|",time_str,peer,route->peer_as);
+      wandio_printf(state->outfile, "%s/%d|%s|%s\n",prefix,route->mask,attr_aspath(entry->attr),tmp1);
 
     }
 
 }
 
-static void show_attr(attributes_t *attr) {
+static void show_attr(bgpcorsaro_t *bgpcorsaro, attributes_t *attr) {
+  struct bgpcorsaro_dump_state_t *state = STATE(bgpcorsaro);
 
   if(attr != NULL) {
 
@@ -897,64 +912,64 @@ static void show_attr(attributes_t *attr) {
 	switch (attr->origin)
 	  {
 	  case 0:
-	    printf("ORIGIN: IGP\n");
+	    wandio_printf(state->outfile, "ORIGIN: IGP\n");
 	    break;
 	  case 1:
-	    printf("ORIGIN: EGP\n");
+	    wandio_printf(state->outfile, "ORIGIN: EGP\n");
 	    break;
 	  case 2:
-	    printf("ORIGIN: INCOMPLETE\n");
+	    wandio_printf(state->outfile, "ORIGIN: INCOMPLETE\n");
 
 	  }
 
       }
 
     if( (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) ) !=0)
-      printf("ASPATH: %s\n",attr->aspath->str);
+      wandio_printf(state->outfile, "ASPATH: %s\n",attr->aspath->str);
 
     if( (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_NEXT_HOP) ) !=0)
-      printf("NEXT_HOP: %s\n",inet_ntoa(attr->nexthop));
+      wandio_printf(state->outfile, "NEXT_HOP: %s\n",inet_ntoa(attr->nexthop));
 
     if( (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_MULTI_EXIT_DISC) ) !=0)
-      printf("MULTI_EXIT_DISC: %u\n",attr->med);
+      wandio_printf(state->outfile, "MULTI_EXIT_DISC: %u\n",attr->med);
 
     if( (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_LOCAL_PREF) ) !=0)
-      printf("LOCAL_PREF: %u\n",attr->local_pref);
+      wandio_printf(state->outfile, "LOCAL_PREF: %u\n",attr->local_pref);
 
     if( (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_ATOMIC_AGGREGATE) ) !=0)
-      printf("ATOMIC_AGGREGATE\n");
+      wandio_printf(state->outfile, "ATOMIC_AGGREGATE\n");
 
     if( (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AGGREGATOR) ) !=0)
-      printf("AGGREGATOR: AS%u %s\n",attr->aggregator_as,inet_ntoa(attr->aggregator_addr));
+      wandio_printf(state->outfile, "AGGREGATOR: AS%u %s\n",attr->aggregator_as,inet_ntoa(attr->aggregator_addr));
 
     if( (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_ORIGINATOR_ID) ) !=0)
-      printf("ORIGINATOR_ID: %s\n",inet_ntoa(attr->originator_id));
+      wandio_printf(state->outfile, "ORIGINATOR_ID: %s\n",inet_ntoa(attr->originator_id));
 
     if( (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_CLUSTER_LIST) ) !=0)
       {
 	int cluster_index;
 
-	printf("CLUSTER_LIST: ");
+	wandio_printf(state->outfile, "CLUSTER_LIST: ");
 
 	for (cluster_index = 0;cluster_index<attr->cluster->length;cluster_index++)
-	  printf("%s ",inet_ntoa(attr->cluster->list[cluster_index]));
-	printf("\n");
+	  wandio_printf(state->outfile, "%s ",inet_ntoa(attr->cluster->list[cluster_index]));
+	wandio_printf(state->outfile, "\n");
       }
 
     int idx;
     for (idx=0;idx<attr->unknown_num;idx++)
       {
 	struct unknown_attr *unknown = attr->unknown + idx;
-	printf("   UNKNOWN_ATTR(%i, %i, %i):", unknown->flag, unknown->type, unknown->len);
+	wandio_printf(state->outfile, "   UNKNOWN_ATTR(%i, %i, %i):", unknown->flag, unknown->type, unknown->len);
 	int b;
 	for(b = 0; b < unknown->len; ++b)
-	  printf(" %02x", unknown->raw[b]);
-	printf("\n");
+	  wandio_printf(state->outfile, " %02x", unknown->raw[b]);
+	wandio_printf(state->outfile, "\n");
       }
 
     if( (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_MP_REACH_NLRI) )!=0)
       {
-	printf("MP_REACH_NLRI");
+	wandio_printf(state->outfile, "MP_REACH_NLRI");
 #ifdef BGPDUMP_HAVE_IPV6
 	if (attr->mp_info->announce[AFI_IP6][SAFI_UNICAST] || attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST] || attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST])
 
@@ -963,25 +978,25 @@ static void show_attr(attributes_t *attr) {
 
 	    if (attr->mp_info->announce[AFI_IP6][SAFI_UNICAST])
 	      {
-		printf("(IPv6 Unicast)\n");
-		printf("NEXT_HOP: %s\n",bgpdump_fmt_ipv6(attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop,buf));
+		wandio_printf(state->outfile, "(IPv6 Unicast)\n");
+		wandio_printf(state->outfile, "NEXT_HOP: %s\n",bgpdump_fmt_ipv6(attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop,buf));
 		if (attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop_len==32)
-		  printf("NEXT_HOP: %s\n",bgpdump_fmt_ipv6(attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop_local,buf));
+		  wandio_printf(state->outfile, "NEXT_HOP: %s\n",bgpdump_fmt_ipv6(attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop_local,buf));
 	      }
 	    else if (attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST])
 	      {
-		printf("(IPv6 Multicast)\n");
-		printf("NEXT_HOP: %s\n",bgpdump_fmt_ipv6(attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]->nexthop,buf));
+		wandio_printf(state->outfile, "(IPv6 Multicast)\n");
+		wandio_printf(state->outfile, "NEXT_HOP: %s\n",bgpdump_fmt_ipv6(attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]->nexthop,buf));
 		if (attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]->nexthop_len==32)
-		  printf("NEXT_HOP: %s\n",bgpdump_fmt_ipv6(attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]->nexthop_local,buf));
+		  wandio_printf(state->outfile, "NEXT_HOP: %s\n",bgpdump_fmt_ipv6(attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]->nexthop_local,buf));
 
 	      }
 	    else
 	      {
-		printf("(IPv6 Both unicast and multicast)\n");
-		printf("NEXT_HOP: %s\n",bgpdump_fmt_ipv6(attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]->nexthop,buf));
+		wandio_printf(state->outfile, "(IPv6 Both unicast and multicast)\n");
+		wandio_printf(state->outfile, "NEXT_HOP: %s\n",bgpdump_fmt_ipv6(attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]->nexthop,buf));
 		if (attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]->nexthop_len==32)
-		  printf("NEXT_HOP: %s\n",bgpdump_fmt_ipv6(attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]->nexthop_local,buf));
+		  wandio_printf(state->outfile, "NEXT_HOP: %s\n",bgpdump_fmt_ipv6(attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]->nexthop_local,buf));
 
 
 	      }
@@ -992,27 +1007,27 @@ static void show_attr(attributes_t *attr) {
 
 	    if (attr->mp_info->announce[AFI_IP][SAFI_UNICAST])
 	      {
-		printf("(IPv4 Unicast)\n");
-		printf("NEXT_HOP: %s\n",inet_ntoa(attr->mp_info->announce[AFI_IP][SAFI_UNICAST]->nexthop.v4_addr));
+		wandio_printf(state->outfile, "(IPv4 Unicast)\n");
+		wandio_printf(state->outfile, "NEXT_HOP: %s\n",inet_ntoa(attr->mp_info->announce[AFI_IP][SAFI_UNICAST]->nexthop.v4_addr));
 		if (attr->mp_info->announce[AFI_IP][SAFI_UNICAST]->nexthop_len==32)
-		  printf("NEXT_HOP: %s\n",inet_ntoa(attr->mp_info->announce[AFI_IP][SAFI_UNICAST]->nexthop_local.v4_addr));
+		  wandio_printf(state->outfile, "NEXT_HOP: %s\n",inet_ntoa(attr->mp_info->announce[AFI_IP][SAFI_UNICAST]->nexthop_local.v4_addr));
 
 	      }
 	    else if (attr->mp_info->announce[AFI_IP][SAFI_MULTICAST])
 	      {
-		printf("(IPv4 Multicast)\n");
-		printf("NEXT_HOP: %s\n",inet_ntoa(attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]->nexthop.v4_addr));
+		wandio_printf(state->outfile, "(IPv4 Multicast)\n");
+		wandio_printf(state->outfile, "NEXT_HOP: %s\n",inet_ntoa(attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]->nexthop.v4_addr));
 		if (attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]->nexthop_len==32)
-		  printf("NEXT_HOP: %s\n",inet_ntoa(attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]->nexthop_local.v4_addr));
+		  wandio_printf(state->outfile, "NEXT_HOP: %s\n",inet_ntoa(attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]->nexthop_local.v4_addr));
 
 
 	      }
 	    else if (attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST])
 	      {
-		printf("(IPv4 Both unicast and multicast)\n");
-		printf("NEXT_HOP: %s\n",inet_ntoa(attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]->nexthop.v4_addr));
+		wandio_printf(state->outfile, "(IPv4 Both unicast and multicast)\n");
+		wandio_printf(state->outfile, "NEXT_HOP: %s\n",inet_ntoa(attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]->nexthop.v4_addr));
 		if (attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]->nexthop_len==32)
-		  printf("NEXT_HOP: %s\n",inet_ntoa(attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]->nexthop_local.v4_addr));
+		  wandio_printf(state->outfile, "NEXT_HOP: %s\n",inet_ntoa(attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]->nexthop_local.v4_addr));
 
 
 	      }
@@ -1022,7 +1037,7 @@ static void show_attr(attributes_t *attr) {
 
     if( (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_MP_UNREACH_NLRI) )!=0)
       {
-	printf("MP_UNREACH_NLRI");
+	wandio_printf(state->outfile, "MP_UNREACH_NLRI");
 #ifdef BGPDUMP_HAVE_IPV6
 	if (attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST] || attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST] || attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST])
 
@@ -1030,16 +1045,16 @@ static void show_attr(attributes_t *attr) {
 
 	    if (attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST])
 	      {
-		printf("(IPv6 Unicast)\n");
+		wandio_printf(state->outfile, "(IPv6 Unicast)\n");
 	      }
 	    else if (attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST])
 	      {
-		printf("(IPv6 Multicast)\n");
+		wandio_printf(state->outfile, "(IPv6 Multicast)\n");
 
 	      }
 	    else
 	      {
-		printf("(IPv6 Both unicast and multicast)\n");
+		wandio_printf(state->outfile, "(IPv6 Both unicast and multicast)\n");
 
 
 	      }
@@ -1050,18 +1065,18 @@ static void show_attr(attributes_t *attr) {
 
 	    if (attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST])
 	      {
-		printf("(IPv4 Unicast)\n");
+		wandio_printf(state->outfile, "(IPv4 Unicast)\n");
 
 	      }
 	    else if (attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST])
 	      {
-		printf("(IPv4 Multicast)\n");
+		wandio_printf(state->outfile, "(IPv4 Multicast)\n");
 
 
 	      }
 	    else if (attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST])
 	      {
-		printf("(IPv4 Both unicast and multicast)\n");
+		wandio_printf(state->outfile, "(IPv4 Both unicast and multicast)\n");
 
 
 	      }
@@ -1069,7 +1084,7 @@ static void show_attr(attributes_t *attr) {
 	  }
       }
     if( (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_COMMUNITIES) ) !=0)
-      printf("COMMUNITY:%s\n",attr->community->str);
+      wandio_printf(state->outfile, "COMMUNITY:%s\n",attr->community->str);
   }
 
 }
@@ -1089,10 +1104,10 @@ static void process(bgpcorsaro_t *bgpcorsaro, BGPDUMP_ENTRY *entry)
   bgpdump_time2str(date,time_str_fixed);
   if (state->dump_mode==0)
     {
-      printf("TIME: %s\n", time_str);
+      wandio_printf(state->outfile, "TIME: %s\n", time_str);
     }
-  //printf("TIME: %s",asctime(gmtime(&entry->time)));
-  //printf("LENGTH          : %u\n", entry->length);
+  //wandio_printf(state->outfile, "TIME: %s",asctime(gmtime(&entry->time)));
+  //wandio_printf(state->outfile, "LENGTH          : %u\n", entry->length);
   switch(entry->type) {
   case BGPDUMP_TYPE_MRTD_TABLE_DUMP:
     if(state->dump_mode==0){
@@ -1100,35 +1115,35 @@ static void process(bgpcorsaro_t *bgpcorsaro, BGPDUMP_ENTRY *entry)
       switch(entry->subtype){
 #ifdef BGPDUMP_HAVE_IPV6
       case BGPDUMP_SUBTYPE_MRTD_TABLE_DUMP_AFI_IP6:
-	printf("TYPE: TABLE_DUMP/INET6\n");
+	wandio_printf(state->outfile, "TYPE: TABLE_DUMP/INET6\n");
 	prefix_str = bgpdump_fmt_ipv6(entry->body.mrtd_table_dump.prefix,prefix);
 	break;
 
       case BGPDUMP_SUBTYPE_MRTD_TABLE_DUMP_AFI_IP6_32BIT_AS:
-	printf("TYPE: TABLE_DUMP/INET6_32BIT_AS\n");
+	wandio_printf(state->outfile, "TYPE: TABLE_DUMP/INET6_32BIT_AS\n");
 	prefix_str = bgpdump_fmt_ipv6(entry->body.mrtd_table_dump.prefix,prefix);
 	break;
 
 #endif
       case BGPDUMP_SUBTYPE_MRTD_TABLE_DUMP_AFI_IP:
-	printf("TYPE: TABLE_DUMP/INET\n");
+	wandio_printf(state->outfile, "TYPE: TABLE_DUMP/INET\n");
 	prefix_str = inet_ntoa(entry->body.mrtd_table_dump.prefix.v4_addr);
 	break;
 
       case BGPDUMP_SUBTYPE_MRTD_TABLE_DUMP_AFI_IP_32BIT_AS:
-	printf("TYPE: TABLE_DUMP/INET_32BIT_AS\n");
+	wandio_printf(state->outfile, "TYPE: TABLE_DUMP/INET_32BIT_AS\n");
 	prefix_str = inet_ntoa(entry->body.mrtd_table_dump.prefix.v4_addr);
 	break;
 
       default:
-	printf("Error: unknown table type %d\n", entry->subtype);
+	wandio_printf(state->outfile, "Error: unknown table type %d\n", entry->subtype);
 	return;
 
       }
-      printf("VIEW: %d\n",entry->body.mrtd_table_dump.view);
-      printf("SEQUENCE: %d\n",entry->body.mrtd_table_dump.sequence);
-      printf("PREFIX: %s/%d\n",prefix_str,entry->body.mrtd_table_dump.mask);
-      printf("FROM:");
+      wandio_printf(state->outfile, "VIEW: %d\n",entry->body.mrtd_table_dump.view);
+      wandio_printf(state->outfile, "SEQUENCE: %d\n",entry->body.mrtd_table_dump.sequence);
+      wandio_printf(state->outfile, "PREFIX: %s/%d\n",prefix_str,entry->body.mrtd_table_dump.mask);
+      wandio_printf(state->outfile, "FROM:");
       switch(entry->subtype)
 	{
 #ifdef BGPDUMP_HAVE_IPV6
@@ -1136,33 +1151,33 @@ static void process(bgpcorsaro_t *bgpcorsaro, BGPDUMP_ENTRY *entry)
 	case BGPDUMP_SUBTYPE_MRTD_TABLE_DUMP_AFI_IP6_32BIT_AS:
 
 	  bgpdump_fmt_ipv6(entry->body.mrtd_table_dump.peer_ip,prefix);
-	  printf("%s ",prefix);
+	  wandio_printf(state->outfile, "%s ",prefix);
 	  break;
 #endif
 	case BGPDUMP_SUBTYPE_MRTD_TABLE_DUMP_AFI_IP:
 	case BGPDUMP_SUBTYPE_MRTD_TABLE_DUMP_AFI_IP_32BIT_AS:
 	  if (entry->body.mrtd_table_dump.peer_ip.v4_addr.s_addr != 0x00000000L)
-	    printf("%s ",inet_ntoa(entry->body.mrtd_table_dump.peer_ip.v4_addr));
+	    wandio_printf(state->outfile, "%s ",inet_ntoa(entry->body.mrtd_table_dump.peer_ip.v4_addr));
 	  else
-	    printf("N/A ");
+	    wandio_printf(state->outfile, "N/A ");
 
 	}
-      printf("AS%u\n",entry->body.mrtd_table_dump.peer_as);
+      wandio_printf(state->outfile, "AS%u\n",entry->body.mrtd_table_dump.peer_as);
 
-      //printf("FROM: %s AS%d\n",inet_ntoa(entry->body.mrtd_table_dump.peer_ip.v4_addr),entry->body.mrtd_table_dump.peer_as);
+      //wandio_printf(state->outfile, "FROM: %s AS%d\n",inet_ntoa(entry->body.mrtd_table_dump.peer_ip.v4_addr),entry->body.mrtd_table_dump.peer_as);
       //time2str(localtime(&entry->body.mrtd_table_dump.uptime),time_str2);
       bgpdump_time2str(gmtime(&entry->body.mrtd_table_dump.uptime),time_str2);
-      printf("ORIGINATED: %s\n",time_str2);
+      wandio_printf(state->outfile, "ORIGINATED: %s\n",time_str2);
       if (entry->attr && entry->attr->len)
-	show_attr(entry->attr);
+	show_attr(bgpcorsaro, entry->attr);
 
-      printf("STATUS: 0x%x\n",entry->body.mrtd_table_dump.status);
+      wandio_printf(state->outfile, "STATUS: 0x%x\n",entry->body.mrtd_table_dump.status);
 
 
-      //printf("    UPTIME      : %s",asctime(gmtime(&entry->body.mrtd_table_dump.uptime)));
-      //printf("    PEER IP     : %s\n",inet_ntoa(entry->body.mrtd_table_dump.peer_ip));
-      //printf("    PEER IP     : %s\n",inet_ntoa(entry->body.mrtd_table_dump.peer_ip.v4_addr));
-      //printf("    PEER AS     : %d\n",entry->body.mrtd_table_dump.peer_as);
+      //wandio_printf(state->outfile, "    UPTIME      : %s",asctime(gmtime(&entry->body.mrtd_table_dump.uptime)));
+      //wandio_printf(state->outfile, "    PEER IP     : %s\n",inet_ntoa(entry->body.mrtd_table_dump.peer_ip));
+      //wandio_printf(state->outfile, "    PEER IP     : %s\n",inet_ntoa(entry->body.mrtd_table_dump.peer_ip.v4_addr));
+      //wandio_printf(state->outfile, "    PEER AS     : %d\n",entry->body.mrtd_table_dump.peer_as);
     }
     else if (state->dump_mode ==1 || state->dump_mode ==2) // -m -M
       {
@@ -1190,16 +1205,16 @@ static void process(bgpcorsaro_t *bgpcorsaro, BGPDUMP_ENTRY *entry)
       for(i = 0; i < e->entry_count; i++){
 	// This is slightly nasty - as we want to print multiple entries
 	// for multiple peers, we may need to print another TIME ourselves
-	if(i) printf("\nTIME: %s\n",time_str_fixed);
+	if(i) wandio_printf(state->outfile, "\nTIME: %s\n",time_str_fixed);
 	if(e->afi == AFI_IP){
-	  printf("TYPE: TABLE_DUMP_V2/IPV4_UNICAST\n");
+	  wandio_printf(state->outfile, "TYPE: TABLE_DUMP_V2/IPV4_UNICAST\n");
 #ifdef BGPDUMP_HAVE_IPV6
 	} else if(e->afi == AFI_IP6){
-	  printf("TYPE: TABLE_DUMP_V2/IPV6_UNICAST\n");
+	  wandio_printf(state->outfile, "TYPE: TABLE_DUMP_V2/IPV6_UNICAST\n");
 #endif
 	}
-	printf("PREFIX: %s/%d\n",prefix, e->prefix_length);
-	printf("SEQUENCE: %d\n",e->seq);
+	wandio_printf(state->outfile, "PREFIX: %s/%d\n",prefix, e->prefix_length);
+	wandio_printf(state->outfile, "SEQUENCE: %d\n",e->seq);
 
 	if(e->entries[i].peer.afi == AFI_IP){
 	  bgpdump_fmt_ipv4(e->entries[i].peer.peer_ip, peer_ip);
@@ -1210,12 +1225,12 @@ static void process(bgpcorsaro_t *bgpcorsaro, BGPDUMP_ENTRY *entry)
 	} else {
 	  sprintf(peer_ip, "[N/A, unsupported AF]");
 	}
-	printf("FROM: %s AS%u\n", peer_ip, e->entries[i].peer.peer_as);
+	wandio_printf(state->outfile, "FROM: %s AS%u\n", peer_ip, e->entries[i].peer.peer_as);
 	time_t time_temp = (time_t)((e->entries[i]).originated_time);
 	bgpdump_time2str(gmtime(&time_temp),time_str);
-	printf("ORIGINATED: %s\n",time_str);
+	wandio_printf(state->outfile, "ORIGINATED: %s\n",time_str);
 	if (e->entries[i].attr && e->entries[i].attr->len)
-	  show_attr(e->entries[i].attr);
+	  show_attr(bgpcorsaro, e->entries[i].attr);
       }
     } else if (state->dump_mode==1 || state->dump_mode==2) { // -m -M
       table_line_dump_v2_prefix(bgpcorsaro, &entry->body.mrtd_table_dump_v2_prefix,entry);
@@ -1234,58 +1249,58 @@ static void process(bgpcorsaro_t *bgpcorsaro, BGPDUMP_ENTRY *entry)
 	  case BGP_MSG_UPDATE:
 	    if (state->dump_mode ==0)
 	      {
-		printf("TYPE: BGP4MP/MESSAGE/Update\n");
+		wandio_printf(state->outfile, "TYPE: BGP4MP/MESSAGE/Update\n");
 		if (entry->body.zebra_message.source_as)
 		  {
-		    printf("FROM:");
+		    wandio_printf(state->outfile, "FROM:");
 		    switch(entry->body.zebra_message.address_family)
 		      {
 #ifdef BGPDUMP_HAVE_IPV6
 		      case AFI_IP6:
 
 			bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,prefix);
-			printf(" %s ",prefix);
+			wandio_printf(state->outfile, " %s ",prefix);
 			break;
 #endif
 		      case AFI_IP:
 		      default:
 			if (entry->body.zebra_message.source_ip.v4_addr.s_addr != 0x00000000L)
-			  printf(" %s ",inet_ntoa(entry->body.zebra_message.source_ip.v4_addr));
+			  wandio_printf(state->outfile, " %s ",inet_ntoa(entry->body.zebra_message.source_ip.v4_addr));
 			else
-			  printf(" N/A ");
+			  wandio_printf(state->outfile, " N/A ");
 		      }
-		    printf("AS%u\n",entry->body.zebra_message.source_as);
+		    wandio_printf(state->outfile, "AS%u\n",entry->body.zebra_message.source_as);
 		  }
 		if (entry->body.zebra_message.destination_as)
 		  {
-		    printf("TO:");
+		    wandio_printf(state->outfile, "TO:");
 		    switch(entry->body.zebra_message.address_family)
 		      {
 #ifdef BGPDUMP_HAVE_IPV6
 		      case AFI_IP6:
 
 			bgpdump_fmt_ipv6(entry->body.zebra_message.destination_ip,prefix);
-			printf(" %s ",prefix);
+			wandio_printf(state->outfile, " %s ",prefix);
 			break;
 #endif
 		      case AFI_IP:
 		      default:
 			if (entry->body.zebra_message.destination_ip.v4_addr.s_addr != 0x00000000L)
-			  printf(" %s ",inet_ntoa(entry->body.zebra_message.destination_ip.v4_addr));
+			  wandio_printf(state->outfile, " %s ",inet_ntoa(entry->body.zebra_message.destination_ip.v4_addr));
 			else
-			  printf(" N/A ");
+			  wandio_printf(state->outfile, " N/A ");
 		      }
-		    printf("AS%u\n",entry->body.zebra_message.destination_as);
+		    wandio_printf(state->outfile, "AS%u\n",entry->body.zebra_message.destination_as);
 		  }
 		if (entry->attr && entry->attr->len)
-		  show_attr(entry->attr);
+		  show_attr(bgpcorsaro, entry->attr);
 		if (entry->body.zebra_message.cut_bytes)
 		  {
 		    u_int16_t cutted,idx;
 		    u_int8_t buf[128];
 
-		    printf("   INCOMPLETE PACKET: %d bytes cutted\n",entry->body.zebra_message.cut_bytes);
-		    printf("   INCOMPLETE PART: ");
+		    wandio_printf(state->outfile, "   INCOMPLETE PACKET: %d bytes cutted\n",entry->body.zebra_message.cut_bytes);
+		    wandio_printf(state->outfile, "   INCOMPLETE PART: ");
 		    if (entry->body.zebra_message.incomplete.orig_len)
 		      {
 			cutted=entry->body.zebra_message.incomplete.prefix.len/8+1;
@@ -1295,12 +1310,12 @@ static void process(bgpcorsaro_t *bgpcorsaro, BGPDUMP_ENTRY *entry)
 			for (idx=0;idx<cutted;idx++)
 			  {
 			    if (buf[idx]<0x10)
-			      printf("0%x ",buf[idx]);
+			      wandio_printf(state->outfile, "0%x ",buf[idx]);
 			    else
-			      printf("%x ",buf[idx]);
+			      wandio_printf(state->outfile, "%x ",buf[idx]);
 			  }
 		      }
-		    printf("\n");
+		    wandio_printf(state->outfile, "\n");
 		  }
 		if(! entry->attr)
 		  return;
@@ -1313,54 +1328,54 @@ static void process(bgpcorsaro_t *bgpcorsaro, BGPDUMP_ENTRY *entry)
 		      if ((entry->body.zebra_message.withdraw_count)||(entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST] && entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST]->prefix_count) || (entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST] && entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]->prefix_count) || (entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST] && entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]->prefix_count))
 
 #endif
-			printf("WITHDRAW\n");
+			wandio_printf(state->outfile, "WITHDRAW\n");
 		    if (entry->body.zebra_message.withdraw_count)
-		      show_prefixes(entry->body.zebra_message.withdraw_count,entry->body.zebra_message.withdraw);
+		      show_prefixes(bgpcorsaro, entry->body.zebra_message.withdraw_count,entry->body.zebra_message.withdraw);
 
 		    if (entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST] && entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST]->prefix_count)
-		      show_prefixes(entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST]->prefix_count,entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST]->nlri);
+		      show_prefixes(bgpcorsaro, entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST]->prefix_count,entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST]->nlri);
 
 		    if (entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST] && entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]->prefix_count)
-		      show_prefixes(entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]->prefix_count,entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]->nlri);
+		      show_prefixes(bgpcorsaro, entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]->prefix_count,entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]->nlri);
 
 		    if (entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST] && entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]->prefix_count)
-		      show_prefixes(entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]->prefix_count,entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]->nlri);
+		      show_prefixes(bgpcorsaro, entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]->prefix_count,entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]->nlri);
 
 #ifdef BGPDUMP_HAVE_IPV6
 		    if (entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST] && entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST]->prefix_count)
-		      show_prefixes6(entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST]->prefix_count,entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST]->nlri);
+		      show_prefixes6(bgpcorsaro, entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST]->prefix_count,entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST]->nlri);
 
 		    if (entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST] && entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]->prefix_count)
-		      show_prefixes6(entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]->prefix_count,entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]->nlri);
+		      show_prefixes6(bgpcorsaro, entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]->prefix_count,entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]->nlri);
 
 		    if (entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST] && entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]->prefix_count)
-		      show_prefixes6(entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]->prefix_count,entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]->nlri);
+		      show_prefixes6(bgpcorsaro, entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]->prefix_count,entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]->nlri);
 #endif
 		  }
 		if ( (entry->body.zebra_message.announce_count) || (entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_MP_REACH_NLRI)))
 		  {
-		    printf("ANNOUNCE\n");
+		    wandio_printf(state->outfile, "ANNOUNCE\n");
 		    if (entry->body.zebra_message.announce_count)
-		      show_prefixes(entry->body.zebra_message.announce_count,entry->body.zebra_message.announce);
+		      show_prefixes(bgpcorsaro, entry->body.zebra_message.announce_count,entry->body.zebra_message.announce);
 
 		    if (entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST] && entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST]->prefix_count)
-		      show_prefixes(entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST]->prefix_count,entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST]->nlri);
+		      show_prefixes(bgpcorsaro, entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST]->prefix_count,entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST]->nlri);
 
 		    if (entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST] && entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]->prefix_count)
-		      show_prefixes(entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]->prefix_count,entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]->nlri);
+		      show_prefixes(bgpcorsaro, entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]->prefix_count,entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]->nlri);
 
 		    if (entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST] && entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]->prefix_count)
-		      show_prefixes(entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]->prefix_count,entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]->nlri);
+		      show_prefixes(bgpcorsaro, entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]->prefix_count,entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]->nlri);
 
 #ifdef BGPDUMP_HAVE_IPV6
 		    if (entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST] && entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->prefix_count)
-		      show_prefixes6(entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->prefix_count,entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nlri);
+		      show_prefixes6(bgpcorsaro, entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->prefix_count,entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nlri);
 
 		    if (entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST] && entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]->prefix_count)
-		      show_prefixes6(entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]->prefix_count,entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]->nlri);
+		      show_prefixes6(bgpcorsaro, entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]->prefix_count,entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]->nlri);
 
 		    if (entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST] && entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]->prefix_count)
-		      show_prefixes6(entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]->prefix_count,entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]->nlri);
+		      show_prefixes6(bgpcorsaro, entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]->prefix_count,entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]->nlri);
 #endif
 		  }
 	      }
@@ -1417,224 +1432,224 @@ static void process(bgpcorsaro_t *bgpcorsaro, BGPDUMP_ENTRY *entry)
 	  case BGP_MSG_OPEN:
 	    if (state->dump_mode != 0)
 	      break;
-	    printf("TYPE: BGP4MP/MESSAGE/Open\n");
+	    wandio_printf(state->outfile, "TYPE: BGP4MP/MESSAGE/Open\n");
 	    if (entry->body.zebra_message.source_as)
 	      {
-		printf("FROM:");
+		wandio_printf(state->outfile, "FROM:");
 		switch(entry->body.zebra_message.address_family)
 		  {
 #ifdef BGPDUMP_HAVE_IPV6
 		  case AFI_IP6:
 
 		    bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,prefix);
-		    printf(" %s ",prefix);
+		    wandio_printf(state->outfile, " %s ",prefix);
 		    break;
 #endif
 		  case AFI_IP:
 		  default:
 		    if (entry->body.zebra_message.source_ip.v4_addr.s_addr != 0x00000000L)
-		      printf(" %s ",inet_ntoa(entry->body.zebra_message.source_ip.v4_addr));
+		      wandio_printf(state->outfile, " %s ",inet_ntoa(entry->body.zebra_message.source_ip.v4_addr));
 		    else
-		      printf(" N/A ");
+		      wandio_printf(state->outfile, " N/A ");
 		  }
-		printf("AS%u\n",entry->body.zebra_message.source_as);
+		wandio_printf(state->outfile, "AS%u\n",entry->body.zebra_message.source_as);
 	      }
 	    if (entry->body.zebra_message.destination_as)
 	      {
-		printf("TO:");
+		wandio_printf(state->outfile, "TO:");
 		switch(entry->body.zebra_message.address_family)
 		  {
 #ifdef BGPDUMP_HAVE_IPV6
 		  case AFI_IP6:
 
 		    bgpdump_fmt_ipv6(entry->body.zebra_message.destination_ip,prefix);
-		    printf(" %s ",prefix);
+		    wandio_printf(state->outfile, " %s ",prefix);
 		    break;
 #endif
 		  case AFI_IP:
 		  default:
 		    if (entry->body.zebra_message.destination_ip.v4_addr.s_addr != 0x00000000L)
-		      printf(" %s ",inet_ntoa(entry->body.zebra_message.destination_ip.v4_addr));
+		      wandio_printf(state->outfile, " %s ",inet_ntoa(entry->body.zebra_message.destination_ip.v4_addr));
 		    else
-		      printf(" N/A ");
+		      wandio_printf(state->outfile, " N/A ");
 		  }
-		printf("AS%u\n",entry->body.zebra_message.destination_as);
+		wandio_printf(state->outfile, "AS%u\n",entry->body.zebra_message.destination_as);
 	      }
 
-	    printf("VERSION: %d\n",entry->body.zebra_message.version);
-	    printf("AS: %u\n",entry->body.zebra_message.my_as);
-	    printf("HOLD_TIME: %d\n",entry->body.zebra_message.hold_time);
-	    printf("ID: %s\n",inet_ntoa(entry->body.zebra_message.bgp_id));
-	    printf("OPT_PARM_LEN: %d\n",entry->body.zebra_message.opt_len);
+	    wandio_printf(state->outfile, "VERSION: %d\n",entry->body.zebra_message.version);
+	    wandio_printf(state->outfile, "AS: %u\n",entry->body.zebra_message.my_as);
+	    wandio_printf(state->outfile, "HOLD_TIME: %d\n",entry->body.zebra_message.hold_time);
+	    wandio_printf(state->outfile, "ID: %s\n",inet_ntoa(entry->body.zebra_message.bgp_id));
+	    wandio_printf(state->outfile, "OPT_PARM_LEN: %d\n",entry->body.zebra_message.opt_len);
 	    break;
 
 	  case BGP_MSG_NOTIFY:
 	    if (state->dump_mode != 0)
 	      break;
-	    printf("TYPE: BGP4MP/MESSAGE/Notify\n");
+	    wandio_printf(state->outfile, "TYPE: BGP4MP/MESSAGE/Notify\n");
 	    if (entry->body.zebra_message.source_as)
 	      {
-		printf("FROM:");
+		wandio_printf(state->outfile, "FROM:");
 		switch(entry->body.zebra_message.address_family)
 		  {
 #ifdef BGPDUMP_HAVE_IPV6
 		  case AFI_IP6:
 
 		    bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,prefix);
-		    printf(" %s ",prefix);
+		    wandio_printf(state->outfile, " %s ",prefix);
 		    break;
 #endif
 		  case AFI_IP:
 		  default:
 		    if (entry->body.zebra_message.source_ip.v4_addr.s_addr != 0x00000000L)
-		      printf(" %s ",inet_ntoa(entry->body.zebra_message.source_ip.v4_addr));
+		      wandio_printf(state->outfile, " %s ",inet_ntoa(entry->body.zebra_message.source_ip.v4_addr));
 		    else
-		      printf(" N/A ");
+		      wandio_printf(state->outfile, " N/A ");
 		  }
-		printf("AS%u\n",entry->body.zebra_message.source_as);
+		wandio_printf(state->outfile, "AS%u\n",entry->body.zebra_message.source_as);
 	      }
 	    if (entry->body.zebra_message.destination_as)
 	      {
-		printf("TO:");
+		wandio_printf(state->outfile, "TO:");
 		switch(entry->body.zebra_message.address_family)
 		  {
 #ifdef BGPDUMP_HAVE_IPV6
 		  case AFI_IP6:
 
 		    bgpdump_fmt_ipv6(entry->body.zebra_message.destination_ip,prefix);
-		    printf(" %s ",prefix);
+		    wandio_printf(state->outfile, " %s ",prefix);
 		    break;
 #endif
 		  case AFI_IP:
 		  default:
 		    if (entry->body.zebra_message.destination_ip.v4_addr.s_addr != 0x00000000L)
-		      printf(" %s ",inet_ntoa(entry->body.zebra_message.destination_ip.v4_addr));
+		      wandio_printf(state->outfile, " %s ",inet_ntoa(entry->body.zebra_message.destination_ip.v4_addr));
 		    else
-		      printf(" N/A ");
+		      wandio_printf(state->outfile, " N/A ");
 		  }
-		printf("AS%u\n",entry->body.zebra_message.destination_as);
+		wandio_printf(state->outfile, "AS%u\n",entry->body.zebra_message.destination_as);
 	      }
 
 	    switch (entry->body.zebra_message.error_code)
 	      {
 	      case 	1:
-		printf("    ERROR CODE  : 1 (Message Header Error)\n");
+		wandio_printf(state->outfile, "    ERROR CODE  : 1 (Message Header Error)\n");
 		switch(entry->body.zebra_message.sub_error_code)
 		  {
 		  case	1:
-		    printf("    SUB ERROR   : 1 (Connection Not Synchronized)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 1 (Connection Not Synchronized)\n");
 		    break;
 
 		  case	2:
-		    printf("    SUB ERROR   : 2 (Bad Message Length)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 2 (Bad Message Length)\n");
 		    break;
 
 		  case	3:
-		    printf("    SUB ERROR   : 3 (Bad Message Type)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 3 (Bad Message Type)\n");
 		    break;
 
 		  default:
-		    printf("    SUB ERROR   : %d\n",entry->body.zebra_message.sub_error_code);
+		    wandio_printf(state->outfile, "    SUB ERROR   : %d\n",entry->body.zebra_message.sub_error_code);
 		    break;
 		  }
 		break;
 	      case	2:
-		printf("    ERROR CODE  : 2 (OPEN Message Error)\n");
+		wandio_printf(state->outfile, "    ERROR CODE  : 2 (OPEN Message Error)\n");
 		switch(entry->body.zebra_message.sub_error_code)
 		  {
 		  case	1:
-		    printf("    SUB ERROR   : 1 (Unsupported Version Number)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 1 (Unsupported Version Number)\n");
 		    break;
 
 		  case	2:
-		    printf("    SUB ERROR   : 2 (Bad Peer AS)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 2 (Bad Peer AS)\n");
 		    break;
 
 		  case	3:
-		    printf("    SUB ERROR   : 3 (Bad BGP Identifier)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 3 (Bad BGP Identifier)\n");
 		    break;
 
 		  case	4:
-		    printf("    SUB ERROR   : 4 (Unsupported Optional Parameter)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 4 (Unsupported Optional Parameter)\n");
 		    break;
 
 		  case	5:
-		    printf("    SUB ERROR   : 5 (Authentication Failure)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 5 (Authentication Failure)\n");
 		    break;
 
 		  case	6:
-		    printf("    SUB ERROR   : 6 (Unacceptable Hold Time)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 6 (Unacceptable Hold Time)\n");
 		    break;
 
 		  default:
-		    printf("    SUB ERROR   : %d\n",entry->body.zebra_message.sub_error_code);
+		    wandio_printf(state->outfile, "    SUB ERROR   : %d\n",entry->body.zebra_message.sub_error_code);
 		    break;
 		  }
 		break;
 	      case	3:
-		printf("    ERROR CODE  : 3 (UPDATE Message Error)\n");
+		wandio_printf(state->outfile, "    ERROR CODE  : 3 (UPDATE Message Error)\n");
 		switch(entry->body.zebra_message.sub_error_code)
 		  {
 		  case	1:
-		    printf("    SUB ERROR   : 1 (Malformed Attribute List)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 1 (Malformed Attribute List)\n");
 		    break;
 
 		  case	2:
-		    printf("    SUB ERROR   : 2 (Unrecognized Well-known Attribute)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 2 (Unrecognized Well-known Attribute)\n");
 		    break;
 
 		  case	3:
-		    printf("    SUB ERROR   : 3 (Missing Well-known Attribute)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 3 (Missing Well-known Attribute)\n");
 		    break;
 
 		  case	4:
-		    printf("    SUB ERROR   : 4 (Attribute Flags Error)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 4 (Attribute Flags Error)\n");
 		    break;
 
 		  case	5:
-		    printf("    SUB ERROR   : 5 (Attribute Length Error)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 5 (Attribute Length Error)\n");
 		    break;
 
 		  case	6:
-		    printf("    SUB ERROR   : 6 (Invalid ORIGIN Attribute)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 6 (Invalid ORIGIN Attribute)\n");
 		    break;
 
 		  case	7:
-		    printf("    SUB ERROR   : 7 (AS Routing Loop)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 7 (AS Routing Loop)\n");
 		    break;
 
 		  case	8:
-		    printf("    SUB ERROR   : 8 (Invalid NEXT-HOP Attribute)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 8 (Invalid NEXT-HOP Attribute)\n");
 		    break;
 
 		  case	9:
-		    printf("    SUB ERROR   : 9 (Optional Attribute Error)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 9 (Optional Attribute Error)\n");
 		    break;
 
 		  case	10:
-		    printf("    SUB ERROR   : 10 (Invalid Network Field)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 10 (Invalid Network Field)\n");
 		    break;
 
 		  case	11:
-		    printf("    SUB ERROR   : 11 (Malformed AS-PATH)\n");
+		    wandio_printf(state->outfile, "    SUB ERROR   : 11 (Malformed AS-PATH)\n");
 		    break;
 
 		  default:
-		    printf("    SUB ERROR   : %d\n",entry->body.zebra_message.sub_error_code);
+		    wandio_printf(state->outfile, "    SUB ERROR   : %d\n",entry->body.zebra_message.sub_error_code);
 		    break;
 		  }
 		break;
 	      case	4:
-		printf("    ERROR CODE  : 4 (Hold Timer Expired)\n");
+		wandio_printf(state->outfile, "    ERROR CODE  : 4 (Hold Timer Expired)\n");
 		break;
 	      case	5:
-		printf("    ERROR CODE  : 5 (Finite State Machine Error)\n");
+		wandio_printf(state->outfile, "    ERROR CODE  : 5 (Finite State Machine Error)\n");
 		break;
 	      case	6:
-		printf("    ERROR CODE  : 6 (Cease)\n");
+		wandio_printf(state->outfile, "    ERROR CODE  : 6 (Cease)\n");
 		break;
 	      default:
-		printf("    ERROR CODE  : %d\n",entry->body.zebra_message.error_code);
+		wandio_printf(state->outfile, "    ERROR CODE  : %d\n",entry->body.zebra_message.error_code);
 		break;
 
 	      }
@@ -1644,48 +1659,48 @@ static void process(bgpcorsaro_t *bgpcorsaro, BGPDUMP_ENTRY *entry)
 	    if ( state->dump_mode != 0)
 	      break;
 
-	    printf("TYPE: BGP4MP/MESSAGE/Keepalive\n");
+	    wandio_printf(state->outfile, "TYPE: BGP4MP/MESSAGE/Keepalive\n");
 	    if (entry->body.zebra_message.source_as)
 	      {
-		printf("FROM:");
+		wandio_printf(state->outfile, "FROM:");
 		switch(entry->body.zebra_message.address_family)
 		  {
 #ifdef BGPDUMP_HAVE_IPV6
 		  case AFI_IP6:
 
 		    bgpdump_fmt_ipv6(entry->body.zebra_message.source_ip,prefix);
-		    printf(" %s ",prefix);
+		    wandio_printf(state->outfile, " %s ",prefix);
 		    break;
 #endif
 		  case AFI_IP:
 		  default:
 		    if (entry->body.zebra_message.source_ip.v4_addr.s_addr != 0x00000000L)
-		      printf(" %s ",inet_ntoa(entry->body.zebra_message.source_ip.v4_addr));
+		      wandio_printf(state->outfile, " %s ",inet_ntoa(entry->body.zebra_message.source_ip.v4_addr));
 		    else
-		      printf(" N/A ");
+		      wandio_printf(state->outfile, " N/A ");
 		  }
-		printf("AS%u\n",entry->body.zebra_message.source_as);
+		wandio_printf(state->outfile, "AS%u\n",entry->body.zebra_message.source_as);
 	      }
 	    if (entry->body.zebra_message.destination_as)
 	      {
-		printf("TO:");
+		wandio_printf(state->outfile, "TO:");
 		switch(entry->body.zebra_message.address_family)
 		  {
 #ifdef BGPDUMP_HAVE_IPV6
 		  case AFI_IP6:
 
 		    bgpdump_fmt_ipv6(entry->body.zebra_message.destination_ip,prefix);
-		    printf(" %s ",prefix);
+		    wandio_printf(state->outfile, " %s ",prefix);
 		    break;
 #endif
 		  case AFI_IP:
 		  default:
 		    if (entry->body.zebra_message.destination_ip.v4_addr.s_addr != 0x00000000L)
-		      printf(" %s ",inet_ntoa(entry->body.zebra_message.destination_ip.v4_addr));
+		      wandio_printf(state->outfile, " %s ",inet_ntoa(entry->body.zebra_message.destination_ip.v4_addr));
 		    else
-		      printf(" N/A ");
+		      wandio_printf(state->outfile, " N/A ");
 		  }
-		printf("AS%u\n",entry->body.zebra_message.destination_as);
+		wandio_printf(state->outfile, "AS%u\n",entry->body.zebra_message.destination_as);
 	      }
 
 
@@ -1697,32 +1712,32 @@ static void process(bgpcorsaro_t *bgpcorsaro, BGPDUMP_ENTRY *entry)
       case BGPDUMP_SUBTYPE_ZEBRA_BGP_STATE_CHANGE_AS4:
 	if (state->dump_mode==0)
 	  {
-	    printf("TYPE: BGP4MP/STATE_CHANGE\n");
+	    wandio_printf(state->outfile, "TYPE: BGP4MP/STATE_CHANGE\n");
 
-	    printf("PEER:");
+	    wandio_printf(state->outfile, "PEER:");
 	    switch(entry->body.zebra_state_change.address_family)
 	      {
 #ifdef BGPDUMP_HAVE_IPV6
 	      case AFI_IP6:
 
 		bgpdump_fmt_ipv6(entry->body.zebra_state_change.source_ip,prefix);
-		printf(" %s ",prefix);
+		wandio_printf(state->outfile, " %s ",prefix);
 		break;
 #endif
 	      case AFI_IP:
 	      default:
 		if (entry->body.zebra_state_change.source_ip.v4_addr.s_addr != 0x00000000L)
-		  printf(" %s ",inet_ntoa(entry->body.zebra_message.source_ip.v4_addr));
+		  wandio_printf(state->outfile, " %s ",inet_ntoa(entry->body.zebra_message.source_ip.v4_addr));
 		else
-		  printf(" N/A ");
+		  wandio_printf(state->outfile, " N/A ");
 	      }
 	    //if (entry->body.zebra_message.source_ip.s_addr != 0x00000000L)
-	    //	printf(" %s ",inet_ntoa(entry->body.zebra_message.source_ip));
+	    //	wandio_printf(state->outfile, " %s ",inet_ntoa(entry->body.zebra_message.source_ip));
 	    //else
-	    //	printf(" N/A ");
-	    printf("AS%u\n",entry->body.zebra_state_change.source_as);
+	    //	wandio_printf(state->outfile, " N/A ");
+	    wandio_printf(state->outfile, "AS%u\n",entry->body.zebra_state_change.source_as);
 
-	    printf("STATE: %s/%s\n",bgp_state_name[entry->body.zebra_state_change.old_state],bgp_state_name[entry->body.zebra_state_change.new_state]);
+	    wandio_printf(state->outfile, "STATE: %s/%s\n",bgp_state_name[entry->body.zebra_state_change.old_state],bgp_state_name[entry->body.zebra_state_change.new_state]);
 	  }
 	else if (state->dump_mode==1 || state->dump_mode==2 ) //-m -M
 	  {
@@ -1733,14 +1748,14 @@ static void process(bgpcorsaro_t *bgpcorsaro, BGPDUMP_ENTRY *entry)
 
 		bgpdump_fmt_ipv6(entry->body.zebra_state_change.source_ip,prefix);
 		if (state->dump_mode == 1)
-		  printf("BGP4MP|%ld|STATE|%s|%u|%d|%d\n",
+		  wandio_printf(state->outfile, "BGP4MP|%ld|STATE|%s|%u|%d|%d\n",
 			 entry->time,
 			 prefix,
 			 entry->body.zebra_state_change.source_as,
 			 entry->body.zebra_state_change.old_state,
 			 entry->body.zebra_state_change.new_state);
 		else
-		  printf("BGP4MP|%s|STATE|%s|%u|%d|%d\n",
+		  wandio_printf(state->outfile, "BGP4MP|%s|STATE|%s|%u|%d|%d\n",
 			 time_str,
 			 prefix,
 			 entry->body.zebra_state_change.source_as,
@@ -1751,14 +1766,14 @@ static void process(bgpcorsaro_t *bgpcorsaro, BGPDUMP_ENTRY *entry)
 	      case AFI_IP:
 	      default:
 		if (state->dump_mode == 1)
-		  printf("BGP4MP|%ld|STATE|%s|%u|%d|%d\n",
+		  wandio_printf(state->outfile, "BGP4MP|%ld|STATE|%s|%u|%d|%d\n",
 			 entry->time,
 			 inet_ntoa(entry->body.zebra_state_change.source_ip.v4_addr),
 			 entry->body.zebra_state_change.source_as,
 			 entry->body.zebra_state_change.old_state,
 			 entry->body.zebra_state_change.new_state);
 		else
-		  printf("BGP4MP|%s|STATE|%s|%u|%d|%d\n",
+		  wandio_printf(state->outfile, "BGP4MP|%s|STATE|%s|%u|%d|%d\n",
 			 time_str,
 			 inet_ntoa(entry->body.zebra_state_change.source_ip.v4_addr),
 			 entry->body.zebra_state_change.source_as,
@@ -1774,7 +1789,7 @@ static void process(bgpcorsaro_t *bgpcorsaro, BGPDUMP_ENTRY *entry)
     break;
   }
   if (state->dump_mode==0)
-    printf("\n");
+    wandio_printf(state->outfile, "\n");
 }
 
 /* == PUBLIC PLUGIN FUNCS BELOW HERE == */
