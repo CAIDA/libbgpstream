@@ -92,75 +92,6 @@ static void clean()
     }
 }
 
-/** Prepare a new bgpstream */
-static int init_stream(/* XXX arguments */)
-{
-  /* create a packet buffer */
-  if (record == NULL &&
-      (record = bgpstream_create_record()) == NULL) {
-    fprintf(stderr, "ERROR: Could not create BGPStream record\n");
-    return -1;
-  }
-
-  if((stream = bgpstream_create()) == NULL)
-    {
-      fprintf(stderr, "ERROR: Could not create BGPStream instance\n");
-      return -1;
-    }
-
-  /* XXX configure filters and time here */
-
-  if (bgpstream_init(stream) != 0) {
-    fprintf(stderr, "ERROR: Could not init BGPStream\n");
-    return -1;
-  }
-
-  return 0;
-}
-
-/** Close a stream */
-static void close_stream()
-{
-  if(stream != NULL)
-    {
-      bgpstream_destroy(stream);
-      stream = NULL;
-    }
-}
-
-/** Process a stream */
-static int process_stream(/* XXX arguments */)
-{
-  int rc;
-
-  if(init_stream() != 0)
-    {
-      bgpcorsaro_log(__func__, bgpcorsaro,
-		  "could not init stream for reading");
-      return -1;
-    }
-
-  /* let bgpcorsaro have the trace pointer */
-  bgpcorsaro_set_stream(bgpcorsaro, stream);
-
-  while (bgpcorsaro_shutdown == 0 &&
-	 (rc = bgpstream_get_next_record(stream, record))>0) {
-    if(bgpcorsaro_per_record(bgpcorsaro, record) != 0)
-      {
-	bgpcorsaro_log(__func__, bgpcorsaro, "bgpcorsaro_per_record failed");
-	return -1;
-      }
-  }
-
-  if (rc < 0) {
-    bgpcorsaro_log(__func__, bgpcorsaro,
-		   "bgpstream had an error process records");
-    return 1;
-  }
-
-  return 0;
-}
-
 /** Print usage information to stderr */
 static void usage(const char *name)
 {
@@ -211,7 +142,7 @@ int main(int argc, char *argv[])
   int prevoptind;
   /* we MUST not use any of the getopt global vars outside of arg parsing */
   /* this is because the plugins can use get opt to parse their config */
-  int lastopt;
+  /*int lastopt;*/
   char *tmpl = NULL;
   char *name = NULL;
   int i = -1000;
@@ -222,6 +153,7 @@ int main(int argc, char *argv[])
   int rotate = 0;
   int meta_rotate = -1;
   int logfile_disable = 0;
+  int rc = 0;
 
   signal(SIGINT, catch_sigint);
 
@@ -289,7 +221,7 @@ int main(int argc, char *argv[])
     }
 
   /* store the value of the last index*/
-  lastopt = optind;
+  /*lastopt = optind;*/
 
   /* reset getopt for others */
   optind = 1;
@@ -373,19 +305,58 @@ int main(int argc, char *argv[])
       goto err;
     }
 
-  for(i = lastopt; i < argc && bgpcorsaro_shutdown == 0; i++)
+  /* create a record buffer */
+  if (record == NULL &&
+      (record = bgpstream_create_record()) == NULL) {
+    fprintf(stderr, "ERROR: Could not create BGPStream record\n");
+    return -1;
+  }
+
+  if((stream = bgpstream_create()) == NULL)
     {
-      /* this should be a new file we're dealing with */
-      assert(stream == NULL);
-
-      bgpcorsaro_log(__func__, bgpcorsaro, "processing %s", argv[i]);
-
-      if(process_stream() != 0)
-	{
-	  /* let process_stream log the error */
-	  goto err;
-	}
+      fprintf(stderr, "ERROR: Could not create BGPStream instance\n");
+      return -1;
     }
+
+  /* we only support MYSQL as the datasource */
+  bgpstream_set_data_interface(stream, BS_MYSQL);
+
+  /* XXX configure filters and time here */
+
+  /* begin temp hax */
+
+#if 1
+  bgpstream_add_filter(stream, BS_COLLECTOR, "route-views2");
+
+  bgpstream_add_interval_filter(stream, BS_TIME_INTERVAL,
+				"1403229491", "1403236583");
+#endif
+
+  /* end temp hax */
+
+  if(bgpstream_init(stream) < 0) {
+    fprintf(stderr, "ERROR: Could not init BGPStream\n");
+    return -1;
+  }
+
+  /* let bgpcorsaro have the trace pointer */
+  bgpcorsaro_set_stream(bgpcorsaro, stream);
+
+  while (bgpcorsaro_shutdown == 0 &&
+	 (rc = bgpstream_get_next_record(stream, record))>0) {
+    /*bgpcorsaro_log(__func__, bgpcorsaro, "got a record!");*/
+    if(bgpcorsaro_per_record(bgpcorsaro, record) != 0)
+      {
+	bgpcorsaro_log(__func__, bgpcorsaro, "bgpcorsaro_per_record failed");
+	return -1;
+      }
+  }
+
+  if (rc < 0) {
+    bgpcorsaro_log(__func__, bgpcorsaro,
+		   "bgpstream encountered an error processing records");
+    return 1;
+  }
 
   /* free the plugin strings */
   for(i=0;i<plugin_cnt;i++)
@@ -399,8 +370,12 @@ int main(int argc, char *argv[])
     free(tmpl);
 
   bgpcorsaro_finalize_output(bgpcorsaro);
-  close_stream();
   bgpcorsaro = NULL;
+  if(stream != NULL)
+    {
+      bgpstream_destroy(stream);
+      stream = NULL;
+    }
 
   clean();
   return 0;
