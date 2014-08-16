@@ -48,10 +48,6 @@ AC_CHECK_TYPE(u_int8_t, , AC_DEFINE(u_int8_t, uint8_t, [Define if system headers
 AC_CHECK_TYPE(u_int16_t, , AC_DEFINE(u_int16_t, uint16_t, [Define if system headers do not define u_int16_t]))
 AC_CHECK_TYPE(u_int32_t, , AC_DEFINE(u_int32_t, uint32_t, [Define if system headers do not define u_int32_t]))
 
-
-AC_CHECK_LIB(z, gzopen, [], AC_DEFINE(DONT_HAVE_GZ, 1, Define if libz not present))
-AC_CHECK_LIB(bz2, BZ2_bzReadOpen, [], AC_DEFINE(DONT_HAVE_BZ2, 1, Define if libbzip2 not present))
-
 # Check for inet_ntoa in -lnsl if not found (Solaris)
 AC_CHECK_FUNCS(inet_ntoa, [], AC_CHECK_LIB(nsl, inet_ntoa, [], AC_MSG_ERROR([inet_ntoa not found],1)))
 AC_CHECK_FUNCS(inet_ntop, [], AC_CHECK_LIB(nsl, inet_ntop, [], AC_MSG_ERROR([inet_ntop not found],1)))
@@ -68,6 +64,37 @@ AC_TYPE_UINT8_T
 # Checks for library functions.
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
+
+
+# only turn on wandio support if people asked for it
+# @todo consider turning it on by default if they have the library
+AC_MSG_CHECKING([whether to use wandio for file i/o])
+AC_ARG_WITH([wandio],
+	[AS_HELP_STRING([--with-wandio],
+	  [use libwandio for file i/o (defaults to no)])],
+	  [],
+	  [with_wandio=no])
+
+AS_IF([test "x$with_wandio" != xno],
+	[
+	    AC_DEFINE_UNQUOTED([WITH_WANDIO],[1],
+		[Use libwandio for file i/o])
+	])
+
+AC_MSG_RESULT([$with_wandio])
+
+if test "x$with_wandio" == xyes; then
+   	AC_SEARCH_LIBS([wandio_create], [wandio trace], ,[AC_MSG_ERROR(
+		 [libwandio required (included with libtrace since 3.0.15)]
+		 )])
+else
+	AC_CHECK_LIB(z, gzopen, [],
+		     AC_DEFINE(DONT_HAVE_GZ, 1, Define if libz not present))
+	AC_CHECK_LIB(bz2, BZ2_bzReadOpen, [],
+	             AC_DEFINE(DONT_HAVE_BZ2, 1, Define if libbzip2 not present))
+fi
+
+AM_CONDITIONAL([WITH_WANDIO], [test "x$with_wandio" == xyes])
 
 
 AC_SUBST([LIBBGPDUMP_MAJOR_VERSION])
