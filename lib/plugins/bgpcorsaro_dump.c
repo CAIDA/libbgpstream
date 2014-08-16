@@ -1916,6 +1916,11 @@ int bgpcorsaro_dump_process_record(bgpcorsaro_t *bgpcorsaro,
 {
   BGPDUMP_ENTRY *bd_entry = BS_REC(record)->bd_entry;
 
+  if(BS_REC(record)->status != VALID_RECORD)
+    {
+      return 0;
+    }
+
   /* no point carrying on if a previous plugin has already decided we should
      ignore this record */
   if((record->state.flags & BGPCORSARO_RECORD_STATE_FLAG_IGNORE) != 0)
