@@ -692,7 +692,7 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
   // faster
   strcat (mysql_ds->sql_query," ORDER BY file_time DESC, bgp_types.name DESC");
 
-  printf("%s\n",mysql_ds->sql_query);
+  //printf("%s\n",mysql_ds->sql_query);
   bgpstream_debug("\t\tBSDS_MYSQL:  mysql query created");
 
   // the first last_timestamp is 0
