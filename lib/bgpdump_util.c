@@ -22,6 +22,7 @@
 #include "bgpdump_util.h"
 
 #include <arpa/inet.h>
+#include <sys/socket.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
