@@ -46,6 +46,16 @@
  *
  */
 
+#define PROJECT_CMD_CNT 10
+#define TYPE_CMD_CNT    10
+#define COLLECTOR_CMD_CNT 100
+#define WINDOW_CMD_CNT 1024
+
+struct window {
+  char *start;
+  char *end;
+};
+
 /** Indicates that Bgpcorsaro is waiting to shutdown */
 volatile sig_atomic_t bgpcorsaro_shutdown = 0;
 
@@ -93,7 +103,7 @@ static void clean()
 }
 
 /** Print usage information to stderr */
-static void usage(const char *name)
+static void usage()
 {
   int i;
   char **plugin_names;
@@ -106,30 +116,38 @@ static void usage(const char *name)
     }
 
   fprintf(stderr,
-	  "usage: %s [-alL] -o outfile [-i interval] [-m mode] [-n name]\n"
-	  "               [-p plugin] [-r intervals]\n"
-	  "       -a            align the end time of the first interval\n"
-	  "       -o <outfile>  use <outfile> as a template for file names.\n"
-	  "                      - %%P => plugin name\n"
-	  "                      - %%N => monitor name\n"
-	  "                      - see man strftime(3) for more options\n"
-	  "       -i <interval> distribution interval in seconds (default: %d)\n"
-	  "       -L            disable logging to a file\n"
-	  "       -n <name>     monitor name (default: "
+	  "usage: bgpcorsaro -o outfile [<options>]\n"
+	  "\n"
+	  "Available options are:\n"
+	  "   -a             align the end time of the first interval\n"
+	  "   -b             make blocking requests for BGP records\n"
+	  "                   allows bgpcorsaro to be used to process data in real-time\n"
+	  "   -C <collector> process records from only the given collector*\n"
+	  "   -i <interval>  distribution interval in seconds (default: %d)\n"
+	  "   -L             disable logging to a file\n"
+	  "   -n <name>      monitor name (default: "
 	  STR(BGPCORSARO_MONITOR_NAME)")\n"
-	  "       -p <plugin>   enable the given plugin, -p can be used "
-	  "multiple times (default: all)\n"
-	  "                     available plugins:\n",
-	  name, BGPCORSARO_INTERVAL_DEFAULT);
+	  "   -o <outfile>   use <outfile> as a template for file names.\n"
+	  "                   - %%P => plugin name\n"
+	  "                   - %%N => monitor name\n"
+	  "                   - see man strftime(3) for more options\n"
+	  "   -p <plugin>    enable the given plugin (default: all)*\n"
+	  "                   available plugins:\n",
+	  BGPCORSARO_INTERVAL_DEFAULT);
 
   for(i = 0; i < plugin_cnt; i++)
     {
-      fprintf(stderr, "                      - %s\n", plugin_names[i]);
+      fprintf(stderr, "                    - %s\n", plugin_names[i]);
     }
   fprintf(stderr,
-	  "                     use -p \"<plugin_name> -?\" to see plugin options\n"
-	  "       -r            rotate output files after n intervals\n"
-	  "       -R            rotate bgpcorsaro meta files after n intervals\n"
+	  "                   use -p \"<plugin_name> -?\" to see plugin options\n"
+	  "   -P <project>   process records from only the given project (routeviews, ris)*\n"
+	  "   -r <intervals> rotate output files after n intervals\n"
+	  "   -R <intervals> rotate bgpcorsaro meta files after n intervals\n"
+	  "   -T <type>      process records with only the given type (ribs, updates)*\n"
+	  "   -W <start,end> process records only within the given time window*\n"
+	  "\n"
+	  "* denotes an option that can be given multiple times\n"
 	  );
 
   bgpcorsaro_free_plugin_names(plugin_names, plugin_cnt);
@@ -138,11 +156,10 @@ static void usage(const char *name)
 /** Entry point for the Bgpcorsaro tool */
 int main(int argc, char *argv[])
 {
-  int opt;
-  int prevoptind;
   /* we MUST not use any of the getopt global vars outside of arg parsing */
   /* this is because the plugins can use get opt to parse their config */
-  /*int lastopt;*/
+  int opt;
+  int prevoptind;
   char *tmpl = NULL;
   char *name = NULL;
   int i = -1000;
@@ -153,19 +170,56 @@ int main(int argc, char *argv[])
   int rotate = 0;
   int meta_rotate = -1;
   int logfile_disable = 0;
+
+  char *projects[PROJECT_CMD_CNT];
+  int projects_cnt = 0;
+
+  char *types[TYPE_CMD_CNT];
+  int types_cnt = 0;
+
+  char *collectors[COLLECTOR_CMD_CNT];
+  int collectors_cnt = 0;
+
+  char *endp;
+  struct window windows[WINDOW_CMD_CNT];
+  int windows_cnt = 0;
+
+  int blocking = 1;
+
   int rc = 0;
 
   signal(SIGINT, catch_sigint);
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":i:n:o:p:r:R:aLv?")) >= 0)
+	(opt = getopt(argc, argv, ":C:i:n:o:p:P:r:R:T:W:abLv?")) >= 0)
     {
-      if (optind == prevoptind + 2 && *optarg == '-' ) {
+      if (optind == prevoptind + 2 && (optarg == NULL || *optarg == '-') ) {
         opt = ':';
         -- optind;
       }
       switch(opt)
 	{
+	case 'a':
+	  align = 1;
+	  break;
+
+	case 'b':
+	  blocking = 1;
+	  break;
+
+	case 'C':
+	  if(collectors_cnt == COLLECTOR_CMD_CNT)
+	    {
+	      fprintf(stderr,
+		      "ERROR: A maximum of %d collectors can be specified on "
+		      "the command line\n",
+		      COLLECTOR_CMD_CNT);
+	      usage();
+	      exit(-1);
+	    }
+	  collectors[collectors_cnt++] = strdup(optarg);
+	  break;
+
 	case 'i':
 	  i = atoi(optarg);
 	  break;
@@ -186,8 +240,17 @@ int main(int argc, char *argv[])
 	  plugins[plugin_cnt++] = strdup(optarg);
 	  break;
 
-	case 'a':
-	  align = 1;
+	case 'P':
+	  if(projects_cnt == PROJECT_CMD_CNT)
+	    {
+	      fprintf(stderr,
+		      "ERROR: A maximum of %d projects can be specified on "
+		      "the command line\n",
+		      PROJECT_CMD_CNT);
+	      usage();
+	      exit(-1);
+	    }
+	  projects[projects_cnt++] = strdup(optarg);
 	  break;
 
 	case 'r':
@@ -198,9 +261,47 @@ int main(int argc, char *argv[])
 	  meta_rotate = atoi(optarg);
 	  break;
 
+	case 'T':
+	  if(types_cnt == TYPE_CMD_CNT)
+	    {
+	      fprintf(stderr,
+		      "ERROR: A maximum of %d types can be specified on "
+		      "the command line\n",
+		      TYPE_CMD_CNT);
+	      usage();
+	      exit(-1);
+	    }
+	  types[types_cnt++] = strdup(optarg);
+	  break;
+
+	case 'W':
+	  if(windows_cnt == WINDOW_CMD_CNT)
+	    {
+	      fprintf(stderr,
+		      "ERROR: A maximum of %d windows can be specified on "
+		      "the command line\n",
+		      WINDOW_CMD_CNT);
+	      usage();
+	      exit(-1);
+	    }
+	  /* split the window into a start and end */
+	  if((endp = strchr(optarg, ',')) == NULL)
+	    {
+	      fprintf(stderr, "ERROR: Malformed time window (%s)\n", optarg);
+	      fprintf(stderr, "ERROR: Expecting start,end\n");
+	      usage();
+	      exit(-1);
+	    }
+	  *endp = '\0';
+	  endp++;
+	  windows[windows_cnt].start = strdup(optarg);
+	  windows[windows_cnt].end =  strdup(endp);
+	  windows_cnt++;
+	  break;
+
 	case ':':
 	  fprintf(stderr, "ERROR: Missing option argument for -%c\n", optopt);
-	  usage(argv[0]);
+	  usage();
 	  exit(-1);
 	  break;
 
@@ -210,12 +311,12 @@ int main(int argc, char *argv[])
 		  BGPCORSARO_MAJOR_VERSION,
 		  BGPCORSARO_MID_VERSION,
 		  BGPCORSARO_MINOR_VERSION);
-	  usage(argv[0]);
+	  usage();
 	  exit(0);
 	  break;
 
 	default:
-	  usage(argv[0]);
+	  usage();
 	  exit(-1);
 	}
     }
@@ -233,14 +334,14 @@ int main(int argc, char *argv[])
     {
       fprintf(stderr,
 	      "ERROR: An output file template must be specified using -o\n");
-      usage(argv[0]);
+      usage();
       goto err;
     }
 
   /* alloc bgpcorsaro */
   if((bgpcorsaro = bgpcorsaro_alloc_output(tmpl)) == NULL)
     {
-      usage(argv[0]);
+      usage();
       goto err;
     }
 
@@ -289,7 +390,7 @@ int main(int argc, char *argv[])
 	{
 	  fprintf(stderr, "ERROR: Could not enable plugin %s\n",
 		  plugins[i]);
-	  usage(argv[0]);
+	  usage();
 	  goto err;
 	}
     }
@@ -301,7 +402,7 @@ int main(int argc, char *argv[])
 
   if(bgpcorsaro_start_output(bgpcorsaro) != 0)
     {
-      usage(argv[0]);
+      usage();
       goto err;
     }
 
@@ -321,18 +422,48 @@ int main(int argc, char *argv[])
   /* we only support MYSQL as the datasource */
   bgpstream_set_data_interface(stream, BS_MYSQL);
 
-  /* XXX configure filters and time here */
+  /* pass along the user's filter requests to bgpstream */
 
-  /* begin temp hax */
+  /* types */
+  for(i=0; i<types_cnt; i++)
+    {
+      bgpstream_add_filter(stream, BS_BGP_TYPE, types[i]);
+      free(types[i]);
+    }
 
-#if 1
+  /* projects */
+  for(i=0; i<projects_cnt; i++)
+    {
+      bgpstream_add_filter(stream, BS_PROJECT, projects[i]);
+      free(projects[i]);
+    }
+
+  /* collectors */
+  for(i=0; i<collectors_cnt; i++)
+    {
+      bgpstream_add_filter(stream, BS_COLLECTOR, collectors[i]);
+      free(collectors[i]);
+    }
+
+  /* windows */
+  for(i=0; i<windows_cnt; i++)
+    {
+      bgpstream_add_interval_filter(stream, BS_TIME_INTERVAL,
+				    windows[i].start, windows[i].end);
+      free(windows[i].start);
+      free(windows[i].end);
+    }
+
+  /* blocking */
+  if(blocking != 0)
+    {
+      bgpstream_set_blocking(stream);
+    }
+
   bgpstream_add_filter(stream, BS_COLLECTOR, "route-views2");
 
   bgpstream_add_interval_filter(stream, BS_TIME_INTERVAL,
 				"1403229491", "1403236583");
-#endif
-
-  /* end temp hax */
 
   if(bgpstream_init(stream) < 0) {
     fprintf(stderr, "ERROR: Could not init BGPStream\n");
