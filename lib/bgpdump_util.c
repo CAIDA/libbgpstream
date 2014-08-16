@@ -21,6 +21,7 @@
 
 #include "bgpdump_util.h"
 
+#include <arpa/inet.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -129,3 +130,38 @@ void bgpdump_test_utils()
     ti2s(4294967295L);
 }
 
+char *bgpdump_fmt_ipv4(BGPDUMP_IP_ADDRESS addr, char *buffer)
+{
+  if(inet_ntop(AF_INET, &addr.v4_addr, buffer, INET_ADDRSTRLEN) == NULL) {
+    return NULL;
+  } else {
+    return buffer;
+  }
+}
+
+char *bgpdump_fmt_ipv6(BGPDUMP_IP_ADDRESS addr, char *buffer)
+{
+  if(inet_ntop(AF_INET6, &addr.v6_addr, buffer, INET6_ADDRSTRLEN) == NULL) {
+    return NULL;
+  } else {
+    return buffer;
+  }
+}
+
+static void test_roundtrip(char *str)
+{
+    BGPDUMP_IP_ADDRESS addr;
+    inet_pton(AF_INET6, str, &addr.v6_addr);
+    char tmp[1000];
+    bgpdump_fmt_ipv6(addr, tmp);
+    printf("%s -> %s [%s]\n", str, tmp, strcmp(str, tmp) ? "ERROR" : "ok");
+}
+
+void bgpdump_test_fmt_ip()
+{
+    test_roundtrip("fe80::");
+    test_roundtrip("2001:db8::1");
+    test_roundtrip("::ffff:192.168.2.1");
+    test_roundtrip("::192.168.1.2");
+    test_roundtrip("2001:7f8:30::2:1:0:8447");
+}

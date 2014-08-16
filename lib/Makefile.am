@@ -24,7 +24,6 @@ libbgpdump_la_SOURCES = bgpdump_attr.h    \
 			bgpdump_lib.c     \
 			bgpdump_mstream.c \
 			$(IO_SOURCE)	  \
-			bgpdump_inet_ntop.c       \
 			bgpdump_util.c    \
 			bgpdump-config.h
 
