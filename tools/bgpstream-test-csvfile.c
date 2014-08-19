@@ -54,9 +54,7 @@ int main(){
   bgpstream_add_filter(bs, BS_COLLECTOR, "route-views2");
   bgpstream_add_filter(bs, BS_BGP_TYPE, "ribs");
   bgpstream_add_filter(bs, BS_BGP_TYPE, "updates");
-  // Tue, 15 Jul 2014 05:30:00 GMT -> Tue, 15 Jul 2014 18:30:00 GMT
-  //  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1405402200", "1405449000");
-  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1405411223", "1405411223");
+  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1405382400", "1405382800");
 
 
   // set datasource interface
@@ -89,7 +87,7 @@ int main(){
       counter++;
       if(get_next_ret > 0) {	
 	if(bs_record->dump_pos == DUMP_START) {
-	  printf("\nDUMP START\n");
+	  printf("\nDUMP START: %ld %u\n", bs_record->attributes.dump_time, bs_record->attributes.dump_type);
 	}
 	if(bs_record->status == VALID_RECORD) {
 	  strcpy(rstatus, "VALID_RECORD");
@@ -104,47 +102,46 @@ int main(){
 		   bs_record->attributes.dump_collector,
 		   rstatus, (int)result_time);
 	      // process entry and get bgpdump output
-	      bgpdump_process(bs_record->bd_entry);
+	      // bgpdump_process(bs_record->bd_entry);
 	      // bs_elem_queue = bgpstream_get_elem_queue(bs_record);
 	      // print_elem_queue(bs_elem_queue);
 	      // bgpstream_destroy_elem_queue(bs_elem_queue);
 	    }
 	  }	  
 	}
-	else {
-	  /* 
-	   *  printf("%s - %s - %s - %ld - %ld - ", bs_record->attributes.dump_project, 
-	   *     bs_record->attributes.dump_collector, bs_record->attributes.dump_type,
-	   *     bs_record->attributes.dump_time, bs_record->attributes.record_time);	  
-	   */
-	  switch(bs_record->status){
-	  case CORRUPTED_RECORD:
-	    strcpy(rstatus, "CORRUPTED_RECORD");
-	    break;
-	  case FILTERED_SOURCE:
-	    strcpy(rstatus, "FILTERED_SOURCE");
-	    break;
-	  case EMPTY_SOURCE:
-	    strcpy(rstatus, "EMPTY_SOURCE");
-	    break;
-	  case CORRUPTED_SOURCE:
-	    strcpy(rstatus, "CORRUPTED_SOURCE");
-	    break;	  
-	  default:
-	    strcpy(rstatus, "WEIRD");
-	  }
-	  printf("\t%d\t%ld\t%ld\t%d\t%s\t%s\t%d\n", 
-		 counter, 
-		 bs_record->attributes.record_time,
-		 bs_record->attributes.dump_time,
-		 bs_record->attributes.dump_type, 
-		 bs_record->attributes.dump_collector,
-		 rstatus, (int)result_time);	  
-	}
+	/* else { */
+	/*   /\*  */
+	/*    *  printf("%s - %s - %s - %ld - %ld - ", bs_record->attributes.dump_project,  */
+	/*    *     bs_record->attributes.dump_collector, bs_record->attributes.dump_type, */
+	/*    *     bs_record->attributes.dump_time, bs_record->attributes.record_time);	   */
+	/*    *\/ */
+	/*   switch(bs_record->status){ */
+	/*   case CORRUPTED_RECORD: */
+	/*     strcpy(rstatus, "CORRUPTED_RECORD"); */
+	/*     break; */
+	/*   case FILTERED_SOURCE: */
+	/*     strcpy(rstatus, "FILTERED_SOURCE"); */
+	/*     break; */
+	/*   case EMPTY_SOURCE: */
+	/*     strcpy(rstatus, "EMPTY_SOURCE"); */
+	/*     break; */
+	/*   case CORRUPTED_SOURCE: */
+	/*     strcpy(rstatus, "CORRUPTED_SOURCE"); */
+	/*     break;	   */
+	/*   default: */
+	/*     strcpy(rstatus, "WEIRD"); */
+	/*   } */
+	/*   printf("\t%d\t%ld\t%ld\t%d\t%s\t%s\t%d\n",  */
+	/* 	 counter,  */
+	/* 	 bs_record->attributes.record_time, */
+	/* 	 bs_record->attributes.dump_time, */
+	/* 	 bs_record->attributes.dump_type,  */
+	/* 	 bs_record->attributes.dump_collector, */
+	/* 	 rstatus, (int)result_time);	   */
+	/* } */
 
 	if(bs_record->dump_pos == DUMP_END) {
-	  printf("\nDUMP END\n");
-	}
+	  printf("\nDUMP END: %ld %u\n", bs_record->attributes.dump_time, bs_record->attributes.dump_type);	}
 
       }
     } while(get_next_ret > 0);    

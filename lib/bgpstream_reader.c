@@ -392,6 +392,7 @@ static void bgpstream_reader_mgr_sorted_insert(bgpstream_reader_mgr_t * const bs
       bs_reader->next = NULL;
       bs_reader_mgr->status = NON_EMPTY_READER_MGR;  
       inserted = true;
+      continue;
     }
     // case 2: insertion in non-empty queue
     else {
@@ -400,36 +401,135 @@ static void bgpstream_reader_mgr_sorted_insert(bgpstream_reader_mgr_t * const bs
 	previous_iterator->next = bs_reader;
 	bs_reader->next = NULL;
 	inserted = true;
+	continue;
       }
       // still in the middle of the queue
       else {
-	// if new position has been found
-	if(bs_reader->record_time < iterator->record_time) {
-	  // insertion at the beginning of the queue
-	  if(previous_iterator == bs_reader_mgr->reader_queue &&
-	     iterator == bs_reader_mgr->reader_queue) {
-	    bs_reader->next = bs_reader_mgr->reader_queue;
-	    bs_reader_mgr->reader_queue = bs_reader;
-	    inserted = true;
+	// if time is the same
+	if(bs_reader->record_time == iterator->record_time) {
+	  // if type is the same -> continue
+	  if(strcmp(iterator->dump_type, bs_reader->dump_type) == 0){
+	    previous_iterator = iterator;
+	    iterator = previous_iterator->next;
+	    continue;
 	  }
-	  // insertion in the middle of the queue
-	  else {
-	    previous_iterator->next = bs_reader;
-	    bs_reader->next = iterator;
+	  // if the queue contains ribs, and the current reader
+	  // is an update -> continue
+	  if(strcmp(iterator->dump_type, "ribs") == 0 &&
+	     strcmp(bs_reader->dump_type, "updates") == 0){
+	    previous_iterator = iterator;
+	    iterator = previous_iterator->next;
+	    continue;
+	  }
+	  // if the queue contains updates, and the current reader 
+	  // is a rib -> insert
+	  if(strcmp(iterator->dump_type, "updates") == 0 &&
+	     strcmp(bs_reader->dump_type, "ribs") == 0){
+	    // insertion at the beginning of the queue
+	    if(previous_iterator == bs_reader_mgr->reader_queue &&
+	       iterator == bs_reader_mgr->reader_queue) {
+	      bs_reader->next = bs_reader_mgr->reader_queue;
+	      bs_reader_mgr->reader_queue = bs_reader;
+	    }
+	    // insertion in the middle of the queue
+	    else {
+	      previous_iterator->next = bs_reader;
+	      bs_reader->next = iterator;
+	    }
+	    inserted = true;
+	    continue;
+	  }
+	}
+	// if time is different
+	else {
+	  // if reader time is lower than iterator time
+	  // then insert
+	  if(bs_reader->record_time < iterator->record_time) {
+	    // insertion at the beginning of the queue
+	    if(previous_iterator == bs_reader_mgr->reader_queue &&
+	       iterator == bs_reader_mgr->reader_queue) {
+	      bs_reader->next = bs_reader_mgr->reader_queue;
+	      bs_reader_mgr->reader_queue = bs_reader;
+	    }
+	    // insertion in the middle of the queue
+	    else {
+	      previous_iterator->next = bs_reader;
+	      bs_reader->next = iterator;
+	    }
 	    inserted = true;	    
+	    continue;
 	  }
 	}
 	// otherwise update the iterators
-	else {
-	  previous_iterator = iterator;
-	  iterator = previous_iterator->next;
-	}
-      }
+	previous_iterator = iterator;
+	iterator = previous_iterator->next;
+      }      
     }  
   }
   bgpstream_debug("\tBSR_MGR: sorted insert: end");
 }
 
+
+/* static void bgpstream_reader_mgr_sorted_insert(bgpstream_reader_mgr_t * const bs_reader_mgr,  */
+/* 					       bgpstream_reader_t * const bs_reader) { */
+/*   bgpstream_debug("\tBSR_MGR: sorted insert:start"); */
+/*   if(bs_reader_mgr == NULL) { */
+/*     bgpstream_debug("\tBSR_MGR: sorted insert: null reader mgr provided");     */
+/*     return; */
+/*   } */
+/*   if(bs_reader == NULL) { */
+/*     bgpstream_debug("\tBSR_MGR: sorted insert: null reader provided");     */
+/*     return; */
+/*   }   */
+
+/*   bgpstream_reader_t * iterator = bs_reader_mgr->reader_queue; */
+/*   bgpstream_reader_t * previous_iterator = bs_reader_mgr->reader_queue; */
+/*   bool inserted = false; */
+/*   // insert new reader in priority queue */
+/*   while(!inserted) {     */
+/*     // case 1: insertion in empty queue (reader_queue == NULL) */
+/*     if(bs_reader_mgr->status == EMPTY_READER_MGR) { */
+/*       bs_reader_mgr->reader_queue = bs_reader; */
+/*       bs_reader->next = NULL; */
+/*       bs_reader_mgr->status = NON_EMPTY_READER_MGR;   */
+/*       inserted = true; */
+/*     } */
+/*     // case 2: insertion in non-empty queue */
+/*     else { */
+/*       // reached the end of the queue */
+/*       if(iterator == NULL) { */
+/* 	previous_iterator->next = bs_reader; */
+/* 	bs_reader->next = NULL; */
+/* 	inserted = true; */
+/*       } */
+/*       // still in the middle of the queue */
+/*       else { */
+/* 	// if new position has been found */
+/* 	if(bs_reader->record_time < iterator->record_time) { */
+/* 	  // insertion at the beginning of the queue */
+/* 	  if(previous_iterator == bs_reader_mgr->reader_queue && */
+/* 	     iterator == bs_reader_mgr->reader_queue) { */
+/* 	    bs_reader->next = bs_reader_mgr->reader_queue; */
+/* 	    bs_reader_mgr->reader_queue = bs_reader; */
+/* 	    inserted = true; */
+/* 	  } */
+/* 	  // insertion in the middle of the queue */
+/* 	  else { */
+/* 	    previous_iterator->next = bs_reader; */
+/* 	    bs_reader->next = iterator; */
+/* 	    inserted = true;	     */
+/* 	  } */
+/* 	} */
+/* 	// otherwise update the iterators */
+/* 	else { */
+/* 	  previous_iterator = iterator; */
+/* 	  iterator = previous_iterator->next; */
+/* 	} */
+/*       } */
+/*     }   */
+/*   } */
+/*   bgpstream_debug("\tBSR_MGR: sorted insert: end"); */
+/* } */
 
 
 void bgpstream_reader_mgr_add(bgpstream_reader_mgr_t * const bs_reader_mgr, 
