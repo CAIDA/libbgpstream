@@ -42,13 +42,14 @@ typedef enum {DUMP_START,        /* first entry in dump */
 	      DUMP_END           /* last entry in dump */
 } bgpstream_dump_position_t;
 
-typedef enum {VALID_RECORD,       /* valid entry found in dump */
-	      FILTERED_SOURCE,    /* fltered source: source is not empty, but no valid record found */
-	      EMPTY_SOURCE,       /* empty source: source has no entries */
-	      CORRUPTED_SOURCE,   /* corrupted source: error in opening dump */	      
-	      CORRUPTED_RECORD    /* corrupted record: dump corrupted at some point */	      
+typedef enum {VALID_RECORD     = 0,    /* valid entry found in dump */
+	      FILTERED_SOURCE  = 1,    /* fltered source: source is not empty, but no valid record found */
+	      EMPTY_SOURCE     = 2,   /* empty source: source has no entries */
+	      CORRUPTED_SOURCE = 3,   /* corrupted source: error in opening dump */	      
+	      CORRUPTED_RECORD = 4    /* corrupted record: dump corrupted at some point */	      
 } bgpstream_record_status_t;
 
+#define BGPSTREAM_RECORD_TYPE_MAX 5
 
 typedef struct struct_bgpstream_record_attributes_t {
   // define a list of useful attributes to associate to bgp dump entry
