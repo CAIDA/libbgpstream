@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
   struct window windows[WINDOW_CMD_CNT];
   int windows_cnt = 0;
 
-  int blocking = 1;
+  int blocking = 0;
 
   int rc = 0;
 
@@ -420,7 +420,8 @@ int main(int argc, char *argv[])
     }
 
   /* we only support MYSQL as the datasource */
-  bgpstream_set_data_interface(stream, BS_MYSQL);
+  // bgpstream_set_data_interface(stream, BS_MYSQL);
+  bgpstream_set_data_interface(stream, BS_CSVFILE);
 
   /* pass along the user's filter requests to bgpstream */
 

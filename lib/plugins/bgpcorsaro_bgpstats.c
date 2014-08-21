@@ -299,6 +299,7 @@ int bgpcorsaro_bgpstats_end_interval(bgpcorsaro_t *bgpcorsaro,
 				 bgpcorsaro_interval_t *int_end)
 {
   struct bgpcorsaro_bgpstats_state_t *state = STATE(bgpcorsaro);
+  printf("Valid records: %d\n", state->bgpdatainfo->num_records[0]);
 
   bgpcorsaro_io_write_interval_end(bgpcorsaro, state->outfile, int_end);
 
