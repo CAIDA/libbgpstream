@@ -208,6 +208,9 @@ ED_WITH_PLUGIN([bgpcorsaro_filterpfx],[filterpfx],[FILTERPFX],[no])
 ED_WITH_PLUGIN([bgpcorsaro_dump],[dump],[DUMP],[yes])
 
 # optional plugins
+ED_WITH_PLUGIN([bgpcorsaro_bgpstats],[bgpstats],[BGPSTATS],[no])
+
+# optional plugins
 ED_WITH_PLUGIN([bgpcorsaro_tagstats],[tagstats],[TAGSTATS],[no])
 
 # this MUST go after all the ED_WITH_PLUGIN macro calls

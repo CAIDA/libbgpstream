@@ -115,6 +115,9 @@ typedef enum bgpcorsaro_plugin_id
   /** FilterPfx plugin */
   BGPCORSARO_PLUGIN_ID_FILTERPFX        = 7,
 
+  /** BGPStats plugin */
+  BGPCORSARO_PLUGIN_ID_BGPSTATS         = 9,
+
   /** Tag stats plugin */
   BGPCORSARO_PLUGIN_ID_TAGSTATS         = 90,
 

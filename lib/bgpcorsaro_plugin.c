@@ -42,6 +42,10 @@
 #include "bgpcorsaro_dump.h"
 #endif
 
+#ifdef WITH_PLUGIN_BGPSTATS
+#include "bgpcorsaro_bgpstats.h"
+#endif
+
 #ifdef WITH_PLUGIN_IPMETA
 #include "bgpcorsaro_ipmeta.h"
 #endif
