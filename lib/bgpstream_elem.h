@@ -73,7 +73,11 @@ typedef struct struct_bgpstream_aspath_t {
 } bgpstream_aspath_t;
 
 
-typedef enum {BST_RIB, BST_ANNOUNCEMENT, BST_WITHDRAWAL, BST_STATE} bgpstream_elem_type_t;
+typedef enum {BST_RIB = 0,
+	      BST_ANNOUNCEMENT =1,
+	      BST_WITHDRAWAL = 2,
+	      BST_STATE = 3
+} bgpstream_elem_type_t;
 
 #define BGPSTREAM_ELEM_TYPE_MAX 4
 
