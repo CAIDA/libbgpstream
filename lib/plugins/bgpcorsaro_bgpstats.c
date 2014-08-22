@@ -260,15 +260,17 @@ static void bgpcorsaro_bgpstats_bgpdatainfo_update(struct bgpcorsaro_bgpstats_bg
   assert(info != NULL);
   assert(record != NULL);
   assert(BS_REC(record) != NULL);
+  bgpstream_record_t * bs_record = BS_REC(record);
   info->num_records[BS_REC(record)->status] += 1;
   khiter_t k;
   struct bgpcorsaro_collectordata_t * collector_data;
   int hret;
   // put the new collector in the collectors_table (if it doesn't exists)
-  k = kh_put(collector_table_t, info->collectors_table, BS_REC(record)->attributes.dump_collector, &hret);
+  k = kh_put(collector_table_t, info->collectors_table, strdup(bs_record->attributes.dump_collector), &hret);
   if(hret != 0)
     { // collector didn't exist, creating a new one
-      kh_value(info->collectors_table, k) = bgpcorsaro_collectordata_create(BS_REC(record)->attributes.dump_project);	
+      kh_value(info->collectors_table, k) = bgpcorsaro_collectordata_create(bs_record->attributes.dump_project);	
+      // printf("creating %s %s\n", bs_record->attributes.dump_collector, bs_record->attributes.dump_project);
     }
   // save pointer to current collector data
   collector_data = kh_value(info->collectors_table, k);
@@ -276,12 +278,11 @@ static void bgpcorsaro_bgpstats_bgpdatainfo_update(struct bgpcorsaro_bgpstats_bg
 }
 
 /** struct bgpdatainfo_t eoi (end of interval) - write stats at end of interval*/
-static void bgpcorsaro_bgpstats_bgpdatainfo_eoi(struct bgpcorsaro_bgpstats_bgpdatainfo_t * info) 
+static void bgpcorsaro_bgpstats_bgpdatainfo_eoi(struct bgpcorsaro_bgpstats_bgpdatainfo_t * info,
+						bgpcorsaro_interval_t *int_end) 
 {
   assert(info != NULL);
   assert(record != NULL);
-  printf("Valid records: %d\n", info->num_records[0]);
-  printf("Number of collectors active: %d\n", (int)kh_size(info->collectors_table));
   khiter_t k;
   struct bgpcorsaro_collectordata_t * collector_data;
   char * collector_name;
@@ -291,12 +292,14 @@ static void bgpcorsaro_bgpstats_bgpdatainfo_eoi(struct bgpcorsaro_bgpstats_bgpda
 	{
 	  collector_name = strdup(kh_key(info->collectors_table, k));
 	  collector_data = kh_value(info->collectors_table, k);      
-	  printf("\t%s\n", collector_name);
-	  printf("\t\tValid records: %d\n", collector_data->num_records[0]);
-	  printf("\t\tRIBS: %d\n", collector_data->num_elem[0]);
-	  printf("\t\tAnnouncements: %d\n", collector_data->num_elem[1]);
-	  printf("\t\tWithdrawals: %d\n", collector_data->num_elem[2]);
-	  printf("\t\tState messages: %d\n", collector_data->num_elem[3]);
+	  printf("bgpstats.%s.%s.num_valid_records %d %d\n", collector_data->dump_project,
+		 collector_name, collector_data->num_records[VALID_RECORD], int_end->time);
+	  printf("bgpstats.%s.%s.rib_entries %d %d\n", collector_data->dump_project,
+		 collector_name, collector_data->num_elem[BST_RIB], int_end->time);
+	  printf("bgpstats.%s.%s.announcements %d %d\n", collector_data->dump_project,
+		 collector_name, collector_data->num_elem[BST_ANNOUNCEMENT], int_end->time);
+	  printf("bgpstats.%s.%s.withdrawals %d %d\n", collector_data->dump_project,
+		 collector_name, collector_data->num_elem[BST_WITHDRAWAL], int_end->time);
 	  free(collector_name);
 	}    
     }    
@@ -389,7 +392,7 @@ int bgpcorsaro_bgpstats_close_output(bgpcorsaro_t *bgpcorsaro)
 
 /** Implements the start_interval function of the plugin API */
 int bgpcorsaro_bgpstats_start_interval(bgpcorsaro_t *bgpcorsaro,
-				   bgpcorsaro_interval_t *int_start)
+				       bgpcorsaro_interval_t *int_start)
 {
   struct bgpcorsaro_bgpstats_state_t *state = STATE(bgpcorsaro);
   bgpcorsaro_bgpstats_bgpdatainfo_reset(state->bgpdatainfo);
@@ -419,7 +422,7 @@ int bgpcorsaro_bgpstats_end_interval(bgpcorsaro_t *bgpcorsaro,
 				 bgpcorsaro_interval_t *int_end)
 {
   struct bgpcorsaro_bgpstats_state_t *state = STATE(bgpcorsaro);
-  bgpcorsaro_bgpstats_bgpdatainfo_eoi(state->bgpdatainfo);
+  bgpcorsaro_bgpstats_bgpdatainfo_eoi(state->bgpdatainfo, int_end);
   bgpcorsaro_io_write_interval_end(bgpcorsaro, state->outfile, int_end);
 
   /* if we are rotating, now is when we should do it */
