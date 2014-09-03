@@ -53,6 +53,7 @@ Original Author: Shufu Mao(msf98@mails.tsinghua.edu.cn)
 #include "bgpdump-config.h"
 
 #include "bgpstream_elem.h"
+#include "bgpstream_debug.h"
 #include "bgpstream_record.h"
 
 
@@ -131,8 +132,16 @@ static void get_aspath_struct(struct aspath * ap, bgpstream_aspath_t * ap_struct
   ap_struct->hop_count = ap->count;
   ap_struct->type = BST_UINT32_ASPATH; // default
   ap_struct->numeric_aspath = NULL;
+  if(ap_struct->hop_count == 0) {
+    // aspath is empty, if it is an internal bgp info that is fine
+    return;
+  }
   char * tok = NULL;
-  char * aspath_copy = (char *)malloc((strlen(ap->str)+1) * sizeof(char));
+  char * aspath_copy = (char *)malloc((strlen(ap->str)+1) * sizeof(char));  
+  if(aspath_copy == NULL) {
+    bgpstream_log_err("get_aspath_struct: can't malloc aspath string");
+    return;
+  }
   strcpy(aspath_copy, ap->str);
   char origin_copy[16];
   uint8_t it;
@@ -152,6 +161,10 @@ static void get_aspath_struct(struct aspath * ap, bgpstream_aspath_t * ap_struct
     // ap_struct->type == BST_UINT32_ASPATH;
     it = 0;
     ap_struct->numeric_aspath = (uint32_t *)malloc(ap_struct->hop_count * sizeof(uint32_t));
+    if(ap_struct->numeric_aspath == NULL) {
+      bgpstream_log_err("get_aspath_struct: can't malloc aspath numeric array");
+      return;
+    }
     while((tok = strsep(&aspath_copy, " ")) != NULL) {
       strcpy(origin_copy, tok);
       ap_struct->numeric_aspath[it] = strtoul(origin_copy, NULL, 10);

@@ -740,6 +740,7 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
   }
 
   /* bind results to bgpstream_sql variables */
+  memset(mysql_ds->results, 0, sizeof(mysql_ds->results));
 
   /* PROJECT PATH */
   mysql_ds->results[0].buffer_type= MYSQL_TYPE_VAR_STRING;
