@@ -53,7 +53,7 @@ int main(){
 
   // all types
   // bgpstream_set_filter(bs, BS_BGP_TYPE, "***");
-
+  /*
   bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.linx");
   bgpstream_add_filter(bs, BS_COLLECTOR, "route-views6");
   bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.saopaulo");
@@ -80,13 +80,15 @@ int main(){
   bgpstream_add_filter(bs, BS_COLLECTOR, "rrc13");
   bgpstream_add_filter(bs, BS_COLLECTOR, "rrc14");
   bgpstream_add_filter(bs, BS_COLLECTOR, "rrc15");
+  */
 
-  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1403229491", "1403236583");
+  //  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1407823200", "1407837600");
   // start -> Fri, 20 Jun 2014 01:58:11 GMT
   // stop -> Fri, 20 Jun 2014 03:56:23 GMT
 
+  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1407828000", "1407832000");
   // set blocking
-  bgpstream_set_blocking(bs);
+  // bgpstream_set_blocking(bs);
 
   // set datasource interface
   bgpstream_set_data_interface(bs, BS_MYSQL);
@@ -108,6 +110,9 @@ int main(){
   char rstatus[50];
   time_t result_time = time(NULL);
   strcpy(rstatus, "");
+  long int last_time = 0;
+  bgpstream_elem_t * bs_elem_queue =  NULL;
+  bgpstream_elem_t * bs_iterator =  NULL;
 
 
   // allocate memory for bs_record  
@@ -122,13 +127,23 @@ int main(){
 	  strcpy(rstatus, "VALID_RECORD");
 	  if(bs_record->bd_entry != NULL) {
 	    read++;
-	    fprintf(stdout,"%d\t%ld\t%ld\t%d\t%s\t%s\t%d\n", 
-		   counter, 
-		   bs_record->attributes.record_time,
-		   bs_record->attributes.dump_time,
-		   bs_record->attributes.dump_type, 
-		   bs_record->attributes.dump_collector,
-		   rstatus, (int)result_time);
+	    bs_elem_queue = NULL; // = bgpstream_get_elem_queue(bs_record);
+	    bs_iterator = bs_elem_queue;
+	    while(bs_iterator != NULL)
+	      {
+		bs_iterator = bs_iterator->next;
+	      }
+	    bgpstream_destroy_elem_queue(bs_elem_queue);
+	    if(last_time != bs_record->attributes.record_time) {
+	      fprintf(stdout,"%d\t%ld\t%ld\t%d\t%s\t%s\t%d\n", 
+		      counter, 
+		      bs_record->attributes.record_time,
+		      bs_record->attributes.dump_time,
+		      bs_record->attributes.dump_type, 
+		      bs_record->attributes.dump_collector,
+		      rstatus, (int)result_time);
+	      last_time = bs_record->attributes.record_time;
+	    }
 	  }	  
 	}
 	else {

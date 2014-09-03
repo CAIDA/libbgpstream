@@ -283,7 +283,7 @@ bgpstream_elem_t * table_line_dump_v2_prefix(BGPDUMP_ENTRY *entry) {
     if(! attr)
       continue;
 
-    ri  =  bd2bi_add_new_route_info(&ri_queue);
+    ri = bd2bi_add_new_route_info(&ri_queue);
     if(ri == NULL) {
       // warning
       return ri_queue;

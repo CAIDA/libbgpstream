@@ -46,7 +46,7 @@ if [ -d "$thor_sql_inc" ]; then
 fi
 
 ./autogen.sh
-./configure CPPFLAGS="$all_includes" LDFLAGS="$all_libs" --prefix="$bgpa_prefix"
+./configure CPPFLAGS="$all_includes -I/usr/local/include" LDFLAGS="$all_libs -L/usr/local/lib" --prefix="$bgpa_prefix"
 make
 make install
 
