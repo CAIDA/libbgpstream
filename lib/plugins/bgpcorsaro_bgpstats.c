@@ -103,6 +103,32 @@ typedef struct struct_peerdata_t {
   uint64_t num_elem[BGPSTREAM_ELEM_TYPE_MAX];
 } peerdata_t;
 
+static peerdata_t *peerdata_create()
+{
+  peerdata_t *peerdata;
+  if((peerdata = malloc_zero(sizeof(peerdata_t))) == NULL)
+    {
+      return NULL;
+    }
+  return peerdata;
+}
+
+static void peerdata_update(bgpstream_elem_t *elem,
+			     peerdata_t *peerdata)
+{
+  // TODO: update the peerdata structure
+}
+
+
+static void peerdata_destroy(peerdata_t *peerdata)
+{
+  if(peerdata == NULL) 
+    {
+      return;
+    }
+  free(peerdata);
+}
+
 
 /** Peer_table (khash) related functions */
 
@@ -160,11 +186,19 @@ typedef struct struct_peers_table_t {
 
 /* Peers related functions */
 
-
 static peers_table_t *peers_table_create() 
 {
-  // TODO: init ipv4 and ipv6 khashes
-  return NULL;
+  peers_table_t *peers_table;
+
+  if((peers_table = malloc_zero(sizeof(peers_table_t))) == NULL)
+    {
+      return NULL;
+    }
+  // init ipv4 and ipv6 peers khashes
+  peers_table->ipv4_peers_table = kh_init(ipv4_peers_table_t);
+  peers_table->ipv6_peers_table = kh_init(ipv6_peers_table_t);
+
+  return peers_table;
 }
 
 static void peers_table_update(bgpstream_elem_t * elem,
@@ -175,12 +209,47 @@ static void peers_table_update(bgpstream_elem_t * elem,
 
 static void peers_table_reset(peers_table_t *peers_table) 
 {
-  // TODO: reset ipv4 and ipv6 khashes
+  khiter_t k;
+
+  /* free all the keys and values in the ipv4 peers_table table */
+  for (k = kh_begin(peers_table->ipv4_peers_table);
+       k != kh_end(peers_table->ipv4_peers_table); ++k)
+    {
+      if (kh_exist(peers_table->ipv4_peers_table, k))
+	{
+	  /* free the value */
+	  peerdata_destroy(kh_value(peers_table->ipv4_peers_table, k));
+	  /* remove key from hash table */
+	  kh_del(ipv4_peers_table_t, peers_table->ipv4_peers_table, k);
+	}
+    }   
+
+  /* free all the keys and values in the ipv6 peers_table table */
+  for (k = kh_begin(peers_table->ipv6_peers_table);
+       k != kh_end(peers_table->ipv6_peers_table); ++k)
+    {
+      if (kh_exist(peers_table->ipv6_peers_table, k))
+	{
+	  /* free the value */
+	  peerdata_destroy(kh_value(peers_table->ipv6_peers_table, k));
+	  /* remove key from hash table */
+	  kh_del(ipv6_peers_table_t, peers_table->ipv6_peers_table, k);
+	}
+    }  
 }
 
 static void peers_table_destroy(peers_table_t *peers_table) 
 {
-  // TODO: destroy ipv4 and ipv6 khashes
+  if(peers_table == NULL) 
+    {
+      return;
+    }
+  /* free all the keys and values */
+  peers_table_reset(peers_table);
+  /* destroy the ipv4 peers table */
+  kh_destroy(ipv4_peers_table_t, peers_table->ipv4_peers_table);
+  /* destroy the ipv6 peers table */
+  kh_destroy(ipv6_peers_table_t, peers_table->ipv6_peers_table);
 }
 
 
