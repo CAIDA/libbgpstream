@@ -105,28 +105,62 @@ typedef struct struct_peerdata_t {
 
 static peerdata_t *peerdata_create()
 {
-  peerdata_t *peerdata;
-  if((peerdata = malloc_zero(sizeof(peerdata_t))) == NULL)
+  peerdata_t *peer_data;
+  if((peer_data = malloc_zero(sizeof(peerdata_t))) == NULL)
     {
       return NULL;
     }
-  return peerdata;
+  return peer_data;
 }
 
 static void peerdata_update(bgpstream_elem_t *elem,
-			     peerdata_t *peerdata)
+			    peerdata_t *peer_data)
 {
-  // TODO: update the peerdata structure
+  peer_data->num_elem[elem->type]++;
 }
 
 
-static void peerdata_destroy(peerdata_t *peerdata)
+static void peerdata_dump(char *dump_project, char *dump_collector, char *peer_address,
+			  int int_end_time, peerdata_t *peer_data)
 {
-  if(peerdata == NULL) 
+  graphite_safe(peer_address);
+  /* rib_entries */
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.rib_entry_cnt %"PRIu64" %d\n",
+	  dump_project, dump_collector, peer_address,
+	  peer_data->num_elem[BST_RIB],
+	  int_end_time);
+
+  /* announcements */
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.announcement_entry_cnt %"PRIu64" %d\n",
+	  dump_project, dump_collector, peer_address,
+	  peer_data->num_elem[BST_ANNOUNCEMENT],
+	  int_end_time);
+  
+  /* withdrawals */
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.withdrawal_entry_cnt %"PRIu64" %d\n",
+	  dump_project, dump_collector, peer_address,
+	  peer_data->num_elem[BST_WITHDRAWAL],
+	  int_end_time);
+}
+
+
+static void peerdata_reset(peerdata_t *peer_data)
+{
+  assert(peer_data != NULL); 
+  memset(peer_data->num_elem, 0, sizeof(peer_data->num_elem));
+}
+
+
+static void peerdata_destroy(peerdata_t *peer_data)
+{
+  if(peer_data == NULL) 
     {
       return;
     }
-  free(peerdata);
+  free(peer_data);
 }
 
 
@@ -204,39 +238,133 @@ static peers_table_t *peers_table_create()
 static void peers_table_update(bgpstream_elem_t * elem,
 			       peers_table_t *peers_table) 
 {
-  // TODO: update khashes accordingly
+  assert(peers_table != NULL);
+  assert(elem != NULL);
+  khiter_t k;
+  int khret;
+  peerdata_t * peer_data = NULL;
+
+  // ipv4 peer
+  if(elem->peer_address.type == BST_IPV4) {
+    /* check if this peer is in the hash already */
+    if((k = kh_get(ipv4_peers_table_t, peers_table->ipv4_peers_table,
+		 elem->peer_address)) ==
+       kh_end(peers_table->ipv4_peers_table))
+    {
+      /* create a new data structure */
+      peer_data = peerdata_create();
+      /* add it to the hash */
+      k = kh_put(ipv4_peers_table_t, peers_table->ipv4_peers_table, 
+		 elem->peer_address, &khret);
+      kh_value(peers_table->ipv4_peers_table, k) = peer_data;
+    }
+  else
+    {
+      /* already exists, just get it */
+      peer_data = kh_value(peers_table->ipv4_peers_table, k);
+    }
+  }
+  // ipv6 peer
+  if(elem->peer_address.type == BST_IPV6) {
+    /* check if this peer is in the hash already */
+    if((k = kh_get(ipv6_peers_table_t, peers_table->ipv6_peers_table,
+		 elem->peer_address)) ==
+       kh_end(peers_table->ipv6_peers_table))
+    {
+      /* create a new data structure */
+      peer_data = peerdata_create();
+      /* add it to the hash */
+      k = kh_put(ipv6_peers_table_t, peers_table->ipv6_peers_table, 
+		 elem->peer_address, &khret);
+      kh_value(peers_table->ipv6_peers_table, k) = peer_data;
+    }
+  else
+    {
+      /* already exists, just get it */
+      peer_data = kh_value(peers_table->ipv6_peers_table, k);
+    }    
+  }
+  
+  if(peer_data != NULL) {
+    peerdata_update(elem, peer_data);
+  }  
 }
 
 static void peers_table_reset(peers_table_t *peers_table) 
 {
   khiter_t k;
+  
+  /** we do not remove peers from peers_table as they are
+   *  a stable entity, we just zeroes their peerdata */
 
-  /* free all the keys and values in the ipv4 peers_table table */
+  /* reset all the values in the ipv4 peers_table table */
   for (k = kh_begin(peers_table->ipv4_peers_table);
        k != kh_end(peers_table->ipv4_peers_table); ++k)
     {
       if (kh_exist(peers_table->ipv4_peers_table, k))
 	{
-	  /* free the value */
-	  peerdata_destroy(kh_value(peers_table->ipv4_peers_table, k));
-	  /* remove key from hash table */
-	  kh_del(ipv4_peers_table_t, peers_table->ipv4_peers_table, k);
+	  /* reset the value */
+	  peerdata_reset(kh_value(peers_table->ipv4_peers_table, k));
 	}
     }   
 
-  /* free all the keys and values in the ipv6 peers_table table */
+  /* reset all the values in the ipv6 peers_table table */
   for (k = kh_begin(peers_table->ipv6_peers_table);
        k != kh_end(peers_table->ipv6_peers_table); ++k)
     {
       if (kh_exist(peers_table->ipv6_peers_table, k))
 	{
-	  /* free the value */
+	  /* reset the value */
 	  peerdata_destroy(kh_value(peers_table->ipv6_peers_table, k));
-	  /* remove key from hash table */
-	  kh_del(ipv6_peers_table_t, peers_table->ipv6_peers_table, k);
 	}
     }  
 }
+
+
+
+
+static void peers_table_dump(char *dump_project, char *dump_collector,
+			     int int_end_time, peers_table_t *peers_table) 
+{
+  assert(ch_prefix != NULL);
+  assert(peers_table != NULL);
+
+  khiter_t k;
+  int khret;
+  peerdata_t * peer_data = NULL;
+  bgpstream_ip_address_t ip;
+  char ip4_str[INET_ADDRSTRLEN];
+  char ip6_str[INET6_ADDRSTRLEN];
+
+
+  // ipv4 peers informations
+  for(k = kh_begin(peers_table->ipv4_peers_table);
+      k != kh_end(peers_table->ipv4_peers_table); ++k)
+    {
+      if (kh_exist(peers_table->ipv4_peers_table, k))
+	{
+	  ip = kh_key(peers_table->ipv4_peers_table, k);
+	  inet_ntop(AF_INET, &(ip.address.v4_addr), ip4_str, INET_ADDRSTRLEN);
+	  peer_data = kh_value(peers_table->ipv4_peers_table, k);
+	  peerdata_dump(dump_project, dump_collector, ip4_str, int_end_time, peer_data);
+	}
+      // TODO: think about resetting here 
+    }
+
+  // ipv6 peers informations
+  for(k = kh_begin(peers_table->ipv6_peers_table);
+      k != kh_end(peers_table->ipv6_peers_table); ++k)
+    {
+      if (kh_exist(peers_table->ipv6_peers_table, k))
+	{
+	  ip = kh_key(peers_table->ipv6_peers_table, k);	  
+	  inet_ntop(AF_INET6, &(ip.address.v6_addr), ip6_str, INET6_ADDRSTRLEN);
+	  peer_data = kh_value(peers_table->ipv6_peers_table, k);
+	  peerdata_dump(dump_project, dump_collector, ip6_str, int_end_time, peer_data);	}
+      // TODO: think about resetting here 
+    }
+}
+
 
 static void peers_table_destroy(peers_table_t *peers_table) 
 {
@@ -244,8 +372,28 @@ static void peers_table_destroy(peers_table_t *peers_table)
     {
       return;
     }
-  /* free all the keys and values */
-  peers_table_reset(peers_table);
+  khiter_t k;
+  /* free all values in the ipv4 peers_table table */
+  for (k = kh_begin(peers_table->ipv4_peers_table);
+       k != kh_end(peers_table->ipv4_peers_table); ++k)
+    {
+      if (kh_exist(peers_table->ipv4_peers_table, k))
+	{
+	  /* free the value */
+	  peerdata_destroy(kh_value(peers_table->ipv4_peers_table, k));
+	}
+    }   
+
+  /* free all values in the ipv6 peers_table table */
+  for (k = kh_begin(peers_table->ipv6_peers_table);
+       k != kh_end(peers_table->ipv6_peers_table); ++k)
+    {
+      if (kh_exist(peers_table->ipv6_peers_table, k))
+	{
+	  /* free the value */
+	  peerdata_destroy(kh_value(peers_table->ipv6_peers_table, k));
+	}
+    }  
   /* destroy the ipv4 peers table */
   kh_destroy(ipv4_peers_table_t, peers_table->ipv4_peers_table);
   /* destroy the ipv6 peers table */
@@ -566,6 +714,26 @@ static void stats_dump(struct bgpcorsaro_bgpstats_state_t *state,
 		  collector_data->dump_collector,
 		  collector_data->num_elem[BST_WITHDRAWAL],
 		  int_end->time);
+	  
+	  /* peer-related statistics */ 
+
+	  /* ipv4 / ipv6 peers */
+	  fprintf(stdout,
+		  METRIC_PREFIX".%s.%s.ipv4_peers_cnt %d %d\n",
+		  collector_data->dump_project,
+		  collector_data->dump_collector,
+		  kh_size(collector_data->peers_table->ipv4_peers_table),
+		  int_end->time);	  
+
+	  fprintf(stdout,
+		  METRIC_PREFIX".%s.%s.ipv6_peers_cnt %d %d\n",
+		  collector_data->dump_project,
+		  collector_data->dump_collector,
+		  kh_size(collector_data->peers_table->ipv6_peers_table),
+		  int_end->time);
+
+	  peers_table_dump(collector_data->dump_project, collector_data->dump_collector,
+			   int_end->time, collector_data->peers_table);
 
 	  /* might as well reset here to avoid walking the hash a second time */
 	  collectordata_reset(collector_data);
