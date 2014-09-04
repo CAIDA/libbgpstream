@@ -138,47 +138,47 @@ int bgpstream_ipv6_address_hash_equal(bgpstream_ip_address_t ip1,
   return memcmp(&ip1,&ip2, sizeof(bgpstream_ip_address_t));
 }
 
-KHASH_INIT(ipv4_peer_table_t /* name */,
+KHASH_INIT(ipv4_peers_table_t /* name */,
 	   bgpstream_ip_address_t /* khkey_t */,
 	   peerdata_t * /* khval_t */,
 	   1 /* kh_is_map */,
 	   bgpstream_ipv4_address_hash_func /*__hash_func */,
 	   bgpstream_ipv4_address_hash_equal /* __hash_equal */);
 
-KHASH_INIT(ipv6_peer_table_t /* name */,
+KHASH_INIT(ipv6_peers_table_t /* name */,
 	   bgpstream_ip_address_t /* khkey_t */,
 	   peerdata_t * /* khval_t */,
 	   1 /* kh_is_map */,
 	   bgpstream_ipv6_address_hash_func /*__hash_func */,
 	   bgpstream_ipv6_address_hash_equal /* __hash_equal */);
 
-typedef struct struct_peer_table_t {
-  khash_t(ipv4_peer_table_t) * ipv4_peer_table;
-  khash_t(ipv6_peer_table_t) * ipv6_peer_table;
-} peer_table_t;
+typedef struct struct_peers_table_t {
+  khash_t(ipv4_peers_table_t) * ipv4_peers_table;
+  khash_t(ipv6_peers_table_t) * ipv6_peers_table;
+} peers_table_t;
 
 
 /* Peers related functions */
 
 
-static peer_table_t *peer_table_create() 
+static peers_table_t *peers_table_create() 
 {
   // TODO: init ipv4 and ipv6 khashes
   return NULL;
 }
 
-static void peer_table_update(bgpstream_elem_t * elem,
-			       peer_table_t *peer_table) 
+static void peers_table_update(bgpstream_elem_t * elem,
+			       peers_table_t *peers_table) 
 {
   // TODO: update khashes accordingly
 }
 
-static void peer_table_reset(peer_table_t *peer_table) 
+static void peers_table_reset(peers_table_t *peers_table) 
 {
   // TODO: reset ipv4 and ipv6 khashes
 }
 
-static void peer_table_destroy(peer_table_t *peer_table) 
+static void peers_table_destroy(peers_table_t *peers_table) 
 {
   // TODO: destroy ipv4 and ipv6 khashes
 }
@@ -191,7 +191,7 @@ typedef struct collectordata {
   char *dump_collector; /* graphite-safe version of the name */
   uint64_t num_records[BGPSTREAM_RECORD_TYPE_MAX];
   uint64_t num_elem[BGPSTREAM_ELEM_TYPE_MAX];
-  peer_table_t * peer_table;
+  peers_table_t * peers_table;
 } collectordata_t;
 
 
@@ -220,7 +220,7 @@ static collectordata_t *collectordata_create(const char *project,
       return NULL;
     }
 
-  if((collector_data->peer_table = peer_table_create()) == NULL)
+  if((collector_data->peers_table = peers_table_create()) == NULL)
     {
       free(collector_data->dump_collector);
       free(collector_data->dump_project);
@@ -241,7 +241,7 @@ static void collectordata_update(bgpcorsaro_record_t * record,
 				 collectordata_t *collector_data)
 {
   assert(collector_data != NULL);
-  assert(collector_data->peer_table != NULL);
+  assert(collector_data->peers_table != NULL);
   bgpstream_record_t * bs_record = BS_REC(record);
   bgpstream_elem_t * bs_elem_queue;
   bgpstream_elem_t * bs_iterator;
@@ -254,7 +254,7 @@ static void collectordata_update(bgpcorsaro_record_t * record,
       while(bs_iterator != NULL)
 	{
 	  collector_data->num_elem[bs_iterator->type]++;
-	  peer_table_update(bs_iterator, collector_data->peer_table);
+	  peers_table_update(bs_iterator, collector_data->peers_table);
 	  bs_iterator = bs_iterator->next;
 	}
       bgpstream_destroy_elem_queue(bs_elem_queue);
@@ -270,7 +270,7 @@ static void collectordata_reset(collectordata_t *collector_data)
   memset(collector_data->num_elem, 0,
 	 sizeof(collector_data->num_elem));
 
-  peer_table_reset(collector_data->peer_table);
+  peers_table_reset(collector_data->peers_table);
 }
 
 
@@ -292,10 +292,10 @@ static void collectordata_destroy(collectordata_t *collector_data)
       free(collector_data->dump_collector);
       collector_data->dump_collector = NULL;
     }
-  if(collector_data->peer_table != NULL)
+  if(collector_data->peers_table != NULL)
     {
-      peer_table_destroy(collector_data->peer_table);
-      collector_data->peer_table = NULL;
+      peers_table_destroy(collector_data->peers_table);
+      collector_data->peers_table = NULL;
     }
 
   free(collector_data);
