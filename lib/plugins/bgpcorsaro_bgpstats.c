@@ -231,7 +231,6 @@ static peers_table_t *peers_table_create()
   // init ipv4 and ipv6 peers khashes
   peers_table->ipv4_peers_table = kh_init(ipv4_peers_table_t);
   peers_table->ipv6_peers_table = kh_init(ipv6_peers_table_t);
-
   return peers_table;
 }
 
@@ -399,6 +398,8 @@ static void peers_table_destroy(peers_table_t *peers_table)
   kh_destroy(ipv4_peers_table_t, peers_table->ipv4_peers_table);
   /* destroy the ipv6 peers table */
   kh_destroy(ipv6_peers_table_t, peers_table->ipv6_peers_table);
+  // free peers_table
+  free(peers_table);
 }
 
 
