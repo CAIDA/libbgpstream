@@ -112,6 +112,7 @@ static void bd2bi_destroy_route_info(bgpstream_elem_t * ri) {
   }
 }
 
+
 static void bd2bi_destroy_route_info_queue(bgpstream_elem_t * lifo_queue) {
   if(lifo_queue == NULL) {
     return;
@@ -123,7 +124,6 @@ static void bd2bi_destroy_route_info_queue(bgpstream_elem_t * lifo_queue) {
     bd2bi_destroy_route_info(ri);
   }
 }
-
 
 
 static void get_aspath_struct(struct aspath * ap, bgpstream_aspath_t * ap_struct){
@@ -163,15 +163,16 @@ static void get_aspath_struct(struct aspath * ap, bgpstream_aspath_t * ap_struct
     ap_struct->numeric_aspath = (uint32_t *)malloc(ap_struct->hop_count * sizeof(uint32_t));
     if(ap_struct->numeric_aspath == NULL) {
       bgpstream_log_err("get_aspath_struct: can't malloc aspath numeric array");
+      free(aspath_copy);
       return;
     }
     while((tok = strsep(&aspath_copy, " ")) != NULL) {
       strcpy(origin_copy, tok);
       ap_struct->numeric_aspath[it] = strtoul(origin_copy, NULL, 10);
       it++;
-    }
-    free(aspath_copy);
+    }    
   }
+  free(aspath_copy);
 }
 
 
