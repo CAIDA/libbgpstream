@@ -195,7 +195,7 @@ int bgpstream_ipv6_address_hash_equal(bgpstream_ip_address_t ip1,
 {
   assert(ip1.type == BST_IPV6); // check type is ipv6
   assert(ip2.type == BST_IPV6); // check type is ipv6
-  return memcmp(&ip1,&ip2, sizeof(bgpstream_ip_address_t));
+  return (memcmp(&ip1,&ip2, sizeof(bgpstream_ip_address_t)) == 0);
 }
 
 KHASH_INIT(ipv4_peers_table_t /* name */,
@@ -290,6 +290,7 @@ static void peers_table_update(bgpstream_elem_t * elem,
   }  
 }
 
+
 static void peers_table_reset(peers_table_t *peers_table) 
 {
   khiter_t k;
@@ -315,7 +316,7 @@ static void peers_table_reset(peers_table_t *peers_table)
       if (kh_exist(peers_table->ipv6_peers_table, k))
 	{
 	  /* reset the value */
-	  peerdata_destroy(kh_value(peers_table->ipv6_peers_table, k));
+	  peerdata_reset(kh_value(peers_table->ipv6_peers_table, k));
 	}
     }  
 }
