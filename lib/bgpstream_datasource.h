@@ -32,8 +32,7 @@
 #include "bgpstream_filter.h"
 
 #include <stdlib.h>
-#include<stdio.h>
-#include <my_global.h>
+#include <stdio.h>
 #include <mysql.h>
 
 

@@ -575,9 +575,13 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
   }  
   // Establish a connection to the database
   bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds mysql connection establishment");
+  // old socket for thor
+  /* if (mysql_real_connect(mysql_ds->mysql_con, "localhost", "routing", NULL,  */
+  /* 			   "bgparchive", 0, */
+  /* 			   "/usr/local/jail/charthouse/tmp/mysql.sock", 0) == NULL) { */
+    // loki configuration
   if (mysql_real_connect(mysql_ds->mysql_con, "localhost", "routing", NULL, 
-			   "bgparchive", 0,
-			   "/usr/local/jail/charthouse/tmp/mysql.sock", 0) == NULL) {
+			   "bgparchive", 0, NULL, 0) == NULL) {
     fprintf(stderr, "%s\n", mysql_error(mysql_ds->mysql_con));
     mysql_close(mysql_ds->mysql_con);
     free(mysql_ds);
