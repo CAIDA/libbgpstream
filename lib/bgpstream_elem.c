@@ -126,25 +126,20 @@ static void bd2bi_destroy_route_info_queue(bgpstream_elem_t * lifo_queue) {
 }
 
 
-static void get_aspath_struct(struct aspath * ap, bgpstream_aspath_t * ap_struct){
+static void get_aspath_struct(struct aspath * ap, bgpstream_aspath_t * ap_struct)
+{
   const char *invalid_characters = "([{}])";
+  char origin_copy[16];
+  uint8_t it;
+  char * tok = NULL;
   char *c = ap->str;
   ap_struct->hop_count = ap->count;
   ap_struct->type = BST_UINT32_ASPATH; // default
   ap_struct->numeric_aspath = NULL;
-  if(ap_struct->hop_count == 0) {
-    // aspath is empty, if it is an internal bgp info that is fine
+  if(ap->str == NULL || ap_struct->hop_count == 0) {
+    // aspath is empty, if it is an internal AS bgp info that is fine
     return;
   }
-  char * tok = NULL;
-  char * aspath_copy = (char *)malloc((strlen(ap->str)+1) * sizeof(char));  
-  if(aspath_copy == NULL) {
-    bgpstream_log_err("get_aspath_struct: can't malloc aspath string");
-    return;
-  }
-  strcpy(aspath_copy, ap->str);
-  char origin_copy[16];
-  uint8_t it;
   // check if there are sets or confederations
   while (*c) {
     if(strchr(invalid_characters, *c)) {
@@ -154,25 +149,39 @@ static void get_aspath_struct(struct aspath * ap, bgpstream_aspath_t * ap_struct
     }
     c++;
   }
+  /* if sets or confederations are present, then 
+   * the AS_PATH is of type STRING */
   if(ap_struct->type == BST_STRING_ASPATH) {
-    ap_struct->str_aspath = aspath_copy;
+    /* if the type is string then ap->str
+     * is pointed by str_aspath */
+    ap_struct->str_aspath = ap->str;    
+    ap->str = NULL;
   }
+  // otherwise the type is UINT32
   else {
-    // ap_struct->type == BST_UINT32_ASPATH;
     it = 0;
     ap_struct->numeric_aspath = (uint32_t *)malloc(ap_struct->hop_count * sizeof(uint32_t));
     if(ap_struct->numeric_aspath == NULL) {
       bgpstream_log_err("get_aspath_struct: can't malloc aspath numeric array");
-      free(aspath_copy);
+      // see comments below about ap->str
+      if(ap->str != NULL) {
+	free(ap->str);
+	ap->str = NULL;
+      }
       return;
     }
-    while((tok = strsep(&aspath_copy, " ")) != NULL) {
+    while((tok = strsep(&ap->str, " ")) != NULL) {
       strcpy(origin_copy, tok);
       ap_struct->numeric_aspath[it] = strtoul(origin_copy, NULL, 10);
       it++;
     }    
   }
-  free(aspath_copy);
+  /* ap->str is now consumed and the memory that bgpdump
+   * allocated to extract the string can now be released */
+  if(ap->str != NULL) {
+    free(ap->str);
+    ap->str = NULL;
+  }
 }
 
 
