@@ -33,7 +33,7 @@
 #include <string.h>
 #include <inttypes.h>
 
-static bool bgpdump_use_syslog = true;
+static bool bgpdump_use_syslog = false;
 
 void bgpdump_log_to_syslog() {
     bgpdump_use_syslog = true;

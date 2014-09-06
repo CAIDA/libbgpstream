@@ -1317,7 +1317,7 @@ int check_new_aspath(struct aspath *aspath) {
       segment = (struct assegment *) ((char *) segment + sizeof(*segment) + segment->length * ASN32_LEN)) {
     if(segment->type == AS_CONFED_SEQUENCE || segment->type == AS_CONFED_SET) {
       bgpdump_warn("check_new_aspath: invalid segment of type AS_CONFED_%s in NEW_AS_PATH",
-	   segment->type == AS_CONFED_SET ? "SET" : "SEQUENCE");
+		   segment->type == AS_CONFED_SET ? "SET" : "SEQUENCE");
       return 0;
     }
   }
