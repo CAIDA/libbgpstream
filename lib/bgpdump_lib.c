@@ -288,16 +288,17 @@ void bgpdump_free_mem(BGPDUMP_ENTRY *entry) {
 
 
 void bgpdump_free_attr(attributes_t *attr){
-  if(attr != NULL) {
+  if(attr != NULL) {  
     u_int16_t i;
     struct aspath *path, *pathstofree[3] = { attr->aspath, attr->old_aspath, attr->new_aspath };
-    for(i = 0; i < sizeof(pathstofree) / sizeof(pathstofree[0]); i++) {
+    for(i = 0; i < (sizeof(pathstofree) / sizeof(pathstofree[0])); i++) {
       path = pathstofree[i];
       if(path) {
 	if(path->data)
 	  free(path->data);
-	if(path->str)
+	if(path->str) {
 	  free(path->str);
+	}
 	free(path);
       }
     }
@@ -1377,7 +1378,7 @@ struct aspath *asn32_merge_paths(struct aspath *path, struct aspath *newpath) {
 
   /* Keep copying segments from AS_PATH until our path is as long as AS_PATH - NEW_AS_PATH. */
   segment = (struct assegment *) (path->data);
-  while(mergedpath->count < path->count - newpath->count) {
+  while(mergedpath->count < (path->count - newpath->count)) {
     /* Make room */
     newlen = mergedpath->length + sizeof(struct assegment) + segment->length * ASN32_LEN;
     mergedpath->data = realloc(mergedpath->data, newlen);
