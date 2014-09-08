@@ -97,6 +97,76 @@ static void graphite_safe(char *p)
 }
 
 
+/** Prefixes_table (khash) related functions */
+
+static khint32_t bgpstream_prefix_ipv4_hash_func(bgpstream_prefix_t prefix)
+{
+  assert(prefix.number.type == BST_IPV4);
+  assert(prefix.len >= 0);
+  assert(prefix.len <= 32);
+  khint32_t h = 0;
+  // convert network byte order to host byte order
+  // ipv4 32 bits number (in host order)
+  uint32_t address = ntohl(prefix.number.address.v4_addr.s_addr);  
+  // embed the network mask length in the 32 bits
+  h = address | (uint32_t) prefix.len;
+  return __ac_Wang_hash(h); // decreases the chances of collisions
+}
+
+static khint64_t bgpstream_prefix_ipv6_hash_func(bgpstream_prefix_t prefix) 
+{
+  assert(prefix.number.type == BST_IPV6);
+  assert(prefix.len >= 0);
+  if(prefix.len > 64) { return 0; }
+  // check type is ipv6 and prefix length is correct* - we discard mask > 64
+  khint64_t h = 0;
+  // ipv6 number - we take most significative 64 bits only (in host order)
+  uint64_t address = *((uint64_t *) &(prefix.number.address.v6_addr.s6_addr[0]));
+  address = ntohll(address);
+  // embed the network mask length in the 64 bits
+  h = address | (uint64_t) prefix.len;
+  return __ac_Wang_hash(h);  // decreases the chances of collisions
+}
+
+
+int bgpstream_prefix_ipv4_hash_equal(bgpstream_prefix_t prefix1,
+				      bgpstream_prefix_t prefix2)
+{
+  assert(prefix1.number.type == BST_IPV4); // check type is ipv4
+  assert(prefix2.number.type == BST_IPV4); // check type is ipv4
+  return (prefix1.number.address.v4_addr.s_addr == prefix2.number.address.v4_addr.s_addr) &&
+    (prefix1.len == prefix2.len);
+}
+
+int bgpstream_prefix_ipv6_hash_equal(bgpstream_prefix_t prefix1,
+				      bgpstream_prefix_t prefix2) 
+{
+  assert(ip1.type == BST_IPV6); // check type is ipv6
+  assert(ip2.type == BST_IPV6); // check type is ipv6
+  return memcmp(&prefix1,&prefix2, sizeof(bgpstream_ip_address_t));
+}
+
+
+KHASH_INIT(ipv4_prefixes_table_t /* name */, 
+	   bgpstream_prefix_t /* khkey_t */, 
+	   char /* khval_t */, 
+	   0  /* kh_is_set */, 
+	   bgpstream_prefix_ipv4_hash_func /*__hash_func */,  
+	   bgpstream_prefix_ipv4_hash_equal /* __hash_equal */);
+
+
+KHASH_INIT(ipv6_prefixes_table_t /* name */, 
+	   bgpstream_prefix_t /* khkey_t */, 
+	   char /* khval_t */, 
+	   1  /* kh_is_map */, 
+	   bgpstream_prefix_ipv6_hash_func /*__hash_func */,  
+	   bgpstream_prefix_ipv6_hash_equal /* __hash_equal */);
+
+
+
+
+
+
 /** Peer related functions */
 
 typedef struct struct_peerdata_t {
