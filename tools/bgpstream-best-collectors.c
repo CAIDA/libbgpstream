@@ -50,12 +50,12 @@ int main(){
   }
   // all projects
   // bgpstream_add_filter(bs, BS_PROJECT, "***");
-  bgpstream_add_filter(bs, BS_PROJECT, "routeviews");
+  // bgpstream_add_filter(bs, BS_PROJECT, "routeviews");
 
 
   // all types
   // bgpstream_add_filter(bs, BS_BGP_TYPE, "***");
-  /*
+
   bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.linx");
   bgpstream_add_filter(bs, BS_COLLECTOR, "route-views6");
   bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.saopaulo");
@@ -82,16 +82,15 @@ int main(){
   bgpstream_add_filter(bs, BS_COLLECTOR, "rrc13");
   bgpstream_add_filter(bs, BS_COLLECTOR, "rrc14");
   bgpstream_add_filter(bs, BS_COLLECTOR, "rrc15");
-  */
 
-  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.wide");
 
-  //  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1407823200", "1407837600");
+  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1407823200", "1407837600");
   // start -> Fri, 20 Jun 2014 01:58:11 GMT
   // stop -> Fri, 20 Jun 2014 03:56:23 GMT
 
   // bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1407828000", "1407832000");
-  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1407828599","1407828659");
+  // bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1407828599","1407828659");
+
   // set blocking
   // bgpstream_set_blocking(bs);
 
