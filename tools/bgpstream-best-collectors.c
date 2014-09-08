@@ -49,10 +49,12 @@ int main(){
     return 1;
   }
   // all projects
-  // bgpstream_set_filter(bs, BS_PROJECT, "***");
+  // bgpstream_add_filter(bs, BS_PROJECT, "***");
+  bgpstream_add_filter(bs, BS_PROJECT, "routeviews");
+
 
   // all types
-  // bgpstream_set_filter(bs, BS_BGP_TYPE, "***");
+  // bgpstream_add_filter(bs, BS_BGP_TYPE, "***");
   /*
   bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.linx");
   bgpstream_add_filter(bs, BS_COLLECTOR, "route-views6");
@@ -82,11 +84,14 @@ int main(){
   bgpstream_add_filter(bs, BS_COLLECTOR, "rrc15");
   */
 
+  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views.wide");
+
   //  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1407823200", "1407837600");
   // start -> Fri, 20 Jun 2014 01:58:11 GMT
   // stop -> Fri, 20 Jun 2014 03:56:23 GMT
 
-  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1407828000", "1407832000");
+  // bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1407828000", "1407832000");
+  bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1407828599","1407828659");
   // set blocking
   // bgpstream_set_blocking(bs);
 
@@ -127,7 +132,7 @@ int main(){
 	  strcpy(rstatus, "VALID_RECORD");
 	  if(bs_record->bd_entry != NULL) {
 	    read++;
-	    bs_elem_queue = NULL; // = bgpstream_get_elem_queue(bs_record);
+	    bs_elem_queue = bgpstream_get_elem_queue(bs_record);
 	    bs_iterator = bs_elem_queue;
 	    while(bs_iterator != NULL)
 	      {

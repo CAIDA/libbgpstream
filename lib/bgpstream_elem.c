@@ -129,10 +129,11 @@ static void bd2bi_destroy_route_info_queue(bgpstream_elem_t * lifo_queue) {
 static void get_aspath_struct(struct aspath * ap, bgpstream_aspath_t * ap_struct)
 {
   const char *invalid_characters = "([{}])";
-  char origin_copy[16];
+  // char origin_copy[16];
   uint8_t it;
   char * tok = NULL;
   char *c = ap->str;
+  char *next;
   ap_struct->hop_count = ap->count;
   ap_struct->type = BST_UINT32_ASPATH; // default
   ap_struct->numeric_aspath = NULL;
@@ -152,10 +153,13 @@ static void get_aspath_struct(struct aspath * ap, bgpstream_aspath_t * ap_struct
   /* if sets or confederations are present, then 
    * the AS_PATH is of type STRING */
   if(ap_struct->type == BST_STRING_ASPATH) {
-    /* if the type is string then ap->str
-     * is pointed by str_aspath */
-    ap_struct->str_aspath = ap->str;    
-    ap->str = NULL;
+    /* if the type is STR then we allocate the memory
+     * required for the path - we do not copy ap->str 
+     * it is a fixed length array which is unreasonably
+     long (8000)*/
+    ap_struct->str_aspath = strdup(ap->str);
+    // free(ap->str); // consume data 
+    // ap->str = NULL;
   }
   // otherwise the type is UINT32
   else {
@@ -164,24 +168,26 @@ static void get_aspath_struct(struct aspath * ap, bgpstream_aspath_t * ap_struct
     if(ap_struct->numeric_aspath == NULL) {
       bgpstream_log_err("get_aspath_struct: can't malloc aspath numeric array");
       // see comments below about ap->str
-      if(ap->str != NULL) {
-	free(ap->str);
-	ap->str = NULL;
-      }
+      // if(ap->str != NULL) {
+      // free(ap->str);
+      //  ap->str = NULL;
+      // }
       return;
     }
-    while((tok = strsep(&ap->str, " ")) != NULL) {
-      strcpy(origin_copy, tok);
-      ap_struct->numeric_aspath[it] = strtoul(origin_copy, NULL, 10);
+    next = c = strdup(ap->str);
+    while((tok = strsep(&next, " ")) != NULL) {
+      // strcpy(origin_copy, tok);
+      ap_struct->numeric_aspath[it] = strtoul(tok, NULL, 10);
       it++;
-    }    
-  }
+    }
+    free(c);
+}
   /* ap->str is now consumed and the memory that bgpdump
    * allocated to extract the string can now be released */
-  if(ap->str != NULL) {
-    free(ap->str);
-    ap->str = NULL;
-  }
+  /* if(ap->str != NULL) { */
+  /*   free(ap->str); */
+  /*   ap->str = NULL; */
+  /* } */
 }
 
 
