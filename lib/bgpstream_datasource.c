@@ -29,6 +29,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -688,8 +689,8 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
   // in order to compensate for this kind of situations we 
   // retrieve data that are 120 seconds older than the requested 
 
-  // minimum timestamp is a placeholder
-  strcat (mysql_ds->sql_query," AND UNIX_TIMESTAMP(ts) > ? AND UNIX_TIMESTAMP(ts) <= UNIX_TIMESTAMP(NOW())-1");
+  // minimum timestamp and current timestamp are the two placeholders
+  strcat (mysql_ds->sql_query," AND UNIX_TIMESTAMP(ts) > ? AND UNIX_TIMESTAMP(ts) <= ?");
 
   // order by filetime and bgptypes in reverse order: this way the 
   // input insertions are always "head" insertions, i.e. queue insertion is
@@ -701,6 +702,8 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
 
   // the first last_timestamp is 0
   mysql_ds->last_timestamp = 0;
+  // the first current_timestamp is 0
+  mysql_ds->current_timestamp = 0;
   
   // Initialize the statement 
   mysql_ds->stmt = mysql_stmt_init(mysql_ds->mysql_con);
@@ -732,6 +735,12 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
   mysql_ds->parameters[0].is_unsigned = 0;
   mysql_ds->parameters[0].is_null = 0;
   mysql_ds->parameters[0].length = 0;
+
+  mysql_ds->parameters[1].buffer_type = MYSQL_TYPE_LONG;
+  mysql_ds->parameters[1].buffer = (void *) &(mysql_ds->current_timestamp);
+  mysql_ds->parameters[1].is_unsigned = 0;
+  mysql_ds->parameters[1].is_null = 0;
+  mysql_ds->parameters[1].length = 0;
 
   if (mysql_stmt_bind_param(mysql_ds->stmt, mysql_ds->parameters)) {
     fprintf(stderr, " mysql_stmt_bind_param() failed\n");
@@ -782,20 +791,12 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
   mysql_ds->results[6].buffer = mysql_ds->file_ext_res;
   mysql_ds->results[6].buffer_length = BGPSTREAM_PAR_MAX_LEN;
   mysql_ds->results[6].is_null = 0;
-
   /* FILETIME */
   mysql_ds->results[7].buffer_type = MYSQL_TYPE_LONG;
   mysql_ds->results[7].buffer = (void *) &(mysql_ds->filetime_res);
   mysql_ds->results[7].is_unsigned = 0;
   mysql_ds->results[7].is_null = 0;
   mysql_ds->results[7].length = 0;
-
-  /* MAX TIMESTAMP */
-  mysql_ds->results[8].buffer_type = MYSQL_TYPE_LONG;
-  mysql_ds->results[8].buffer = (void *) &(mysql_ds->max_timestamp_res);
-  mysql_ds->results[8].is_unsigned = 0;
-  mysql_ds->results[8].is_null = 0;
-  mysql_ds->results[8].length = 0;
 
   /* Bind the results buffer */
   if (mysql_stmt_bind_result(mysql_ds->stmt, mysql_ds->results) != 0) {
@@ -837,6 +838,10 @@ static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasou
 							 bgpstream_input_mgr_t *input_mgr) {
   char *filename = NULL;
   int num_results = 0;
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  // update current_timestamp - we always ask for data 1 second old at least
+  mysql_ds->current_timestamp = tv.tv_sec - 1; // now() - 1 second
 
   bgpstream_debug("\t\tBSDS_MYSQL: mysql_ds update input queue start ");
 
@@ -889,8 +894,8 @@ static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasou
       mysql_ds->file_ext_res[0] = '\0';
     }
     // the next time we will pull data that has been written 
-    // after this timestamp
-    mysql_ds->last_timestamp = mysql_ds->max_timestamp_res;
+    // after the current timestamp
+    mysql_ds->last_timestamp = mysql_ds->current_timestamp;
   }
   bgpstream_debug("\t\tBSDS_MYSQL: mysql_ds update input queue end");
   return num_results;
