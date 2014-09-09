@@ -68,10 +68,10 @@ typedef struct struct_bgpstream_mysql_datasource_t {
   MYSQL * mysql_con;
   char sql_query[2048];
   MYSQL_STMT *stmt;          // mysql statement
-  MYSQL_BIND parameters[2]; // parameters for placeholders
+  MYSQL_BIND parameters[2];  // parameters for placeholders
   // variables to bind to placeholders
-  int last_timestamp;       // parameter to bind I
-  int current_timestamp;     // parameter to bind II
+  long int last_timestamp;       // parameter to bind I
+  long int current_timestamp;     // parameter to bind II
   MYSQL_BIND results[8];    // query results
   // variables to bind to results
   char proj_path_res[BGPSTREAM_PAR_MAX_LEN];

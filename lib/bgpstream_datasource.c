@@ -726,19 +726,17 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
     return NULL;
   }
 
-  /* Zero out the parameters structure and result data structures */
+   /* Zero out the parameters structure and result data structures */
   memset(mysql_ds->parameters, 0, sizeof(mysql_ds->parameters));
 
   /* bind the parameters to bgpstream_sql variables */
   mysql_ds->parameters[0].buffer_type = MYSQL_TYPE_LONG;
-  mysql_ds->parameters[0].buffer = (void *) &(mysql_ds->last_timestamp);
-  mysql_ds->parameters[0].is_unsigned = 0;
+  mysql_ds->parameters[0].buffer = (char *) &(mysql_ds->last_timestamp);
   mysql_ds->parameters[0].is_null = 0;
   mysql_ds->parameters[0].length = 0;
 
   mysql_ds->parameters[1].buffer_type = MYSQL_TYPE_LONG;
-  mysql_ds->parameters[1].buffer = (void *) &(mysql_ds->current_timestamp);
-  mysql_ds->parameters[1].is_unsigned = 0;
+  mysql_ds->parameters[1].buffer = (char *) &(mysql_ds->current_timestamp);
   mysql_ds->parameters[1].is_null = 0;
   mysql_ds->parameters[1].length = 0;
 
@@ -842,7 +840,7 @@ static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasou
   gettimeofday(&tv, NULL);
   // update current_timestamp - we always ask for data 1 second old at least
   mysql_ds->current_timestamp = tv.tv_sec - 1; // now() - 1 second
-
+ 
   bgpstream_debug("\t\tBSDS_MYSQL: mysql_ds update input queue start ");
 
   /* just to be safe, we clear all the strings */
