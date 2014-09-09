@@ -602,7 +602,7 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
 	 "SELECT "
 	 "projects.path, collectors.path, bgp_types.path, "
 	 "projects.name, collectors.name, bgp_types.name, projects.file_ext, "
-	 "file_time, UNIX_TIMESTAMP(NOW())-1 "
+	 "file_time "
 	 "FROM bgp_data "
 	 "JOIN bgp_types  ON bgp_types.id  = bgp_data.bgp_type_id "
 	 "JOIN collectors ON collectors.id = bgp_data.collector_id "
