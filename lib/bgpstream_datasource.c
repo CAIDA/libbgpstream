@@ -669,12 +669,25 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
     tif = filter_mgr->time_intervals;
     strcat (mysql_ds->sql_query," AND ( ");
     while(tif != NULL) {
-      strcat (mysql_ds->sql_query," (file_time >=  ");
-      strcat (mysql_ds->sql_query, tif->start);
-      strcat (mysql_ds->sql_query,"  - on_web_frequency.offset - 120");
-      strcat (mysql_ds->sql_query," AND file_time <=  ");
-      strcat (mysql_ds->sql_query, tif->stop);
-      strcat (mysql_ds->sql_query,") ");
+      strcat (mysql_ds->sql_query," ( ");
+      if(strcmp(tif->start,"-1") != 0) {  // no start, everything in the past is ok
+	strcat (mysql_ds->sql_query," (file_time >=  ");
+	strcat (mysql_ds->sql_query, tif->start);
+	strcat (mysql_ds->sql_query,"  - on_web_frequency.offset - 120 )");
+      }
+      else {
+	strcat (mysql_ds->sql_query," 1 ");
+      }
+      strcat (mysql_ds->sql_query,"  AND  ");
+      if(strcmp(tif->stop,"-1") != 0) {  // no stop, everything in the future is ok
+	strcat (mysql_ds->sql_query," (file_time <=  ");
+	strcat (mysql_ds->sql_query, tif->stop);
+	strcat (mysql_ds->sql_query,") ");
+      }
+      else {
+	strcat (mysql_ds->sql_query," 1 ");
+      }
+      strcat (mysql_ds->sql_query," ) ");
       tif = tif->next;
       if(tif!= NULL) {
 	strcat (mysql_ds->sql_query, " OR ");      
@@ -697,7 +710,7 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
   // faster
   strcat (mysql_ds->sql_query," ORDER BY file_time DESC, bgp_types.name DESC");
 
-  //printf("%s\n",mysql_ds->sql_query);
+  // printf("%s\n",mysql_ds->sql_query);
   bgpstream_debug("\t\tBSDS_MYSQL:  mysql query created");
 
   // the first last_timestamp is 0
