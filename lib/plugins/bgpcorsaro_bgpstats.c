@@ -480,6 +480,7 @@ static void peerdata_update(bgpstream_elem_t *elem,
 static void prefixes_table_union(prefixes_table_t * to_update, prefixes_table_t * to_read)
 {
   khiter_t k;
+  khiter_t k_check;
   int khret;
   bgpstream_prefix_t prefix; 
   // update ipv4 prefixes table
@@ -491,11 +492,11 @@ static void prefixes_table_union(prefixes_table_t * to_update, prefixes_table_t 
 	  // get prefix from "to_read" table
 	  prefix = kh_key(to_read->ipv4_prefixes_table, k);
 	  // insert if it does not exist in  "to_update"
-	  if((k = kh_get(ipv4_prefixes_table_t, to_update->ipv4_prefixes_table,
-			 prefix)) == kh_end(to_update->ipv4_prefixes_table))
+	  if((k_check = kh_get(ipv4_prefixes_table_t, to_update->ipv4_prefixes_table,
+			       prefix)) == kh_end(to_update->ipv4_prefixes_table))
 	    {
-	      k = kh_put(ipv4_prefixes_table_t, to_update->ipv4_prefixes_table, 
-			 prefix, &khret);
+	      k_check = kh_put(ipv4_prefixes_table_t, to_update->ipv4_prefixes_table, 
+			       prefix, &khret);
 	    }
 	}
     }
@@ -508,11 +509,11 @@ static void prefixes_table_union(prefixes_table_t * to_update, prefixes_table_t 
 	  // get prefix from "to_read" table
 	  prefix = kh_key(to_read->ipv6_prefixes_table, k);
 	  // insert if it does not exist in  "to_update"
-	  if((k = kh_get(ipv6_prefixes_table_t, to_update->ipv6_prefixes_table,
-			 prefix)) == kh_end(to_update->ipv6_prefixes_table))
+	  if((k_check = kh_get(ipv6_prefixes_table_t, to_update->ipv6_prefixes_table,
+			       prefix)) == kh_end(to_update->ipv6_prefixes_table))
 	    {
-	      k = kh_put(ipv6_prefixes_table_t, to_update->ipv6_prefixes_table, 
-			 prefix, &khret);
+	      k_check = kh_put(ipv6_prefixes_table_t, to_update->ipv6_prefixes_table, 
+			       prefix, &khret);
 	    }
 	}
     }
@@ -522,6 +523,7 @@ static void prefixes_table_union(prefixes_table_t * to_update, prefixes_table_t 
 static void ases_table_union(ases_table_wrapper_t * to_update, ases_table_wrapper_t * to_read)
 {
   khiter_t k;
+  khiter_t k_check;
   int khret;
   uint32_t origin_as;
   // update ases table
@@ -533,11 +535,11 @@ static void ases_table_union(ases_table_wrapper_t * to_update, ases_table_wrappe
 	  // get prefix from "to_read" table
 	  origin_as = kh_key(to_read->table, k);
 	  // insert if it does not exist in  "to_update"
-	  if((k = kh_get(ases_table_t, to_update->table,
-			 origin_as)) == kh_end(to_update->table))
+	  if((k_check = kh_get(ases_table_t, to_update->table,
+			       origin_as)) == kh_end(to_update->table))
 	    {
-	      k = kh_put(ases_table_t, to_update->table, 
-			 origin_as, &khret);
+	      k_check = kh_put(ases_table_t, to_update->table, 
+			       origin_as, &khret);
 	    }
 	}
     }
