@@ -278,9 +278,20 @@ static void prefixes_table_destroy(prefixes_table_t *prefixes_table)
 /** peerdata related functions */
 
 typedef struct struct_peerdata_t {
+  // number of elems of a given type processed in the current interval
   uint64_t num_elem[BGPSTREAM_ELEM_TYPE_MAX];
+  // prefixes in the rib table
   prefixes_table_t * prefixes_table;
+  // prefixes "modified" in the current interval
+  prefixes_table_t * affected_prefixes_table;
+  // occurrencies of non_standard origin ases announced current interval (updates only)
+  int non_std_origin_as_cnt;
+  // occurrencies of internal updates (i.e. aspath is empty)
+  int empty_origin_as_cnt;
+  // TODO: decide which policy we want to adopt
   ases_table_wrapper_t * ases_table;
+  // origin ases active in the current interval (i.e. announcing)
+  ases_table_wrapper_t * announcing_ases_table;
 } peerdata_t;
 
 static peerdata_t *peerdata_create()
@@ -295,9 +306,24 @@ static peerdata_t *peerdata_create()
       free(peer_data);
       return NULL;
     }
+  if((peer_data->affected_prefixes_table = prefixes_table_create()) == NULL)
+    {
+      prefixes_table_destroy(peer_data->prefixes_table);
+      free(peer_data);
+      return NULL;
+    }
   if((peer_data->ases_table = ases_table_create()) == NULL)
     {
-      free(peer_data->prefixes_table);
+      prefixes_table_destroy(peer_data->affected_prefixes_table);
+      prefixes_table_destroy(peer_data->prefixes_table);
+      free(peer_data);
+      return NULL;
+    }
+  if((peer_data->announcing_ases_table = ases_table_create()) == NULL)
+    {
+      ases_table_destroy(peer_data->ases_table);
+      prefixes_table_destroy(peer_data->affected_prefixes_table);
+      prefixes_table_destroy(peer_data->prefixes_table);
       free(peer_data);
       return NULL;
     }
@@ -329,8 +355,7 @@ static void peerdata_update(bgpstream_elem_t *elem,
     return;
   }
 
-  // Updating prefixes tables
-
+  /* Updating prefixes_table */
   if(elem->prefix.number.type == BST_IPV4) { // ipv4 prefix
     k = kh_get(ipv4_prefixes_table_t, peer_data->prefixes_table->ipv4_prefixes_table,
 	       elem->prefix);
@@ -383,12 +408,77 @@ static void peerdata_update(bgpstream_elem_t *elem,
       }
   }
 
+  /* Updating affected_prefixes_table */
+  if(elem->prefix.number.type == BST_IPV4) { // ipv4 prefix
+    k = kh_get(ipv4_prefixes_table_t, peer_data->affected_prefixes_table->ipv4_prefixes_table,
+	       elem->prefix);
+    // update prefix into ipv4 affected prefixes table
+    if(elem->type == BST_ANNOUNCEMENT || elem->type == BST_WITHDRAWAL)
+      {
+	// insert if it doesn't exist
+	if(k == kh_end(peer_data->affected_prefixes_table->ipv4_prefixes_table))
+	  {
+	    k = kh_put(ipv4_prefixes_table_t, peer_data->affected_prefixes_table->ipv4_prefixes_table, 
+		       elem->prefix, &khret);
+	  }
+      }
+  }
+  else { // ipv6 prefix
+    // update prefix into ipv6 affected prefixes table
+    k = kh_get(ipv6_prefixes_table_t, peer_data->affected_prefixes_table->ipv6_prefixes_table,
+	       elem->prefix);
+    // update prefix into ipv4 prefixes table
+    if(elem->type == BST_ANNOUNCEMENT || elem->type == BST_WITHDRAWAL)
+      {
+	// insert if it doesn't exist
+	if(k == kh_end(peer_data->affected_prefixes_table->ipv6_prefixes_table))
+	  {
+	    k = kh_put(ipv6_prefixes_table_t, peer_data->affected_prefixes_table->ipv6_prefixes_table, 
+		       elem->prefix, &khret);
+	  }
+      }
+  }
+
   // TODO: update ASes
+
+  // updating affected ases and "internal/non_std" updates count
+  uint32_t origin_as;
+  if(elem->type == BST_ANNOUNCEMENT) 
+    {
+      if(elem->aspath.hop_count == 0)
+	{ // received an internal update 
+	  peer_data->empty_origin_as_cnt++;
+	}
+      else
+	{
+	  // update origin ASes announcing a change in this interval
+	  if(elem->aspath.type == BST_UINT32_ASPATH && elem->aspath.hop_count > 0) 
+	    { 
+	      origin_as = elem->aspath.numeric_aspath[(elem->aspath.hop_count-1)];
+	      k = kh_get(ases_table_t, peer_data->announcing_ases_table->table, origin_as);
+	      if(k == kh_end(peer_data->announcing_ases_table->table))
+		{
+		  k = kh_put(ases_table_t, peer_data->announcing_ases_table->table, 
+			     origin_as, &khret);
+		}
+	    }
+	  else
+	    { 
+	      // if the path is a string and the hop count is zero, then it is non_std
+	      // aspath
+	      if(elem->aspath.type == BST_STRING_ASPATH && elem->aspath.hop_count > 0) 
+		{
+		  peer_data->non_std_origin_as_cnt++;
+		}
+	    }
+	}
+    }
+
 }
 
 
 static void peerdata_dump(char *dump_project, char *dump_collector, char *peer_address,
-			  int int_end_time, peerdata_t *peer_data)
+			  int int_start_time, peerdata_t *peer_data)
 {
   graphite_safe(peer_address);
   /* rib_entries */
@@ -396,28 +486,28 @@ static void peerdata_dump(char *dump_project, char *dump_collector, char *peer_a
 	  METRIC_PREFIX".%s.%s.%s.rib_entry_cnt %"PRIu64" %d\n",
 	  dump_project, dump_collector, peer_address,
 	  peer_data->num_elem[BST_RIB],
-	  int_end_time);
+	  int_start_time);
 
   /* announcements */
   fprintf(stdout,
 	  METRIC_PREFIX".%s.%s.%s.announcement_entry_cnt %"PRIu64" %d\n",
 	  dump_project, dump_collector, peer_address,
 	  peer_data->num_elem[BST_ANNOUNCEMENT],
-	  int_end_time);
+	  int_start_time);
   
   /* withdrawals */
   fprintf(stdout,
 	  METRIC_PREFIX".%s.%s.%s.withdrawal_entry_cnt %"PRIu64" %d\n",
 	  dump_project, dump_collector, peer_address,
 	  peer_data->num_elem[BST_WITHDRAWAL],
-	  int_end_time);
+	  int_start_time);
 
   /* withdrawals */
   fprintf(stdout,
 	  METRIC_PREFIX".%s.%s.%s.state_messages_cnt %"PRIu64" %d\n",
 	  dump_project, dump_collector, peer_address,
 	  peer_data->num_elem[BST_STATE],
-	  int_end_time);
+	  int_start_time);
 
 
   /* number of ipv4/ipv6 prefixes */
@@ -425,14 +515,48 @@ static void peerdata_dump(char *dump_project, char *dump_collector, char *peer_a
 	  METRIC_PREFIX".%s.%s.%s.ipv4_rib_size %d %d\n",
 	  dump_project, dump_collector, peer_address,
 	  kh_size(peer_data->prefixes_table->ipv4_prefixes_table),
-	  int_end_time);
+	  int_start_time);
   fprintf(stdout,
 	  METRIC_PREFIX".%s.%s.%s.ipv6_rib_size %d %d\n",
 	  dump_project, dump_collector, peer_address,
 	  kh_size(peer_data->prefixes_table->ipv6_prefixes_table),
-	  int_end_time);
+	  int_start_time);
+
+  /* number of ipv4/ipv6 prefixes affected by a change during the current interval */
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.ipv4_affected_prefixes %d %d\n",
+	  dump_project, dump_collector, peer_address,
+	  kh_size(peer_data->affected_prefixes_table->ipv4_prefixes_table),
+	  int_start_time);
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.ipv6_affected_prefixes %d %d\n",
+	  dump_project, dump_collector, peer_address,
+	  kh_size(peer_data->affected_prefixes_table->ipv6_prefixes_table),
+	  int_start_time);
 
   /* TODO: dump information related to ases_table */
+
+  /* number of unique ASes (no sets/confeds) announcing at least
+   * one new prefix in the current interval */
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.announcing_ases %d %d\n",
+	  dump_project, dump_collector, peer_address,
+	  kh_size(peer_data->announcing_ases_table->table),
+	  int_start_time);
+
+  /* number non_std_origin_as occurrencies (updates only) */
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.non_std_origin_as_cnt %d %d\n",
+	  dump_project, dump_collector, peer_address,
+	  peer_data->non_std_origin_as_cnt,
+	  int_start_time);
+
+  /* number empty_origin_as_cnt occurrencies (updates only) */
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.empty_origin_as_cnt %d %d\n",
+	  dump_project, dump_collector, peer_address,
+	  peer_data->empty_origin_as_cnt,
+	  int_start_time);  
 }
 
 
@@ -451,7 +575,15 @@ static void peerdata_end_of_interval(peerdata_t *peer_data)
 {
   assert(peer_data != NULL); 
   memset(peer_data->num_elem, 0, sizeof(peer_data->num_elem));
-  /* TODO:  decide what to do with ASes and prefixes table */
+  // we remove all the prefixes affected in the interval
+  prefixes_table_reset(peer_data->affected_prefixes_table);
+  // we remove all the ases affected in the interval
+  ases_table_reset(peer_data->announcing_ases_table);
+  // we reset the number of non standard origin ASes events
+  peer_data->non_std_origin_as_cnt = 0;
+  // we reset the number of empty origin ASes events
+  peer_data->empty_origin_as_cnt = 0;
+  /* TODO:  decide what to do with ASes table */
 }
 
 static void peerdata_destroy(peerdata_t *peer_data)
@@ -465,10 +597,20 @@ static void peerdata_destroy(peerdata_t *peer_data)
       prefixes_table_destroy(peer_data->prefixes_table);
       peer_data->prefixes_table = NULL;
     }
+  if(peer_data->affected_prefixes_table != NULL) 
+    {
+      prefixes_table_destroy(peer_data->affected_prefixes_table);
+      peer_data->affected_prefixes_table = NULL;
+    }
   if(peer_data->ases_table != NULL) 
     {
       ases_table_destroy(peer_data->ases_table);
       peer_data->ases_table = NULL;
+    }
+  if(peer_data->announcing_ases_table != NULL) 
+    {
+      ases_table_destroy(peer_data->announcing_ases_table);
+      peer_data->announcing_ases_table = NULL;
     }
   free(peer_data);
 }
@@ -601,7 +743,7 @@ static void peers_table_update(bgpstream_elem_t * elem,
 
 
 static void peers_table_dump(char *dump_project, char *dump_collector,
-			     int int_end_time, peers_table_t *peers_table) 
+			     int int_start_time, peers_table_t *peers_table) 
 {
   assert(ch_prefix != NULL);
   assert(peers_table != NULL);
@@ -622,9 +764,9 @@ static void peers_table_dump(char *dump_project, char *dump_collector,
 	  ip = kh_key(peers_table->ipv4_peers_table, k);
 	  inet_ntop(AF_INET, &(ip.address.v4_addr), ip4_str, INET_ADDRSTRLEN);
 	  peer_data = kh_value(peers_table->ipv4_peers_table, k);
-	  peerdata_dump(dump_project, dump_collector, ip4_str, int_end_time, peer_data);
-	}
-      // TODO: think about resetting here 
+	  peerdata_dump(dump_project, dump_collector, ip4_str, int_start_time, peer_data);
+	  peerdata_end_of_interval(kh_value(peers_table->ipv4_peers_table, k));
+	}      
     }
 
   // ipv6 peers informations
@@ -636,8 +778,9 @@ static void peers_table_dump(char *dump_project, char *dump_collector,
 	  ip = kh_key(peers_table->ipv6_peers_table, k);	  
 	  inet_ntop(AF_INET6, &(ip.address.v6_addr), ip6_str, INET6_ADDRSTRLEN);
 	  peer_data = kh_value(peers_table->ipv6_peers_table, k);
-	  peerdata_dump(dump_project, dump_collector, ip6_str, int_end_time, peer_data);	}
-      // TODO: think about resetting here 
+	  peerdata_dump(dump_project, dump_collector, ip6_str, int_start_time, peer_data);	
+	  peerdata_end_of_interval(kh_value(peers_table->ipv6_peers_table, k));
+	}
     }
 }
 
@@ -669,35 +812,12 @@ static void peers_table_new_rib(peers_table_t *peers_table)
 }
 
 
-
 static void peers_table_end_of_interval(peers_table_t *peers_table) 
 {
-  khiter_t k;
-  
   /** we do not remove peers from peers_table as they are
-   *  a stable entity, we just zeroes their peerdata */
-
-  /* reset all the values in the ipv4 peers_table table */
-  for (k = kh_begin(peers_table->ipv4_peers_table);
-       k != kh_end(peers_table->ipv4_peers_table); ++k)
-    {
-      if (kh_exist(peers_table->ipv4_peers_table, k))
-	{
-	  /* reset the value */
-	  peerdata_end_of_interval(kh_value(peers_table->ipv4_peers_table, k));
-	}
-    }   
-
-  /* reset all the values in the ipv6 peers_table table */
-  for (k = kh_begin(peers_table->ipv6_peers_table);
-       k != kh_end(peers_table->ipv6_peers_table); ++k)
-    {
-      if (kh_exist(peers_table->ipv6_peers_table, k))
-	{
-	  /* reset the value */
-	  peerdata_end_of_interval(kh_value(peers_table->ipv6_peers_table, k));
-	}
-    }  
+   *  a stable entity, we just zeroes their peerdata 
+   *  such process is performed by peerdata_end_of_interval
+   *  everytime we dump with peerdata_dump*/
 }
 
 
@@ -852,7 +972,7 @@ static void collectordata_update(bgpcorsaro_record_t * record,
 }
 
 
-static void collectordata_dump(collectordata_t *collector_data, int int_end_time)
+static void collectordata_dump(collectordata_t *collector_data, int int_start_time)
 {
   assert(collector_data);
   /* num_valid_records */
@@ -861,7 +981,7 @@ static void collectordata_dump(collectordata_t *collector_data, int int_end_time
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  collector_data->num_records[VALID_RECORD],
-	  int_end_time);
+	  int_start_time);
 
   /* rib_entries */
   fprintf(stdout,
@@ -869,7 +989,7 @@ static void collectordata_dump(collectordata_t *collector_data, int int_end_time
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  collector_data->num_elem[BST_RIB],
-	  int_end_time);
+	  int_start_time);
 
   /* announcements */
   fprintf(stdout,
@@ -877,7 +997,7 @@ static void collectordata_dump(collectordata_t *collector_data, int int_end_time
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  collector_data->num_elem[BST_ANNOUNCEMENT],
-	  int_end_time);
+	  int_start_time);
 
   /* withdrawals */
   fprintf(stdout,
@@ -885,7 +1005,7 @@ static void collectordata_dump(collectordata_t *collector_data, int int_end_time
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  collector_data->num_elem[BST_WITHDRAWAL],
-	  int_end_time);
+	  int_start_time);
 
   /* state messages */
   fprintf(stdout,
@@ -893,14 +1013,8 @@ static void collectordata_dump(collectordata_t *collector_data, int int_end_time
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  collector_data->num_elem[BST_STATE],
-	  int_end_time);
+	  int_start_time);
 
-
-  /* number of ipv4/ipv6 prefixes per collector */
-  // TODO: take care of it
-
-  /* number of announcing/withdrawing ases per collector */
-  // TODO: take care of it
 
   /* peer-related statistics */ 
 
@@ -910,17 +1024,28 @@ static void collectordata_dump(collectordata_t *collector_data, int int_end_time
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  kh_size(collector_data->peers_table->ipv4_peers_table),
-	  int_end_time);	  
+	  int_start_time);	  
 
   fprintf(stdout,
 	  METRIC_PREFIX".%s.%s.ipv6_peers_cnt %d %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  kh_size(collector_data->peers_table->ipv6_peers_table),
-	  int_end_time);
+	  int_start_time);
+
 
   peers_table_dump(collector_data->dump_project, collector_data->dump_collector,
-		   int_end_time, collector_data->peers_table);
+		   int_start_time, collector_data->peers_table);
+
+  peers_table_end_of_interval(collector_data->peers_table);
+
+
+  /* number of ipv4/ipv6 prefixes per collector */
+  // TODO: take care of it
+
+  /* number of announcing/withdrawing ases per collector */
+  // TODO: take care of it
+
 
 }
 
@@ -934,7 +1059,10 @@ static void collectordata_end_of_interval(collectordata_t *collector_data)
   memset(collector_data->num_elem, 0,
 	 sizeof(collector_data->num_elem));
 
-  peers_table_end_of_interval(collector_data->peers_table);
+  /* every "piece" take care of his own end of interval 
+   * just right after the dump function 
+   * this way we reduce the number of loops to reset data
+   */
 
   // TODO: decide what to do with prefixes_table and ases_table
 }
@@ -996,11 +1124,12 @@ struct bgpcorsaro_bgpstats_state_t {
   /** The current outfile */
   int outfile_n;
 
+  /** interval start time */
+  int interval_start;
   /** number of records read for each type */
   int num_records[BGPSTREAM_RECORD_TYPE_MAX];
-
   /** Hash of collector string to collector data */
-  khash_t(collector_table_t) *collectors_table;
+  khash_t(collector_table_t) *collectors_table; 
 };
 
 /** Extends the generic plugin state convenience macro in bgpcorsaro_plugin.h */
@@ -1076,6 +1205,15 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
 }
 #endif
 
+
+/** saves the beginning of the interval in the state */
+static void stats_init(struct bgpcorsaro_bgpstats_state_t *state,
+		       bgpcorsaro_interval_t *int_start) {
+  assert(state != NULL);
+  state->interval_start = int_start->time;
+}
+
+
 /** struct bgpdatainfo_t update (inside the interval) */
 static int stats_update(struct bgpcorsaro_bgpstats_state_t *state,
 			bgpcorsaro_record_t * record)
@@ -1128,8 +1266,7 @@ static int stats_update(struct bgpcorsaro_bgpstats_state_t *state,
 
 /** struct bgpdatainfo_t eoi (end of interval) - write stats at end of
     interval*/
-static void stats_dump(struct bgpcorsaro_bgpstats_state_t *state,
-		       bgpcorsaro_interval_t *int_end)
+static void stats_dump(struct bgpcorsaro_bgpstats_state_t *state)
 {
   assert(state != NULL);
   khiter_t k;
@@ -1141,8 +1278,7 @@ static void stats_dump(struct bgpcorsaro_bgpstats_state_t *state,
       if (kh_exist(state->collectors_table, k))
 	{
 	  collector_data = kh_value(state->collectors_table, k);
-	  collectordata_dump(collector_data, int_end->time);
-
+	  collectordata_dump(collector_data, state->interval_start);
 	  /* might as well reset here to avoid walking the hash a second time */
 	  collectordata_end_of_interval(collector_data);
 	}
@@ -1257,6 +1393,8 @@ int bgpcorsaro_bgpstats_start_interval(bgpcorsaro_t *bgpcorsaro,
 	outfile_p[state->outfile_n];
     }
 
+  stats_init(state, int_start);
+
   bgpcorsaro_io_write_interval_start(bgpcorsaro, state->outfile, int_start);
 
   return 0;
@@ -1270,7 +1408,8 @@ int bgpcorsaro_bgpstats_end_interval(bgpcorsaro_t *bgpcorsaro,
 
   bgpcorsaro_log(__func__, bgpcorsaro, "Dumping stats for interval %d",
 		 int_end->number);
-  stats_dump(state, int_end);
+  /* dump statistics */
+  stats_dump(state);
 
   bgpcorsaro_io_write_interval_end(bgpcorsaro, state->outfile, int_end);
 
