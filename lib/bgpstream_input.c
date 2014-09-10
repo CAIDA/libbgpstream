@@ -183,7 +183,7 @@ static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * cons
   int rv_update_time = 0;
   // when we parse ribs we return all the ribs at a given filetime
   // plus all the updates having the same filetime (rv-ris updates rule applies)
-  if(strcmp(iterator->filetype,"ribs") == 0) {
+  if(iterator != NULL && strcmp(iterator->filetype,"ribs") == 0) {
     // 1) collecting all the ribs
     while( iterator != NULL &&						\
 	   strcmp(iterator->filetype,bs_input_mgr->head->filetype) == 0 && \
@@ -193,7 +193,7 @@ static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * cons
     }
   }
   // if the head (or the iterator after ribs) refers to an update input
-  if(strcmp(iterator->filetype,"updates") == 0) {
+  if(iterator != NULL && strcmp(iterator->filetype,"updates") == 0) {
     while( iterator != NULL &&						\
 	   strcmp(iterator->filetype, "updates") == 0 && \
 	   iterator->epoch_filetime == bs_input_mgr->head->epoch_filetime ){   

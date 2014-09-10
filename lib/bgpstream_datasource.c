@@ -828,8 +828,9 @@ static char *build_filename(bgpstream_mysql_datasource_t *ds) {
   char *filename = NULL;
   char date[11]; /* "YYYY/MM/DD" */
   long tmp = ds->filetime_res;
-
-  if(strftime(date, 11, "%Y/%m/%d", gmtime(&tmp)) == 0) {
+  struct tm time_result;
+  // gmtime_r is the thread_safe version of gmtime
+  if(strftime(date, 11, "%Y/%m/%d", gmtime_r(&tmp,&time_result)) == 0) {
     return NULL;
   }
 
@@ -853,7 +854,7 @@ static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasou
   gettimeofday(&tv, NULL);
   // update current_timestamp - we always ask for data 1 second old at least
   mysql_ds->current_timestamp = tv.tv_sec - 1; // now() - 1 second
- 
+  // printf("--> %d\n",  mysql_ds->current_timestamp);
   bgpstream_debug("\t\tBSDS_MYSQL: mysql_ds update input queue start ");
 
   /* just to be safe, we clear all the strings */
