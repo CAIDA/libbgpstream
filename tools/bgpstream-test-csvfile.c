@@ -50,8 +50,8 @@ int main(){
     return 1;
   }
 
-  bgpstream_add_filter(bs, BS_PROJECT, "routeviews");
-  bgpstream_add_filter(bs, BS_COLLECTOR, "route-views2");
+  //  bgpstream_add_filter(bs, BS_PROJECT, "routeviews");
+  // bgpstream_add_filter(bs, BS_COLLECTOR, "route-views2");
   bgpstream_add_filter(bs, BS_BGP_TYPE, "ribs");
   bgpstream_add_filter(bs, BS_BGP_TYPE, "updates");
   bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL, "1405382400", "1405382800");
@@ -78,7 +78,7 @@ int main(){
   strcpy(rstatus, "");
   bgpstream_elem_t * bs_elem_queue;
 
-  // allocate memory for bs_record  
+   // allocate memory for bs_record  
   bgpstream_record_t * const bs_record = bgpstream_create_record();
   if(bs_record != NULL) {
     do {
@@ -94,13 +94,13 @@ int main(){
 	  if(bs_record->bd_entry != NULL) {
 	    read++;
 	    if(read >= 13814) {
-	      printf("\t%d\t%ld\t%ld\t%d\t%s\t%s\t%d\n", 
-		   counter, 
-		   bs_record->attributes.record_time,
-		   bs_record->attributes.dump_time,
-		   bs_record->attributes.dump_type, 
-		   bs_record->attributes.dump_collector,
-		   rstatus, (int)result_time);
+	      printf("\t%d\t%ld\t%ld\t%d\t%s\t%s\t%d\n",
+	      	   counter,
+	      	   bs_record->attributes.record_time,
+	      	   bs_record->attributes.dump_time,
+	      	   bs_record->attributes.dump_type,
+	      	   bs_record->attributes.dump_collector,
+	      	   rstatus, (int)result_time);
 	      // process entry and get bgpdump output
 	      // bgpdump_process(bs_record->bd_entry);
 	      // bs_elem_queue = bgpstream_get_elem_queue(bs_record);

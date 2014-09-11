@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 
  //function used for debug
@@ -172,6 +173,37 @@ int bgpstream_input_mgr_push_sorted_input(bgpstream_input_mgr_t * const bs_input
 
 
 
+static void bgpstream_set_intervals(bgpstream_input_t *input, 
+				    int *current_interval_start,
+				    int *current_interval_end ){
+  assert(input);
+  const int rv_update_offset  = 15 * 60; 
+  const int ris_update_offset =  5 * 60; 
+  *current_interval_start = *current_interval_end = 0;  
+
+  if(strcmp(input->filetype,"ribs") == 0) {
+    if(strcmp(input->fileproject,"routeviews") == 0) {
+      *current_interval_start = input->epoch_filetime - rv_update_offset;
+      *current_interval_end = input->epoch_filetime + rv_update_offset;
+    }
+    if(strcmp(input->fileproject,"ris") == 0) {
+      *current_interval_start = input->epoch_filetime - ris_update_offset;
+      *current_interval_end = input->epoch_filetime + ris_update_offset;
+    }
+  }
+  if(strcmp(input->filetype,"updates") == 0) {
+    if(strcmp(input->fileproject,"routeviews") == 0) {
+      *current_interval_start = input->epoch_filetime;
+      *current_interval_end = input->epoch_filetime + rv_update_offset;
+    }
+    if(strcmp(input->fileproject,"ris") == 0) {
+      *current_interval_start = input->epoch_filetime;
+      *current_interval_end = input->epoch_filetime + ris_update_offset;
+    }
+  }
+}
+
+
 /* Set the last input to process  
  * the function is static: it is not visible outside this file
  */
@@ -179,44 +211,50 @@ static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * cons
   bgpstream_debug("\tBSI_MGR: last to process set start");
   bs_input_mgr->last_to_process = NULL;
   bgpstream_input_t *iterator = bs_input_mgr->head;
-  int rv_update = 0;
-  int rv_update_time = 0;
-  // when we parse ribs we return all the ribs at a given filetime
-  // plus all the updates having the same filetime (rv-ris updates rule applies)
-  if(iterator != NULL && strcmp(iterator->filetype,"ribs") == 0) {
-    // 1) collecting all the ribs
-    while( iterator != NULL &&						\
-	   strcmp(iterator->filetype,bs_input_mgr->head->filetype) == 0 && \
-	   iterator->epoch_filetime == bs_input_mgr->head->epoch_filetime ){
-      bs_input_mgr->last_to_process = iterator;
-      iterator = iterator->next;
-    }
+  int to_process_interval_end = 0;
+  int current_interval_start = 0;
+  int current_interval_end = 0;
+
+  /* every bgpdata in the code affects or possibly affect
+   * a specific time interval, i.e.:
+   * - each update affects the interval of time that corresponds
+   *   to the update interval size (e.g. 5 mins)
+   * - each rib affects an interval of time that corresponds to:
+   *   [ rib_time - 1 update interval, rib_time + 1 update interval]
+   * 
+   * in order to select the data to process we start with the first
+   * bgp data in the queue and we add the next one if its interval
+   * overlaps with the current one. Also if it does overlap, then
+   * the reference interval is expanded accordingly.
+   */
+
+  if(iterator == NULL) {
+    bgpstream_debug("\tBSI_MGR: empty queue end");  
+    return;
   }
-  // if the head (or the iterator after ribs) refers to an update input
-  if(iterator != NULL && strcmp(iterator->filetype,"updates") == 0) {
-    while( iterator != NULL &&						\
-	   strcmp(iterator->filetype, "updates") == 0 && \
-	   iterator->epoch_filetime == bs_input_mgr->head->epoch_filetime ){   
-      if(strcmp(iterator->fileproject,"routeviews") == 0) {
-	rv_update = 1; // check if a routeviews update has been read and save its time
-	rv_update_time = iterator->epoch_filetime;
-      }
-      bs_input_mgr->last_to_process = iterator;
-      iterator = iterator->next;
+  
+  /* step 0: init the "global" (to_process) interval end)
+   * using the first input object */
+  bgpstream_set_intervals(iterator, &current_interval_start, &to_process_interval_end);
+
+  while(iterator != NULL) { 
+    // compute current input interval
+    bgpstream_set_intervals(iterator, &current_interval_start, &current_interval_end);
+    // if it does not overlap with the global one, then we reached the end
+    if(current_interval_start >= to_process_interval_end) {
+      // DEBUG  printf("\n\n");
+      break;
     }
-    if(rv_update == 1) {
-      // when a routeviews update is present in the list, we also collect all
-      // the ris updates within the same interval (i.e. rv_time already included,
-      // plus rv_time + 5 mins plus rv_time + 10 mins). In fact, while routeviews
-      // updates provides information related to a 15 mins interval, ris does
-      // that for a 5 mins interval
-      while( iterator != NULL &&					\
-	     strcmp(iterator->filetype,"updates") == 0 && \
-	     iterator->epoch_filetime <= (rv_update_time + 10 * 60)  ){
-	bs_input_mgr->last_to_process = iterator;
-	iterator = iterator->next;
-      }      
+    // otherwise, we extend the global interval end
+    if(to_process_interval_end < current_interval_end) {
+      to_process_interval_end = current_interval_end;    
     }    
+    // DEBUG printf("%s\n", iterator->filename);
+    // DEBUG printf("\t%d - %d | %d\n", current_interval_start, current_interval_end, to_process_interval_end);
+    // and we update the last to process
+    bs_input_mgr->last_to_process = iterator;
+    // next
+    iterator = iterator->next;
   }
   bgpstream_debug("\tBSI_MGR: last to process set end");
 }
@@ -227,19 +265,14 @@ static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * cons
 /*  *\/ */
 /* static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * const bs_input_mgr){ */
 /*   bgpstream_debug("\tBSI_MGR: last to process set start"); */
-/*   /\* !!! multiple policies can be implemented !!! */
-/*    * Here we consider a unique policy: we process  */
-/*    * files with the same filetype, then if type: */
-/*    * - ribs -> then we consider all the files with the same time */
-/*    *   bgp_file_time (epoch_filetime) */
-/*    * - updates -> then we consider all the files with the same time */
-/*    *   filetype + routeviews 1 timestamp + ris 3 timestamps */
-/*    *\/ */
 /*   bs_input_mgr->last_to_process = NULL; */
 /*   bgpstream_input_t *iterator = bs_input_mgr->head; */
 /*   int rv_update = 0; */
 /*   int rv_update_time = 0; */
-/*   if(strcmp(bs_input_mgr->head->filetype,"ribs") == 0) { */
+/*   // when we parse ribs we return all the ribs at a given filetime */
+/*   // plus all the updates having the same filetime (rv-ris updates rule applies) */
+/*   if(iterator != NULL && strcmp(iterator->filetype,"ribs") == 0) { */
+/*     // 1) collecting all the ribs */
 /*     while( iterator != NULL &&						\ */
 /* 	   strcmp(iterator->filetype,bs_input_mgr->head->filetype) == 0 && \ */
 /* 	   iterator->epoch_filetime == bs_input_mgr->head->epoch_filetime ){ */
@@ -247,9 +280,10 @@ static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * cons
 /*       iterator = iterator->next; */
 /*     } */
 /*   } */
-/*   if(strcmp(bs_input_mgr->head->filetype,"updates") == 0) { */
+/*   // if the head (or the iterator after ribs) refers to an update input */
+/*   if(iterator != NULL && strcmp(iterator->filetype,"updates") == 0) { */
 /*     while( iterator != NULL &&						\ */
-/* 	   strcmp(iterator->filetype,bs_input_mgr->head->filetype) == 0 && \ */
+/* 	   strcmp(iterator->filetype, "updates") == 0 && \ */
 /* 	   iterator->epoch_filetime == bs_input_mgr->head->epoch_filetime ){    */
 /*       if(strcmp(iterator->fileproject,"routeviews") == 0) { */
 /* 	rv_update = 1; // check if a routeviews update has been read and save its time */
@@ -265,7 +299,7 @@ static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * cons
 /*       // updates provides information related to a 15 mins interval, ris does */
 /*       // that for a 5 mins interval */
 /*       while( iterator != NULL &&					\ */
-/* 	     strcmp(iterator->filetype,bs_input_mgr->head->filetype) == 0 && \ */
+/* 	     strcmp(iterator->filetype,"updates") == 0 && \ */
 /* 	     iterator->epoch_filetime <= (rv_update_time + 10 * 60)  ){ */
 /* 	bs_input_mgr->last_to_process = iterator; */
 /* 	iterator = iterator->next; */

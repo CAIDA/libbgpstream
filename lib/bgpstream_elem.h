@@ -74,16 +74,22 @@ typedef struct struct_bgpstream_aspath_t {
 
 
 typedef enum {BST_RIB = 0,
-	      BST_ANNOUNCEMENT =1,
+	      BST_ANNOUNCEMENT = 1,
 	      BST_WITHDRAWAL = 2,
 	      BST_STATE = 3
 } bgpstream_elem_type_t;
 
 #define BGPSTREAM_ELEM_TYPE_MAX 4
 
-typedef enum {BST_UNKNOWN, BST_IDLE, BST_CONNECT, BST_ACTIVE,
-	      BST_OPENSENT, BST_OPENCONFIRM, BST_ESTABLISHED, 
-	      BST_NULL} bgpstream_peer_state_t;
+typedef enum {BST_UNKNOWN = 0,
+	      BST_IDLE = 1,
+	      BST_CONNECT = 2 ,
+	      BST_ACTIVE = 3,
+	      BST_OPENSENT = 4,
+	      BST_OPENCONFIRM = 5,
+	      BST_ESTABLISHED = 6, 
+	      BST_NULL =7 
+} bgpstream_peer_state_t;
 
 typedef struct struct_bgpstream_elem_t {
   bgpstream_elem_type_t type;
