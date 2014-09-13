@@ -35,7 +35,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-
 /* datasource specific functions declarations */
 
 // customlist datasource functions
@@ -59,6 +58,11 @@ static void bgpstream_mysql_datasource_destroy(bgpstream_mysql_datasource_t* mys
 
 /* datasource mgr related functions */
 
+// backoff minimum and maximum times
+const static int bs_min_wait = 30;   // 30 seconds
+const static int bs_max_wait = 3600; // 1 hour
+
+
 
 bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
   bgpstream_debug("\tBSDS_MGR: create start");
@@ -69,6 +73,7 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
   // default values
   datasource_mgr->datasource = BS_MYSQL; // default data source
   datasource_mgr->blocking = 0;
+  datasource_mgr->backoff_time = bs_min_wait;
   // datasources (none of them is active)
   datasource_mgr->mysql_ds = NULL;
   datasource_mgr->customlist_ds = NULL;
@@ -150,10 +155,18 @@ int bgpstream_datasource_mgr_update_input_queue(bgpstream_datasource_mgr_t *data
       results = bgpstream_mysql_datasource_update_input_queue(datasource_mgr->mysql_ds, input_mgr);
       if(results == 0 && datasource_mgr->blocking) {
 	// results = 0 => 2+ time and database did not give any error
-	sleep(30);
+	sleep(datasource_mgr->backoff_time);
+	datasource_mgr->backoff_time = datasource_mgr->backoff_time * 2;
+	if(datasource_mgr->backoff_time > bs_max_wait) {
+	  datasource_mgr->backoff_time = bs_max_wait;
+	}
       }
       bgpstream_debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
     } while(datasource_mgr->blocking && results == 0);
+    // if we received something we reset the backoff time
+    if(datasource_mgr->blocking) {
+      datasource_mgr->backoff_time = bs_min_wait;
+    }
   }
   if(datasource_mgr->datasource == BS_CUSTOMLIST) {
     results = bgpstream_customlist_datasource_update_input_queue(datasource_mgr->customlist_ds, input_mgr);

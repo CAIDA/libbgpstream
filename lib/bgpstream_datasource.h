@@ -33,7 +33,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <mysql.h>
+#include <mysql/mysql.h>
 
 
 typedef enum {DS_ON,    /* current data source is on */
@@ -95,7 +95,9 @@ typedef struct struct_bgpstream_datasource_mgr_t {
   bgpstream_customlist_datasource_t *customlist_ds;
   bgpstream_csvfile_datasource_t *csvfile_ds;
   // other datasources
+  // blocking options
   int blocking;
+  int backoff_time;
   bgpstream_datasource_status_t status;
 } bgpstream_datasource_mgr_t;
 
