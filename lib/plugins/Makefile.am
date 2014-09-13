@@ -35,6 +35,9 @@ include_HEADERS =
 PLUGIN_SRC=
 PLUGIN_LIBS=
 
+if WITH_PLUGIN_BGPRIBS
+PLUGIN_SRC+=bgpcorsaro_bgpribs.c bgpcorsaro_bgpribs.h
+endif
 if WITH_PLUGIN_DUMP
 PLUGIN_SRC+=bgpcorsaro_dump.c bgpcorsaro_dump.h
 include_HEADERS+=bgpcorsaro_dump.h
