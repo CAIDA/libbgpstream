@@ -47,12 +47,28 @@ struct window {
 
 
 void usage() {
-  printf("ciao\n");
+  fprintf(stderr,
+	  "usage: bgpstream -d <datasource> [<options>]\n"
+	  "Available datasources are:\n"
+	  "   mysql        TODO: describe\n"
+	  "   csvfile      TODO: describe\n"
+	  "   customlist   TODO: describe\n"
+	  "Available options are:\n"
+	  "   -P <project>   process records from only the given project (routeviews, ris)*\n"
+	  "   -C <collector> process records from only the given collector*\n"
+	  "   -T <type>      process records with only the given type (ribs, updates)*\n"
+	  "   -W <start,end> process records only within the given time window*\n"
+	  "   -b             make blocking requests for BGP records\n"
+	  "                  allows bgpstream to be used to process data in real-time\n"
+	  "   -r             print information for each BGP record (default)\n"
+	  "   -e             print information for each elemnt of a valid BGP record\n"
+	  "\n"
+	  "* denotes an option that can be given multiple times\n"
+	  );
 }
 
 static void print_bs_record(bgpstream_record_t * bs_record);
 static void print_bs_elem(bgpstream_elem_t * bs_elem);
-
 
 int main(int argc, char *argv[])
 {
