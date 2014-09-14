@@ -257,7 +257,9 @@ static void bgpstream_reader_export_record(bgpstream_reader_t * const bs_reader,
   }
   bs_record->attributes.dump_time = bs_reader->dump_time;
   bs_record->attributes.record_time = bs_reader->record_time;
-  if(bs_reader->valid_read == 1 ) {
+  // if this is the first significant record and no previous 
+  // valid record has been discarded because of time
+  if(bs_reader->valid_read == 1 && bs_reader->successful_read == 1) {
     bs_record->dump_pos = DUMP_START;    
   }
   else {
@@ -525,6 +527,10 @@ int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reade
   bs_reader->next = NULL;
   // bgpstream_reader_export
   bgpstream_reader_export_record(bs_reader, bs_record);
+  // we save the difference between successful read
+  // and valid read, so we can check if some valid data
+  // have been discarded during the last read_new_data
+  int read_diff = bs_reader->successful_read - bs_reader->valid_read;
   // if previous read was successful, we read next
   // entry from same reader
   if(bs_reader->status == VALID_ENTRY) {
@@ -532,7 +538,10 @@ int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reade
     // if end of dump is reached after a successful read (already exported)
     // we destroy the reader
     if(bs_reader->status == END_OF_DUMP) {
-      bs_record->dump_pos = DUMP_END;
+      if((bs_reader->successful_read - bs_reader->valid_read) == read_diff) {
+	bs_record->dump_pos = DUMP_END;
+      }
+      // otherwise we maintain the dump_pos already assigned
       bgpstream_reader_destroy(bs_reader);
     }
     // otherwise we insert the reader in the queue again
