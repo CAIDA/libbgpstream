@@ -131,12 +131,13 @@ void prefixes_table_destroy(prefixes_table_t *prefixes_table);
  */
 
 typedef struct struct_peerdata_t {
+  char * peer_address_str; /* graphite-safe version of the peer ip address */
   // ribs table
   ribs_table_t * ribs_table;
   // TODO: add status variables and metrics here
 } peerdata_t;
 
-peerdata_t *peerdata_create();
+peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address);
 void peerdata_destroy(peerdata_t *peer_data);
 
 

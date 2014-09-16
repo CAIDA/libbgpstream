@@ -27,6 +27,9 @@
 #include <assert.h>
 #include "utils.h"
 
+#define METRIC_PREFIX "bgp"
+
+
 
 static void graphite_safe(char *p)
 {
@@ -131,7 +134,7 @@ void prefixes_table_destroy(prefixes_table_t *prefixes_table)
 
 /** peerdata related functions */
 
-peerdata_t *peerdata_create()
+peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
 {
   peerdata_t *peer_data;
   if((peer_data = malloc_zero(sizeof(peerdata_t))) == NULL)
@@ -143,6 +146,27 @@ peerdata_t *peerdata_create()
       free(peer_data);
       return NULL;
     }
+  
+  char ip_str[INET6_ADDRSTRLEN];
+  ip_str[0] = '\0';
+  if(peer_address->type == BST_IPV4)
+    {
+      inet_ntop(AF_INET, &(peer_address->address.v4_addr), ip_str, INET6_ADDRSTRLEN);
+    }
+  else // assert(peer_address->type == BST_IPV6)
+    {
+      inet_ntop(AF_INET6, &(peer_address->address.v6_addr), ip_str, INET6_ADDRSTRLEN);
+    }
+  
+  if( (peer_data->peer_address_str = strdup(ip_str)) == NULL ) 
+    {
+      ribs_table_destroy(peer_data->ribs_table);
+      peer_data->ribs_table = NULL;
+      free(peer_data);
+      return NULL;
+    }
+  graphite_safe(peer_data->peer_address_str);
+
   return peer_data;
 }
 
@@ -154,6 +178,11 @@ void peerdata_destroy(peerdata_t *peer_data)
 	{
 	  ribs_table_destroy(peer_data->ribs_table);
 	  peer_data->ribs_table = NULL;
+	}
+      if(peer_data->peer_address_str != NULL) 
+	{
+	  free(peer_data->peer_address_str);
+	  peer_data->peer_address_str = NULL;
 	}
       free(peer_data);
     }

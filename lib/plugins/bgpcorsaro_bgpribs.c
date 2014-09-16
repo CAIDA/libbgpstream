@@ -75,18 +75,18 @@ static bgpcorsaro_plugin_t bgpcorsaro_bgpribs_plugin = {
   BGPCORSARO_PLUGIN_GENERATE_TAIL,
 };
 
-#define METRIC_PREFIX "bgp"
-
-
 
 /** Holds the state for an instance of this plugin */
 struct bgpcorsaro_bgpribs_state_t {
+
   /** The outfile for the plugin */
   iow_t *outfile;
   /** A set of pointers to outfiles to support non-blocking close */
   iow_t *outfile_p[OUTFILE_POINTERS];
   /** The current outfile */
   int outfile_n;
+
+  // bgpribs_structures
 
   /** interval start time */
   int interval_start;
@@ -98,6 +98,7 @@ struct bgpcorsaro_bgpribs_state_t {
 /** Extends the generic plugin state convenience macro in bgpcorsaro_plugin.h */
 #define STATE(bgpcorsaro)						\
   (BGPCORSARO_PLUGIN_STATE(bgpcorsaro, bgpribs, BGPCORSARO_PLUGIN_ID_BGPRIBS))
+
 /** Extends the generic plugin plugin convenience macro in bgpcorsaro_plugin.h */
 #define PLUGIN(bgpcorsaro)						\
   (BGPCORSARO_PLUGIN_PLUGIN(bgpcorsaro, BGPCORSARO_PLUGIN_ID_BGPRIBS))
@@ -169,33 +170,72 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
 #endif
 
 
-/** saves the beginning of the interval in the state */
-static void stats_init(struct bgpcorsaro_bgpribs_state_t *state,
-		       bgpcorsaro_interval_t *int_start) {
+
+
+/** initialize the structures in the plugin state that
+ *  are specific for the current plugin:
+ *  interval_start and collectors_table
+ */
+static int bgpribs_structures_init(struct bgpcorsaro_bgpribs_state_t *state)
+{
+  assert(state);
+  if((state->collectors_table = collectors_table_create()) == NULL) 
+    {
+      return -1;
+    }
+  state->interval_start = 0;
+  return 0; // successful
+}
+
+
+static void bgpribs_structures_interval_start(struct bgpcorsaro_bgpribs_state_t *state,
+					      bgpcorsaro_interval_t *int_start)
+{
   assert(state != NULL);
   state->interval_start = int_start->time;
 }
 
 
-/** struct bgpdatainfo_t update (inside the interval) */
-static int stats_update(struct bgpcorsaro_bgpribs_state_t *state,
-			bgpcorsaro_record_t * record)
+static int bgpribs_structures_process_record(struct bgpcorsaro_bgpribs_state_t *state,
+					     bgpcorsaro_record_t *record)
 {
   assert(state != NULL);
   assert(record != NULL);
 
+  bgpstream_record_t * bs_record = BS_REC(record);
+  assert(bs_record != NULL);
 
-  return 0;
+  // TODO:
+
+  return 0; // if everything is fine
 }
 
-/** dump metrics at end of interval*/
-static void stats_dump(struct bgpcorsaro_bgpribs_state_t *state)
+
+static void bgpribs_structures_interval_end(struct bgpcorsaro_bgpribs_state_t *state)
 {
   assert(state != NULL);
-  khiter_t k;
-  collectordata_t *collector_data;
+
+  // TODO:
 
 }
+
+
+/** destroy the structures in the plugin state that
+ *  are specific for the current plugin:
+ *  collectors_table (and reset interval start)
+ */
+static void bgpribs_structures_close(struct bgpcorsaro_bgpribs_state_t *state)
+{
+  assert(state);
+  if(state->collectors_table != NULL) 
+    {
+      collectors_table_destroy(state->collectors_table);
+      state->collectors_table = NULL;
+    }
+  state->interval_start = 0;
+}
+
+
 
 
 /* == PUBLIC PLUGIN FUNCS BELOW HERE == */
@@ -205,6 +245,7 @@ bgpcorsaro_plugin_t *bgpcorsaro_bgpribs_alloc(bgpcorsaro_t *bgpcorsaro)
 {
   return &bgpcorsaro_bgpribs_plugin;
 }
+
 
 /** Implements the init_output function of the plugin API */
 int bgpcorsaro_bgpribs_init_output(bgpcorsaro_t *bgpcorsaro)
@@ -220,13 +261,13 @@ int bgpcorsaro_bgpribs_init_output(bgpcorsaro_t *bgpcorsaro)
       goto err;
     }
 
-  if((state->collectors_table = collectors_table_create()) == NULL) 
+  if(bgpribs_structures_init(state) == -1) 
     {
       bgpcorsaro_log(__func__, bgpcorsaro,
 		     "could not create collectors_table in bgpcorsaro_bgpribs_state_t");
-      goto err;
+      goto err;      
     }
-
+  
   bgpcorsaro_plugin_register_state(bgpcorsaro->plugin_manager, plugin, state);
 
 #if 0
@@ -245,6 +286,7 @@ int bgpcorsaro_bgpribs_init_output(bgpcorsaro_t *bgpcorsaro)
   bgpcorsaro_bgpribs_close_output(bgpcorsaro);
   return -1;
 }
+
 
 /** Implements the close_output function of the plugin API */
 int bgpcorsaro_bgpribs_close_output(bgpcorsaro_t *bgpcorsaro)
@@ -266,10 +308,7 @@ int bgpcorsaro_bgpribs_close_output(bgpcorsaro_t *bgpcorsaro)
 	}
       state->outfile = NULL;
 
-      if(state->collectors_table != NULL)
-	{
-	  collectors_table_destroy(state->collectors_table);
-	}
+      bgpribs_structures_close(state);
 
       bgpcorsaro_plugin_free_state(bgpcorsaro->plugin_manager,
 				   PLUGIN(bgpcorsaro));
@@ -277,9 +316,10 @@ int bgpcorsaro_bgpribs_close_output(bgpcorsaro_t *bgpcorsaro)
   return 0;
 }
 
+
 /** Implements the start_interval function of the plugin API */
 int bgpcorsaro_bgpribs_start_interval(bgpcorsaro_t *bgpcorsaro,
-				       bgpcorsaro_interval_t *int_start)
+				      bgpcorsaro_interval_t *int_start)
 {
   struct bgpcorsaro_bgpribs_state_t *state = STATE(bgpcorsaro);
   if(state->outfile == NULL)
@@ -298,12 +338,13 @@ int bgpcorsaro_bgpribs_start_interval(bgpcorsaro_t *bgpcorsaro,
 	outfile_p[state->outfile_n];
     }
 
-  stats_init(state, int_start);
+  bgpribs_structures_interval_start(state, int_start);
 
   bgpcorsaro_io_write_interval_start(bgpcorsaro, state->outfile, int_start);
 
   return 0;
 }
+
 
 /** Implements the end_interval function of the plugin API */
 int bgpcorsaro_bgpribs_end_interval(bgpcorsaro_t *bgpcorsaro,
@@ -313,8 +354,9 @@ int bgpcorsaro_bgpribs_end_interval(bgpcorsaro_t *bgpcorsaro,
 
   bgpcorsaro_log(__func__, bgpcorsaro, "Dumping stats for interval %d",
 		 int_end->number);
-  /* dump statistics */
-  stats_dump(state);
+
+  /* dump metrics */
+  bgpribs_structures_interval_end(state);
 
   bgpcorsaro_io_write_interval_end(bgpcorsaro, state->outfile, int_end);
 
@@ -340,6 +382,7 @@ int bgpcorsaro_bgpribs_end_interval(bgpcorsaro_t *bgpcorsaro,
   return 0;
 }
 
+
 /** Implements the process_record function of the plugin API */
 int bgpcorsaro_bgpribs_process_record(bgpcorsaro_t *bgpcorsaro,
 				       bgpcorsaro_record_t *record)
@@ -354,8 +397,18 @@ int bgpcorsaro_bgpribs_process_record(bgpcorsaro_t *bgpcorsaro,
     }
 
   assert(state != NULL);
-  return stats_update(state, record);
+  return bgpribs_structures_process_record(state, record);
 }
+
+
+
+
+
+
+
+
+
+
 
 
 
