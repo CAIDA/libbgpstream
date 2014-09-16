@@ -250,6 +250,7 @@ AC_SUBST([BGPCORSARO_MINOR_VERSION])
 AC_HEADER_ASSERT
 
 AC_CONFIG_FILES([Makefile lib/Makefile lib/plugins/Makefile
+			  lib/plugins/libbgpribs/Makefile
 			  tools/Makefile common/Makefile
 			  common/libpatricia/Makefile
 			  common/libcsv/Makefile])
