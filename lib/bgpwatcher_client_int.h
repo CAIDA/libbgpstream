@@ -87,11 +87,27 @@ typedef struct bgpwatcher_client {
 } bgpwatcher_client_t;
 
 typedef struct bgpwatcher_client_pfx_table {
+
+  /** Client instance that owns this table */
+  bgpwatcher_client_t *client;
+
+  /** Time that this table was dumped */
+  uint32_t time;
+
   /** @todo */
+
 } bgpwatcher_client_pfx_table_t;
 
 typedef struct bgpwatcher_client_peer_table {
+
+  /** Client instance that owns this table */
+  bgpwatcher_client_t *client;
+
+  /** Time that this table was dumped */
+  uint32_t time;
+
   /** @todo */
+
 } bgpwatcher_client_peer_table_t;
 
 /** @} */

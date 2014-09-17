@@ -133,8 +133,15 @@ void bgpwatcher_client_perr(bgpwatcher_client_t *client);
  * @return pointer to a bgpwatcher pfx table instance if successful, NULL
  * otherwise
  */
-bgpwatcher_client_pfx_table_t *bgpwatcher_client_create_pfx_table(
+bgpwatcher_client_pfx_table_t *bgpwatcher_client_pfx_table_create(
 						   bgpwatcher_client_t *client);
+
+/** Set the time that a table represents
+ *
+ * @param time          new time to set for the table
+ */
+void bgpwatcher_client_pfx_table_set_time(bgpwatcher_client_pfx_table_t *table,
+					  uint32_t time);
 
 /** Add a prefix record to the given prefix table
  *
@@ -167,8 +174,15 @@ int bgpwatcher_client_pfx_table_flush(bgpwatcher_client_pfx_table_t *table);
  * @return pointer to a bgpwatcher peer table instance if successful, NULL
  * otherwise
  */
-bgpwatcher_client_peer_table_t *bgpwatcher_client_create_peer_table(
+bgpwatcher_client_peer_table_t *bgpwatcher_client_peer_table_create(
 						   bgpwatcher_client_t *client);
+
+/** Set the time that a table represents
+ *
+ * @param time          new time to set for the table
+ */
+void bgpwatcher_client_peer_table_set_time(bgpwatcher_client_peer_table_t *table,
+					   uint32_t time);
 
 /** Add a peer record to the given peer table
  *

@@ -42,10 +42,16 @@ void bgpwatcher_client_perr(bgpwatcher_client_t *client)
   return;
 }
 
-bgpwatcher_client_pfx_table_t *bgpwatcher_client_create_pfx_table(
+bgpwatcher_client_pfx_table_t *bgpwatcher_client_pfx_table_create(
 						   bgpwatcher_client_t *client)
 {
   return NULL;
+}
+
+void bgpwatcher_client_pfx_table_set_time(bgpwatcher_client_pfx_table_t *table,
+					  uint32_t time)
+{
+  return;
 }
 
 int bgpwatcher_client_pfx_table_add(bgpwatcher_client_pfx_table_t *table,
@@ -59,10 +65,16 @@ int bgpwatcher_client_pfx_table_flush(bgpwatcher_client_pfx_table_t *table)
   return -1;
 }
 
-bgpwatcher_client_peer_table_t *bgpwatcher_client_create_peer_table(
+bgpwatcher_client_peer_table_t *bgpwatcher_client_peer_table_create(
 						   bgpwatcher_client_t *client)
 {
   return NULL;
+}
+
+void bgpwatcher_client_peer_table_set_time(bgpwatcher_client_peer_table_t *table,
+					   uint32_t time)
+{
+  return;
 }
 
 int bgpwatcher_client_peer_table_add(bgpwatcher_client_peer_table_t *table,
