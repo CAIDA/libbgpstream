@@ -26,7 +26,12 @@ AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/common -I$(top_srcdir)/lib
 
 dist_bin_SCRIPTS =
 
-bin_PROGRAMS =
+bin_PROGRAMS = bgpwatcher-server
+
+bgpwatcher_server_SOURCES = \
+	bgpwatcher-server.c
+bgpwatcher_server_LDADD = -lbgpwatcher
+bgpwatcher_server_LDFLAGS = -L$(top_builddir)/lib
 
 ACLOCAL_AMFLAGS = -I m4
 

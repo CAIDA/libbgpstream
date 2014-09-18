@@ -20,10 +20,9 @@
 TAGS
 
 # Compiled programs
-# @@Add compiled programs here 
 ChangeLog
 *.tar.gz
-tools/hello-world
+tools/bgpwatcher-server
 
 # Autotools files
 # http://www.gnu.org/software/automake
