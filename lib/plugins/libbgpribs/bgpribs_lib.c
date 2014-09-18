@@ -140,8 +140,17 @@ peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
     {
       return NULL;
     }
-  if((peer_data->ribs_table = ribs_table_create()) == NULL)
+
+  if((peer_data->active_ribs_table = ribs_table_create()) == NULL)
     {
+      free(peer_data);
+      return NULL;
+    }
+
+  if((peer_data->uc_ribs_table = ribs_table_create()) == NULL)
+    {
+      ribs_table_destroy(peer_data->active_ribs_table);
+      peer_data->active_ribs_table = NULL;
       free(peer_data);
       return NULL;
     }
@@ -159,8 +168,10 @@ peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
   
   if( (peer_data->peer_address_str = strdup(ip_str)) == NULL ) 
     {
-      ribs_table_destroy(peer_data->ribs_table);
-      peer_data->ribs_table = NULL;
+      ribs_table_destroy(peer_data->active_ribs_table);
+      peer_data->active_ribs_table = NULL;
+      ribs_table_destroy(peer_data->uc_ribs_table);
+      peer_data->uc_ribs_table = NULL;
       free(peer_data);
       return NULL;
     }
@@ -169,14 +180,40 @@ peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
   return peer_data;
 }
 
+
+int peerdata_apply_elem(peerdata_t *peer_data, 
+			bgpstream_record_t * bs_record, bgpstream_elem_t *bs_elem)
+{
+  assert(peer_data);
+  assert(bs_record);
+  assert(bs_elem);
+  // TODO: here
+  return 0;
+}
+
+
+int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
+{
+  assert(peer_data);
+  assert(bs_record);
+  // TODO: here
+  return 1;
+}
+
+
 void peerdata_destroy(peerdata_t *peer_data)
 {
   if(peer_data != NULL) 
     {
-      if(peer_data->ribs_table != NULL) 
+      if(peer_data->active_ribs_table != NULL) 
 	{
-	  ribs_table_destroy(peer_data->ribs_table);
-	  peer_data->ribs_table = NULL;
+	  ribs_table_destroy(peer_data->active_ribs_table);
+	  peer_data->active_ribs_table = NULL;
+	}
+      if(peer_data->uc_ribs_table != NULL) 
+	{
+	  ribs_table_destroy(peer_data->uc_ribs_table);
+	  peer_data->uc_ribs_table = NULL;
 	}
       if(peer_data->peer_address_str != NULL) 
 	{
@@ -199,8 +236,7 @@ peers_table_t *peers_table_create()
     }
   /* all data are set to zero by malloc_zero, thereby:
    *  - elem_types = [0,0,0,0]
-   */
-
+   */  
   // init ipv4 and ipv6 peers khashes
   peers_table->ipv4_peers_table = kh_init(ipv4_peers_table_t);
   peers_table->ipv6_peers_table = kh_init(ipv6_peers_table_t);
@@ -286,10 +322,14 @@ int peers_table_process_record(peers_table_t *peers_table,
 		  peer_data = kh_value(peers_table->ipv6_peers_table, k);
 		}    
 	    }
-  
-	  // TODO:
-	  // send record and elem to peerdata (dump start and dump end
-	  // are very important!)
+	  
+	  // apply each elem to the right peer_data
+	  if((peerdata_apply_elem(peer_data, bs_record, bs_iterator)) == -1) 
+	    {
+	      // TODO: output some error message
+	      bgpstream_destroy_elem_queue(bs_elem_queue);
+	      return -1;
+	    }
 
 	  // other information are computed at dump time
 	  bs_iterator = bs_iterator->next;
@@ -309,9 +349,8 @@ int peers_table_process_record(peers_table_t *peers_table,
       if (kh_exist(peers_table->ipv4_peers_table, k))
 	{	  
 	  peer_data = kh_value(peers_table->ipv4_peers_table, k);
-	  // TODO:
-	  // send record to peerdata
-	  peer_status = 0; // TODO: substitue function
+	  // apply each record to each peer_data
+	  peer_status = peerdata_apply_record(peer_data, bs_record);
 	  if(peer_status < 0)
 	    {
 	      // TODO something went wrong during "TODO" function
@@ -329,9 +368,8 @@ int peers_table_process_record(peers_table_t *peers_table,
       if (kh_exist(peers_table->ipv6_peers_table, k))
 	{
 	  peer_data = kh_value(peers_table->ipv6_peers_table, k);
-	  // TODO:
-	  // send record to peerdata
-	  peer_status = 0; // TODO: substitue function
+	  // apply each record to each peer_data
+	  peer_status = peerdata_apply_record(peer_data, bs_record);
 	  if(peer_status < 0)
 	    {
 	      // TODO something went wrong during "TODO" function
@@ -343,7 +381,6 @@ int peers_table_process_record(peers_table_t *peers_table,
 	    }
 	}      
     }
-
   return num_active_peers;
 }
 

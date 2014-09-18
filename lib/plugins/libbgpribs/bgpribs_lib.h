@@ -56,7 +56,6 @@ KHASH_INIT(ipv4_rib_t /* name */,
 	   bgpstream_prefix_ipv4_hash_func /*__hash_func */,  
 	   bgpstream_prefix_ipv4_hash_equal /* __hash_equal */);
 
-
 KHASH_INIT(ipv6_rib_t /* name */, 
 	   bgpstream_prefix_t /* khkey_t */, 
 	   prefixdata_t /* khval_t */, 
@@ -67,6 +66,10 @@ KHASH_INIT(ipv6_rib_t /* name */,
 typedef struct struct_ribs_table_t {
   khash_t(ipv4_rib_t) * ipv4_rib;
   khash_t(ipv6_rib_t) * ipv6_rib;
+  // reference rib = last rib applied to this ribs_table
+  long int reference_rib_start; // when the reference rib starts
+  long int reference_rib_end;   // when the reference rib ends
+  long int reference_dump_time; // dump_time associated with the reference rib
 } ribs_table_t;
 
 
@@ -132,12 +135,16 @@ void prefixes_table_destroy(prefixes_table_t *prefixes_table);
 
 typedef struct struct_peerdata_t {
   char * peer_address_str; /* graphite-safe version of the peer ip address */
-  // ribs table
-  ribs_table_t * ribs_table;
+  // ribs tables
+  ribs_table_t * active_ribs_table; // active ribs table
+  ribs_table_t * uc_ribs_table;     // under-construction ribs table
   // TODO: add status variables and metrics here
 } peerdata_t;
 
 peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address);
+int peerdata_apply_elem(peerdata_t *peer_data, 
+			bgpstream_record_t * bs_record, bgpstream_elem_t *elem);
+int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record);
 void peerdata_destroy(peerdata_t *peer_data);
 
 
@@ -163,7 +170,7 @@ KHASH_INIT(ipv6_peers_table_t /* name */,
 
 typedef struct struct_peers_table_t {
   uint64_t elem_types[BGPSTREAM_ELEM_TYPE_MAX];
-  // TODO: other info
+  // TODO: other info?
   khash_t(ipv4_peers_table_t) * ipv4_peers_table;
   khash_t(ipv6_peers_table_t) * ipv6_peers_table;
 } peers_table_t;
