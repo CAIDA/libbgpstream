@@ -30,7 +30,7 @@
 
 #include <bgpwatcher_common.h>
 
-void bgpwatcher_set_err(bgpwatcher_err_t *err, int errcode,
+void bgpwatcher_err_set_err(bgpwatcher_err_t *err, int errcode,
 			const char *msg, ...)
 {
   char buf[256];
@@ -53,12 +53,12 @@ void bgpwatcher_set_err(bgpwatcher_err_t *err, int errcode,
   va_end(va);
 }
 
-int bgpwatcher_is_err(bgpwatcher_err_t *err)
+int bgpwatcher_err_is_err(bgpwatcher_err_t *err)
 {
   return err->err_num != 0;
 }
 
-void bgpwatcher_perr(bgpwatcher_err_t *err)
+void bgpwatcher_err_perr(bgpwatcher_err_t *err)
 {
   if(err->err_num) {
     fprintf(stderr,"%s (%d)\n", err->problem, err->err_num);

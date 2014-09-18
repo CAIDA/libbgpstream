@@ -41,6 +41,15 @@
  */
 
 /**
+ * @name Public Constants
+ *
+ * @{ */
+
+/* shared constants are in bgpwatcher_common.h */
+
+/** @} */
+
+/**
  * @name Public Enums
  *
  * @{ */
@@ -204,8 +213,11 @@ struct bgpwatcher_server {
       dead */
   int heartbeat_liveness;
 
+  /** Indicates that the server should shutdown at the next opportunity */
+  int shutdown;
+
   /* Functions to call when we get a message from a client */
-  bgpwatcher_server_callbacks_t callbacks;
+  bgpwatcher_server_callbacks_t *callbacks;
 
 };
 
@@ -254,5 +266,37 @@ void bgpwatcher_server_stop(bgpwatcher_server_t *server);
  * @param server       pointer to the bgpwatcher server instance to free
  */
 void bgpwatcher_server_free(bgpwatcher_server_t *server);
+
+/** Set the URI for the server to listen for client connections on
+ *
+ * @param server        pointer to a bgpwatcher server instance to update
+ * @param uri           pointer to a uri string
+ * @return 0 if the uri was set successfully, -1 otherwise
+ *
+ * @note defaults to BGPWATCHER_CLIENT_URI_DEFAULT
+ */
+int bgpwatcher_server_set_client_uri(bgpwatcher_server_t *server,
+				      const char *uri);
+
+/** Set the heartbeat interval
+ *
+ * @param server        pointer to a bgpwatcher server instance to update
+ * @param interval_ms   time in ms between heartbeats
+ *
+ * @note defaults to BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT
+ */
+void bgpwatcher_server_set_heartbeat_interval(bgpwatcher_server_t *server,
+					      uint64_t interval_ms);
+
+/** Set the heartbeat liveness
+ *
+ * @param server        pointer to a bgpwatcher server instance to update
+ * @param beats         number of heartbeats that can go by before a server is
+ *                      declared dead
+ *
+ * @note defaults to BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT
+ */
+void bgpwatcher_server_set_heartbeat_liveness(bgpwatcher_server_t *server,
+					      int beats);
 
 #endif

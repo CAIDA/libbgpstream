@@ -30,6 +30,7 @@
 #include "utils.h"
 
 #define ERR (&watcher->err)
+#define WATCHER(x) ((bgpwatcher_t*)(x))
 
 static int client_connect(bgpwatcher_server_t *server,
 			  bgpwatcher_server_client_info_t *client,
@@ -94,8 +95,8 @@ bgpwatcher_t *bgpwatcher_init()
   /* grab a copy of our callback pointers */
   if((callbacks = malloc(sizeof(bgpwatcher_server_callbacks_t))) == NULL)
     {
-      bgpwatcher_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			 "Could not malloc server callback structure");
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not malloc server callback structure");
       free(watcher);
       return NULL;
     }
@@ -121,8 +122,16 @@ bgpwatcher_t *bgpwatcher_init()
 
 int bgpwatcher_start(bgpwatcher_t *watcher)
 {
+  int rc;
+
   assert(watcher != NULL);
-  return bgpwatcher_server_start(watcher->server);
+
+  rc = bgpwatcher_server_start(watcher->server);
+
+  /* need to pass back the error code */
+  watcher->err = watcher->server->err;
+
+  return rc;
 }
 
 void bgpwatcher_stop(bgpwatcher_t *watcher)
@@ -151,3 +160,33 @@ bgpwatcher_err_t bgpwatcher_get_err(bgpwatcher_t *watcher)
   watcher->err.problem[0]='\0';
   return err;
 }
+
+void bgpwatcher_perr(bgpwatcher_t *watcher)
+{
+  bgpwatcher_err_perr(ERR);
+}
+
+
+int bgpwatcher_set_client_uri(bgpwatcher_t *watcher,
+			      const char *uri)
+{
+  assert(watcher != NULL);
+
+  return bgpwatcher_server_set_client_uri(watcher->server, uri);
+}
+
+void bgpwatcher_set_heartbeat_interval(bgpwatcher_t *watcher,
+				       uint64_t interval_ms)
+{
+  assert(watcher != NULL);
+
+  bgpwatcher_server_set_heartbeat_interval(watcher->server, interval_ms);
+}
+
+void bgpwatcher_set_heartbeat_liveness(bgpwatcher_t *watcher, int beats)
+{
+  assert(watcher != NULL);
+
+  bgpwatcher_server_set_heartbeat_liveness(watcher->server, beats);
+}
+

@@ -27,6 +27,8 @@
 
 #include <bgpwatcher_client_int.h>
 
+#define ERR (&client->err)
+
 bgpwatcher_client_t *bgpwatcher_client_init()
 {
   return NULL;
@@ -40,7 +42,7 @@ int bgpwatcher_client_start(bgpwatcher_client_t *client)
 void bgpwatcher_client_perr(bgpwatcher_client_t *client)
 {
   assert(client != NULL);
-  bgpwatcher_perr(&client->err);
+  bgpwatcher_err_perr(ERR);
 }
 
 bgpwatcher_client_pfx_table_t *bgpwatcher_client_pfx_table_create(

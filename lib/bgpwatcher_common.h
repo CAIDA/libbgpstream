@@ -39,6 +39,30 @@
  */
 
 /**
+ * @name Public Constants
+ *
+ * @{ */
+
+/** Default URI for the server to listen for client requests on */
+#define BGPWATCHER_CLIENT_URI_DEFAULT "tcp://*:6300"
+
+/** Default the server/client heartbeat interval to 1 second */
+#define BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT 1000
+
+/** Default the server/client heartbeat liveness to 3 beats */
+#define BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT 3
+
+/** Default the client reconnect minimum interval to 1 second */
+#define BGPWATCHER_RECONNECT_INTERVAL_MIN 1000
+
+/** Default the client reconnect maximum interval to 32 seconds */
+#define BGPWATCHER_RECONNECT_INTERVAL_MAX 32000
+
+/* shared constants are in bgpwatcher_common.h */
+
+/** @} */
+
+/**
  * @name Public Opaque Data Structures
  *
  * @{ */
@@ -134,7 +158,7 @@ typedef enum {
  * @param errcode       error code to set (> 0 indicates errno)
  * @param msg...        string message to set
  */
-void bgpwatcher_set_err(bgpwatcher_err_t *err, int errcode,
+void bgpwatcher_err_set_err(bgpwatcher_err_t *err, int errcode,
 			const char *msg, ...);
 
 /** Check if the given error status instance has an error set
@@ -142,13 +166,13 @@ void bgpwatcher_set_err(bgpwatcher_err_t *err, int errcode,
  * @param err           pointer to an error status instance to check for error
  * @return 0 if there is no error, 1 otherwise
  */
-int bgpwatcher_is_err(bgpwatcher_err_t *err);
+int bgpwatcher_err_is_err(bgpwatcher_err_t *err);
 
 /** Prints the error status (if any) to standard error and clears the error
  * state
  *
  * @param err       pointer to bgpwatcher error status instance
  */
-void bgpwatcher_perr(bgpwatcher_err_t *err);
+void bgpwatcher_err_perr(bgpwatcher_err_t *err);
 
 #endif

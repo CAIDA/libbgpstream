@@ -103,4 +103,43 @@ void bgpwatcher_free(bgpwatcher_t *watcher);
  */
 bgpwatcher_err_t bgpwatcher_get_err(bgpwatcher_t *watcher);
 
+/** Prints the error status (if any) to standard error and clears the error
+ * state
+ *
+ * @param err       pointer to bgpwatcher instance
+ */
+void bgpwatcher_perr(bgpwatcher_t *watcher);
+
+/** Set the URI for the server to listen for client connections on
+ *
+ * @param watcher        pointer to a bgpwatcher instance to update
+ * @param uri           pointer to a uri string
+ * @return 0 if the uri was set successfully, -1 otherwise
+ *
+ * @note defaults to BGPWATCHER_CLIENT_URI_DEFAULT
+ */
+int bgpwatcher_set_client_uri(bgpwatcher_t *watcher,
+			      const char *uri);
+
+/** Set the heartbeat interval
+ *
+ * @param watcher       pointer to a bgpwatcher instance to update
+ * @param interval_ms   time in ms between heartbeats
+ *
+ * @note defaults to BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT
+ */
+void bgpwatcher_set_heartbeat_interval(bgpwatcher_t *watcher,
+				       uint64_t interval_ms);
+
+/** Set the heartbeat liveness
+ *
+ * @param watcher       pointer to a bgpwatcher instance to update
+ * @param beats         number of heartbeats that can go by before a server is
+ *                      declared dead
+ *
+ * @note defaults to BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT
+ */
+void bgpwatcher_set_heartbeat_liveness(bgpwatcher_t *watcher,
+				       int beats);
+
 #endif
