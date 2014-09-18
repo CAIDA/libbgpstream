@@ -200,14 +200,14 @@ static int bgpribs_structures_process_record(struct bgpcorsaro_bgpribs_state_t *
 					     bgpcorsaro_record_t *record)
 {
   assert(state != NULL);
+  assert(state->collectors_table != NULL);
   assert(record != NULL);
 
   bgpstream_record_t * bs_record = BS_REC(record);
   assert(bs_record != NULL);
 
-  // TODO:
-
-  return 0; // if everything is fine
+  // returns 0 if everything is fine
+  return collectors_table_process_record(state->collectors_table, bs_record);
 }
 
 

@@ -162,11 +162,15 @@ KHASH_INIT(ipv6_peers_table_t /* name */,
 	   bgpstream_ipv6_address_hash_equal /* __hash_equal */);
 
 typedef struct struct_peers_table_t {
+  uint64_t elem_types[BGPSTREAM_ELEM_TYPE_MAX];
+  // TODO: other info
   khash_t(ipv4_peers_table_t) * ipv4_peers_table;
   khash_t(ipv6_peers_table_t) * ipv6_peers_table;
 } peers_table_t;
 
 peers_table_t *peers_table_create();
+int peers_table_process_record(peers_table_t *peers_table, 
+			       bgpstream_record_t * bs_record); 
 void peers_table_destroy(peers_table_t *peers_table);
 
 
@@ -175,16 +179,28 @@ void peers_table_destroy(peers_table_t *peers_table);
  *  collector
  */
 
+typedef enum  {
+  COLLECTOR_NULL = 0,    // status of collector is unknown
+  COLLECTOR_UP = 1,      // status of collector is UP
+  COLLECTOR_DOWN = 2     // status of collector is DOWN
+  } collector_status_t;
+
 typedef struct collectordata {
-  char *dump_project;
-  char *dump_collector; /* graphite-safe version of the name */
+  char *dump_project;        /* graphite-safe version of the name */
+  char *dump_collector;      /* graphite-safe version of the name */
+  long int most_recent_ts;   /* most recent timestamp received */
+  int active_peers;
+  collector_status_t status; /* it tells whether the collector is up or down */
+  uint64_t record_types[BGPSTREAM_RECORD_TYPE_MAX];
   // table containing information about each peer of the collector
   peers_table_t * peers_table;
 } collectordata_t;
 
-collectordata_t *collectordata_create(const char *project,
-				      const char *collector);
-void collectordata_destroy(collectordata_t *collector_data);
+/* collectordata_t *collectordata_create(const char *project, */
+/* 				      const char *collector); */
+/* int collectordata_process_record(collectordata_t *collector_data, */
+/* 				 bgpstream_record_t * bs_record); */
+/* void collectordata_destroy(collectordata_t *collector_data); */
 
 
 /** collectors table
@@ -205,6 +221,8 @@ typedef struct struct_collectors_table_wrapper_t {
 } collectors_table_wrapper_t;
 
 collectors_table_wrapper_t *collectors_table_create();
+int collectors_table_process_record(collectors_table_wrapper_t *collectors_table,
+				    bgpstream_record_t * bs_record);
 void collectors_table_destroy(collectors_table_wrapper_t *collectors_table);
 
 

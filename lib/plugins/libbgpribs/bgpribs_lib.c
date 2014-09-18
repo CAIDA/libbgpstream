@@ -30,7 +30,6 @@
 #define METRIC_PREFIX "bgp"
 
 
-
 static void graphite_safe(char *p)
 {
   if(p == NULL)
@@ -198,11 +197,156 @@ peers_table_t *peers_table_create()
     {
       return NULL;
     }
+  /* all data are set to zero by malloc_zero, thereby:
+   *  - elem_types = [0,0,0,0]
+   */
+
   // init ipv4 and ipv6 peers khashes
   peers_table->ipv4_peers_table = kh_init(ipv4_peers_table_t);
   peers_table->ipv6_peers_table = kh_init(ipv6_peers_table_t);
   return peers_table;
 }
+
+
+/* process the current record and
+ * returns the number of active peers  
+ * it returns < 0 if some error was encountered */
+int peers_table_process_record(peers_table_t *peers_table, 
+			       bgpstream_record_t * bs_record)
+{
+  assert(peers_table);
+  assert(bs_record);
+  int num_active_peers = 0;
+  bgpstream_elem_t * bs_elem_queue;
+  bgpstream_elem_t * bs_iterator;
+  khiter_t k;
+  int khret;
+  peerdata_t * peer_data = NULL;
+
+  /* if we receive a VALID_RECORD we extract the 
+   * bgpstream_elem_queue and we send each elem
+   * to the corresponding peer in the peer table */
+  if(bs_record->status == VALID_RECORD) 
+    {
+      bs_elem_queue = bgpstream_get_elem_queue(bs_record);
+      bs_iterator = bs_elem_queue;
+      while(bs_iterator != NULL)
+	{
+	  peers_table->elem_types[bs_iterator->type]++;
+
+	  /* check if we need to create a peer
+	   * create the peerdata structure if necessary
+	   * and send the elem to the corresponding peerdata */
+	  /* update peer information and check return value*/
+	  if(bs_iterator->peer_address.type == BST_IPV4)
+	    {
+	      /* check if this peer is in the hash already */
+	      if((k = kh_get(ipv4_peers_table_t, peers_table->ipv4_peers_table,
+			     bs_iterator->peer_address)) ==
+		 kh_end(peers_table->ipv4_peers_table))
+		{
+		  /* create a new peerdata structure */
+		  if((peer_data = peerdata_create(&(bs_iterator->peer_address))) == NULL)
+		    {
+		      // TODO: output some error message
+		      bgpstream_destroy_elem_queue(bs_elem_queue);
+		      return -1;
+		    }
+		  /* add it to the hash */
+		  k = kh_put(ipv4_peers_table_t, peers_table->ipv4_peers_table, 
+			     bs_iterator->peer_address, &khret);
+		  kh_value(peers_table->ipv4_peers_table, k) = peer_data;
+		}
+	      else
+		{ /* already exists, just get it */	
+		  peer_data = kh_value(peers_table->ipv4_peers_table, k);
+		}
+	    }
+	  else 
+	    { // assert(bs_iterator->peer_address.type == BST_IPV6) 
+	      /* check if this peer is in the hash already */
+	      if((k = kh_get(ipv6_peers_table_t, peers_table->ipv6_peers_table,
+			     bs_iterator->peer_address)) ==
+		 kh_end(peers_table->ipv6_peers_table))
+		{
+		  /* create a new peerdata structure */
+		  if((peer_data = peerdata_create(&(bs_iterator->peer_address))) == NULL)
+		    {
+		      // TODO: output some error message
+		      bgpstream_destroy_elem_queue(bs_elem_queue);
+		      return -1;
+		    }
+		  /* add it to the hash */
+		  k = kh_put(ipv6_peers_table_t, peers_table->ipv6_peers_table, 
+			     bs_iterator->peer_address, &khret);
+		  kh_value(peers_table->ipv6_peers_table, k) = peer_data;
+		}
+	      else
+		{ /* already exists, just get it */
+		  peer_data = kh_value(peers_table->ipv6_peers_table, k);
+		}    
+	    }
+  
+	  // TODO:
+	  // send record and elem to peerdata (dump start and dump end
+	  // are very important!)
+
+	  // other information are computed at dump time
+	  bs_iterator = bs_iterator->next;
+	}
+      bgpstream_destroy_elem_queue(bs_elem_queue);
+    }
+
+
+  /* now that all the peers have been created (if it was necessary)
+   * we send the current record to all of them and
+   * we count how many of them are active or if some
+   * computation generated an unexpected error */
+  int peer_status;
+  for(k = kh_begin(peers_table->ipv4_peers_table);
+      k != kh_end(peers_table->ipv4_peers_table); ++k)
+    {
+      if (kh_exist(peers_table->ipv4_peers_table, k))
+	{	  
+	  peer_data = kh_value(peers_table->ipv4_peers_table, k);
+	  // TODO:
+	  // send record to peerdata
+	  peer_status = 0; // TODO: substitue function
+	  if(peer_status < 0)
+	    {
+	      // TODO something went wrong during "TODO" function
+	      return -1;
+	    }
+	  else 
+	    {
+	      num_active_peers += peer_status;
+	    }
+	}      
+    }
+  for(k = kh_begin(peers_table->ipv6_peers_table);
+      k != kh_end(peers_table->ipv6_peers_table); ++k)
+    {
+      if (kh_exist(peers_table->ipv6_peers_table, k))
+	{
+	  peer_data = kh_value(peers_table->ipv6_peers_table, k);
+	  // TODO:
+	  // send record to peerdata
+	  peer_status = 0; // TODO: substitue function
+	  if(peer_status < 0)
+	    {
+	      // TODO something went wrong during "TODO" function
+	      return -1;
+	    }
+	  else 
+	    {
+	      num_active_peers += peer_status;
+	    }
+	}      
+    }
+
+  return num_active_peers;
+}
+
 
 void peers_table_destroy(peers_table_t *peers_table) 
 {
@@ -253,6 +397,11 @@ collectordata_t *collectordata_create(const char *project,
     {
       return NULL;
     }
+  /* all data are set to zero by malloc_zero, thereby:
+   *  - most_recent_ts = 0
+   *  - status = 0 = COLLECTOR_NULL
+   *  - record_types = [0,0,0,0,0]
+   */
 
   if((collector_data->dump_project = strdup(project)) == NULL)
     {
@@ -283,6 +432,55 @@ collectordata_t *collectordata_create(const char *project,
   
   return collector_data;
 }
+
+
+int collectordata_process_record(collectordata_t *collector_data,
+				 bgpstream_record_t * bs_record)
+{
+  assert(collector_data);
+  assert(bs_record);
+  
+  // register what kind of record types we receive
+  collector_data->record_types[bs_record->status]++;
+
+  // update the most recent timestamp
+  if(bs_record->attributes.record_time > collector_data->most_recent_ts) 
+    {
+      collector_data->most_recent_ts = bs_record->attributes.record_time;
+    }
+
+  /* send the record to the peers_table and get the number
+   * of active peers */
+  collector_data->active_peers = 
+    peers_table_process_record(collector_data->peers_table, bs_record);
+
+  // some error occurred during the computation
+  if(collector_data->active_peers < 0) 
+    {
+      collector_data->status = COLLECTOR_DOWN;    
+      return -1;
+    }
+   
+  // some peers are active => the collector is active too 
+  if(collector_data->active_peers > 0)
+    {
+      collector_data->status = COLLECTOR_UP;    
+    }
+  else
+    { // assert(collector_data->active_peers == 0) 
+      // collector was in unknown state => it remains there
+      if(collector_data->status == COLLECTOR_NULL)
+	{
+	  collector_data->status = COLLECTOR_NULL;
+	}
+      else // collector was in known state
+	{  // now, no peer is active => the collector must be DOWN      
+	  collector_data->status = COLLECTOR_DOWN;    
+	}
+    }
+  return 0;
+}
+
 
 void collectordata_destroy(collectordata_t *collector_data)
 {
@@ -321,6 +519,54 @@ collectors_table_wrapper_t *collectors_table_create()
   collectors_table->table = kh_init(collectors_table_t);
   return collectors_table;
 }
+
+
+/* returns 0 if everything is fine */
+int collectors_table_process_record(collectors_table_wrapper_t *collectors_table,
+				    bgpstream_record_t * bs_record)
+{
+  khiter_t k;
+  char *collector_name_cpy = NULL;
+  collectordata_t * collector_data;
+  int khret;
+
+  /* check if the collector associated with the bs_record
+   * already exists, if not create a collectordata object, 
+   * then pass the bs_record to the collectordata object */
+  if((k = kh_get(collectors_table_t, collectors_table->table,
+		 bs_record->attributes.dump_collector)) ==
+     kh_end(collectors_table->table))
+    {
+      /* create a new collectordata structure */
+      if((collector_data =
+	collectordata_create(bs_record->attributes.dump_project,
+			     bs_record->attributes.dump_collector)) == NULL) 
+	{
+	  // TODO: cerr the error -> can't create collectordata
+	  return -1;
+	}
+      /* copy the name of the collector */
+      if((collector_name_cpy = strdup(bs_record->attributes.dump_collector)) == NULL)
+	{
+	  // TODO: cerr the error -> can't malloc memory for collector name
+	  return -1;
+	}
+      /* add it (key/name) to the hash */
+      k = kh_put(collectors_table_t, collectors_table->table,
+		 collector_name_cpy, &khret);
+      /* add collectordata (value) to the hash */
+      kh_value(collectors_table->table, k) = collector_data;
+    }
+  else
+    {
+      /* already exists, just get it */
+      collector_data = kh_value(collectors_table->table, k);
+    }
+  // provide the bs_record to the right collectordata structure
+  return collectordata_process_record(collector_data, bs_record);
+} 
+
+
 
 void collectors_table_destroy(collectors_table_wrapper_t *collectors_table) 
 {
