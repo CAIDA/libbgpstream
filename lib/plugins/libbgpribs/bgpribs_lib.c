@@ -192,12 +192,114 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 }
 
 
+/* apply the record to the peer_data provided:
+ * - it returns 1 if the peer is active
+ * - it returns 0 if the peer is down
+ * - it return -1 if something went wrong */
 int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 {
   assert(peer_data);
   assert(bs_record);
-  // TODO: here
-  return 1;
+    
+  /* Note:
+   * bs_record statuses are put in a specific order
+   * (most frequent on top) so we avoid to perform 
+   * very unusual checks.
+   */
+
+  /* if we receive a VALID_RECORD we need to check
+   * whether it provides data on-time or data out of
+   * of order. Also if type is RIB and the record
+   * dump_pos is either DUMP_START or DUMP_END then
+   * we have to update the ribs_table structures
+   * appropriately. 
+   */
+  if(bs_record->status == VALID_RECORD) 
+    {      
+      // TODO: in order?
+      //       apply new time to most_recent_ts (if needed)
+      
+      // TODO: in time and DUMP_START !?
+      //       if uc_rt already has the reference_dump_time
+      //       set with the same dump, ok 
+      //       else clear table and  set reference_dump_time 
+      //       (the reference_rib_start will be set later)
+
+      // TODO: in time and DUMP_END !?
+      //       check uc_rt  reference_dump_time is the same
+      //       as the current processed dump and in case
+      //       swap active and under_construction tables
+
+      // TODO: out of order ?
+      //       yes: decide what to do!
+
+
+      return 0; // 1, -1
+    }
+
+
+  /* if we receive a record signaling a FILTERED_SOURCE
+   * or an EMPTY_SOURCE of UPDATES
+   * we do not need to check if it is in time-order or 
+   * not (in any way it would have affected
+   * our current dataset). However we update the
+   * most_recent_ts (if necessary) */
+  if(bs_record->status == FILTERED_SOURCE ||
+     (bs_record->status == EMPTY_SOURCE && bs_record->attributes.dump_type == BGPSTREAM_UPDATE)) 
+    {
+      if(bs_record->attributes.record_time > peer_data->most_recent_ts) 
+	{
+	  peer_data->most_recent_ts = bs_record->attributes.record_time;
+	}
+      /* TODO: 
+       *      => signal event in bgpribs log 
+       */      
+      return 0; // 1, -1
+    }
+
+
+  /* if we receive an EMPTY_SOURCE of RIBS we may update
+   *  the mrt, however we do not do anything */
+  if(bs_record->status == EMPTY_SOURCE && bs_record->attributes.dump_type == BGPSTREAM_RIB) 
+    {
+      if(bs_record->attributes.record_time > peer_data->most_recent_ts) 
+	{
+	  peer_data->most_recent_ts = bs_record->attributes.record_time;
+	}
+      /* TODO: 
+       *      => signal event in bgpribs log */
+      /* Comments: 
+       * an empty rib is a pretty strange case. It means that the 
+       * collector is most likely down. It could be that a peer just
+       * went down and it is in the process of repopulating the rib
+       * through updates. Imagine a small collector, all the peers
+       * suffer an outage... :-O, ok that's maybe too much of imagination! 
+       */
+      return 0; // 1, -1
+    }
+  
+
+  /* if we receive an CORRUPTED_SOURCE or a CORRUPTED_RECORD
+   * we need to check if this information is affecting the current
+   * status or not. In the first case, we need to invalidate ALL the
+   * peers as we do not have any idea of which peers could have 
+   * been affected by this corrupted data. In the latter case, we
+   * just signal event in the bgpribs log*/  
+  if(bs_record->status == CORRUPTED_SOURCE ||
+     bs_record->status == CORRUPTED_RECORD) 
+    {
+      if(bs_record->attributes.record_time > peer_data->most_recent_ts) 
+	{ 
+	 peer_data-> most_recent_ts = bs_record->attributes.record_time;
+	}      
+      /* TODO: 
+       *      => send this message to all the peers
+       *         and decide if we turn the collector down or not
+       *      => signal event in bgpribs log */
+      return 0; // 1, -1
+    }
+
+  return 0; // 1, -1
 }
 
 

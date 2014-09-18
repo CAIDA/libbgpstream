@@ -138,6 +138,7 @@ typedef struct struct_peerdata_t {
   // ribs tables
   ribs_table_t * active_ribs_table; // active ribs table
   ribs_table_t * uc_ribs_table;     // under-construction ribs table
+  long int most_recent_ts;
   // TODO: add status variables and metrics here
 } peerdata_t;
 
