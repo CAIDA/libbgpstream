@@ -54,6 +54,9 @@
 
 typedef struct bgpwatcher_client {
 
+  /** Error status */
+  bgpwatcher_err_t err;
+
   /** URI to connect to the server on */
   char *server_uri;
 

@@ -179,6 +179,9 @@ typedef struct bgpwatcher_server_callbacks {
 
 struct bgpwatcher_server {
 
+  /** Error status */
+  bgpwatcher_err_t err;
+
   /** 0MQ context pointer */
   zctx_t *ctx;
 
@@ -205,15 +208,6 @@ struct bgpwatcher_server {
   bgpwatcher_server_callbacks_t callbacks;
 
 };
-
-/** bgpwatcher error information */
-typedef struct bgpwatcher_server_err {
-  /** Error code */
-  int err_num;
-
-  /** String representation of the error that occurred */
-  char problem[255];
-} bgpwatcher_server_err_t;
 
 /** @} */
 
@@ -244,8 +238,6 @@ int bgpwatcher_server_start(bgpwatcher_server_t *server);
  * @param server       pointer to bgpwatcher server instance to print error for
  */
 void bgpwatcher_server_perr(bgpwatcher_server_t *server);
-
-/** @todo add other error functions if needed (is_err, get_err) */
 
 /** Stop the given bgpwatcher server instance at the next safe occasion.
  *

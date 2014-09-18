@@ -41,7 +41,8 @@ int bgpwatcher_server_start(bgpwatcher_server_t *server)
 
 void bgpwatcher_server_perr(bgpwatcher_server_t *server)
 {
-  return;
+  assert(server != NULL);
+  bgpwatcher_perr(&server->err);
 }
 
 void bgpwatcher_server_stop(bgpwatcher_server_t *server)

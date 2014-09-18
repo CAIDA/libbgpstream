@@ -56,6 +56,9 @@ typedef struct bgpwatcher {
   /** Our server instance */
   bgpwatcher_server_t *server;
 
+  /** Error status */
+  bgpwatcher_err_t err;
+
 } bgpwatcher_t;
 
 /** @} */

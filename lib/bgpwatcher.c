@@ -27,27 +27,127 @@
 
 #include <bgpwatcher_int.h>
 
-bgpwatcher_t *bgpwatcher_init()
-{
-  return NULL;
-}
+#include "utils.h"
 
-int bgpwatcher_start(bgpwatcher_t *watcher)
+#define ERR (&watcher->err)
+
+static int client_connect(bgpwatcher_server_t *server,
+			  bgpwatcher_server_client_info_t *client,
+			  void *user)
 {
   return -1;
 }
 
-void bgpwatcher_perr(bgpwatcher_t *watcher)
+static int client_disconnect(bgpwatcher_server_t *server,
+			     bgpwatcher_server_client_info_t *client,
+			     void *user)
 {
-  return;
+  return -1;
+}
+
+static int recv_pfx_record(bgpwatcher_server_t *server,
+			   uint64_t table_id,
+			   bgpwatcher_pfx_record_t *record,
+			   void *user)
+{
+  return -1;
+}
+
+static int recv_peer_record(bgpwatcher_server_t *server,
+			    uint64_t table_id,
+			    bgpwatcher_peer_record_t *record,
+			    void *user)
+{
+  return -1;
+}
+
+static int table_end(bgpwatcher_server_t *server,
+		     uint64_t table_id,
+		     bgpwatcher_server_table_type_t *table_type,
+		     void *user)
+{
+  return -1;
+}
+
+static bgpwatcher_server_callbacks_t callback_template = {
+  client_connect,
+  client_disconnect,
+  recv_pfx_record,
+  recv_peer_record,
+  table_end,
+  NULL, /* user: to be filled with a 'self' pointer */
+};
+
+bgpwatcher_t *bgpwatcher_init()
+{
+  bgpwatcher_t *watcher = NULL;
+  bgpwatcher_server_callbacks_t *callbacks = NULL;
+
+  if((watcher = malloc_zero(sizeof(bgpwatcher_t))) == NULL)
+    {
+      fprintf(stderr, "ERROR: Could not allocate watcher\n");
+      return NULL;
+    }
+
+  /* can set errors now */
+
+  /* grab a copy of our callback pointers */
+  if((callbacks = malloc(sizeof(bgpwatcher_server_callbacks_t))) == NULL)
+    {
+      bgpwatcher_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			 "Could not malloc server callback structure");
+      free(watcher);
+      return NULL;
+    }
+
+  /* duplicate the template */
+  memcpy(callbacks, &callback_template, sizeof(bgpwatcher_server_callbacks_t));
+
+  /* insert our 'user' data */
+  callbacks->user = watcher;
+
+  /* init the server */
+  if((watcher->server = bgpwatcher_server_init(callbacks)) == NULL)
+    {
+      free(callbacks);
+      free(watcher);
+      return NULL;
+    }
+
+  return watcher;
+}
+
+/** @todo add config functions */
+
+int bgpwatcher_start(bgpwatcher_t *watcher)
+{
+  assert(watcher != NULL);
+  return bgpwatcher_server_start(watcher->server);
 }
 
 void bgpwatcher_stop(bgpwatcher_t *watcher)
 {
-  return;
+  assert(watcher != NULL);
+  bgpwatcher_server_stop(watcher->server);
 }
 
 void bgpwatcher_free(bgpwatcher_t *watcher)
 {
-  return;
+  assert(watcher != NULL);
+
+  if(watcher->server != NULL)
+    {
+      bgpwatcher_server_free(watcher->server);
+      watcher->server = NULL;
+    }
+
+  free(watcher);
+}
+
+bgpwatcher_err_t bgpwatcher_get_err(bgpwatcher_t *watcher)
+{
+  bgpwatcher_err_t err = watcher->err;
+  watcher->err.err_num = 0; /* "OK" */
+  watcher->err.problem[0]='\0';
+  return err;
 }

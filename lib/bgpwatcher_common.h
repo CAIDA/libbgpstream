@@ -81,6 +81,15 @@ typedef struct bgpwatcher_peer_record {
 
 } bgpwatcher_peer_record_t;
 
+/** bgpwatcher error information */
+typedef struct bgpwatcher_err {
+  /** Error code */
+  int err_num;
+
+  /** String representation of the error that occurred */
+  char problem[255];
+} bgpwatcher_err_t;
+
 /** @} */
 
 /**
@@ -88,7 +97,58 @@ typedef struct bgpwatcher_peer_record {
  *
  * @{ */
 
+/** Enumeration of error codes
+ *
+ * @note these error codes MUST be <= 0
+ */
+typedef enum {
+
+  /** No error has occured */
+  BGPWATCHER_ERR_NONE         = 0,
+
+  /** bgpwatcher failed to initialize */
+  BGPWATCHER_ERR_INIT_FAILED  = -1,
+
+  /** bgpwatcher failed to start */
+  BGPWATCHER_ERR_START_FAILED = -2,
+
+  /** bgpwatcher was interrupted */
+  BGPWATCHER_ERR_INTERRUPT    = -3,
+
+  /** unhandled error */
+  BGPWATCHER_ERR_UNHANDLED    = -4,
+
+  /** protocol error */
+  BGPWATCHER_ERR_PROTOCOL     = -5,
+
+  /** malloc error */
+  BGPWATCHER_ERR_MALLOC       = -6,
+
+} bgpwatcher_err_code_t;
 
 /** @} */
+
+/** Set an error state on the given watcher instance
+ *
+ * @param err           pointer to an error status instance to set the error on
+ * @param errcode       error code to set (> 0 indicates errno)
+ * @param msg...        string message to set
+ */
+void bgpwatcher_set_err(bgpwatcher_err_t *err, int errcode,
+			const char *msg, ...);
+
+/** Check if the given error status instance has an error set
+ *
+ * @param err           pointer to an error status instance to check for error
+ * @return 0 if there is no error, 1 otherwise
+ */
+int bgpwatcher_is_err(bgpwatcher_err_t *err);
+
+/** Prints the error status (if any) to standard error and clears the error
+ * state
+ *
+ * @param err       pointer to bgpwatcher error status instance
+ */
+void bgpwatcher_perr(bgpwatcher_err_t *err);
 
 #endif

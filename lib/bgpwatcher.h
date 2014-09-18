@@ -26,7 +26,7 @@
 #ifndef __BGPWATCHER_H
 #define __BGPWATCHER_H
 
-#include <stdint.h>
+#include <bgpwatcher_common.h>
 
 /** @file
  *
@@ -51,50 +51,12 @@ typedef struct bgpwatcher bgpwatcher_t;
  *
  * @{ */
 
-/** bgpwatcher error information */
-typedef struct bgpwatcher_err {
-  /** Error code */
-  int err_num;
-
-  /** String representation of the error that occurred */
-  char problem[255];
-} bgpwatcher_err_t;
-
 /** @} */
 
 /**
  * @name Public Enums
  *
  * @{ */
-
-/** Enumeration of error codes
- *
- * @note these error codes MUST be <= 0
- */
-typedef enum {
-
-  /** No error has occured */
-  BGPWATCHER_ERR_NONE         = 0,
-
-  /** bgpwatcher failed to initialize */
-  BGPWATCHER_ERR_INIT_FAILED  = -1,
-
-  /** bgpwatcher failed to start */
-  BGPWATCHER_ERR_START_FAILED = -2,
-
-  /** bgpwatcher was interrupted */
-  BGPWATCHER_ERR_INTERRUPT    = -3,
-
-  /** unhandled error */
-  BGPWATCHER_ERR_UNHANDLED    = -4,
-
-  /** protocol error */
-  BGPWATCHER_ERR_PROTOCOL     = -5,
-
-  /** malloc error */
-  BGPWATCHER_ERR_MALLOC       = -6,
-
-} bgpwatcher_err_code_t;
 
 /** @} */
 
@@ -119,15 +81,6 @@ bgpwatcher_t *bgpwatcher_init();
  */
 int bgpwatcher_start(bgpwatcher_t *watcher);
 
-/** Prints the error status (if any) to standard error and clears the error
- * state
- *
- * @param watcher       pointer to bgpwatcher instance to print error for
- */
-void bgpwatcher_perr(bgpwatcher_t *watcher);
-
-/** @todo add other error functions if needed (is_err, get_err) */
-
 /** Stop the given bgpwatcher instance at the next safe occasion.
  *
  * This is useful to initiate a clean shutdown if you are handling signals in
@@ -142,5 +95,12 @@ void bgpwatcher_stop(bgpwatcher_t *watcher);
  * @param watcher       pointer to the bgpwatcher instance to free
  */
 void bgpwatcher_free(bgpwatcher_t *watcher);
+
+/** Get the error status for the given bgpwatcher instance
+ *
+ * @param watcher       pointer to a bgpwatcher instance to retrieve status for
+ * @return an error status object that can be passed to bgpwatcher_perr etc
+ */
+bgpwatcher_err_t bgpwatcher_get_err(bgpwatcher_t *watcher);
 
 #endif

@@ -56,15 +56,6 @@ typedef struct bgpwatcher_client_peer_table bgpwatcher_client_peer_table_t;
  *
  * @{ */
 
-/** bgpwatcher error information */
-typedef struct bgpwatcher_client_err {
-  /** Error code */
-  int err_num;
-
-  /** String representation of the error that occurred */
-  char problem[255];
-} bgpwatcher_client_err_t;
-
 /** @} */
 
 /**

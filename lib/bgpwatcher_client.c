@@ -39,7 +39,8 @@ int bgpwatcher_client_start(bgpwatcher_client_t *client)
 
 void bgpwatcher_client_perr(bgpwatcher_client_t *client)
 {
-  return;
+  assert(client != NULL);
+  bgpwatcher_perr(&client->err);
 }
 
 bgpwatcher_client_pfx_table_t *bgpwatcher_client_pfx_table_create(
