@@ -54,17 +54,6 @@
  *
  * @{ */
 
-/** Enumeration of table types */
-typedef enum {
-
-  /** Prefix Table */
-  BGPWATCHER_SERVER_TABLE_TYPE_PREFIX = 0,
-
-  /** Peer Table */
-  BGPWATCHER_SERVER_TABLE_TYPE_PEER = 1,
-
-} bgpwatcher_server_table_type_t;
-
 /** @} */
 
 /**
@@ -139,6 +128,19 @@ typedef struct bgpwatcher_server_callbacks {
 			  bgpwatcher_peer_record_t *record,
 			  void *user);
 
+  /** Signals that a new table is starting
+   *
+   * @param server      pointer to the server instance originating the signal
+   * @param table_id    unique id for the table that is starting
+   * @param table_type  type of the table that is starting
+   * @param user        pointer to user data given at init time
+   * @return 0 if signal successfully handled, -1 otherwise
+   */
+  int (*table_begin)(bgpwatcher_server_t *server,
+		     uint64_t table_id,
+		     bgpwatcher_table_type_t table_type,
+		     void *user);
+
   /** Signals that all records for the given table have been received
    *
    * @param server      pointer to the server instance originating the signal
@@ -149,7 +151,7 @@ typedef struct bgpwatcher_server_callbacks {
    */
   int (*table_end)(bgpwatcher_server_t *server,
 		   uint64_t table_id,
-		   bgpwatcher_server_table_type_t *table_type,
+		   bgpwatcher_table_type_t table_type,
 		   void *user);
 
   /** User data passed along with each callback */
@@ -189,6 +191,9 @@ struct bgpwatcher_server {
 
   /* Functions to call when we get a message from a client */
   bgpwatcher_server_callbacks_t *callbacks;
+
+  /** Next table number */
+  uint64_t table_num;
 
 };
 
