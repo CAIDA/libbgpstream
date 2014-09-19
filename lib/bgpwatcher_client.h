@@ -44,7 +44,7 @@
  * @{ */
 
 /** Default URI for the server -> client connection */
-#define BGPWATCHER_SERVER_URI_DEFAULT "tcp://127.0.0.1:6300"
+#define BGPWATCHER_CLIENT_SERVER_URI_DEFAULT "tcp://127.0.0.1:6300"
 
 /** Default the client request timeout to 2.5 seconds */
 #define BGPWATCHER_CLIENT_REQUEST_TIMEOUT 2500
@@ -78,35 +78,6 @@ typedef struct bgpwatcher_client_peer_table bgpwatcher_client_peer_table_t;
  * @name Public Enums
  *
  * @{ */
-
-/** Enumeration of error codes
- *
- * @note these error codes MUST be <= 0
- */
-typedef enum {
-
-  /** No error has occured */
-  BGPWATCHER_CLIENT_ERR_NONE         = 0,
-
-  /** bgpwatcher_client failed to initialize */
-  BGPWATCHER_CLIENT_ERR_INIT_FAILED  = -1,
-
-  /** bgpwatcher_client failed to start */
-  BGPWATCHER_CLIENT_ERR_START_FAILED = -2,
-
-  /** bgpwatcher_client was interrupted */
-  BGPWATCHER_CLIENT_ERR_INTERRUPT    = -3,
-
-  /** unhandled error */
-  BGPWATCHER_CLIENT_ERR_UNHANDLED    = -4,
-
-  /** protocol error */
-  BGPWATCHER_CLIENT_ERR_PROTOCOL     = -5,
-
-  /** malloc error */
-  BGPWATCHER_CLIENT_ERR_MALLOC       = -6,
-
-} bgpwatcher_client_err_code_t;
 
 /** @} */
 
@@ -226,5 +197,55 @@ void bgpwatcher_client_stop(bgpwatcher_client_t *client);
  * @param client       pointer to the bgpwatcher client instance to free
  */
 void bgpwatcher_client_free(bgpwatcher_client_t *client);
+
+/** Set the URI for the client to connect to the server on
+ *
+ * @param client        pointer to a bgpwatcher client instance to update
+ * @param uri           pointer to a uri string
+ * @return 0 if successful, -1 otherwise
+ */
+int bgpwatcher_client_set_server_uri(bgpwatcher_client_t *client,
+				     const char *uri);
+
+/** Set the heartbeat interval
+ *
+ * @param client        pointer to a bgpwatcher client instance to update
+ * @param interval_ms   time in ms between heartbeats
+ *
+ * @note defaults to BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT
+ */
+void bgpwatcher_client_set_heartbeat_interval(bgpwatcher_client_t *client,
+					      uint64_t interval_ms);
+
+/** Set the heartbeat liveness
+ *
+ * @param client        pointer to a bgpwatcher client instance to update
+ * @param beats         number of heartbeats that can go by before a client is
+ *                      declared dead
+ *
+ * @note defaults to BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT
+ */
+void bgpwatcher_client_set_heartbeat_liveness(bgpwatcher_client_t *client,
+					   int beats);
+
+/** Set the minimum reconnect time
+ *
+ * @param client        pointer to a bgpwatcher client instance to update
+ * @param time          min time in ms to wait before reconnecting to server
+ *
+ * @note defaults to BGPWATCHER_RECONNECT_INTERVAL_MIN
+ */
+void bgpwatcher_client_set_reconnect_interval_min(bgpwatcher_client_t *client,
+					       uint64_t reconnect_interval_min);
+
+/** Set the maximum reconnect time
+ *
+ * @param client        pointer to a bgpwatcher client instance to update
+ * @param time          max time in ms to wait before reconnecting to server
+ *
+ * @note defaults to BGPWATCHER_RECONNECT_INTERVAL_MAX
+ */
+void bgpwatcher_client_set_reconnect_interval_max(bgpwatcher_client_t *client,
+					       uint64_t reconnect_interval_max);
 
 #endif

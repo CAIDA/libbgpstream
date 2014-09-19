@@ -57,6 +57,9 @@ typedef struct bgpwatcher_client {
   /** Error status */
   bgpwatcher_err_t err;
 
+  /** 0MQ context pointer */
+  zctx_t *ctx;
+
   /** URI to connect to the server on */
   char *server_uri;
 
@@ -86,6 +89,9 @@ typedef struct bgpwatcher_client {
 
   /** The time before we will next attempt to reconnect */
   uint64_t reconnect_interval_next;
+
+  /** Indicates that the client has been signaled to shutdown */
+  int shutdown;
 
 } bgpwatcher_client_t;
 
