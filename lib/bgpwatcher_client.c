@@ -75,6 +75,120 @@ static int server_connect(bgpwatcher_client_t *client)
   return 0;
 }
 
+zmsg_t * append_data_headers(zmsg_t *msg, bgpwatcher_data_msg_type_t type,
+			     bgpwatcher_client_t *client)
+{
+  uint8_t type_b;
+
+  /* now, (working backward), we prepend the request type */
+  type_b = type;
+  if(zmsg_pushmem(msg, &type_b, sizeof(uint8_t)) != 0)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not add request type to message");
+      return NULL;
+    }
+
+  /* now prepend the sequence number */
+  if(zmsg_pushmem(msg, &client->sequence_num,
+		  sizeof(uint64_t)) != 0)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not add sequence number to message");
+      return NULL;
+    }
+  client->sequence_num++;
+
+  type_b = BGPWATCHER_MSG_TYPE_DATA;
+  if(zmsg_pushmem(msg, &type_b, sizeof(uint8_t)) != 0)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not add request type to message");
+      return NULL;
+    }
+
+  return msg;
+}
+
+zmsg_t *build_test_table_begin(bgpwatcher_client_t *client,
+			       bgpwatcher_table_type_t table_type)
+{
+  zmsg_t *msg;
+
+  if((msg = zmsg_new()) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Failed to create table begin message");
+      return NULL;
+    }
+
+  /* append the table type */
+  if(zmsg_pushmem(msg, &table_type,
+		  sizeof(uint8_t)) != 0)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not add table type to message");
+      return NULL;
+    }
+
+  return append_data_headers(msg,
+			     BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN,
+			     client);
+}
+
+zmsg_t *build_test_table_end(bgpwatcher_client_t *client,
+			     bgpwatcher_table_type_t table_type)
+{
+  zmsg_t *msg;
+
+  if((msg = zmsg_new()) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Failed to create table begin message");
+      return NULL;
+    }
+
+  /* append the table type */
+  if(zmsg_pushmem(msg, &table_type,
+		  sizeof(uint8_t)) != 0)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not add table type to message");
+      return NULL;
+    }
+
+  return append_data_headers(msg,
+			     BGPWATCHER_DATA_MSG_TYPE_TABLE_END,
+			     client);
+}
+
+zmsg_t *build_test_prefix(bgpwatcher_client_t *client)
+{
+  zmsg_t *msg;
+
+  /* just a toy! */
+  bgpwatcher_pfx_record_t rec;
+  ((struct sockaddr_in*)&rec.prefix)->sin_family = AF_INET;
+  ((struct sockaddr_in*)&rec.prefix)->sin_addr.s_addr = htonl(0xC0ACE200);
+  rec.prefix_len = 24;
+  ((struct sockaddr_in*)&rec.peer_ip)->sin_family = AF_INET;
+  ((struct sockaddr_in*)&rec.peer_ip)->sin_addr.s_addr = htonl(0x82D9FA0D);
+  rec.orig_asn = 0x00332211;
+  rec.collector_name = "routeviews2";
+
+  if((msg = bgpwatcher_pfx_record_serialize(&rec)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Failed to serialize prefix record");
+      return NULL;
+    }
+
+  return append_data_headers(msg, BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD, client);
+}
+
+/* DEBUG */
+static int cnt = 0;
+
 static int run_client(bgpwatcher_client_t *client)
 {
   /** @todo also poll for messages from our internal 'client' */
@@ -93,13 +207,46 @@ static int run_client(bgpwatcher_client_t *client)
 
   /*uint8_t msg_type_reply = TSMQ_MSG_TYPE_REPLY;*/
 
-  fprintf(stderr, "DEBUG: Beginning loop cycle\n");
+  /*fprintf(stderr, "DEBUG: Beginning loop cycle\n");*/
 
   if((rc = zmq_poll(poll_items, POLL_ITEM_CNT,
 		    client->heartbeat_interval * ZMQ_POLL_MSEC)) == -1)
     {
       goto interrupt;
     }
+
+  /* DEBUG */
+  /* fire some requests off to the server for testing */
+  if(cnt < 100)
+    {
+      zmsg_t *req;
+      fprintf(stderr, "DEBUG: Sending test messages to server\n");
+
+
+
+      req = build_test_table_begin(client, BGPWATCHER_TABLE_TYPE_PREFIX);
+      assert(req != NULL);
+      assert(zmsg_send(&req, client->server_socket) == 0);
+
+      req = build_test_prefix(client);
+      assert(req != NULL);
+      assert(zmsg_send(&req, client->server_socket) == 0);
+
+      req = build_test_table_end(client, BGPWATCHER_TABLE_TYPE_PREFIX);
+      assert(req != NULL);
+      assert(zmsg_send(&req, client->server_socket) == 0);
+
+      req = build_test_table_begin(client, BGPWATCHER_TABLE_TYPE_PEER);
+      assert(req != NULL);
+      assert(zmsg_send(&req, client->server_socket) == 0);
+
+      req = build_test_table_end(client, BGPWATCHER_TABLE_TYPE_PEER);
+      assert(req != NULL);
+      assert(zmsg_send(&req, client->server_socket) == 0);
+
+      cnt++;
+    }
+  /* END DEBUG */
 
   if(poll_items[POLL_ITEM_SERVER].revents & ZMQ_POLLIN)
     {
@@ -115,11 +262,15 @@ static int run_client(bgpwatcher_client_t *client)
       if(zmsg_size(msg) >= 3)
 	{
 	  fprintf(stderr, "DEBUG: Got reply from server\n");
+	  zmsg_print(msg);
 
 	  client->heartbeat_liveness_remaining = client->heartbeat_liveness;
 
 	  /* parse the message and figure out what to do with it */
 	  /* pass the reply back to our internal client */
+
+	  /* for now we just handle REPLY messages */
+	  /* just fire the entire message down the tube to our master */
 
 	  zmsg_destroy(&msg);
 	  if(zctx_interrupted != 0)

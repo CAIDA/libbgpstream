@@ -36,14 +36,22 @@ static int client_connect(bgpwatcher_server_t *server,
 			  bgpwatcher_server_client_info_t *client,
 			  void *user)
 {
-  return -1;
+  fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
+  fprintf(stderr, "HANDLE: Handling client CONNECT\n");
+  fprintf(stderr, "Client ID:\t%s\n", client->name);
+  fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
+  return 0;
 }
 
 static int client_disconnect(bgpwatcher_server_t *server,
 			     bgpwatcher_server_client_info_t *client,
 			     void *user)
 {
-  return -1;
+  fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
+  fprintf(stderr, "HANDLE: Handling client DISCONNECT\n");
+  fprintf(stderr, "Client ID:\t%s\n", client->name);
+  fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
+  return 0;
 }
 
 static int recv_pfx_record(bgpwatcher_server_t *server,
@@ -51,7 +59,11 @@ static int recv_pfx_record(bgpwatcher_server_t *server,
 			   bgpwatcher_pfx_record_t *record,
 			   void *user)
 {
-  return -1;
+  fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
+  fprintf(stderr, "HANDLE: Handling pfx record\n");
+  bgpwatcher_pfx_record_dump(record);
+  fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
+  return 0;
 }
 
 static int recv_peer_record(bgpwatcher_server_t *server,
@@ -59,15 +71,34 @@ static int recv_peer_record(bgpwatcher_server_t *server,
 			    bgpwatcher_peer_record_t *record,
 			    void *user)
 {
+  fprintf(stderr, "HANDLE: Handling peer record\n");
   return -1;
+}
+
+static int table_begin(bgpwatcher_server_t *server,
+		       uint64_t table_id,
+		       bgpwatcher_table_type_t table_type,
+		       void *user)
+{
+  fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
+  fprintf(stderr, "HANDLE: Handling table BEGIN\n");
+  fprintf(stderr, "Table Type:\t%d\n", table_type);
+  fprintf(stderr, "Table Id:\t%"PRIu64"\n", table_id);
+  fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
+  return 0;
 }
 
 static int table_end(bgpwatcher_server_t *server,
 		     uint64_t table_id,
-		     bgpwatcher_server_table_type_t *table_type,
+		     bgpwatcher_table_type_t table_type,
 		     void *user)
 {
-  return -1;
+  fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
+  fprintf(stderr, "HANDLE: Handling table END\n");
+  fprintf(stderr, "Table Type:\t%d\n", table_type);
+  fprintf(stderr, "Table Id:\t%"PRIu64"\n", table_id);
+  fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
+  return 0;
 }
 
 static bgpwatcher_server_callbacks_t callback_template = {
@@ -75,6 +106,7 @@ static bgpwatcher_server_callbacks_t callback_template = {
   client_disconnect,
   recv_pfx_record,
   recv_peer_record,
+  table_begin,
   table_end,
   NULL, /* user: to be filled with a 'self' pointer */
 };
