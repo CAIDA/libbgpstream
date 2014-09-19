@@ -26,6 +26,7 @@
 #ifndef __BGPWATCHER_COMMON_H
 #define __BGPWATCHER_COMMON_H
 
+#include <czmq.h>
 #include <stdint.h>
 #include <sys/socket.h>
 
@@ -121,6 +122,31 @@ typedef struct bgpwatcher_err {
  *
  * @{ */
 
+/** Enumeration of message types
+ *
+ * @note these will be cast to a uint8_t, so be sure that there are fewer than
+ * 2^8 values
+ */
+typedef enum {
+  /** Invalid message */
+  BGPWATCHER_MSG_TYPE_UNKNOWN   = 0,
+
+  /** Client is ready to send requests/Server is ready for requests */
+  BGPWATCHER_MSG_TYPE_READY     = 1,
+
+  /** Server/Client is still alive */
+  BGPWATCHER_MSG_TYPE_HEARTBEAT = 2,
+
+  /** A request for the server to process */
+  BGPWATCHER_MSG_TYPE_REQUEST   = 3,
+
+  /** Server is sending a response to a client */
+  BGPWATCHER_MSG_TYPE_REPLY     = 4,
+
+  /** Highest message number in use */
+  BGPWATCHER_MSG_TYPE_MAX      = BGPWATCHER_MSG_TYPE_REPLY,
+} bgpwatcher_msg_type_t;
+
 /** Enumeration of error codes
  *
  * @note these error codes MUST be <= 0
@@ -174,5 +200,15 @@ int bgpwatcher_err_is_err(bgpwatcher_err_t *err);
  * @param err       pointer to bgpwatcher error status instance
  */
 void bgpwatcher_err_perr(bgpwatcher_err_t *err);
+
+/** Decodes the message type for the given message
+ *
+ * @param msg           zmsg object to inspect
+ * @return the type of the message, or BGPWATCHER_MSG_TYPE_UNKNOWN if an error
+ *         occurred
+ *
+ * This function will pop the type frame from the beginning of the message
+ */
+bgpwatcher_msg_type_t bgpwatcher_msg_type(zmsg_t *msg);
 
 #endif

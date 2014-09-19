@@ -24,6 +24,7 @@
  */
 
 #include <assert.h>
+#include <czmq.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -67,4 +68,26 @@ void bgpwatcher_err_perr(bgpwatcher_err_t *err)
   }
   err->err_num = 0; /* "OK" */
   err->problem[0]='\0';
+}
+
+bgpwatcher_msg_type_t bgpwatcher_msg_type(zmsg_t *msg)
+{
+  zframe_t *frame;
+  uint8_t type;
+
+  /* first frame should be our type */
+  if((frame = zmsg_pop(msg)) == NULL)
+    {
+      return BGPWATCHER_MSG_TYPE_UNKNOWN;
+    }
+
+  if((type = *zframe_data(frame)) > BGPWATCHER_MSG_TYPE_MAX)
+    {
+      zframe_destroy(&frame);
+      return BGPWATCHER_MSG_TYPE_UNKNOWN;
+    }
+
+  zframe_destroy(&frame);
+
+  return (bgpwatcher_msg_type_t)type;
 }
