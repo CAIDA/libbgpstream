@@ -92,7 +92,7 @@ bgpwatcher_t *bgpwatcher_init()
 
   /* can set errors now */
 
-  /* grab a copy of our callback pointers */
+  /* grab a copy of our callback pointers (owned by _server) */
   if((callbacks = malloc(sizeof(bgpwatcher_server_callbacks_t))) == NULL)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
@@ -114,6 +114,7 @@ bgpwatcher_t *bgpwatcher_init()
       free(watcher);
       return NULL;
     }
+  /* the server now owns callbacks */
 
   return watcher;
 }

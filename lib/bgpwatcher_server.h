@@ -65,35 +65,6 @@ typedef enum {
 
 } bgpwatcher_server_table_type_t;
 
-/** Enumeration of error codes
- *
- * @note these error codes MUST be <= 0
- */
-typedef enum {
-
-  /** No error has occured */
-  BGPWATCHER_SERVER_ERR_NONE         = 0,
-
-  /** bgpwatcher_server failed to initialize */
-  BGPWATCHER_SERVER_ERR_INIT_FAILED  = -1,
-
-  /** bgpwatcher_server failed to start */
-  BGPWATCHER_SERVER_ERR_START_FAILED = -2,
-
-  /** bgpwatcher_server was interrupted */
-  BGPWATCHER_SERVER_ERR_INTERRUPT    = -3,
-
-  /** unhandled error */
-  BGPWATCHER_SERVER_ERR_UNHANDLED    = -4,
-
-  /** protocol error */
-  BGPWATCHER_SERVER_ERR_PROTOCOL     = -5,
-
-  /** malloc error */
-  BGPWATCHER_SERVER_ERR_MALLOC       = -6,
-
-} bgpwatcher_server_err_code_t;
-
 /** @} */
 
 /**
