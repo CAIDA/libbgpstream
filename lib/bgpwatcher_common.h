@@ -122,6 +122,23 @@ typedef struct bgpwatcher_err {
  *
  * @{ */
 
+/** Table types */
+typedef enum {
+
+  /** Invalid table */
+  BGPWATCHER_TABLE_TYPE_NONE = 0,
+
+  /** Prefix table */
+  BGPWATCHER_TABLE_TYPE_PREFIX = 1,
+
+  /** Peer table */
+  BGPWATCHER_TABLE_TYPE_PEER = 2,
+
+  /** Highest table number in use */
+  BGPWATCHER_TABLE_TYPE_MAX = BGPWATCHER_TABLE_TYPE_PEER,
+
+} bgpwatcher_table_type_t;
+
 /** Enumeration of message types
  *
  * @note these will be cast to a uint8_t, so be sure that there are fewer than
@@ -134,18 +151,46 @@ typedef enum {
   /** Client is ready to send requests/Server is ready for requests */
   BGPWATCHER_MSG_TYPE_READY     = 1,
 
+  /** Client is explicitly disconnecting (clean shutdown) */
+  BGPWATCHER_MSG_TYPE_TERM      = 2,
+
   /** Server/Client is still alive */
-  BGPWATCHER_MSG_TYPE_HEARTBEAT = 2,
+  BGPWATCHER_MSG_TYPE_HEARTBEAT = 3,
 
   /** A request for the server to process */
-  BGPWATCHER_MSG_TYPE_REQUEST   = 3,
+  BGPWATCHER_MSG_TYPE_DATA   = 4,
 
   /** Server is sending a response to a client */
-  BGPWATCHER_MSG_TYPE_REPLY     = 4,
+  BGPWATCHER_MSG_TYPE_REPLY     = 5,
 
   /** Highest message number in use */
   BGPWATCHER_MSG_TYPE_MAX      = BGPWATCHER_MSG_TYPE_REPLY,
 } bgpwatcher_msg_type_t;
+
+/** Enumeration of request message types
+ *
+ * @note these will be cast to a uint8_t, so be sure that there are fewer than
+ * 2^8 values
+ */
+typedef enum {
+  /** Invalid message */
+  BGPWATCHER_DATA_MSG_TYPE_UNKNOWN   = 0,
+
+  /** Client is beginning a new table */
+  BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN = 1,
+
+  /* Client has completed a table */
+  BGPWATCHER_DATA_MSG_TYPE_TABLE_END = 2,
+
+  /** Client is sending a prefix record */
+  BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD  = 3,
+
+  /** Client is sending a peer record */
+  BGPWATCHER_DATA_MSG_TYPE_PEER_RECORD  = 4,
+
+  /** Highest message number in use */
+  BGPWATCHER_DATA_MSG_TYPE_MAX      = BGPWATCHER_DATA_MSG_TYPE_PEER_RECORD,
+} bgpwatcher_data_msg_type_t;
 
 /** Enumeration of error codes
  *
@@ -210,5 +255,47 @@ void bgpwatcher_err_perr(bgpwatcher_err_t *err);
  * This function will pop the type frame from the beginning of the message
  */
 bgpwatcher_msg_type_t bgpwatcher_msg_type(zmsg_t *msg);
+
+/** Decodes the request type for the given message
+ *
+ * @param msg           zmsg object to inspect
+ * @return the type of the message, or BGPWATCHER_REQ_MSG_TYPE_UNKNOWN if an
+ *         error occurred
+ *
+ * This function will pop the type frame from the beginning of the message
+ */
+bgpwatcher_data_msg_type_t bgpwatcher_data_msg_type(zmsg_t *msg);
+
+/** Create a new prefix record
+ *
+ * @return pointer to a prefix record if successful, NULL otherwise
+ */
+bgpwatcher_pfx_record_t *bgpwatcher_pfx_record_init();
+
+/** Free a prefix record
+ *
+ * @param pfx           pointer to prefix record to free
+ */
+void bgpwatcher_pfx_record_free(bgpwatcher_pfx_record_t **pfx_p);
+
+/** Create a new pfx record from the given msg
+ *
+ * @param msg           pointer to a 0mq msg to extract the pfx from
+ * @return pointer to a new pfx record if successful, NULL otherwise
+ */
+bgpwatcher_pfx_record_t *bgpwatcher_pfx_record_deserialize(zmsg_t *msg);
+
+/** Create a new 0mq msg from the given pfx record
+ *
+ * @param pfx           pointer to a pfx record to serialize
+ * @return pointer to a new zmsg if successful, NULL otherwise
+ */
+zmsg_t *bgpwatcher_pfx_record_serialize(bgpwatcher_pfx_record_t *pfx);
+
+/** Dump the given prefix record to stderr
+ *
+ * @param pfx           pointer to a prefix record to dump
+ */
+void bgpwatcher_pfx_record_dump(bgpwatcher_pfx_record_t *pfx);
 
 #endif
