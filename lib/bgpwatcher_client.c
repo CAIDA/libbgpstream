@@ -49,6 +49,11 @@ static int server_connect(bgpwatcher_client_t *client)
       return -1;
     }
 
+  if(client->identity != NULL && strlen(client->identity) > 0)
+    {
+      zsocket_set_identity(client->server_socket, client->identity);
+    }
+
   if(zsocket_connect(client->server_socket, "%s", client->server_uri) < 0)
     {
       bgpwatcher_err_set_err(ERR, errno, "Could not connect to server");
@@ -552,4 +557,21 @@ void bgpwatcher_client_set_reconnect_interval_max(bgpwatcher_client_t *client,
   assert(client != NULL);
 
   client->reconnect_interval_max = reconnect_interval_max;
+}
+
+int bgpwatcher_client_set_identity(bgpwatcher_client_t *client,
+				   const char *identity)
+{
+  assert(client != NULL);
+
+  free(client->identity);
+
+  if((client->identity = strdup(identity)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not set client identity");
+      return -1;
+    }
+
+  return 0;
 }

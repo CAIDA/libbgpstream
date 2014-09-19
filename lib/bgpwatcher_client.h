@@ -248,4 +248,17 @@ void bgpwatcher_client_set_reconnect_interval_min(bgpwatcher_client_t *client,
 void bgpwatcher_client_set_reconnect_interval_max(bgpwatcher_client_t *client,
 					       uint64_t reconnect_interval_max);
 
+/** Set the identity string for this client
+ *
+ * @param client        pointer to a bgpwatcher client instance to update
+ * @param identity      globally unique identity string
+ * @return 0 if the identity was update successfully, -1 otherwise
+ *
+ * @note if an identity is not set, a random ID will be generated on every
+ * connect to the server. This may/will cause problems if/when a server goes
+ * away. Any pending transactions may be lost. Please set an ID.
+ */
+int bgpwatcher_client_set_identity(bgpwatcher_client_t *client,
+				   const char *identity);
+
 #endif

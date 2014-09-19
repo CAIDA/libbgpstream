@@ -54,6 +54,9 @@
 
 typedef struct bgpwatcher_client {
 
+  /** Identity of this client. MUST be globally unique */
+  char *identity;
+
   /** Error status */
   bgpwatcher_err_t err;
 

@@ -46,6 +46,7 @@ static void usage(const char *name)
 	  "                          (default: %d)\n"
 	  "       -l <beats>         Number of heartbeats that can go by before \n"
 	  "                          the server is declared dead (default: %d)\n"
+	  "       -n <identity>      a globally unique name for the client (default: random uuid)\n"
 	  "       -r <retry-min>     Min time in ms to wait before reconnecting to server\n"
 
 	  "                          (default: %d)\n"
@@ -69,6 +70,7 @@ int main(int argc, char **argv)
 
   /* to store command line argument values */
   const char *server_uri = NULL;
+  const char *identity = NULL;
 
   uint64_t heartbeat_interval = BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT;
   int heartbeat_liveness      = BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT;
@@ -78,7 +80,7 @@ int main(int argc, char **argv)
   bgpwatcher_client_t *client = NULL;
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":i:l:r:R:s:v?")) >= 0)
+	(opt = getopt(argc, argv, ":i:l:n:r:R:s:v?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
@@ -98,6 +100,10 @@ int main(int argc, char **argv)
 
 	case 'l':
 	  heartbeat_liveness = atoi(optarg);
+	  break;
+
+	case 'n':
+	  identity = optarg;
 	  break;
 
 	case 'r':
@@ -141,6 +147,13 @@ int main(int argc, char **argv)
 
   if(server_uri != NULL &&
      bgpwatcher_client_set_server_uri(client, server_uri) != 0)
+    {
+      bgpwatcher_client_perr(client);
+      goto err;
+    }
+
+  if(identity != NULL &&
+     bgpwatcher_client_set_identity(client, identity) != 0)
     {
       bgpwatcher_client_perr(client);
       goto err;
