@@ -193,6 +193,7 @@ static int run_server(bgpwatcher_server_t *server)
 	{
 	  goto err;
 	}
+      frame = NULL;
       /* frame is owned by client object */
 
       /* add it to the queue of connected clients */
