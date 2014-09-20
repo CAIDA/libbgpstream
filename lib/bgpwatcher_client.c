@@ -422,8 +422,10 @@ int bgpwatcher_client_start(bgpwatcher_client_t *client)
 
   /* start processing requests */
   while((client->shutdown == 0) && (run_client(client) == 0))
+    {
+      /* nothing here */
+    }
 
-  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_UNHANDLED, "Unhandled error");
   return -1;
 }
 
