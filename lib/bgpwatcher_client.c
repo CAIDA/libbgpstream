@@ -80,6 +80,30 @@ static int server_connect(bgpwatcher_client_t *client)
   return 0;
 }
 
+static int server_disconnect(bgpwatcher_client_t *client)
+{
+  uint8_t msg_type_p = BGPWATCHER_MSG_TYPE_TERM;
+  zframe_t *frame;
+
+  fprintf(stderr, "DEBUG: client sending TERM\n");
+
+  if((frame = zframe_new(&msg_type_p, 1)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not create new client-term frame");
+      return -1;
+    }
+
+  if(zframe_send(&frame, client->server_socket, 0) == -1)
+    {
+      bgpwatcher_err_set_err(ERR, errno,
+			     "Could not send ready msg to server");
+      return -1;
+    }
+
+  return 0;
+}
+
 zmsg_t * append_data_headers(zmsg_t *msg, bgpwatcher_data_msg_type_t type,
 			     bgpwatcher_client_t *client)
 {
@@ -424,6 +448,12 @@ int bgpwatcher_client_start(bgpwatcher_client_t *client)
   while((client->shutdown == 0) && (run_client(client) == 0))
     {
       /* nothing here */
+    }
+
+  if(server_disconnect(client) != 0)
+    {
+      // err will be set
+      return -1;
     }
 
   return -1;

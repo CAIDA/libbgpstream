@@ -110,8 +110,8 @@ static bgpwatcher_server_client_t *client_get(bgpwatcher_server_t *server,
       return NULL;
     }
 
-  if((khiter = kh_get(strclient, server->clients, id))
-     == kh_end(server->clients))
+  if((khiter =
+      kh_get(strclient, server->clients, id)) == kh_end(server->clients))
     {
       free(id);
       return NULL;
@@ -124,6 +124,21 @@ static bgpwatcher_server_client_t *client_get(bgpwatcher_server_t *server,
     (server->heartbeat_interval * server->heartbeat_liveness);
   free(id);
   return client;
+}
+
+static void clients_remove(bgpwatcher_server_t *server,
+			   bgpwatcher_server_client_t *client)
+{
+  khiter_t khiter;
+  if((khiter =
+      kh_get(strclient, server->clients, client->id)) == kh_end(server->clients))
+    {
+      /* already removed? */
+      fprintf(stderr, "WARN: Removing non-existent client\n");
+      return;
+    }
+
+  kh_del(strclient, server->clients, khiter);
 }
 
 static int clients_purge(bgpwatcher_server_t *server)
@@ -484,21 +499,10 @@ static int run_server(bgpwatcher_server_t *server)
 	 appropriate callback */
       msg_type = bgpwatcher_msg_type(msg);
 
-      if(msg_type == BGPWATCHER_MSG_TYPE_READY)
-	{
-	  /* be careful that if a client re-connects before we time it out, we
-	     wan't to treat the READY message as a HEARTBEAT */
-	  if(new_client != 0)
-	    {
-	      /* call the "client connect" callback */
-	      if(DO_CALLBACK(client_connect, &client->info) != 0)
-		{
-		  goto err;
-		}
-	    }
-	  zmsg_destroy(&msg);
-	}
-      else if(msg_type == BGPWATCHER_MSG_TYPE_HEARTBEAT)
+      /* check through each type we support (in descending order of
+	 frequency) */
+      /* @todo consider making this a switch */
+      if(msg_type == BGPWATCHER_MSG_TYPE_HEARTBEAT)
 	{
 	  /*fprintf(stderr, "DEBUG: Got a heartbeat from %s\n", client->id);*/
 	  /* ignore these */
@@ -536,6 +540,38 @@ static int run_server(bgpwatcher_server_t *server)
 
 	  msg = NULL;
 	  /* msg was destroyed by handle_data_message */
+	}
+      else if(msg_type == BGPWATCHER_MSG_TYPE_READY)
+	{
+	  /* be careful that if a client re-connects before we time it out, we
+	     wan't to treat the READY message as a HEARTBEAT */
+	  if(new_client != 0)
+	    {
+	      /* call the "client connect" callback */
+	      if(DO_CALLBACK(client_connect, &client->info) != 0)
+		{
+		  goto err;
+		}
+	      
+	    }
+	  zmsg_destroy(&msg);
+	}
+      else if(msg_type == BGPWATCHER_MSG_TYPE_TERM)
+	{
+	  /* if we get an explicit term, we want to remove the client from our
+	     hash, and also fire the appropriate callback */
+
+	  fprintf(stderr, "**************************************\n");
+	  fprintf(stderr, "DEBUG: Got disconnect from client:\n");
+	  /* call the "client disconnect" callback */
+	  if(DO_CALLBACK(client_disconnect, &client->info) != 0)
+	    {
+	      goto err;
+	    }
+
+	  clients_remove(server, client);
+	  client_free(client);
+	  client = NULL;
 	}
       else
 	{
