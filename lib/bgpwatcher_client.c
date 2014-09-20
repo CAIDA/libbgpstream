@@ -222,7 +222,7 @@ static int run_client(bgpwatcher_client_t *client)
 
   /* DEBUG */
   /* fire some requests off to the server for testing */
-  if(cnt < 100)
+  if(cnt == 0)
     {
       zmsg_t *req;
       fprintf(stderr, "DEBUG: Sending test messages to server\n");
