@@ -431,6 +431,94 @@ static int handle_data_message(bgpwatcher_server_t *server,
   return -1;
 }
 
+/* OWNS MSG */
+static int handle_message(bgpwatcher_server_t *server,
+			  bgpwatcher_server_client_t *client,
+			  zmsg_t *msg)
+{
+  bgpwatcher_msg_type_t msg_type;
+
+  /* validate the message type and pass to the appropriate callback */
+  msg_type = bgpwatcher_msg_type(msg);
+
+  /* check each type we support (in descending order of frequency) */
+  switch(msg_type)
+    {
+    case BGPWATCHER_MSG_TYPE_DATA:
+      /* DEBUG */
+      fprintf(stderr, "**************************************\n");
+      fprintf(stderr, "DEBUG: Got data from client:\n");
+      zmsg_print(msg);
+      fprintf(stderr, "**************************************\n\n");
+
+      /* parse the request, and then call the appropriate callback */
+      /* send a reply back to the client based on the callback result */
+
+      /* there must be at least two frames for a valid data msg:
+	 1. seq number 2. data_msg_type (3. msg payload) */
+      if(zmsg_size(msg) < 2)
+	{
+	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+				 "Malformed data message received from "
+				 "client");
+	  goto err;
+	}
+
+      if(handle_data_message(server, client, msg) != 0)
+	{
+	  /* err no will already be set */
+	  msg = NULL;
+	  goto err;
+	}
+
+      fprintf(stderr, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n");
+
+      msg = NULL;
+      /* msg was destroyed by handle_data_message */
+      break;
+
+    case BGPWATCHER_MSG_TYPE_HEARTBEAT:
+      /* safe to ignore these */
+      /*fprintf(stderr, "DEBUG: Got a heartbeat from %s\n", client->id);*/
+    case BGPWATCHER_MSG_TYPE_READY:
+      /* and these */
+      break;
+
+    case BGPWATCHER_MSG_TYPE_TERM:
+      /* if we get an explicit term, we want to remove the client from our
+	 hash, and also fire the appropriate callback */
+
+      /* DEBUG */
+      fprintf(stderr, "**************************************\n");
+      fprintf(stderr, "DEBUG: Got disconnect from client:\n");
+
+      /* call the "client disconnect" callback */
+      if(DO_CALLBACK(client_disconnect, &client->info) != 0)
+	{
+	  goto err;
+	}
+
+      clients_remove(server, client);
+      client_free(client);
+      client = NULL;
+      break;
+
+    default:
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+			     "Invalid message type (%d) rx'd from client",
+			     msg_type);
+      goto err;
+      break;
+    }
+
+  zmsg_destroy(&msg);
+  return 0;
+
+ err:
+  zmsg_destroy(&msg);
+  return -1;
+}
+
 static int run_server(bgpwatcher_server_t *server)
 {
   zmq_pollitem_t poll_items [] = {
@@ -444,7 +532,6 @@ static int run_server(bgpwatcher_server_t *server)
   bgpwatcher_server_client_t *client = NULL;
   khiter_t k;
 
-  bgpwatcher_msg_type_t msg_type;
   uint8_t msg_type_p;
 
   int new_client = 0;
@@ -483,9 +570,16 @@ static int run_server(bgpwatcher_server_t *server)
 	    {
 	      goto err;
 	    }
-	  new_client = 1;
-	  frame = NULL;
+
 	  fprintf(stderr, "DEBUG: Creating new client %s\n", client->id);
+
+	  /* call the "client connect" callback */
+	  if(DO_CALLBACK(client_connect, &client->info) != 0)
+	    {
+	      goto err;
+	    }
+
+	  frame = NULL;
 	}
       else
 	{
@@ -493,93 +587,15 @@ static int run_server(bgpwatcher_server_t *server)
 	  zframe_destroy(&frame);
 	}
 
-      /* by here we have a client object */
-
-      /* now we validate the actual message and pass along the info to the
-	 appropriate callback */
-      msg_type = bgpwatcher_msg_type(msg);
-
-      /* check through each type we support (in descending order of
-	 frequency) */
-      /* @todo consider making this a switch */
-      if(msg_type == BGPWATCHER_MSG_TYPE_HEARTBEAT)
+      /* by here we have a client object and it is time to handle whatever
+	 message we were sent */
+      if(handle_message(server, client, msg) != 0)
 	{
-	  /*fprintf(stderr, "DEBUG: Got a heartbeat from %s\n", client->id);*/
-	  /* ignore these */
-	  zmsg_destroy(&msg);
-	}
-      else if(msg_type == BGPWATCHER_MSG_TYPE_DATA)
-	{
-	  /* DEBUG */
-	  fprintf(stderr, "**************************************\n");
-	  fprintf(stderr, "DEBUG: Got data from client:\n");
-	  zmsg_print(msg);
-	  fprintf(stderr, "**************************************\n\n");
-
-	  /* parse the request, and then call the appropriate callback */
-	  /* send a reply back to the client based on the callback result */
-
-	  /* there must be at least two frames for a valid data msg:
-	     1. seq number 2. data_msg_type (3. msg payload) */
-	  if(zmsg_size(msg) < 2)
-	    {
-	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-				     "Malformed data message received from "
-				     "client");
-	      goto err;
-	    }
-
-	  if(handle_data_message(server, client, msg) != 0)
-	    {
-	      /* err no will already be set */
-	      msg = NULL;
-	      goto err;
-	    }
-
-	  fprintf(stderr, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n");
-
-	  msg = NULL;
-	  /* msg was destroyed by handle_data_message */
-	}
-      else if(msg_type == BGPWATCHER_MSG_TYPE_READY)
-	{
-	  /* be careful that if a client re-connects before we time it out, we
-	     wan't to treat the READY message as a HEARTBEAT */
-	  if(new_client != 0)
-	    {
-	      /* call the "client connect" callback */
-	      if(DO_CALLBACK(client_connect, &client->info) != 0)
-		{
-		  goto err;
-		}
-	      
-	    }
-	  zmsg_destroy(&msg);
-	}
-      else if(msg_type == BGPWATCHER_MSG_TYPE_TERM)
-	{
-	  /* if we get an explicit term, we want to remove the client from our
-	     hash, and also fire the appropriate callback */
-
-	  fprintf(stderr, "**************************************\n");
-	  fprintf(stderr, "DEBUG: Got disconnect from client:\n");
-	  /* call the "client disconnect" callback */
-	  if(DO_CALLBACK(client_disconnect, &client->info) != 0)
-	    {
-	      goto err;
-	    }
-
-	  clients_remove(server, client);
-	  client_free(client);
-	  client = NULL;
-	}
-      else
-	{
-	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-				 "Invalid message type (%d) rx'd from client",
-				 msg_type);
 	  goto err;
 	}
+      /* handle message destroyed the message, client too, maybe */
+      client = NULL;
+      msg = NULL;
 
     }
 
