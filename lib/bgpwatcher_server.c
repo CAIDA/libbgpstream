@@ -334,7 +334,7 @@ static int handle_pfx_record(bgpwatcher_server_t *server,
 {
   bgpwatcher_pfx_record_t *rec = NULL;
 
-  if(client->table_type != BGPWATCHER_TABLE_TYPE_PREFIX) /*DEBUG*/
+  if(client->table_type != BGPWATCHER_TABLE_TYPE_PREFIX)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 			     "Received prefix before table start");
@@ -358,6 +358,39 @@ static int handle_pfx_record(bgpwatcher_server_t *server,
 
 err:
   bgpwatcher_pfx_record_free(&rec);
+  return -1;
+}
+
+static int handle_peer_record(bgpwatcher_server_t *server,
+			     bgpwatcher_server_client_t *client,
+			     zmsg_t *msg)
+{
+  bgpwatcher_peer_record_t *rec = NULL;
+
+  if(client->table_type != BGPWATCHER_TABLE_TYPE_PEER)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+			     "Received peer before table start");
+      goto err;
+    }
+
+  if((rec = bgpwatcher_peer_record_deserialize(msg)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+			     "Could not deserialize peer record");
+      goto err;
+    }
+
+  if(DO_CALLBACK(recv_peer_record, client->table_num, rec) != 0)
+    {
+      goto err;
+    }
+
+  bgpwatcher_peer_record_free(&rec);
+  return 0;
+
+err:
+  bgpwatcher_peer_record_free(&rec);
   return -1;
 }
 
@@ -415,6 +448,15 @@ static int handle_data_message(bgpwatcher_server_t *server,
 
     case BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD:
       hrc = handle_pfx_record(server, client, msg);
+      if(bgpwatcher_err_is_err(ERR) != 0)
+	{
+	  goto err;
+	}
+      rc = hrc;
+      break;
+
+    case BGPWATCHER_DATA_MSG_TYPE_PEER_RECORD:
+      hrc = handle_peer_record(server, client, msg);
       if(bgpwatcher_err_is_err(ERR) != 0)
 	{
 	  goto err;
