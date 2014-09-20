@@ -191,6 +191,52 @@ zmsg_t *build_test_table_end(bgpwatcher_client_t *client,
 			     client);
 }
 
+zmsg_t *build_test_peer(bgpwatcher_client_t *client)
+{
+  zmsg_t *msg;
+  bgpwatcher_peer_record_t rec;
+
+  ((struct sockaddr_in6*)&rec.ip)->sin6_family = AF_INET6;
+
+  /*2001:48d0:101:501:ec4:7aff:fe12:1108*/
+  ((struct sockaddr_in6*)&rec.ip)->sin6_addr.s6_addr[0] = 0x20;
+  ((struct sockaddr_in6*)&rec.ip)->sin6_addr.s6_addr[1] = 0x01;
+
+  ((struct sockaddr_in6*)&rec.ip)->sin6_addr.s6_addr[2] = 0x48;
+  ((struct sockaddr_in6*)&rec.ip)->sin6_addr.s6_addr[3] = 0xd0;
+
+  ((struct sockaddr_in6*)&rec.ip)->sin6_addr.s6_addr[4] = 0x01;
+  ((struct sockaddr_in6*)&rec.ip)->sin6_addr.s6_addr[5] = 0x01;
+
+  ((struct sockaddr_in6*)&rec.ip)->sin6_addr.s6_addr[6] = 0x05;
+  ((struct sockaddr_in6*)&rec.ip)->sin6_addr.s6_addr[7] = 0x01;
+
+  ((struct sockaddr_in6*)&rec.ip)->sin6_addr.s6_addr[8] = 0x0e;
+  ((struct sockaddr_in6*)&rec.ip)->sin6_addr.s6_addr[9] = 0xc4;
+
+  ((struct sockaddr_in6*)&rec.ip)->sin6_addr.s6_addr[10] = 0x7a;
+  ((struct sockaddr_in6*)&rec.ip)->sin6_addr.s6_addr[11] = 0xff;
+
+  ((struct sockaddr_in6*)&rec.ip)->sin6_addr.s6_addr[12] = 0xfe;
+  ((struct sockaddr_in6*)&rec.ip)->sin6_addr.s6_addr[13] = 0x12;
+
+  ((struct sockaddr_in6*)&rec.ip)->sin6_addr.s6_addr[14] = 0x11;
+  ((struct sockaddr_in6*)&rec.ip)->sin6_addr.s6_addr[15] = 0x08;
+
+  rec.status = 0xF3;
+
+  if((msg = bgpwatcher_peer_record_serialize(&rec)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Failed to serialize peer record");
+      return NULL;
+    }
+
+  return append_data_headers(msg,
+			     BGPWATCHER_DATA_MSG_TYPE_PEER_RECORD,
+			     client);
+}
+
 zmsg_t *build_test_prefix(bgpwatcher_client_t *client)
 {
   zmsg_t *msg;
@@ -212,7 +258,9 @@ zmsg_t *build_test_prefix(bgpwatcher_client_t *client)
       return NULL;
     }
 
-  return append_data_headers(msg, BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD, client);
+  return append_data_headers(msg,
+			     BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD,
+			     client);
 }
 
 /* DEBUG */
@@ -266,6 +314,10 @@ static int run_client(bgpwatcher_client_t *client)
       assert(zmsg_send(&req, client->server_socket) == 0);
 
       req = build_test_table_begin(client, BGPWATCHER_TABLE_TYPE_PEER);
+      assert(req != NULL);
+      assert(zmsg_send(&req, client->server_socket) == 0);
+
+      req = build_test_peer(client);
       assert(req != NULL);
       assert(zmsg_send(&req, client->server_socket) == 0);
 
