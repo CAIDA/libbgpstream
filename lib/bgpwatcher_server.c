@@ -45,8 +45,10 @@ enum {
   POLL_ITEM_CNT    = 1,
 };
 
-static void client_free(bgpwatcher_server_client_t *client)
+static void client_free(bgpwatcher_server_client_t **client_p)
 {
+  bgpwatcher_server_client_t *client = *client_p;
+
   if(client == NULL)
     {
       return;
@@ -62,11 +64,18 @@ static void client_free(bgpwatcher_server_client_t *client)
 
   free(client);
 
+  *client_p = NULL;
   return;
 }
 
+/* because the hash calls with only the pointer, not the local ref */
+static void client_free_wrap(bgpwatcher_server_client_t *client)
+{
+  client_free(&client);
+}
+
 static bgpwatcher_server_client_t *client_init(bgpwatcher_server_t *server,
-					       zframe_t *identity)
+					       zframe_t **identity)
 {
   bgpwatcher_server_client_t *client;
   int khret;
@@ -77,9 +86,10 @@ static bgpwatcher_server_client_t *client_init(bgpwatcher_server_t *server,
       return NULL;
     }
 
-  client->identity = identity;
+  client->identity = *identity;
+  *identity = NULL;
 
-  client->id = zframe_strhex(identity);
+  client->id = zframe_strhex(client->identity);
   client->expiry = zclock_time() +
     (server->heartbeat_interval * server->heartbeat_liveness);
 
@@ -89,7 +99,7 @@ static bgpwatcher_server_client_t *client_init(bgpwatcher_server_t *server,
   khiter = kh_put(strclient, server->clients, client->id, &khret);
   if(khret == -1)
     {
-      client_free(client);
+      client_free(&client);
       return NULL;
     }
   kh_val(server->clients, khiter) = client;
@@ -163,8 +173,7 @@ static int clients_purge(bgpwatcher_server_t *server)
 	      return -1;
 	    }
 	  /* the key string is actually owned by the client, dont free */
-	  client_free(client);
-	  client = NULL;
+	  client_free(&client);
 	  kh_del(strclient, server->clients, k);
 	}
     }
@@ -177,7 +186,7 @@ static void clients_free(bgpwatcher_server_t *server)
   assert(server != NULL);
   assert(server->clients != NULL);
 
-  kh_free_vals(strclient, server->clients, client_free);
+  kh_free_vals(strclient, server->clients, client_free_wrap);
   kh_destroy(strclient, server->clients);
   server->clients = NULL;
 }
@@ -197,7 +206,7 @@ static int send_reply(bgpwatcher_server_t *server,
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Failed to malloc reply message");
-      return -1;
+      goto err;
     }
 
   /* add the client id */
@@ -207,8 +216,7 @@ static int send_reply(bgpwatcher_server_t *server,
       bgpwatcher_err_set_err(ERR, errno,
 			     "Failed to add client id to reply message",
 			     client->id);
-      zmsg_destroy(&msg);
-      return -1;
+      goto err;
     }
 
   /* add the reply type */
@@ -216,8 +224,7 @@ static int send_reply(bgpwatcher_server_t *server,
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Failed to add type to reply message");
-      zmsg_destroy(&msg);
-      return -1;
+      goto err;
     }
 
   /* add the seq num */
@@ -225,8 +232,7 @@ static int send_reply(bgpwatcher_server_t *server,
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not add seq frame to reply message");
-      zmsg_destroy(&msg);
-      return -1;
+      goto err;
     }
 
   /* add the return code */
@@ -234,8 +240,7 @@ static int send_reply(bgpwatcher_server_t *server,
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Failed to add rc to reply message");
-      zmsg_destroy(&msg);
-      return -1;
+      goto err;
     }
 
   /* DEBUG */
@@ -246,11 +251,14 @@ static int send_reply(bgpwatcher_server_t *server,
     {
       bgpwatcher_err_set_err(ERR, errno,
 			     "Could not send reply to client");
-      zmsg_destroy(&msg);
-      return -1;
+      goto err;
     }
 
   return 0;
+
+ err:
+  zmsg_destroy(&msg);
+  return -1;
 }
 
 static int handle_table(bgpwatcher_server_t *server,
@@ -277,7 +285,6 @@ static int handle_table(bgpwatcher_server_t *server,
 			     "Invalid table type");
       goto err;
     }
-
 
   if(type == BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN)
     {
@@ -343,8 +350,7 @@ static int handle_pfx_record(bgpwatcher_server_t *server,
 
   if(DO_CALLBACK(recv_pfx_record, client->table_num, rec) != 0)
     {
-      bgpwatcher_pfx_record_free(&rec);
-      return -1;
+      goto err;
     }
 
   bgpwatcher_pfx_record_free(&rec);
@@ -366,12 +372,15 @@ err:
  */
 static int handle_data_message(bgpwatcher_server_t *server,
 			       bgpwatcher_server_client_t *client,
-			       zmsg_t *msg)
+			       zmsg_t **msg_p)
 {
+  zmsg_t *msg = *msg_p;
   zframe_t *seq_frame = NULL;
   int rc = -1;
   int hrc;
   bgpwatcher_data_msg_type_t dmt;
+
+  assert(msg != NULL);
 
   /* grab the seq num and save it for later */
   if((seq_frame = zmsg_pop(msg)) == NULL)
@@ -422,21 +431,31 @@ static int handle_data_message(bgpwatcher_server_t *server,
     }
 
   zmsg_destroy(&msg);
+  *msg_p = NULL;
   return send_reply(server, client, seq_frame, rc);
 
  err:
   /* err means a broken request, just pretend we didn't get it */
   zframe_destroy(&seq_frame);
   zmsg_destroy(&msg);
+  *msg_p = NULL;
   return -1;
 }
 
 /* OWNS MSG */
 static int handle_message(bgpwatcher_server_t *server,
-			  bgpwatcher_server_client_t *client,
-			  zmsg_t *msg)
+			  bgpwatcher_server_client_t **client_p,
+			  zmsg_t **msg_p)
 {
   bgpwatcher_msg_type_t msg_type;
+
+  assert(client_p != NULL);
+  bgpwatcher_server_client_t *client = *client_p;
+  assert(client != NULL);
+
+  assert(msg_p != NULL);
+  zmsg_t *msg = *msg_p;
+  assert(msg != NULL);
 
   /* validate the message type and pass to the appropriate callback */
   msg_type = bgpwatcher_msg_type(msg);
@@ -464,16 +483,14 @@ static int handle_message(bgpwatcher_server_t *server,
 	  goto err;
 	}
 
-      if(handle_data_message(server, client, msg) != 0)
+      if(handle_data_message(server, client, &msg) != 0)
 	{
 	  /* err no will already be set */
-	  msg = NULL;
 	  goto err;
 	}
 
       fprintf(stderr, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n");
 
-      msg = NULL;
       /* msg was destroyed by handle_data_message */
       break;
 
@@ -499,8 +516,7 @@ static int handle_message(bgpwatcher_server_t *server,
 	}
 
       clients_remove(server, client);
-      client_free(client);
-      client = NULL;
+      client_free(&client);
       break;
 
     default:
@@ -512,10 +528,14 @@ static int handle_message(bgpwatcher_server_t *server,
     }
 
   zmsg_destroy(&msg);
+  *msg_p = NULL;
+  *client_p = NULL;
   return 0;
 
  err:
   zmsg_destroy(&msg);
+  *msg_p = NULL;
+  *client_p = NULL;
   return -1;
 }
 
@@ -533,8 +553,6 @@ static int run_server(bgpwatcher_server_t *server)
   khiter_t k;
 
   uint8_t msg_type_p;
-
-  int new_client = 0;
 
   /*fprintf(stderr, "DEBUG: Beginning loop cycle\n");*/
 
@@ -566,7 +584,7 @@ static int run_server(bgpwatcher_server_t *server)
       if((client = client_get(server, frame)) == NULL)
 	{
 	  /* create state for this client */
-	  if((client = client_init(server, frame)) == NULL)
+	  if((client = client_init(server, &frame)) == NULL)
 	    {
 	      goto err;
 	    }
@@ -578,25 +596,19 @@ static int run_server(bgpwatcher_server_t *server)
 	    {
 	      goto err;
 	    }
-
-	  frame = NULL;
 	}
       else
 	{
-	  new_client = 0;
 	  zframe_destroy(&frame);
 	}
 
       /* by here we have a client object and it is time to handle whatever
 	 message we were sent */
-      if(handle_message(server, client, msg) != 0)
+      if(handle_message(server, &client, &msg) != 0)
 	{
 	  goto err;
 	}
-      /* handle message destroyed the message, client too, maybe */
-      client = NULL;
-      msg = NULL;
-
+      /* handle message destroyed the message and the client too, maybe */
     }
 
   /* time for heartbeats */
