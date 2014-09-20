@@ -101,6 +101,7 @@ typedef struct bgpwatcher_client {
 
 } bgpwatcher_client_t;
 
+/** @todo consider merging pfx and peer tables into a single table type */
 typedef struct bgpwatcher_client_pfx_table {
 
   /** Client instance that owns this table */
