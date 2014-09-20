@@ -71,8 +71,11 @@ static int recv_peer_record(bgpwatcher_server_t *server,
 			    bgpwatcher_peer_record_t *record,
 			    void *user)
 {
+  fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
   fprintf(stderr, "HANDLE: Handling peer record\n");
-  return -1;
+  bgpwatcher_peer_record_dump(record);
+  fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
+  return 0;
 }
 
 static int table_begin(bgpwatcher_server_t *server,
