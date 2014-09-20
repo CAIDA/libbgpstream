@@ -298,4 +298,36 @@ zmsg_t *bgpwatcher_pfx_record_serialize(bgpwatcher_pfx_record_t *pfx);
  */
 void bgpwatcher_pfx_record_dump(bgpwatcher_pfx_record_t *pfx);
 
+/** Create a new peer record
+ *
+ * @return pointer to a peer record if successful, NULL otherwise
+ */
+bgpwatcher_peer_record_t *bgpwatcher_peer_record_init();
+
+/** Free a peer record
+ *
+ * @param peer           pointer to peer record to free
+ */
+void bgpwatcher_peer_record_free(bgpwatcher_peer_record_t **peer_p);
+
+/** Create a new peer record from the given msg
+ *
+ * @param msg           pointer to a 0mq msg to extract the peer from
+ * @return pointer to a new peer record if successful, NULL otherwise
+ */
+bgpwatcher_peer_record_t *bgpwatcher_peer_record_deserialize(zmsg_t *msg);
+
+/** Create a new 0mq msg from the given peer record
+ *
+ * @param peer           pointer to a peer record to serialize
+ * @return pointer to a new zmsg if successful, NULL otherwise
+ */
+zmsg_t *bgpwatcher_peer_record_serialize(bgpwatcher_peer_record_t *peer);
+
+/** Dump the given peer record to stderr
+ *
+ * @param peer           pointer to a peer record to dump
+ */
+void bgpwatcher_peer_record_dump(bgpwatcher_peer_record_t *peer);
+
 #endif

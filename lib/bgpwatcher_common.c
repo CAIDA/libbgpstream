@@ -351,3 +351,109 @@ void bgpwatcher_pfx_record_dump(bgpwatcher_pfx_record_t *pfx)
 	      pfx->collector_name);
     }
 }
+
+bgpwatcher_peer_record_t *bgpwatcher_peer_record_init()
+{
+  return malloc_zero(sizeof(bgpwatcher_peer_record_t));
+}
+
+void bgpwatcher_peer_record_free(bgpwatcher_peer_record_t **peer_p)
+{
+  bgpwatcher_peer_record_t *peer = *peer_p;
+
+  if(peer == NULL)
+    {
+      return;
+    }
+
+  free(peer);
+
+  *peer_p = NULL;
+}
+
+bgpwatcher_peer_record_t *bgpwatcher_peer_record_deserialize(zmsg_t *msg)
+{
+  bgpwatcher_peer_record_t *peer;
+  zframe_t *frame;
+
+  if((peer = bgpwatcher_peer_record_init()) == NULL)
+    {
+      return NULL;
+    }
+
+  /* peer ip */
+  if(msg_pop_ip(msg, &peer->ip) != 0)
+    {
+      goto err;
+    }
+
+  /* status */
+  if((frame = zmsg_pop(msg)) == NULL || zframe_size(frame) != sizeof(uint8_t))
+    {
+      goto err;
+    }
+  peer->status = *zframe_data(frame);
+  zframe_destroy(&frame);
+
+  return peer;
+
+ err:
+  zframe_destroy(&frame);
+  bgpwatcher_peer_record_free(&peer);
+  return NULL;
+}
+
+zmsg_t *bgpwatcher_peer_record_serialize(bgpwatcher_peer_record_t *peer)
+{
+  zmsg_t *msg = NULL;
+
+  if((msg = zmsg_new()) == NULL)
+    {
+      goto err;
+    }
+
+  /* peer ip */
+  if(msg_append_ip(msg, &peer->ip) != 0)
+    {
+      goto err;
+    }
+
+  /* status */
+  if(zmsg_addmem(msg, &peer->status, sizeof(uint8_t)) != 0)
+    {
+      goto err;
+    }
+
+  return msg;
+
+ err:
+  zmsg_destroy(&msg);
+  return NULL;
+}
+
+void bgpwatcher_peer_record_dump(bgpwatcher_peer_record_t *peer)
+{
+  char ip_str[INET6_ADDRSTRLEN] = "";
+
+  if(peer == NULL)
+    {
+      fprintf(stderr,
+	      "------------------------------\n"
+	      "NULL\n"
+	      "------------------------------\n");
+    }
+  else
+    {
+      inet_ntop(peer->ip.ss_family,
+		get_in_addr((struct sockaddr *)&peer->ip),
+		ip_str, INET6_ADDRSTRLEN);
+
+      fprintf(stderr,
+	      "------------------------------\n"
+	      "IP:\t%s\n"
+	      "Status:\t%"PRIu8"\n"
+	      "------------------------------\n",
+	      ip_str,
+	      peer->status);
+    }
+}
