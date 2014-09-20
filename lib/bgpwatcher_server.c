@@ -328,9 +328,11 @@ static int handle_pfx_record(bgpwatcher_server_t *server,
 
   if(DO_CALLBACK(recv_pfx_record, client->table_num, rec) != 0)
     {
+      bgpwatcher_pfx_record_free(&rec);
       return -1;
     }
 
+  bgpwatcher_pfx_record_free(&rec);
   return 0;
 
 err:
