@@ -31,6 +31,8 @@
 
 #include <bgpwatcher_common.h>
 
+#include "khash.h"
+
 /** @file
  *
  * @brief Header file that exposes the (protected) interface of the bgpwatcher
@@ -70,13 +72,34 @@ typedef struct bgpwatcher_server bgpwatcher_server_t;
  *
  * @{ */
 
-/** Information about a client given to bgpwatcher when a client connects or
- *  disconnects
+/** Public information about a client given to bgpwatcher when a client connects
+ *  or disconnects
  */
 typedef struct bgpwatcher_server_client_info {
   /** Client name (collector name) */
   char *name;
 } bgpwatcher_server_client_info_t;
+
+/** Protected information about a client used to handle client connections */
+typedef struct bgpwatcher_server_client {
+  /** Identity frame data that the client sent us */
+  zframe_t *identity;
+
+  /** Printable ID of client (for debugging and logging) */
+  char *id;
+
+  /** Time at which the client expires */
+  uint64_t expiry;
+
+  /** info about this client that we will send to the client connect handler */
+  bgpwatcher_server_client_info_t info;
+
+  /** Current table number */
+  uint64_t table_num;
+
+  /** Are we in the middle of receiving a table? */
+  bgpwatcher_table_type_t table_type;
+} bgpwatcher_server_client_t;
 
 typedef struct bgpwatcher_server_callbacks {
 
@@ -159,6 +182,9 @@ typedef struct bgpwatcher_server_callbacks {
 
 } bgpwatcher_server_callbacks_t;
 
+KHASH_INIT(strclient, char*, bgpwatcher_server_client_t*, 1,
+	   kh_str_hash_func, kh_str_hash_equal);
+
 struct bgpwatcher_server {
 
   /** Error status */
@@ -174,7 +200,7 @@ struct bgpwatcher_server {
   void *client_socket;
 
   /** List of clients that are connected */
-  zlist_t *clients;
+  khash_t(strclient) *clients;
 
   /** Time (in ms) between heartbeats sent to clients */
   uint64_t heartbeat_interval;

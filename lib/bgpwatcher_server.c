@@ -29,6 +29,7 @@
 
 #include <bgpwatcher_server.h>
 
+#include "khash.h"
 #include "utils.h"
 
 #define ERR (&server->err)
@@ -44,27 +45,7 @@ enum {
   POLL_ITEM_CNT    = 1,
 };
 
-typedef struct client {
-  /** Identity frame data that the client sent us */
-  zframe_t *identity;
-
-  /** Printable ID of client (for debugging and logging) */
-  char *id;
-
-  /** Time at which the client expires */
-  uint64_t expiry;
-
-  /** info about this client that we will send to the client connect handler */
-  bgpwatcher_server_client_info_t info;
-
-  /** Current table number */
-  uint64_t table_num;
-
-  /** Are we in the middle of receiving a table? */
-  bgpwatcher_table_type_t table_type;
-} client_t;
-
-static void client_free(client_t *client)
+static void client_free(bgpwatcher_server_client_t *client)
 {
   if(client == NULL)
     {
@@ -84,11 +65,14 @@ static void client_free(client_t *client)
   return;
 }
 
-static client_t *client_init(bgpwatcher_server_t *server, zframe_t *identity)
+static bgpwatcher_server_client_t *client_init(bgpwatcher_server_t *server,
+					       zframe_t *identity)
 {
-  client_t *client;
+  bgpwatcher_server_client_t *client;
+  int khret;
+  khiter_t khiter;
 
-  if((client = malloc_zero(sizeof(client_t))) == NULL)
+  if((client = malloc_zero(sizeof(bgpwatcher_server_client_t))) == NULL)
     {
       return NULL;
     }
@@ -101,82 +85,90 @@ static client_t *client_init(bgpwatcher_server_t *server, zframe_t *identity)
 
   client->info.name = client->id;
 
-  if(zlist_append(server->clients, client) != 0)
+  /* insert client into the hash */
+  khiter = kh_put(strclient, server->clients, client->id, &khret);
+  if(khret == -1)
     {
       client_free(client);
       return NULL;
     }
+  kh_val(server->clients, khiter) = client;
 
   return client;
 }
 
-/* consider turning this into a hash */
-static client_t *client_get(bgpwatcher_server_t *server, zframe_t *identity)
+/** @todo consider using something other than the hex id as the key */
+static bgpwatcher_server_client_t *client_get(bgpwatcher_server_t *server,
+					      zframe_t *identity)
 {
-  client_t *s;
-  zlist_t *clients = server->clients;
+  bgpwatcher_server_client_t *client;
+  khiter_t khiter;
+  char *id;
 
-  char *id = zframe_strhex(identity);
-
-  /* try and find this client in the list */
-  s = zlist_first(clients);
-  while(s != NULL)
+  if((id = zframe_strhex(identity)) == NULL)
     {
-      if(strcmp(id, s->id) == 0)
-	{
-	  /* touch the timeout */
-	  s->expiry = zclock_time() +
-	    (server->heartbeat_interval * server->heartbeat_liveness);
-	  free(id);
-	  return s;
-	}
-
-      s = zlist_next(clients);
+      return NULL;
     }
 
-  /* we don't have this client */
+  if((khiter = kh_get(strclient, server->clients, id))
+     == kh_end(server->clients))
+    {
+      free(id);
+      return NULL;
+    }
+
+  client = kh_val(server->clients, khiter);
+  /* we are already tracking this client, treat the msg as a heartbeat */
+  /* touch the timeout */
+  client->expiry = zclock_time() +
+    (server->heartbeat_interval * server->heartbeat_liveness);
   free(id);
-  return NULL;
+  return client;
 }
 
 static int clients_purge(bgpwatcher_server_t *server)
 {
-    client_t *client = zlist_first(server->clients);
+  khiter_t k;
+  bgpwatcher_server_client_t *client;
 
-    while(client != NULL)
-      {
-        if(zclock_time () < client->expiry)
-	  {
-	    break; /* client is alive, we're done here */
-	  }
+  for(k = kh_begin(server->clients); k != kh_end(server->clients); ++k)
+    {
+      if(kh_exist(server->clients, k) != 0)
+	{
+	  client = kh_val(server->clients, k);
 
-	fprintf(stderr, "DEBUG: Removing dead client (%s)\n", client->id);
-	if(DO_CALLBACK(client_disconnect, (&client->info)) != 0)
-	  {
-	    return -1;
-	  }
-        zlist_remove(server->clients, client);
-	client_free(client);
-        client = zlist_first(server->clients);
+	  if(zclock_time () < client->expiry)
+	    {
+	      break; /* client is alive, we're done here */
+	    }
+
+	  fprintf(stderr, "DEBUG: Removing dead client (%s)\n", client->id);
+	  if(DO_CALLBACK(client_disconnect, (&client->info)) != 0)
+	    {
+	      return -1;
+	    }
+	  /* the key string is actually owned by the client, dont free */
+	  client_free(client);
+	  client = NULL;
+	  kh_del(strclient, server->clients, k);
+	}
     }
-    return 0;
+
+  return 0;
 }
 
 static void clients_free(bgpwatcher_server_t *server)
 {
-  client_t *client = zlist_first(server->clients);
+  assert(server != NULL);
+  assert(server->clients != NULL);
 
-    while(client != NULL)
-      {
-        zlist_remove(server->clients, client);
-	client_free(client);
-        client = zlist_first(server->clients);
-      }
-    zlist_destroy(&server->clients);
+  kh_free_vals(strclient, server->clients, client_free);
+  kh_destroy(strclient, server->clients);
+  server->clients = NULL;
 }
 
 static int send_reply(bgpwatcher_server_t *server,
-		      client_t *client,
+		      bgpwatcher_server_client_t *client,
 		      zframe_t *seq_frame,
 		      uint8_t rc)
 {
@@ -247,7 +239,7 @@ static int send_reply(bgpwatcher_server_t *server,
 }
 
 static int handle_table(bgpwatcher_server_t *server,
-			client_t *client,
+			bgpwatcher_server_client_t *client,
 			zmsg_t *msg,
 			bgpwatcher_data_msg_type_t type)
 {
@@ -315,7 +307,7 @@ static int handle_table(bgpwatcher_server_t *server,
 }
 
 static int handle_pfx_record(bgpwatcher_server_t *server,
-			     client_t *client,
+			     bgpwatcher_server_client_t *client,
 			     zmsg_t *msg)
 {
   bgpwatcher_pfx_record_t *rec = NULL;
@@ -356,7 +348,7 @@ err:
  * | Payload       |
  */
 static int handle_data_message(bgpwatcher_server_t *server,
-			       client_t *client,
+			       bgpwatcher_server_client_t *client,
 			       zmsg_t *msg)
 {
   zframe_t *seq_frame = NULL;
@@ -432,10 +424,13 @@ static int run_server(bgpwatcher_server_t *server)
   zmsg_t *msg = NULL;
   zframe_t *frame = NULL;
 
-  client_t *client = NULL;
+  bgpwatcher_server_client_t *client = NULL;
+  khiter_t k;
 
   bgpwatcher_msg_type_t msg_type;
   uint8_t msg_type_p;
+
+  int new_client = 0;
 
   /*fprintf(stderr, "DEBUG: Beginning loop cycle\n");*/
 
@@ -471,11 +466,13 @@ static int run_server(bgpwatcher_server_t *server)
 	    {
 	      goto err;
 	    }
+	  new_client = 1;
 	  frame = NULL;
 	  fprintf(stderr, "DEBUG: Creating new client %s\n", client->id);
 	}
       else
 	{
+	  new_client = 0;
 	  zframe_destroy(&frame);
 	}
 
@@ -487,13 +484,15 @@ static int run_server(bgpwatcher_server_t *server)
 
       if(msg_type == BGPWATCHER_MSG_TYPE_READY)
 	{
-	  fprintf(stderr, "DEBUG: Adding new client (%s)\n", client->id);
-	  /* call the "client connect" callback */
-	  if((server->callbacks->client_connect != NULL) &&
-	     (server->callbacks->client_connect(server, &client->info,
-						server->callbacks->user) != 0))
+	  /* be careful that if a client re-connects before we time it out, we
+	     wan't to treat the READY message as a HEARTBEAT */
+	  if(new_client != 0)
 	    {
-	      goto err;
+	      /* call the "client connect" callback */
+	      if(DO_CALLBACK(client_connect, &client->info) != 0)
+		{
+		  goto err;
+		}
 	    }
 	  zmsg_destroy(&msg);
 	}
@@ -550,10 +549,15 @@ static int run_server(bgpwatcher_server_t *server)
   assert(server->heartbeat_next > 0);
   if(zclock_time() >= server->heartbeat_next)
     {
-      client = zlist_first(server->clients);
-
-      while(client != NULL)
+      for(k = kh_begin(server->clients); k != kh_end(server->clients); ++k)
 	{
+	  if(kh_exist(server->clients, k) == 0)
+	    {
+	      continue;
+	    }
+
+	  client = kh_val(server->clients, k);
+
 	  if(zframe_send(&client->identity, server->client_socket,
 			 ZFRAME_REUSE | ZFRAME_MORE) == -1)
 	    {
@@ -578,8 +582,6 @@ static int run_server(bgpwatcher_server_t *server)
 				     client->id);
 	      goto err;
 	    }
-
-	  client = zlist_next(server->clients);
 	}
       server->heartbeat_next = zclock_time() + server->heartbeat_interval;
     }
@@ -635,7 +637,7 @@ bgpwatcher_server_t *bgpwatcher_server_init(
   server->heartbeat_liveness = BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT;
 
   /* create an empty client list */
-  if((server->clients = zlist_new()) == NULL)
+  if((server->clients = kh_init(strclient)) == NULL)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
 			     "Could not create client list");
