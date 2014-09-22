@@ -426,7 +426,9 @@ void bgpwatcher_client_peer_table_free(bgpwatcher_client_peer_table_t **table_p)
 void bgpwatcher_client_peer_table_set_time(bgpwatcher_client_peer_table_t *table,
 					   uint32_t time)
 {
-  return;
+  assert(table != NULL);
+
+  table->time = time;
 }
 
 int bgpwatcher_client_peer_table_add(bgpwatcher_client_peer_table_t *table,
