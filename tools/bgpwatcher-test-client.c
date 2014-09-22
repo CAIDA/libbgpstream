@@ -58,6 +58,47 @@ static bgpwatcher_pfx_record_t *create_test_pfx()
   return rec;
 }
 
+static bgpwatcher_peer_record_t *create_test_peer()
+{
+  bgpwatcher_peer_record_t *rec;
+
+  rec = bgpwatcher_peer_record_init();
+
+  if(rec != NULL)
+    {
+      ((struct sockaddr_in6*)&rec->ip)->sin6_family = AF_INET6;
+
+      /*2001:48d0:101:501:ec4:7aff:fe12:1108*/
+      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[0] = 0x20;
+      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[1] = 0x01;
+
+      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[2] = 0x48;
+      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[3] = 0xd0;
+
+      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[4] = 0x01;
+      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[5] = 0x01;
+
+      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[6] = 0x05;
+      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[7] = 0x01;
+
+      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[8] = 0x0e;
+      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[9] = 0xc4;
+
+      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[10] = 0x7a;
+      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[11] = 0xff;
+
+      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[12] = 0xfe;
+      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[13] = 0x12;
+
+      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[14] = 0x11;
+      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[15] = 0x08;
+
+      rec->status = 0xF3;
+    }
+
+  return rec;
+}
+
 static void usage(const char *name)
 {
   fprintf(stderr,
@@ -102,7 +143,11 @@ int main(int argc, char **argv)
   /* test structures */
   bgpwatcher_client_pfx_table_t *pfx_table = NULL;
   bgpwatcher_pfx_record_t *pfx = NULL;
-  uint32_t test_time = 1320969600;
+  uint32_t pfx_table_time = 1320969600;
+
+  bgpwatcher_client_peer_table_t *peer_table = NULL;
+  bgpwatcher_peer_record_t *peer = NULL;
+  uint32_t peer_table_time = 1410267600;
 
   while(prevoptind = optind,
 	(opt = getopt(argc, argv, ":i:l:n:r:R:s:v?")) >= 0)
@@ -192,28 +237,40 @@ int main(int argc, char **argv)
 
   bgpwatcher_client_set_reconnect_interval_max(client, reconnect_interval_max);
 
-  if(bgpwatcher_client_start(client) != 0)
-    {
-      bgpwatcher_client_perr(client);
-      goto err;
-    }
-
-  /* issue a bunch of requests */
-  fprintf(stderr, "TEST: Sending test messages...\n");
-
+  fprintf(stderr, "TEST: Init tables and records... ");
   if((pfx_table = bgpwatcher_client_pfx_table_create(client)) == NULL)
     {
       fprintf(stderr, "Could not create table\n");
       goto err;
     }
-
-  bgpwatcher_client_pfx_table_set_time(pfx_table, test_time);
-
   if((pfx = create_test_pfx()) == NULL)
     {
       fprintf(stderr, "Could not create test prefix\n");
       goto err;
     }
+  if((peer_table = bgpwatcher_client_peer_table_create(client)) == NULL)
+    {
+      fprintf(stderr, "Could not create table\n");
+      goto err;
+    }
+  if((peer = create_test_peer()) == NULL)
+    {
+      fprintf(stderr, "Could not create test peer\n");
+      goto err;
+    }
+  fprintf(stderr, "done\n");
+
+  fprintf(stderr, "TEST: Starting client... ");
+  if(bgpwatcher_client_start(client) != 0)
+    {
+      bgpwatcher_client_perr(client);
+      goto err;
+    }
+  fprintf(stderr, "done\n");
+
+  /* issue a bunch of requests */
+  fprintf(stderr, "TEST: Sending test peer table... ");
+  bgpwatcher_client_pfx_table_set_time(pfx_table, pfx_table_time);
 
   if(bgpwatcher_client_pfx_table_add(pfx_table, pfx) != 0)
     {
@@ -226,15 +283,38 @@ int main(int argc, char **argv)
       fprintf(stderr, "Could not flush table\n");
       goto err;
     }
+  fprintf(stderr, "done\n");
 
+  fprintf(stderr, "TEST: Sending test peer table... ");
+  bgpwatcher_client_peer_table_set_time(peer_table, peer_table_time);
+
+  if(bgpwatcher_client_peer_table_add(peer_table, peer) != 0)
+    {
+      fprintf(stderr, "Could not add peer to table\n");
+      goto err;
+    }
+
+  if(bgpwatcher_client_peer_table_flush(peer_table) != 0)
+    {
+      fprintf(stderr, "Could not flush table\n");
+      goto err;
+    }
+  fprintf(stderr, "done\n");
+
+  fprintf(stderr, "DEBUG: Hax to wait for tx/rx. FIXME\n");
+  sleep(10);
+
+  fprintf(stderr, "TEST: Shutting down...\n");
   bgpwatcher_pfx_record_free(&pfx);
   bgpwatcher_client_pfx_table_free(&pfx_table);
+  bgpwatcher_client_peer_table_free(&peer_table);
 
   bgpwatcher_client_stop(client);
   bgpwatcher_client_perr(client);
 
   /* cleanup */
   bgpwatcher_client_free(client);
+  fprintf(stderr, "TEST: Shutdown complete\n");
 
   /* complete successfully */
   return 0;
