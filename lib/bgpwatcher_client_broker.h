@@ -99,6 +99,14 @@ typedef struct bgpwatcher_client_broker {
   /** Indicates that the client has been signaled to shutdown */
   int shutdown;
 
+  /* OWNED BY THE BROKER */
+
+  /** Pointer to the poller instance used by the broker */
+  zpoller_t *poller;
+
+  /** Pointer to the pipe used to talk to the master */
+  zsock_t *master_pipe;
+
 } bgpwatcher_client_broker_t;
 
 /** @} */

@@ -31,11 +31,6 @@
 
 #define ERR (&broker->err)
 
-enum {
-  POLL_ITEM_SERVER = 0,
-  POLL_ITEM_CNT    = 1,
-};
-
 static int server_connect(bgpwatcher_client_broker_t *broker)
 {
   uint8_t msg_type_p;
@@ -72,6 +67,13 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
     {
       bgpwatcher_err_set_err(ERR, errno,
 			     "Could not send ready msg to server");
+      return -1;
+    }
+
+  if(zpoller_add(broker->poller, broker->server_socket) != 0)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_START_FAILED,
+			     "Could not add server socket to poller");
       return -1;
     }
 
@@ -269,11 +271,7 @@ static int cnt = 0;
 
 static int event_loop(bgpwatcher_client_broker_t *broker)
 {
-  /** @todo also poll for messages from our master */
-  zmq_pollitem_t poll_items[] = {
-    {broker->server_socket, 0, ZMQ_POLLIN, 0}, /* POLL_ITEM_SERVER */
-  };
-  int rc;
+  zsock_t *poll_sock;
 
   zmsg_t *msg;
   /*zmsg_t *reply;*/
@@ -287,50 +285,43 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 
   /*fprintf(stderr, "DEBUG: Beginning loop cycle\n");*/
 
-  if((rc = zmq_poll(poll_items, POLL_ITEM_CNT,
-		    broker->heartbeat_interval * ZMQ_POLL_MSEC)) == -1)
+  if((poll_sock =
+      zpoller_wait(broker->poller, broker->heartbeat_interval)) == NULL)
     {
-      goto interrupt;
+      /* either we were interrupted, or we timed out */
+      if(zpoller_expired(broker->poller) != 0 &&
+	 --broker->heartbeat_liveness_remaining == 0)
+	{
+	  /* the server has been flat-lining for too long, get the paddles! */
+	  fprintf(stderr, "WARN: heartbeat failure, can't reach server\n");
+	  fprintf(stderr, "WARN: reconnecting in %"PRIu64" msec…\n",
+		  broker->reconnect_interval_next);
+
+	  zclock_sleep(broker->reconnect_interval_next);
+
+	  if(broker->reconnect_interval_next < broker->reconnect_interval_max)
+	    {
+	      broker->reconnect_interval_next *= 2;
+	    }
+
+	  zsocket_destroy(broker->ctx, broker->server_socket);
+	  if(zpoller_remove(broker->poller, broker->server_socket) != 0)
+	    {
+	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_UNHANDLED,
+				  "Could not remove server socket from poller");
+	      return -1;
+	    }
+	  server_connect(broker);
+
+	  broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
+	}
+      else if(zpoller_terminated(broker->poller) != 0)
+	{
+	  goto interrupt;
+	}
     }
 
-  /* DEBUG */
-  /* fire some requests off to the server for testing */
-  if(cnt == 0)
-    {
-      zmsg_t *req;
-      fprintf(stderr, "DEBUG: Sending test messages to server\n");
-
-
-
-      req = build_test_table_begin(broker, BGPWATCHER_TABLE_TYPE_PREFIX);
-      assert(req != NULL);
-      assert(zmsg_send(&req, broker->server_socket) == 0);
-
-      req = build_test_prefix(broker);
-      assert(req != NULL);
-      assert(zmsg_send(&req, broker->server_socket) == 0);
-
-      req = build_test_table_end(broker, BGPWATCHER_TABLE_TYPE_PREFIX);
-      assert(req != NULL);
-      assert(zmsg_send(&req, broker->server_socket) == 0);
-
-      req = build_test_table_begin(broker, BGPWATCHER_TABLE_TYPE_PEER);
-      assert(req != NULL);
-      assert(zmsg_send(&req, broker->server_socket) == 0);
-
-      req = build_test_peer(broker);
-      assert(req != NULL);
-      assert(zmsg_send(&req, broker->server_socket) == 0);
-
-      req = build_test_table_end(broker, BGPWATCHER_TABLE_TYPE_PEER);
-      assert(req != NULL);
-      assert(zmsg_send(&req, broker->server_socket) == 0);
-
-      cnt++;
-    }
-  /* END DEBUG */
-
-  if(poll_items[POLL_ITEM_SERVER].revents & ZMQ_POLLIN)
+  if(poll_sock == broker->server_socket)
     {
       /*  Get message
        *  - >3-part: [server.id + empty + content] => reply
@@ -388,23 +379,47 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
       broker->reconnect_interval_next =
 	broker->reconnect_interval_min;
     }
- else if(--broker->heartbeat_liveness_remaining == 0)
+  /* check for a message from our master */
+  else if(poll_sock == broker->master_pipe)
     {
-      fprintf(stderr, "WARN: heartbeat failure, can't reach server\n");
-      fprintf(stderr, "WARN: reconnecting in %"PRIu64" msec…\n",
-	      broker->reconnect_interval_next);
-
-      zclock_sleep(broker->reconnect_interval_next);
-
-      if(broker->reconnect_interval_next < broker->reconnect_interval_max)
+      if((msg = zmsg_recv(broker->master_pipe)) == NULL)
 	{
-	  broker->reconnect_interval_next *= 2;
+	  goto interrupt;
 	}
 
-      zsocket_destroy(broker->ctx, broker->server_socket);
-      server_connect(broker);
+      /* peek at the first frame */
+      if((frame = zmsg_first(msg)) == NULL)
+	{
+	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+				 "Invalid message received from master");
+	  return -1;
+	}
 
-      broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
+      /* if the frame is the size of our message types, we pass it on to the
+	 server */
+      if(zframe_size(frame) == bgpwatcher_msg_type_size_t)
+	{
+	  /* just pass this along to the server for now */
+	  if(zmsg_send(&msg, broker->server_socket) != 0)
+	    {
+	      bgpwatcher_err_set_err(ERR, errno,
+				     "Could not pass message to server");
+	      return -1;
+	    }
+	}
+      else
+	{
+	  /* this is a message for us */
+	  /** @todo figure out how to wait until our current reqs are ackd */
+	  if(zframe_streq(frame, "$TERM") == 1)
+	    {
+	      fprintf(stderr,
+		      "INFO: Got $TERM, shutting down client broker on next "
+		      "cycle\n");
+	      broker->shutdown = 1;
+	    }
+	}
+      zmsg_destroy(&msg);
     }
 
   /* send heartbeat to server if it is time */
@@ -440,11 +455,23 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 /* ========== PUBLIC FUNCS BELOW HERE ========== */
 
 /* broker owns none of the memory passed to it. only responsible for what it
-   mallocs itself */
+   mallocs itself (e.g. poller) */
 void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
 {
   bgpwatcher_client_broker_t *broker = (bgpwatcher_client_broker_t*)args;
   assert(broker != NULL);
+  assert(pipe != NULL);
+
+  broker->master_pipe = pipe;
+
+  /* init our poller */
+  /* server_connect will add the server socket */
+  if((broker->poller = zpoller_new(broker->master_pipe, NULL)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not initialize poller");
+      return;
+    }
 
   /* connect to the server */
   if(server_connect(broker) != 0)
@@ -455,11 +482,22 @@ void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
   /* seed the time for the next heartbeat sent to the server */
   broker->heartbeat_next = zclock_time() + broker->heartbeat_interval;
 
+  /* signal to our master that we are ready */
+  if(zsock_signal(pipe, 0) != 0)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Could not send ready signal to master");
+      return;
+    }
+
   /* start processing requests */
   while((broker->shutdown == 0) && (event_loop(broker) == 0))
     {
       /* nothing here */
     }
+
+  /* free our poller */
+  zpoller_destroy(&broker->poller);
 
   if(server_disconnect(broker) != 0)
     {
