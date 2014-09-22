@@ -100,6 +100,66 @@ UNDER CONSTRUCTION RIBS TABLE (uc_rt):
 	structure but we do not want to dealloacate memory).
 
 
+status:
+	PEER_NULL:
+	we are not able to provide any information about the peer
+	ribs at this moment. Every time we enter in this state we
+	reset the active ribs.
+	Common cases are:
+	- we are at the beginning of the processing, we haven't
+	   built a consistent rib in memory yet
+	- we received a corrupted record that invalidated the current
+	  status and we haven't rebuilt a consistent rib table yet.
+    - we received an out of order message and we were not
+	  able to rollback properly
+
+	possible changes:
+	PEER_NULL -> PEER_UP:
+	- the rib in memory is finally consistent
+	PEER_NULL -> PEER_DOWN:
+	- 	we receive a peer down message
+		
+
+	PEER_UP:
+	there is a consistent peer ribs_table in memory (the active one)
+	at this moment.
+
+	possible changes:
+	PEER_UP -> PEER_NULL:
+	- we receive corrupted record message that affects the current
+	   status
+	PEER_UP -> PEER_DOWN:
+	- we receive a peer_down state message
+	- we do not receive updates for "XXX" minutes
+
+
+	PEER_DOWN:
+	The peer is not active at this moment, the ribs table are
+	empty and they are not exported
+
+	possible changes:
+	PEER_DOWN -> PEER_UP:
+	- we receive a peer_up state message
+	- we receive a new update
+	PEER_DOWN -> PEER_NULL:
+	- we start receiving a "valid rib", the status is not down
+	  anymore neither is consistent though
+
+
+ribs_tables status
+
+status:
+	UC_ON: under construction
+	- when the peer is up we apply updates to both the
+	   uc and active table
+	- when the peer is null we apply updates to the uc
+	   table only
+    - when the peer is down and UC is activated then we
+	   move to the NULL state
+    UC_OFF:
+	- when the peer is up we apply updates to the
+	   active table only
+
 
 ============================ RIBS_TABLE ============================
 

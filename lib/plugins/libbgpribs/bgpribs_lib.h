@@ -30,6 +30,56 @@
 #include "bgpstream_lib.h"
 #include "bgpribs_khash.h"
 
+/** ases table (set of unique ases)
+ *  this structure maintains a set of unique
+ *  AS numbers (16/32 bits AS numbers are hashed
+ *  using a uint32 type)
+ */
+
+KHASH_INIT(ases_table_t /* name */, 
+	   uint32_t /* khkey_t */, 
+	   char /* khval_t */, 
+	   0  /* kh_is_set */, 
+	   kh_int_hash_func /*__hash_func */,  
+	   kh_int_hash_equal /* __hash_equal */);
+
+typedef struct struct_ases_table_wrapper_t {
+  khash_t(ases_table_t) * table;
+} ases_table_wrapper_t;
+
+ases_table_wrapper_t *ases_table_create();
+void ases_table_destroy(ases_table_wrapper_t *ases_table);
+
+
+/** prefixes table (set of unique prefixes)
+ *  this structure contains two separate sets: 
+ *  the set  of unique ipv4 prefixes and the set
+ *  of unique ipv6 prefixes
+ */
+
+KHASH_INIT(ipv4_prefixes_table_t /* name */, 
+	   bgpstream_prefix_t /* khkey_t */, 
+	   char /* khval_t */, 
+	   0  /* kh_is_set */, 
+	   bgpstream_prefix_ipv4_hash_func /*__hash_func */,  
+	   bgpstream_prefix_ipv4_hash_equal /* __hash_equal */);
+
+
+KHASH_INIT(ipv6_prefixes_table_t /* name */, 
+	   bgpstream_prefix_t /* khkey_t */, 
+	   char /* khval_t */, 
+	   0  /* kh_is_map */, 
+	   bgpstream_prefix_ipv6_hash_func /*__hash_func */,  
+	   bgpstream_prefix_ipv6_hash_equal /* __hash_equal */);
+
+typedef struct struct_prefixes_table_t {
+  khash_t(ipv4_prefixes_table_t) * ipv4_prefixes_table;
+  khash_t(ipv6_prefixes_table_t) * ipv6_prefixes_table;
+} prefixes_table_t;
+
+prefixes_table_t *prefixes_table_create();
+void prefixes_table_destroy(prefixes_table_t *prefixes_table);
+
 
 /** prefixdata
  *  this structure contains information about a given prefix
@@ -76,62 +126,21 @@ typedef struct struct_ribs_table_t {
 ribs_table_t *ribs_table_create();
 void ribs_table_destroy(ribs_table_t *ribs_table);
 
-
-/** ases table
- *  this structure maintains a set of unique
- *  AS numbers (16/32 bits AS numbers are hashed
- *  using a uint32 type)
- */
-
-KHASH_INIT(ases_table_t /* name */, 
-	   uint32_t /* khkey_t */, 
-	   char /* khval_t */, 
-	   0  /* kh_is_set */, 
-	   kh_int_hash_func /*__hash_func */,  
-	   kh_int_hash_equal /* __hash_equal */);
-
-typedef struct struct_ases_table_wrapper_t {
-  khash_t(ases_table_t) * table;
-} ases_table_wrapper_t;
-
-ases_table_wrapper_t *ases_table_create();
-void ases_table_destroy(ases_table_wrapper_t *ases_table);
-
-
-/** prefixes table
- *  this structure contains two separate sets: 
- *  the set  of unique ipv4 prefixes and the set
- *  of unique ipv6 prefixes
- */
-
-KHASH_INIT(ipv4_prefixes_table_t /* name */, 
-	   bgpstream_prefix_t /* khkey_t */, 
-	   char /* khval_t */, 
-	   0  /* kh_is_set */, 
-	   bgpstream_prefix_ipv4_hash_func /*__hash_func */,  
-	   bgpstream_prefix_ipv4_hash_equal /* __hash_equal */);
-
-
-KHASH_INIT(ipv6_prefixes_table_t /* name */, 
-	   bgpstream_prefix_t /* khkey_t */, 
-	   char /* khval_t */, 
-	   0  /* kh_is_map */, 
-	   bgpstream_prefix_ipv6_hash_func /*__hash_func */,  
-	   bgpstream_prefix_ipv6_hash_equal /* __hash_equal */);
-
-typedef struct struct_prefixes_table_t {
-  khash_t(ipv4_prefixes_table_t) * ipv4_prefixes_table;
-  khash_t(ipv6_prefixes_table_t) * ipv6_prefixes_table;
-} prefixes_table_t;
-
-prefixes_table_t *prefixes_table_create();
-void prefixes_table_destroy(prefixes_table_t *prefixes_table);
-
-
 /** peerdata
  *  this structure contains information about a single
  *  peer
  */
+
+typedef enum  {
+  PEER_NULL = 0,    // status of peer is unknown
+  PEER_UP = 1,      // status of peer is UP
+  PEER_DOWN = 2     // status of peer is DOWN
+} peer_status_t;
+
+typedef enum  {
+  UC_OFF = 0,     // there is no under construction ribs_table
+  UC_ON = 1,      // we are constructing a new ribs_table
+} ribs_tables_status_t;
 
 typedef struct struct_peerdata_t {
   char * peer_address_str; /* graphite-safe version of the peer ip address */
@@ -139,6 +148,8 @@ typedef struct struct_peerdata_t {
   ribs_table_t * active_ribs_table; // active ribs table
   ribs_table_t * uc_ribs_table;     // under-construction ribs table
   long int most_recent_ts;
+  ribs_tables_status_t rt_status;
+  peer_status_t status;
   // TODO: add status variables and metrics here
 } peerdata_t;
 

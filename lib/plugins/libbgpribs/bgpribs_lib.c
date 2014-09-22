@@ -140,6 +140,10 @@ peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
     {
       return NULL;
     }
+  /* default:
+   *  status = 0 = PEER_NULL
+   *  rt_status = 0 = UC_OFF
+   */
 
   if((peer_data->active_ribs_table = ribs_table_create()) == NULL)
     {
@@ -181,13 +185,355 @@ peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
 }
 
 
+
 int peerdata_apply_elem(peerdata_t *peer_data, 
 			bgpstream_record_t * bs_record, bgpstream_elem_t *bs_elem)
 {
   assert(peer_data);
   assert(bs_record);
+  assert(bs_record->status == VALID_RECORD);
   assert(bs_elem);
-  // TODO: here
+
+  if(peer_data->status == PEER_UP)
+    {
+      if(peer_data->rt_status == UC_OFF)
+	{
+	  // type is update
+	  if(bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_WITHDRAWAL)
+	    {
+	      // information arrived on time
+	      if(bs_elem->timestamp >= peer_data->most_recent_ts)
+		{
+		  // TODO: apply update to active_ribs and update most_recent_ts
+		  return 0;
+		}
+	      else 
+		{
+		  // update arrived just right after rib (forgive this delay)
+		  if(peer_data->most_recent_ts == peer_data->active_ribs_table->reference_rib_end &&
+		     bs_elem->timestamp >= peer_data->active_ribs_table->reference_rib_start &&
+		     bs_elem->timestamp <= peer_data->active_ribs_table->reference_rib_end)
+		    {
+		      // TODO: apply update
+		      return 0;
+		    }
+		  else 
+		    {
+		      // out of order that does not affect the current status
+		      if(bs_elem->timestamp < peer_data->active_ribs_table->reference_rib_start)
+			{
+			  // TODO: signal out of order and ignore
+			  return 0;
+			}
+		      else
+			{
+			  // TODO: think about possible rollback options
+			  // TODO: for the moment, signal the out of order and
+			  // go to PEER_NULL status 
+			  return 0;
+			}
+		    }
+		}
+	    }
+	  // type is rib
+	  if(bs_elem->type == BST_RIB)
+	    {
+	      // information arrived on time TODO: decide if we want to maintain the = or not
+	      if(bs_elem->timestamp >= peer_data->most_recent_ts)
+		{
+		  // a new rib arrived, we change to UC_ON status
+		  if(bs_record->dump_pos == DUMP_START &&
+		     bs_record->attributes.dump_time > peer_data->active_ribs_table->reference_dump_time)
+		    {
+		      // TODO: turn UC_ON, apply rib to uc_ribs and update most_recent_ts
+		      return 0;
+		    }
+		  else 
+		    {
+		      // TODO: signal these strange cases and ignore
+		      return 0;
+		    }
+		}	  
+	    }
+	  // type is state
+	  if(bs_elem->type == BST_STATE)
+	    {
+	      // if the state is UP we basically ignore if it is on time or not
+	      if(bs_elem->new_state == BST_ESTABLISHED)
+		{
+		  // TODO: update most_recent_ts
+		  return 0;
+		}
+	      else
+		{
+		  // out of order that does not affect the current status
+		  if(bs_elem->timestamp < peer_data->active_ribs_table->reference_rib_start)
+		    {
+		      // TODO: signal out of order and ignore
+		      return 0;
+		    }		  
+		  else
+		    {
+		      // the state is !BST_ESTABLISHED and it affects the current status
+		      // if it invalidates the current active ribs table
+		      if(bs_elem->timestamp < peer_data->active_ribs_table->reference_rib_end)
+			{
+			  // TODO: go to PEER NULL
+			  return 0;
+			}
+		      else 
+			{
+			  // TODO: go to PEER_DOWN
+			  return 0;
+			}
+		    }
+		  
+		}
+	    }
+	}
+      else 
+	{ // assert(peer_data->rt_status == UC_ON)
+	  // type is rib
+	  if(bs_elem->type == BST_RIB)
+	    {
+	      // information arrived on time
+	      if(bs_elem->timestamp >= peer_data->most_recent_ts) 
+		{
+		  // information relates to the rib under construction and it is a dump_middle
+		  if(bs_record->attributes.dump_time == peer_data->uc_ribs_table->reference_dump_time &&
+		     bs_record->dump_pos == DUMP_MIDDLE)
+		    {
+			  // TODO: apply rib to uc_rt, update time
+			  return 0;
+		    }
+		  // information relates to the rib under construction and it is a dump_end
+		  if(bs_record->attributes.dump_time == peer_data->uc_ribs_table->reference_dump_time &&
+		     bs_record->dump_pos == DUMP_END)
+		    {
+		      // TODO: apply rib to uc_rt, update time
+		      //       uc_rt is the new active (compare them)
+		      //       go to UC_OFF
+		      return 0;
+		    }		  
+		  // information relates to a newer rib
+		  if(bs_record->attributes.dump_time > peer_data->uc_ribs_table->reference_dump_time &&
+		      bs_record->dump_pos == DUMP_START)
+		    {
+		      // TODO: reset uc_rt, apply data to uc_rt still UC_ON
+		      return 0;
+		    }
+		}
+	      
+	      // TODO: any other case is out of order or weird,
+	      // we signal this, but we also ignore it (no change for any structure
+	      return 0;
+	    }
+	  // type is update
+	  if(bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_WITHDRAWAL)
+	    {
+	      // information arrived on time
+	      if(bs_elem->timestamp >= peer_data->most_recent_ts) 
+		{
+		  // TODO: we apply the update to active_rt and uc_rt
+		  return 0;
+		}
+	      // information is out of order, but it does not affect uc_rt
+	      if(bs_elem->timestamp < peer_data->uc_ribs_table->reference_rib_start &&
+		 bs_elem->timestamp >= peer_data->active_ribs_table->reference_rib_start) 
+		{
+		  // TODO: reset active_rt, peer is now NULL, but UC continues to be ON		  
+		  return 0;
+		}
+	      // information is out of order, it cannot be ignored by either ribs_tables
+	      if(bs_elem->timestamp >= peer_data->uc_ribs_table->reference_rib_start)
+		{
+		  // TODO: reset active_rt, peer is now NULL, but UC continues to be ON	
+		  // TODO: I think there is no chance to rollback here
+		  return 0;
+		}
+	      // information is out of order, but it can be ignored
+	      if(bs_elem->timestamp < peer_data->active_ribs_table->reference_rib_start) 
+		{
+		  // TODO: signal and ignore this case
+		  return 0;
+		}
+	      // there is no other case
+	    }
+	  // type is STATE
+	  if(bs_elem->type == BST_STATE)
+	    {
+	      // if the state is UP we basically ignore if it is on time or not
+	      if(bs_elem->new_state == BST_ESTABLISHED)
+		{
+		  // TODO: update most_recent_ts (in case signal out of order)
+		  return 0;
+		}
+	      else
+		{
+		  // the state is !BST_ESTABLISHED - i.e. down
+		  // if active and uc are affected
+		  if(bs_elem->timestamp >= peer_data->most_recent_ts)
+		    {
+		      // TODO: clear both active and uc and go to PEER_DOWN
+		      return 0;
+		    }
+		  // of both of them are affected and data did not arrive on time
+		  if(bs_elem->timestamp >= peer_data->uc_ribs_table->reference_rib_start)
+		    {
+		      // TODO: clear both active and uc and go to PEER_NULL
+		      return 0;
+		    }
+		  // if active is affected, but uc is not
+		  if(bs_elem->timestamp >= peer_data->uc_ribs_table->reference_rib_start &&
+		     bs_elem->timestamp < peer_data->uc_ribs_table->reference_rib_start)
+		    {
+		      // TODO: go to PEER_NULL (active is cleared, UC is still on)
+		      return 0;
+		    }
+
+		  // otherwise
+		  // report this out of order and do nothing
+		}
+	    }
+	}
+    } // end of PEER_UP
+
+  if(peer_data->status == PEER_DOWN)
+    {
+      // when a peer is down rt_status is always UC_OFF 
+      // also both ribs_tables are empty
+      // type is STATE
+      if(bs_elem->type == BST_STATE)
+	{
+	  // if the state is UP
+	  if(bs_elem->new_state == BST_ESTABLISHED &&
+	     bs_elem->timestamp >= peer_data->most_recent_ts)
+		{
+		  // TODO: update most_recent_ts, now PEER is UP (empty ribs)
+		  return 0;
+		}
+	  else
+	    {
+	      // TODO: update most_recent_ts (or signal out of order)
+	      return 0;
+	    }
+	} // end of type STATE
+      // type is UPDATE
+      if(bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_WITHDRAWAL)
+	{
+	  // if it is on time
+	  if(bs_elem->timestamp >= peer_data->most_recent_ts)
+	    {
+	      // TODO: apply update to active ribs (that were empty), update ts, PEER is UP
+	      return 0;
+	    }
+	  else 
+	    {
+	      // TODO: signal out of order and ignore
+	      return 0;
+	    }
+	} // end of type UPDATE
+      // type is RIB
+      if(bs_elem->type == BST_RIB)
+	{
+	  // if it is on time and it is the first rib
+	  if(bs_elem->timestamp >= peer_data->most_recent_ts &&
+	     bs_record->dump_pos == DUMP_START) 
+	    {
+	      // TODO: UC is now ON, go to PEER is NULL
+	      return 0;
+	    }
+	  else
+	    {
+	      // TODO: signal if out of order 
+	      return 0;
+	    }
+	} // end of type RIB
+    } // end of PEER_DOWN
+
+
+  if(peer_data->status == PEER_NULL)
+    {
+      // in this case the active ribs are empty at all times
+      // as they are not consistent
+      if(peer_data->rt_status == UC_ON)
+	{
+	  // type is RIB
+	  if(bs_elem->type == BST_RIB)
+	    {
+	      // if it is on time and we are already building the rib
+	      if(bs_elem->timestamp >= peer_data->most_recent_ts &&
+		 bs_record->attributes.dump_time == peer_data->uc_ribs_table->reference_dump_time) 
+		{
+		  // TODO: apply the rib elem and move on
+		  // if it is the last set of elems, when the record
+		  // signal the DUMP_END (using peerdata_apply_record) then
+		  // we can move to another state
+		  return 0;
+		}	      
+	      // if it is on time and we are starting with building a newer rib
+	      if(bs_elem->timestamp >= peer_data->most_recent_ts &&
+		 bs_record->dump_pos == DUMP_START &&
+		 bs_record->attributes.dump_time > peer_data->uc_ribs_table->reference_dump_time) 
+		{
+		  // TODO: reset uc (if it is not empty) and continue to UC_ON
+		  return 0;
+		}
+	      if(bs_elem->timestamp < peer_data->uc_ribs_table->reference_rib_start)
+		{
+		  // signal out of order
+		  return 0;
+		}
+	      // if we are here we need to reset uc and move to uc_off
+	      // TODO: go to UC_OFF
+	      return 0;
+	    } // end of type RIB
+      	  // type is UPDATE
+	  if(bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_WITHDRAWAL)
+	    {
+	      if(bs_elem->timestamp >= peer_data->uc_ribs_table->reference_rib_start)
+		{
+		  // TODO: apply update and continue
+		  return 0;
+		}
+	      // TODO: if here just ignore and signal out of order
+	      return 0;
+	    } // end of type UPDATE
+	  // type is STATE
+	  if(bs_elem->type == BST_STATE)
+	    {
+	      if(bs_elem->new_state != BST_ESTABLISHED &&
+		 bs_elem->timestamp >= peer_data->uc_ribs_table->reference_rib_start)
+		{
+		  // TODO: reset everything, now the peer is down
+		  return 0;
+		}
+	      // TODO: if here signal out of order and ignore
+	      return 0;	      
+	    } // end of type STATE
+	} // end of UC_ON
+      else // assert(peer_data->rt_status == UC_OFF)
+	{
+	  // type is RIB and we are just starting with a new rib
+	  if(bs_elem->type == BST_RIB &&
+	     bs_elem->timestamp >= peer_data->most_recent_ts &&
+	     bs_record->dump_pos == DUMP_START &&
+	     bs_record->attributes.dump_time > peer_data->uc_ribs_table->reference_dump_time) 
+	    {
+	      // TODO: reset uc (if it is not empty) and move to UC_ON
+	      return 0;
+	    }
+	  // type is STATE and we received a peer DOWN
+	  if(bs_elem->type == BST_STATE &&
+	     bs_elem->timestamp >= peer_data->most_recent_ts &&
+	     bs_elem->new_state != BST_ESTABLISHED) 
+	    {
+	      // TODO: go to peer down and continue to UC_OFF
+	    }
+	  // TODO: if here, just signal out of order and continue
+	  return 0;
+	} // end of UC_OFF
+    } // end of PEER_NULL
   return 0;
 }
 
@@ -216,6 +562,13 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
    */
   if(bs_record->status == VALID_RECORD) 
     {      
+      // TODO: see below
+      return 0; // 1, -1
+    }
+      
+
+
+
       // TODO: in order?
       //       apply new time to most_recent_ts (if needed)
       
@@ -233,9 +586,6 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
       // TODO: out of order ?
       //       yes: decide what to do!
 
-
-      return 0; // 1, -1
-    }
 
 
   /* if we receive a record signaling a FILTERED_SOURCE
