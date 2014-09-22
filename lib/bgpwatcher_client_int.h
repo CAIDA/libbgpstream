@@ -30,6 +30,7 @@
 #include <stdint.h>
 
 #include <bgpwatcher_client.h>
+#include "bgpwatcher_client_broker.h"
 
 /** @file
  *
@@ -54,47 +55,16 @@
 
 typedef struct bgpwatcher_client {
 
-  /** Identity of this client. MUST be globally unique */
-  char *identity;
+  /** handle to communicate with our broker */
+  zactor_t *broker;
+
+  /** config that we have prepared for our broker */
+  bgpwatcher_client_broker_t broker_state;
 
   /** Error status */
   bgpwatcher_err_t err;
 
-  /** 0MQ context pointer */
-  zctx_t *ctx;
-
-  /** URI to connect to the server on */
-  char *server_uri;
-
-  /** Socket used to connect to the server */
-  void *server_socket;
-
-  /** Next request sequence number to use */
-  uint64_t sequence_num;
-
-  /** Time (in ms) between heartbeats sent to the server */
-  uint64_t heartbeat_interval;
-
-  /** Time (in ms) to send the next heartbeat to server */
-  uint64_t heartbeat_next;
-
-  /** The number of heartbeats that can go by before the server is declared
-      dead */
-  int heartbeat_liveness;
-
-  /** The number of beats before the server is declared dead */
-  int heartbeat_liveness_remaining;
-
-  /** The minimum time (in ms) after a server disconnect before we try to
-      reconnect */
-  uint64_t reconnect_interval_min;
-
-  /** The maximum time (in ms) after a server disconnect before we try to
-      reconnect (after exponential back-off) */
-  uint64_t reconnect_interval_max;
-
-  /** The time before we will next attempt to reconnect */
-  uint64_t reconnect_interval_next;
+  /** @todo add lazy pirate re-tx stuff here */
 
   /** Indicates that the client has been signaled to shutdown */
   int shutdown;

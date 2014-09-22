@@ -26,84 +26,14 @@
 #include <stdint.h>
 
 #include <bgpwatcher_client_int.h>
+#include "bgpwatcher_client_broker.h"
 
 #include "utils.h"
 
 #define ERR (&client->err)
+#define BROKER (client->broker_state)
 
-enum {
-  POLL_ITEM_SERVER = 0,
-  POLL_ITEM_CNT    = 1,
-};
-
-static int server_connect(bgpwatcher_client_t *client)
-{
-  uint8_t msg_type_p;
-  zframe_t *frame;
-
-  /* connect to server socket */
-  if((client->server_socket = zsocket_new(client->ctx, ZMQ_DEALER)) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_START_FAILED,
-			     "Failed to create server connection");
-      return -1;
-    }
-
-  if(client->identity != NULL && strlen(client->identity) > 0)
-    {
-      zsocket_set_identity(client->server_socket, client->identity);
-    }
-
-  if(zsocket_connect(client->server_socket, "%s", client->server_uri) < 0)
-    {
-      bgpwatcher_err_set_err(ERR, errno, "Could not connect to server");
-      return -1;
-    }
-
-  msg_type_p = BGPWATCHER_MSG_TYPE_READY;
-  if((frame = zframe_new(&msg_type_p, 1)) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Could not create new client-ready frame");
-      return -1;
-    }
-
-  if(zframe_send(&frame, client->server_socket, 0) == -1)
-    {
-      bgpwatcher_err_set_err(ERR, errno,
-			     "Could not send ready msg to server");
-      return -1;
-    }
-
-  fprintf(stderr, "DEBUG: client ready (%d)\n", msg_type_p);
-
-  return 0;
-}
-
-static int server_disconnect(bgpwatcher_client_t *client)
-{
-  uint8_t msg_type_p = BGPWATCHER_MSG_TYPE_TERM;
-  zframe_t *frame;
-
-  fprintf(stderr, "DEBUG: client sending TERM\n");
-
-  if((frame = zframe_new(&msg_type_p, 1)) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Could not create new client-term frame");
-      return -1;
-    }
-
-  if(zframe_send(&frame, client->server_socket, 0) == -1)
-    {
-      bgpwatcher_err_set_err(ERR, errno,
-			     "Could not send ready msg to server");
-      return -1;
-    }
-
-  return 0;
-}
-
+#if 0
 zmsg_t * append_data_headers(zmsg_t *msg, bgpwatcher_data_msg_type_t type,
 			     bgpwatcher_client_t *client)
 {
@@ -262,179 +192,9 @@ zmsg_t *build_test_prefix(bgpwatcher_client_t *client)
 			     BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD,
 			     client);
 }
+#endif
 
-/* DEBUG */
-static int cnt = 0;
-
-static int run_client(bgpwatcher_client_t *client)
-{
-  /** @todo also poll for messages from our internal 'client' */
-  zmq_pollitem_t poll_items[] = {
-    {client->server_socket, 0, ZMQ_POLLIN, 0}, /* POLL_ITEM_SERVER */
-  };
-  int rc;
-
-  zmsg_t *msg;
-  /*zmsg_t *reply;*/
-  zframe_t *frame;
-
-  bgpwatcher_msg_type_t msg_type;
-  /*uint8_t req_type;*/
-  uint8_t msg_type_p;
-
-  /*uint8_t msg_type_reply = TSMQ_MSG_TYPE_REPLY;*/
-
-  /*fprintf(stderr, "DEBUG: Beginning loop cycle\n");*/
-
-  if((rc = zmq_poll(poll_items, POLL_ITEM_CNT,
-		    client->heartbeat_interval * ZMQ_POLL_MSEC)) == -1)
-    {
-      goto interrupt;
-    }
-
-  /* DEBUG */
-  /* fire some requests off to the server for testing */
-  if(cnt == 0)
-    {
-      zmsg_t *req;
-      fprintf(stderr, "DEBUG: Sending test messages to server\n");
-
-
-
-      req = build_test_table_begin(client, BGPWATCHER_TABLE_TYPE_PREFIX);
-      assert(req != NULL);
-      assert(zmsg_send(&req, client->server_socket) == 0);
-
-      req = build_test_prefix(client);
-      assert(req != NULL);
-      assert(zmsg_send(&req, client->server_socket) == 0);
-
-      req = build_test_table_end(client, BGPWATCHER_TABLE_TYPE_PREFIX);
-      assert(req != NULL);
-      assert(zmsg_send(&req, client->server_socket) == 0);
-
-      req = build_test_table_begin(client, BGPWATCHER_TABLE_TYPE_PEER);
-      assert(req != NULL);
-      assert(zmsg_send(&req, client->server_socket) == 0);
-
-      req = build_test_peer(client);
-      assert(req != NULL);
-      assert(zmsg_send(&req, client->server_socket) == 0);
-
-      req = build_test_table_end(client, BGPWATCHER_TABLE_TYPE_PEER);
-      assert(req != NULL);
-      assert(zmsg_send(&req, client->server_socket) == 0);
-
-      cnt++;
-    }
-  /* END DEBUG */
-
-  if(poll_items[POLL_ITEM_SERVER].revents & ZMQ_POLLIN)
-    {
-      /*  Get message
-       *  - >3-part: [server.id + empty + content] => reply
-       *  - 1-part: HEARTBEAT => heartbeat
-       */
-      if((msg = zmsg_recv(client->server_socket)) == NULL)
-	{
-	  goto interrupt;
-	}
-
-      if(zmsg_size(msg) >= 3)
-	{
-	  fprintf(stderr, "DEBUG: Got reply from server\n");
-	  zmsg_print(msg);
-
-	  client->heartbeat_liveness_remaining = client->heartbeat_liveness;
-
-	  /* parse the message and figure out what to do with it */
-	  /* pass the reply back to our internal client */
-
-	  /* for now we just handle REPLY messages */
-	  /* just fire the entire message down the tube to our master */
-
-	  zmsg_destroy(&msg);
-	  if(zctx_interrupted != 0)
-	    {
-	      goto interrupt;
-	    }
-	}
-      else if(zmsg_size(msg) == 1)
-	{
-	  /* When we get a heartbeat message from the server, it means the
-	     server was (recently) alive, so we must reset our liveness
-	     indicator */
-	  msg_type = bgpwatcher_msg_type(msg);
-	  if(msg_type == BGPWATCHER_MSG_TYPE_HEARTBEAT)
-	    {
-	      client->heartbeat_liveness_remaining = client->heartbeat_liveness;
-	    }
-	  else
-	    {
-	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-				     "Invalid message type received from "
-				     "server (%d)", msg_type);
-	      return -1;
-	    }
-	  zmsg_destroy(&msg);
-	}
-      else
-	{
-	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-				 "Invalid message received from server");
-	  return -1;
-	}
-      client->reconnect_interval_next =
-	client->reconnect_interval_min;
-    }
- else if(--client->heartbeat_liveness_remaining == 0)
-    {
-      fprintf(stderr, "WARN: heartbeat failure, can't reach server\n");
-      fprintf(stderr, "WARN: reconnecting in %"PRIu64" msec…\n",
-	      client->reconnect_interval_next);
-
-      zclock_sleep(client->reconnect_interval_next);
-
-      if(client->reconnect_interval_next < client->reconnect_interval_max)
-	{
-	  client->reconnect_interval_next *= 2;
-	}
-
-      zsocket_destroy(client->ctx, client->server_socket);
-      server_connect(client);
-
-      client->heartbeat_liveness_remaining = client->heartbeat_liveness;
-    }
-
-  /* send heartbeat to server if it is time */
-  if(zclock_time () > client->heartbeat_next)
-    {
-      client->heartbeat_next = zclock_time() + client->heartbeat_interval;
-      fprintf(stderr, "DEBUG: Sending heartbeat to server\n");
-
-      msg_type_p = BGPWATCHER_MSG_TYPE_HEARTBEAT;
-      if((frame = zframe_new(&msg_type_p, 1)) == NULL)
-	{
-	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-				 "Could not create new heartbeat frame");
-	  return -1;
-	}
-
-      if(zframe_send(&frame, client->server_socket, 0) == -1)
-	{
-	  bgpwatcher_err_set_err(ERR, errno,
-				 "Could not send heartbeat msg to server");
-	  return -1;
-	}
-    }
-
-  return 0;
-
- interrupt:
-  /* we were interrupted */
-  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INTERRUPT, "Caught interrupt");
-  return -1;
-}
+/* ========== PUBLIC FUNCS BELOW HERE ========== */
 
 bgpwatcher_client_t *bgpwatcher_client_init()
 {
@@ -447,14 +207,14 @@ bgpwatcher_client_t *bgpwatcher_client_init()
   /* now we are ready to set errors... */
 
   /* init czmq */
-  if((client->ctx = zctx_new()) == NULL)
+  if((BROKER.ctx = zctx_new()) == NULL)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
 			     "Failed to create 0MQ context");
       goto err;
     }
 
-  if((client->server_uri =
+  if((BROKER.server_uri =
       strdup(BGPWATCHER_CLIENT_SERVER_URI_DEFAULT)) == NULL)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
@@ -462,15 +222,19 @@ bgpwatcher_client_t *bgpwatcher_client_init()
       goto err;
     }
 
-  client->heartbeat_interval = BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT;
+  BROKER.heartbeat_interval =
+    BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT;
 
-  client->heartbeat_liveness_remaining = client->heartbeat_liveness =
+  BROKER.heartbeat_liveness_remaining =
+    BROKER.heartbeat_liveness =
     BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT;
 
-  client->reconnect_interval_next = client->reconnect_interval_min =
+  BROKER.reconnect_interval_next =
+    BROKER.reconnect_interval_min =
     BGPWATCHER_RECONNECT_INTERVAL_MIN;
 
-  client->reconnect_interval_max = BGPWATCHER_RECONNECT_INTERVAL_MAX;
+  BROKER.reconnect_interval_max =
+    BGPWATCHER_RECONNECT_INTERVAL_MAX;
 
   return client;
 
@@ -484,31 +248,19 @@ bgpwatcher_client_t *bgpwatcher_client_init()
 
 int bgpwatcher_client_start(bgpwatcher_client_t *client)
 {
-  /** @todo fork this part of the client into a new thread and send messages
-      over an internal req/rep socket */
-
-  /* connect to the server */
-  if(server_connect(client) != 0)
+  /* crank up the broker */
+  if((client->broker =
+      zactor_new(bgpwatcher_client_broker_run, &BROKER)) == NULL)
     {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Failed to start broker");
       return -1;
     }
 
-  /* seed the time for the next heartbeat sent to the server */
-  client->heartbeat_next = zclock_time() + client->heartbeat_interval;
+  /* DEBUG */
+  sleep(10);
 
-  /* start processing requests */
-  while((client->shutdown == 0) && (run_client(client) == 0))
-    {
-      /* nothing here */
-    }
-
-  if(server_disconnect(client) != 0)
-    {
-      // err will be set
-      return -1;
-    }
-
-  return -1;
+  return 0;
 }
 
 void bgpwatcher_client_perr(bgpwatcher_client_t *client)
@@ -565,29 +317,28 @@ int bgpwatcher_client_peer_table_flush(bgpwatcher_client_peer_table_t *table)
 
 void bgpwatcher_client_stop(bgpwatcher_client_t *client)
 {
-  assert(client != NULL);
-  client->shutdown = 1;
-
-  /** @todo or join on the client thread here */
+  /* nothing to do here. the broker will be shut down by _client_free */
+  return;
 }
 
 void bgpwatcher_client_free(bgpwatcher_client_t *client)
 {
   assert(client != NULL);
 
-  /** @todo join on the other thread here */
+  /* shuts the broker down */
+  zactor_destroy(&client->broker);
 
-  if(client->server_uri != NULL)
+  if(BROKER.server_uri != NULL)
     {
-      free(client->server_uri);
-      client->server_uri = NULL;
+      free(BROKER.server_uri);
+      BROKER.server_uri = NULL;
     }
 
   /* free'd by zctx_destroy */
-  client->server_socket = NULL;
+  BROKER.server_socket = NULL;
 
   /* frees our sockets */
-  zctx_destroy(&client->ctx);
+  zctx_destroy(&BROKER.ctx);
 
   free(client);
 
@@ -599,9 +350,16 @@ int bgpwatcher_client_set_server_uri(bgpwatcher_client_t *client,
 {
   assert(client != NULL);
 
-  free(client->server_uri);
+  if(client->broker != NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Could not set server uri (broker started)");
+      return -1;
+    }
 
-  if((client->server_uri = strdup(uri)) == NULL)
+  free(BROKER.server_uri);
+
+  if((BROKER.server_uri = strdup(uri)) == NULL)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not set server uri");
@@ -616,7 +374,14 @@ void bgpwatcher_client_set_heartbeat_interval(bgpwatcher_client_t *client,
 {
   assert(client != NULL);
 
-  client->heartbeat_interval = interval_ms;
+  if(client->broker != NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Could not set heartbeat interval (broker started)");
+      return;
+    }
+
+  BROKER.heartbeat_interval = interval_ms;
 }
 
 void bgpwatcher_client_set_heartbeat_liveness(bgpwatcher_client_t *client,
@@ -624,7 +389,14 @@ void bgpwatcher_client_set_heartbeat_liveness(bgpwatcher_client_t *client,
 {
   assert(client != NULL);
 
-  client->heartbeat_liveness = beats;
+  if(client->broker != NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Could not set heartbeat liveness (broker started)");
+      return;
+    }
+
+  BROKER.heartbeat_liveness = beats;
 }
 
 void bgpwatcher_client_set_reconnect_interval_min(bgpwatcher_client_t *client,
@@ -632,7 +404,15 @@ void bgpwatcher_client_set_reconnect_interval_min(bgpwatcher_client_t *client,
 {
   assert(client != NULL);
 
-  client->reconnect_interval_min = reconnect_interval_min;
+  if(client->broker != NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Could not set min reconnect interval "
+			     "(broker started)");
+      return;
+    }
+
+  BROKER.reconnect_interval_min = reconnect_interval_min;
 }
 
 void bgpwatcher_client_set_reconnect_interval_max(bgpwatcher_client_t *client,
@@ -640,7 +420,15 @@ void bgpwatcher_client_set_reconnect_interval_max(bgpwatcher_client_t *client,
 {
   assert(client != NULL);
 
-  client->reconnect_interval_max = reconnect_interval_max;
+  if(client->broker != NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Could not set max reconnect interval "
+			     "(broker started)");
+      return;
+    }
+
+  BROKER.reconnect_interval_max = reconnect_interval_max;
 }
 
 int bgpwatcher_client_set_identity(bgpwatcher_client_t *client,
@@ -648,9 +436,16 @@ int bgpwatcher_client_set_identity(bgpwatcher_client_t *client,
 {
   assert(client != NULL);
 
-  free(client->identity);
+  if(client->broker != NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Could not set identity (broker started)");
+      return -1;
+    }
 
-  if((client->identity = strdup(identity)) == NULL)
+  free(BROKER.identity);
+
+  if((BROKER.identity = strdup(identity)) == NULL)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not set client identity");
