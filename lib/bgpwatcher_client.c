@@ -317,7 +317,14 @@ int bgpwatcher_client_peer_table_flush(bgpwatcher_client_peer_table_t *table)
 
 void bgpwatcher_client_stop(bgpwatcher_client_t *client)
 {
-  /* nothing to do here. the broker will be shut down by _client_free */
+  /* shuts the broker down */
+  zactor_destroy(&client->broker);
+
+  /* grab the error message from the broker */
+  if(bgpwatcher_err_is_err(&client->broker_state.err) != 0)
+    {
+      client->err = client->broker_state.err;
+    }
   return;
 }
 
@@ -325,8 +332,7 @@ void bgpwatcher_client_free(bgpwatcher_client_t *client)
 {
   assert(client != NULL);
 
-  /* shuts the broker down */
-  zactor_destroy(&client->broker);
+  /* broker is already shut down */
 
   if(BROKER.server_uri != NULL)
     {
