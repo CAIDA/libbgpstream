@@ -396,6 +396,8 @@ int bgpwatcher_client_pfx_table_flush(bgpwatcher_client_pfx_table_t *table)
   return 0;
 }
 
+/** consider making the table create/free/add/flush code more generic (a
+    macro?) */
 bgpwatcher_client_peer_table_t *bgpwatcher_client_peer_table_create(
 						   bgpwatcher_client_t *client)
 {
