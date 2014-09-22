@@ -415,6 +415,8 @@ void bgpwatcher_client_stop(bgpwatcher_client_t *client)
     {
       client->err = client->broker_state.err;
     }
+
+  client->shutdown = 1;
   return;
 }
 
@@ -422,7 +424,13 @@ void bgpwatcher_client_free(bgpwatcher_client_t *client)
 {
   assert(client != NULL);
 
-  /* broker is already shut down */
+  /* @todo figure out a more elegant way to deal with this */
+  if(client->shutdown == 0)
+    {
+      bgpwatcher_client_stop(client);
+    }
+
+  /* broker now guaranteed to be shut down */
 
   if(BROKER.server_uri != NULL)
     {
