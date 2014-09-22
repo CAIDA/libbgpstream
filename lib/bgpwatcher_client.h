@@ -161,6 +161,12 @@ int bgpwatcher_client_pfx_table_flush(bgpwatcher_client_pfx_table_t *table);
 bgpwatcher_client_peer_table_t *bgpwatcher_client_peer_table_create(
 						   bgpwatcher_client_t *client);
 
+/** Free a peer table
+ *
+ * @param table         pointer to the peer table to free
+ */
+void bgpwatcher_client_peer_table_free(bgpwatcher_client_peer_table_t **table);
+
 /** Set the time that a table represents
  *
  * @param time          new time to set for the table

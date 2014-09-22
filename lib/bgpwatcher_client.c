@@ -399,7 +399,28 @@ int bgpwatcher_client_pfx_table_flush(bgpwatcher_client_pfx_table_t *table)
 bgpwatcher_client_peer_table_t *bgpwatcher_client_peer_table_create(
 						   bgpwatcher_client_t *client)
 {
-  return NULL;
+  bgpwatcher_client_peer_table_t *table;
+
+  if((table = malloc_zero(sizeof(bgpwatcher_client_peer_table_t))) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not malloc peer table");
+      return NULL;
+    }
+
+  table->client = client;
+
+  return table;
+}
+
+void bgpwatcher_client_peer_table_free(bgpwatcher_client_peer_table_t **table_p)
+{
+  bgpwatcher_client_peer_table_t *table = *table_p;
+  if(table != NULL)
+    {
+      free(table);
+      *table_p = NULL;
+    }
 }
 
 void bgpwatcher_client_peer_table_set_time(bgpwatcher_client_peer_table_t *table,
