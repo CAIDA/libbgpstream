@@ -41,7 +41,7 @@ zmsg_t * append_data_headers(zmsg_t *msg, bgpwatcher_data_msg_type_t type,
 
   /* now, (working backward), we prepend the request type */
   type_b = type;
-  if(zmsg_pushmem(msg, &type_b, sizeof(uint8_t)) != 0)
+  if(zmsg_pushmem(msg, &type_b, bgpwatcher_data_msg_type_size_t) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not add request type to message");
@@ -50,7 +50,7 @@ zmsg_t * append_data_headers(zmsg_t *msg, bgpwatcher_data_msg_type_t type,
 
   /* now prepend the sequence number */
   if(zmsg_pushmem(msg, &client->sequence_num,
-		  sizeof(uint64_t)) != 0)
+		  sizeof(client->sequence_num)) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not add sequence number to message");
@@ -59,7 +59,7 @@ zmsg_t * append_data_headers(zmsg_t *msg, bgpwatcher_data_msg_type_t type,
   client->sequence_num++;
 
   type_b = BGPWATCHER_MSG_TYPE_DATA;
-  if(zmsg_pushmem(msg, &type_b, sizeof(uint8_t)) != 0)
+  if(zmsg_pushmem(msg, &type_b, bgpwatcher_msg_type_size_t) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not add request type to message");
@@ -83,7 +83,7 @@ zmsg_t *build_test_table_begin(bgpwatcher_client_t *client,
 
   /* append the table type */
   if(zmsg_pushmem(msg, &table_type,
-		  sizeof(uint8_t)) != 0)
+		  bgpwatcher_table_type_size_t) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not add table type to message");
@@ -109,7 +109,7 @@ zmsg_t *build_test_table_end(bgpwatcher_client_t *client,
 
   /* append the table type */
   if(zmsg_pushmem(msg, &table_type,
-		  sizeof(uint8_t)) != 0)
+		  bgpwatcher_table_type_size_t) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not add table type to message");

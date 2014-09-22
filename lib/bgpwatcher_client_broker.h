@@ -69,9 +69,6 @@ typedef struct bgpwatcher_client_broker {
   /** Socket used to connect to the server */
   void *server_socket;
 
-  /** Next request sequence number to use */
-  uint64_t sequence_num;
-
   /** Time (in ms) between heartbeats sent to the server */
   uint64_t heartbeat_interval;
 

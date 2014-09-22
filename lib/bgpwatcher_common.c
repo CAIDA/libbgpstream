@@ -59,7 +59,7 @@ static int msg_pop_ip(zmsg_t *msg, struct sockaddr_storage *ss)
 	     zframe_data(frame),
 	     sizeof(uint32_t));
     }
-  else if(zframe_size(frame) == sizeof(uint64_t)*2)
+  else if(zframe_size(frame) == sizeof(uint8_t)*16)
     {
       /* v6 */
       ss->ss_family = AF_INET6;
@@ -232,7 +232,8 @@ bgpwatcher_pfx_record_t *bgpwatcher_pfx_record_deserialize(zmsg_t *msg)
     }
 
   /* pfx len */
-  if((frame = zmsg_pop(msg)) == NULL || zframe_size(frame) != sizeof(uint8_t))
+  if((frame = zmsg_pop(msg)) == NULL ||
+     zframe_size(frame) != sizeof(pfx->prefix_len))
     {
       goto err;
     }
@@ -246,11 +247,12 @@ bgpwatcher_pfx_record_t *bgpwatcher_pfx_record_deserialize(zmsg_t *msg)
     }
 
   /* orig asn */
-  if((frame = zmsg_pop(msg)) == NULL || zframe_size(frame) != sizeof(uint32_t))
+  if((frame = zmsg_pop(msg)) == NULL ||
+     zframe_size(frame) != sizeof(pfx->orig_asn))
     {
       goto err;
     }
-  memcpy(&pfx->orig_asn, zframe_data(frame), sizeof(uint32_t));
+  memcpy(&pfx->orig_asn, zframe_data(frame), sizeof(pfx->orig_asn));
   pfx->orig_asn = ntohl(pfx->orig_asn);
   zframe_destroy(&frame);
 
@@ -285,7 +287,7 @@ zmsg_t *bgpwatcher_pfx_record_serialize(bgpwatcher_pfx_record_t *pfx)
     }
 
   /* length */
-  if(zmsg_addmem(msg, &pfx->prefix_len, sizeof(uint8_t)) != 0)
+  if(zmsg_addmem(msg, &pfx->prefix_len, sizeof(pfx->prefix_len)) != 0)
     {
       goto err;
     }
@@ -388,7 +390,8 @@ bgpwatcher_peer_record_t *bgpwatcher_peer_record_deserialize(zmsg_t *msg)
     }
 
   /* status */
-  if((frame = zmsg_pop(msg)) == NULL || zframe_size(frame) != sizeof(uint8_t))
+  if((frame = zmsg_pop(msg)) == NULL ||
+     zframe_size(frame) != sizeof(peer->status))
     {
       goto err;
     }
@@ -419,7 +422,7 @@ zmsg_t *bgpwatcher_peer_record_serialize(bgpwatcher_peer_record_t *peer)
     }
 
   /* status */
-  if(zmsg_addmem(msg, &peer->status, sizeof(uint8_t)) != 0)
+  if(zmsg_addmem(msg, &peer->status, sizeof(peer->status)) != 0)
     {
       goto err;
     }

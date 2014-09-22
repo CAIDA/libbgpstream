@@ -220,7 +220,7 @@ static int send_reply(bgpwatcher_server_t *server,
     }
 
   /* add the reply type */
-  if(zmsg_addmem(msg, &reply_t_p, sizeof(uint8_t)) != 0)
+  if(zmsg_addmem(msg, &reply_t_p, bgpwatcher_msg_type_size_t) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Failed to add type to reply message");
@@ -270,7 +270,8 @@ static int handle_table(bgpwatcher_server_t *server,
   uint8_t tmp;
 
   /* set the table type and table number for this client */
-  if((frame = zmsg_pop(msg)) == NULL || zframe_size(frame) != sizeof(uint8_t))
+  if((frame = zmsg_pop(msg)) == NULL ||
+     zframe_size(frame) != bgpwatcher_table_type_size_t)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 			     "Could not extract table type");
@@ -423,7 +424,7 @@ static int handle_data_message(bgpwatcher_server_t *server,
       goto err;
     }
   /* just to be safe */
-  if(zframe_size(seq_frame) != sizeof(uint64_t))
+  if(zframe_size(seq_frame) != sizeof(uint32_t))
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 			     "Invalid seq number frame");

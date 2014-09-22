@@ -64,6 +64,9 @@ typedef struct bgpwatcher_client {
   /** Error status */
   bgpwatcher_err_t err;
 
+  /** Next request sequence number to use */
+  uint32_t sequence_num;
+
   /** @todo add lazy pirate re-tx stuff here */
 
   /** Indicates that the client has been signaled to shutdown */

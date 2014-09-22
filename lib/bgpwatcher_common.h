@@ -139,6 +139,8 @@ typedef enum {
 
 } bgpwatcher_table_type_t;
 
+#define bgpwatcher_table_type_size_t sizeof(uint8_t)
+
 /** Enumeration of message types
  *
  * @note these will be cast to a uint8_t, so be sure that there are fewer than
@@ -165,7 +167,10 @@ typedef enum {
 
   /** Highest message number in use */
   BGPWATCHER_MSG_TYPE_MAX      = BGPWATCHER_MSG_TYPE_REPLY,
+
 } bgpwatcher_msg_type_t;
+
+#define bgpwatcher_msg_type_size_t sizeof(uint8_t)
 
 /** Enumeration of request message types
  *
@@ -191,6 +196,8 @@ typedef enum {
   /** Highest message number in use */
   BGPWATCHER_DATA_MSG_TYPE_MAX      = BGPWATCHER_DATA_MSG_TYPE_PEER_RECORD,
 } bgpwatcher_data_msg_type_t;
+
+#define bgpwatcher_data_msg_type_size_t sizeof(uint8_t)
 
 /** Enumeration of error codes
  *
