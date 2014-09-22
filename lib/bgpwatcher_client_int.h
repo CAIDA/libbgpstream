@@ -83,6 +83,10 @@ typedef struct bgpwatcher_client_pfx_table {
   /** Time that this table was dumped */
   uint32_t time;
 
+  /** Indicates that a table_start message should not be sent on the next
+      pfx_add */
+  int started;
+
   /** @todo */
 
 } bgpwatcher_client_pfx_table_t;

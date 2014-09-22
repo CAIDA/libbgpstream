@@ -33,19 +33,23 @@
 #define ERR (&client->err)
 #define BROKER (client->broker_state)
 
-#if 0
-zmsg_t * append_data_headers(zmsg_t *msg, bgpwatcher_data_msg_type_t type,
-			     bgpwatcher_client_t *client)
+/* given a formed data message, push on the needed headers and send */
+int send_data_message(zmsg_t **msg_p,
+		      bgpwatcher_data_msg_type_t type,
+		      bgpwatcher_client_t *client)
 {
   uint8_t type_b;
+  zmsg_t *msg = *msg_p;
+  assert(msg != NULL);
+  *msg_p = NULL;
 
-  /* now, (working backward), we prepend the request type */
+  /* (working backward), we prepend the request type */
   type_b = type;
   if(zmsg_pushmem(msg, &type_b, bgpwatcher_data_msg_type_size_t) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not add request type to message");
-      return NULL;
+      goto err;
     }
 
   /* now prepend the sequence number */
@@ -54,7 +58,7 @@ zmsg_t * append_data_headers(zmsg_t *msg, bgpwatcher_data_msg_type_t type,
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not add sequence number to message");
-      return NULL;
+      goto err;
     }
   client->sequence_num++;
 
@@ -63,22 +67,37 @@ zmsg_t * append_data_headers(zmsg_t *msg, bgpwatcher_data_msg_type_t type,
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not add request type to message");
-      return NULL;
+      goto err;
     }
 
-  return msg;
+  if(zmsg_send(&msg, client->broker) != 0)
+    {
+      bgpwatcher_err_set_err(ERR, errno,
+			     "Could not send data message to broker");
+      return -1;
+    }
+
+  return 0;
+
+ err:
+  zmsg_destroy(&msg);
+  return -1;
 }
 
-zmsg_t *build_test_table_begin(bgpwatcher_client_t *client,
-			       bgpwatcher_table_type_t table_type)
+int send_table(bgpwatcher_client_t *client,
+		     bgpwatcher_table_type_t table_type,
+		     bgpwatcher_data_msg_type_t begin_end)
 {
   zmsg_t *msg;
+
+  assert(begin_end == BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN ||
+	 begin_end == BGPWATCHER_DATA_MSG_TYPE_TABLE_END);
 
   if((msg = zmsg_new()) == NULL)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Failed to create table begin message");
-      return NULL;
+			     "Failed to create table begin/end message");
+      return -1;
     }
 
   /* append the table type */
@@ -87,14 +106,18 @@ zmsg_t *build_test_table_begin(bgpwatcher_client_t *client,
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not add table type to message");
-      return NULL;
+      zmsg_destroy(&msg);
     }
 
-  return append_data_headers(msg,
-			     BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN,
-			     client);
+  if(send_data_message(&msg, begin_end, client) != 0)
+    {
+      return -1;
+    }
+
+  return 0;
 }
 
+#if 0
 zmsg_t *build_test_table_end(bgpwatcher_client_t *client,
 			     bgpwatcher_table_type_t table_type)
 {
@@ -257,9 +280,6 @@ int bgpwatcher_client_start(bgpwatcher_client_t *client)
       return -1;
     }
 
-  /* DEBUG */
-  sleep(10);
-
   return 0;
 }
 
@@ -272,24 +292,108 @@ void bgpwatcher_client_perr(bgpwatcher_client_t *client)
 bgpwatcher_client_pfx_table_t *bgpwatcher_client_pfx_table_create(
 						   bgpwatcher_client_t *client)
 {
-  return NULL;
+  bgpwatcher_client_pfx_table_t *table;
+
+  if((table = malloc_zero(sizeof(bgpwatcher_client_pfx_table_t))) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not malloc pfx table");
+      return NULL;
+    }
+
+  table->client = client;
+
+  return table;
+}
+
+void bgpwatcher_client_pfx_table_free(bgpwatcher_client_pfx_table_t **table_p)
+{
+  bgpwatcher_client_pfx_table_t *table = *table_p;
+  if(table != NULL)
+    {
+      free(table);
+      *table_p = NULL;
+    }
 }
 
 void bgpwatcher_client_pfx_table_set_time(bgpwatcher_client_pfx_table_t *table,
 					  uint32_t time)
 {
-  return;
+  assert(table != NULL);
+
+  table->time = time;
 }
 
 int bgpwatcher_client_pfx_table_add(bgpwatcher_client_pfx_table_t *table,
 				    bgpwatcher_pfx_record_t *pfx)
 {
+  zmsg_t *msg;
+
+  assert(table != NULL);
+  assert(pfx != NULL);
+
+  /* check if we need to send a table start message */
+  if(table->started == 0)
+    {
+      if(send_table(table->client,
+		    BGPWATCHER_TABLE_TYPE_PREFIX,
+		    BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN) != 0)
+	{
+	  /* err set */
+	  return -1;
+	}
+      table->started = 1;
+    }
+
+  /* send off the prefix */
+  if((msg = bgpwatcher_pfx_record_serialize(pfx)) == NULL)
+    {
+      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
+			     "Failed to serialize prefix record");
+      goto err;
+    }
+
+  if(send_data_message(&msg, BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD,
+		       table->client) != 0)
+    {
+      goto err;
+    }
+
+  return 0;
+
+ err:
+  zmsg_destroy(&msg);
   return -1;
 }
 
 int bgpwatcher_client_pfx_table_flush(bgpwatcher_client_pfx_table_t *table)
 {
-  return -1;
+  assert(table != NULL);
+
+  /* to allow for empty tables */
+  if(table->started == 0)
+    {
+      if(send_table(table->client,
+		    BGPWATCHER_TABLE_TYPE_PREFIX,
+		    BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN) != 0)
+	{
+	  /* err set */
+	  return -1;
+	}
+      table->started = 1;
+    }
+
+  /* send a table end message */
+  if(send_table(table->client,
+		BGPWATCHER_TABLE_TYPE_PREFIX,
+		BGPWATCHER_DATA_MSG_TYPE_TABLE_END) != 0)
+    {
+      /* err set */
+      return -1;
+    }
+  /* mark as clean so the next 'add' call will trigger a table start message */
+  table->started = 0;
+  return 0;
 }
 
 bgpwatcher_client_peer_table_t *bgpwatcher_client_peer_table_create(

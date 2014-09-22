@@ -38,6 +38,26 @@
 
 /** @todo add re-transmit options here */
 
+static bgpwatcher_pfx_record_t *create_test_pfx()
+{
+  bgpwatcher_pfx_record_t *rec;
+
+  rec = bgpwatcher_pfx_record_init();
+
+  if(rec != NULL)
+    {
+      ((struct sockaddr_in*)&rec->prefix)->sin_family = AF_INET;
+      ((struct sockaddr_in*)&rec->prefix)->sin_addr.s_addr = htonl(0xC0ACE200);
+      rec->prefix_len = 24;
+      ((struct sockaddr_in*)&rec->peer_ip)->sin_family = AF_INET;
+      ((struct sockaddr_in*)&rec->peer_ip)->sin_addr.s_addr = htonl(0x82D9FA0D);
+      rec->orig_asn = 0x00332211;
+      rec->collector_name = strdup("TEST-COLLECTOR");
+    }
+
+  return rec;
+}
+
 static void usage(const char *name)
 {
   fprintf(stderr,
@@ -78,6 +98,11 @@ int main(int argc, char **argv)
   uint64_t reconnect_interval_max = BGPWATCHER_RECONNECT_INTERVAL_MAX;
 
   bgpwatcher_client_t *client = NULL;
+
+  /* test structures */
+  bgpwatcher_client_pfx_table_t *pfx_table = NULL;
+  bgpwatcher_pfx_record_t *pfx = NULL;
+  uint32_t test_time = 1320969600;
 
   while(prevoptind = optind,
 	(opt = getopt(argc, argv, ":i:l:n:r:R:s:v?")) >= 0)
@@ -174,7 +199,36 @@ int main(int argc, char **argv)
     }
 
   /* issue a bunch of requests */
-  fprintf(stderr, "issuing requests here!\n");
+  fprintf(stderr, "TEST: Sending test messages...\n");
+
+  if((pfx_table = bgpwatcher_client_pfx_table_create(client)) == NULL)
+    {
+      fprintf(stderr, "Could not create table\n");
+      goto err;
+    }
+
+  bgpwatcher_client_pfx_table_set_time(pfx_table, test_time);
+
+  if((pfx = create_test_pfx()) == NULL)
+    {
+      fprintf(stderr, "Could not create test prefix\n");
+      goto err;
+    }
+
+  if(bgpwatcher_client_pfx_table_add(pfx_table, pfx) != 0)
+    {
+      fprintf(stderr, "Could not add pfx to table\n");
+      goto err;
+    }
+
+  if(bgpwatcher_client_pfx_table_flush(pfx_table) != 0)
+    {
+      fprintf(stderr, "Could not flush table\n");
+      goto err;
+    }
+
+  bgpwatcher_pfx_record_free(&pfx);
+  bgpwatcher_client_pfx_table_free(&pfx_table);
 
   bgpwatcher_client_stop(client);
   bgpwatcher_client_perr(client);
@@ -186,6 +240,7 @@ int main(int argc, char **argv)
   return 0;
 
  err:
+  bgpwatcher_client_perr(client);
   if(client != NULL) {
     bgpwatcher_client_free(client);
   }

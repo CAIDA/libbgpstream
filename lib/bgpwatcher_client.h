@@ -114,6 +114,12 @@ void bgpwatcher_client_perr(bgpwatcher_client_t *client);
 bgpwatcher_client_pfx_table_t *bgpwatcher_client_pfx_table_create(
 						   bgpwatcher_client_t *client);
 
+/** Free a prefix table
+ *
+ * @param table         pointer to the prefix table to free
+ */
+void bgpwatcher_client_pfx_table_free(bgpwatcher_client_pfx_table_t **table);
+
 /** Set the time that a table represents
  *
  * @param time          new time to set for the table
