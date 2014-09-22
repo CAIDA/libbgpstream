@@ -99,6 +99,10 @@ typedef struct bgpwatcher_client_peer_table {
   /** Time that this table was dumped */
   uint32_t time;
 
+  /** Indicates that a table_start message should not be sent on the next
+      peer_add */
+  int started;
+
   /** @todo */
 
 } bgpwatcher_client_peer_table_t;

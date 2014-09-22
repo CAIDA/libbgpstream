@@ -434,6 +434,42 @@ void bgpwatcher_client_peer_table_set_time(bgpwatcher_client_peer_table_t *table
 int bgpwatcher_client_peer_table_add(bgpwatcher_client_peer_table_t *table,
 				     bgpwatcher_peer_record_t *peer)
 {
+  zmsg_t *msg;
+
+  assert(table != NULL);
+  assert(peer != NULL);
+
+  /* check if we need to send a table start message */
+  if(table->started == 0)
+    {
+      if(send_table(table->client,
+		    BGPWATCHER_TABLE_TYPE_PEER,
+		    BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN) != 0)
+	{
+	  /* err set */
+	  return -1;
+	}
+      table->started = 1;
+    }
+
+  /* send off the prefix */
+  if((msg = bgpwatcher_peer_record_serialize(peer)) == NULL)
+    {
+      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
+			     "Failed to serialize peer record");
+      goto err;
+    }
+
+  if(send_data_message(&msg, BGPWATCHER_DATA_MSG_TYPE_PEER_RECORD,
+		       table->client) != 0)
+    {
+      goto err;
+    }
+
+  return 0;
+
+ err:
+  zmsg_destroy(&msg);
   return -1;
 }
 
