@@ -475,7 +475,32 @@ int bgpwatcher_client_peer_table_add(bgpwatcher_client_peer_table_t *table,
 
 int bgpwatcher_client_peer_table_flush(bgpwatcher_client_peer_table_t *table)
 {
-  return -1;
+  assert(table != NULL);
+
+  /* to allow for empty tables */
+  if(table->started == 0)
+    {
+      if(send_table(table->client,
+		    BGPWATCHER_TABLE_TYPE_PEER,
+		    BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN) != 0)
+	{
+	  /* err set */
+	  return -1;
+	}
+      table->started = 1;
+    }
+
+  /* send a table end message */
+  if(send_table(table->client,
+		BGPWATCHER_TABLE_TYPE_PEER,
+		BGPWATCHER_DATA_MSG_TYPE_TABLE_END) != 0)
+    {
+      /* err set */
+      return -1;
+    }
+  /* mark as clean so the next 'add' call will trigger a table start message */
+  table->started = 0;
+  return 0;
 }
 
 void bgpwatcher_client_stop(bgpwatcher_client_t *client)
