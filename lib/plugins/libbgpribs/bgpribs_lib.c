@@ -289,6 +289,10 @@ void peerdata_log_event(peerdata_t *peer_data,
   // print bs_record variables
   if(bs_elem != NULL)
     {
+      // DEBUG:
+      /* if(strcmp(peer_data->peer_address_str, "202_79_197_122") != 0) */
+      /* 	return; */
+
       // print bs_elem variables
       printf("Something weird in apply_elem\n");
       printf("\t %ld E %s - (%d - %d)\n", 
@@ -478,14 +482,14 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 	  peer_data->rt_status = UC_OFF;
 
 	  ribs_table_reset(peer_data->active_ribs_table);
-	  peer_data->active_ribs_table->reference_rib_start = 0;
-	  peer_data->active_ribs_table->reference_rib_end = 0;
-	  peer_data->active_ribs_table->reference_dump_time = 0;
+	  // peer_data->active_ribs_table->reference_rib_start = 0;
+	  // peer_data->active_ribs_table->reference_rib_end = 0;
+	  // peer_data->active_ribs_table->reference_dump_time = 0;
 
 	  ribs_table_reset(peer_data->uc_ribs_table);
-	  peer_data->uc_ribs_table->reference_rib_start = 0;
-	  peer_data->uc_ribs_table->reference_rib_end = 0;
-	  peer_data->uc_ribs_table->reference_dump_time = 0;
+	  // peer_data->uc_ribs_table->reference_rib_start = 0;
+	  // peer_data->uc_ribs_table->reference_rib_end = 0;
+	  // peer_data->uc_ribs_table->reference_dump_time = 0;
 
 	  return 0;
 	}
@@ -504,9 +508,9 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 	  peer_data->status = PEER_NULL;
 
 	  ribs_table_reset(peer_data->active_ribs_table);
-	  peer_data->active_ribs_table->reference_rib_start = 0;
-	  peer_data->active_ribs_table->reference_rib_end = 0;
-	  peer_data->active_ribs_table->reference_dump_time = 0;
+	  // peer_data->active_ribs_table->reference_rib_start = 0;
+	  // peer_data->active_ribs_table->reference_rib_end = 0;
+	  // peer_data->active_ribs_table->reference_dump_time = 0;
 
 	  return 0;
 	}
@@ -572,6 +576,11 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 	 bs_record->dump_pos == DUMP_START && 
 	 bs_record->attributes.record_time >= peer_data->most_recent_ts)
 	{
+	  // DEBUG:
+	  /* if(strcmp(peer_data->peer_address_str, "202_79_197_122") == 0) */
+	  /*   { */
+	  /*     printf("Here: %ld - %ld\n", bs_record->attributes.dump_time, bs_record->attributes.record_time); */
+	  /*   } */
 	  peer_data->rt_status = UC_ON;
 	  // Note: we turn UC_ON even if peer is DOWN, if no elem
 	  // turns the rib into a NULL status, then the peer will 
@@ -582,11 +591,11 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 	  // a newer dump has arrived
 	  if(bs_record->attributes.dump_time > peer_data->uc_ribs_table->reference_dump_time)
 	    {
-	      peer_data->uc_ribs_table->reference_dump_time = bs_record->attributes.record_time;
-	      peer_data->uc_ribs_table->reference_rib_start = 0;
-	      peer_data->uc_ribs_table->reference_rib_end = 0;
 	      // make sure that uc_ribs_table is empty
 	      ribs_table_reset(peer_data->uc_ribs_table);
+	      peer_data->uc_ribs_table->reference_dump_time = bs_record->attributes.dump_time;
+	      // peer_data->uc_ribs_table->reference_rib_start = 0;
+	      // peer_data->uc_ribs_table->reference_rib_end = 0;
 	    }
 	  return (peer_data->status == PEER_UP) ? 1 : 0;
 	}
@@ -627,6 +636,9 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 		{
 		  // if the peer is still down, it will remain DOWN
 		  peer_data->rt_status = UC_OFF;
+		  peer_data->active_ribs_table->reference_rib_start = 0;
+		  peer_data->active_ribs_table->reference_rib_end = 0;
+		  peer_data->active_ribs_table->reference_dump_time = 0;
 		}
 	    }
 	  return (peer_data->status == PEER_UP) ? 1 : 0;
@@ -881,12 +893,12 @@ int peers_table_process_record(peers_table_t *peers_table,
 	    }
 	  
 	  // DEBUG:
-	  /* if(strcmp(peer_data->peer_address_str, "193_160_39_1") == 0 && */
-	  /*    (old_status != peer_data->status || old_rt_status != peer_data->rt_status))	    */
-	  /*   {  */
+	  /* if(strcmp(peer_data->peer_address_str, "202_79_197_122") == 0 && */
+	  /*    (old_status != peer_data->status || old_rt_status != peer_data->rt_status)) */
+	  /*   { */
 	  /*     printf("\t %ld E %s - (%d - %d) - to -> (%d - %d)\n", */
 	  /* 	     peer_data->most_recent_ts, */
-	  /* 	     peer_data->peer_address_str,  */
+	  /* 	     peer_data->peer_address_str, */
 	  /* 	     old_status, old_rt_status, */
 	  /* 	     peer_data->status, peer_data->rt_status); */
 	  /*   } */
@@ -915,15 +927,15 @@ int peers_table_process_record(peers_table_t *peers_table,
 	  // apply each record to each peer_data
 	  peer_status = peerdata_apply_record(peer_data, bs_record);
 	  // DEBUG:
-	  /* if(strcmp(peer_data->peer_address_str, "193_160_39_1") == 0 && */
+	  /* if(strcmp(peer_data->peer_address_str, "202_79_197_122") == 0 && */
 	  /*    (old_status != peer_data->status || old_rt_status != peer_data->rt_status)) */
-	  /*   {  */
+	  /*   { */
 	  /*     printf("\t %ld R %s - (%d - %d) - to -> (%d - %d)\n", */
 	  /* 	     peer_data->most_recent_ts, */
-	  /* 	     peer_data->peer_address_str,  */
+	  /* 	     peer_data->peer_address_str, */
 	  /* 	     old_status, old_rt_status, */
 	  /* 	     peer_data->status, peer_data->rt_status); */
-	  /*   }  */
+	  /*   } */
 	  if(peer_status < 0)
 	    {
 	      // TODO something went wrong during "TODO" function
