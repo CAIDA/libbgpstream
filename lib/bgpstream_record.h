@@ -33,13 +33,13 @@
 #define BGPSTREAM_PAR_LEN 512
 
 
-typedef enum {BGPSTREAM_UPDATE,
-	      BGPSTREAM_RIB
+typedef enum {BGPSTREAM_UPDATE = 0,
+	      BGPSTREAM_RIB    = 1
 } bgpstream_record_dump_type_t;
 
-typedef enum {DUMP_START,        /* first entry in dump */
-	      DUMP_MIDDLE,       /* intermediate entry in dump */
-	      DUMP_END           /* last entry in dump */
+typedef enum {DUMP_START  = 0,        /* first entry in dump */
+	      DUMP_MIDDLE = 1,       /* intermediate entry in dump */
+	      DUMP_END    = 2       /* last entry in dump */
 } bgpstream_dump_position_t;
 
 typedef enum {VALID_RECORD     = 0,    /* valid entry found in dump */

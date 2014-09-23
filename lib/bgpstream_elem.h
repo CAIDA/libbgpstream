@@ -56,7 +56,8 @@ typedef struct struct_bgpstream_prefix_t {
 } bgpstream_prefix_t;
 
 
-typedef enum {BST_STRING_ASPATH, // AS PATH is stored as a string (as it contains AS confederations or AS sets)
+typedef enum {BST_STRING_ASPATH, // AS PATH is stored as a string (as it
+	                         // contains AS confederations or AS sets)
 	      BST_UINT32_ASPATH  // AS PATH is stored as an array of uint32 
 } bgpstream_aspath_type_t;
 
@@ -93,7 +94,8 @@ typedef enum {BST_UNKNOWN = 0,
 
 typedef struct struct_bgpstream_elem_t {
   bgpstream_elem_type_t type;
-  long int timestamp;  // "time of record dump" (see -m option, default time in bgpdump.c file)
+  long int timestamp;  // "time of record dump" (see -m option,
+                       // default time in bgpdump.c file)
   bgpstream_ip_address_t peer_address;  // peer IP address
   uint32_t peer_asnumber;           // peer AS number
   bgpstream_prefix_t prefix;        // IP prefix
