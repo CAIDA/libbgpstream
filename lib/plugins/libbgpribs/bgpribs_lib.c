@@ -201,13 +201,34 @@ void peerdata_log_event(peerdata_t *peer_data,
 {
   // TODO:
   // print peer_data variables
-  if(bs_record != NULL)
-    {
-      // print bs_record variables
-    }
+  // print bs_record variables
   if(bs_elem != NULL)
     {
       // print bs_elem variables
+      printf("Something weird in apply_elem\n");
+      printf("\t %ld E %s - (%d - %d)\n", 
+	     peer_data->most_recent_ts,
+	     peer_data->peer_address_str,
+	     peer_data->status, peer_data->rt_status);
+      printf("\t %ld \t %d - dt: %ld dp: %d \n", 
+	     bs_elem->timestamp,
+	     bs_elem->type,
+	     bs_record->attributes.dump_time,
+	     bs_record->dump_pos);
+    }
+  else
+    {
+      printf("Something weird in apply_record\n");
+      printf("\t %ld E %s - (%d - %d)\n", 
+	     peer_data->most_recent_ts,
+	     peer_data->peer_address_str,
+	     peer_data->status, peer_data->rt_status);
+      printf("\t %ld \t status: %d - dt: %d dp: %d\n", 
+	     bs_record->attributes.dump_time,
+	     bs_record->status,
+	     bs_record->attributes.dump_type,
+	     bs_record->dump_pos);
+
     }
 }
 
@@ -247,7 +268,7 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 	  // under construction, to do so we use the next if (see below)
 	}
       if(peer_data->rt_status == UC_ON &&
-	 bs_elem->timestamp >= bs_elem->timestamp >= peer_data->uc_ribs_table->reference_rib_start)
+	 bs_elem->timestamp >= peer_data->uc_ribs_table->reference_rib_start)
 	{
 	  // apply update to the current uc ribs (do not change status)
 	  ribs_table_apply_elem(peer_data->uc_ribs_table, bs_elem);
@@ -280,6 +301,14 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 	  peer_data->active_ribs_table->reference_dump_time = bs_record->attributes.dump_time;
 	  peer_data->active_ribs_table->reference_rib_start = bs_elem->timestamp;
 	  peer_data->active_ribs_table->reference_rib_end = bs_elem->timestamp;
+	  return 0;
+	}
+
+      if(peer_data->status == PEER_NULL &&
+	 peer_data->rt_status == UC_OFF &&
+	 (bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_WITHDRAWAL))
+	{
+	  // no need to log event
 	  return 0;
 	}
       
@@ -459,6 +488,11 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 	 bs_record->attributes.record_time >= peer_data->most_recent_ts)
 	{
 	  peer_data->rt_status = UC_ON;
+	  // Note: we turn UC_ON even if peer is DOWN, if no elem
+	  // turns the rib into a NULL status, then the peer will 
+	  // remain DOWN, and UC will be reset to OFF at the end 
+	  // of the rib
+
 	  // if no element has already set the reference_dump time, or if
 	  // a newer dump has arrived
 	  if(bs_record->attributes.dump_time > peer_data->uc_ribs_table->reference_dump_time)
@@ -478,33 +512,42 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 	 bs_record->dump_pos == DUMP_END && 
 	 bs_record->attributes.record_time >= peer_data->most_recent_ts)
 	{
+
 	  // if this exact rib was under construction
 	  if(peer_data->rt_status == UC_ON &&
 	     bs_record->attributes.dump_time == peer_data->uc_ribs_table->reference_dump_time)
 	    {
-	      // uc_ribs_table is the new active, so:
-	      // 1) reset(active)
-	      ribs_table_reset(peer_data->active_ribs_table);
-	      peer_data->active_ribs_table->reference_rib_start = 0;
-	      peer_data->active_ribs_table->reference_rib_end = 0;
-	      peer_data->active_ribs_table->reference_dump_time = 0;
-	      // 2) tmp = active
-	      ribs_table_t *tmp = peer_data->active_ribs_table;
-	      // 3) active = uc_ribs
-	      peer_data->active_ribs_table = peer_data->uc_ribs_table;
-	      // 4) uc_ribs = tmp (i.e. already reset table)
-	      peer_data->uc_ribs_table = tmp;
-	      // the UC is OFF
-	      peer_data->rt_status = UC_OFF;
-	      if(peer_data->status == PEER_NULL) 
+	      if(peer_data->status != PEER_DOWN)
 		{
-		  peer_data->status = PEER_UP;
-		}	      
+		  // uc_ribs_table is the new active, so:
+		  // 1) reset(active)
+		  ribs_table_reset(peer_data->active_ribs_table);
+		  peer_data->active_ribs_table->reference_rib_start = 0;
+		  peer_data->active_ribs_table->reference_rib_end = 0;
+		  peer_data->active_ribs_table->reference_dump_time = 0;
+		  // 2) tmp = active
+		  ribs_table_t *tmp = peer_data->active_ribs_table;
+		  // 3) active = uc_ribs
+		  peer_data->active_ribs_table = peer_data->uc_ribs_table;
+		  // 4) uc_ribs = tmp (i.e. already reset table)
+		  peer_data->uc_ribs_table = tmp;
+		  // the UC is OFF
+		  peer_data->rt_status = UC_OFF;
+		  if(peer_data->status == PEER_NULL) 
+		    {
+		      peer_data->status = PEER_UP;
+		    }	 
+		}
+	      else
+		{
+		  // if the peer is still down, it will remain DOWN
+		  peer_data->rt_status = UC_OFF;
+		}
 	    }
 	  return (peer_data->status == PEER_UP) ? 1 : 0;
-	}
-
-      /* signal event in bgpribs log (see end of function) */      
+	}     
+      // no need to signal event if it is a valid record
+      return (peer_data->status == PEER_UP) ? 1 : 0;
     }
 
   /* if we receive a record signaling a FILTERED_SOURCE
@@ -690,6 +733,15 @@ int peers_table_process_record(peers_table_t *peers_table,
 		  k = kh_put(ipv4_peers_table_t, peers_table->ipv4_peers_table, 
 			     bs_iterator->peer_address, &khret);
 		  kh_value(peers_table->ipv4_peers_table, k) = peer_data;
+		  // if we have just created a peer_data and we are reading
+		  // a BGPSTREAM_RIB, we move the rt_status to UC_ON
+		  if(bs_record->attributes.dump_type == BGPSTREAM_RIB)
+		    {
+		      peer_data->rt_status = UC_ON;
+		      peer_data->uc_ribs_table->reference_dump_time = bs_record->attributes.dump_time;
+		      peer_data->uc_ribs_table->reference_rib_start = 0;
+		      peer_data->uc_ribs_table->reference_rib_end = 0;
+		    }
 		}
 	      else
 		{ /* already exists, just get it */	
@@ -714,6 +766,15 @@ int peers_table_process_record(peers_table_t *peers_table,
 		  k = kh_put(ipv6_peers_table_t, peers_table->ipv6_peers_table, 
 			     bs_iterator->peer_address, &khret);
 		  kh_value(peers_table->ipv6_peers_table, k) = peer_data;
+		  // if we have just created a peer_data and we are reading
+		  // a BGPSTREAM_RIB, we move the rt_status to UC_ON
+		  if(bs_record->attributes.dump_type == BGPSTREAM_RIB)
+		    {
+		      peer_data->rt_status = UC_ON;
+		      peer_data->uc_ribs_table->reference_dump_time = bs_record->attributes.dump_time;
+		      peer_data->uc_ribs_table->reference_rib_start = 0;
+		      peer_data->uc_ribs_table->reference_rib_end = 0;
+		    }
 		}
 	      else
 		{ /* already exists, just get it */
