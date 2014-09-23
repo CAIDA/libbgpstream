@@ -81,12 +81,14 @@ static int recv_peer_record(bgpwatcher_server_t *server,
 static int table_begin(bgpwatcher_server_t *server,
 		       uint64_t table_id,
 		       bgpwatcher_table_type_t table_type,
+		       uint32_t table_time,
 		       void *user)
 {
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
   fprintf(stderr, "HANDLE: Handling table BEGIN\n");
   fprintf(stderr, "Table Type:\t%d\n", table_type);
   fprintf(stderr, "Table Id:\t%"PRIu64"\n", table_id);
+  fprintf(stderr, "Table Time:\t%"PRIu32"\n", table_time);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
   return 0;
 }
@@ -94,12 +96,14 @@ static int table_begin(bgpwatcher_server_t *server,
 static int table_end(bgpwatcher_server_t *server,
 		     uint64_t table_id,
 		     bgpwatcher_table_type_t table_type,
+		     uint32_t table_time,
 		     void *user)
 {
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
   fprintf(stderr, "HANDLE: Handling table END\n");
   fprintf(stderr, "Table Type:\t%d\n", table_type);
   fprintf(stderr, "Table Id:\t%"PRIu64"\n", table_id);
+  fprintf(stderr, "Table Time:\t%"PRIu32"\n", table_time);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
   return 0;
 }

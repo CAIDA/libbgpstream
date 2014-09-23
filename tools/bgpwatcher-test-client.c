@@ -287,12 +287,11 @@ int main(int argc, char **argv)
 
   if((rc = bgpwatcher_client_pfx_table_end(pfx_table)) < 0)
     {
-      fprintf(stderr, "Could not flush table\n");
+      fprintf(stderr, "Could not end table\n");
       goto err;
     }
   fprintf(stderr, "TEST: Sending table end: %d\n", rc);
   fprintf(stderr, "--------------------[ PREFIX DONE ]--------------------\n\n");
-
 
   fprintf(stderr, "--------------------[ PEER START ]--------------------\n");
   if((rc = bgpwatcher_client_peer_table_begin(peer_table, peer_table_time)) < 0)
@@ -311,7 +310,7 @@ int main(int argc, char **argv)
 
   if((rc = bgpwatcher_client_peer_table_end(peer_table)) < 0)
     {
-      fprintf(stderr, "Could not flush table\n");
+      fprintf(stderr, "Could not end table\n");
       goto err;
     }
   fprintf(stderr, "TEST: Sending table end: %d\n", rc);

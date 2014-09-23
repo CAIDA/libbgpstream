@@ -99,6 +99,10 @@ typedef struct bgpwatcher_server_client {
 
   /** Are we in the middle of receiving a table? */
   bgpwatcher_table_type_t table_type;
+
+  /** What is the time of the current table? */
+  uint32_t table_time;
+
 } bgpwatcher_server_client_t;
 
 typedef struct bgpwatcher_server_callbacks {
@@ -162,6 +166,7 @@ typedef struct bgpwatcher_server_callbacks {
   int (*table_begin)(bgpwatcher_server_t *server,
 		     uint64_t table_id,
 		     bgpwatcher_table_type_t table_type,
+		     uint32_t table_time,
 		     void *user);
 
   /** Signals that all records for the given table have been received
@@ -175,6 +180,7 @@ typedef struct bgpwatcher_server_callbacks {
   int (*table_end)(bgpwatcher_server_t *server,
 		   uint64_t table_id,
 		   bgpwatcher_table_type_t table_type,
+		   uint32_t table_time,
 		   void *user);
 
   /** User data passed along with each callback */

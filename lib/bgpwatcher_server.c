@@ -268,8 +268,9 @@ static int handle_table(bgpwatcher_server_t *server,
 {
   zframe_t *frame;
   uint8_t tmp;
+  uint32_t tmp_time;
 
-  /* set the table type and table number for this client */
+  /* set the table typefor this client */
   if((frame = zmsg_pop(msg)) == NULL ||
      zframe_size(frame) != bgpwatcher_table_type_size_t)
     {
@@ -287,12 +288,26 @@ static int handle_table(bgpwatcher_server_t *server,
       goto err;
     }
 
+  /* get the table time */
+  if((frame = zmsg_pop(msg)) == NULL ||
+     zframe_size(frame) != sizeof(client->table_time))
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+			     "Could not extract table time");
+      goto err;
+    }
+  tmp_time = *zframe_data(frame);
+  tmp_time = htonl(tmp_time);
+  zframe_destroy(&frame);
+
   if(type == BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN)
     {
       client->table_type = tmp;
+      client->table_time = tmp_time;
       client->table_num = server->table_num++;
 
-      if(DO_CALLBACK(table_begin, client->table_num, client->table_type) != 0)
+      if(DO_CALLBACK(table_begin, client->table_num,
+		     client->table_type, client->table_time) != 0)
 	{
 	  return -1;
 	}
@@ -308,13 +323,23 @@ static int handle_table(bgpwatcher_server_t *server,
 				 client->table_type, tmp);
 	  goto err;
 	}
+      if(tmp_time != client->table_time)
+	{
+	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+				 "Table time mismatch (expecting %d, got %d)",
+				 client->table_time, tmp_time);
+	  goto err;
+	}
 
-      if(DO_CALLBACK(table_end, client->table_num, client->table_type) != 0)
+      if(DO_CALLBACK(table_end, client->table_num,
+		     client->table_type, client->table_time) != 0)
 	{
 	  return -1;
 	}
 
       client->table_type = BGPWATCHER_TABLE_TYPE_NONE;
+      client->table_time = 0;
+      client->table_num = 0;
     }
   else
     {
