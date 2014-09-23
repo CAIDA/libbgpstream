@@ -40,7 +40,7 @@ int send_data_message(zmsg_t **msg_p,
 {
   uint8_t type_b;
   zmsg_t *msg = *msg_p;
-  uint32_t seq_no = client->sequence_num;
+  seq_num_t seq_num = client->seq_num;
   assert(msg != NULL);
   *msg_p = NULL;
 
@@ -54,8 +54,7 @@ int send_data_message(zmsg_t **msg_p,
     }
 
   /* now prepend the sequence number */
-  if(zmsg_pushmem(msg, &client->sequence_num,
-		  sizeof(client->sequence_num)) != 0)
+  if(zmsg_pushmem(msg, &seq_num, sizeof(seq_num_t)) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not add sequence number to message");
@@ -77,8 +76,8 @@ int send_data_message(zmsg_t **msg_p,
       return -1;
     }
 
-  client->sequence_num++;
-  return seq_no;
+  client->seq_num++;
+  return seq_num;
 
  err:
   zmsg_destroy(&msg);

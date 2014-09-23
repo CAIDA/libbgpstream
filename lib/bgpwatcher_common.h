@@ -75,6 +75,9 @@
  *
  * @{ */
 
+/** Type of a sequence number */
+typedef uint32_t seq_num_t;
+
 /** State for a prefix row */
 typedef struct bgpwatcher_pfx_record {
 

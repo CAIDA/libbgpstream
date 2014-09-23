@@ -65,7 +65,7 @@ typedef struct bgpwatcher_client {
   bgpwatcher_err_t err;
 
   /** Next request sequence number to use */
-  uint32_t sequence_num;
+  seq_num_t seq_num;
 
   /** @todo add lazy pirate re-tx stuff here */
 

@@ -449,7 +449,7 @@ static int handle_data_message(bgpwatcher_server_t *server,
       goto err;
     }
   /* just to be safe */
-  if(zframe_size(seq_frame) != sizeof(uint32_t))
+  if(zframe_size(seq_frame) != sizeof(seq_num_t))
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 			     "Invalid seq number frame");
