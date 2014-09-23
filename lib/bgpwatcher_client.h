@@ -120,12 +120,14 @@ bgpwatcher_client_pfx_table_t *bgpwatcher_client_pfx_table_create(
  */
 void bgpwatcher_client_pfx_table_free(bgpwatcher_client_pfx_table_t **table);
 
-/** Set the time that a table represents
+/** Begin a new prefix table dump
  *
  * @param time          new time to set for the table
+ * @return a unique message id used for asynchronous replies. this number can
+ * (optionally) be matched against those received in the handle_reply callbacks.
  */
-void bgpwatcher_client_pfx_table_set_time(bgpwatcher_client_pfx_table_t *table,
-					  uint32_t time);
+int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_pfx_table_t *table,
+				      uint32_t time);
 
 /** Add a prefix record to the given prefix table
  *
@@ -143,13 +145,10 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_pfx_table_t *table,
  * @param table         pointer to prefix table to flush
  * @return 0 if the table was flushed successfully, -1 otherwise
  *
- * @note depending on implementation, this function may send the entire table in
- * one message, or the rows may have been sent as they were added to the
- * table. In either case, this function will notify the server that all rows for
- * the table have been received. You may also safely reuse the table after
- * calling flush -- all rows will have been removed.
+ * @note you may safely re-use the table after calling this function followed by
+ * bgpwatcher_client_pfx_table_begin
  */
-int bgpwatcher_client_pfx_table_flush(bgpwatcher_client_pfx_table_t *table);
+int bgpwatcher_client_pfx_table_end(bgpwatcher_client_pfx_table_t *table);
 
 /** Create a re-usable peer table
  *
@@ -170,9 +169,11 @@ void bgpwatcher_client_peer_table_free(bgpwatcher_client_peer_table_t **table);
 /** Set the time that a table represents
  *
  * @param time          new time to set for the table
+ * @return a unique message id used for asynchronous replies. this number can
+ * (optionally) be matched against those received in the handle_reply callbacks
  */
-void bgpwatcher_client_peer_table_set_time(bgpwatcher_client_peer_table_t *table,
-					   uint32_t time);
+int bgpwatcher_client_peer_table_begin(bgpwatcher_client_peer_table_t *table,
+					uint32_t time);
 
 /** Add a peer record to the given peer table
  *
@@ -190,13 +191,10 @@ int bgpwatcher_client_peer_table_add(bgpwatcher_client_peer_table_t *table,
  * @param table         pointer to peer table to flush
  * @return 0 if the table was flushed successfully, -1 otherwise
  *
- * @note depending on implementation, this function may send the entire table in
- * one message, or the rows may have been sent as they were added to the
- * table. In either case, this function will notify the server that all rows for
- * the table have been received. You may also safely reuse the table after
- * calling flush -- all rows will have been removed.
+ * @note you may safely re-use the table after calling this function followed by
+ * bgpwatcher_client_pfx_table_begin
  */
-int bgpwatcher_client_peer_table_flush(bgpwatcher_client_peer_table_t *table);
+int bgpwatcher_client_peer_table_end(bgpwatcher_client_peer_table_t *table);
 
 /** Stop the given bgpwatcher client instance
  *

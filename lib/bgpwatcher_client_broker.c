@@ -78,6 +78,7 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
     }
 
   fprintf(stderr, "DEBUG: broker ready (%d)\n", msg_type_p);
+  assert(broker->server_socket != NULL);
 
   return 0;
 }
@@ -145,6 +146,7 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	      return -1;
 	    }
 	  server_connect(broker);
+	  assert(broker->server_socket != NULL);
 
 	  broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
 	}

@@ -40,6 +40,7 @@ int send_data_message(zmsg_t **msg_p,
 {
   uint8_t type_b;
   zmsg_t *msg = *msg_p;
+  uint32_t seq_no = client->sequence_num;
   assert(msg != NULL);
   *msg_p = NULL;
 
@@ -60,7 +61,6 @@ int send_data_message(zmsg_t **msg_p,
 			     "Could not add sequence number to message");
       goto err;
     }
-  client->sequence_num++;
 
   type_b = BGPWATCHER_MSG_TYPE_DATA;
   if(zmsg_pushmem(msg, &type_b, bgpwatcher_msg_type_size_t) != 0)
@@ -77,7 +77,8 @@ int send_data_message(zmsg_t **msg_p,
       return -1;
     }
 
-  return 0;
+  client->sequence_num++;
+  return seq_no;
 
  err:
   zmsg_destroy(&msg);
@@ -85,8 +86,8 @@ int send_data_message(zmsg_t **msg_p,
 }
 
 int send_table(bgpwatcher_client_t *client,
-		     bgpwatcher_table_type_t table_type,
-		     bgpwatcher_data_msg_type_t begin_end)
+	       bgpwatcher_table_type_t table_type,
+	       bgpwatcher_data_msg_type_t begin_end)
 {
   zmsg_t *msg;
 
@@ -109,12 +110,7 @@ int send_table(bgpwatcher_client_t *client,
       zmsg_destroy(&msg);
     }
 
-  if(send_data_message(&msg, begin_end, client) != 0)
-    {
-      return -1;
-    }
-
-  return 0;
+  return send_data_message(&msg, begin_end, client);
 }
 
 /* ========== PUBLIC FUNCS BELOW HERE ========== */
@@ -216,12 +212,23 @@ void bgpwatcher_client_pfx_table_free(bgpwatcher_client_pfx_table_t **table_p)
     }
 }
 
-void bgpwatcher_client_pfx_table_set_time(bgpwatcher_client_pfx_table_t *table,
-					  uint32_t time)
+int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_pfx_table_t *table,
+				      uint32_t time)
 {
+  int rc;
   assert(table != NULL);
+  assert(table->started == 0);
 
   table->time = time;
+
+  if((rc = send_table(table->client,
+		      BGPWATCHER_TABLE_TYPE_PREFIX,
+		      BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN)) > 0)
+    {
+      table->started = 1;
+    }
+
+  return rc;
 }
 
 int bgpwatcher_client_pfx_table_add(bgpwatcher_client_pfx_table_t *table,
@@ -231,19 +238,6 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_pfx_table_t *table,
 
   assert(table != NULL);
   assert(pfx != NULL);
-
-  /* check if we need to send a table start message */
-  if(table->started == 0)
-    {
-      if(send_table(table->client,
-		    BGPWATCHER_TABLE_TYPE_PREFIX,
-		    BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN) != 0)
-	{
-	  /* err set */
-	  return -1;
-	}
-      table->started = 1;
-    }
 
   /* send off the prefix */
   if((msg = bgpwatcher_pfx_record_serialize(pfx)) == NULL)
@@ -266,22 +260,10 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_pfx_table_t *table,
   return -1;
 }
 
-int bgpwatcher_client_pfx_table_flush(bgpwatcher_client_pfx_table_t *table)
+int bgpwatcher_client_pfx_table_end(bgpwatcher_client_pfx_table_t *table)
 {
   assert(table != NULL);
-
-  /* to allow for empty tables */
-  if(table->started == 0)
-    {
-      if(send_table(table->client,
-		    BGPWATCHER_TABLE_TYPE_PREFIX,
-		    BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN) != 0)
-	{
-	  /* err set */
-	  return -1;
-	}
-      table->started = 1;
-    }
+  assert(table->started == 1);
 
   /* send a table end message */
   if(send_table(table->client,
@@ -325,12 +307,23 @@ void bgpwatcher_client_peer_table_free(bgpwatcher_client_peer_table_t **table_p)
     }
 }
 
-void bgpwatcher_client_peer_table_set_time(bgpwatcher_client_peer_table_t *table,
-					   uint32_t time)
+int bgpwatcher_client_peer_table_begin(bgpwatcher_client_peer_table_t *table,
+					uint32_t time)
 {
+  int rc;
   assert(table != NULL);
+  assert(table->started == 0);
 
   table->time = time;
+
+  if((rc = send_table(table->client,
+		      BGPWATCHER_TABLE_TYPE_PEER,
+		      BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN)) > 0)
+    {
+      table->started = 1;
+    }
+
+  return rc;
 }
 
 int bgpwatcher_client_peer_table_add(bgpwatcher_client_peer_table_t *table,
@@ -340,19 +333,6 @@ int bgpwatcher_client_peer_table_add(bgpwatcher_client_peer_table_t *table,
 
   assert(table != NULL);
   assert(peer != NULL);
-
-  /* check if we need to send a table start message */
-  if(table->started == 0)
-    {
-      if(send_table(table->client,
-		    BGPWATCHER_TABLE_TYPE_PEER,
-		    BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN) != 0)
-	{
-	  /* err set */
-	  return -1;
-	}
-      table->started = 1;
-    }
 
   /* send off the prefix */
   if((msg = bgpwatcher_peer_record_serialize(peer)) == NULL)
@@ -375,7 +355,7 @@ int bgpwatcher_client_peer_table_add(bgpwatcher_client_peer_table_t *table,
   return -1;
 }
 
-int bgpwatcher_client_peer_table_flush(bgpwatcher_client_peer_table_t *table)
+int bgpwatcher_client_peer_table_end(bgpwatcher_client_peer_table_t *table)
 {
   assert(table != NULL);
 

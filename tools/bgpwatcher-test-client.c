@@ -141,6 +141,7 @@ int main(int argc, char **argv)
   bgpwatcher_client_t *client = NULL;
 
   /* test structures */
+  int rc;
   bgpwatcher_client_pfx_table_t *pfx_table = NULL;
   bgpwatcher_pfx_record_t *pfx = NULL;
   uint32_t pfx_table_time = 1320969600;
@@ -269,37 +270,53 @@ int main(int argc, char **argv)
   fprintf(stderr, "done\n");
 
   /* issue a bunch of requests */
-  fprintf(stderr, "TEST: Sending test peer table... ");
-  bgpwatcher_client_pfx_table_set_time(pfx_table, pfx_table_time);
+  fprintf(stderr, "--------------------[ PREFIX START ]--------------------\n");
+  if((rc = bgpwatcher_client_pfx_table_begin(pfx_table, pfx_table_time)) < 0)
+    {
+      fprintf(stderr, "Could not begin table\n");
+      goto err;
+    }
+  fprintf(stderr, "TEST: Sending table begin: %d\n", rc);
 
-  if(bgpwatcher_client_pfx_table_add(pfx_table, pfx) != 0)
+  if((rc = bgpwatcher_client_pfx_table_add(pfx_table, pfx)) < 0)
     {
       fprintf(stderr, "Could not add pfx to table\n");
       goto err;
     }
+  fprintf(stderr, "TEST: Sending table record: %d\n", rc);
 
-  if(bgpwatcher_client_pfx_table_flush(pfx_table) != 0)
+  if((rc = bgpwatcher_client_pfx_table_end(pfx_table)) < 0)
     {
       fprintf(stderr, "Could not flush table\n");
       goto err;
     }
-  fprintf(stderr, "done\n");
+  fprintf(stderr, "TEST: Sending table end: %d\n", rc);
+  fprintf(stderr, "--------------------[ PREFIX DONE ]--------------------\n\n");
 
-  fprintf(stderr, "TEST: Sending test peer table... ");
-  bgpwatcher_client_peer_table_set_time(peer_table, peer_table_time);
 
-  if(bgpwatcher_client_peer_table_add(peer_table, peer) != 0)
+  fprintf(stderr, "--------------------[ PEER START ]--------------------\n");
+  if((rc = bgpwatcher_client_peer_table_begin(peer_table, peer_table_time)) < 0)
+    {
+      fprintf(stderr, "Could not begin table\n");
+      goto err;
+    }
+  fprintf(stderr, "TEST: Sending table begin: %d\n", rc);
+
+  if((rc = bgpwatcher_client_peer_table_add(peer_table, peer)) < 0)
     {
       fprintf(stderr, "Could not add peer to table\n");
       goto err;
     }
+  fprintf(stderr, "TEST: Sending table record: %d\n", rc);
 
-  if(bgpwatcher_client_peer_table_flush(peer_table) != 0)
+  if((rc = bgpwatcher_client_peer_table_end(peer_table)) < 0)
     {
       fprintf(stderr, "Could not flush table\n");
       goto err;
     }
-  fprintf(stderr, "done\n");
+  fprintf(stderr, "TEST: Sending table end: %d\n", rc);
+  fprintf(stderr, "--------------------[ PEER DONE ]--------------------\n\n");
+
 
   fprintf(stderr, "DEBUG: Hax to wait for tx/rx. FIXME\n");
   sleep(10);
