@@ -186,6 +186,159 @@ peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
 
 
 
+
+
+int peerdata_apply_elem(peerdata_t *peer_data, 
+			bgpstream_record_t * bs_record, bgpstream_elem_t *bs_elem)
+{
+  assert(peer_data);
+  assert(bs_record);
+  assert(bs_record->status == VALID_RECORD);
+  assert(bs_elem);
+
+  // type is update
+  if(bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_WITHDRAWAL)
+    {
+      if(peer_data->status == PEER_UP &&
+	 ((bs_elem->timestamp >= peer_data->most_recent_ts) ||
+	  (peer_data->most_recent_ts == peer_data->active_ribs_table->reference_rib_end &&
+	   bs_elem->timestamp >= peer_data->active_ribs_table->reference_rib_start &&
+	   bs_elem->timestamp <= peer_data->active_ribs_table->reference_rib_end) ||
+	  (peer_data->rt_status == UC_ON && bs_elem->timestamp >= peer_data->uc_ribs_table->reference_rib_start) 
+	  ))
+	{
+	  // TODO:
+	  // apply update to the current active ribs (do not change status)
+	  // update peer_data->most_recent_ts
+	  if(!(peer_data->rt_status == UC_ON &&
+	       bs_elem->timestamp >= bs_elem->timestamp >= peer_data->uc_ribs_table->reference_rib_start))
+	    {
+	      return 0;	      
+	    }
+	  // WARNING:
+	  // if the previous condition is false, we need to update the current ribs which are
+	  // under construction, to do so we use the next if
+	}
+      if(peer_data->rt_status == UC_ON &&
+	 bs_elem->timestamp >= bs_elem->timestamp >= peer_data->uc_ribs_table->reference_rib_start)
+	{
+	  // TODO:
+	  // apply update to the current uc ribs (do not change status)
+	  // update peer_data->most_recent_ts
+	  return 0;
+	}
+      if(peer_data->status == PEER_UP &&
+	 bs_elem->timestamp >= peer_data->active_ribs_table->reference_rib_start)
+	{
+	  // if none of the previous options have been triggered, it means that we
+	  // just received an out of order that invalidates the current status
+	  // if possible we can try to rollback, otherwise:
+
+	  // TODO: go to PEER_NULL, maintain UC_ON if there is any
+	  return 0;
+	}
+      if(peer_data->status == PEER_DOWN &&
+	 bs_elem->timestamp >= peer_data->most_recent_ts)
+	{
+	  // TODO: 
+	  // go to PEER_UP and apply update to active ribs
+	  return 0;
+	}
+      
+      // if here, we are ignoring this update as it is not useful
+      //  (e.g UC_OFF and PEER_NULL) or it is out of order
+      // TODO: log
+      return 0;      
+    }
+
+  // type is RIB
+  if(bs_elem->type == BST_RIB)
+    {
+      if(bs_record->dump_pos == DUMP_START && 
+	 bs_elem->timestamp >= peer_data->most_recent_ts)
+	{				     
+	  peer_data->rt_status = UC_ON;
+	  // TODO: check if it is the start of a newer rib or not
+	  // in case reset the current uc_tables 
+	  if(peer_data->uc_ribs_table->reference_dump_time < bs_record->attributes.dump_time)
+	    {
+	      // TODO: reset uc_table
+	      peer_data->uc_ribs_table->reference_dump_time = bs_record->attributes.dump_time;
+	      peer_data->uc_ribs_table->reference_rib_start = bs_elem->timestamp;
+	      peer_data->uc_ribs_table->reference_rib_end = bs_elem->timestamp;
+	    }
+	  if(peer_data->status == PEER_DOWN)
+	    {
+	      peer_data->status = PEER_NULL;
+	    }
+	  // TODO: apply rib to uc_ribs_table
+	  return 0;
+	}
+      if((bs_record->dump_pos == DUMP_MIDDLE ||  
+	  bs_record->dump_pos == DUMP_END) &&
+	 bs_elem->timestamp >= peer_data->most_recent_ts &&
+	 peer_data->rt_status == UC_ON &&
+	 peer_data->uc_ribs_table->reference_dump_time == bs_record->attributes.dump_time)
+	{
+	  // if we are currently processing a rib (and the message we received 
+	  // belong to that
+	  // TODO: apply rib to uc_ribs_table	  
+	  return 0;
+	}				     
+      // if here, we are ignoring this rib as it is not useful
+      //  (e.g UC_OFF and !DUMP_START) or it is out of order
+      // TODO: log
+      return 0;      
+    }
+
+  // type is STATE
+  if(bs_elem->type == BST_STATE)
+    {
+      if((bs_elem->new_state != BST_ESTABLISHED && 
+	  bs_elem->timestamp >= peer_data->most_recent_ts) ||
+	 (bs_elem->new_state != BST_ESTABLISHED && 
+	  peer_data->rt_status == UC_ON &&
+	  bs_elem->timestamp >= peer_data->uc_ribs_table->reference_rib_start) ||
+	 (bs_elem->new_state != BST_ESTABLISHED && 
+	  peer_data->rt_status == UC_OFF &&
+	  peer_data->status == PEER_UP &&
+	  bs_elem->timestamp >= peer_data->active_ribs_table->reference_rib_start))
+	{				     
+	  // this state message is invalidating the current status:
+	  // the active tables, the uc_tables, or both of them
+	  // TODO: 
+	  // reset everything and move to peer DOWN
+	  return 0;
+	}
+      if(bs_elem->new_state != BST_ESTABLISHED && 
+	 peer_data->status == PEER_UP &&
+	 peer_data->rt_status == UC_ON &&
+	 bs_elem->timestamp >= peer_data->active_ribs_table->reference_rib_start &&
+	 bs_elem->timestamp < peer_data->uc_ribs_table->reference_rib_start)
+	{
+	  // this message is invalidating the active ribs but not those
+	  // that are under construction
+	  // TODO: go to PEER_NULL, maintain UC_ON and uc_ribs tables
+	  return 0;
+	}
+      if(bs_elem->new_state == BST_ESTABLISHED && 
+	 peer_data->status == PEER_DOWN &&
+	 peer_data->rt_status == UC_ON &&
+	 bs_elem->timestamp >= peer_data->most_recent_ts)
+	{
+	  // TODO: move to PEER_UP (with both ribs empty)
+	  return 0;
+	}
+      // if here, we are ignoring this state message as it is not
+      // meaningful for our purposes
+      return 0;      
+    }
+  return 0;
+}
+
+
+#if 0
+
 int peerdata_apply_elem(peerdata_t *peer_data, 
 			bgpstream_record_t * bs_record, bgpstream_elem_t *bs_elem)
 {
@@ -306,6 +459,8 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 			  // TODO: apply rib to uc_rt, update time
 			  return 0;
 		    }
+
+		  // TODO: NOOOOOOOO! correct below!
 		  // information relates to the rib under construction and it is a dump_end
 		  if(bs_record->attributes.dump_time == peer_data->uc_ribs_table->reference_dump_time &&
 		     bs_record->dump_pos == DUMP_END)
@@ -537,6 +692,7 @@ int peerdata_apply_elem(peerdata_t *peer_data,
   return 0;
 }
 
+#endif
 
 /* apply the record to the peer_data provided:
  * - it returns 1 if the peer is active
