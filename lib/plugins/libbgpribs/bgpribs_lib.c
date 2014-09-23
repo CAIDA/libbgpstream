@@ -67,6 +67,17 @@ ribs_table_t *ribs_table_create()
   return ribs_table;
 }
 
+void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs_elem)
+{
+  // TODO: implement
+}
+
+void ribs_table_reset(ribs_table_t *ribs_table)
+{
+  // TODO: implement
+}
+
+
 void ribs_table_destroy(ribs_table_t *ribs_table) 
 {
   if(ribs_table != NULL) 
@@ -185,6 +196,21 @@ peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
 }
 
 
+void peerdata_log_event(peerdata_t *peer_data, 
+			bgpstream_record_t * bs_record, bgpstream_elem_t *bs_elem)
+{
+  // TODO:
+  // print peer_data variables
+  if(bs_record != NULL)
+    {
+      // print bs_record variables
+    }
+  if(bs_elem != NULL)
+    {
+      // print bs_elem variables
+    }
+}
+
 
 int peerdata_apply_elem(peerdata_t *peer_data, 
 			bgpstream_record_t * bs_record, bgpstream_elem_t *bs_elem)
@@ -193,6 +219,8 @@ int peerdata_apply_elem(peerdata_t *peer_data,
   assert(bs_record);
   assert(bs_record->status == VALID_RECORD);
   assert(bs_elem);
+
+  // NOTE: there is no need to update peer_data->most_recent_ts, apply_record does that
 
   // type is update
   if(bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_WITHDRAWAL)
@@ -205,24 +233,24 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 	  (peer_data->rt_status == UC_ON && bs_elem->timestamp >= peer_data->uc_ribs_table->reference_rib_start) 
 	  ))
 	{
-	  // TODO:
 	  // apply update to the current active ribs (do not change status)
-	  // update peer_data->most_recent_ts
+	  ribs_table_apply_elem(peer_data->active_ribs_table, bs_elem);
+	  
+	  // if we are not constructing a new RIB, we exit
 	  if(!(peer_data->rt_status == UC_ON &&
-	       bs_elem->timestamp >= bs_elem->timestamp >= peer_data->uc_ribs_table->reference_rib_start))
+	       bs_elem->timestamp >= peer_data->uc_ribs_table->reference_rib_start))
 	    {
 	      return 0;	      
 	    }
 	  // WARNING:
 	  // if the previous condition is false, we need to update the current ribs which are
-	  // under construction, to do so we use the next if
+	  // under construction, to do so we use the next if (see below)
 	}
       if(peer_data->rt_status == UC_ON &&
 	 bs_elem->timestamp >= bs_elem->timestamp >= peer_data->uc_ribs_table->reference_rib_start)
 	{
-	  // TODO:
 	  // apply update to the current uc ribs (do not change status)
-	  // update peer_data->most_recent_ts
+	  ribs_table_apply_elem(peer_data->uc_ribs_table, bs_elem);
 	  return 0;
 	}
       if(peer_data->status == PEER_UP &&
@@ -230,23 +258,34 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 	{
 	  // if none of the previous options have been triggered, it means that we
 	  // just received an out of order that invalidates the current status
+	  // i.e. the active rib, however, it does not affect the uc_ribs
 	  // if possible we can try to rollback, otherwise:
+	  
+	  // go to PEER_NULL
+	  peer_data->status = PEER_NULL;
+	  ribs_table_reset(peer_data->active_ribs_table);
+	  // we maintain UC_ON if it is active
 
-	  // TODO: go to PEER_NULL, maintain UC_ON if there is any
+	  // TODO: think about rollback options here
 	  return 0;
 	}
       if(peer_data->status == PEER_DOWN &&
 	 bs_elem->timestamp >= peer_data->most_recent_ts)
-	{
-	  // TODO: 
+	{	  
 	  // go to PEER_UP and apply update to active ribs
+	  peer_data->status = PEER_UP;
+	  ribs_table_apply_elem(peer_data->active_ribs_table, bs_elem);
+	  // this is an artifact, there is no "concrete" rib, just 
+	  // updates that repopulate the active rib
+	  peer_data->active_ribs_table->reference_dump_time = bs_record->attributes.dump_time;
+	  peer_data->active_ribs_table->reference_rib_start = bs_elem->timestamp;
+	  peer_data->active_ribs_table->reference_rib_end = bs_elem->timestamp;
 	  return 0;
 	}
       
       // if here, we are ignoring this update as it is not useful
       //  (e.g UC_OFF and PEER_NULL) or it is out of order
-      // TODO: log
-      return 0;      
+      // we log at the end of the function
     }
 
   // type is RIB
@@ -256,11 +295,12 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 	 bs_elem->timestamp >= peer_data->most_recent_ts)
 	{				     
 	  peer_data->rt_status = UC_ON;
-	  // TODO: check if it is the start of a newer rib or not
+	  // check if it is the start of a newer rib or not
 	  // in case reset the current uc_tables 
 	  if(peer_data->uc_ribs_table->reference_dump_time < bs_record->attributes.dump_time)
 	    {
-	      // TODO: reset uc_table
+	      // reset uc_table
+	      ribs_table_reset(peer_data->uc_ribs_table);
 	      peer_data->uc_ribs_table->reference_dump_time = bs_record->attributes.dump_time;
 	      peer_data->uc_ribs_table->reference_rib_start = bs_elem->timestamp;
 	      peer_data->uc_ribs_table->reference_rib_end = bs_elem->timestamp;
@@ -269,7 +309,8 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 	    {
 	      peer_data->status = PEER_NULL;
 	    }
-	  // TODO: apply rib to uc_ribs_table
+	  // apply rib to uc_ribs_table
+	  ribs_table_apply_elem(peer_data->uc_ribs_table, bs_elem);
 	  return 0;
 	}
       if((bs_record->dump_pos == DUMP_MIDDLE ||  
@@ -278,8 +319,14 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 	 peer_data->rt_status == UC_ON &&
 	 peer_data->uc_ribs_table->reference_dump_time == bs_record->attributes.dump_time)
 	{
+	  // if the PEER is DOWN and we finally receive something,
+	  // then it goes to NULL status
+	  if(peer_data->status == PEER_DOWN)
+	    {
+	      peer_data->status = PEER_NULL;
+	    }
 	  // CASE: if we are currently processing a rib (and the message we received 
-	  // belong to that
+	  // belong to that rib)
 	  // if it is the first message that we receive for this rib
 	  // then update the reference_rib_start
 	  if(peer_data->uc_ribs_table->reference_rib_start == 0) 
@@ -287,13 +334,13 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 	      peer_data->uc_ribs_table->reference_rib_start = bs_elem->timestamp;
 	    }
 	  peer_data->uc_ribs_table->reference_rib_end = bs_elem->timestamp;
-	  // TODO: apply rib to uc_ribs_table	  
+	  // apply rib to uc_ribs_table	  
+	  ribs_table_apply_elem(peer_data->uc_ribs_table, bs_elem);
 	  return 0;
 	}				     
       // if here, we are ignoring this rib as it is not useful
       //  (e.g UC_OFF and !DUMP_START) or it is out of order
-      // TODO: log
-      return 0;      
+      // we log at the end of the function
     }
 
   // type is STATE
@@ -311,10 +358,24 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 	{				     
 	  // this state message is invalidating the current status:
 	  // the active tables, the uc_tables, or both of them
-	  // TODO: 
+
 	  // reset everything and move to peer DOWN
+	  peer_data->status = PEER_DOWN;
+	  peer_data->rt_status = UC_OFF;
+
+	  ribs_table_reset(peer_data->active_ribs_table);
+	  peer_data->active_ribs_table->reference_rib_start = 0;
+	  peer_data->active_ribs_table->reference_rib_end = 0;
+	  peer_data->active_ribs_table->reference_dump_time = 0;
+
+	  ribs_table_reset(peer_data->uc_ribs_table);
+	  peer_data->uc_ribs_table->reference_rib_start = 0;
+	  peer_data->uc_ribs_table->reference_rib_end = 0;
+	  peer_data->uc_ribs_table->reference_dump_time = 0;
+
 	  return 0;
 	}
+
       if(bs_elem->new_state != BST_ESTABLISHED && 
 	 peer_data->status == PEER_UP &&
 	 peer_data->rt_status == UC_ON &&
@@ -323,21 +384,39 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 	{
 	  // this message is invalidating the active ribs but not those
 	  // that are under construction
-	  // TODO: go to PEER_NULL, maintain UC_ON and uc_ribs tables
+
+	  // go to PEER_NULL, reset active tables,
+	  // maintain UC_ON and uc_ribs tables
+	  peer_data->status = PEER_NULL;
+
+	  ribs_table_reset(peer_data->active_ribs_table);
+	  peer_data->active_ribs_table->reference_rib_start = 0;
+	  peer_data->active_ribs_table->reference_rib_end = 0;
+	  peer_data->active_ribs_table->reference_dump_time = 0;
+
 	  return 0;
 	}
+
       if(bs_elem->new_state == BST_ESTABLISHED && 
 	 peer_data->status == PEER_DOWN &&
-	 peer_data->rt_status == UC_ON &&
 	 bs_elem->timestamp >= peer_data->most_recent_ts)
 	{
-	  // TODO: move to PEER_UP (with both ribs empty)
+	  // move to PEER_UP (with both ribs empty)
+	  peer_data->status = PEER_UP;
+	  peer_data->active_ribs_table->reference_rib_start = bs_elem->timestamp;
+	  peer_data->active_ribs_table->reference_rib_end = bs_elem->timestamp;
+	  peer_data->active_ribs_table->reference_dump_time = bs_elem->timestamp;
 	  return 0;
 	}
+
       // if here, we are ignoring this state message as it is not
       // meaningful for our purposes
-      return 0;      
+      // we log at the end of the function
     }
+
+  // logging events that are not considered meaningful for further processing
+  peerdata_log_event(peer_data, bs_record, bs_elem);
+
   return 0;
 }
 
@@ -380,11 +459,15 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 	 bs_record->attributes.record_time >= peer_data->most_recent_ts)
 	{
 	  peer_data->rt_status = UC_ON;
-	  if(bs_record->attributes.record_time > peer_data->uc_ribs_table->reference_dump_time)
+	  // if no element has already set the reference_dump time, or if
+	  // a newer dump has arrived
+	  if(bs_record->attributes.dump_time > peer_data->uc_ribs_table->reference_dump_time)
 	    {
 	      peer_data->uc_ribs_table->reference_dump_time = bs_record->attributes.record_time;
 	      peer_data->uc_ribs_table->reference_rib_start = 0;
 	      peer_data->uc_ribs_table->reference_rib_end = 0;
+	      // make sure that uc_ribs_table is empty
+	      ribs_table_reset(peer_data->uc_ribs_table);
 	    }
 	  return (peer_data->status == PEER_UP) ? 1 : 0;
 	}
@@ -395,14 +478,23 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 	 bs_record->dump_pos == DUMP_END && 
 	 bs_record->attributes.record_time >= peer_data->most_recent_ts)
 	{
+	  // if this exact rib was under construction
 	  if(peer_data->rt_status == UC_ON &&
-	     bs_record->attributes.record_time > peer_data->uc_ribs_table->reference_dump_time)
+	     bs_record->attributes.dump_time == peer_data->uc_ribs_table->reference_dump_time)
 	    {
-	      // uc_ribs_table is the new active
-	      // TODO: reset(active)
-	      //       tmp = active
-	      //       active = uc_ribs
-	      //       uc_ribs = tmp (i.e. reset table)
+	      // uc_ribs_table is the new active, so:
+	      // 1) reset(active)
+	      ribs_table_reset(peer_data->active_ribs_table);
+	      peer_data->active_ribs_table->reference_rib_start = 0;
+	      peer_data->active_ribs_table->reference_rib_end = 0;
+	      peer_data->active_ribs_table->reference_dump_time = 0;
+	      // 2) tmp = active
+	      ribs_table_t *tmp = peer_data->active_ribs_table;
+	      // 3) active = uc_ribs
+	      peer_data->active_ribs_table = peer_data->uc_ribs_table;
+	      // 4) uc_ribs = tmp (i.e. already reset table)
+	      peer_data->uc_ribs_table = tmp;
+	      // the UC is OFF
 	      peer_data->rt_status = UC_OFF;
 	      if(peer_data->status == PEER_NULL) 
 		{
@@ -412,7 +504,7 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 	  return (peer_data->status == PEER_UP) ? 1 : 0;
 	}
 
-      return (peer_data->status == PEER_UP) ? 1 : 0;
+      /* signal event in bgpribs log (see end of function) */      
     }
 
   /* if we receive a record signaling a FILTERED_SOURCE
@@ -428,10 +520,7 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 	{
 	  peer_data->most_recent_ts = bs_record->attributes.record_time;
 	}
-      /* TODO: 
-       *      => signal event in bgpribs log 
-       */      
-      return (peer_data->status == PEER_UP) ? 1 : 0;
+      /* signal event in bgpribs log (see end of function) */      
     }
 
 
@@ -443,8 +532,6 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 	{
 	  peer_data->most_recent_ts = bs_record->attributes.record_time;
 	}
-      /* TODO: 
-       *      => signal event in bgpribs log */
       /* Comments: 
        * an empty rib is a pretty strange case. It means that the 
        * collector is most likely down. It could be that a peer just
@@ -452,7 +539,8 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
        * through updates. Imagine a small collector, all the peers
        * suffer an outage... :-O, ok that's maybe too much of imagination! 
        */
-      return (peer_data->status == PEER_UP) ? 1 : 0;
+
+      /* signal event in bgpribs log (see end of function) */
     }
   
   /* if we receive an CORRUPTED_SOURCE or a CORRUPTED_RECORD
@@ -475,8 +563,17 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 	{
 	  peer_data-> most_recent_ts = bs_record->attributes.record_time;
 	  peer_data->status = PEER_NULL;
-	  // TODO: reset active ribs
-	  // check also if the rt_status was ON (see next)
+	  // reset active ribs
+	  ribs_table_reset(peer_data->active_ribs_table);
+	  peer_data->active_ribs_table->reference_rib_start = 0;
+	  peer_data->active_ribs_table->reference_rib_end = 0;
+	  peer_data->active_ribs_table->reference_dump_time = 0;
+	  // check also if the rt_status was ON (see below)
+	  if(!peer_data->rt_status == UC_ON)
+	    {
+	      return (peer_data->status == PEER_UP) ? 1 : 0;
+	    }
+	  // else the next if is triggered
 	}
       // if the peer was building a UC_table and that rib is affected
       if(peer_data->rt_status == UC_ON && 
@@ -485,15 +582,20 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 	  peer_data-> most_recent_ts = bs_record->attributes.record_time;
 	  peer_data->status = PEER_NULL;
 	  peer_data->rt_status = UC_OFF;
-	  // TODO: reset uc ribs
+	  // reset uc ribs
+	  ribs_table_reset(peer_data->uc_ribs_table);
+	  peer_data->uc_ribs_table->reference_rib_start = 0;
+	  peer_data->uc_ribs_table->reference_rib_end = 0;
+	  peer_data->uc_ribs_table->reference_dump_time = 0;
+	  return (peer_data->status == PEER_UP) ? 1 : 0;
 	}
-
-      /* TODO: 
-       *      => signal event in bgpribs log */
-      return (peer_data->status == PEER_UP) ? 1 : 0;
+      /* signal event in bgpribs log (see end of function) */
     }
 
-  return 0;
+  // logging events that are not considered meaningful for further processing
+  peerdata_log_event(peer_data, bs_record, NULL);
+
+  return (peer_data->status == PEER_UP) ? 1 : 0;
 }
 
 
@@ -619,6 +721,11 @@ int peers_table_process_record(peers_table_t *peers_table,
 		}    
 	    }
 	  
+
+	  // DEBUG:
+	  /* ribs_tables_status_t old_rt_status = peer_data->rt_status; */
+	  /* peer_status_t old_status = peer_data->status; */
+
 	  // apply each elem to the right peer_data
 	  if((peerdata_apply_elem(peer_data, bs_record, bs_iterator)) == -1) 
 	    {
@@ -626,7 +733,18 @@ int peers_table_process_record(peers_table_t *peers_table,
 	      bgpstream_destroy_elem_queue(bs_elem_queue);
 	      return -1;
 	    }
-
+	  
+	  // DEBUG:
+	  /* if(strcmp(peer_data->peer_address_str, "193_160_39_1") == 0 && */
+	  /*    (old_status != peer_data->status || old_rt_status != peer_data->rt_status))	    */
+	  /*   {  */
+	  /*     printf("\t %ld E %s - (%d - %d) - to -> (%d - %d)\n", */
+	  /* 	     peer_data->most_recent_ts, */
+	  /* 	     peer_data->peer_address_str,  */
+	  /* 	     old_status, old_rt_status, */
+	  /* 	     peer_data->status, peer_data->rt_status); */
+	  /*   } */
+	  
 	  // other information are computed at dump time
 	  bs_iterator = bs_iterator->next;
 	}
@@ -645,8 +763,21 @@ int peers_table_process_record(peers_table_t *peers_table,
       if (kh_exist(peers_table->ipv4_peers_table, k))
 	{	  
 	  peer_data = kh_value(peers_table->ipv4_peers_table, k);
+	  // DEBUG:
+	  /* ribs_tables_status_t old_rt_status = peer_data->rt_status; */
+	  /* peer_status_t old_status = peer_data->status; */
 	  // apply each record to each peer_data
 	  peer_status = peerdata_apply_record(peer_data, bs_record);
+	  // DEBUG:
+	  /* if(strcmp(peer_data->peer_address_str, "193_160_39_1") == 0 && */
+	  /*    (old_status != peer_data->status || old_rt_status != peer_data->rt_status)) */
+	  /*   {  */
+	  /*     printf("\t %ld R %s - (%d - %d) - to -> (%d - %d)\n", */
+	  /* 	     peer_data->most_recent_ts, */
+	  /* 	     peer_data->peer_address_str,  */
+	  /* 	     old_status, old_rt_status, */
+	  /* 	     peer_data->status, peer_data->rt_status); */
+	  /*   }  */
 	  if(peer_status < 0)
 	    {
 	      // TODO something went wrong during "TODO" function
@@ -664,8 +795,21 @@ int peers_table_process_record(peers_table_t *peers_table,
       if (kh_exist(peers_table->ipv6_peers_table, k))
 	{
 	  peer_data = kh_value(peers_table->ipv6_peers_table, k);
+	  // DEBUG:
+	  /* ribs_tables_status_t old_rt_status = peer_data->rt_status; */
+	  /* peer_status_t old_status = peer_data->status; */
 	  // apply each record to each peer_data
 	  peer_status = peerdata_apply_record(peer_data, bs_record);
+	  // DEBUG:
+	  /* if( strcmp(peer_data->peer_address_str, "193_160_39_1") == 0 && */
+	  /*    (old_status != peer_data->status || old_rt_status != peer_data->rt_status)) */
+	  /*   {  */
+	  /*     printf("\t %ld R %s - (%d - %d) - to -> (%d - %d)\n", */
+	  /* 	     peer_data->most_recent_ts, */
+	  /* 	     peer_data->peer_address_str,  */
+	  /* 	     old_status, old_rt_status, */
+	  /* 	     peer_data->status, peer_data->rt_status); */
+	  /*   }  */
 	  if(peer_status < 0)
 	    {
 	      // TODO something went wrong during "TODO" function

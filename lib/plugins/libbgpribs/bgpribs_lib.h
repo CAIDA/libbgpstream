@@ -124,6 +124,8 @@ typedef struct struct_ribs_table_t {
 
 
 ribs_table_t *ribs_table_create();
+void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs_elem);
+void ribs_table_reset(ribs_table_t *ribs_table);
 void ribs_table_destroy(ribs_table_t *ribs_table);
 
 /** peerdata

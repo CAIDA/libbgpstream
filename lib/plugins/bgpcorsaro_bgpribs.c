@@ -214,7 +214,7 @@ static int bgpribs_structures_process_record(struct bgpcorsaro_bgpribs_state_t *
 static void bgpribs_structures_interval_end(struct bgpcorsaro_bgpribs_state_t *state)
 {
   assert(state != NULL);
-
+  printf("%d - DONE\n", state->interval_start);
   // TODO:
 
 }
