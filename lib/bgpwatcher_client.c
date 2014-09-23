@@ -400,10 +400,14 @@ void bgpwatcher_client_free(bgpwatcher_client_t *client)
 
   /* broker now guaranteed to be shut down */
 
-  fprintf(stderr, "WARNING: At shutdown there were %d outstanding requests\n",
-	  kh_size(BROKER.outstanding_req));
-  if(BROKER.outstanding_req != NULL)
+  if(BROKER.outstanding_reqs != NULL)
     {
+      if(kh_size(BROKER.outstanding_reqs) > 0)
+	{
+	  fprintf(stderr,
+		  "WARNING: At shutdown there were %d outstanding requests\n",
+		  kh_size(BROKER.outstanding_req));
+	}
       kh_destroy(reqset, BROKER.outstanding_req);
       BROKER.outstanding_req = NULL;
     }
