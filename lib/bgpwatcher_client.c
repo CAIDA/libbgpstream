@@ -28,6 +28,7 @@
 #include <bgpwatcher_client_int.h>
 #include "bgpwatcher_client_broker.h"
 
+#include "khash.h"
 #include "utils.h"
 
 #define ERR (&client->err)
@@ -133,6 +134,14 @@ bgpwatcher_client_t *bgpwatcher_client_init()
       return NULL;
     }
   /* now we are ready to set errors... */
+
+  /* init the outstanding req set */
+  if((BROKER.outstanding_req = kh_init(reqset)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Failed to create request set");
+      goto err;
+    }
 
   /* init czmq */
   if((BROKER.ctx = zctx_new()) == NULL)
@@ -390,6 +399,14 @@ void bgpwatcher_client_free(bgpwatcher_client_t *client)
     }
 
   /* broker now guaranteed to be shut down */
+
+  fprintf(stderr, "WARNING: At shutdown there were %d outstanding requests\n",
+	  kh_size(BROKER.outstanding_req));
+  if(BROKER.outstanding_req != NULL)
+    {
+      kh_destroy(reqset, BROKER.outstanding_req);
+      BROKER.outstanding_req = NULL;
+    }
 
   if(BROKER.server_uri != NULL)
     {

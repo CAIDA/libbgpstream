@@ -27,6 +27,7 @@
 
 #include <bgpwatcher_client_int.h>
 
+#include "khash.h"
 #include "utils.h"
 
 #define ERR (&broker->err)
@@ -107,6 +108,81 @@ static int server_disconnect(bgpwatcher_client_broker_t *broker)
   return 0;
 }
 
+static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
+{
+  zmsg_t *msg = *msg_p;
+  zframe_t *frame;
+  assert(msg != NULL);
+  *msg_p = NULL;
+
+  bgpwatcher_client_broker_req_t rx_rep = {0, 0};
+  bgpwatcher_client_broker_req_t req;
+  uint8_t rc;
+
+  khiter_t khiter;
+
+  /* frame 1: seq num */
+  if((frame = zmsg_first(msg)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+			     "Invalid reply message (missing sequence number)");
+      goto err;
+    }
+  if(zframe_size(frame) != sizeof(seq_num_t))
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+			     "Invalid message received from master "
+			     "(malformed sequence number)");
+      return -1;
+    }
+  memcpy(&rx_rep.seq_num, zframe_data(frame), sizeof(seq_num_t));
+
+  /* frame 3: return code */
+  if((frame = zmsg_next(msg)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+			     "Invalid reply message (missing return code)");
+      goto err;
+    }
+  if(zframe_size(frame) != sizeof(uint8_t))
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+			     "Invalid message received from master "
+			     "(malformed return code)");
+      return -1;
+    }
+  rc = *zframe_data(frame);
+
+  /* grab the corresponding record from the outstanding req set */
+  if((khiter = kh_get(reqset, broker->outstanding_req, rx_rep)) ==
+     kh_end(broker->outstanding_req))
+    {
+      /* err, a reply for a non-existent request? */
+      fprintf(stderr, "WARN: No outstanding request info for seq num %"PRIu32,
+	      rx_rep.seq_num);
+      zmsg_destroy(&msg);
+      return 0;
+    }
+
+  req = kh_key(broker->outstanding_req, khiter);
+  assert(req.seq_num == rx_rep.seq_num);
+  kh_del(reqset, broker->outstanding_req, khiter);
+
+  /*fprintf(stderr, "MATCH: req.seq: %"PRIu32", req.msg_type: %d\n",
+    req.seq_num, req.msg_type);*/
+
+  /** @todo call a client callback and notify user of this reply (if they
+      care) */
+
+  zmsg_destroy(&msg);
+  return 0;
+
+ err:
+  zmsg_destroy(&msg);
+  zframe_destroy(&frame);
+  return -1;
+}
+
 static int event_loop(bgpwatcher_client_broker_t *broker)
 {
   zsock_t *poll_sock;
@@ -116,6 +192,8 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 
   bgpwatcher_msg_type_t msg_type;
   uint8_t msg_type_p;
+  bgpwatcher_client_broker_req_t req;
+  int khret;
 
   /*fprintf(stderr, "DEBUG: Beginning loop cycle\n");*/
 
@@ -143,7 +221,7 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	    {
 	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_UNHANDLED,
 				  "Could not remove server socket from poller");
-	      return -1;
+	      goto err;
 	    }
 	  server_connect(broker);
 	  assert(broker->server_socket != NULL);
@@ -156,65 +234,53 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	}
     }
 
+  /* is there an incoming message from the server? */
   if(poll_sock == broker->server_socket)
     {
-      /*  Get message
-       *  - >3-part: [server.id + empty + content] => reply
-       *  - 1-part: HEARTBEAT => heartbeat
-       */
       if((msg = zmsg_recv(broker->server_socket)) == NULL)
 	{
 	  goto interrupt;
 	}
 
-      if(zmsg_size(msg) >= 3)
-	{
-	  fprintf(stderr, "DEBUG: Got reply from server\n");
-	  zmsg_print(msg);
+      msg_type = bgpwatcher_msg_type(msg, 0);
 
+      switch(msg_type)
+	{
+	case BGPWATCHER_MSG_TYPE_REPLY:
 	  broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
 
-	  /* parse the message and figure out what to do with it */
-	  /* pass the reply back to our master */
+	  /*
+	  fprintf(stderr, "DEBUG: Got reply from server\n");
+	  zmsg_print(msg);
+	  */
 
-	  /* for now we just handle REPLY messages */
-	  /* just fire the entire message down the tube to our master */
+	  if(handle_reply(broker, &msg) != 0)
+	    {
+	      goto err;
+	    }
 
-	  zmsg_destroy(&msg);
 	  if(zctx_interrupted != 0)
 	    {
 	      goto interrupt;
 	    }
-	}
-      else if(zmsg_size(msg) == 1)
-	{
-	  /* When we get a heartbeat message from the server, it means the
-	     server was (recently) alive, so we must reset our liveness
-	     indicator */
-	  msg_type = bgpwatcher_msg_type(msg);
-	  if(msg_type == BGPWATCHER_MSG_TYPE_HEARTBEAT)
-	    {
-	      broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
-	    }
-	  else
-	    {
-	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+	  break;
+
+	case BGPWATCHER_MSG_TYPE_HEARTBEAT:
+	  broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
+	  break;
+
+	default:
+	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 				     "Invalid message type received from "
 				     "server (%d)", msg_type);
-	      return -1;
-	    }
-	  zmsg_destroy(&msg);
+	  goto err;
 	}
-      else
-	{
-	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-				 "Invalid message received from server");
-	  return -1;
-	}
+
       broker->reconnect_interval_next =
 	broker->reconnect_interval_min;
     }
-  /* check for a message from our master */
+
+  /* is there an incoming message from our master? */
   else if(poll_sock == broker->master_pipe)
     {
       if((msg = zmsg_recv(broker->master_pipe)) == NULL)
@@ -222,36 +288,66 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	  goto interrupt;
 	}
 
-      /* peek at the first frame */
-      if((frame = zmsg_first(msg)) == NULL)
+      /* peek at the first frame (msg type) */
+      if((msg_type =
+	  bgpwatcher_msg_type(msg, 1)) != BGPWATCHER_MSG_TYPE_UNKNOWN)
 	{
-	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-				 "Invalid message received from master");
-	  return -1;
-	}
+	  req.msg_type = msg_type;
 
-      /* if the frame is the size of our message types, we pass it on to the
-	 server */
-      if(zframe_size(frame) == bgpwatcher_msg_type_size_t)
-	{
-	  /* just pass this along to the server for now */
+	  /* now we need the seq number */
+	  if((frame = zmsg_next(msg)) == NULL)
+	    {
+	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+				     "Invalid message received from master");
+	      goto err;
+	    }
+	  if(zframe_size(frame) != sizeof(seq_num_t))
+	    {
+	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+				     "Invalid message received from master "
+				     "(malformed sequence number)");
+	      return -1;
+	    }
+	  memcpy(&req.seq_num, zframe_data(frame), sizeof(seq_num_t));
+
+	  /*fprintf(stderr, "DEBUG: tx.seq: %"PRIu32", tx.msg_type: %d\n",
+	    req.seq_num, req.msg_type);*/
+
+	  /* add to the req hash */
+	  kh_put(reqset, broker->outstanding_req, req, &khret);
+	  if(khret == -1)
+	    {
+	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+				     "Could not add request to set");
+	      goto err;
+	    }
+
+	  /* now send on to the server */
+	  /** @todo add re-tx here somewhere */
 	  if(zmsg_send(&msg, broker->server_socket) != 0)
 	    {
 	      bgpwatcher_err_set_err(ERR, errno,
 				     "Could not pass message to server");
-	      return -1;
+	      goto err;
 	    }
 	}
       else
 	{
 	  /* this is a message for us */
 	  /** @todo figure out how to wait until our current reqs are ackd */
+	  if((frame = zmsg_pop(msg)) == NULL)
+	    {
+	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+				     "Invalid message received from client");
+	      goto err;
+	    }
+
 	  if(zframe_streq(frame, "$TERM") == 1)
 	    {
 	      fprintf(stderr,
 		      "INFO: Got $TERM, shutting down client broker on next "
 		      "cycle\n");
-	      broker->shutdown = 1;
+	      broker->shutdown++;
 	    }
 	}
       zmsg_destroy(&msg);
@@ -279,11 +375,16 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	}
     }
 
+  zmsg_destroy(&msg);
   return 0;
 
  interrupt:
   /* we were interrupted */
   bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INTERRUPT, "Caught interrupt");
+  return -1;
+
+ err:
+  zmsg_destroy(&msg);
   return -1;
 }
 
@@ -326,6 +427,7 @@ void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
     }
 
   /* start processing requests */
+  /* if(outstanding_req > 0 && broker->shutdown < SHUTDOWN_NOW) */
   while((broker->shutdown == 0) && (event_loop(broker) == 0))
     {
       /* nothing here */

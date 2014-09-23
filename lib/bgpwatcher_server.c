@@ -526,7 +526,7 @@ static int handle_message(bgpwatcher_server_t *server,
   assert(msg != NULL);
 
   /* validate the message type and pass to the appropriate callback */
-  msg_type = bgpwatcher_msg_type(msg);
+  msg_type = bgpwatcher_msg_type(msg, 0);
 
   /* check each type we support (in descending order of frequency) */
   switch(msg_type)

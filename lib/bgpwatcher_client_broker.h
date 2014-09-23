@@ -29,6 +29,8 @@
 #include <czmq.h>
 #include <stdint.h>
 
+#include "khash.h"
+
 /** @file
  *
  * @brief Header file that exposes the private interface of the bgpwatcher
@@ -50,12 +52,34 @@
  *
  * @{ */
 
+/** Holds information about a single outstanding request sent to the server */
+typedef struct bgpwatcher_client_broker_req {
+
+  /** The sequence number in the request (used to match replies) */
+  seq_num_t seq_num;
+
+  /** Message type in the request (and reply) */
+  bgpwatcher_msg_type_t msg_type;
+
+  /** @todo add retries-remaining counter */
+
+} bgpwatcher_client_broker_req_t;
+
+#define req_hash_func(key) (seq_num_t)((key).seq_num)
+#define req_hash_equal(a, b) ((a).seq_num == (b).seq_num)
+
+KHASH_INIT(reqset, bgpwatcher_client_broker_req_t, char, 0,
+	   req_hash_func, req_hash_equal);
+
 /** State for the zactor that transparently proxies requests between the client
     and the server while managing hearbeats, reconnects etc. */
 typedef struct bgpwatcher_client_broker {
 
   /** Identity of this client. MUST be globally unique */
   char *identity;
+
+  /** Hash of outstanding (un-acked) requests */
+  khash_t(reqset) *outstanding_req;
 
   /** Error status */
   bgpwatcher_err_t err;
