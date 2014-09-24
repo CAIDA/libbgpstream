@@ -329,6 +329,7 @@ int main(int argc, char **argv)
   fprintf(stderr, "TEST: Shutting down...\n");
   bgpwatcher_pfx_record_free(&pfx);
   bgpwatcher_client_pfx_table_free(&pfx_table);
+  bgpwatcher_peer_record_free(&peer);
   bgpwatcher_client_peer_table_free(&peer_table);
 
   bgpwatcher_client_stop(client);

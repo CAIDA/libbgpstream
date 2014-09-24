@@ -318,7 +318,7 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 				     "Invalid message received from master "
 				     "(malformed sequence number)");
-	      return -1;
+	      goto err;
 	    }
 	  memcpy(&req.seq_num, zframe_data(frame), sizeof(seq_num_t));
 
@@ -365,8 +365,9 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 		    zclock_time() + BGPWATCHER_CLIENT_SHUTDOWN_LINGER;
 		}
 	    }
+
+	  zframe_destroy(&frame);
 	}
-      zmsg_destroy(&msg);
     }
 
   /* send heartbeat to server if it is time */
