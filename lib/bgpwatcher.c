@@ -147,9 +147,8 @@ bgpwatcher_t *bgpwatcher_init()
   callbacks->user = watcher;
 
   /* init the server */
-  if((watcher->server = bgpwatcher_server_init(callbacks)) == NULL)
+  if((watcher->server = bgpwatcher_server_init(&callbacks)) == NULL)
     {
-      free(callbacks);
       free(watcher);
       return NULL;
     }

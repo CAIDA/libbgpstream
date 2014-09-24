@@ -36,9 +36,9 @@
 
 /* evaluates to true IF there is a callback AND it fails */
 #define DO_CALLBACK(cbfunc, args...)					\
-  ((server->callbacks->cbfunc != NULL) &&				\
-  (server->callbacks->cbfunc(server, args,				\
-			     server->callbacks->user) != 0))
+  ((server->callbacks != NULL) && (server->callbacks->cbfunc != NULL) && \
+   (server->callbacks->cbfunc(server, args,				\
+			      server->callbacks->user) != 0))
 
 enum {
   POLL_ITEM_CLIENT = 0,
@@ -735,18 +735,20 @@ static int run_server(bgpwatcher_server_t *server)
 }
 
 bgpwatcher_server_t *bgpwatcher_server_init(
-				       bgpwatcher_server_callbacks_t *callbacks)
+				       bgpwatcher_server_callbacks_t **cb_p)
 {
   bgpwatcher_server_t *server = NULL;
-  assert(callbacks != NULL);
+  assert(cb_p != NULL);
 
   if((server = malloc_zero(sizeof(bgpwatcher_server_t))) == NULL)
     {
       fprintf(stderr, "ERROR: Could not allocate server structure\n");
+      free(*cb_p);
       return NULL;
     }
 
-  server->callbacks = callbacks;
+  server->callbacks = *cb_p;
+  *cb_p = NULL;
 
   /* init czmq */
   if((server->ctx = zctx_new()) == NULL)

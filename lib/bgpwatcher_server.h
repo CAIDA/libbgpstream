@@ -233,13 +233,16 @@ struct bgpwatcher_server {
 
 /** Initialize a new BGP Watcher server instance
  *
- * @param callbacks     pointer to a filled-out bgpwatcher server callback
- *                      structure
+ * @param cb_p     double-pointer to a dynamically allocated bgpwatcher
+ *                      server callback structure
  * @return a pointer to a bgpwatcher server instance if successful, NULL if an
  * error occurred.
+ *
+ * @note the caller no longer owns the memory passed, and the caller's pointer
+ * will be nullified to reflect this.
  */
 bgpwatcher_server_t *bgpwatcher_server_init(
-				      bgpwatcher_server_callbacks_t *callbacks);
+				      bgpwatcher_server_callbacks_t **cb_p);
 
 /** Start the given bgpwatcher server instance
  *
