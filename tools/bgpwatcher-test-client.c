@@ -111,24 +111,27 @@ static void usage(const char *name)
 {
   fprintf(stderr,
 	  "usage: %s [<options>]\n"
-	  "       -i <interval-ms>   Time in ms between heartbeats to server\n"
-	  "                          (default: %d)\n"
-	  "       -l <beats>         Number of heartbeats that can go by before \n"
-	  "                          the server is declared dead (default: %d)\n"
-	  "       -n <identity>      a globally unique name for the client (default: random uuid)\n"
-	  "       -r <retry-min>     Min time in ms to wait before reconnecting to server\n"
+	  "       -i <interval-ms>      Time in ms between heartbeats to server\n"
+	  "                             (default: %d)\n"
+	  "       -l <beats>            Number of heartbeats that can go by before \n"
+	  "                             the server is declared dead (default: %d)\n"
+	  "       -n <identity>         Globally unique name for the client (default: random uuid)\n"
+	  "       -r <retry-min>        Min time in ms to wait before reconnecting to server\n"
 
-	  "                          (default: %d)\n"
-	  "       -R <retry-max>     Max time in ms to wait before reconnecting to server\n"
-	  "                          (default: %d)\n"
-	  "       -s <server-uri>    0MQ-style URI to connect to server on\n"
-	  "                          (default: %s)\n",
+	  "                             (default: %d)\n"
+	  "       -R <retry-max>        Max time in ms to wait before reconnecting to server\n"
+	  "                             (default: %d)\n"
+	  "       -s <server-uri>       0MQ-style URI to connect to server on\n"
+	  "                             (default: %s)\n"
+	  "       -t <shutdown-timeout> Time to wait for requests on shutdown\n"
+	  "                             (default: %d)\n",
 	  name,
 	  BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT,
 	  BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT,
 	  BGPWATCHER_RECONNECT_INTERVAL_MIN,
 	  BGPWATCHER_RECONNECT_INTERVAL_MAX,
-	  BGPWATCHER_CLIENT_SERVER_URI_DEFAULT);
+	  BGPWATCHER_CLIENT_SERVER_URI_DEFAULT,
+	  BGPWATCHER_CLIENT_SHUTDOWN_LINGER_DEFAULT);
 }
 
 int main(int argc, char **argv)
@@ -145,6 +148,7 @@ int main(int argc, char **argv)
   int heartbeat_liveness      = BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT;
   uint64_t reconnect_interval_min = BGPWATCHER_RECONNECT_INTERVAL_MIN;
   uint64_t reconnect_interval_max = BGPWATCHER_RECONNECT_INTERVAL_MAX;
+  uint64_t shutdown_linger = BGPWATCHER_CLIENT_SHUTDOWN_LINGER_DEFAULT;
 
   bgpwatcher_client_t *client = NULL;
 
@@ -159,7 +163,7 @@ int main(int argc, char **argv)
   uint32_t peer_table_time = 1410267600;
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":i:l:n:r:R:s:v?")) >= 0)
+	(opt = getopt(argc, argv, ":i:l:n:r:R:s:t:v?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
@@ -195,6 +199,10 @@ int main(int argc, char **argv)
 
 	case 's':
 	  server_uri = optarg;
+	  break;
+
+	case 't':
+	  shutdown_linger = atoi(optarg);
 	  break;
 
 	case '?':
@@ -247,6 +255,8 @@ int main(int argc, char **argv)
   bgpwatcher_client_set_reconnect_interval_min(client, reconnect_interval_min);
 
   bgpwatcher_client_set_reconnect_interval_max(client, reconnect_interval_max);
+
+  bgpwatcher_client_set_shutdown_linger(client, shutdown_linger);
 
   fprintf(stderr, "TEST: Init tables and records... ");
   if((pfx_table = bgpwatcher_client_pfx_table_create(client)) == NULL)

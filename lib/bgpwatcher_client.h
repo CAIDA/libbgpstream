@@ -52,9 +52,9 @@
 /** Default the client request retry count to 3 */
 #define BGPWATCHER_CLIENT_REQUEST_RETRIES 3
 
-/** The amount of time that the client will wait for outstanding messages when
+/** Default time that the client will wait for outstanding messages when
     shutting down (in milliseconds) */
-#define BGPWATCHER_CLIENT_SHUTDOWN_LINGER 10000
+#define BGPWATCHER_CLIENT_SHUTDOWN_LINGER_DEFAULT 10000
 
 /** @} */
 
@@ -286,6 +286,16 @@ void bgpwatcher_client_set_reconnect_interval_min(bgpwatcher_client_t *client,
  */
 void bgpwatcher_client_set_reconnect_interval_max(bgpwatcher_client_t *client,
 					       uint64_t reconnect_interval_max);
+
+/** Set the amount of time to wait for outstanding requests on shutdown
+ *
+ * @param client        pointer to a bgpwatcher client instance to update
+ * @param linger        time in ms to wait for outstanding requests
+ *
+ * @note defaults to BGPWATCHER_CLIENT_SHUTDOWN_LINGER_DEFAULT
+ */
+void bgpwatcher_client_set_shutdown_linger(bgpwatcher_client_t *client,
+					   uint64_t linger);
 
 /** Set the identity string for this client
  *

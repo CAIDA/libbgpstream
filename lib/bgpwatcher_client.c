@@ -161,19 +161,17 @@ bgpwatcher_client_t *bgpwatcher_client_init()
       goto err;
     }
 
-  BROKER.heartbeat_interval =
-    BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT;
+  BROKER.heartbeat_interval = BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT;
 
-  BROKER.heartbeat_liveness_remaining =
-    BROKER.heartbeat_liveness =
+  BROKER.heartbeat_liveness_remaining = BROKER.heartbeat_liveness =
     BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT;
 
-  BROKER.reconnect_interval_next =
-    BROKER.reconnect_interval_min =
+  BROKER.reconnect_interval_next = BROKER.reconnect_interval_min =
     BGPWATCHER_RECONNECT_INTERVAL_MIN;
 
-  BROKER.reconnect_interval_max =
-    BGPWATCHER_RECONNECT_INTERVAL_MAX;
+  BROKER.reconnect_interval_max = BGPWATCHER_RECONNECT_INTERVAL_MAX;
+
+  BROKER.shutdown_linger = BGPWATCHER_CLIENT_SHUTDOWN_LINGER_DEFAULT;
 
   return client;
 
@@ -529,6 +527,14 @@ void bgpwatcher_client_set_reconnect_interval_max(bgpwatcher_client_t *client,
     }
 
   BROKER.reconnect_interval_max = reconnect_interval_max;
+}
+
+void bgpwatcher_client_set_shutdown_linger(bgpwatcher_client_t *client,
+					   uint64_t linger)
+{
+  assert(client != NULL);
+
+  BROKER.shutdown_linger = linger;
 }
 
 int bgpwatcher_client_set_identity(bgpwatcher_client_t *client,

@@ -136,8 +136,12 @@ typedef struct bgpwatcher_client_broker {
   /** The time before we will next attempt to reconnect */
   uint64_t reconnect_interval_next;
 
-  /** Indicates that the client has been signaled to shutdown */
-  uint64_t shutdown;
+  /** The time that we will linger once a shutdown request has been received */
+  uint64_t shutdown_linger;
+
+  /** Indicates the time that the broker must shut down by (calculated as
+      $TERM.time + shutdown_linger) */
+  uint64_t shutdown_time;
 
   /* OWNED BY THE BROKER */
 
