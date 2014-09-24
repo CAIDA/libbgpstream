@@ -817,28 +817,28 @@ void peerdata_interval_end(peerdata_t *peer_data, int interval_start,
 
   // OUTPUT METRIC: elem_types[]
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.elem.announcements %"PRIu64" %d\n",
+	  METRIC_PREFIX".%s.%s.%s.elem_announcements_cnt %"PRIu64" %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  peer_data->peer_address_str,
 	  peer_data->elem_types[BST_ANNOUNCEMENT],
 	  interval_start);
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.elem.withdrawals %"PRIu64" %d\n",
+	  METRIC_PREFIX".%s.%s.%s.elem_withdrawals_cnt %"PRIu64" %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  peer_data->peer_address_str,
 	  peer_data->elem_types[BST_WITHDRAWAL],
 	  interval_start);
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.elem.rib %"PRIu64" %d\n",
+	  METRIC_PREFIX".%s.%s.%s.elem_rib_cnt %"PRIu64" %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  peer_data->peer_address_str,
 	  peer_data->elem_types[BST_RIB],
 	  interval_start);
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.elem.state %"PRIu64" %d\n",
+	  METRIC_PREFIX".%s.%s.%s.elem_state_cnt %"PRIu64" %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  peer_data->peer_address_str,
@@ -857,7 +857,7 @@ void peerdata_interval_end(peerdata_t *peer_data, int interval_start,
   
   // OUTPUT METRIC: ipv4_rib_size
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.ipv4_rib_size %d %d\n",
+	  METRIC_PREFIX".%s.%s.%s.peer_ipv4_rib_size %d %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  peer_data->peer_address_str,
@@ -866,7 +866,7 @@ void peerdata_interval_end(peerdata_t *peer_data, int interval_start,
 
   // OUTPUT METRIC: ipv6_rib_size
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.ipv6_rib_size %d %d\n",
+	  METRIC_PREFIX".%s.%s.%s.peer_ipv6_rib_size %d %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  peer_data->peer_address_str,
@@ -918,7 +918,7 @@ void peerdata_interval_end(peerdata_t *peer_data, int interval_start,
 
   // OUTPUT METRIC: unique_std_origin_ases_cnt
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.unique_std_origin_ases_cnt %d %d\n",
+	  METRIC_PREFIX".%s.%s.%s.peer_unique_std_origin_ases_cnt %d %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  peer_data->peer_address_str,
@@ -1387,31 +1387,31 @@ void collectordata_interval_end(collectordata_t *collector_data,
 
   // OUTPUT METRIC: record_types[]
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.record.valid %"PRIu64" %d\n",
+	  METRIC_PREFIX".%s.%s.record_valid_cnt %"PRIu64" %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  collector_data->record_types[VALID_RECORD],
 	  interval_start);
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.record.filtered_source %"PRIu64" %d\n",
+	  METRIC_PREFIX".%s.%s.record_filtered_source_cnt %"PRIu64" %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  collector_data->record_types[FILTERED_SOURCE],
 	  interval_start);
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.record.empty_source %"PRIu64" %d\n",
+	  METRIC_PREFIX".%s.%s.record_empty_source_cnt %"PRIu64" %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  collector_data->record_types[EMPTY_SOURCE],
 	  interval_start);
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.record.corrupted_source %"PRIu64" %d\n",
+	  METRIC_PREFIX".%s.%s.record_corrupted_source_cnt %"PRIu64" %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  collector_data->record_types[CORRUPTED_SOURCE],
 	  interval_start);
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.record.corrupted_record %"PRIu64" %d\n",
+	  METRIC_PREFIX".%s.%s.record_corrupted_record_cnt %"PRIu64" %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  collector_data->record_types[CORRUPTED_RECORD],
@@ -1426,7 +1426,7 @@ void collectordata_interval_end(collectordata_t *collector_data,
   
   // OUTPUT METRIC: unique_ipv4_prefixes_cnt
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.unique_ipv4_prefixes_cnt %d %d\n",
+	  METRIC_PREFIX".%s.%s.collector_unique_ipv4_prefixes_cnt %d %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  kh_size(collector_data->unique_prefixes->ipv4_prefixes_table),
@@ -1434,7 +1434,7 @@ void collectordata_interval_end(collectordata_t *collector_data,
 
   // OUTPUT METRIC: unique_ipv6_prefixes_cnt
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.unique_ipv6_prefixes_cnt %d %d\n",
+	  METRIC_PREFIX".%s.%s.collector_unique_ipv6_prefixes_cnt %d %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  kh_size(collector_data->unique_prefixes->ipv6_prefixes_table),
@@ -1444,7 +1444,7 @@ void collectordata_interval_end(collectordata_t *collector_data,
 
   // OUTPUT METRIC: unique_std_origin_ases_cnt
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.unique_std_origin_ases_cnt %d %d\n",
+	  METRIC_PREFIX".%s.%s.collector_unique_std_origin_ases_cnt %d %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  kh_size(collector_data->unique_origin_ases->table),
@@ -1457,10 +1457,10 @@ void collectordata_interval_end(collectordata_t *collector_data,
   // so it embeds the processing time at the end 
   // of each interval
 
-  // OUTPUT METRIC: realtime_delay
+  // OUTPUT METRIC: collector_realtime_delay
   time_t now = time(NULL); 
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.realtime_delay %ld %d\n",
+	  METRIC_PREFIX".%s.%s.collector_realtime_delay %ld %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
 	  // difference between last record processed and now
