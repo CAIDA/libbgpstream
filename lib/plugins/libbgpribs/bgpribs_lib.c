@@ -27,7 +27,7 @@
 #include <assert.h>
 #include "utils.h"
 
-#define METRIC_PREFIX "bgp"
+#define METRIC_PREFIX "bgp.bgpribs"
 
 
 static void graphite_safe(char *p)
@@ -65,6 +65,25 @@ ases_table_wrapper_t *ases_table_create()
   return ases_table;
 }
 
+void ases_table_insert(ases_table_wrapper_t *ases_table, uint32_t as) 
+{
+  assert(ases_table); 
+  int khret;
+  khiter_t k;
+  if((k = kh_get(ases_table_t, ases_table->table,
+			       as)) == kh_end(ases_table->table))
+    {
+      k = kh_put(ases_table_t, ases_table->table, 
+		       as, &khret);
+    }
+}
+
+void ases_table_reset(ases_table_wrapper_t *ases_table) 
+{
+  assert(ases_table); 
+  kh_clear(ases_table_t, ases_table->table);
+}
+
 void ases_table_destroy(ases_table_wrapper_t *ases_table) 
 {
   if(ases_table != NULL) 
@@ -89,6 +108,38 @@ prefixes_table_t *prefixes_table_create()
   prefixes_table->ipv4_prefixes_table = kh_init(ipv4_prefixes_table_t);
   prefixes_table->ipv6_prefixes_table = kh_init(ipv6_prefixes_table_t);
   return prefixes_table;
+}
+
+void prefixes_table_insert(prefixes_table_t *prefixes_table, bgpstream_prefix_t prefix)
+{
+  int khret;
+  khiter_t k;
+  if(prefix.number.type == BST_IPV4)
+    {
+      if((k = kh_get(ipv4_prefixes_table_t, prefixes_table->ipv4_prefixes_table,
+		     prefix)) == kh_end(prefixes_table->ipv4_prefixes_table))
+	{
+	  k = kh_put(ipv4_prefixes_table_t, prefixes_table->ipv4_prefixes_table, 
+		     prefix, &khret);
+	}
+    }
+  else
+    { // assert(prefix.number.type == BST_IPV6)
+      if((k = kh_get(ipv6_prefixes_table_t, prefixes_table->ipv6_prefixes_table,
+		     prefix)) == kh_end(prefixes_table->ipv6_prefixes_table))
+	{
+	  k = kh_put(ipv6_prefixes_table_t, prefixes_table->ipv6_prefixes_table, 
+		     prefix, &khret);
+	}
+    }
+}
+
+
+void prefixes_table_reset(prefixes_table_t *prefixes_table) 
+{
+  assert(prefixes_table);
+  kh_clear(ipv4_prefixes_table_t, prefixes_table->ipv4_prefixes_table);
+  kh_clear(ipv6_prefixes_table_t, prefixes_table->ipv6_prefixes_table);
 }
 
 void prefixes_table_destroy(prefixes_table_t *prefixes_table) 
@@ -135,7 +186,6 @@ void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs_elem)
 	  pd.origin_as = bs_elem->aspath.numeric_aspath[(bs_elem->aspath.hop_count-1)];
 	}  
     }  
-
 
   if(bs_elem->prefix.number.type == BST_IPV4) 
     { // ipv4 prefix
@@ -239,6 +289,7 @@ peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
   /* default:
    *  status = 0 = PEER_NULL
    *  rt_status = 0 = UC_OFF
+   *  elem_types = [0,0,0,0]
    */
 
   if((peer_data->active_ribs_table = ribs_table_create()) == NULL)
@@ -249,6 +300,15 @@ peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
 
   if((peer_data->uc_ribs_table = ribs_table_create()) == NULL)
     {
+      ribs_table_destroy(peer_data->active_ribs_table);
+      peer_data->active_ribs_table = NULL;
+      free(peer_data);
+      return NULL;
+    }
+
+  if((peer_data->unique_origin_ases = ases_table_create()) == NULL)
+    {
+      ribs_table_destroy(peer_data->uc_ribs_table);
       ribs_table_destroy(peer_data->active_ribs_table);
       peer_data->active_ribs_table = NULL;
       free(peer_data);
@@ -329,6 +389,8 @@ int peerdata_apply_elem(peerdata_t *peer_data,
   assert(bs_record);
   assert(bs_record->status == VALID_RECORD);
   assert(bs_elem);
+
+  peer_data->elem_types[bs_elem->type]++;
 
   // NOTE: there is no need to update peer_data->most_recent_ts, apply_record does that
 
@@ -739,6 +801,136 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 }
 
 
+void peerdata_interval_end(peerdata_t *peer_data, int interval_start,
+			   collectordata_t *collector_data) 
+{
+ 
+ // OUTPUT METRIC: peer_status
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.peer_status %d %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  peer_data->peer_address_str,
+	  // (peer_data->status-1) => { -1 NULL, 0 DOWN, 1 UP }
+	  (peer_data->status - 1),
+	  interval_start);
+
+  // OUTPUT METRIC: elem_types[]
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.elem.announcements %"PRIu64" %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  peer_data->peer_address_str,
+	  peer_data->elem_types[BST_ANNOUNCEMENT],
+	  interval_start);
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.elem.withdrawals %"PRIu64" %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  peer_data->peer_address_str,
+	  peer_data->elem_types[BST_WITHDRAWAL],
+	  interval_start);
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.elem.rib %"PRIu64" %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  peer_data->peer_address_str,
+	  peer_data->elem_types[BST_RIB],
+	  interval_start);
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.elem.state %"PRIu64" %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  peer_data->peer_address_str,
+	  peer_data->elem_types[BST_STATE],
+	  interval_start);
+
+  // reset array
+  memset(peer_data->elem_types, 0, sizeof(peer_data->elem_types));
+
+  if(peer_data->status != PEER_UP)
+    {
+      return;
+    }
+  
+  // the following actions require the peer to be UP
+  
+  // OUTPUT METRIC: ipv4_rib_size
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.ipv4_rib_size %d %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  peer_data->peer_address_str,
+	  kh_size(peer_data->active_ribs_table->ipv4_rib),
+	  interval_start);
+
+  // OUTPUT METRIC: ipv6_rib_size
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.ipv6_rib_size %d %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  peer_data->peer_address_str,
+	  kh_size(peer_data->active_ribs_table->ipv6_rib),
+	  interval_start);
+
+  // go through ipv4 an ipv6 ribs and get the standard origin
+  // ases, plus integrate the data into collector_data structs
+  khiter_t k;
+  int khret;
+  bgpstream_prefix_t prefix;
+  prefixdata_t pd; 
+
+  for(k = kh_begin(peer_data->active_ribs_table->ipv4_rib);
+      k != kh_end(peer_data->active_ribs_table->ipv4_rib); ++k)
+    {
+      if (kh_exist(peer_data->active_ribs_table->ipv4_rib, k))
+	{
+	  // get prefix
+	  prefix = kh_key(peer_data->active_ribs_table->ipv4_rib, k);
+	  prefixes_table_insert(collector_data->unique_prefixes, prefix);
+	  // get prefix_data
+	  pd = kh_value(peer_data->active_ribs_table->ipv4_rib, k);
+	  if(pd.origin_as != 0)
+	    {
+	      ases_table_insert(peer_data->unique_origin_ases, pd.origin_as);
+	      ases_table_insert(collector_data->unique_origin_ases, pd.origin_as);
+	    }
+	}
+    }
+  
+  for(k = kh_begin(peer_data->active_ribs_table->ipv6_rib);
+      k != kh_end(peer_data->active_ribs_table->ipv6_rib); ++k)
+    {
+      if (kh_exist(peer_data->active_ribs_table->ipv6_rib, k))
+	{
+	  // get prefix
+	  prefix = kh_key(peer_data->active_ribs_table->ipv6_rib, k);
+	  prefixes_table_insert(collector_data->unique_prefixes, prefix);
+	  // get prefix_data
+	  pd = kh_value(peer_data->active_ribs_table->ipv6_rib, k);
+	  if(pd.origin_as != 0)
+	    {
+	      ases_table_insert(peer_data->unique_origin_ases, pd.origin_as);
+	      ases_table_insert(collector_data->unique_origin_ases, pd.origin_as);
+	    }
+	}
+    }
+
+  // OUTPUT METRIC: unique_std_origin_ases_cnt
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.unique_std_origin_ases_cnt %d %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  peer_data->peer_address_str,
+	  kh_size(peer_data->unique_origin_ases->table),
+	  interval_start);
+  
+  // reset per interval variables
+  memset(peer_data->elem_types, 0, sizeof(peer_data->elem_types));
+  ases_table_reset(peer_data->unique_origin_ases);
+}
+
+
 void peerdata_destroy(peerdata_t *peer_data)
 {
   if(peer_data != NULL) 
@@ -752,6 +944,11 @@ void peerdata_destroy(peerdata_t *peer_data)
 	{
 	  ribs_table_destroy(peer_data->uc_ribs_table);
 	  peer_data->uc_ribs_table = NULL;
+	}
+      if(peer_data->unique_origin_ases != NULL) 
+	{
+	  ases_table_destroy(peer_data->unique_origin_ases);
+	  peer_data->unique_origin_ases = NULL;
 	}
       if(peer_data->peer_address_str != NULL) 
 	{
@@ -772,9 +969,6 @@ peers_table_t *peers_table_create()
     {
       return NULL;
     }
-  /* all data are set to zero by malloc_zero, thereby:
-   *  - elem_types = [0,0,0,0]
-   */  
   // init ipv4 and ipv6 peers khashes
   peers_table->ipv4_peers_table = kh_init(ipv4_peers_table_t);
   peers_table->ipv6_peers_table = kh_init(ipv6_peers_table_t);
@@ -806,8 +1000,6 @@ int peers_table_process_record(peers_table_t *peers_table,
       bs_iterator = bs_elem_queue;
       while(bs_iterator != NULL)
 	{
-	  peers_table->elem_types[bs_iterator->type]++;
-
 	  /* check if we need to create a peer
 	   * create the peerdata structure if necessary
 	   * and send the elem to the corresponding peerdata */
@@ -938,7 +1130,8 @@ int peers_table_process_record(peers_table_t *peers_table,
 	  /*   } */
 	  if(peer_status < 0)
 	    {
-	      // TODO something went wrong during "TODO" function
+	      // something went wrong during peerdata_apply_record function
+	      // TODO: log error
 	      return -1;
 	    }
 	  else 
@@ -970,7 +1163,8 @@ int peers_table_process_record(peers_table_t *peers_table,
 	  /*   }  */
 	  if(peer_status < 0)
 	    {
-	      // TODO something went wrong during "TODO" function
+	      // something went wrong during peerdata_apply_record function
+	      // TODO: log error
 	      return -1;
 	    }
 	  else 
@@ -980,6 +1174,36 @@ int peers_table_process_record(peers_table_t *peers_table,
 	}      
     }
   return num_active_peers;
+}
+
+
+void peers_table_interval_end(peers_table_t *peers_table, int interval_start,
+			       collectordata_t *collector_data)
+{
+  assert(peers_table);
+  khiter_t k;
+  peerdata_t * peer_data;
+
+  // print stats for ipv4 peers
+  for (k = kh_begin(peers_table->ipv4_peers_table);
+       k != kh_end(peers_table->ipv4_peers_table); ++k)
+    {
+      if (kh_exist(peers_table->ipv4_peers_table, k))
+	{
+	  peer_data = kh_value(peers_table->ipv4_peers_table, k);
+	  peerdata_interval_end(peer_data, interval_start, collector_data);
+	}
+    }   
+  // print stats for ipv6 peers
+  for (k = kh_begin(peers_table->ipv6_peers_table);
+       k != kh_end(peers_table->ipv6_peers_table); ++k)
+    {
+      if (kh_exist(peers_table->ipv6_peers_table, k))
+	{
+	  peer_data = kh_value(peers_table->ipv6_peers_table, k);
+	  peerdata_interval_end(peer_data, interval_start, collector_data);
+	}
+    }   
 }
 
 
@@ -1059,6 +1283,28 @@ collectordata_t *collectordata_create(const char *project,
       return NULL;
     }
 
+  if((collector_data->unique_prefixes = prefixes_table_create()) == NULL)
+    {
+      peers_table_destroy(collector_data->peers_table);
+      collector_data->peers_table = NULL;
+      free(collector_data->dump_collector);
+      free(collector_data->dump_project);
+      free(collector_data);
+      return NULL;
+    }
+
+  if((collector_data->unique_origin_ases = ases_table_create()) == NULL)
+    {
+      prefixes_table_destroy(collector_data->unique_prefixes);
+      collector_data->unique_prefixes = NULL;
+      peers_table_destroy(collector_data->peers_table);
+      collector_data->peers_table = NULL;
+      free(collector_data->dump_collector);
+      free(collector_data->dump_project);
+      free(collector_data);
+      return NULL;
+    }
+
   /* make the project name graphite-safe */
   graphite_safe(collector_data->dump_project);
 
@@ -1092,7 +1338,6 @@ int collectordata_process_record(collectordata_t *collector_data,
   // some error occurred during the computation
   if(collector_data->active_peers < 0) 
     {
-      collector_data->status = COLLECTOR_DOWN;    
       return -1;
     }
    
@@ -1117,6 +1362,113 @@ int collectordata_process_record(collectordata_t *collector_data,
 }
 
 
+void collectordata_interval_end(collectordata_t *collector_data, 
+				int interval_start)
+{
+  assert(collector_data);
+  
+  // OUTPUT METRIC: status
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.collector_status %d %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  // (collector_data->status-1) => { -1 NULL, 0 DOWN, 1 UP }
+	  (collector_data->status - 1),
+	  interval_start);
+
+  // OUTPUT METRIC: active_peers
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.active_peers_cnt %d %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  collector_data->active_peers,
+	  interval_start);
+
+
+  // OUTPUT METRIC: record_types[]
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.record.valid %"PRIu64" %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  collector_data->record_types[VALID_RECORD],
+	  interval_start);
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.record.filtered_source %"PRIu64" %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  collector_data->record_types[FILTERED_SOURCE],
+	  interval_start);
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.record.empty_source %"PRIu64" %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  collector_data->record_types[EMPTY_SOURCE],
+	  interval_start);
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.record.corrupted_source %"PRIu64" %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  collector_data->record_types[CORRUPTED_SOURCE],
+	  interval_start);
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.record.corrupted_record %"PRIu64" %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  collector_data->record_types[CORRUPTED_RECORD],
+	  interval_start);
+  // reset record type array
+  memset(collector_data->record_types, 0, sizeof(collector_data->record_types));
+
+  // the following function call the peer interval_end functions for 
+  // each peer and populate the collector_data aggregated stats
+  peers_table_interval_end(collector_data->peers_table, interval_start,
+			   collector_data);
+  
+  // OUTPUT METRIC: unique_ipv4_prefixes_cnt
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.unique_ipv4_prefixes_cnt %d %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  kh_size(collector_data->unique_prefixes->ipv4_prefixes_table),
+	  interval_start);
+
+  // OUTPUT METRIC: unique_ipv6_prefixes_cnt
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.unique_ipv6_prefixes_cnt %d %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  kh_size(collector_data->unique_prefixes->ipv6_prefixes_table),
+	  interval_start);
+
+  prefixes_table_reset(collector_data->unique_prefixes);
+
+  // OUTPUT METRIC: unique_std_origin_ases_cnt
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.unique_std_origin_ases_cnt %d %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  kh_size(collector_data->unique_origin_ases->table),
+	  interval_start);
+  
+  ases_table_reset(collector_data->unique_origin_ases);
+
+
+  // Note: this metric has to be the last one
+  // so it embeds the processing time at the end 
+  // of each interval
+
+  // OUTPUT METRIC: realtime_delay
+  time_t now = time(NULL); 
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.realtime_delay %ld %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  // difference between last record processed and now
+	  (now - collector_data->most_recent_ts),
+	  interval_start); 
+}
+
+
 void collectordata_destroy(collectordata_t *collector_data)
 {
   if(collector_data != NULL)
@@ -1136,6 +1488,16 @@ void collectordata_destroy(collectordata_t *collector_data)
 	{
 	  peers_table_destroy(collector_data->peers_table);
 	  collector_data->peers_table = NULL;
+	}
+      if(collector_data->unique_prefixes != NULL)
+	{
+	  prefixes_table_destroy(collector_data->unique_prefixes);
+	  collector_data->unique_prefixes = NULL;
+	}
+      if(collector_data->unique_origin_ases != NULL)
+	{
+	  ases_table_destroy(collector_data->unique_origin_ases);
+	  collector_data->unique_origin_ases = NULL;
 	}
       free(collector_data);
     }
@@ -1201,6 +1563,55 @@ int collectors_table_process_record(collectors_table_wrapper_t *collectors_table
   return collectordata_process_record(collector_data, bs_record);
 } 
 
+
+/* dump statistics for each collector */
+void collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
+				   int interval_processing_start, int interval_start)
+{
+  assert(collectors_table != NULL); 
+  khiter_t k;
+  collectordata_t * collector_data;
+  for (k = kh_begin(collectors_table->table);
+       k != kh_end(collectors_table->table); ++k)
+    {
+      if (kh_exist(collectors_table->table, k))
+	{	  
+	  collectordata_interval_end(kh_value(collectors_table->table, k), 
+				     interval_start);
+	}
+    }
+
+  // if there is only 1 collector, then output its processing statistics
+  // otherwise use the word "multiple"
+  char collector_str[64];
+  collector_str[0] = '\0';
+  if(kh_size(collectors_table->table) == 1)
+    {
+      for(k = kh_begin(collectors_table->table);
+	  k != kh_end(collectors_table->table); ++k)
+	{
+	  if (kh_exist(collectors_table->table, k))
+	    {
+	      collector_data = kh_value(collectors_table->table, k);
+	      strcat(collector_str,collector_data->dump_project);
+	      strcat(collector_str,".");
+	      strcat(collector_str,collector_data->dump_collector);
+	      break;
+	    }
+	}
+    }
+  else
+    {
+      strcat(collector_str,"multiple");
+    }
+
+  // OUTPUT METRIC: Interval processing time
+  time_t now = time(NULL); 
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.interval_processing_time %ld %d\n",
+	  collector_str, (now - interval_processing_start),
+	  interval_start);
+} 
 
 
 void collectors_table_destroy(collectors_table_wrapper_t *collectors_table) 

@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "bgpstream_lib.h"
 #include "bgpdump_util.h"
@@ -90,6 +91,7 @@ struct bgpcorsaro_bgpribs_state_t {
 
   /** interval start time */
   int interval_start;
+  int interval_processing_start;
   /** Hash of collector string to collector data */
   collectors_table_wrapper_t * collectors_table; 
 };
@@ -192,7 +194,10 @@ static void bgpribs_structures_interval_start(struct bgpcorsaro_bgpribs_state_t 
 					      bgpcorsaro_interval_t *int_start)
 {
   assert(state != NULL);
+  // http://pubs.opengroup.org/onlinepubs/009695399/functions/time.html
+  time_t now = time(NULL);
   state->interval_start = int_start->time;
+  state->interval_processing_start = now; // uintmax_t
 }
 
 
@@ -214,9 +219,8 @@ static int bgpribs_structures_process_record(struct bgpcorsaro_bgpribs_state_t *
 static void bgpribs_structures_interval_end(struct bgpcorsaro_bgpribs_state_t *state)
 {
   assert(state != NULL);
-  printf("%d - DONE\n", state->interval_start);
-  // TODO:
-
+  collectors_table_interval_end(state->collectors_table, 
+				state->interval_processing_start, state->interval_start);
 }
 
 

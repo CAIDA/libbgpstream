@@ -48,6 +48,8 @@ typedef struct struct_ases_table_wrapper_t {
 } ases_table_wrapper_t;
 
 ases_table_wrapper_t *ases_table_create();
+void ases_table_insert(ases_table_wrapper_t *ases_table, uint32_t as);
+void ases_table_reset(ases_table_wrapper_t *ases_table);
 void ases_table_destroy(ases_table_wrapper_t *ases_table);
 
 
@@ -78,6 +80,8 @@ typedef struct struct_prefixes_table_t {
 } prefixes_table_t;
 
 prefixes_table_t *prefixes_table_create();
+void prefixes_table_insert(prefixes_table_t *prefixes_table, bgpstream_prefix_t prefix); 
+void prefixes_table_reset(prefixes_table_t *prefixes_table);
 void prefixes_table_destroy(prefixes_table_t *prefixes_table);
 
 
@@ -122,11 +126,10 @@ typedef struct struct_ribs_table_t {
   long int reference_dump_time; // dump_time associated with the reference rib
 } ribs_table_t;
 
-
-ribs_table_t *ribs_table_create();
-void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs_elem);
-void ribs_table_reset(ribs_table_t *ribs_table);
-void ribs_table_destroy(ribs_table_t *ribs_table);
+/* ribs_table_t *ribs_table_create(); */
+/* void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs_elem); */
+/* void ribs_table_reset(ribs_table_t *ribs_table); */
+/* void ribs_table_destroy(ribs_table_t *ribs_table); */
 
 /** peerdata
  *  this structure contains information about a single
@@ -134,9 +137,9 @@ void ribs_table_destroy(ribs_table_t *ribs_table);
  */
 
 typedef enum  {
-  PEER_NULL = 0,    // status of peer is unknown
-  PEER_UP = 1,      // status of peer is UP
-  PEER_DOWN = 2     // status of peer is DOWN
+  PEER_NULL = 0,   // status of peer is unknown
+  PEER_DOWN = 1,   // status of peer is DOWN
+  PEER_UP = 2      // status of peer is UP
 } peer_status_t;
 
 typedef enum  {
@@ -152,14 +155,18 @@ typedef struct struct_peerdata_t {
   long int most_recent_ts;
   ribs_tables_status_t rt_status;
   peer_status_t status;
-  // TODO: add status variables and metrics here
+  // information to dump and reset at every interval_end
+  uint64_t elem_types[BGPSTREAM_ELEM_TYPE_MAX];  
+  ases_table_wrapper_t * unique_origin_ases;
 } peerdata_t;
 
-peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address);
-int peerdata_apply_elem(peerdata_t *peer_data, 
-			bgpstream_record_t * bs_record, bgpstream_elem_t *elem);
-int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record);
-void peerdata_destroy(peerdata_t *peer_data);
+/* peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address); */
+/* int peerdata_apply_elem(peerdata_t *peer_data,  */
+/* 			bgpstream_record_t * bs_record, bgpstream_elem_t *elem); */
+/* int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record); */
+/* void peerdata_interval_end(peerdata_t *peer_data, int interval_start, */
+/* 			   collectordata_t *collector_data); */
+/* void peerdata_destroy(peerdata_t *peer_data); */
 
 
 /** peers table
@@ -183,16 +190,16 @@ KHASH_INIT(ipv6_peers_table_t /* name */,
 	   bgpstream_ipv6_address_hash_equal /* __hash_equal */);
 
 typedef struct struct_peers_table_t {
-  uint64_t elem_types[BGPSTREAM_ELEM_TYPE_MAX];
-  // TODO: other info?
   khash_t(ipv4_peers_table_t) * ipv4_peers_table;
   khash_t(ipv6_peers_table_t) * ipv6_peers_table;
 } peers_table_t;
 
-peers_table_t *peers_table_create();
-int peers_table_process_record(peers_table_t *peers_table, 
-			       bgpstream_record_t * bs_record); 
-void peers_table_destroy(peers_table_t *peers_table);
+/* peers_table_t *peers_table_create(); */
+/* int peers_table_process_record(peers_table_t *peers_table,  */
+/* 			          bgpstream_record_t * bs_record);  */
+/* void  peers_table_interval_end(peers_table_t *peers_table, int interval_start, */
+/* 			          collectordata_t *collector_data); */
+/* void peers_table_destroy(peers_table_t *peers_table); */
 
 
 /** collectordata
@@ -202,25 +209,30 @@ void peers_table_destroy(peers_table_t *peers_table);
 
 typedef enum  {
   COLLECTOR_NULL = 0,    // status of collector is unknown
-  COLLECTOR_UP = 1,      // status of collector is UP
-  COLLECTOR_DOWN = 2     // status of collector is DOWN
+  COLLECTOR_DOWN = 1,    // status of collector is DOWN
+  COLLECTOR_UP =   2     // status of collector is UP
   } collector_status_t;
 
 typedef struct collectordata {
-  char *dump_project;        /* graphite-safe version of the name */
-  char *dump_collector;      /* graphite-safe version of the name */
-  long int most_recent_ts;   /* most recent timestamp received */
+  char * dump_project;        /* graphite-safe version of the name */
+  char * dump_collector;      /* graphite-safe version of the name */
+  long int most_recent_ts;    /* most recent timestamp received */
   int active_peers;
   collector_status_t status; /* it tells whether the collector is up or down */
-  uint64_t record_types[BGPSTREAM_RECORD_TYPE_MAX];
   // table containing information about each peer of the collector
   peers_table_t * peers_table;
+  // information to dump and reset at every interval_end
+  uint64_t record_types[BGPSTREAM_RECORD_TYPE_MAX];
+  prefixes_table_t * unique_prefixes;
+  ases_table_wrapper_t * unique_origin_ases;
 } collectordata_t;
 
 /* collectordata_t *collectordata_create(const char *project, */
 /* 				      const char *collector); */
 /* int collectordata_process_record(collectordata_t *collector_data, */
 /* 				 bgpstream_record_t * bs_record); */
+/* void collectordata_interval_end(collectordata_t *collector_data,  */
+/* 				int interval_start); */
 /* void collectordata_destroy(collectordata_t *collector_data); */
 
 
@@ -244,6 +256,8 @@ typedef struct struct_collectors_table_wrapper_t {
 collectors_table_wrapper_t *collectors_table_create();
 int collectors_table_process_record(collectors_table_wrapper_t *collectors_table,
 				    bgpstream_record_t * bs_record);
+void collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
+				   int interval_processing_start, int interval_start);
 void collectors_table_destroy(collectors_table_wrapper_t *collectors_table);
 
 
