@@ -135,6 +135,8 @@ bgpwatcher_client_t *bgpwatcher_client_init()
     }
   /* now we are ready to set errors... */
 
+  BROKER.master = client;
+
   /* init the outstanding req set */
   if((BROKER.outstanding_req = kh_init(reqset)) == NULL)
     {
@@ -181,6 +183,20 @@ bgpwatcher_client_t *bgpwatcher_client_init()
       bgpwatcher_client_free(client);
     }
   return NULL;
+}
+
+void bgpwatcher_client_set_cb_handle_reply(bgpwatcher_client_t *client,
+					bgpwatcher_client_cb_handle_reply_t *cb)
+{
+  assert(client != NULL);
+  client->broker_state.callbacks.handle_reply = cb;
+}
+
+void bgpwatcher_client_set_cb_userdata(bgpwatcher_client_t *client,
+				       void *user)
+{
+  assert(client != NULL);
+  client->broker_state.callbacks.user = user;
 }
 
 int bgpwatcher_client_start(bgpwatcher_client_t *client)

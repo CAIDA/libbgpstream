@@ -52,6 +52,19 @@
  *
  * @{ */
 
+/** Collection of asynchronous callbacks used to notify the client of incoming
+    messages from the server. */
+typedef struct bgpwatcher_client_broker_callbacks {
+
+  bgpwatcher_client_cb_handle_reply_t *handle_reply;
+
+  /** @todo add other signals from server here (table rx, etc) */
+
+  /** pointer to user-provided data */
+  void *user;
+
+} bgpwatcher_client_broker_callbacks_t;
+
 /** Holds information about a single outstanding request sent to the server */
 typedef struct bgpwatcher_client_broker_req {
 
@@ -74,6 +87,12 @@ KHASH_INIT(reqset, bgpwatcher_client_broker_req_t, char, 0,
 /** State for the zactor that transparently proxies requests between the client
     and the server while managing hearbeats, reconnects etc. */
 typedef struct bgpwatcher_client_broker {
+
+  /** Pointer to the master's state (used for callbacks) */
+  struct bgpwatcher_client *master;
+
+  /** Client callbacks */
+  bgpwatcher_client_broker_callbacks_t callbacks;
 
   /** Identity of this client. MUST be globally unique */
   char *identity;

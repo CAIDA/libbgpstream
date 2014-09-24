@@ -72,6 +72,19 @@ typedef struct bgpwatcher_client_peer_table bgpwatcher_client_peer_table_t;
  *
  * @{ */
 
+  /** Signals that the server has completed processing of a request made by the
+   *  client.
+   *
+   * @param client      pointer to the client instance that received the reply
+   * @param seq_num     sequence number for matching with the request
+   * @param rc          return code from the server
+   *                    (0 indicates success, -1 failure)
+   */
+typedef void (bgpwatcher_client_cb_handle_reply_t)(bgpwatcher_client_t *client,
+						   seq_num_t seq_num,
+						   int rc,
+						   void *user);
+
 /** @} */
 
 /**
@@ -87,6 +100,18 @@ typedef struct bgpwatcher_client_peer_table bgpwatcher_client_peer_table_t;
  * error occurred.
  */
 bgpwatcher_client_t *bgpwatcher_client_init();
+
+/** Register a function to be called to handle message replies from the server
+ *
+ * @param client        pointer to a client instance to set callback for
+ * @param cb            pointer to a handle_reply callback function
+ */
+void bgpwatcher_client_set_cb_handle_reply(bgpwatcher_client_t *client,
+				       bgpwatcher_client_cb_handle_reply_t *cb);
+
+/** Set the user data that will provided to each callback function */
+void bgpwatcher_client_set_cb_userdata(bgpwatcher_client_t *client,
+				       void *user);
 
 /** Start the given bgpwatcher client instance
  *

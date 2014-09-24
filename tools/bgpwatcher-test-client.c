@@ -36,7 +36,15 @@
 
 #include "config.h"
 
-/** @todo add re-transmit options here */
+static void handle_reply(bgpwatcher_client_t *client, seq_num_t seq_num,
+			 int rc, void *user)
+{
+  fprintf(stderr, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n");
+  fprintf(stderr, "HANDLE: Handling reply\n");
+  fprintf(stderr, "Seq Num: %"PRIu32"\n", seq_num);
+  fprintf(stderr, "Ret Code: %d\n", rc);
+  fprintf(stderr, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n\n");
+}
 
 static bgpwatcher_pfx_record_t *create_test_pfx()
 {
@@ -215,6 +223,8 @@ int main(int argc, char **argv)
       usage(argv[0]);
       goto err;
     }
+
+  bgpwatcher_client_set_cb_handle_reply(client, handle_reply);
 
   if(server_uri != NULL &&
      bgpwatcher_client_set_server_uri(client, server_uri) != 0)

@@ -32,6 +32,15 @@
 
 #define ERR (&broker->err)
 
+#define DO_CALLBACK(cbfunc, args...)					\
+  do {									\
+    if(broker->callbacks.cbfunc != NULL)				\
+      {									\
+	broker->callbacks.cbfunc(broker->master, args,			\
+				 broker->callbacks.user);		\
+      }									\
+  } while(0)
+
 static int server_connect(bgpwatcher_client_broker_t *broker)
 {
   uint8_t msg_type_p;
@@ -117,7 +126,7 @@ static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
 
   bgpwatcher_client_broker_req_t rx_rep = {0, 0};
   bgpwatcher_client_broker_req_t req;
-  uint8_t rc;
+  int rc;
 
   khiter_t khiter;
 
@@ -152,6 +161,10 @@ static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
       return -1;
     }
   rc = *zframe_data(frame);
+  if(rc != 0)
+    {
+      rc = -1;
+    }
 
   /* grab the corresponding record from the outstanding req set */
   if((khiter = kh_get(reqset, broker->outstanding_req, rx_rep)) ==
@@ -171,8 +184,7 @@ static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
   /*fprintf(stderr, "MATCH: req.seq: %"PRIu32", req.msg_type: %d\n",
     req.seq_num, req.msg_type);*/
 
-  /** @todo call a client callback and notify user of this reply (if they
-      care) */
+  DO_CALLBACK(handle_reply, req.seq_num, rc);
 
   zmsg_destroy(&msg);
   return 0;
