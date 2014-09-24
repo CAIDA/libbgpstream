@@ -74,14 +74,21 @@ typedef struct bgpwatcher_client_broker_req {
   /** Message type in the request (and reply) */
   bgpwatcher_msg_type_t msg_type;
 
-  /** @todo add retries-remaining counter */
+  /** The time that this request should next be retried */
+  uint64_t retry_at;
+
+  /** The number of retries that remain */
+  int retries_remaining;
+
+  /** Copy of the request to send to the server */
+  zmsg_t *msg;
 
 } bgpwatcher_client_broker_req_t;
 
-#define req_hash_func(key) (seq_num_t)((key).seq_num)
-#define req_hash_equal(a, b) ((a).seq_num == (b).seq_num)
+#define req_hash_func(key) ((key)->seq_num)
+#define req_hash_equal(a, b) ((a)->seq_num == (b)->seq_num)
 
-KHASH_INIT(reqset, bgpwatcher_client_broker_req_t, char, 0,
+KHASH_INIT(reqset, bgpwatcher_client_broker_req_t*, char, 0,
 	   req_hash_func, req_hash_equal);
 
 /** State for the zactor that transparently proxies requests between the client
@@ -97,7 +104,7 @@ typedef struct bgpwatcher_client_broker {
   /** Identity of this client. MUST be globally unique */
   char *identity;
 
-  /** Hash of outstanding (un-acked) requests */
+  /** Hash of outstanding (un-acked) requests (used to look up replies) */
   khash_t(reqset) *outstanding_req;
 
   /** Error status */
@@ -143,6 +150,12 @@ typedef struct bgpwatcher_client_broker {
       $TERM.time + shutdown_linger) */
   uint64_t shutdown_time;
 
+  /** Request timeout in msec */
+  uint64_t request_timeout;
+
+  /** Request retries */
+  int request_retries;
+
   /* OWNED BY THE BROKER */
 
   /** Pointer to the poller instance used by the broker */
@@ -171,5 +184,17 @@ typedef struct bgpwatcher_client_broker {
  * memory is to be used.
  */
 void bgpwatcher_client_broker_run(zsock_t *pipe, void *args);
+
+/** Initialize a request instance
+ *
+ * @return pointer to a request instance if successful, NULL otherwise
+ */
+bgpwatcher_client_broker_req_t *bgpwatcher_client_broker_req_init();
+
+/** Free a request instance
+ *
+ * @param req_p           double-pointer to a request instance
+ */
+void bgpwatcher_client_broker_req_free(bgpwatcher_client_broker_req_t **req_p);
 
 #endif

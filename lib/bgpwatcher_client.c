@@ -123,6 +123,11 @@ int send_table(bgpwatcher_client_t *client,
   return send_data_message(&msg, begin_end, client);
 }
 
+static void req_free_wrap(bgpwatcher_client_broker_req_t *req)
+{
+  bgpwatcher_client_broker_req_free(&req);
+}
+
 /* ========== PUBLIC FUNCS BELOW HERE ========== */
 
 bgpwatcher_client_t *bgpwatcher_client_init()
@@ -413,7 +418,6 @@ void bgpwatcher_client_free(bgpwatcher_client_t *client)
     }
 
   /* broker now guaranteed to be shut down */
-
   if(BROKER.outstanding_req != NULL)
     {
       if(kh_size(BROKER.outstanding_req) > 0)
@@ -422,6 +426,8 @@ void bgpwatcher_client_free(bgpwatcher_client_t *client)
 		  "WARNING: At shutdown there were %d outstanding requests\n",
 		  kh_size(BROKER.outstanding_req));
 	}
+      kh_free(reqset, BROKER.outstanding_req,
+	      req_free_wrap);
       kh_destroy(reqset, BROKER.outstanding_req);
       BROKER.outstanding_req = NULL;
     }
@@ -535,6 +541,22 @@ void bgpwatcher_client_set_shutdown_linger(bgpwatcher_client_t *client,
   assert(client != NULL);
 
   BROKER.shutdown_linger = linger;
+}
+
+void bgpwatcher_client_set_request_timeout(bgpwatcher_client_t *client,
+					   uint64_t timeout_ms)
+{
+  assert(client != NULL);
+
+  BROKER.request_timeout = timeout_ms;
+}
+
+void bgpwatcher_client_set_request_retries(bgpwatcher_client_t *client,
+					   int retry_cnt)
+{
+  assert(client != NULL);
+
+  BROKER.request_retries = retry_cnt;
 }
 
 int bgpwatcher_client_set_identity(bgpwatcher_client_t *client,

@@ -56,6 +56,12 @@
     shutting down (in milliseconds) */
 #define BGPWATCHER_CLIENT_SHUTDOWN_LINGER_DEFAULT 10000
 
+/** Default request timeout */
+#define BGPWATCHER_CLIENT_REQUEST_TIMEOUT_DEFAULT 2500
+
+/** Default request retry count  */
+#define BGPWATCHER_CLIENT_REQUEST_RETRIES_DEFAULT 3
+
 /** @} */
 
 /**
@@ -296,6 +302,26 @@ void bgpwatcher_client_set_reconnect_interval_max(bgpwatcher_client_t *client,
  */
 void bgpwatcher_client_set_shutdown_linger(bgpwatcher_client_t *client,
 					   uint64_t linger);
+
+/** Set timeout for a single request
+ *
+ * @param client        pointer to a client instance to update
+ * @param timeout_ms    time in msec before request is retried
+ *
+ * @note defaults to BGPWATCHER_CLIENT_REQUEST_TIMEOUT_DEFAULT
+ */
+void bgpwatcher_client_set_request_timeout(bgpwatcher_client_t *client,
+					   uint64_t timeout_ms);
+
+/** Set the number of retries before a request is abandoned
+ *
+ * @param client        pointer to a client instance to update
+ * @param retry_cnt     number of times to retry a request before giving up
+ *
+ * @note defaults to BGPWATCHER_CLIENT_REQUEST_RETRIES_DEFAULT
+ */
+void bgpwatcher_client_set_request_retries(bgpwatcher_client_t *client,
+					   int retry_cnt);
 
 /** Set the identity string for this client
  *

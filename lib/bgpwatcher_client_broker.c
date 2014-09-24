@@ -125,7 +125,7 @@ static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
   *msg_p = NULL;
 
   bgpwatcher_client_broker_req_t rx_rep = {0, 0};
-  bgpwatcher_client_broker_req_t req;
+  bgpwatcher_client_broker_req_t *req;
   int rc;
 
   khiter_t khiter;
@@ -167,7 +167,7 @@ static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
     }
 
   /* grab the corresponding record from the outstanding req set */
-  if((khiter = kh_get(reqset, broker->outstanding_req, rx_rep)) ==
+  if((khiter = kh_get(reqset, broker->outstanding_req, &rx_rep)) ==
      kh_end(broker->outstanding_req))
     {
       /* err, a reply for a non-existent request? */
@@ -178,13 +178,15 @@ static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
     }
 
   req = kh_key(broker->outstanding_req, khiter);
-  assert(req.seq_num == rx_rep.seq_num);
-  kh_del(reqset, broker->outstanding_req, khiter);
+  assert(req->seq_num == rx_rep.seq_num);
 
   /*fprintf(stderr, "MATCH: req.seq: %"PRIu32", req.msg_type: %d\n",
     req.seq_num, req.msg_type);*/
 
-  DO_CALLBACK(handle_reply, req.seq_num, rc);
+  DO_CALLBACK(handle_reply, req->seq_num, rc);
+
+  kh_del(reqset, broker->outstanding_req, khiter);
+  bgpwatcher_client_broker_req_free(&req);
 
   zmsg_destroy(&msg);
   return 0;
@@ -193,6 +195,29 @@ static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
   zmsg_destroy(&msg);
   zframe_destroy(&frame);
   return -1;
+}
+
+static int send_request(bgpwatcher_client_broker_t *broker,
+			bgpwatcher_client_broker_req_t *req)
+{
+  zmsg_t *msg_copy;
+
+  if((msg_copy = zmsg_dup(req->msg)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not duplicate request message");
+      return -1;
+    }
+
+  req->retry_at = zclock_time() + broker->request_timeout;
+  if(zmsg_send(&msg_copy, broker->server_socket) != 0)
+    {
+      bgpwatcher_err_set_err(ERR, errno,
+			     "Could not pass message to server");
+      return -1;
+    }
+
+  return 0;
 }
 
 static int event_loop(bgpwatcher_client_broker_t *broker)
@@ -204,8 +229,10 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 
   bgpwatcher_msg_type_t msg_type;
   uint8_t msg_type_p;
-  bgpwatcher_client_broker_req_t req;
+  bgpwatcher_client_broker_req_t *req;
   int khret;
+
+  khiter_t k;
 
   /*fprintf(stderr, "DEBUG: Beginning loop cycle\n");*/
 
@@ -218,7 +245,7 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	{
 	  /* the server has been flat-lining for too long, get the paddles! */
 	  fprintf(stderr, "WARN: heartbeat failure, can't reach server\n");
-	  fprintf(stderr, "WARN: reconnecting in %"PRIu64" msec…\n",
+	  fprintf(stderr, "WARN: reconnecting in %"PRIu64" msec...\n",
 		  broker->reconnect_interval_next);
 
 	  zclock_sleep(broker->reconnect_interval_next);
@@ -304,7 +331,14 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
       if((msg_type =
 	  bgpwatcher_msg_type(msg, 1)) != BGPWATCHER_MSG_TYPE_UNKNOWN)
 	{
-	  req.msg_type = msg_type;
+	  if((req = bgpwatcher_client_broker_req_init()) == NULL)
+	    {
+	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+				     "Could not create new request structure");
+	      goto err;
+	    }
+
+	  req->msg_type = msg_type;
 
 	  /* now we need the seq number */
 	  if((frame = zmsg_next(msg)) == NULL)
@@ -320,7 +354,15 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 				     "(malformed sequence number)");
 	      goto err;
 	    }
-	  memcpy(&req.seq_num, zframe_data(frame), sizeof(seq_num_t));
+	  memcpy(&req->seq_num, zframe_data(frame), sizeof(seq_num_t));
+
+	  /* init the re-transmit state */
+	  req->retries_remaining = broker->request_retries;
+	  /* retry_at is set by send_request */
+
+	  /* give the request the message, it will be dup'd before sending */
+	  req->msg = msg;
+	  msg = NULL;
 
 	  /*fprintf(stderr, "DEBUG: tx.seq: %"PRIu32", tx.msg_type: %d\n",
 	    req.seq_num, req.msg_type);*/
@@ -335,13 +377,11 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	    }
 
 	  /* now send on to the server */
-	  /** @todo add re-tx here somewhere */
-	  if(zmsg_send(&msg, broker->server_socket) != 0)
+	  if(send_request(broker, req) != 0)
 	    {
-	      bgpwatcher_err_set_err(ERR, errno,
-				     "Could not pass message to server");
 	      goto err;
 	    }
+	  req = NULL;
 	}
       else
 	{
@@ -381,14 +421,51 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	{
 	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 				 "Could not create new heartbeat frame");
-	  return -1;
+	  goto err;
 	}
 
       if(zframe_send(&frame, broker->server_socket, 0) == -1)
 	{
 	  bgpwatcher_err_set_err(ERR, errno,
 				 "Could not send heartbeat msg to server");
-	  return -1;
+	  goto err;
+	}
+    }
+
+  /* re-tx any requests that have timed out */
+  /** @todo replace with an ordered list for efficiency */
+  for(k = kh_begin(broker->outstanding_req);
+      k != kh_end(broker->outstanding_req); ++k)
+    {
+      if(kh_exist(broker->outstanding_req, k) != 0)
+	{
+	  req = kh_key(broker->outstanding_req, k);
+	  assert(req != NULL);
+
+	  if(zclock_time () < req->retry_at)
+	    {
+	      continue; /* keep on waitin' */
+	    }
+
+	  if(--req->retries_remaining == 0)
+	    {
+	      /* time to abandon this request */
+	      /** @todo send notice to client */
+	      fprintf(stderr,
+		      "DEBUG: Request %"PRIu32" expired without reply, "
+		      "abandoning\n",
+		      req->seq_num);
+	      bgpwatcher_client_broker_req_free(&req);
+	      kh_del(reqset, broker->outstanding_req, k);
+	      continue;
+	    }
+
+	  /*fprintf(stderr, "DEBUG: Retrying request %"PRIu32"\n", req->seq_num);*/
+
+	  if(send_request(broker, req) != 0)
+	    {
+	      goto err;
+	    }
 	}
     }
 
@@ -401,6 +478,7 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
   return -1;
 
  err:
+  bgpwatcher_client_broker_req_free(&req);
   zmsg_destroy(&msg);
   return -1;
 }
@@ -468,4 +546,22 @@ void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
 
   /* free our poller */
   zpoller_destroy(&broker->poller);
+}
+
+bgpwatcher_client_broker_req_t *bgpwatcher_client_broker_req_init()
+{
+  return malloc_zero(sizeof(bgpwatcher_client_broker_req_t));
+}
+
+void bgpwatcher_client_broker_req_free(bgpwatcher_client_broker_req_t **req_p)
+{
+  assert(req_p != NULL);
+  bgpwatcher_client_broker_req_t *req = *req_p;
+
+  if(req != NULL)
+    {
+      zmsg_destroy(&req->msg);
+      free(req);
+      *req_p = NULL;
+    }
 }
