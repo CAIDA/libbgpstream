@@ -199,7 +199,7 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 {
   zsock_t *poll_sock;
 
-  zmsg_t *msg;
+  zmsg_t *msg = NULL;
   zframe_t *frame;
 
   bgpwatcher_msg_type_t msg_type;
@@ -359,7 +359,11 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	      fprintf(stderr,
 		      "INFO: Got $TERM, shutting down client broker on next "
 		      "cycle\n");
-	      broker->shutdown++;
+	      if(broker->shutdown == 0)
+		{
+		  broker->shutdown =
+		    zclock_time() + BGPWATCHER_CLIENT_SHUTDOWN_LINGER;
+		}
 	    }
 	}
       zmsg_destroy(&msg);
@@ -439,18 +443,33 @@ void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
     }
 
   /* start processing requests */
-  /* if(outstanding_req > 0 && broker->shutdown < SHUTDOWN_NOW) */
-  while((broker->shutdown == 0) && (event_loop(broker) == 0))
-    {
-      /* nothing here */
-    }
+  /*  while(((broker->shutdown == 0) ||
+	 (kh_size(broker->outstanding_req) > 0 &&
+	  (broker->shutdown > zclock_time()))) &&
+	  (event_loop(broker) == 0)) */
 
-  /* free our poller */
-  zpoller_destroy(&broker->poller);
+  while(1)
+    {
+      /* if we have been asked to shutdown, we wait until we are done with our
+	 requests, or until the linger timeout has passed */
+      if(broker->shutdown > 0 &&
+	 ((kh_size(broker->outstanding_req) == 0) ||
+	  (broker->shutdown <= zclock_time())))
+	{
+	  break;
+	}
+      if(event_loop(broker) != 0)
+	{
+	  break;
+	}
+    }
 
   if(server_disconnect(broker) != 0)
     {
       // err will be set
       return;
     }
+
+  /* free our poller */
+  zpoller_destroy(&broker->poller);
 }

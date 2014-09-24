@@ -326,10 +326,6 @@ int main(int argc, char **argv)
   fprintf(stderr, "TEST: Sending table end: %d\n", rc);
   fprintf(stderr, "--------------------[ PEER DONE ]--------------------\n\n");
 
-
-  fprintf(stderr, "DEBUG: Hax to wait for tx/rx. FIXME\n");
-  sleep(10);
-
   fprintf(stderr, "TEST: Shutting down...\n");
   bgpwatcher_pfx_record_free(&pfx);
   bgpwatcher_client_pfx_table_free(&pfx_table);

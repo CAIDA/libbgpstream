@@ -52,6 +52,10 @@
 /** Default the client request retry count to 3 */
 #define BGPWATCHER_CLIENT_REQUEST_RETRIES 3
 
+/** The amount of time that the client will wait for outstanding messages when
+    shutting down (in milliseconds) */
+#define BGPWATCHER_CLIENT_SHUTDOWN_LINGER 10000
+
 /** @} */
 
 /**

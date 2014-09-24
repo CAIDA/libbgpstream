@@ -137,7 +137,7 @@ typedef struct bgpwatcher_client_broker {
   uint64_t reconnect_interval_next;
 
   /** Indicates that the client has been signaled to shutdown */
-  int shutdown;
+  uint64_t shutdown;
 
   /* OWNED BY THE BROKER */
 
