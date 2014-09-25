@@ -344,15 +344,11 @@ peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
 void peerdata_log_event(peerdata_t *peer_data, 
 			bgpstream_record_t * bs_record, bgpstream_elem_t *bs_elem)
 {
-  // TODO:
-  // print peer_data variables
-  // print bs_record variables
+  // TODO: print in log
+  return;
+
   if(bs_elem != NULL)
     {
-      // DEBUG:
-      /* if(strcmp(peer_data->peer_address_str, "202_79_197_122") != 0) */
-      /* 	return; */
-
       // print bs_elem variables
       printf("Something weird in apply_elem\n");
       printf("\t %ld E %s - (%d - %d)\n", 
