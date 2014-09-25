@@ -40,6 +40,9 @@
  *
  */
 
+/** The maximum number of requests that we allow to be outstanding at any time */
+#define MAX_OUTSTANDING_REQ 9999
+
 /**
  * @name Public Opaque Data Structures
  *
@@ -166,6 +169,9 @@ typedef struct bgpwatcher_client_broker {
 
   /** Pointer to the poller instance used by the broker */
   zpoller_t *poller;
+
+  /** Indicates if the poller is currently polling the master pipe */
+  int poller_contains_master;
 
   /** Pointer to the pipe used to talk to the master */
   zsock_t *master_pipe;

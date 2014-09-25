@@ -813,6 +813,8 @@ int bgpwatcher_server_start(bgpwatcher_server_t *server)
       return -1;
     }
 
+  zsocket_set_rcvhwm(server->client_socket, 10000);
+
   /* seed the time for the next heartbeat sent to servers */
   server->heartbeat_next = zclock_time() + server->heartbeat_interval;
 
