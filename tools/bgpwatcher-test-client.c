@@ -36,6 +36,8 @@
 
 #include "config.h"
 
+#define TEST_TABLE_SIZE 500000
+
 static void handle_reply(bgpwatcher_client_t *client, seq_num_t seq_num,
 			 int rc, void *user)
 {
@@ -142,6 +144,7 @@ static void usage(const char *name)
 
 int main(int argc, char **argv)
 {
+  int i;
   /* for option parsing */
   int opt;
   int prevoptind;
@@ -318,12 +321,15 @@ int main(int argc, char **argv)
     }
   fprintf(stderr, "TEST: Sending table begin: %d\n", rc);
 
-  if((rc = bgpwatcher_client_pfx_table_add(pfx_table, pfx)) < 0)
+  fprintf(stderr, "TEST: Sending %d table records\n", TEST_TABLE_SIZE);
+  for(i=0; i<TEST_TABLE_SIZE; i++)
     {
-      fprintf(stderr, "Could not add pfx to table\n");
-      goto err;
+      if((rc = bgpwatcher_client_pfx_table_add(pfx_table, pfx)) < 0)
+	{
+	  fprintf(stderr, "Could not add pfx to table\n");
+	  goto err;
+	}
     }
-  fprintf(stderr, "TEST: Sending table record: %d\n", rc);
 
   if((rc = bgpwatcher_client_pfx_table_end(pfx_table)) < 0)
     {
