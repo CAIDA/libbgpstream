@@ -231,15 +231,10 @@ void bgpwatcher_pfx_record_free(bgpwatcher_pfx_record_t **pfx_p)
   *pfx_p = NULL;
 }
 
-bgpwatcher_pfx_record_t *bgpwatcher_pfx_record_deserialize(zmsg_t *msg)
+int bgpwatcher_pfx_record_deserialize(zmsg_t *msg,
+				      bgpwatcher_pfx_record_t *pfx)
 {
-  bgpwatcher_pfx_record_t *pfx;
   zframe_t *frame;
-
-  if((pfx = bgpwatcher_pfx_record_init()) == NULL)
-    {
-      return NULL;
-    }
 
   /* prefix */
   if(msg_pop_ip(msg, &pfx->prefix) != 0)
@@ -278,12 +273,12 @@ bgpwatcher_pfx_record_t *bgpwatcher_pfx_record_deserialize(zmsg_t *msg)
       goto err;
     }
 
-  return pfx;
+  return 0;
 
  err:
   zframe_destroy(&frame);
   bgpwatcher_pfx_record_free(&pfx);
-  return NULL;
+  return -1;
 }
 
 zmsg_t *bgpwatcher_pfx_record_serialize(bgpwatcher_pfx_record_t *pfx)

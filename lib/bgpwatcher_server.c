@@ -362,8 +362,6 @@ static int handle_pfx_record(bgpwatcher_server_t *server,
 			     bgpwatcher_server_client_t *client,
 			     zmsg_t *msg)
 {
-  bgpwatcher_pfx_record_t *rec = NULL;
-
   if(client->table_type != BGPWATCHER_TABLE_TYPE_PREFIX)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
@@ -371,23 +369,21 @@ static int handle_pfx_record(bgpwatcher_server_t *server,
       goto err;
     }
 
-  if((rec = bgpwatcher_pfx_record_deserialize(msg)) == NULL)
+  if(bgpwatcher_pfx_record_deserialize(msg, &server->pfx) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 			     "Could not deserialize prefix record");
       goto err;
     }
 
-  if(DO_CALLBACK(recv_pfx_record, client->table_num, rec) != 0)
+  if(DO_CALLBACK(recv_pfx_record, client->table_num, &server->pfx) != 0)
     {
       goto err;
     }
 
-  bgpwatcher_pfx_record_free(&rec);
   return 0;
 
 err:
-  bgpwatcher_pfx_record_free(&rec);
   return -1;
 }
 

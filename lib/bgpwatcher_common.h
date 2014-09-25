@@ -289,12 +289,14 @@ bgpwatcher_pfx_record_t *bgpwatcher_pfx_record_init();
  */
 void bgpwatcher_pfx_record_free(bgpwatcher_pfx_record_t **pfx_p);
 
-/** Create a new pfx record from the given msg
+/** Create fill the given pfx record from the given msg
  *
  * @param msg           pointer to a 0mq msg to extract the pfx from
- * @return pointer to a new pfx record if successful, NULL otherwise
+ * @param pfx           pointer to an intialized pfx record to fill
+ * @return 0 if the record was successfully deserialized, -1 otherwise
  */
-bgpwatcher_pfx_record_t *bgpwatcher_pfx_record_deserialize(zmsg_t *msg);
+int bgpwatcher_pfx_record_deserialize(zmsg_t *msg,
+				      bgpwatcher_pfx_record_t *pfx);
 
 /** Create a new 0mq msg from the given pfx record
  *

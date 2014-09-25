@@ -227,6 +227,9 @@ struct bgpwatcher_server {
   /** Next table number */
   uint64_t table_num;
 
+  /** Buffer for a re-usable pfx record */
+  bgpwatcher_pfx_record_t pfx;
+
 };
 
 /** @} */
