@@ -46,6 +46,9 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
   uint8_t msg_type_p;
   zframe_t *frame;
 
+  /* destroy the poller if we have one */
+  zpoller_destroy(&broker->poller);
+
   /* connect to server socket */
   if((broker->server_socket = zsocket_new(broker->ctx, ZMQ_DEALER)) == NULL)
     {
@@ -80,10 +83,11 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
       return -1;
     }
 
-  if(zpoller_add(broker->poller, broker->server_socket) != 0)
+  if((broker->poller = zpoller_new(broker->server_socket,
+				   NULL)) == NULL)
     {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_START_FAILED,
-			     "Could not add server socket to poller");
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not initialize poller");
       return -1;
     }
 
@@ -261,12 +265,6 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	    }
 
 	  zsocket_destroy(broker->ctx, broker->server_socket);
-	  if(zpoller_remove(broker->poller, broker->server_socket) != 0)
-	    {
-	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_UNHANDLED,
-				  "Could not remove server socket from poller");
-	      goto err;
-	    }
 	  server_connect(broker);
 	  assert(broker->server_socket != NULL);
 
@@ -323,7 +321,6 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
       broker->reconnect_interval_next =
 	broker->reconnect_interval_min;
     }
-
   /* is there an incoming message from our master? */
   else if(poll_sock == broker->master_pipe)
     {
@@ -528,15 +525,6 @@ void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
   assert(pipe != NULL);
 
   broker->master_pipe = pipe;
-
-  /* init our poller */
-  /* server_connect will add the server socket */
-  if((broker->poller = zpoller_new(broker->master_pipe, NULL)) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Could not initialize poller");
-      return;
-    }
 
   /* connect to the server */
   if(server_connect(broker) != 0)
