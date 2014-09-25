@@ -123,9 +123,9 @@ int send_table(bgpwatcher_client_t *client,
   return send_data_message(&msg, begin_end, client);
 }
 
-static void req_free_wrap(bgpwatcher_client_broker_req_t *req)
+static void req_free_wrap(void **req)
 {
-  bgpwatcher_client_broker_req_free(&req);
+  bgpwatcher_client_broker_req_free((bgpwatcher_client_broker_req_t**)req);
 }
 
 /* ========== PUBLIC FUNCS BELOW HERE ========== */
@@ -143,11 +143,16 @@ bgpwatcher_client_t *bgpwatcher_client_init()
   BROKER.master = client;
 
   /* init the outstanding req set */
-  if((BROKER.outstanding_req = kh_init(reqset)) == NULL)
+  if((BROKER.req_hash = kh_init(reqset)) == NULL)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Failed to create request set");
       goto err;
+    }
+  if((BROKER.req_list = zlist_new()) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Failed to create request list");
     }
 
   /* init czmq */
@@ -418,19 +423,23 @@ void bgpwatcher_client_free(bgpwatcher_client_t *client)
     }
 
   /* broker now guaranteed to be shut down */
-  if(BROKER.outstanding_req != NULL)
+  if(BROKER.req_hash != NULL)
     {
-      if(kh_size(BROKER.outstanding_req) > 0)
+      if(kh_size(BROKER.req_hash) > 0)
 	{
 	  fprintf(stderr,
 		  "WARNING: At shutdown there were %d outstanding requests\n",
-		  kh_size(BROKER.outstanding_req));
+		  kh_size(BROKER.req_hash));
 	}
-      kh_free(reqset, BROKER.outstanding_req,
-	      req_free_wrap);
-      kh_destroy(reqset, BROKER.outstanding_req);
-      BROKER.outstanding_req = NULL;
+      kh_destroy(reqset, BROKER.req_hash);
+      BROKER.req_hash = NULL;
     }
+
+  /* the req_list shared the same objects as the hash, so just trash the list */
+  /* DO NOT set the destructor before this point otherwise zlist merrily free's
+     records on every _remove. sigh */
+  zlist_set_destructor(BROKER.req_list, req_free_wrap);
+  zlist_destroy(&BROKER.req_list);
 
   if(BROKER.server_uri != NULL)
     {

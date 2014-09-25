@@ -167,26 +167,31 @@ static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
     }
 
   /* grab the corresponding record from the outstanding req set */
-  if((khiter = kh_get(reqset, broker->outstanding_req, &rx_rep)) ==
-     kh_end(broker->outstanding_req))
+  if((khiter = kh_get(reqset, broker->req_hash, &rx_rep)) ==
+     kh_end(broker->req_hash))
     {
       /* err, a reply for a non-existent request? */
-      fprintf(stderr, "WARN: No outstanding request info for seq num %"PRIu32,
+      #if 0
+      fprintf(stderr,
+	      "WARN: No outstanding request info for seq num %"PRIu32"\n",
 	      rx_rep.seq_num);
+      #endif
       zmsg_destroy(&msg);
       return 0;
     }
 
-  req = kh_key(broker->outstanding_req, khiter);
+  req = kh_key(broker->req_hash, khiter);
   assert(req->seq_num == rx_rep.seq_num);
+
+  req->reply_rx = 1;
 
   /*fprintf(stderr, "MATCH: req.seq: %"PRIu32", req.msg_type: %d\n",
     req.seq_num, req.msg_type);*/
 
   DO_CALLBACK(handle_reply, req->seq_num, rc);
 
-  kh_del(reqset, broker->outstanding_req, khiter);
-  bgpwatcher_client_broker_req_free(&req);
+  kh_del(reqset, broker->req_hash, khiter);
+  /* still held by the list, don't free */
 
   zmsg_destroy(&msg);
   return 0;
@@ -368,12 +373,21 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	    req.seq_num, req.msg_type);*/
 
 	  /* add to the req hash */
-	  kh_put(reqset, broker->outstanding_req, req, &khret);
+	  kh_put(reqset, broker->req_hash, req, &khret);
 	  if(khret == -1)
 	    {
 	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 				     "Could not add request to set");
 	      goto err;
+	    }
+
+	  /* add to the end of the req list */
+	  /* list will be ordered oldest (smallest time) to newest (largest
+	     time) */
+	  if(zlist_append(broker->req_list, req) != 0)
+	    {
+	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+				     "Could not add request to list");
 	    }
 
 	  /* now send on to the server */
@@ -434,39 +448,59 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 
   /* re-tx any requests that have timed out */
   /** @todo replace with an ordered list for efficiency */
-  for(k = kh_begin(broker->outstanding_req);
-      k != kh_end(broker->outstanding_req); ++k)
+  req = zlist_first(broker->req_list);
+
+  while(req != NULL)
     {
-      if(kh_exist(broker->outstanding_req, k) != 0)
+      if(req->reply_rx != 0)
 	{
-	  req = kh_key(broker->outstanding_req, k);
-	  assert(req != NULL);
-
-	  if(zclock_time () < req->retry_at)
-	    {
-	      continue; /* keep on waitin' */
-	    }
-
-	  if(--req->retries_remaining == 0)
-	    {
-	      /* time to abandon this request */
-	      /** @todo send notice to client */
-	      fprintf(stderr,
-		      "DEBUG: Request %"PRIu32" expired without reply, "
-		      "abandoning\n",
-		      req->seq_num);
-	      bgpwatcher_client_broker_req_free(&req);
-	      kh_del(reqset, broker->outstanding_req, k);
-	      continue;
-	    }
-
-	  /*fprintf(stderr, "DEBUG: Retrying request %"PRIu32"\n", req->seq_num);*/
-
-	  if(send_request(broker, req) != 0)
-	    {
-	      goto err;
-	    }
+	  /* a reply was received since we last checked */
+	  /*fprintf(stderr, "Removing ack'd message %d\n", req->seq_num);*/
+	  zlist_remove(broker->req_list, req);
+	  bgpwatcher_client_broker_req_free(&req);
+	  req = zlist_first(broker->req_list);
+	  continue;
 	}
+
+      if(zclock_time () < req->retry_at)
+	{
+	  /*fprintf(stderr, "DEBUG: at %"PRIu64", waiting for %"PRIu64"\n",
+	    zclock_time(), req->retry_at);*/
+	  /* the list is ordered, so we are done */
+	  break;
+	}
+
+      /* we are either going to discard this request, or re-tx it */
+      zlist_remove(broker->req_list, req);
+
+      if(--req->retries_remaining == 0)
+	{
+	  /* time to abandon this request */
+	  /** @todo send notice to client */
+	  fprintf(stderr,
+		  "DEBUG: Request %"PRIu32" expired without reply, "
+		  "abandoning\n",
+		  req->seq_num);
+	  bgpwatcher_client_broker_req_free(&req);
+	  req = zlist_first(broker->req_list);
+	  continue;
+	}
+
+      fprintf(stderr, "DEBUG: Retrying request %"PRIu32"\n", req->seq_num);
+
+      if(send_request(broker, req) != 0)
+	{
+	  goto err;
+	}
+
+      /* add it to the end of the list (it is now the oldest time) */
+      if(zlist_append(broker->req_list, req) != 0)
+	{
+	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+				 "Could not add request to list");
+	}
+
+      req = zlist_first(broker->req_list);
     }
 
   zmsg_destroy(&msg);
@@ -527,7 +561,7 @@ void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
       /* if we have been asked to shutdown, we wait until we are done with our
 	 requests, or until the linger timeout has passed */
       if(broker->shutdown_time > 0 &&
-	 ((kh_size(broker->outstanding_req) == 0) ||
+	 ((kh_size(broker->req_hash) == 0) ||
 	  (broker->shutdown_time <= zclock_time())))
 	{
 	  break;

@@ -78,10 +78,13 @@ typedef struct bgpwatcher_client_broker_req {
   uint64_t retry_at;
 
   /** The number of retries that remain */
-  int retries_remaining;
+  uint8_t retries_remaining;
 
   /** Copy of the request to send to the server */
   zmsg_t *msg;
+
+  /** Has a reply been received? */
+  uint8_t reply_rx;
 
 } bgpwatcher_client_broker_req_t;
 
@@ -105,7 +108,10 @@ typedef struct bgpwatcher_client_broker {
   char *identity;
 
   /** Hash of outstanding (un-acked) requests (used to look up replies) */
-  khash_t(reqset) *outstanding_req;
+  khash_t(reqset) *req_hash;
+
+  /** Ordered list of outstanding requests (used for re-transmits) */
+  zlist_t *req_list;
 
   /** Error status */
   bgpwatcher_err_t err;
