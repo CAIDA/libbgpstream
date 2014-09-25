@@ -23,6 +23,8 @@
  *
  */
 
+#include "config.h"
+
 #include <stdint.h>
 
 #include <bgpwatcher_int.h>
@@ -59,10 +61,12 @@ static int recv_pfx_record(bgpwatcher_server_t *server,
 			   bgpwatcher_pfx_record_t *record,
 			   void *user)
 {
+#ifdef DEBUG
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
   fprintf(stderr, "HANDLE: Handling pfx record\n");
   bgpwatcher_pfx_record_dump(record);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
+#endif
   return 0;
 }
 
@@ -71,10 +75,12 @@ static int recv_peer_record(bgpwatcher_server_t *server,
 			    bgpwatcher_peer_record_t *record,
 			    void *user)
 {
+#ifdef DEBUG
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
   fprintf(stderr, "HANDLE: Handling peer record\n");
   bgpwatcher_peer_record_dump(record);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
+#endif
   return 0;
 }
 

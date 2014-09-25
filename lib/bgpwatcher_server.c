@@ -23,6 +23,7 @@
  *
  */
 
+#include "config.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -167,7 +168,7 @@ static int clients_purge(bgpwatcher_server_t *server)
 	      break; /* client is alive, we're done here */
 	    }
 
-	  fprintf(stderr, "DEBUG: Removing dead client (%s)\n", client->id);
+	  fprintf(stderr, "INFO: Removing dead client (%s)\n", client->id);
 	  if(DO_CALLBACK(client_disconnect, (&client->info)) != 0)
 	    {
 	      return -1;
@@ -199,8 +200,10 @@ static int send_reply(bgpwatcher_server_t *server,
   uint8_t reply_t_p = BGPWATCHER_MSG_TYPE_REPLY;
   zmsg_t *msg;
 
+#ifdef DEBUG
   fprintf(stderr, "======================================\n");
   fprintf(stderr, "DEBUG: Sending reply\n");
+#endif
 
   if((msg = zmsg_new()) == NULL)
     {
@@ -243,9 +246,10 @@ static int send_reply(bgpwatcher_server_t *server,
       goto err;
     }
 
-  /* DEBUG */
+#ifdef DEBUG
   zmsg_print(msg);
   fprintf(stderr, "======================================\n\n");
+#endif
 
   if(zmsg_send(&msg, server->client_socket) != 0)
     {
@@ -532,11 +536,12 @@ static int handle_message(bgpwatcher_server_t *server,
   switch(msg_type)
     {
     case BGPWATCHER_MSG_TYPE_DATA:
-      /* DEBUG */
+#ifdef DEBUG
       fprintf(stderr, "**************************************\n");
       fprintf(stderr, "DEBUG: Got data from client:\n");
       zmsg_print(msg);
       fprintf(stderr, "**************************************\n\n");
+#endif
 
       /* parse the request, and then call the appropriate callback */
       /* send a reply back to the client based on the callback result */
@@ -557,14 +562,15 @@ static int handle_message(bgpwatcher_server_t *server,
 	  goto err;
 	}
 
+#ifdef DEBUG
       fprintf(stderr, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n");
+#endif
 
       /* msg was destroyed by handle_data_message */
       break;
 
     case BGPWATCHER_MSG_TYPE_HEARTBEAT:
       /* safe to ignore these */
-      /*fprintf(stderr, "DEBUG: Got a heartbeat from %s\n", client->id);*/
     case BGPWATCHER_MSG_TYPE_READY:
       /* and these */
       break;
@@ -573,9 +579,10 @@ static int handle_message(bgpwatcher_server_t *server,
       /* if we get an explicit term, we want to remove the client from our
 	 hash, and also fire the appropriate callback */
 
-      /* DEBUG */
+#ifdef DEBUG
       fprintf(stderr, "**************************************\n");
       fprintf(stderr, "DEBUG: Got disconnect from client:\n");
+#endif
 
       /* call the "client disconnect" callback */
       if(DO_CALLBACK(client_disconnect, &client->info) != 0)
@@ -622,8 +629,6 @@ static int run_server(bgpwatcher_server_t *server)
 
   uint8_t msg_type_p;
 
-  /*fprintf(stderr, "DEBUG: Beginning loop cycle\n");*/
-
   /* poll for messages from clients */
   if((rc = zmq_poll(poll_items, POLL_ITEM_CNT,
 		    server->heartbeat_interval * ZMQ_POLL_MSEC)) == -1)
@@ -657,7 +662,9 @@ static int run_server(bgpwatcher_server_t *server)
 	      goto err;
 	    }
 
+#ifdef DEBUG
 	  fprintf(stderr, "DEBUG: Creating new client %s\n", client->id);
+#endif
 
 	  /* call the "client connect" callback */
 	  if(DO_CALLBACK(client_connect, &client->info) != 0)
