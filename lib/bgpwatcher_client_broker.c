@@ -522,7 +522,7 @@ void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
     }
 
   /* start processing requests */
-  while(1)
+  while(zctx_interrupted == 0)
     {
       /* if we have been asked to shutdown, we wait until we are done with our
 	 requests, or until the linger timeout has passed */
