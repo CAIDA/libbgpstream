@@ -47,11 +47,11 @@
 /** Default URI for the server to listen for client requests on */
 #define BGPWATCHER_CLIENT_URI_DEFAULT "tcp://*:6300"
 
-/** Default the server/client heartbeat interval to 1 second */
-#define BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT 1000
+/** Default the server/client heartbeat interval to 10 msec */
+#define BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT 10
 
-/** Default the server/client heartbeat liveness to 3 beats */
-#define BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT 3
+/** Default the server/client heartbeat liveness to 10 beats */
+#define BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT 10
 
 /** Default the client reconnect minimum interval to 1 second */
 #define BGPWATCHER_RECONNECT_INTERVAL_MIN 1000
