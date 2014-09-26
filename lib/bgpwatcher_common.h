@@ -59,6 +59,31 @@
 /** Default the client reconnect maximum interval to 32 seconds */
 #define BGPWATCHER_RECONNECT_INTERVAL_MAX 32000
 
+#ifdef DEBUG_TIMING
+
+#define TIMER_START(timer)			\
+  struct timeval timer##_start;			\
+  do {						\
+  gettimeofday_wrap(&timer##_start);		\
+  } while(0)
+
+#define TIMER_END(timer)					\
+  struct timeval timer##_end, timer##_diff;				\
+  do {								\
+    gettimeofday_wrap(&timer##_end);				\
+    timeval_subtract(&timer##_diff, &timer##_end, &timer##_start);	\
+  } while(0)
+
+#define TIMER_VAL(timer)			\
+  ((timer##_diff.tv_sec*1000000) + timer##_diff.tv_usec)
+#else
+
+#define TIMER_START(timer)
+#define TIMER_END(timer)
+#define TIMER_VAL(timer) (uint64_t)(0)
+
+#endif
+
 /* shared constants are in bgpwatcher_common.h */
 
 /** @} */
