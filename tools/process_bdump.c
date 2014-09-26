@@ -62,37 +62,11 @@ static char *attr_aspath(attributes_t *a) {
     return "";
 }
 
-static int mode=0;
+static int mode=1;       // m option
 static int timetype=0;
 
-static const char USAGE[] = "\
-bgpdump version " PACKAGE_VERSION "\n\
-Usage: bgpdump [-m|-M] [-t dump|-t change] [-O <output-file>] <input-file>\n\
-bgpdump translates binary MRT files (possibly compressed) into readable output\n\
-Output mode:\n\
-    -H         multi-line, human-readable (the default)\n\
-    -m         one-line per entry with unix timestamps\n\
-    -M         one-line per entry with human readable timestamps\n\
-    (there are other differences between -m and -M)\n\
-\n\
-Common options:\n\
-    -O <file>  output to <file> instead of STDOUT\n\
-    -s         log to syslog (the default)\n\
-    -v         log to STDERR\n\
-\n\
-Options for -m and -M modes:\n\
-    -t dump    timestamps for RIB dumps reflect the time of the dump (the default)\n\
-    -t change  timestamps for RIB dumps reflect the last route modification\n\
-\n\
-Special options:\n\
-    -T         run unit tests and exit\n\
-\n";
 
-extern char *optarg;
-extern int optind;
-
-
-void bgpdump_process(BGPDUMP_ENTRY *my_entry) {
+void print_bs_record_bgpdumpway(BGPDUMP_ENTRY *my_entry) {
 
   mode=1;  // m option - H = 0, m =1, M =2
   timetype=0; // dump = 0 [default], change = 1

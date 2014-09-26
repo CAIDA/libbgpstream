@@ -60,7 +60,8 @@ void usage() {
 	  "   -W <start,end> process records only within the given time window*\n"
 	  "   -b             make blocking requests for BGP records\n"
 	  "                  allows bgpstream to be used to process data in real-time\n"
-	  "   -r             print information for each BGP record (default)\n"
+	  "   -r             print information for each BGP record (in bgpstream format) [default]\n"
+	  "   -m             print information for each BGP valid record (in bgpdump -m format)\n"
 	  "   -e             print information for each elemnt of a valid BGP record\n"
 	  "\n"
 	  "* denotes an option that can be given multiple times\n"
@@ -69,6 +70,9 @@ void usage() {
 
 static void print_bs_record(bgpstream_record_t * bs_record);
 static void print_bs_elem(bgpstream_elem_t * bs_elem);
+// print
+void print_bs_record_bgpdumpway(BGPDUMP_ENTRY *my_entry);
+
 
 int main(int argc, char *argv[])
 {
@@ -95,10 +99,11 @@ int main(int argc, char *argv[])
   char * datasource_name = NULL;
   int blocking = 0;
   int record_output_on = 0;
+  int record_bgpdump_output_on = 0;
   int elem_output_on = 0;
   
   while (prevoptind = optind,
-	 (opt = getopt (argc, argv, "P:C:T:W:d:berh?")) >= 0)
+	 (opt = getopt (argc, argv, "P:C:T:W:d:brmeh?")) >= 0)
     {
       if (optind == prevoptind + 2 && (optarg == NULL || *optarg == '-') ) {
         opt = ':';
@@ -175,6 +180,9 @@ int main(int argc, char *argv[])
 	case 'r':
 	  record_output_on = 1;
 	  break;
+	case 'm':
+	  record_bgpdump_output_on = 1;
+	  break;
 	case 'e':
 	  elem_output_on = 1;
 	  break;
@@ -234,7 +242,7 @@ int main(int argc, char *argv[])
   
   // if the user did not specify any output format
   // then the default one is per record
-  if(record_output_on == 0 && elem_output_on == 0) {
+  if(record_output_on == 0 && elem_output_on == 0 && record_bgpdump_output_on == 0) {
     record_output_on = 1;
   }
   
@@ -315,17 +323,24 @@ int main(int argc, char *argv[])
 	{
 	  print_bs_record(bs_record);
 	}
-      if(elem_output_on) 
+      if(bs_record->status == VALID_RECORD) 
 	{
-	  // extract queue
-	  bs_elem_head = bgpstream_get_elem_queue(bs_record);
-	  bs_elem_iterator = bs_elem_head;
-	  while(bs_elem_iterator) 
+	  if(record_bgpdump_output_on)
 	    {
-	      print_bs_elem(bs_elem_iterator);
-	      bs_elem_iterator = bs_elem_iterator->next;
+	      print_bs_record_bgpdumpway(bs_record->bd_entry);
 	    }
-	  bgpstream_destroy_elem_queue(bs_elem_head);
+	  if(elem_output_on) 
+	    {
+	      // extract queue
+	      bs_elem_head = bgpstream_get_elem_queue(bs_record);
+	      bs_elem_iterator = bs_elem_head;
+	      while(bs_elem_iterator) 
+		{
+		  print_bs_elem(bs_elem_iterator);
+		  bs_elem_iterator = bs_elem_iterator->next;
+		}
+	      bgpstream_destroy_elem_queue(bs_elem_head);
+	    }
 	}
   }
   while(get_next_ret > 0);    
