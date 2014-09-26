@@ -234,6 +234,7 @@ bgpstream_elem_t * bgpstream_get_elem_queue(bgpstream_record_t * const bs_record
 	return table_line_update(bs_record->bd_entry);	        
 	break;	
       }
+      break;
     case BGPDUMP_SUBTYPE_ZEBRA_BGP_STATE_CHANGE:        // state messages
     case BGPDUMP_SUBTYPE_ZEBRA_BGP_STATE_CHANGE_AS4:	
       return bgp_state_change(bs_record->bd_entry);   

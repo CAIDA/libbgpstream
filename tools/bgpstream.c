@@ -478,7 +478,7 @@ static char *get_state_str(bgpstream_peer_state_t peer_state)
     case BST_NULL:
       return "null";
     }
-  return "";
+  return "XXX";
 }
 
 static char *get_aspath_str(bgpstream_aspath_t aspath) 
