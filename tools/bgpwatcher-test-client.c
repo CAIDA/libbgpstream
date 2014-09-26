@@ -35,17 +35,32 @@
 #include <bgpwatcher_client.h>
 
 #include "config.h"
+#include "utils.h"
 
-#define TEST_TABLE_SIZE 500000
+#define TEST_TABLE_SIZE_DEFAULT 50
+#define PEER_TABLE_SIZE 20
+
+static uint64_t rx_success = 0;
+static uint64_t rx_fail = 0;
 
 static void handle_reply(bgpwatcher_client_t *client, seq_num_t seq_num,
 			 int rc, void *user)
 {
+#ifdef DEBUG
   fprintf(stderr, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n");
   fprintf(stderr, "HANDLE: Handling reply\n");
   fprintf(stderr, "Seq Num: %"PRIu32"\n", seq_num);
   fprintf(stderr, "Ret Code: %d\n", rc);
   fprintf(stderr, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n\n");
+#endif
+  if(rc == 0)
+    {
+      rx_success++;
+    }
+  else
+    {
+      rx_fail++;
+    }
 }
 
 static bgpwatcher_pfx_record_t *create_test_pfx()
@@ -130,7 +145,8 @@ static void usage(const char *name)
 	  "       -s <server-uri>       0MQ-style URI to connect to server on\n"
 	  "                               (default: %s)\n"
 	  "       -t <shutdown-timeout> Time to wait for requests on shutdown\n"
-	  "                               (default: %d)\n",
+	  "                               (default: %d)\n"
+	  "       -T <table-size>       Size of test tables (default: %d)\n",
 	  name,
 	  BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT,
 	  BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT,
@@ -139,7 +155,8 @@ static void usage(const char *name)
 	  BGPWATCHER_RECONNECT_INTERVAL_MIN,
 	  BGPWATCHER_RECONNECT_INTERVAL_MAX,
 	  BGPWATCHER_CLIENT_SERVER_URI_DEFAULT,
-	  BGPWATCHER_CLIENT_SHUTDOWN_LINGER_DEFAULT);
+	  BGPWATCHER_CLIENT_SHUTDOWN_LINGER_DEFAULT,
+	  TEST_TABLE_SIZE_DEFAULT);
 }
 
 int main(int argc, char **argv)
@@ -173,8 +190,10 @@ int main(int argc, char **argv)
   bgpwatcher_peer_record_t *peer = NULL;
   uint32_t peer_table_time = 1410267600;
 
+  uint32_t test_table_size = TEST_TABLE_SIZE_DEFAULT;
+
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":i:l:m:M:n:r:R:s:t:v?")) >= 0)
+	(opt = getopt(argc, argv, ":i:l:m:M:n:r:R:s:t:T:v?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
@@ -222,6 +241,10 @@ int main(int argc, char **argv)
 
 	case 't':
 	  shutdown_linger = atoi(optarg);
+	  break;
+
+	case 'T':
+	  test_table_size = atoi(optarg);
 	  break;
 
 	case '?':
@@ -321,8 +344,8 @@ int main(int argc, char **argv)
     }
   fprintf(stderr, "TEST: Sending table begin: %d\n", rc);
 
-  fprintf(stderr, "TEST: Sending %d table records\n", TEST_TABLE_SIZE);
-  for(i=0; i<TEST_TABLE_SIZE; i++)
+  fprintf(stderr, "TEST: Sending %d pfx table records\n", test_table_size);
+  for(i=0; i<test_table_size; i++)
     {
       if((rc = bgpwatcher_client_pfx_table_add(pfx_table, pfx)) < 0)
 	{
@@ -347,12 +370,15 @@ int main(int argc, char **argv)
     }
   fprintf(stderr, "TEST: Sending table begin: %d\n", rc);
 
-  if((rc = bgpwatcher_client_peer_table_add(peer_table, peer)) < 0)
+  fprintf(stderr, "TEST: Sending %d peer table records\n", PEER_TABLE_SIZE);
+  for(i=0; i<PEER_TABLE_SIZE; i++)
     {
-      fprintf(stderr, "Could not add peer to table\n");
-      goto err;
+      if((rc = bgpwatcher_client_peer_table_add(peer_table, peer)) < 0)
+	{
+	  fprintf(stderr, "Could not add peer to table\n");
+	  goto err;
+	}
     }
-  fprintf(stderr, "TEST: Sending table record: %d\n", rc);
 
   if((rc = bgpwatcher_client_peer_table_end(peer_table)) < 0)
     {
@@ -361,6 +387,7 @@ int main(int argc, char **argv)
     }
   fprintf(stderr, "TEST: Sending table end: %d\n", rc);
   fprintf(stderr, "--------------------[ PEER DONE ]--------------------\n\n");
+
 
   fprintf(stderr, "TEST: Shutting down...\n");
   bgpwatcher_pfx_record_free(&pfx);
@@ -374,6 +401,10 @@ int main(int argc, char **argv)
   /* cleanup */
   bgpwatcher_client_free(client);
   fprintf(stderr, "TEST: Shutdown complete\n");
+
+  fprintf(stderr, "STATS: Sent %d requests\n", rc+1);
+  fprintf(stderr, "STATS: Rx %"PRIu64" success replies\n", rx_success);
+  fprintf(stderr, "STATS: Rx %"PRIu64" failure replies\n", rx_fail);
 
   /* complete successfully */
   return 0;
