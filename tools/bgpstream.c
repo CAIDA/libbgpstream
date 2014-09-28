@@ -315,16 +315,16 @@ int main(int argc, char *argv[])
   int get_next_ret = 0;
   bgpstream_elem_t * bs_elem_head;
   bgpstream_elem_t * bs_elem_iterator;
-
+  int count = 0;
   do
     {
-      get_next_ret = bgpstream_get_next_record(bs, bs_record);      
+      get_next_ret = bgpstream_get_next_record(bs, bs_record);
       if(get_next_ret && record_output_on)
 	{
 	  print_bs_record(bs_record);
 	}
-      if(bs_record->status == VALID_RECORD) 
-	{
+      if(get_next_ret && bs_record->status == VALID_RECORD) 
+	{	  
 	  if(record_bgpdump_output_on)
 	    {
 	      print_bs_record_bgpdumpway(bs_record->bd_entry);
@@ -490,7 +490,7 @@ static char *get_aspath_str(bgpstream_aspath_t aspath)
   // else BST_UINT32_ASPATH
   char aspath_str[8000]; // compatible with bgpdump
   aspath_str[0] = '\0';
-  char as_str[10];
+  char as_str[16];
   int i;
   for(i=0; i < aspath.hop_count; i++) 
     {
