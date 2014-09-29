@@ -59,6 +59,9 @@
 /** Default the client reconnect maximum interval to 32 seconds */
 #define BGPWATCHER_RECONNECT_INTERVAL_MAX 32000
 
+/** Maximum allowed length for a collector name */
+#define BGPWATCHER_COLLECTOR_NAME_LEN 128
+
 #ifdef DEBUG_TIMING
 
 #define TIMER_START(timer)			\
@@ -119,7 +122,7 @@ typedef struct bgpwatcher_pfx_record {
   uint32_t orig_asn;
 
   /** Collector Name (string) */
-  char *collector_name;
+  char collector_name[BGPWATCHER_COLLECTOR_NAME_LEN];
 
 } bgpwatcher_pfx_record_t;
 

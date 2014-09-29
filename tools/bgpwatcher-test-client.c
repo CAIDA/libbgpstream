@@ -77,7 +77,8 @@ static bgpwatcher_pfx_record_t *create_test_pfx()
       ((struct sockaddr_in*)&rec->peer_ip)->sin_family = AF_INET;
       ((struct sockaddr_in*)&rec->peer_ip)->sin_addr.s_addr = htonl(0x82D9FA0D);
       rec->orig_asn = 0x00332211;
-      rec->collector_name = strdup("TEST-COLLECTOR");
+      strncpy(rec->collector_name, "TEST-COLLECTOR",
+	      BGPWATCHER_COLLECTOR_NAME_LEN);
     }
 
   return rec;

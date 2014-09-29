@@ -226,10 +226,6 @@ void bgpwatcher_pfx_record_free(bgpwatcher_pfx_record_t **pfx_p)
 
   if(pfx != NULL)
     {
-      if(pfx->collector_name != NULL)
-	{
-	  free(pfx->collector_name);
-	}
       free(pfx);
     }
 
@@ -273,10 +269,14 @@ int bgpwatcher_pfx_record_deserialize(zmsg_t *msg,
   zframe_destroy(&frame);
 
   /* name */
-  if((pfx->collector_name = zmsg_popstr(msg)) == NULL)
+  if((frame = zmsg_pop(msg)) == NULL ||
+     zframe_size(frame) >= BGPWATCHER_COLLECTOR_NAME_LEN)
     {
       goto err;
     }
+  memcpy(&pfx->collector_name, zframe_data(frame), zframe_size(frame));
+  pfx->collector_name[zframe_size(frame)] = '\0';
+  zframe_destroy(&frame);
 
   return 0;
 
