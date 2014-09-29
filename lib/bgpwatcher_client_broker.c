@@ -178,11 +178,9 @@ static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
      kh_end(broker->req_hash))
     {
       /* err, a reply for a non-existent request? */
-      #if 0
       fprintf(stderr,
 	      "WARN: No outstanding request info for seq num %"PRIu32"\n",
 	      rx_rep.seq_num);
-      #endif
       zmsg_destroy(&msg);
       return 0;
     }
@@ -311,11 +309,6 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	{
 	case BGPWATCHER_MSG_TYPE_REPLY:
 	  broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
-
-	  /*
-	  fprintf(stderr, "DEBUG: Got reply from server\n");
-	  zmsg_print(msg);
-	  */
 
 	  if(handle_reply(broker, &msg) != 0)
 	    {
@@ -465,9 +458,7 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
     }
 
   /* re-tx any requests that have timed out */
-  /** @todo replace with an ordered list for efficiency */
   req = zlist_first(broker->req_list);
-
   while(req != NULL)
     {
       if(req->reply_rx != 0)
@@ -480,7 +471,7 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	  continue;
 	}
 
-      if(zclock_time () < req->retry_at)
+      if(zclock_time() < req->retry_at)
 	{
 	  /*fprintf(stderr, "DEBUG: at %"PRIu64", waiting for %"PRIu64"\n",
 	    zclock_time(), req->retry_at);*/
@@ -499,6 +490,10 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 		  "DEBUG: Request %"PRIu32" expired without reply, "
 		  "abandoning\n",
 		  req->seq_num);
+
+	  /** @todo remove the request from the hash too (just for sake of
+	      memory) */
+
 	  bgpwatcher_client_broker_req_free(&req);
 	  req = zlist_first(broker->req_list);
 	  continue;
