@@ -459,10 +459,12 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
     }
 
   /* send heartbeat to server if it is time */
-  if(zclock_time () > broker->heartbeat_next)
+  if(zclock_time() > broker->heartbeat_next)
     {
       broker->heartbeat_next = zclock_time() + broker->heartbeat_interval;
+#if DEBUG
       fprintf(stderr, "DEBUG: Sending heartbeat to server\n");
+#endif
 
       msg_type_p = BGPWATCHER_MSG_TYPE_HEARTBEAT;
       if((frame = zframe_new(&msg_type_p, 1)) == NULL)
