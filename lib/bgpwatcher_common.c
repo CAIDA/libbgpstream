@@ -150,10 +150,22 @@ void bgpwatcher_err_perr(bgpwatcher_err_t *err)
   err->problem[0]='\0';
 }
 
+bgpwatcher_msg_type_t bgpwatcher_msg_type_frame(zframe_t *frame)
+{
+  uint8_t type;
+  if((zframe_size(frame) > bgpwatcher_msg_type_size_t) ||
+     (type = *zframe_data(frame)) > BGPWATCHER_MSG_TYPE_MAX)
+    {
+      return BGPWATCHER_MSG_TYPE_UNKNOWN;
+    }
+
+  return (bgpwatcher_msg_type_t)type;
+}
+
 bgpwatcher_msg_type_t bgpwatcher_msg_type(zmsg_t *msg, int peek)
 {
   zframe_t *frame;
-  uint8_t type;
+  bgpwatcher_msg_type_t type;
 
   /* first frame should be our type */
   if(peek == 0)
@@ -171,21 +183,14 @@ bgpwatcher_msg_type_t bgpwatcher_msg_type(zmsg_t *msg, int peek)
 	}
     }
 
-  if((type = *zframe_data(frame)) > BGPWATCHER_MSG_TYPE_MAX)
-    {
-      if(peek == 0)
-	{
-	  zframe_destroy(&frame);
-	}
-      return BGPWATCHER_MSG_TYPE_UNKNOWN;
-    }
+  type = bgpwatcher_msg_type_frame(frame);
 
   if(peek == 0)
     {
       zframe_destroy(&frame);
     }
 
-  return (bgpwatcher_msg_type_t)type;
+  return type;
 }
 
 bgpwatcher_data_msg_type_t bgpwatcher_data_msg_type(zmsg_t *msg)

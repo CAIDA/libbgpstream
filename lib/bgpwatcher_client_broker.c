@@ -210,21 +210,25 @@ static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
 static int send_request(bgpwatcher_client_broker_t *broker,
 			bgpwatcher_client_broker_req_t *req)
 {
-  zmsg_t *msg_copy;
-
-  if((msg_copy = zmsg_dup(req->msg)) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Could not duplicate request message");
-      return -1;
-    }
+  int i = 1;
+  int frame_cnt = zlist_size(req->msg_frames);
+  zframe_t *frame = zlist_first(req->msg_frames);
+  int mask = ZFRAME_REUSE;
 
   req->retry_at = zclock_time() + broker->request_timeout;
-  if(zmsg_send(&msg_copy, broker->server_socket) != 0)
+
+  while(frame != NULL)
     {
-      bgpwatcher_err_set_err(ERR, errno,
-			     "Could not pass message to server");
-      return -1;
+      mask = (i == frame_cnt) ? ZFRAME_REUSE : (ZFRAME_REUSE | ZFRAME_MORE);
+      if(zframe_send(&frame, broker->server_socket, mask) == -1)
+	{
+	  bgpwatcher_err_set_err(ERR, errno,
+				 "Could not pass message to server");
+	  return -1;
+	}
+
+      i++;
+      frame = zlist_next(req->msg_frames);
     }
 
   return 0;
@@ -343,9 +347,16 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	  goto interrupt;
 	}
 
+      if((frame = zmsg_pop(msg)) == NULL)
+	{
+	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+				 "Invalid message received from client");
+	  goto err;
+	}
+
       /* peek at the first frame (msg type) */
       if((msg_type =
-	  bgpwatcher_msg_type(msg, 1)) != BGPWATCHER_MSG_TYPE_UNKNOWN)
+	  bgpwatcher_msg_type_frame(frame)) != BGPWATCHER_MSG_TYPE_UNKNOWN)
 	{
 	  if((req = bgpwatcher_client_broker_req_init()) == NULL)
 	    {
@@ -354,10 +365,16 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	      goto err;
 	    }
 
+	  if(zlist_append(req->msg_frames, frame) != 0)
+	    {
+	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+				     "Could not add msg type frame");
+	    }
+
 	  req->msg_type = msg_type;
 
 	  /* now we need the seq number */
-	  if((frame = zmsg_next(msg)) == NULL)
+	  if((frame = zmsg_pop(msg)) == NULL)
 	    {
 	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 				     "Invalid message received from master");
@@ -372,13 +389,27 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	    }
 	  memcpy(&req->seq_num, zframe_data(frame), sizeof(seq_num_t));
 
+	  if(zlist_append(req->msg_frames, frame) != 0)
+	    {
+	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+				     "Could not add seq num frame");
+	    }
+
+	  /* pop until we can't pop no more */
+	  while((frame = zmsg_pop(msg)) != NULL)
+	    {
+	      if(zlist_append(req->msg_frames, frame) != 0)
+		{
+		  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+					 "Could not add seq num frame");
+		}
+	    }
+	  zmsg_destroy(&msg);
+
 	  /* init the re-transmit state */
 	  req->retries_remaining = broker->request_retries;
 	  /* retry_at is set by send_request */
 
-	  /* give the request the message, it will be dup'd before sending */
-	  req->msg = msg;
-	  msg = NULL;
 
 	  /*fprintf(stderr, "DEBUG: tx.seq: %"PRIu32", tx.msg_type: %d\n",
 	    req.seq_num, req.msg_type);*/
@@ -411,14 +442,6 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
       else
 	{
 	  /* this is a message for us */
-	  /** @todo figure out how to wait until our current reqs are ackd */
-	  if((frame = zmsg_pop(msg)) == NULL)
-	    {
-	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-				     "Invalid message received from client");
-	      goto err;
-	    }
-
 	  if(zframe_streq(frame, "$TERM") == 1)
 	    {
 	      fprintf(stderr,
@@ -588,17 +611,38 @@ void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
 
 bgpwatcher_client_broker_req_t *bgpwatcher_client_broker_req_init()
 {
-  return malloc_zero(sizeof(bgpwatcher_client_broker_req_t));
+  bgpwatcher_client_broker_req_t *req;
+
+  if((req = malloc(sizeof(bgpwatcher_client_broker_req_t))) == NULL)
+    {
+      return NULL;
+    }
+
+  req->reply_rx = 0;
+
+  if((req->msg_frames = zlist_new()) == NULL)
+    {
+      free(req);
+      return NULL;
+    }
+
+  return req;
 }
 
 void bgpwatcher_client_broker_req_free(bgpwatcher_client_broker_req_t **req_p)
 {
   assert(req_p != NULL);
   bgpwatcher_client_broker_req_t *req = *req_p;
+  zframe_t *frame;
 
   if(req != NULL)
     {
-      zmsg_destroy(&req->msg);
+      while(zlist_size(req->msg_frames) > 0)
+	{
+	  frame = zlist_pop (req->msg_frames);
+	  zframe_destroy(&frame);
+	}
+      zlist_destroy(&req->msg_frames);
       free(req);
       *req_p = NULL;
     }

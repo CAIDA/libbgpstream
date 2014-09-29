@@ -83,8 +83,8 @@ typedef struct bgpwatcher_client_broker_req {
   /** The number of retries that remain */
   uint8_t retries_remaining;
 
-  /** Copy of the request to send to the server */
-  zmsg_t *msg;
+  /** Message to send to the server */
+  zlist_t *msg_frames;
 
   /** Has a reply been received? */
   uint8_t reply_rx;

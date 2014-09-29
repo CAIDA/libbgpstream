@@ -292,6 +292,14 @@ void bgpwatcher_err_perr(bgpwatcher_err_t *err);
  */
 bgpwatcher_msg_type_t bgpwatcher_msg_type(zmsg_t *msg, int peek);
 
+/** Decodes the message type for the given frame
+ *
+ * @param frame         zframe object to inspect
+ * @return the type of the message, or BGPWATCHER_MSG_TYPE_UNKNOWN if an error
+ *         occurred
+ */
+bgpwatcher_msg_type_t bgpwatcher_msg_type_frame(zframe_t *frame);
+
 /** Decodes the request type for the given message
  *
  * @param msg           zmsg object to inspect
