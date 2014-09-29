@@ -163,12 +163,14 @@ static int clients_purge(bgpwatcher_server_t *server)
 	{
 	  client = kh_val(server->clients, k);
 
-	  if(zclock_time () < client->expiry)
+	  if(zclock_time() < client->expiry)
 	    {
 	      break; /* client is alive, we're done here */
 	    }
 
 	  fprintf(stderr, "INFO: Removing dead client (%s)\n", client->id);
+	  fprintf(stderr, "INFO: Expiry: %"PRIu64" Time: %"PRIu64"\n",
+		  client->expiry, zclock_time());
 	  if(DO_CALLBACK(client_disconnect, (&client->info)) != 0)
 	    {
 	      return -1;

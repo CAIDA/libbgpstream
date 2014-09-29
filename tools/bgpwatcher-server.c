@@ -74,7 +74,7 @@ static void usage(const char *name)
 	  "       -i <interval-ms>   Time in ms between heartbeats to clients\n"
 	  "                          (default: %d)\n"
 	  "       -l <beats>         Number of heartbeats that can go by before \n"
-	  "                          a server is declared dead (default: %d)\n",
+	  "                          a client is declared dead (default: %d)\n",
 	  name,
 	  BGPWATCHER_CLIENT_URI_DEFAULT,
 	  BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT,
