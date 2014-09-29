@@ -46,18 +46,12 @@
 /** Default URI for the server -> client connection */
 #define BGPWATCHER_CLIENT_SERVER_URI_DEFAULT "tcp://127.0.0.1:6300"
 
-/** Default the client request timeout to 2.5 seconds */
-#define BGPWATCHER_CLIENT_REQUEST_TIMEOUT 2500
-
-/** Default the client request retry count to 3 */
-#define BGPWATCHER_CLIENT_REQUEST_RETRIES 3
-
 /** Default time that the client will wait for outstanding messages when
     shutting down (in milliseconds) */
 #define BGPWATCHER_CLIENT_SHUTDOWN_LINGER_DEFAULT 10000
 
 /** Default request timeout */
-#define BGPWATCHER_CLIENT_REQUEST_TIMEOUT_DEFAULT 2500
+#define BGPWATCHER_CLIENT_REQUEST_TIMEOUT_DEFAULT 10000
 
 /** Default request retry count  */
 #define BGPWATCHER_CLIENT_REQUEST_RETRIES_DEFAULT 3
