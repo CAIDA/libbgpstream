@@ -447,6 +447,12 @@ void bgpwatcher_client_free(bgpwatcher_client_t *client)
       BROKER.server_uri = NULL;
     }
 
+  if(BROKER.identity != NULL)
+    {
+      free(BROKER.identity);
+      BROKER.identity = NULL;
+    }
+
   /* free'd by zctx_destroy */
   BROKER.server_socket = NULL;
 

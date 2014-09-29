@@ -411,6 +411,10 @@ int main(int argc, char **argv)
 
  err:
   bgpwatcher_client_perr(client);
+  bgpwatcher_pfx_record_free(&pfx);
+  bgpwatcher_client_pfx_table_free(&pfx_table);
+  bgpwatcher_peer_record_free(&peer);
+  bgpwatcher_client_peer_table_free(&peer_table);
   if(client != NULL) {
     bgpwatcher_client_free(client);
   }

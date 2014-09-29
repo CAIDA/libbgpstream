@@ -175,7 +175,7 @@ static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
 
   /* grab the corresponding record from the outstanding req set */
   if((khiter = kh_get(reqset, broker->req_hash, &rx_rep)) ==
-     kh_end(broker->req_hash))
+     kh_end(broker->req_hash) || kh_exist(broker->req_hash, khiter) == 0)
     {
       /* err, a reply for a non-existent request? */
       fprintf(stderr,
@@ -336,6 +336,7 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	  goto err;
 	}
 
+      zmsg_destroy(&msg);
       broker->reconnect_interval_next =
 	broker->reconnect_interval_min;
     }
@@ -369,6 +370,7 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	    {
 	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 				     "Could not add msg type frame");
+	      goto err;
 	    }
 
 	  req->msg_type = msg_type;
@@ -455,6 +457,7 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	    }
 
 	  zframe_destroy(&frame);
+	  zmsg_destroy(&msg);
 	}
     }
 
