@@ -58,7 +58,7 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
     }
 
   /* up the hwm */
-  zsocket_set_sndhwm(broker->server_socket, MAX_OUTSTANDING_REQ+1);
+  zsocket_set_sndhwm(broker->server_socket, MAX_OUTSTANDING_REQ*2);
 
   if(broker->identity != NULL && strlen(broker->identity) > 0)
     {
@@ -246,7 +246,7 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 
   /*fprintf(stderr, "DEBUG: Beginning loop cycle\n");*/
 
-  if(zlist_size(broker->req_list) < MAX_OUTSTANDING_REQ &&
+  if(zlist_size(broker->req_list) < MAX_OUTSTANDING_REQ*0.6 &&
      broker->poller_contains_master == 0)
     {
       /* add the master pipe */
@@ -261,7 +261,7 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
   else if(zlist_size(broker->req_list) >= MAX_OUTSTANDING_REQ &&
 	  broker->poller_contains_master == 1)
     {
-      fprintf(stderr, "rate limiting\n");
+      fprintf(stderr, "DEBUG: Rate limiting\n");
       zpoller_remove(broker->poller, broker->master_pipe);
       broker->poller_contains_master = 0;
     }

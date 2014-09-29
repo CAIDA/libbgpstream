@@ -41,7 +41,7 @@
  */
 
 /** The maximum number of requests that we allow to be outstanding at any time */
-#define MAX_OUTSTANDING_REQ 9999
+#define MAX_OUTSTANDING_REQ 10000
 
 /**
  * @name Public Opaque Data Structures
