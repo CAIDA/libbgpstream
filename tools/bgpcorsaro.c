@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
   struct window windows[WINDOW_CMD_CNT];
   int windows_cnt = 0;
 
-  int blocking = 1;
+  int blocking = 0;
 
   int rc = 0;
 
