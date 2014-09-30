@@ -888,7 +888,8 @@ static void process_one_attr(struct mstream *outer_stream, attributes_t *attr, u
   case BGP_ATTR_ATOMIC_AGGREGATE:
     break;
   case BGP_ATTR_AGGREGATOR:
-    assert(-1 == attr->new_aggregator_as);
+    // wrong aggregator as was checked here
+    assert(-1 == attr->aggregator_as);    
     read_asn(s, &attr->aggregator_as, asn_len);
     attr->aggregator_addr = mstream_get_ipv4(s);
     break;
