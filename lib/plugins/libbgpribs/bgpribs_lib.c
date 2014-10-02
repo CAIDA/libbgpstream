@@ -393,6 +393,7 @@ int peerdata_apply_elem(peerdata_t *peer_data,
   // type is update
   if(bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_WITHDRAWAL)
     {
+      // case 1
       if(peer_data->status == PEER_UP &&
 	 ((bs_elem->timestamp >= peer_data->most_recent_ts) ||
 	  (peer_data->most_recent_ts == peer_data->active_ribs_table->reference_rib_end &&
@@ -414,6 +415,7 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 	  // if the previous condition is false, we need to update the current ribs which are
 	  // under construction, to do so we use the next if (see below)
 	}
+      // case 2
       if(peer_data->rt_status == UC_ON &&
 	 bs_elem->timestamp >= peer_data->uc_ribs_table->reference_rib_start)
 	{
@@ -421,6 +423,7 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 	  ribs_table_apply_elem(peer_data->uc_ribs_table, bs_elem);
 	  return 0;
 	}
+      // case 3
       if(peer_data->status == PEER_UP &&
 	 bs_elem->timestamp >= peer_data->active_ribs_table->reference_rib_start)
 	{
@@ -437,6 +440,7 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 	  // TODO: think about rollback options here
 	  return 0;
 	}
+      // case 4
       if(peer_data->status == PEER_DOWN &&
 	 bs_elem->timestamp >= peer_data->most_recent_ts)
 	{	  
@@ -449,16 +453,7 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 	  peer_data->active_ribs_table->reference_rib_start = bs_elem->timestamp;
 	  peer_data->active_ribs_table->reference_rib_end = bs_elem->timestamp;
 	  return 0;
-	}
-
-      if(peer_data->status == PEER_NULL &&
-	 peer_data->rt_status == UC_OFF &&
-	 (bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_WITHDRAWAL))
-	{
-	  // no need to log event
-	  return 0;
-	}
-      
+	}      
       // if here, we are ignoring this update as it is not useful
       //  (e.g UC_OFF and PEER_NULL) or it is out of order
       // we log at the end of the function
@@ -467,6 +462,7 @@ int peerdata_apply_elem(peerdata_t *peer_data,
   // type is RIB
   if(bs_elem->type == BST_RIB)
     {
+      // case 5
       if(bs_record->dump_pos == DUMP_START && 
 	 bs_elem->timestamp >= peer_data->most_recent_ts)
 	{				     
@@ -489,6 +485,7 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 	  ribs_table_apply_elem(peer_data->uc_ribs_table, bs_elem);
 	  return 0;
 	}
+      // case 6
       if((bs_record->dump_pos == DUMP_MIDDLE ||  
 	  bs_record->dump_pos == DUMP_END) &&
 	 bs_elem->timestamp >= peer_data->most_recent_ts &&
@@ -522,6 +519,7 @@ int peerdata_apply_elem(peerdata_t *peer_data,
   // type is STATE
   if(bs_elem->type == BST_STATE)
     {
+      // case 7
       if((bs_elem->new_state != BST_ESTABLISHED && 
 	  bs_elem->timestamp >= peer_data->most_recent_ts) ||
 	 (bs_elem->new_state != BST_ESTABLISHED && 
@@ -551,7 +549,7 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 
 	  return 0;
 	}
-
+      // case 8
       if(bs_elem->new_state != BST_ESTABLISHED && 
 	 peer_data->status == PEER_UP &&
 	 peer_data->rt_status == UC_ON &&
@@ -572,12 +570,13 @@ int peerdata_apply_elem(peerdata_t *peer_data,
 
 	  return 0;
 	}
-
+      // case 9
       if(bs_elem->new_state == BST_ESTABLISHED && 
 	 peer_data->status == PEER_DOWN &&
 	 bs_elem->timestamp >= peer_data->most_recent_ts)
 	{
-	  // move to PEER_UP (with both ribs empty)
+	  // move to PEER_UP (with both active ribs empty, maintain uc ribs in whatever
+	  // status they already were)
 	  peer_data->status = PEER_UP;
 	  peer_data->active_ribs_table->reference_rib_start = bs_elem->timestamp;
 	  peer_data->active_ribs_table->reference_rib_end = bs_elem->timestamp;
@@ -612,7 +611,12 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
    * (most frequent on top) so we avoid to perform 
    * very unusual checks.
    */
-
+  // if necessary we update the most_recent_ts (all cases)
+  if(peer_data->most_recent_ts < bs_record->attributes.record_time)
+    {
+      peer_data->most_recent_ts = bs_record->attributes.record_time;
+    }
+  
   /* if we receive a VALID_RECORD we need to check
    * whether it provides data on-time or data out of
    * of order. Also if type is RIB and the record
@@ -622,12 +626,6 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
    */
   if(bs_record->status == VALID_RECORD) 
     {      
-      // if necessary we update the most_recent_ts (all cases)
-      if(peer_data->most_recent_ts < bs_record->attributes.record_time)
-	{
-	  peer_data->most_recent_ts = bs_record->attributes.record_time;
-	}
-
       // if we receive an "updated" RIB message and it is also
       // a dump start, we turn set UC_ON on all the peers
       if(bs_record->attributes.dump_type == BGPSTREAM_RIB && 
@@ -714,10 +712,6 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
   if(bs_record->status == FILTERED_SOURCE ||
      (bs_record->status == EMPTY_SOURCE && bs_record->attributes.dump_type == BGPSTREAM_UPDATE)) 
     {
-      if(peer_data->most_recent_ts < bs_record->attributes.record_time) 
-	{
-	  peer_data->most_recent_ts = bs_record->attributes.record_time;
-	}
       /* signal event in bgpribs log (see end of function) */      
     }
 
@@ -726,10 +720,6 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
    *  the mr_ts, however we do not do anything */
   if(bs_record->status == EMPTY_SOURCE && bs_record->attributes.dump_type == BGPSTREAM_RIB) 
     {
-      if(peer_data->most_recent_ts < bs_record->attributes.record_time) 
-	{
-	  peer_data->most_recent_ts = bs_record->attributes.record_time;
-	}
       /* Comments: 
        * an empty rib is a pretty strange case. It means that the 
        * collector is most likely down. It could be that a peer just
@@ -750,11 +740,6 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
   if(bs_record->status == CORRUPTED_SOURCE ||
      bs_record->status == CORRUPTED_RECORD) 
     {
-      // if it is a message in time, we still need to update the time
-      if(peer_data->most_recent_ts < bs_record->attributes.record_time) 
-	{ 
-	 peer_data-> most_recent_ts = bs_record->attributes.record_time;
-	}
       // if the peer was up, and the active table is affected
       if(peer_data->status == PEER_UP && 
 	 bs_record->attributes.record_time >= peer_data->active_ribs_table->reference_rib_start)
@@ -785,6 +770,16 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 	  peer_data->uc_ribs_table->reference_rib_start = 0;
 	  peer_data->uc_ribs_table->reference_rib_end = 0;
 	  peer_data->uc_ribs_table->reference_dump_time = 0;
+	  return (peer_data->status == PEER_UP) ? 1 : 0;
+	}
+
+      // if peer was and uc is off, and the record is "on time"
+      // (to check that we verify if it has the most_recent_ts 
+      if(peer_data->status == PEER_DOWN && 
+	 peer_data->most_recent_ts == bs_record->attributes.record_time)
+	{
+	  peer_data->status = PEER_NULL;
+	  peer_data->rt_status = UC_OFF;
 	  return (peer_data->status == PEER_UP) ? 1 : 0;
 	}
       /* signal event in bgpribs log (see end of function) */
