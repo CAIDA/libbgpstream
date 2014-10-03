@@ -179,12 +179,21 @@ void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs_elem)
   pd.origin_as = 0;
   if(bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_RIB)
     {
+      pd.aspath = bs_elem->aspath;
       // compute origin_as
       if(bs_elem->aspath.hop_count > 0 && 
 	 bs_elem->aspath.type == BST_UINT32_ASPATH ) 
 	{
 	  pd.origin_as = bs_elem->aspath.numeric_aspath[(bs_elem->aspath.hop_count-1)];
 	}  
+
+      // if prefix length is >24 (ipv4) or >64 (ipv6)
+      // then do not apply elem
+      if((bs_elem->prefix.number.type == BST_IPV4 && bs_elem->prefix.len > 24) || 
+	 (bs_elem->prefix.number.type == BST_IPV6 && bs_elem->prefix.len > 64))
+	{
+	  return;
+	}
     }  
 
   if(bs_elem->prefix.number.type == BST_IPV4) 
@@ -869,7 +878,11 @@ void peerdata_interval_end(peerdata_t *peer_data, int interval_start,
   khiter_t k;
   int khret;
   bgpstream_prefix_t prefix;
-  prefixdata_t pd; 
+  prefixdata_t pd;
+  double avg_aspath_len_ipv4 = 0;
+  double ipv4_size = kh_size(peer_data->active_ribs_table->ipv4_rib);
+  double avg_aspath_len_ipv6 = 0;
+  double ipv6_size = kh_size(peer_data->active_ribs_table->ipv6_rib);
 
   for(k = kh_begin(peer_data->active_ribs_table->ipv4_rib);
       k != kh_end(peer_data->active_ribs_table->ipv4_rib); ++k)
@@ -886,6 +899,7 @@ void peerdata_interval_end(peerdata_t *peer_data, int interval_start,
 	      ases_table_insert(peer_data->unique_origin_ases, pd.origin_as);
 	      ases_table_insert(collector_data->unique_origin_ases, pd.origin_as);
 	    }
+	  avg_aspath_len_ipv4 += pd.aspath.hop_count;
 	}
     }
   
@@ -904,6 +918,7 @@ void peerdata_interval_end(peerdata_t *peer_data, int interval_start,
 	      ases_table_insert(peer_data->unique_origin_ases, pd.origin_as);
 	      ases_table_insert(collector_data->unique_origin_ases, pd.origin_as);
 	    }
+	  avg_aspath_len_ipv6 += pd.aspath.hop_count;
 	}
     }
 
@@ -914,6 +929,33 @@ void peerdata_interval_end(peerdata_t *peer_data, int interval_start,
 	  collector_data->dump_collector,
 	  peer_data->peer_address_str,
 	  kh_size(peer_data->unique_origin_ases->table),
+	  interval_start);
+
+  
+  // OUTPUT METRIC: peer_avg_aspathlen_ipv4
+  if(ipv4_size > 0) 
+    {
+      avg_aspath_len_ipv4 = avg_aspath_len_ipv4 / ipv4_size;
+    }
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.peer_avg_aspathlen_ipv4 %f %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  peer_data->peer_address_str,
+	  avg_aspath_len_ipv4,
+	  interval_start);
+
+  // OUTPUT METRIC: peer_avg_aspathlen_ipv6
+  if(ipv6_size > 0) 
+    {
+      avg_aspath_len_ipv6 = avg_aspath_len_ipv6 / ipv6_size;
+    }
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.peer_avg_aspathlen_ipv6 %f %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  peer_data->peer_address_str,
+	  avg_aspath_len_ipv6,
 	  interval_start);
   
   // reset per interval variables

@@ -93,7 +93,8 @@ void prefixes_table_destroy(prefixes_table_t *prefixes_table);
  */
 
 typedef struct struct_prefixdata_t {
-  uint32_t origin_as;  
+  uint32_t origin_as;
+  bgpstream_aspath_t aspath;
 } prefixdata_t;
 
 
