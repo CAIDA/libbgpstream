@@ -27,6 +27,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/common
 noinst_LTLIBRARIES = libbgpribs.la
 
 libbgpribs_la_SOURCES = bgpribs_lib.h   \
+			bgpribs_int.h   \
 			bgpribs_lib.c   \
 			bgpribs_khash.h	\
 			bgpribs_khash.c	

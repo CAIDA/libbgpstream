@@ -24,6 +24,9 @@
  */
 
 #include "bgpribs_khash.h"
+
+#include "khash.h"
+#include "bgpstream_lib.h"
 #include "utils.h"
 #include <assert.h>
 

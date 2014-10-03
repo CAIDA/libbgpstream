@@ -130,7 +130,7 @@ static khint64_t bgpstream_prefix_ipv6_hash_func(bgpstream_prefix_t prefix)
 }
 
 
-int bgpstream_prefix_ipv4_hash_equal(bgpstream_prefix_t prefix1,
+static int bgpstream_prefix_ipv4_hash_equal(bgpstream_prefix_t prefix1,
 				     bgpstream_prefix_t prefix2)
 {
   assert(prefix1.number.type == BST_IPV4); // check type is ipv4
@@ -139,7 +139,7 @@ int bgpstream_prefix_ipv4_hash_equal(bgpstream_prefix_t prefix1,
     (prefix1.len == prefix2.len);
 }
 
-int bgpstream_prefix_ipv6_hash_equal(bgpstream_prefix_t prefix1,
+static int bgpstream_prefix_ipv6_hash_equal(bgpstream_prefix_t prefix1,
 				     bgpstream_prefix_t prefix2) 
 {
   assert(ip1.type == BST_IPV6); // check type is ipv6
@@ -760,7 +760,7 @@ static khint64_t bgpstream_ipv6_address_hash_func(bgpstream_ip_address_t ip)
   return __ac_Wang_hash(h);  // decreases the chances of collisions
 }
 
-int bgpstream_ipv4_address_hash_equal(bgpstream_ip_address_t ip1,
+static int bgpstream_ipv4_address_hash_equal(bgpstream_ip_address_t ip1,
 				      bgpstream_ip_address_t ip2)
 {
   assert(ip1.type == BST_IPV4); // check type is ipv4
@@ -770,7 +770,7 @@ int bgpstream_ipv4_address_hash_equal(bgpstream_ip_address_t ip1,
   return (ip1.address.v4_addr.s_addr == ip2.address.v4_addr.s_addr);
 }
 
-int bgpstream_ipv6_address_hash_equal(bgpstream_ip_address_t ip1,
+static int bgpstream_ipv6_address_hash_equal(bgpstream_ip_address_t ip1,
 				      bgpstream_ip_address_t ip2) 
 {
   assert(ip1.type == BST_IPV6); // check type is ipv6

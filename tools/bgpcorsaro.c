@@ -420,8 +420,8 @@ int main(int argc, char *argv[])
     }
 
   /* we only support MYSQL as the datasource */
-  bgpstream_set_data_interface(stream, BS_MYSQL);
-  // bgpstream_set_data_interface(stream, BS_CSVFILE);
+  //bgpstream_set_data_interface(stream, BS_MYSQL);
+  bgpstream_set_data_interface(stream, BS_CSVFILE);
 
   /* pass along the user's filter requests to bgpstream */
 

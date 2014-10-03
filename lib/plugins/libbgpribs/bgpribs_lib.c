@@ -24,6 +24,8 @@
  */
 
 #include "bgpribs_lib.h"
+#include "bgpribs_int.h"
+
 #include <assert.h>
 #include "utils.h"
 
