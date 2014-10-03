@@ -1610,9 +1610,15 @@ void collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
        k != kh_end(collectors_table->table); ++k)
     {
       if (kh_exist(collectors_table->table, k))
-	{	  
-	  collectordata_interval_end(kh_value(collectors_table->table, k), 
-				     interval_start);
+	{
+	  collector_data = kh_value(collectors_table->table, k);
+	  // if the collector is in an unknown status we do not output
+	  // information, this way we can merge different runs on our
+	  // time series database
+	  if(collector_data->status != COLLECTOR_NULL)
+	    {
+	      collectordata_interval_end(collector_data,interval_start);
+	    }
 	}
     }
 
