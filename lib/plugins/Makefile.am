@@ -38,6 +38,12 @@ PLUGIN_LIBS=
 if WITH_PLUGIN_BGPSTATS
 PLUGIN_SRC+=bgpcorsaro_bgpstats.c bgpcorsaro_bgpstats.h
 endif
+if WITH_PLUGIN_BGPRIBS
+SUBDIRS += libbgpribs
+PLUGIN_LIBS += $(top_builddir)/lib/plugins/libbgpribs/libbgpribs.la
+AM_CPPFLAGS += -I$(top_srcdir)/lib/plugins/libbgpribs
+PLUGIN_SRC += bgpcorsaro_bgpribs.c bgpcorsaro_bgpribs.h
+endif
 if WITH_PLUGIN_DUMP
 PLUGIN_SRC+=bgpcorsaro_dump.c bgpcorsaro_dump.h
 endif

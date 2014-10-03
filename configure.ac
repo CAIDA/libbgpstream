@@ -209,6 +209,7 @@ ED_WITH_PLUGIN([bgpcorsaro_dump],[dump],[DUMP],[yes])
 
 # optional plugins
 ED_WITH_PLUGIN([bgpcorsaro_bgpstats],[bgpstats],[BGPSTATS],[no])
+ED_WITH_PLUGIN([bgpcorsaro_bgpribs],[bgpribs],[BGPRIBS],[no])
 
 # optional plugins
 ED_WITH_PLUGIN([bgpcorsaro_tagstats],[tagstats],[TAGSTATS],[no])
@@ -250,6 +251,7 @@ AC_SUBST([BGPCORSARO_MINOR_VERSION])
 AC_HEADER_ASSERT
 
 AC_CONFIG_FILES([Makefile lib/Makefile lib/plugins/Makefile
+			  lib/plugins/libbgpribs/Makefile
 			  tools/Makefile common/Makefile
 			  common/libpatricia/Makefile
 			  common/libcsv/Makefile])
