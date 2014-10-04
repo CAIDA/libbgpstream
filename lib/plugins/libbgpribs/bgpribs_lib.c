@@ -55,7 +55,7 @@ static void graphite_safe(char *p)
 
 /** ases_table related functions */
 
-ases_table_wrapper_t *ases_table_create() 
+static ases_table_wrapper_t *ases_table_create() 
 {
   ases_table_wrapper_t *ases_table;
   if((ases_table = malloc_zero(sizeof(ases_table_wrapper_t))) == NULL)
@@ -67,7 +67,7 @@ ases_table_wrapper_t *ases_table_create()
   return ases_table;
 }
 
-void ases_table_insert(ases_table_wrapper_t *ases_table, uint32_t as) 
+static void ases_table_insert(ases_table_wrapper_t *ases_table, uint32_t as) 
 {
   assert(ases_table); 
   int khret;
@@ -80,13 +80,13 @@ void ases_table_insert(ases_table_wrapper_t *ases_table, uint32_t as)
     }
 }
 
-void ases_table_reset(ases_table_wrapper_t *ases_table) 
+static void ases_table_reset(ases_table_wrapper_t *ases_table) 
 {
   assert(ases_table); 
   kh_clear(ases_table_t, ases_table->table);
 }
 
-void ases_table_destroy(ases_table_wrapper_t *ases_table) 
+static void ases_table_destroy(ases_table_wrapper_t *ases_table) 
 {
   if(ases_table != NULL) 
     {
@@ -99,7 +99,7 @@ void ases_table_destroy(ases_table_wrapper_t *ases_table)
 
 /** prefixes_table related functions */
 
-prefixes_table_t *prefixes_table_create() 
+static prefixes_table_t *prefixes_table_create() 
 {
   prefixes_table_t *prefixes_table;
   if((prefixes_table = malloc_zero(sizeof(prefixes_table_t))) == NULL)
@@ -112,7 +112,7 @@ prefixes_table_t *prefixes_table_create()
   return prefixes_table;
 }
 
-void prefixes_table_insert(prefixes_table_t *prefixes_table, bgpstream_prefix_t prefix)
+static void prefixes_table_insert(prefixes_table_t *prefixes_table, bgpstream_prefix_t prefix)
 {
   int khret;
   khiter_t k;
@@ -137,14 +137,14 @@ void prefixes_table_insert(prefixes_table_t *prefixes_table, bgpstream_prefix_t 
 }
 
 
-void prefixes_table_reset(prefixes_table_t *prefixes_table) 
+static void prefixes_table_reset(prefixes_table_t *prefixes_table) 
 {
   assert(prefixes_table);
   kh_clear(ipv4_prefixes_table_t, prefixes_table->ipv4_prefixes_table);
   kh_clear(ipv6_prefixes_table_t, prefixes_table->ipv6_prefixes_table);
 }
 
-void prefixes_table_destroy(prefixes_table_t *prefixes_table) 
+static void prefixes_table_destroy(prefixes_table_t *prefixes_table) 
 {
   if(prefixes_table == NULL) 
     {
@@ -158,7 +158,7 @@ void prefixes_table_destroy(prefixes_table_t *prefixes_table)
 
 /** ribs_table related functions */
 
-ribs_table_t *ribs_table_create() 
+static ribs_table_t *ribs_table_create() 
 {
   ribs_table_t *ribs_table;
   if((ribs_table = malloc_zero(sizeof(ribs_table_t))) == NULL)
@@ -171,7 +171,7 @@ ribs_table_t *ribs_table_create()
   return ribs_table;
 }
 
-void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs_elem)
+static void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs_elem)
 {
   khiter_t k;
   int khret;
@@ -264,7 +264,7 @@ void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs_elem)
 
 
 
-void ribs_table_reset(ribs_table_t *ribs_table)
+static void ribs_table_reset(ribs_table_t *ribs_table)
 {
   ribs_table->reference_rib_start = 0;
   ribs_table->reference_rib_end = 0;
@@ -276,7 +276,7 @@ void ribs_table_reset(ribs_table_t *ribs_table)
 }
 
 
-void ribs_table_destroy(ribs_table_t *ribs_table) 
+static void ribs_table_destroy(ribs_table_t *ribs_table) 
 {
   if(ribs_table != NULL) 
     {
@@ -290,7 +290,7 @@ void ribs_table_destroy(ribs_table_t *ribs_table)
 
 /** peerdata related functions */
 
-peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
+static peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
 {
   peerdata_t *peer_data;
   if((peer_data = malloc_zero(sizeof(peerdata_t))) == NULL)
@@ -352,7 +352,7 @@ peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
 }
 
 
-void peerdata_log_event(peerdata_t *peer_data, 
+static void peerdata_log_event(peerdata_t *peer_data, 
 			bgpstream_record_t * bs_record, bgpstream_elem_t *bs_elem)
 {
   // TODO: print in log
@@ -389,7 +389,7 @@ void peerdata_log_event(peerdata_t *peer_data,
 }
 
 
-int peerdata_apply_elem(peerdata_t *peer_data, 
+static int peerdata_apply_elem(peerdata_t *peer_data, 
 			bgpstream_record_t * bs_record, bgpstream_elem_t *bs_elem)
 {
   assert(peer_data);
@@ -612,7 +612,7 @@ int peerdata_apply_elem(peerdata_t *peer_data,
  * - it returns 1 if the peer is active (UP)
  * - it returns 0 if the peer is down   (DOWN OR NULL)
  * - it return -1 if something went wrong */
-int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
+static int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 {
   assert(peer_data);
   assert(bs_record);
@@ -803,7 +803,7 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 }
 
 
-void peerdata_interval_end(peerdata_t *peer_data, int interval_start,
+static void peerdata_interval_end(peerdata_t *peer_data, int interval_start,
 			   collectordata_t *collector_data) 
 {
  
@@ -966,7 +966,7 @@ void peerdata_interval_end(peerdata_t *peer_data, int interval_start,
 }
 
 
-void peerdata_destroy(peerdata_t *peer_data)
+static void peerdata_destroy(peerdata_t *peer_data)
 {
   if(peer_data != NULL) 
     {
@@ -997,7 +997,7 @@ void peerdata_destroy(peerdata_t *peer_data)
 
 /* peers_table functions */
 
-peers_table_t *peers_table_create() 
+static peers_table_t *peers_table_create() 
 {
   peers_table_t *peers_table;
   if((peers_table = malloc_zero(sizeof(peers_table_t))) == NULL)
@@ -1014,7 +1014,7 @@ peers_table_t *peers_table_create()
 /* process the current record and
  * returns the number of active peers  
  * it returns < 0 if some error was encountered */
-int peers_table_process_record(peers_table_t *peers_table, 
+static int peers_table_process_record(peers_table_t *peers_table, 
 			       bgpstream_record_t * bs_record)
 {
   assert(peers_table);
@@ -1212,7 +1212,7 @@ int peers_table_process_record(peers_table_t *peers_table,
 }
 
 
-void peers_table_interval_end(peers_table_t *peers_table, int interval_start,
+static void peers_table_interval_end(peers_table_t *peers_table, int interval_start,
 			       collectordata_t *collector_data)
 {
   assert(peers_table);
@@ -1242,7 +1242,7 @@ void peers_table_interval_end(peers_table_t *peers_table, int interval_start,
 }
 
 
-void peers_table_destroy(peers_table_t *peers_table) 
+static void peers_table_destroy(peers_table_t *peers_table) 
 {
   khiter_t k;
   if(peers_table != NULL) 
@@ -1280,7 +1280,7 @@ void peers_table_destroy(peers_table_t *peers_table)
 
 /* collectordata related functions */
 
-collectordata_t *collectordata_create(const char *project,
+static collectordata_t *collectordata_create(const char *project,
 				      const char *collector)
 {
   collectordata_t *collector_data;
@@ -1350,7 +1350,7 @@ collectordata_t *collectordata_create(const char *project,
 }
 
 
-int collectordata_process_record(collectordata_t *collector_data,
+static int collectordata_process_record(collectordata_t *collector_data,
 				 bgpstream_record_t * bs_record)
 {
   assert(collector_data);
@@ -1397,7 +1397,7 @@ int collectordata_process_record(collectordata_t *collector_data,
 }
 
 
-void collectordata_interval_end(collectordata_t *collector_data, 
+static void collectordata_interval_end(collectordata_t *collector_data, 
 				int interval_start)
 {
   assert(collector_data);
@@ -1504,7 +1504,7 @@ void collectordata_interval_end(collectordata_t *collector_data,
 }
 
 
-void collectordata_destroy(collectordata_t *collector_data)
+static void collectordata_destroy(collectordata_t *collector_data)
 {
   if(collector_data != NULL)
     {

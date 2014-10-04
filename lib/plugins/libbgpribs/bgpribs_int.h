@@ -49,10 +49,10 @@ typedef struct struct_ases_table_wrapper_t {
   khash_t(ases_table_t) * table;
 } ases_table_wrapper_t;
 
-ases_table_wrapper_t *ases_table_create();
-void ases_table_insert(ases_table_wrapper_t *ases_table, uint32_t as);
-void ases_table_reset(ases_table_wrapper_t *ases_table);
-void ases_table_destroy(ases_table_wrapper_t *ases_table);
+/* ases_table_wrapper_t *ases_table_create(); */
+/* void ases_table_insert(ases_table_wrapper_t *ases_table, uint32_t as); */
+/* void ases_table_reset(ases_table_wrapper_t *ases_table); */
+/* void ases_table_destroy(ases_table_wrapper_t *ases_table); */
 
 
 /** prefixes table (set of unique prefixes)
@@ -81,10 +81,10 @@ typedef struct struct_prefixes_table_t {
   khash_t(ipv6_prefixes_table_t) * ipv6_prefixes_table;
 } prefixes_table_t;
 
-prefixes_table_t *prefixes_table_create();
-void prefixes_table_insert(prefixes_table_t *prefixes_table, bgpstream_prefix_t prefix); 
-void prefixes_table_reset(prefixes_table_t *prefixes_table);
-void prefixes_table_destroy(prefixes_table_t *prefixes_table);
+/* prefixes_table_t *prefixes_table_create(); */
+/* void prefixes_table_insert(prefixes_table_t *prefixes_table, bgpstream_prefix_t prefix);  */
+/* void prefixes_table_reset(prefixes_table_t *prefixes_table); */
+/* void prefixes_table_destroy(prefixes_table_t *prefixes_table); */
 
 
 /** prefixdata
