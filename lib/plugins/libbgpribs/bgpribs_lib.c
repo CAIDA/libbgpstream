@@ -600,6 +600,9 @@ static int peerdata_apply_elem(peerdata_t *peer_data,
       // we log at the end of the function
     }
 
+  // if the program is here, we ignored the elem
+  peer_data->elem_types[bs_elem->type]--;
+
   // logging events that are not considered meaningful for further processing
   peerdata_log_event(peer_data, bs_record, bs_elem);
 

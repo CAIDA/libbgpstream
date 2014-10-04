@@ -72,7 +72,7 @@ static bgpcorsaro_plugin_t bgpcorsaro_bgpstats_plugin = {
   BGPCORSARO_PLUGIN_GENERATE_TAIL,
 };
 
-#define METRIC_PREFIX "bgp"
+#define METRIC_PREFIX "bgp.bgpstats"
 
 
 static void graphite_safe(char *p)
