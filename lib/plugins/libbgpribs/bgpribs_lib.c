@@ -320,12 +320,39 @@ static peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
   if((peer_data->unique_origin_ases = ases_table_create()) == NULL)
     {
       ribs_table_destroy(peer_data->uc_ribs_table);
+      peer_data->uc_ribs_table = NULL;
       ribs_table_destroy(peer_data->active_ribs_table);
       peer_data->active_ribs_table = NULL;
       free(peer_data);
       return NULL;
     }
-  
+
+  if((peer_data->affected_prefixes = prefixes_table_create()) == NULL)
+    {
+      ases_table_destroy(peer_data->unique_origin_ases);
+      peer_data->unique_origin_ases = NULL;      
+      ribs_table_destroy(peer_data->uc_ribs_table);
+      peer_data->uc_ribs_table = NULL;
+      ribs_table_destroy(peer_data->active_ribs_table);
+      peer_data->active_ribs_table = NULL;
+      free(peer_data);
+      return NULL;
+    }
+
+  if((peer_data->announcing_origin_ases = ases_table_create()) == NULL)
+    {
+      prefixes_table_destroy(peer_data->affected_prefixes);
+      peer_data->affected_prefixes = NULL;      
+      ases_table_destroy(peer_data->unique_origin_ases);
+      peer_data->unique_origin_ases = NULL;      
+      ribs_table_destroy(peer_data->uc_ribs_table);
+      peer_data->uc_ribs_table = NULL;
+      ribs_table_destroy(peer_data->active_ribs_table);
+      peer_data->active_ribs_table = NULL;
+      free(peer_data);
+      return NULL;
+    }
+
   char ip_str[INET6_ADDRSTRLEN];
   ip_str[0] = '\0';
   if(peer_address->type == BST_IPV4)
@@ -339,10 +366,16 @@ static peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
   
   if( (peer_data->peer_address_str = strdup(ip_str)) == NULL ) 
     {
-      ribs_table_destroy(peer_data->active_ribs_table);
-      peer_data->active_ribs_table = NULL;
+      ases_table_destroy(peer_data->announcing_origin_ases);
+      peer_data->announcing_origin_ases = NULL;      
+      prefixes_table_destroy(peer_data->affected_prefixes);
+      peer_data->affected_prefixes = NULL;      
+      ases_table_destroy(peer_data->unique_origin_ases);
+      peer_data->unique_origin_ases = NULL;      
       ribs_table_destroy(peer_data->uc_ribs_table);
       peer_data->uc_ribs_table = NULL;
+      ribs_table_destroy(peer_data->active_ribs_table);
+      peer_data->active_ribs_table = NULL;
       free(peer_data);
       return NULL;
     }
@@ -388,6 +421,25 @@ static void peerdata_log_event(peerdata_t *peer_data,
     }
 }
 
+static void peerdata_update_affected_resources(peerdata_t *peer_data, bgpstream_elem_t *bs_elem)
+{
+  if(bs_elem->type == BST_ANNOUNCEMENT)
+    {
+      prefixes_table_insert(peer_data->affected_prefixes,bs_elem->prefix);
+      if(bs_elem->aspath.hop_count > 0 && 
+	 bs_elem->aspath.type == BST_UINT32_ASPATH ) 
+	{
+	  ases_table_insert(peer_data->announcing_origin_ases,bs_elem->aspath.numeric_aspath[(bs_elem->aspath.hop_count-1)]);
+	}  
+      return;
+    }
+  if(bs_elem->type == BST_WITHDRAWAL) 
+    {
+      prefixes_table_insert(peer_data->affected_prefixes,bs_elem->prefix);
+      return;
+    }
+}
+
 
 static int peerdata_apply_elem(peerdata_t *peer_data, 
 			bgpstream_record_t * bs_record, bgpstream_elem_t *bs_elem)
@@ -415,7 +467,8 @@ static int peerdata_apply_elem(peerdata_t *peer_data,
 	{
 	  // apply update to the current active ribs (do not change status)
 	  ribs_table_apply_elem(peer_data->active_ribs_table, bs_elem);
-	  
+	  peerdata_update_affected_resources(peer_data,bs_elem);
+
 	  // if we are not constructing a new RIB, we exit
 	  if(!(peer_data->rt_status == UC_ON &&
 	       bs_elem->timestamp >= peer_data->uc_ribs_table->reference_rib_start))
@@ -432,6 +485,7 @@ static int peerdata_apply_elem(peerdata_t *peer_data,
 	{
 	  // apply update to the current uc ribs (do not change status)
 	  ribs_table_apply_elem(peer_data->uc_ribs_table, bs_elem);
+	  peerdata_update_affected_resources(peer_data,bs_elem);
 	  return 0;
 	}
       // case 3
@@ -853,6 +907,42 @@ static void peerdata_interval_end(peerdata_t *peer_data, int interval_start,
   // reset array
   memset(peer_data->elem_types, 0, sizeof(peer_data->elem_types));
 
+
+  // OUTPUT METRIC: peer_affected_ipv4_prefixes_cnt
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.peer_affected_ipv4_prefixes_cnt %d %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  peer_data->peer_address_str,
+	  kh_size(peer_data->affected_prefixes->ipv4_prefixes_table),
+	  interval_start);
+
+  // OUTPUT METRIC: peer_affected_ipv6_prefixes_cnt
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.peer_affected_ipv6_prefixes_cnt %d %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  peer_data->peer_address_str,
+	  kh_size(peer_data->affected_prefixes->ipv6_prefixes_table),
+	  interval_start);
+
+  // OUTPUT METRIC: peer_announcing_origin_ases_cnt
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.peer_announcing_origin_ases_cnt %d %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  peer_data->peer_address_str,
+	  kh_size(peer_data->announcing_origin_ases->table),
+	  interval_start);
+
+  // TODO: aggregation per collector
+
+
+  // then clear data
+
+  prefixes_table_reset(peer_data->affected_prefixes);
+  ases_table_reset(peer_data->announcing_origin_ases);
+
   if(peer_data->status != PEER_UP)
     {
       return;
@@ -987,6 +1077,16 @@ static void peerdata_destroy(peerdata_t *peer_data)
 	{
 	  ases_table_destroy(peer_data->unique_origin_ases);
 	  peer_data->unique_origin_ases = NULL;
+	}
+      if(peer_data->affected_prefixes != NULL) 
+	{
+	  prefixes_table_destroy(peer_data->affected_prefixes);
+	  peer_data->affected_prefixes = NULL;
+	}
+      if(peer_data->announcing_origin_ases != NULL) 
+	{
+	  ases_table_destroy(peer_data->announcing_origin_ases);
+	  peer_data->announcing_origin_ases = NULL;
 	}
       if(peer_data->peer_address_str != NULL) 
 	{

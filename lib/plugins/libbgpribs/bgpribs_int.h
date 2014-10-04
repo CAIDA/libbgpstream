@@ -161,6 +161,9 @@ typedef struct struct_peerdata_t {
   // information to dump and reset at every interval_end
   uint64_t elem_types[BGPSTREAM_ELEM_TYPE_MAX];  
   ases_table_wrapper_t * unique_origin_ases;
+  // information related to announcements/withdrawals in interval
+  prefixes_table_t * affected_prefixes; // prefixes affected by updates
+  ases_table_wrapper_t * announcing_origin_ases; // origin ases announcing a prefix
 } peerdata_t;
 
 /* peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address); */
