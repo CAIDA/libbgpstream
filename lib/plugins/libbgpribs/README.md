@@ -195,6 +195,39 @@ Legend:
 	
 
 
+============================ INTEGRATED ROLLBACK ============================
+
+This is a soft rollback implementation, it means that:
+a) plugin is not going back in the past to rewrite history!
+b) however it is applying data to the rib so that the rib contains
+   the most accurate data at every instant in time
+
+
+how it works:
+
+    --> rib
+    - every prefix in the rib table has a ts associated with the last
+      elem that provided information about it
+    - also, there is a flag that tells if the prefix is active or not
+
+    --> when we receive an update at time ts > active_rib_start
+        then we consider the following options:
+
+- if it is an announcement:   
+1) we check if the rib table contains the prefix already
+2) we get the prefix time as stated in the rib (p_rib_time)
+3) we get the prefix status as stated in the rib (active | inactive)
+4) if(p_rib_time <= ts): => apply update and turn p active       
+   else: do nothing (p is already up to date)
+
+- if it is a withdrawal:   
+1) we check if the rib table contains the prefix already
+2) we get the prefix time as stated in the rib (p_rib_time)
+3) we get the prefix status as stated in the rib (active | inactive)
+4) if(p_rib_time <= ts): => apply update and turn p inactive       
+   else: do nothing (p is already up to date)
+
+
 
 
 
