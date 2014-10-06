@@ -170,7 +170,7 @@ typedef struct struct_peerdata_t {
 /* int peerdata_apply_elem(peerdata_t *peer_data,  */
 /* 			bgpstream_record_t * bs_record, bgpstream_elem_t *elem); */
 /* int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record); */
-/* void peerdata_interval_end(peerdata_t *peer_data, int interval_start, */
+/* void peerdata_interval_end(peerdata_t *peer_(data, int interval_start, */
 /* 			   collectordata_t *collector_data); */
 /* void peerdata_destroy(peerdata_t *peer_data); */
 
@@ -231,6 +231,8 @@ typedef struct collectordata {
   uint64_t record_types[BGPSTREAM_RECORD_TYPE_MAX];
   prefixes_table_t * unique_prefixes;
   ases_table_wrapper_t * unique_origin_ases;
+  prefixes_table_t * affected_prefixes;          // prefixes affected by updates
+  ases_table_wrapper_t * announcing_origin_ases; // origin ases announcing a prefix
 } collectordata_t;
 
 /* collectordata_t *collectordata_create(const char *project, */

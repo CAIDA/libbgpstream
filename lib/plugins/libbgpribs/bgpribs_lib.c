@@ -863,7 +863,12 @@ static int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_
 static void peerdata_interval_end(peerdata_t *peer_data, int interval_start,
 			   collectordata_t *collector_data) 
 {
- 
+  khiter_t k;
+  int khret;
+  bgpstream_prefix_t prefix;
+  prefixdata_t pd;
+  uint32_t as;
+
  // OUTPUT METRIC: peer_status
   fprintf(stdout,
 	  METRIC_PREFIX".%s.%s.%s.peer_status %d %d\n",
@@ -935,12 +940,41 @@ static void peerdata_interval_end(peerdata_t *peer_data, int interval_start,
 	  kh_size(peer_data->announcing_origin_ases->table),
 	  interval_start);
 
-  // TODO: aggregation per collector
+  // "Aggregation" of affected resources per collector
 
+  for(k = kh_begin(peer_data->affected_prefixes->ipv4_prefixes_table);
+      k != kh_end(peer_data->affected_prefixes->ipv4_prefixes_table); ++k)
+    {
+      if (kh_exist(peer_data->affected_prefixes->ipv4_prefixes_table, k))
+	{
+	  prefix = kh_key(peer_data->affected_prefixes->ipv4_prefixes_table, k);
+	  prefixes_table_insert(collector_data->affected_prefixes, prefix);
+	}
+    }
+  for(k = kh_begin(peer_data->affected_prefixes->ipv6_prefixes_table);
+      k != kh_end(peer_data->affected_prefixes->ipv6_prefixes_table); ++k)
+    {
+      if (kh_exist(peer_data->affected_prefixes->ipv6_prefixes_table, k))
+	{
+	  prefix = kh_key(peer_data->affected_prefixes->ipv6_prefixes_table, k);
+	  prefixes_table_insert(collector_data->affected_prefixes, prefix);
+	}
+    }
 
   // then clear data
-
   prefixes_table_reset(peer_data->affected_prefixes);
+
+  for(k = kh_begin(peer_data->announcing_origin_ases->table);
+      k != kh_end(peer_data->announcing_origin_ases->table); ++k)
+    {
+      if (kh_exist(peer_data->announcing_origin_ases->table, k))
+	{
+	  as = kh_key(peer_data->announcing_origin_ases->table, k);
+	  ases_table_insert(collector_data->announcing_origin_ases, as);
+	}
+    }
+
+  // then clear data
   ases_table_reset(peer_data->announcing_origin_ases);
 
   if(peer_data->status != PEER_UP)
@@ -970,10 +1004,6 @@ static void peerdata_interval_end(peerdata_t *peer_data, int interval_start,
 
   // go through ipv4 an ipv6 ribs and get the standard origin
   // ases, plus integrate the data into collector_data structs
-  khiter_t k;
-  int khret;
-  bgpstream_prefix_t prefix;
-  prefixdata_t pd;
   double avg_aspath_len_ipv4 = 0;
   double ipv4_size = kh_size(peer_data->active_ribs_table->ipv4_rib);
   double avg_aspath_len_ipv6 = 0;
@@ -1443,6 +1473,35 @@ static collectordata_t *collectordata_create(const char *project,
       return NULL;
     }
 
+  if((collector_data->affected_prefixes = prefixes_table_create()) == NULL)
+    {
+      ases_table_destroy(collector_data->unique_origin_ases);
+      collector_data->unique_origin_ases = NULL;
+      prefixes_table_destroy(collector_data->unique_prefixes);
+      collector_data->unique_prefixes = NULL;
+      peers_table_destroy(collector_data->peers_table);
+      collector_data->peers_table = NULL;
+      free(collector_data->dump_collector);
+      free(collector_data->dump_project);
+      free(collector_data);
+      return NULL;
+    }
+
+  if((collector_data->announcing_origin_ases = ases_table_create()) == NULL)
+    {
+      prefixes_table_destroy(collector_data->affected_prefixes);
+      collector_data->affected_prefixes = NULL;
+      ases_table_destroy(collector_data->unique_origin_ases);
+      collector_data->unique_origin_ases = NULL;
+      prefixes_table_destroy(collector_data->unique_prefixes);
+      collector_data->unique_prefixes = NULL;
+      peers_table_destroy(collector_data->peers_table);
+      collector_data->peers_table = NULL;
+      free(collector_data->dump_collector);
+      free(collector_data->dump_project);
+      free(collector_data);
+      return NULL;
+    }
   /* make the project name graphite-safe */
   graphite_safe(collector_data->dump_project);
 
@@ -1562,6 +1621,36 @@ static void collectordata_interval_end(collectordata_t *collector_data,
   peers_table_interval_end(collector_data->peers_table, interval_start,
 			   collector_data);
   
+
+  // OUTPUT METRIC: collector_affected_ipv4_prefixes_cnt
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.collector_affected_ipv4_prefixes_cnt %d %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  kh_size(collector_data->affected_prefixes->ipv4_prefixes_table),
+	  interval_start);
+
+  // OUTPUT METRIC: collector_affected_ipv6_prefixes_cnt
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.collector_affected_ipv6_prefixes_cnt %d %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  kh_size(collector_data->affected_prefixes->ipv6_prefixes_table),
+	  interval_start);
+
+  prefixes_table_reset(collector_data->affected_prefixes);
+
+  // OUTPUT METRIC: collector_announcing_origin_ases_cnt
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.collector_announcing_origin_ases_cnt %d %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  kh_size(collector_data->announcing_origin_ases->table),
+	  interval_start);
+  
+  ases_table_reset(collector_data->announcing_origin_ases);
+
+
   // OUTPUT METRIC: unique_ipv4_prefixes_cnt
   fprintf(stdout,
 	  METRIC_PREFIX".%s.%s.collector_unique_ipv4_prefixes_cnt %d %d\n",
@@ -1616,7 +1705,6 @@ static void collectordata_destroy(collectordata_t *collector_data)
 	  free(collector_data->dump_project);
 	  collector_data->dump_project = NULL;
 	}
-
       if(collector_data->dump_collector != NULL)
 	{
 	  free(collector_data->dump_collector);
@@ -1636,6 +1724,16 @@ static void collectordata_destroy(collectordata_t *collector_data)
 	{
 	  ases_table_destroy(collector_data->unique_origin_ases);
 	  collector_data->unique_origin_ases = NULL;
+	}
+      if(collector_data->affected_prefixes != NULL)
+	{
+	  prefixes_table_destroy(collector_data->affected_prefixes);
+	  collector_data->affected_prefixes = NULL;
+	}
+      if(collector_data->announcing_origin_ases != NULL)
+	{
+	  ases_table_destroy(collector_data->announcing_origin_ases);
+	  collector_data->announcing_origin_ases = NULL;
 	}
       free(collector_data);
     }
