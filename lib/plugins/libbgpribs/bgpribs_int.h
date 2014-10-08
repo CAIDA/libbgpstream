@@ -97,6 +97,8 @@ typedef struct struct_prefixes_table_t {
 typedef struct struct_prefixdata_t {
   uint32_t origin_as;
   bgpstream_aspath_t aspath;
+  uint8_t is_active;  // is this prefix up or down
+  long int ts;        // when this entry modified the rib
 } prefixdata_t;
 
 

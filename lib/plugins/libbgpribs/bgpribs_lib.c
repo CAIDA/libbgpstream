@@ -179,8 +179,13 @@ static void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs
   // prepare pd in case of insert
   prefixdata_t pd;
   pd.origin_as = 0;
+  pd.is_active = 0; // if it is a withdrawal it will remain 0
+  pd.ts = bs_elem->timestamp;
+  prefixdata_t current_pd;
+
   if(bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_RIB)
     {
+      pd.is_active = 1;
       pd.aspath = bs_elem->aspath;
       // compute origin_as
       if(bs_elem->aspath.hop_count > 0 && 
@@ -188,15 +193,7 @@ static void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs
 	{
 	  pd.origin_as = bs_elem->aspath.numeric_aspath[(bs_elem->aspath.hop_count-1)];
 	}  
-
-      // if prefix length is >24 (ipv4) or >64 (ipv6)
-      // then do not apply elem
-      if((bs_elem->prefix.number.type == BST_IPV4 && bs_elem->prefix.len > 24) || 
-	 (bs_elem->prefix.number.type == BST_IPV6 && bs_elem->prefix.len > 64))
-	{
-	  return;
-	}
-    }  
+    } 
 
   if(bs_elem->prefix.number.type == BST_IPV4) 
     { // ipv4 prefix
@@ -205,61 +202,44 @@ static void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs
       // if it doesn't exist
       if(k == kh_end(ribs_table->ipv4_rib))
 	{
-	  // add key/value if it is an insert 
-	  if(bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_RIB)
-	    {
-	      k = kh_put(ipv4_rib_t, ribs_table->ipv4_rib, 
-			 bs_elem->prefix, &khret);
-	      kh_value(ribs_table->ipv4_rib, k) = pd;
-	    }
-	  // do nothing if it is a withdrawal
-	  return;
+	  k = kh_put(ipv4_rib_t, ribs_table->ipv4_rib, 
+		     bs_elem->prefix, &khret);
+	  kh_value(ribs_table->ipv4_rib, k) = pd;
 	}
       else
 	{
-	  // updating the value  if it is an insert 
-	  if(bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_RIB)
+	  // updating the value only if the new timestamp is >= than the current one
+	  // (if it is equal we assume data arrives in order and we apply it)
+	  current_pd = kh_value(ribs_table->ipv4_rib, k);
+	  if(pd.ts >= current_pd.ts)
 	    {
 	      kh_value(ribs_table->ipv4_rib, k) = pd;
 	    }
-	  else 
-	    { // removing key if it is a withdrawal
-	      kh_del(ipv4_rib_t, ribs_table->ipv4_rib, k);
-	    }
-	  return;
 	}
     }
   else
-    { // ipv6 prefix // assert(bs_elem->prefix.number.type == BST_IPV6) 
+    { // ipv6 prefix  // assert(bs_elem->prefix.number.type == BST_IPV6) 
       k = kh_get(ipv6_rib_t, ribs_table->ipv6_rib,
 		 bs_elem->prefix);
       // if it doesn't exist
       if(k == kh_end(ribs_table->ipv6_rib))
 	{
-	  // add key/value if it is an insert 
-	  if(bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_RIB)
-	    {
-	      k = kh_put(ipv6_rib_t, ribs_table->ipv6_rib, 
-			 bs_elem->prefix, &khret);
-	      kh_value(ribs_table->ipv6_rib, k) = pd;
-	    }
-	  // do nothing if it is a withdrawal
-	  return;
+	  k = kh_put(ipv6_rib_t, ribs_table->ipv6_rib, 
+		     bs_elem->prefix, &khret);
+	  kh_value(ribs_table->ipv6_rib, k) = pd;
 	}
       else
 	{
-	  // updating the value  if it is an insert 
-	  if(bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_RIB)
+	  // updating the value only if the new timestamp is >= than the current one
+	  // (if it is equal we assume data arrives in order and we apply it)
+	  current_pd = kh_value(ribs_table->ipv6_rib, k);
+	  if(pd.ts >= current_pd.ts)
 	    {
 	      kh_value(ribs_table->ipv6_rib, k) = pd;
 	    }
-	  else 
-	    { // removing key if it is a withdrawal
-	      kh_del(ipv6_rib_t, ribs_table->ipv6_rib, k);
-	    }
-	  return;
 	}
-    }	
+    }
+  return;	
 }
 
 
@@ -495,14 +475,14 @@ static int peerdata_apply_elem(peerdata_t *peer_data,
 	  // if none of the previous options have been triggered, it means that we
 	  // just received an out of order that invalidates the current status
 	  // i.e. the active rib, however, it does not affect the uc_ribs
-	  // if possible we can try to rollback, otherwise:
-	  
-	  // go to PEER_NULL
-	  peer_data->status = PEER_NULL;
-	  ribs_table_reset(peer_data->active_ribs_table);
-	  // we maintain UC_ON if it is active
 
-	  // TODO: think about rollback options here
+	  // in this case we just rely on the soft-rollback mechanism that is
+	  // already embedded into the ribs_table_apply_elem mechanism
+	  ribs_table_apply_elem(peer_data->active_ribs_table, bs_elem);
+	  peerdata_update_affected_resources(peer_data,bs_elem);
+
+	  // TODO: signal an out of order 
+
 	  return 0;
 	}
       // case 4
@@ -984,23 +964,8 @@ static void peerdata_interval_end(peerdata_t *peer_data, int interval_start,
   
   // the following actions require the peer to be UP
   
-  // OUTPUT METRIC: ipv4_rib_size
-  fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.peer_ipv4_rib_size %d %d\n",
-	  collector_data->dump_project,
-	  collector_data->dump_collector,
-	  peer_data->peer_address_str,
-	  kh_size(peer_data->active_ribs_table->ipv4_rib),
-	  interval_start);
-
-  // OUTPUT METRIC: ipv6_rib_size
-  fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.peer_ipv6_rib_size %d %d\n",
-	  collector_data->dump_project,
-	  collector_data->dump_collector,
-	  peer_data->peer_address_str,
-	  kh_size(peer_data->active_ribs_table->ipv6_rib),
-	  interval_start);
+  uint32_t ipv4_rib_size = 0;
+  uint32_t ipv6_rib_size = 0;
 
   // go through ipv4 an ipv6 ribs and get the standard origin
   // ases, plus integrate the data into collector_data structs
@@ -1016,15 +981,19 @@ static void peerdata_interval_end(peerdata_t *peer_data, int interval_start,
 	{
 	  // get prefix
 	  prefix = kh_key(peer_data->active_ribs_table->ipv4_rib, k);
-	  prefixes_table_insert(collector_data->unique_prefixes, prefix);
 	  // get prefix_data
 	  pd = kh_value(peer_data->active_ribs_table->ipv4_rib, k);
-	  if(pd.origin_as != 0)
+	  if(pd.is_active == 1) 
 	    {
-	      ases_table_insert(peer_data->unique_origin_ases, pd.origin_as);
-	      ases_table_insert(collector_data->unique_origin_ases, pd.origin_as);
+	      ipv4_rib_size++;
+	      prefixes_table_insert(collector_data->unique_prefixes, prefix);
+	      if(pd.origin_as != 0)
+		{
+		  ases_table_insert(peer_data->unique_origin_ases, pd.origin_as);
+		  ases_table_insert(collector_data->unique_origin_ases, pd.origin_as);
+		}
+	      avg_aspath_len_ipv4 += pd.aspath.hop_count;
 	    }
-	  avg_aspath_len_ipv4 += pd.aspath.hop_count;
 	}
     }
   
@@ -1035,17 +1004,39 @@ static void peerdata_interval_end(peerdata_t *peer_data, int interval_start,
 	{
 	  // get prefix
 	  prefix = kh_key(peer_data->active_ribs_table->ipv6_rib, k);
-	  prefixes_table_insert(collector_data->unique_prefixes, prefix);
 	  // get prefix_data
 	  pd = kh_value(peer_data->active_ribs_table->ipv6_rib, k);
-	  if(pd.origin_as != 0)
+	  if(pd.is_active == 1) 
 	    {
-	      ases_table_insert(peer_data->unique_origin_ases, pd.origin_as);
-	      ases_table_insert(collector_data->unique_origin_ases, pd.origin_as);
+	      ipv6_rib_size++;
+	      prefixes_table_insert(collector_data->unique_prefixes, prefix);
+	      if(pd.origin_as != 0)
+		{
+		  ases_table_insert(peer_data->unique_origin_ases, pd.origin_as);
+		  ases_table_insert(collector_data->unique_origin_ases, pd.origin_as);
+		}
+	      avg_aspath_len_ipv6 += pd.aspath.hop_count;
 	    }
-	  avg_aspath_len_ipv6 += pd.aspath.hop_count;
 	}
     }
+
+  // OUTPUT METRIC: ipv4_rib_size
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.peer_ipv4_rib_size %d %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  peer_data->peer_address_str,
+	  ipv4_rib_size,
+	  interval_start);
+
+  // OUTPUT METRIC: ipv6_rib_size
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.peer_ipv6_rib_size %d %d\n",
+	  collector_data->dump_project,
+	  collector_data->dump_collector,
+	  peer_data->peer_address_str,
+	  ipv6_rib_size,
+	  interval_start);
 
   // OUTPUT METRIC: unique_std_origin_ases_cnt
   fprintf(stdout,
