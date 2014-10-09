@@ -20,7 +20,7 @@
 TAGS
 
 # Compiled programs
-ChangeLog
+# ChangeLog
 *.tar.gz
 tools/bgpwatcher-server
 tools/bgpwatcher-test-client
@@ -46,6 +46,7 @@ config.status
 config.h.in
 config.log
 configure.scan
+INSTALL
 stamp-h1
 .libs/
 autoscan.log
