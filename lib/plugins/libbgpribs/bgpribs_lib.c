@@ -28,6 +28,8 @@
 
 #include <assert.h>
 #include "utils.h"
+#include <bgpwatcher_client.h>
+
 
 #define METRIC_PREFIX "bgp.bgpribs"
 
@@ -1735,6 +1737,7 @@ static void collectordata_destroy(collectordata_t *collector_data)
 
 collectors_table_wrapper_t *collectors_table_create() 
 {
+  bgpwatcher_client_t *client = NULL;
   collectors_table_wrapper_t *collectors_table;
   if((collectors_table = malloc_zero(sizeof(collectors_table_wrapper_t))) == NULL)
     {
