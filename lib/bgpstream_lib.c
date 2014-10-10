@@ -223,6 +223,10 @@ int bgpstream_get_next_record(bgpstream_t * const bs, bgpstream_record_t * const
 	bgpstream_debug("BS: no (more) data are available");
 	return 0; // no (more) data are available
       }
+      if(num_query_results < 0){
+	bgpstream_debug("BS: error during datasource_mgr_update_input_queue");
+	return -1; // error during execution
+      }
       bgpstream_debug("BS: got results from datasource");
     }
     bgpstream_debug("BS: input mgr not empty");

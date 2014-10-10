@@ -33,6 +33,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <inttypes.h>
+#include <unistd.h>
 
 
 #define PROJECT_CMD_CNT 10
@@ -315,7 +316,6 @@ int main(int argc, char *argv[])
   int get_next_ret = 0;
   bgpstream_elem_t * bs_elem_head;
   bgpstream_elem_t * bs_elem_iterator;
-  int count = 0;
   do
     {
       get_next_ret = bgpstream_get_next_record(bs, bs_record);

@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <errmsg.h>
 
 /* datasource specific functions declarations */
 
@@ -880,48 +881,82 @@ static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasou
   mysql_ds->file_ext_res[0] = '\0';
 
   // mysql_ds->last_timestamp is the only parameter for the query
-  /* Execute the statement */
-  if (mysql_stmt_execute(mysql_ds->stmt)) {
+  /* Try to execute the statement */
+  int stmt_ret = mysql_stmt_execute(mysql_ds->stmt);
+
+  if(stmt_ret == CR_SERVER_LOST)
+    {
+      // reconnect and retry one more time
+      // http://bugs.mysql.com/bug.php?id=35937
+      // note that mysql prepared statement have to be reconfigured again
+      if (mysql_real_connect(mysql_ds->mysql_con, "localhost", "routing", NULL, 
+			     "bgparchive", 0, NULL, 0) != NULL)
+	{
+	  if(mysql_query(mysql_ds->mysql_con, "set time_zone='+0:0'") == 0)
+	    {
+	      mysql_stmt_close(mysql_ds->stmt);
+	      mysql_ds->stmt = NULL;
+	      if((mysql_ds->stmt = mysql_stmt_init(mysql_ds->mysql_con)) != NULL)
+		{
+		  if (mysql_stmt_prepare(mysql_ds->stmt, mysql_ds->sql_query, strlen(mysql_ds->sql_query)) == 0)
+		    {
+		      if(mysql_stmt_bind_param(mysql_ds->stmt, mysql_ds->parameters) == 0)
+			{
+			  if(mysql_stmt_bind_result(mysql_ds->stmt, mysql_ds->results) == 0) 
+			    {
+			      stmt_ret = mysql_stmt_execute(mysql_ds->stmt);
+			    }
+			}
+		    }
+		}
+	    }
+	}
+    }
+
+  // if stmt ret is still wrong  
+  if (stmt_ret != 0) {
+    // something wrong happened
     fprintf(stderr, " mysql_stmt_execute(), failed\n");
     fprintf(stderr, " %s\n", mysql_stmt_error(mysql_ds->stmt));
     return -1;
   }
-  else{
-    /* Print our results */
-    while(mysql_stmt_fetch (mysql_ds->stmt) == 0) {
 
-      /* build the filename from pieces given by sql */
-      if((filename = build_filename(mysql_ds)) == NULL) {
-	fprintf(stderr, "could not build file name\n");
-	return -1;
-      }
 
-      num_results +=
-	bgpstream_input_mgr_push_sorted_input(input_mgr,
-					      filename,
-					      strdup(mysql_ds->proj_name_res),
-					      strdup(mysql_ds->coll_name_res),
-					      strdup(mysql_ds->type_name_res),
-					      mysql_ds->filetime_res
-					      );
-      //DEBUG printf("%s\n", mysql_ds->filename_res);
-      bgpstream_debug("\t\tBSDS_MYSQL: added %d new inputs to input queue", num_results);
-      bgpstream_debug("\t\tBSDS_MYSQL: %s - %s - %d", 
-	    filename, mysql_ds->type_name_res, mysql_ds->filetime_res);
-      // here
-      /* clear all the strings... just in case */
-      mysql_ds->proj_path_res[0] = '\0';
-      mysql_ds->coll_path_res[0] = '\0';
-      mysql_ds->type_path_res[0] = '\0';
-      mysql_ds->proj_name_res[0] = '\0';
-      mysql_ds->coll_name_res[0] = '\0';
-      mysql_ds->type_name_res[0] = '\0';
-      mysql_ds->file_ext_res[0] = '\0';
+  /* Print our results */
+  while(mysql_stmt_fetch (mysql_ds->stmt) == 0) {
+
+    /* build the filename from pieces given by sql */
+    if((filename = build_filename(mysql_ds)) == NULL) {
+      fprintf(stderr, "could not build file name\n");
+      return -1;
     }
-    // the next time we will pull data that has been written 
-    // after the current timestamp
-    mysql_ds->last_timestamp = mysql_ds->current_timestamp;
+
+    num_results +=
+      bgpstream_input_mgr_push_sorted_input(input_mgr,
+					    filename,
+					    strdup(mysql_ds->proj_name_res),
+					    strdup(mysql_ds->coll_name_res),
+					    strdup(mysql_ds->type_name_res),
+					    mysql_ds->filetime_res
+					    );
+    //DEBUG printf("%s\n", mysql_ds->filename_res);
+    bgpstream_debug("\t\tBSDS_MYSQL: added %d new inputs to input queue", num_results);
+    bgpstream_debug("\t\tBSDS_MYSQL: %s - %s - %d", 
+		    filename, mysql_ds->type_name_res, mysql_ds->filetime_res);
+    // here
+    /* clear all the strings... just in case */
+    mysql_ds->proj_path_res[0] = '\0';
+    mysql_ds->coll_path_res[0] = '\0';
+    mysql_ds->type_path_res[0] = '\0';
+    mysql_ds->proj_name_res[0] = '\0';
+    mysql_ds->coll_name_res[0] = '\0';
+    mysql_ds->type_name_res[0] = '\0';
+    mysql_ds->file_ext_res[0] = '\0';
   }
+  // the next time we will pull data that has been written 
+  // after the current timestamp
+  mysql_ds->last_timestamp = mysql_ds->current_timestamp;
+
   bgpstream_debug("\t\tBSDS_MYSQL: mysql_ds update input queue end");
   return num_results;
 }
