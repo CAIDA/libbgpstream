@@ -276,7 +276,7 @@ int main(int argc, char **argv)
     }
 
   bgpwatcher_client_set_cb_handle_reply(client, handle_reply);
-#if 0
+
   if(server_uri != NULL &&
      bgpwatcher_client_set_server_uri(client, server_uri) != 0)
     {
@@ -304,7 +304,6 @@ int main(int argc, char **argv)
   bgpwatcher_client_set_request_timeout(client, request_timeout);
 
   bgpwatcher_client_set_request_retries(client, request_retries);
-#endif
 
   fprintf(stderr, "TEST: Init tables and records... ");
   if((pfx_table = bgpwatcher_client_pfx_table_create(client)) == NULL)
