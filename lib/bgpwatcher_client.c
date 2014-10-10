@@ -183,6 +183,9 @@ bgpwatcher_client_t *bgpwatcher_client_init()
 
   BROKER.shutdown_linger = BGPWATCHER_CLIENT_SHUTDOWN_LINGER_DEFAULT;
 
+  BROKER.request_timeout = BGPWATCHER_CLIENT_REQUEST_TIMEOUT_DEFAULT;
+  BROKER.request_retries = BGPWATCHER_CLIENT_REQUEST_RETRIES_DEFAULT;
+
   return client;
 
  err:
@@ -389,7 +392,7 @@ int bgpwatcher_client_peer_table_end(bgpwatcher_client_peer_table_t *table)
   if((rc = send_table(table->client,
 		      BGPWATCHER_TABLE_TYPE_PEER,
 		      BGPWATCHER_DATA_MSG_TYPE_TABLE_END,
-		      table->time)) <= 0)
+		      table->time)) >= 0)
     {
       table->started = 0;
     }
