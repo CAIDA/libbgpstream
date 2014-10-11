@@ -306,7 +306,7 @@ int bgpwatcher_client_pfx_table_end(bgpwatcher_client_pfx_table_t *table)
   if((rc = send_table(table->client,
 		      BGPWATCHER_TABLE_TYPE_PREFIX,
 		      BGPWATCHER_DATA_MSG_TYPE_TABLE_END,
-		      table->time)) <= 0)
+		      table->time)) >= 0)
     {
       table->started = 0;
     }
