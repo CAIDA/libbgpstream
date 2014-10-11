@@ -31,6 +31,8 @@
 #include "bgpribs_lib.h"
 #include "bgpstream_lib.h"
 #include "bgpribs_khash.h"
+#include <bgpwatcher_client.h>
+
 
 /** ases table (set of unique ases)
  *  this structure maintains a set of unique
@@ -246,6 +248,14 @@ typedef struct collectordata {
 /* void collectordata_destroy(collectordata_t *collector_data); */
 
 
+typedef struct bw_client {
+  bgpwatcher_client_t *client;
+  bgpwatcher_client_pfx_table_t *pfx_table;
+  bgpwatcher_pfx_record_t *pfx_record;
+  bgpwatcher_client_peer_table_t *peer_table;
+  bgpwatcher_peer_record_t *peer_record;
+} bw_client_t;
+
 /** collectors table
  *  this structure contains a map that associate to
  *  each collector (string) a collectordata structure
@@ -261,6 +271,7 @@ KHASH_INIT(collectors_table_t,        /* name */
 
 struct collectors_table_wrapper {
   khash_t(collectors_table_t) * table;
+  bw_client_t *bw_client;
 };
 
 
