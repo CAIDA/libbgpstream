@@ -94,14 +94,12 @@ typedef struct bgpwatcher_server_client {
   /** info about this client that we will send to the client connect handler */
   bgpwatcher_server_client_info_t info;
 
-  /** Current table number */
-  uint64_t table_num;
-
-  /** Are we in the middle of receiving a table? */
-  bgpwatcher_table_type_t table_type;
+  /** @todo create a table structure to represent current tables */
+  /** Current table number (one per table type) */
+  uint64_t table_num[BGPWATCHER_TABLE_TYPE_MAX+1];
 
   /** What is the time of the current table? */
-  uint32_t table_time;
+  uint32_t table_time[BGPWATCHER_TABLE_TYPE_MAX+1];
 
 } bgpwatcher_server_client_t;
 

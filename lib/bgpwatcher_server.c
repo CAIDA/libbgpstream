@@ -273,9 +273,8 @@ static int handle_table(bgpwatcher_server_t *server,
 			bgpwatcher_data_msg_type_t type)
 {
   zframe_t *frame;
-  uint8_t tmp;
+  uint8_t ttype;
   uint32_t tmp_time;
-
   /* set the table typefor this client */
   if((frame = zmsg_pop(msg)) == NULL ||
      zframe_size(frame) != bgpwatcher_table_type_size_t)
@@ -284,10 +283,10 @@ static int handle_table(bgpwatcher_server_t *server,
 			     "Could not extract table type");
       goto err;
     }
-  tmp = *zframe_data(frame);
+  ttype = *zframe_data(frame);
   zframe_destroy(&frame);
 
-  if(tmp == BGPWATCHER_TABLE_TYPE_NONE || tmp > BGPWATCHER_TABLE_TYPE_MAX)
+  if(ttype == BGPWATCHER_TABLE_TYPE_NONE || ttype > BGPWATCHER_TABLE_TYPE_MAX)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 			     "Invalid table type");
@@ -296,7 +295,7 @@ static int handle_table(bgpwatcher_server_t *server,
 
   /* get the table time */
   if((frame = zmsg_pop(msg)) == NULL ||
-     zframe_size(frame) != sizeof(client->table_time))
+     zframe_size(frame) != sizeof(client->table_time[BGPWATCHER_TABLE_TYPE_NONE]))
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 			     "Could not extract table time");
@@ -308,12 +307,20 @@ static int handle_table(bgpwatcher_server_t *server,
 
   if(type == BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN)
     {
-      client->table_type = tmp;
-      client->table_time = tmp_time;
-      client->table_num = server->table_num++;
+      /* check if a table has already been started */
+      if(client->table_time[ttype] != 0 || client->table_num[ttype] != 0)
+        {
+          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+				 "Table already started for type %d",
+				 ttype);
+	  goto err;
+        }
 
-      if(DO_CALLBACK(table_begin, client->table_num,
-		     client->table_type, client->table_time) != 0)
+      client->table_time[ttype] = tmp_time;
+      client->table_num[ttype] = server->table_num++;
+
+      if(DO_CALLBACK(table_begin, client->table_num[ttype],
+		     ttype, client->table_time[ttype]) != 0)
 	{
 	  return -1;
 	}
@@ -321,31 +328,22 @@ static int handle_table(bgpwatcher_server_t *server,
   else if(type == BGPWATCHER_DATA_MSG_TYPE_TABLE_END)
     {
       /* make sure they are talking about the same table */
-      /* @todo consider allowing both table types simultaneously */
-      if(tmp != client->table_type)
-	{
-	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-				 "Table type mismatch (expecting %d, got %d)",
-				 client->table_type, tmp);
-	  goto err;
-	}
-      if(tmp_time != client->table_time)
+      if(client->table_time[ttype] != tmp_time)
 	{
 	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 				 "Table time mismatch (expecting %d, got %d)",
-				 client->table_time, tmp_time);
+				 client->table_time[ttype], tmp_time);
 	  goto err;
 	}
 
-      if(DO_CALLBACK(table_end, client->table_num,
-		     client->table_type, client->table_time) != 0)
+      if(DO_CALLBACK(table_end, client->table_num[ttype],
+                     ttype, client->table_time[ttype]) != 0)
 	{
 	  return -1;
 	}
 
-      client->table_type = BGPWATCHER_TABLE_TYPE_NONE;
-      client->table_time = 0;
-      client->table_num = 0;
+      client->table_time[ttype] = 0;
+      client->table_num[ttype] = 0;
     }
   else
     {
@@ -364,7 +362,7 @@ static int handle_pfx_record(bgpwatcher_server_t *server,
 			     bgpwatcher_server_client_t *client,
 			     zmsg_t *msg)
 {
-  if(client->table_type != BGPWATCHER_TABLE_TYPE_PREFIX)
+  if(client->table_time[BGPWATCHER_TABLE_TYPE_PREFIX] == 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 			     "Received prefix before table start");
@@ -378,7 +376,9 @@ static int handle_pfx_record(bgpwatcher_server_t *server,
       goto err;
     }
 
-  if(DO_CALLBACK(recv_pfx_record, client->table_num, &server->pfx) != 0)
+  if(DO_CALLBACK(recv_pfx_record,
+                 client->table_num[BGPWATCHER_TABLE_TYPE_PREFIX],
+                 &server->pfx) != 0)
     {
       goto err;
     }
@@ -395,7 +395,7 @@ static int handle_peer_record(bgpwatcher_server_t *server,
 {
   bgpwatcher_peer_record_t *rec = NULL;
 
-  if(client->table_type != BGPWATCHER_TABLE_TYPE_PEER)
+  if(client->table_time[BGPWATCHER_TABLE_TYPE_PEER] == 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 			     "Received peer before table start");
@@ -409,7 +409,9 @@ static int handle_peer_record(bgpwatcher_server_t *server,
       goto err;
     }
 
-  if(DO_CALLBACK(recv_peer_record, client->table_num, rec) != 0)
+  if(DO_CALLBACK(recv_peer_record,
+                 client->table_num[BGPWATCHER_TABLE_TYPE_PEER],
+                                   rec) != 0)
     {
       goto err;
     }
