@@ -22,7 +22,7 @@
 # along with bgpcorsaro.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-AM_CPPFLAGS = -I$(top_srcdir)/common -I/Users/chiara/Projects/satc/github/bgpwatcher/dev/usr/include
+AM_CPPFLAGS = -I$(top_srcdir)/common 
 
 noinst_LTLIBRARIES = libbgpribs.la
 
@@ -32,7 +32,7 @@ libbgpribs_la_SOURCES = bgpribs_lib.h   \
 			bgpribs_khash.h	\
 			bgpribs_khash.c	
 
-libbgpribs_la_LIBADD = -L/Users/chiara/Projects/satc/github/bgpwatcher/dev/usr/lib -lbgpwatcher
+# libbgpribs_la_LIBADD =
 
 
 ACLOCAL_AMFLAGS = -I m4
