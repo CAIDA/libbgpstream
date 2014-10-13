@@ -28,8 +28,10 @@
 
 #include <assert.h>
 #include "utils.h"
-#include <bgpwatcher_client.h>
 
+#ifdef WITH_BGPWATCHER
+#include <bgpwatcher_client.h>
+#endif
 
 #define METRIC_PREFIX "bgp.bgpribs"
 
@@ -842,6 +844,7 @@ static int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_
 }
 
 
+#ifdef WITH_BGPWATCHER
 static void add_data_to_bw_pfx_table(bgpstream_prefix_t prefix, prefixdata_t prefix_data,
 				     collectordata_t *collector_data, peerdata_t *peer_data,
 				     bgpstream_ip_address_t peer_address,
@@ -898,12 +901,17 @@ static void add_data_to_bw_pfx_table(bgpstream_prefix_t prefix, prefixdata_t pre
   	}
     }
 }
+#endif
 
-
-
+#ifdef WITH_BGPWATCHER
 static void peerdata_interval_end(bgpstream_ip_address_t peer_address, peerdata_t *peer_data,
 				  int interval_start,
 				  collectordata_t *collector_data, bw_client_t *bw_client) 
+#else
+static void peerdata_interval_end(bgpstream_ip_address_t peer_address, peerdata_t *peer_data,
+				  int interval_start,
+				  collectordata_t *collector_data) 
+#endif
 {
   khiter_t k;
   int khret;
@@ -1026,6 +1034,7 @@ static void peerdata_interval_end(bgpstream_ip_address_t peer_address, peerdata_
   
   // the following actions require the peer to be UP
 
+#ifdef WITH_BGPWATCHER
   bool bw_on = (bw_client != NULL);
   int rc;
   uint32_t pfx_table_time = interval_start;
@@ -1039,6 +1048,7 @@ static void peerdata_interval_end(bgpstream_ip_address_t peer_address, peerdata_
 	  bw_on = false;
 	}
     }
+#endif
   
   uint32_t ipv4_rib_size = 0;
   uint32_t ipv6_rib_size = 0;
@@ -1069,7 +1079,9 @@ static void peerdata_interval_end(bgpstream_ip_address_t peer_address, peerdata_
 		  ases_table_insert(collector_data->unique_origin_ases, pd.origin_as);
 		}
 	      avg_aspath_len_ipv4 += pd.aspath.hop_count;
+#ifdef WITH_BGPWATCHER
 	      add_data_to_bw_pfx_table(prefix, pd, collector_data, peer_data, peer_address, bw_client);
+#endif
 	    }
 	}
     }
@@ -1093,11 +1105,14 @@ static void peerdata_interval_end(bgpstream_ip_address_t peer_address, peerdata_
 		  ases_table_insert(collector_data->unique_origin_ases, pd.origin_as);
 		}
 	      avg_aspath_len_ipv6 += pd.aspath.hop_count;
+#ifdef WITH_BGPWATCHER
 	      add_data_to_bw_pfx_table(prefix, pd, collector_data, peer_data, peer_address, bw_client);
+#endif
 	    }
 	}
     }
 
+#ifdef WITH_BGPWATCHER
   if(bw_on)
     {
       if((rc = bgpwatcher_client_pfx_table_end(bw_client->pfx_table)) < 0)
@@ -1105,6 +1120,7 @@ static void peerdata_interval_end(bgpstream_ip_address_t peer_address, peerdata_
 	  fprintf(stderr, "Could not end prefix table\n");
 	}
     }
+#endif
 
   // OUTPUT METRIC: ipv4_rib_size
   fprintf(stdout,
@@ -1314,8 +1330,7 @@ static int peers_table_process_record(peers_table_t *peers_table,
 		{ /* already exists, just get it */
 		  peer_data = kh_value(peers_table->ipv6_peers_table, k);
 		}    
-	    }
-	  
+	    }	  
 
 	  // DEBUG:
 	  /* ribs_tables_status_t old_rt_status = peer_data->rt_status; */
@@ -1421,7 +1436,7 @@ static int peers_table_process_record(peers_table_t *peers_table,
   return num_active_peers;
 }
 
-
+#ifdef WITH_BGPWATCHER
 static void add_data_to_bw_peer_table(bgpstream_ip_address_t peer_address,
 				      peerdata_t * peer_data,
 				      bw_client_t *bw_client)
@@ -1452,15 +1467,23 @@ static void add_data_to_bw_peer_table(bgpstream_ip_address_t peer_address,
 	}
     }	       
 }
+#endif
 
 
+#ifdef WITH_BGPWATCHER
 static void peers_table_interval_end(peers_table_t *peers_table, int interval_start,
 				     collectordata_t *collector_data, bw_client_t *bw_client)
+#else
+static void peers_table_interval_end(peers_table_t *peers_table, int interval_start,
+				     collectordata_t *collector_data)
+#endif
 {
   assert(peers_table);
   khiter_t k;
   bgpstream_ip_address_t peer_address;
   peerdata_t * peer_data;
+
+#ifdef WITH_BGPWATCHER
   bool bw_on = (bw_client != NULL);
   int rc;
   uint32_t peer_table_time = interval_start;
@@ -1474,6 +1497,7 @@ static void peers_table_interval_end(peers_table_t *peers_table, int interval_st
 	  bw_on = false;
 	}
     }
+#endif
 
   // print stats for ipv4 peers
   for (k = kh_begin(peers_table->ipv4_peers_table);
@@ -1483,8 +1507,12 @@ static void peers_table_interval_end(peers_table_t *peers_table, int interval_st
 	{
 	  peer_address = kh_key(peers_table->ipv4_peers_table, k);
 	  peer_data = kh_value(peers_table->ipv4_peers_table, k);
+#ifdef WITH_BGPWATCHER
 	  add_data_to_bw_peer_table(peer_address, peer_data, bw_client);
 	  peerdata_interval_end(peer_address, peer_data, interval_start, collector_data,bw_client);
+#else
+	  peerdata_interval_end(peer_address, peer_data, interval_start, collector_data);
+#endif
 	}
     }   
 
@@ -1496,11 +1524,16 @@ static void peers_table_interval_end(peers_table_t *peers_table, int interval_st
 	{
 	  peer_address = kh_key(peers_table->ipv6_peers_table, k);
 	  peer_data = kh_value(peers_table->ipv6_peers_table, k);
+#ifdef WITH_BGPWATCHER
 	  add_data_to_bw_peer_table(peer_address, peer_data, bw_client);
 	  peerdata_interval_end(peer_address, peer_data, interval_start, collector_data,bw_client);
+#else
+	  peerdata_interval_end(peer_address, peer_data, interval_start, collector_data);
+#endif
 	}
     }
 
+#ifdef WITH_BGPWATCHER
   if(bw_on)
     {
       if((rc = bgpwatcher_client_peer_table_end(bw_client->peer_table)) < 0)
@@ -1508,6 +1541,7 @@ static void peers_table_interval_end(peers_table_t *peers_table, int interval_st
 	  fprintf(stderr, "Could not end peer table\n");
 	}
     }
+#endif
 }
 
 
@@ -1649,7 +1683,7 @@ static collectordata_t *collectordata_create(const char *project,
 
 
 static int collectordata_process_record(collectordata_t *collector_data,
-				 bgpstream_record_t * bs_record)
+					bgpstream_record_t * bs_record)
 {
   assert(collector_data);
   assert(bs_record);
@@ -1695,8 +1729,13 @@ static int collectordata_process_record(collectordata_t *collector_data,
 }
 
 
+#ifdef WITH_BGPWATCHER
 static void collectordata_interval_end(collectordata_t *collector_data, 
 				       int interval_start, bw_client_t *bw_client)
+#else
+static void collectordata_interval_end(collectordata_t *collector_data, 
+				       int interval_start)
+#endif
 {
   assert(collector_data);
 
@@ -1754,8 +1793,13 @@ static void collectordata_interval_end(collectordata_t *collector_data,
 
   // the following function call the peer interval_end functions for 
   // each peer and populate the collector_data aggregated stats
+#ifdef WITH_BGPWATCHER
   peers_table_interval_end(collector_data->peers_table, interval_start,
 			   collector_data, bw_client);
+#else
+  peers_table_interval_end(collector_data->peers_table, interval_start,
+			   collector_data);
+#endif
   
   // OUTPUT METRIC: collector_affected_ipv4_prefixes_cnt
   fprintf(stdout,
@@ -1877,6 +1921,7 @@ static void collectordata_destroy(collectordata_t *collector_data)
 
 
 /* bw_client_t related functions */
+#ifdef WITH_BGPWATCHER
 
 static void handle_reply(bgpwatcher_client_t *client, seq_num_t seq_num,
 			 int rc, void *user)
@@ -1959,7 +2004,7 @@ static void bw_client_destroy(bw_client_t * bwc)
       free(bwc);
     }
 }
-
+#endif
 
 
 /* collectors_table related functions */
@@ -1976,6 +2021,7 @@ collectors_table_wrapper_t *collectors_table_create()
       free(collectors_table);
       return NULL;
     }
+#ifdef WITH_BGPWATCHER
   if((collectors_table->bw_client = bw_client_create()) == NULL)
     {
       kh_destroy(collectors_table_t, collectors_table->table);
@@ -1983,6 +2029,7 @@ collectors_table_wrapper_t *collectors_table_create()
       free(collectors_table);
       return NULL;
     }
+#endif
   return collectors_table;
 
 }
@@ -2052,7 +2099,11 @@ void collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
 	  // time series database
 	  if(collector_data->status != COLLECTOR_NULL)
 	    {
+#ifdef WITH_BGPWATCHER
 	      collectordata_interval_end(collector_data,interval_start, collectors_table->bw_client);
+#else
+	      collectordata_interval_end(collector_data,interval_start);
+#endif
 	    }
 	}
     }
@@ -2108,8 +2159,10 @@ void collectors_table_destroy(collectors_table_wrapper_t *collectors_table)
 	}   
       kh_destroy(collectors_table_t, collectors_table->table);
       collectors_table->table = NULL;
+#ifdef WITH_BGPWATCHER
       bw_client_destroy(collectors_table->bw_client);
       collectors_table->bw_client = NULL;
+#endif
       free(collectors_table);
     }
 }

@@ -248,6 +248,7 @@ typedef struct collectordata {
 /* void collectordata_destroy(collectordata_t *collector_data); */
 
 
+#ifdef WITH_BGPWATCHER
 typedef struct bw_client {
   bgpwatcher_client_t *client;
   bgpwatcher_client_pfx_table_t *pfx_table;
@@ -255,6 +256,7 @@ typedef struct bw_client {
   bgpwatcher_client_peer_table_t *peer_table;
   bgpwatcher_peer_record_t *peer_record;
 } bw_client_t;
+#endif
 
 /** collectors table
  *  this structure contains a map that associate to
@@ -271,7 +273,9 @@ KHASH_INIT(collectors_table_t,        /* name */
 
 struct collectors_table_wrapper {
   khash_t(collectors_table_t) * table;
+#ifdef WITH_BGPWATCHER
   bw_client_t *bw_client;
+#endif
 };
 
 
