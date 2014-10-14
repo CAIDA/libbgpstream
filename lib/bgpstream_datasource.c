@@ -34,7 +34,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <errmsg.h>
+#include <mysql/errmsg.h>
 
 /* datasource specific functions declarations */
 
