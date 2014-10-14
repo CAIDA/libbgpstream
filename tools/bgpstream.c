@@ -354,6 +354,12 @@ int main(int argc, char *argv[])
   // deallocate memory for interface
   bgpstream_destroy(bs);
 
+  // deallocate memory for strings
+  if(datasource_name != NULL)
+    {
+      free(datasource_name);
+    }
+
   return 0;
 }
 

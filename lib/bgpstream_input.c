@@ -179,7 +179,8 @@ static void bgpstream_set_intervals(bgpstream_input_t *input,
   assert(input);
   const int rv_update_offset  = 15 * 60; 
   const int ris_update_offset =  5 * 60; 
-  *current_interval_start = *current_interval_end = 0;  
+  *current_interval_start = 0;
+  *current_interval_end = 0;  
 
   if(strcmp(input->filetype,"ribs") == 0) {
     if(strcmp(input->fileproject,"routeviews") == 0) {
@@ -236,21 +237,26 @@ static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * cons
   /* step 0: init the "global" (to_process) interval end)
    * using the first input object */
   bgpstream_set_intervals(iterator, &current_interval_start, &to_process_interval_end);
-
-  while(iterator != NULL) { 
+  int readers_counter = 0;
+  const int max_readers = 200; 
+  while(iterator != NULL && readers_counter < max_readers) { 
+    readers_counter++;
     // compute current input interval
     bgpstream_set_intervals(iterator, &current_interval_start, &current_interval_end);
+    // fprintf(stderr, "intervals: %d -> %d\n", current_interval_start, current_interval_end);
+    // fprintf(stderr, "max end: %d \n", to_process_interval_end);
     // if it does not overlap with the global one, then we reached the end
     if(current_interval_start >= to_process_interval_end) {
-      // DEBUG  printf("\n\n");
+      // fprintf(stderr,"\n\n");
       break;
     }
     // otherwise, we extend the global interval end
     if(to_process_interval_end < current_interval_end) {
       to_process_interval_end = current_interval_end;    
-    }    
-    // DEBUG printf("%s\n", iterator->filename);
-    // DEBUG printf("\t%d - %d | %d\n", current_interval_start, current_interval_end, to_process_interval_end);
+    } 
+
+    // fprintf(stderr,"%s - %s\n", iterator->fileproject, iterator->filetype);
+    // fprintf(stderr,"\t%d - %d | %d\n", current_interval_start, current_interval_end, to_process_interval_end);    
     // and we update the last to process
     bs_input_mgr->last_to_process = iterator;
     // next

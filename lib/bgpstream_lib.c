@@ -228,8 +228,9 @@ int bgpstream_get_next_record(bgpstream_t * const bs, bgpstream_record_t * const
 	return -1; // error during execution
       }
       bgpstream_debug("BS: got results from datasource");
+      //DEBUG fprintf(stderr, "Finished with loading mysql results in memory!\n");
     }
-    bgpstream_debug("BS: input mgr not empty");
+    bgpstream_debug("BS: input mgr not empty");    
     bs_in = bgpstream_input_mgr_get_queue_to_process(bs->input_mgr);
     bgpstream_reader_mgr_add(bs->reader_mgr, bs_in, bs->filter_mgr);
     bgpstream_input_mgr_destroy_queue(bs_in);        
