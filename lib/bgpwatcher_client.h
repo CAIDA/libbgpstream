@@ -48,10 +48,10 @@
 
 /** Default time that the client will wait for outstanding messages when
     shutting down (in milliseconds) */
-#define BGPWATCHER_CLIENT_SHUTDOWN_LINGER_DEFAULT 10000
+#define BGPWATCHER_CLIENT_SHUTDOWN_LINGER_DEFAULT 120000
 
 /** Default request timeout */
-#define BGPWATCHER_CLIENT_REQUEST_TIMEOUT_DEFAULT 10000
+#define BGPWATCHER_CLIENT_REQUEST_TIMEOUT_DEFAULT 60000
 
 /** Default request retry count  */
 #define BGPWATCHER_CLIENT_REQUEST_RETRIES_DEFAULT 3
