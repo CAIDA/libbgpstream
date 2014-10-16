@@ -26,12 +26,14 @@
 #ifndef __BGPRIBS_INT_H
 #define __BGPRIBS_INT_H
 
-#include "bgpribs_collectors_table.h"
 
+#include "config.h"
 #ifdef WITH_BGPWATCHER
 #include "bgpribs_bgpwatcher_client.h"
 #endif
 
+
+#include "bgpribs_collectors_table.h"
 
 struct bgpribs {
   int interval_start;                            /// interval start time 

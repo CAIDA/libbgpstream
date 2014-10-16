@@ -29,7 +29,7 @@
 #include <assert.h>
 #include "khash.h"
 #include "utils.h"
-#include "bgpribs_khash.h"
+#include "config.h"
 #include "bgpribs_collectordata.h"
 #ifdef WITH_BGPWATCHER
 #include "bgpribs_bgpwatcher_client.h"

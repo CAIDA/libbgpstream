@@ -618,9 +618,9 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 
 #ifdef WITH_BGPWATCHER
 static int add_data_to_bw_pfx_table(bgpstream_prefix_t prefix, prefixdata_t prefix_data,
-				     collectordata_t *collector_data, peerdata_t *peer_data,
-				     bgpstream_ip_address_t peer_address,
-				     bw_client_t *bw_client)
+				    char *collector_str, peerdata_t *peer_data,
+				    bgpstream_ip_address_t peer_address,
+				    bw_client_t *bw_client)
 {
   int rc;
   bgpwatcher_pfx_record_t *rec;  
@@ -629,7 +629,7 @@ static int add_data_to_bw_pfx_table(bgpstream_prefix_t prefix, prefixdata_t pref
       rec = bw_client->pfx_record;
 
       /** Collector Name (string) */
-      strncpy(rec->collector_name, collector_data->dump_collector,
+      strncpy(rec->collector_name, collector_str,
 	      BGPWATCHER_COLLECTOR_NAME_LEN);
 
       /** IPv4 or IPv6 peer IP */
@@ -860,7 +860,7 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 		}
 	      avg_aspath_len_ipv4 += pd.aspath.hop_count;
 #ifdef WITH_BGPWATCHER
-	      if(add_data_to_bw_pfx_table(prefix, pd, collector_data, peer_data, peer_address, bw_client) != 0)
+	      if(add_data_to_bw_pfx_table(prefix, pd, collector_str, peer_data, peer_address, bw_client) != 0)
 		{
 		  return -1;
 		}
@@ -889,7 +889,7 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 		}
 	      avg_aspath_len_ipv6 += pd.aspath.hop_count;
 #ifdef WITH_BGPWATCHER
-	      if(add_data_to_bw_pfx_table(prefix, pd, collector_data, peer_data, peer_address, bw_client) != 0)
+	      if(add_data_to_bw_pfx_table(prefix, pd, collector_str, peer_data, peer_address, bw_client) != 0)
 		{
 		  return -1;
 		}

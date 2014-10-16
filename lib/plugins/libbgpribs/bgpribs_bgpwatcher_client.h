@@ -26,6 +26,8 @@
 #ifndef __BGPRIBS_BGPWATCHER_CLIENT_H
 #define __BGPRIBS_BGPWATCHER_CLIENT_H
 
+#include "config.h"
+
 #ifdef WITH_BGPWATCHER
 
 #include <bgpwatcher_client.h>

@@ -26,6 +26,7 @@
 #ifndef __BGPRIBS_COLLECTORDATA_H
 #define __BGPRIBS_COLLECTORDATA_H
 
+#include "config.h"
 #include "bgpribs_common.h"
 #include "bgpribs_peers_table.h"
 #ifdef WITH_BGPWATCHER

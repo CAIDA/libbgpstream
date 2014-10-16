@@ -28,9 +28,13 @@
 
 #include <assert.h>
 #include "khash.h"
+#include "config.h"
 #include "utils.h"
 #include "bgpribs_common.h"
 #include "bgpribs_ribs_table.h"
+#ifdef WITH_BGPWATCHER
+#include "bgpribs_bgpwatcher_client.h"
+#endif
 
 /** @file
  *

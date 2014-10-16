@@ -30,8 +30,9 @@
 #include "utils.h"
 #include <time.h>
 
+#include "config.h"
 #ifdef WITH_BGPWATCHER
-#include <bgpwatcher_client.h>
+#include "bgpribs_bgpwatcher_client.h"
 #endif
 
 

@@ -26,9 +26,13 @@
 #ifndef __BGPRIBS_PEERS_TABLE_H
 #define __BGPRIBS_PEERS_TABLE_H
 
+#include "config.h"
 #include "bgpribs_peerdata.h"
 #include "bgpribs_common.h"
 #include "bgpribs_khash.h"
+#ifdef WITH_BGPWATCHER
+#include "bgpribs_bgpwatcher_client.h"
+#endif
 
 /** @file
  *

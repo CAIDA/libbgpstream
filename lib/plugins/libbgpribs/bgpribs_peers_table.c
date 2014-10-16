@@ -323,8 +323,8 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 #ifdef WITH_BGPWATCHER
 	  if(add_data_to_bw_peer_table(peer_address, peer_data, bw_client) < 0)
 	  {
-	    bgpwatcher_client_peer_table_end(bw_client->peer_table))
-	    return -1
+	    bgpwatcher_client_peer_table_end(bw_client->peer_table);
+	    return -1;
 	  }
 	  if(peerdata_interval_end(project_str, collector_str, 
 				   peer_address, peer_data, 
@@ -355,8 +355,8 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 #ifdef WITH_BGPWATCHER
 	  if(add_data_to_bw_peer_table(peer_address, peer_data, bw_client) < 0)
 	  {
-	    bgpwatcher_client_peer_table_end(bw_client->peer_table))
-	    return -1
+	    bgpwatcher_client_peer_table_end(bw_client->peer_table);
+	    return -1;
 	  }
 	  if(peerdata_interval_end(project_str, collector_str, 
 				   peer_address, peer_data, 

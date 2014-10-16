@@ -23,12 +23,13 @@
  *
  */
 
-#ifdef WITH_BGPWATCHER
-
+#include "config.h"
+#include "utils.h"
+#include <assert.h>
 #include <bgpribs_bgpwatcher_client.h>
 
-#include <assert.h>
-#include "utils.h"
+#ifdef WITH_BGPWATCHER
+
 
 /* bw_client_t related functions */
 
