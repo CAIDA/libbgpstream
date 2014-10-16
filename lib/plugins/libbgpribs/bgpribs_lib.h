@@ -28,16 +28,58 @@
 
 #include "bgpstream_lib.h"
 
-typedef struct collectors_table_wrapper collectors_table_wrapper_t;
+
+typedef struct bgpribs bgpribs_t;
 
 
-collectors_table_wrapper_t *collectors_table_create();
-int collectors_table_process_record(collectors_table_wrapper_t *collectors_table,
-				    bgpstream_record_t * bs_record);
-void collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
-				   int interval_processing_start, int interval_start);
-void collectors_table_destroy(collectors_table_wrapper_t *collectors_table);
+/** Allocate memory for a strucure that maintains
+ *  the information required to run the bgpribs plugin.
+ *
+ * @return a pointer to the structure, or
+ *  NULL if an error occurred
+ */
+bgpribs_t *bgpribs_create();
 
+
+/** The function modifies the bgpribs plugin state in order
+ *  to prepare it for a new interval to process.
+ * 
+ * @param bgp_ribs a pointer to the plugin data structure
+ * @return 0 if the function ended correctly
+ *        -1 if something went wrong during the function execution
+ */
+void bgpribs_interval_start(bgpribs_t *bgp_ribs, int interval_start);
+
+
+/** The function considers the BGP information embedded into the
+ *  bgpstream record structure and it modifies the current plugin status
+ *  accordingly.
+ * 
+ * @param bgp_ribs a pointer to the plugin data structure
+ * @param bs_record a pointer to the bgpstream record under processing
+ * @return 0 if the function ended correctly
+ *        -1 if something went wrong during the function execution
+ */
+int bgpribs_process_record(bgpribs_t *bgp_ribs, bgpstream_record_t *bs_record);
+
+
+/** The function modifies the bgpribs plugin state in order
+ *  to handle the end of the interval: it dumps statistics related
+ *  to the interval that just finished and reset the structures to
+ *  deal with a new one.
+ * 
+ * @param bgp_ribs a pointer to the plugin data structure
+ * @return 0 if the function ended correctly
+ *        -1 if something went wrong during the function execution
+ */
+int bgpribs_interval_end(bgpribs_t *bgp_ribs, int interval_end);
+
+
+/** Deallocate memory for the bgpribs plugin
+ *
+ * @param bgp_ribs a pointer to the bgpribs's plugin
+ */
+void bgpribs_destroy(bgpribs_t *bgp_ribs);
 
 
 #endif /* __BGPRIBS_LIB_H */

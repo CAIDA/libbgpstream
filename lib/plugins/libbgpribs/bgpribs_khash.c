@@ -104,8 +104,6 @@ khint64_t bgpstream_prefix_ipv6_hash_func(bgpstream_prefix_t prefix)
 {
   assert(prefix.number.type == BST_IPV6);
   assert(prefix.len >= 0);
-  if(prefix.len > 64) { return 0; }
-  // check type is ipv6 and prefix length is correct* - we discard mask > 64
   khint64_t h = 0;
   // ipv6 number - we take most significative 64 bits only (in host order)
   uint64_t address = *((uint64_t *) &(prefix.number.address.v6_addr.s6_addr[0]));

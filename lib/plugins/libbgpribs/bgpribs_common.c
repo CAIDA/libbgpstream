@@ -23,24 +23,27 @@
  *
  */
 
-#ifndef __BGPRIBS_INT_H
-#define __BGPRIBS_INT_H
-
-#include "bgpribs_collectors_table.h"
-
-#ifdef WITH_BGPWATCHER
-#include "bgpribs_bgpwatcher_client.h"
-#endif
+#include "bgpribs_common.h"
 
 
-struct bgpribs {
-  int interval_start;                            /// interval start time 
-  int interval_end;                              /// interval end time 
-  int interval_processing_start;                 /// local time when a new interval is started
-  collectors_table_wrapper_t *collectors_table;  /// set of collectors to manage
-#ifdef WITH_BGPWATCHER
-  bw_client_t *bw_client;
-#endif
-};
+void graphite_safe(char *p)
+{
+  if(p == NULL)
+    {
+      return;
+    }
 
-#endif /* __BGPRIBS_INT_H */
+  while(*p != '\0')
+    {
+      if(*p == '.')
+	{
+	  *p = '_';
+	}
+      if(*p == '*')
+	{
+	  *p = '-';
+	}
+      p++;
+    }
+}
+
