@@ -299,49 +299,8 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	}
     }
 
-  /* is there an incoming message from the server? */
-  if(poll_sock == broker->server_socket)
-    {
-      if((msg = zmsg_recv(broker->server_socket)) == NULL)
-	{
-	  goto interrupt;
-	}
-
-      msg_type = bgpwatcher_msg_type(msg, 0);
-
-      switch(msg_type)
-	{
-	case BGPWATCHER_MSG_TYPE_REPLY:
-	  broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
-
-	  if(handle_reply(broker, &msg) != 0)
-	    {
-	      goto err;
-	    }
-
-	  if(zctx_interrupted != 0)
-	    {
-	      goto interrupt;
-	    }
-	  break;
-
-	case BGPWATCHER_MSG_TYPE_HEARTBEAT:
-	  broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
-	  break;
-
-	default:
-	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-				     "Invalid message type received from "
-				     "server (%d)", msg_type);
-	  goto err;
-	}
-
-      zmsg_destroy(&msg);
-      broker->reconnect_interval_next =
-	broker->reconnect_interval_min;
-    }
   /* is there an incoming message from our master? */
-  else if(poll_sock == broker->master_pipe)
+  if(poll_sock == broker->master_pipe)
     {
       if((msg = zmsg_recv(broker->master_pipe)) == NULL)
 	{
@@ -459,6 +418,47 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
 	  zframe_destroy(&frame);
 	  zmsg_destroy(&msg);
 	}
+    }
+  /* is there an incoming message from the server? */
+  else if(poll_sock == broker->server_socket)
+    {
+      if((msg = zmsg_recv(broker->server_socket)) == NULL)
+	{
+	  goto interrupt;
+	}
+
+      msg_type = bgpwatcher_msg_type(msg, 0);
+
+      switch(msg_type)
+	{
+	case BGPWATCHER_MSG_TYPE_REPLY:
+	  broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
+
+	  if(handle_reply(broker, &msg) != 0)
+	    {
+	      goto err;
+	    }
+
+	  if(zctx_interrupted != 0)
+	    {
+	      goto interrupt;
+	    }
+	  break;
+
+	case BGPWATCHER_MSG_TYPE_HEARTBEAT:
+	  broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
+	  break;
+
+	default:
+	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+				     "Invalid message type received from "
+				     "server (%d)", msg_type);
+	  goto err;
+	}
+
+      zmsg_destroy(&msg);
+      broker->reconnect_interval_next =
+	broker->reconnect_interval_min;
     }
 
   /* send heartbeat to server if it is time */

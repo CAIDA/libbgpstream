@@ -28,6 +28,8 @@
 
 #include <stdint.h>
 
+#include <bgpstream_elem.h>
+
 #include <bgpwatcher_common.h>
 
 /** @file
@@ -160,14 +162,20 @@ int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_pfx_table_t *table,
 
 /** Add a prefix record to the given prefix table
  *
- * @param table         pointer to prefix table to add prefix record to
- * @param prefix        pointer to a completed prefix record
+ * @param table           pointer to prefix table to add prefix record to
+ * @param prefix          pointer to a bgpstream prefix
+ * @param peer_ip         pointer to a bgpstream ip address of the peer
+ * @param orig_asn        value of the origin ASN
+ * @param collector_name  pointer to a string collector name
  * @return 0 if the prefix was added successfully, -1 otherwise
  *
  * @note the caller maintains ownership of the prefix record
  */
 int bgpwatcher_client_pfx_table_add(bgpwatcher_client_pfx_table_t *table,
-				    bgpwatcher_pfx_record_t *pfx);
+				    bgpstream_prefix_t *prefix,
+                                    bgpstream_ip_address_t *peer_ip,
+                                    uint32_t orig_asn,
+                                    char *collector_name);
 
 /** Flush the given prefix table to the bgpwatcher server
  *

@@ -30,6 +30,8 @@
 #include <string.h>
 #include <sys/socket.h>
 
+#include <bgpstream_elem.h>
+
 #include <bgpwatcher_common.h>
 
 #include "utils.h"
@@ -109,6 +111,23 @@ static int msg_append_ip(zmsg_t *msg, struct sockaddr_storage *ss)
     }
 
   return 0;
+}
+
+static int msg_append_bgpstream_ip(zmsg_t *msg, bgpstream_ip_address_t *ip)
+{
+  int rc = -1;
+  switch(ip->type)
+    {
+    case BST_IPV4:
+      rc = zmsg_addmem(msg, &ip->address.v4_addr.s_addr, sizeof(uint32_t));
+      break;
+
+    case BST_IPV6:
+      rc = zmsg_addmem(msg, &ip->address.v6_addr.s6_addr, (sizeof(uint8_t)*16));
+      break;
+    }
+
+  return rc;
 }
 
 void bgpwatcher_err_set_err(bgpwatcher_err_t *err, int errcode,
@@ -323,6 +342,57 @@ zmsg_t *bgpwatcher_pfx_record_serialize(bgpwatcher_pfx_record_t *pfx)
 
   /* name */
   if(zmsg_addstr(msg, pfx->collector_name) != 0)
+    {
+      goto err;
+    }
+
+  return msg;
+
+ err:
+  zmsg_destroy(&msg);
+  return NULL;
+}
+
+inline zmsg_t *bgpwatcher_pfx_msg_create(bgpstream_prefix_t *prefix,
+                                         bgpstream_ip_address_t *peer_ip,
+                                         uint32_t orig_asn,
+                                         char *collector_name)
+{
+  zmsg_t *msg = NULL;
+  uint32_t n32;
+
+  if((msg = zmsg_new()) == NULL)
+    {
+      goto err;
+    }
+
+  /* prefix */
+  if(msg_append_bgpstream_ip(msg, &prefix->number) != 0)
+    {
+      goto err;
+    }
+
+  /* length */
+  if(zmsg_addmem(msg, &prefix->len, sizeof(prefix->len)) != 0)
+    {
+      goto err;
+    }
+
+  /* peer ip */
+  if(msg_append_bgpstream_ip(msg, peer_ip) != 0)
+    {
+      goto err;
+    }
+
+  /* orig asn */
+  n32 = htonl(orig_asn);
+  if(zmsg_addmem(msg, &n32, sizeof(uint32_t)) != 0)
+    {
+      goto err;
+    }
+
+  /* name */
+  if(zmsg_addstr(msg, collector_name) != 0)
     {
       goto err;
     }

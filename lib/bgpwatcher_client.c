@@ -278,14 +278,17 @@ int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_pfx_table_t *table,
 }
 
 int bgpwatcher_client_pfx_table_add(bgpwatcher_client_pfx_table_t *table,
-				    bgpwatcher_pfx_record_t *pfx)
+				    bgpstream_prefix_t *prefix,
+                                    bgpstream_ip_address_t *peer_ip,
+                                    uint32_t orig_asn,
+                                    char *collector_name)
 {
   zmsg_t *msg;
 
   assert(table != NULL);
-  assert(pfx != NULL);
 
-  if((msg = bgpwatcher_pfx_record_serialize(pfx)) == NULL)
+  if((msg = bgpwatcher_pfx_msg_create(prefix, peer_ip, orig_asn,
+                                      collector_name)) == NULL)
     {
       bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
 			     "Failed to serialize prefix record");

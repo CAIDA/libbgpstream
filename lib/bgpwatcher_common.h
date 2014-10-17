@@ -30,6 +30,8 @@
 #include <stdint.h>
 #include <sys/socket.h>
 
+#include <bgpstream_elem.h>
+
 /** @file
  *
  * @brief Header file that exposes the public structures used by both
@@ -340,6 +342,19 @@ int bgpwatcher_pfx_record_deserialize(zmsg_t *msg,
  * @return pointer to a new zmsg if successful, NULL otherwise
  */
 zmsg_t *bgpwatcher_pfx_record_serialize(bgpwatcher_pfx_record_t *pfx);
+
+/** Create a new 0mq msg from the given pfx information
+ *
+ * @param prefix          pointer to a bgpstream prefix
+ * @param peer_ip         pointer to a bgpstream ip address of the peer
+ * @param orig_asn        value of the origin ASN
+ * @param collector_name  pointer to a string collector name
+ * @return pointer to a new zmsg if successful, NULL otherwise
+ */
+inline zmsg_t *bgpwatcher_pfx_msg_create(bgpstream_prefix_t *prefix,
+                                         bgpstream_ip_address_t *peer_ip,
+                                         uint32_t orig_asn,
+                                         char *collector_name);
 
 /** Dump the given prefix record to stderr
  *

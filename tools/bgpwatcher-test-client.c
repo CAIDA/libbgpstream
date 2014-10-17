@@ -63,27 +63,6 @@ static void handle_reply(bgpwatcher_client_t *client, seq_num_t seq_num,
     }
 }
 
-static bgpwatcher_pfx_record_t *create_test_pfx()
-{
-  bgpwatcher_pfx_record_t *rec;
-
-  rec = bgpwatcher_pfx_record_init();
-
-  if(rec != NULL)
-    {
-      ((struct sockaddr_in*)&rec->prefix)->sin_family = AF_INET;
-      ((struct sockaddr_in*)&rec->prefix)->sin_addr.s_addr = htonl(0xC0ACE200);
-      rec->prefix_len = 24;
-      ((struct sockaddr_in*)&rec->peer_ip)->sin_family = AF_INET;
-      ((struct sockaddr_in*)&rec->peer_ip)->sin_addr.s_addr = htonl(0x82D9FA0D);
-      rec->orig_asn = 0x00332211;
-      strncpy(rec->collector_name, "TEST-COLLECTOR",
-	      BGPWATCHER_COLLECTOR_NAME_LEN);
-    }
-
-  return rec;
-}
-
 static bgpwatcher_peer_record_t *create_test_peer()
 {
   bgpwatcher_peer_record_t *rec;
@@ -184,7 +163,18 @@ int main(int argc, char **argv)
   /* test structures */
   int rc;
   bgpwatcher_client_pfx_table_t *pfx_table = NULL;
-  bgpwatcher_pfx_record_t *pfx = NULL;
+
+  /* initialize test prefix row data */
+  bgpstream_prefix_t prefix;
+  prefix.number.address.v4_addr.s_addr = 0xC0ACE200;
+  prefix.number.type = BST_IPV4;
+  prefix.len = 24;
+  bgpstream_ip_address_t peer_ip;
+  peer_ip.address.v4_addr.s_addr = 0x82D9FA0D;
+  peer_ip.type = BST_IPV4;
+  uint32_t orig_asn = 12345;
+  char *collector_name = "TEST-COLLECTOR";
+
   uint32_t pfx_table_time = 1320969600;
 
   bgpwatcher_client_peer_table_t *peer_table = NULL;
@@ -311,11 +301,7 @@ int main(int argc, char **argv)
       fprintf(stderr, "Could not create table\n");
       goto err;
     }
-  if((pfx = create_test_pfx()) == NULL)
-    {
-      fprintf(stderr, "Could not create test prefix\n");
-      goto err;
-    }
+
   if((peer_table = bgpwatcher_client_peer_table_create(client)) == NULL)
     {
       fprintf(stderr, "Could not create table\n");
@@ -348,7 +334,9 @@ int main(int argc, char **argv)
   fprintf(stderr, "TEST: Sending %d pfx table records\n", test_table_size);
   for(i=0; i<test_table_size; i++)
     {
-      if((rc = bgpwatcher_client_pfx_table_add(pfx_table, pfx)) < 0)
+      if((rc = bgpwatcher_client_pfx_table_add(pfx_table,
+                                               &prefix, &peer_ip,
+                                               orig_asn, collector_name)) < 0)
 	{
 	  fprintf(stderr, "Could not add pfx to table\n");
 	  goto err;
@@ -391,7 +379,6 @@ int main(int argc, char **argv)
 
 
   fprintf(stderr, "TEST: Shutting down...\n");
-  bgpwatcher_pfx_record_free(&pfx);
   bgpwatcher_client_pfx_table_free(&pfx_table);
   bgpwatcher_peer_record_free(&peer);
   bgpwatcher_client_peer_table_free(&peer_table);
@@ -412,7 +399,6 @@ int main(int argc, char **argv)
 
  err:
   bgpwatcher_client_perr(client);
-  bgpwatcher_pfx_record_free(&pfx);
   bgpwatcher_client_pfx_table_free(&pfx_table);
   bgpwatcher_peer_record_free(&peer);
   bgpwatcher_client_peer_table_free(&peer_table);
