@@ -39,7 +39,6 @@
 #include <stdbool.h>
 #include <assert.h>
 
-static void process(BGPDUMP_ENTRY *entry);
 static void show_attr(attributes_t *attr);
 static void show_prefixes(int count,struct prefix *prefix);
 static void table_line_announce_1(struct mp_nlri *prefix,int count,BGPDUMP_ENTRY *entry,char *time_str);
