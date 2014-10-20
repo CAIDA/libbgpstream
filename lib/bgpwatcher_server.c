@@ -807,6 +807,8 @@ int bgpwatcher_server_start(bgpwatcher_server_t *server)
       return -1;
     }
 
+  zsocket_set_router_mandatory(server->client_socket, 1);
+
   if(zsocket_bind(server->client_socket, "%s", server->client_uri) < 0)
     {
       bgpwatcher_err_set_err(ERR, errno, "Could not bind to client socket");

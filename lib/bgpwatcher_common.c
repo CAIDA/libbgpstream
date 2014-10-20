@@ -353,7 +353,7 @@ zmsg_t *bgpwatcher_pfx_record_serialize(bgpwatcher_pfx_record_t *pfx)
   return NULL;
 }
 
-inline zmsg_t *bgpwatcher_pfx_msg_create(bgpstream_prefix_t *prefix,
+zmsg_t *bgpwatcher_pfx_msg_create(bgpstream_prefix_t *prefix,
                                          bgpstream_ip_address_t *peer_ip,
                                          uint32_t orig_asn,
                                          char *collector_name)

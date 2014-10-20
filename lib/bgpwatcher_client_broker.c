@@ -30,6 +30,8 @@
 #include "khash.h"
 #include "utils.h"
 
+static int handle_server_msg(zloop_t *loop, zsock_t *reader, void *arg);
+
 #define ERR (&broker->err)
 
 #define DO_CALLBACK(cbfunc, args...)					\
@@ -45,9 +47,6 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
 {
   uint8_t msg_type_p;
   zframe_t *frame;
-
-  /* destroy the poller if we have one */
-  zpoller_destroy(&broker->poller);
 
   /* connect to server socket */
   if((broker->server_socket = zsocket_new(broker->ctx, ZMQ_DEALER)) == NULL)
@@ -86,11 +85,11 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
       return -1;
     }
 
-  if((broker->poller = zpoller_new(broker->server_socket,
-				   NULL)) == NULL)
+  if(zloop_reader(broker->loop, broker->server_socket,
+                  handle_server_msg, broker) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Could not initialize poller");
+			     "Could not add server socket to reactor");
       return -1;
     }
 
@@ -149,7 +148,7 @@ static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 			     "Invalid message received from master "
 			     "(malformed sequence number)");
-      return -1;
+      goto err;
     }
   memcpy(&rx_rep.seq_num, zframe_data(frame), sizeof(seq_num_t));
 
@@ -165,7 +164,7 @@ static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 			     "Invalid message received from master "
 			     "(malformed return code)");
-      return -1;
+      goto err;
     }
   rc = *zframe_data(frame);
   if(rc != 0)
@@ -191,7 +190,7 @@ static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
   req->reply_rx = 1;
 
   /*fprintf(stderr, "MATCH: req.seq: %"PRIu32", req.msg_type: %d\n",
-    req.seq_num, req.msg_type);*/
+    req->seq_num, req->msg_type);*/
 
   DO_CALLBACK(handle_reply, req->seq_num, rc);
 
@@ -234,256 +233,21 @@ static int send_request(bgpwatcher_client_broker_t *broker,
   return 0;
 }
 
-static int event_loop(bgpwatcher_client_broker_t *broker)
+static int is_shutdown_time(bgpwatcher_client_broker_t *broker)
 {
-  zsock_t *poll_sock;
+  if(broker->shutdown_time > 0 &&
+     ((kh_size(broker->req_hash) == 0) ||
+      (broker->shutdown_time <= zclock_time())))
+    {
+      /* time to end */
+      return 1;
+    }
+  return 0;
+}
 
-  zmsg_t *msg = NULL;
-  zframe_t *frame;
-
-  bgpwatcher_msg_type_t msg_type;
-  uint8_t msg_type_p;
+static int handle_timeouts(bgpwatcher_client_broker_t *broker)
+{
   bgpwatcher_client_broker_req_t *req;
-  int khret;
-
-  /*fprintf(stderr, "DEBUG: Beginning loop cycle\n");*/
-
-  if(zlist_size(broker->req_list) < MAX_OUTSTANDING_REQ*0.6 &&
-     broker->poller_contains_master == 0)
-    {
-      /* add the master pipe */
-      if(zpoller_add(broker->poller, broker->master_pipe) != 0)
-	{
-	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-				 "Could not add master pipe to poller");
-	  return -1;
-	}
-      broker->poller_contains_master = 1;
-    }
-  else if(zlist_size(broker->req_list) >= MAX_OUTSTANDING_REQ &&
-	  broker->poller_contains_master == 1)
-    {
-      fprintf(stderr, "DEBUG: Rate limiting\n");
-      zpoller_remove(broker->poller, broker->master_pipe);
-      broker->poller_contains_master = 0;
-    }
-
-  if((poll_sock =
-      zpoller_wait(broker->poller, broker->heartbeat_interval)) == NULL)
-    {
-      /* either we were interrupted, or we timed out */
-      if(zpoller_expired(broker->poller) != 0 &&
-	 --broker->heartbeat_liveness_remaining == 0)
-	{
-	  /* the server has been flat-lining for too long, get the paddles! */
-	  fprintf(stderr, "WARN: heartbeat failure, can't reach server\n");
-	  fprintf(stderr, "WARN: reconnecting in %"PRIu64" msec...\n",
-		  broker->reconnect_interval_next);
-
-	  zclock_sleep(broker->reconnect_interval_next);
-
-	  if(broker->reconnect_interval_next < broker->reconnect_interval_max)
-	    {
-	      broker->reconnect_interval_next *= 2;
-	    }
-
-	  zsocket_destroy(broker->ctx, broker->server_socket);
-	  server_connect(broker);
-	  assert(broker->server_socket != NULL);
-
-	  broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
-	}
-      else if(zpoller_terminated(broker->poller) != 0)
-	{
-	  goto interrupt;
-	}
-    }
-
-  /* is there an incoming message from our master? */
-  if(poll_sock == broker->master_pipe)
-    {
-      if((msg = zmsg_recv(broker->master_pipe)) == NULL)
-	{
-	  goto interrupt;
-	}
-
-      if((frame = zmsg_pop(msg)) == NULL)
-	{
-	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-				 "Invalid message received from client");
-	  goto err;
-	}
-
-      /* peek at the first frame (msg type) */
-      if((msg_type =
-	  bgpwatcher_msg_type_frame(frame)) != BGPWATCHER_MSG_TYPE_UNKNOWN)
-	{
-	  if((req = bgpwatcher_client_broker_req_init()) == NULL)
-	    {
-	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-				     "Could not create new request structure");
-	      goto err;
-	    }
-
-	  if(zlist_append(req->msg_frames, frame) != 0)
-	    {
-	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-				     "Could not add msg type frame");
-	      goto err;
-	    }
-
-	  req->msg_type = msg_type;
-
-	  /* now we need the seq number */
-	  if((frame = zmsg_pop(msg)) == NULL)
-	    {
-	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-				     "Invalid message received from master");
-	      goto err;
-	    }
-	  if(zframe_size(frame) != sizeof(seq_num_t))
-	    {
-	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-				     "Invalid message received from master "
-				     "(malformed sequence number)");
-	      goto err;
-	    }
-	  memcpy(&req->seq_num, zframe_data(frame), sizeof(seq_num_t));
-
-	  if(zlist_append(req->msg_frames, frame) != 0)
-	    {
-	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-				     "Could not add seq num frame");
-	    }
-
-	  /* pop until we can't pop no more */
-	  while((frame = zmsg_pop(msg)) != NULL)
-	    {
-	      if(zlist_append(req->msg_frames, frame) != 0)
-		{
-		  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-					 "Could not add seq num frame");
-		}
-	    }
-	  zmsg_destroy(&msg);
-
-	  /* init the re-transmit state */
-	  req->retries_remaining = broker->request_retries;
-	  /* retry_at is set by send_request */
-
-
-	  /*fprintf(stderr, "DEBUG: tx.seq: %"PRIu32", tx.msg_type: %d\n",
-	    req.seq_num, req.msg_type);*/
-
-	  /* add to the req hash */
-	  kh_put(reqset, broker->req_hash, req, &khret);
-	  if(khret == -1)
-	    {
-	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-				     "Could not add request to set");
-	      goto err;
-	    }
-
-	  /* add to the end of the req list */
-	  /* list will be ordered oldest (smallest time) to newest (largest
-	     time) */
-	  if(zlist_append(broker->req_list, req) != 0)
-	    {
-	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-				     "Could not add request to list");
-	    }
-
-	  /* now send on to the server */
-	  if(send_request(broker, req) != 0)
-	    {
-	      goto err;
-	    }
-	  req = NULL;
-	}
-      else
-	{
-	  /* this is a message for us */
-	  if(zframe_streq(frame, "$TERM") == 1)
-	    {
-	      fprintf(stderr,
-		      "INFO: Got $TERM, shutting down client broker on next "
-		      "cycle\n");
-	      if(broker->shutdown_time == 0)
-		{
-		  broker->shutdown_time =
-		    zclock_time() + broker->shutdown_linger;
-		}
-	    }
-
-	  zframe_destroy(&frame);
-	  zmsg_destroy(&msg);
-	}
-    }
-  /* is there an incoming message from the server? */
-  else if(poll_sock == broker->server_socket)
-    {
-      if((msg = zmsg_recv(broker->server_socket)) == NULL)
-	{
-	  goto interrupt;
-	}
-
-      msg_type = bgpwatcher_msg_type(msg, 0);
-
-      switch(msg_type)
-	{
-	case BGPWATCHER_MSG_TYPE_REPLY:
-	  broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
-
-	  if(handle_reply(broker, &msg) != 0)
-	    {
-	      goto err;
-	    }
-
-	  if(zctx_interrupted != 0)
-	    {
-	      goto interrupt;
-	    }
-	  break;
-
-	case BGPWATCHER_MSG_TYPE_HEARTBEAT:
-	  broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
-	  break;
-
-	default:
-	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-				     "Invalid message type received from "
-				     "server (%d)", msg_type);
-	  goto err;
-	}
-
-      zmsg_destroy(&msg);
-      broker->reconnect_interval_next =
-	broker->reconnect_interval_min;
-    }
-
-  /* send heartbeat to server if it is time */
-  if(zclock_time() > broker->heartbeat_next)
-    {
-      broker->heartbeat_next = zclock_time() + broker->heartbeat_interval;
-#if DEBUG
-      fprintf(stderr, "DEBUG: Sending heartbeat to server\n");
-#endif
-
-      msg_type_p = BGPWATCHER_MSG_TYPE_HEARTBEAT;
-      if((frame = zframe_new(&msg_type_p, 1)) == NULL)
-	{
-	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-				 "Could not create new heartbeat frame");
-	  goto err;
-	}
-
-      if(zframe_send(&frame, broker->server_socket, 0) == -1)
-	{
-	  bgpwatcher_err_set_err(ERR, errno,
-				 "Could not send heartbeat msg to server");
-	  goto err;
-	}
-    }
 
   /* re-tx any requests that have timed out */
   req = zlist_first(broker->req_list);
@@ -544,17 +308,304 @@ static int event_loop(bgpwatcher_client_broker_t *broker)
       req = zlist_first(broker->req_list);
     }
 
+  return 0;
+
+ err:
+  bgpwatcher_client_broker_req_free(&req);
+  return -1;
+}
+
+static int handle_heartbeat_timer(zloop_t *loop, int timer_id, void *arg)
+{
+  bgpwatcher_client_broker_t *broker = (bgpwatcher_client_broker_t*)arg;
+
+  zframe_t *frame = NULL;
+  uint8_t msg_type_p;
+
+  if(is_shutdown_time(broker) != 0)
+    {
+      return -1;
+    }
+
+  if(--broker->heartbeat_liveness_remaining == 0)
+    {
+      /* the server has been flat-lining for too long, get the paddles! */
+      fprintf(stderr, "WARN: heartbeat failure, can't reach server\n");
+      fprintf(stderr, "WARN: reconnecting in %"PRIu64" msec...\n",
+              broker->reconnect_interval_next);
+
+      zclock_sleep(broker->reconnect_interval_next);
+
+      if(broker->reconnect_interval_next < broker->reconnect_interval_max)
+        {
+          broker->reconnect_interval_next *= 2;
+        }
+
+      /* remove the server reader from the reactor */
+      zloop_reader_end(broker->loop, broker->server_socket);
+      /* destroy the server socket */
+      zsocket_destroy(broker->ctx, broker->server_socket);
+      /* reconnect */
+      server_connect(broker);
+      assert(broker->server_socket != NULL);
+
+      broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
+    }
+
+  /* send heartbeat to server if it is time */
+  if(zclock_time() > broker->heartbeat_next)
+    {
+      broker->heartbeat_next = zclock_time() + broker->heartbeat_interval;
+
+      msg_type_p = BGPWATCHER_MSG_TYPE_HEARTBEAT;
+      if((frame = zframe_new(&msg_type_p, 1)) == NULL)
+	{
+	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+				 "Could not create new heartbeat frame");
+	  goto err;
+	}
+
+      if(zframe_send(&frame, broker->server_socket, 0) == -1)
+	{
+	  bgpwatcher_err_set_err(ERR, errno,
+				 "Could not send heartbeat msg to server");
+	  goto err;
+	}
+    }
+
+  if(handle_timeouts(broker) != 0)
+    {
+      return -1;
+    }
+
+  zframe_destroy(&frame);
+  return 0;
+
+ err:
+  zframe_destroy(&frame);
+  return -1;
+}
+
+static int handle_server_msg(zloop_t *loop, zsock_t *reader, void *arg)
+{
+  bgpwatcher_client_broker_t *broker = (bgpwatcher_client_broker_t*)arg;
+  zmsg_t *msg = NULL;
+  bgpwatcher_msg_type_t msg_type;
+
+  if(is_shutdown_time(broker) != 0)
+    {
+      return -1;
+    }
+
+  if((msg = zmsg_recv(broker->server_socket)) == NULL)
+    {
+      goto interrupt;
+    }
+
+  msg_type = bgpwatcher_msg_type(msg, 0);
+
+  switch(msg_type)
+    {
+    case BGPWATCHER_MSG_TYPE_REPLY:
+      broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
+      if(handle_reply(broker, &msg) != 0)
+        {
+          goto err;
+        }
+
+      if(zctx_interrupted != 0)
+        {
+          goto interrupt;
+        }
+      break;
+
+    case BGPWATCHER_MSG_TYPE_HEARTBEAT:
+      broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
+      break;
+
+    default:
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+                             "Invalid message type received from "
+                             "server (%d)", msg_type);
+      goto err;
+    }
+
   zmsg_destroy(&msg);
+  broker->reconnect_interval_next =
+    broker->reconnect_interval_min;
+
+  /* have we just processed the last reply? */
+  if(is_shutdown_time(broker) != 0)
+    {
+      return -1;
+    }
+  if(handle_timeouts(broker) != 0)
+    {
+      return -1;
+    }
+
   return 0;
 
  interrupt:
-  /* we were interrupted */
+  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INTERRUPT, "Caught interrupt");
+  return -1;
+
+ err:
+  zmsg_destroy(&msg);
+  return -1;
+}
+
+static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
+{
+  bgpwatcher_client_broker_t *broker = (bgpwatcher_client_broker_t*)arg;
+  zmsg_t *msg = NULL;
+  zframe_t *frame = NULL;
+  bgpwatcher_msg_type_t msg_type;
+  bgpwatcher_client_broker_req_t *req;
+  int khret;
+
+  if(is_shutdown_time(broker) != 0)
+    {
+      return -1;
+    }
+
+  if((msg = zmsg_recv(broker->master_pipe)) == NULL)
+    {
+      goto interrupt;
+    }
+
+  if((frame = zmsg_pop(msg)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+                             "Invalid message received from client");
+      goto err;
+    }
+
+  /* peek at the first frame (msg type) */
+  if((msg_type =
+      bgpwatcher_msg_type_frame(frame)) != BGPWATCHER_MSG_TYPE_UNKNOWN)
+    {
+      if((req = bgpwatcher_client_broker_req_init()) == NULL)
+        {
+          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+                                 "Could not create new request structure");
+          goto err;
+        }
+
+      if(zlist_append(req->msg_frames, frame) != 0)
+        {
+          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+                                 "Could not add msg type frame");
+          goto err;
+        }
+
+      req->msg_type = msg_type;
+
+      /* now we need the seq number */
+      if((frame = zmsg_pop(msg)) == NULL)
+        {
+          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+                                 "Invalid message received from master");
+          goto err;
+        }
+      if(zframe_size(frame) != sizeof(seq_num_t))
+        {
+          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+                                 "Invalid message received from master "
+                                 "(malformed sequence number)");
+          goto err;
+        }
+      memcpy(&req->seq_num, zframe_data(frame), sizeof(seq_num_t));
+
+      if(zlist_append(req->msg_frames, frame) != 0)
+        {
+          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+                                 "Could not add seq num frame");
+        }
+
+      /* pop until we can't pop no more */
+      while((frame = zmsg_pop(msg)) != NULL)
+        {
+          if(zlist_append(req->msg_frames, frame) != 0)
+            {
+              bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+                                     "Could not add seq num frame");
+            }
+        }
+      zmsg_destroy(&msg);
+
+      /* init the re-transmit state */
+      req->retries_remaining = broker->request_retries;
+      /* retry_at is set by send_request */
+
+
+      /*fprintf(stderr, "DEBUG: tx.seq: %"PRIu32", tx.msg_type: %d\n",
+        req.seq_num, req.msg_type);*/
+
+      /* add to the req hash */
+      kh_put(reqset, broker->req_hash, req, &khret);
+      if(khret == -1)
+        {
+          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+                                 "Could not add request to set");
+          goto err;
+        }
+
+      /* add to the end of the req list */
+      /* list will be ordered oldest (smallest time) to newest (largest
+         time) */
+      if(zlist_append(broker->req_list, req) != 0)
+        {
+          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+                                 "Could not add request to list");
+        }
+
+      /* now send on to the server */
+      if(send_request(broker, req) != 0)
+        {
+          goto err;
+        }
+      req = NULL;
+    }
+  else
+    {
+      /* this is a message for us */
+      if(zframe_streq(frame, "$TERM") == 1)
+        {
+          fprintf(stderr,
+                  "INFO: Got $TERM, shutting down client broker on next "
+                  "cycle\n");
+          if(broker->shutdown_time == 0)
+            {
+              broker->shutdown_time =
+                zclock_time() + broker->shutdown_linger;
+            }
+          if(is_shutdown_time(broker) != 0)
+            {
+              return -1;
+            }
+        }
+    }
+
+  if(handle_timeouts(broker) != 0)
+    {
+      return -1;
+    }
+
+  zmsg_destroy(&msg);
+  zframe_destroy(&frame);
+  return 0;
+
+ interrupt:
+  zmsg_destroy(&msg);
+  zframe_destroy(&frame);
   bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INTERRUPT, "Caught interrupt");
   return -1;
 
  err:
   bgpwatcher_client_broker_req_free(&req);
   zmsg_destroy(&msg);
+  zframe_destroy(&frame);
   return -1;
 }
 
@@ -568,7 +619,36 @@ void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
   assert(broker != NULL);
   assert(pipe != NULL);
 
+  /* set up the reactor */
+  if((broker->loop = zloop_new()) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Could not initialize reactor");
+      return;
+    }
+  /* DEBUG */
+  //zloop_set_verbose(broker->loop, true);
+
+  /* add a heartbeat timer */
+  if((broker->timer_id = zloop_timer(broker->loop,
+                                     broker->heartbeat_interval, 0,
+                                     handle_heartbeat_timer, broker)) < 0)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not add heartbeat timer reactor");
+      return;
+    }
+
   broker->master_pipe = pipe;
+
+  /* add master pipe to reactor */
+  if(zloop_reader(broker->loop, broker->master_pipe,
+                  handle_master_msg, broker) != 0)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not add master pipe to reactor");
+      return;
+    }
 
   /* connect to the server */
   if(server_connect(broker) != 0)
@@ -587,21 +667,10 @@ void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
       return;
     }
 
-  /* start processing requests */
-  while(zctx_interrupted == 0)
+  if(zloop_start(broker->loop))
     {
-      /* if we have been asked to shutdown, we wait until we are done with our
-	 requests, or until the linger timeout has passed */
-      if(broker->shutdown_time > 0 &&
-	 ((kh_size(broker->req_hash) == 0) ||
-	  (broker->shutdown_time <= zclock_time())))
-	{
-	  break;
-	}
-      if(event_loop(broker) != 0)
-	{
-	  break;
-	}
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INTERRUPT,
+                             "Caught interrupt");
     }
 
   if(server_disconnect(broker) != 0)
@@ -610,8 +679,8 @@ void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
       return;
     }
 
-  /* free our poller */
-  zpoller_destroy(&broker->poller);
+  /* free our reactor */
+  zloop_destroy(&broker->loop);
 }
 
 bgpwatcher_client_broker_req_t *bgpwatcher_client_broker_req_init()
@@ -642,12 +711,15 @@ void bgpwatcher_client_broker_req_free(bgpwatcher_client_broker_req_t **req_p)
 
   if(req != NULL)
     {
-      while(zlist_size(req->msg_frames) > 0)
-	{
-	  frame = zlist_pop (req->msg_frames);
-	  zframe_destroy(&frame);
-	}
-      zlist_destroy(&req->msg_frames);
+      if(req->msg_frames != NULL)
+        {
+          while(zlist_size(req->msg_frames) > 0)
+            {
+              frame = zlist_pop (req->msg_frames);
+              zframe_destroy(&frame);
+            }
+          zlist_destroy(&req->msg_frames);
+        }
       free(req);
       *req_p = NULL;
     }

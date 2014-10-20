@@ -50,10 +50,10 @@
 #define BGPWATCHER_CLIENT_URI_DEFAULT "tcp://*:6300"
 
 /** Default the server/client heartbeat interval to 100 msec */
-#define BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT 15
+#define BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT 1500
 
 /** Default the server/client heartbeat liveness to 10 beats */
-#define BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT 100
+#define BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT 4
 
 /** Default the client reconnect minimum interval to 1 second */
 #define BGPWATCHER_RECONNECT_INTERVAL_MIN 1000
@@ -351,10 +351,10 @@ zmsg_t *bgpwatcher_pfx_record_serialize(bgpwatcher_pfx_record_t *pfx);
  * @param collector_name  pointer to a string collector name
  * @return pointer to a new zmsg if successful, NULL otherwise
  */
-inline zmsg_t *bgpwatcher_pfx_msg_create(bgpstream_prefix_t *prefix,
-                                         bgpstream_ip_address_t *peer_ip,
-                                         uint32_t orig_asn,
-                                         char *collector_name);
+zmsg_t *bgpwatcher_pfx_msg_create(bgpstream_prefix_t *prefix,
+                                  bgpstream_ip_address_t *peer_ip,
+                                  uint32_t orig_asn,
+                                  char *collector_name);
 
 /** Dump the given prefix record to stderr
  *

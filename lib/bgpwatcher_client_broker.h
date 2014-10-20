@@ -44,6 +44,13 @@
 #define MAX_OUTSTANDING_REQ 10000
 
 /**
+ * @name Public Enums
+ *
+ * @{ */
+
+/** @} */
+
+/**
  * @name Public Opaque Data Structures
  *
  * @{ */
@@ -167,23 +174,16 @@ typedef struct bgpwatcher_client_broker {
 
   /* OWNED BY THE BROKER */
 
-  /** Pointer to the poller instance used by the broker */
-  zpoller_t *poller;
+  /** Event loop */
+  zloop_t *loop;
 
-  /** Indicates if the poller is currently polling the master pipe */
-  int poller_contains_master;
+  /** Heartbeat timer ID */
+  int timer_id;
 
   /** Pointer to the pipe used to talk to the master */
   zsock_t *master_pipe;
 
 } bgpwatcher_client_broker_t;
-
-/** @} */
-
-/**
- * @name Public Enums
- *
- * @{ */
 
 /** @} */
 
