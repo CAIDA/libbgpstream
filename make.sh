@@ -25,7 +25,7 @@
 
 
 ./autogen.sh
-./configure CPPFLAGS="-I$BGPTOOLS_PATH/include" LDFLAGS="-L$BGPTOOLS_PATH/lib" --prefix="$BGPTOOLS_PATH"
+./configure  CFLAGS="-Wall -Werror -g -O2" CPPFLAGS="-I$BGPTOOLS_PATH/include" LDFLAGS="-L$BGPTOOLS_PATH/lib" --prefix="$BGPTOOLS_PATH"
 make
 make install
 

@@ -590,12 +590,7 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
   }  
   // Establish a connection to the database
   bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds mysql connection establishment");
-  // old socket for thor
-  /* if (mysql_real_connect(mysql_ds->mysql_con, "localhost", "routing", NULL,  */
-  /* 			   "bgparchive", 0, */
-  /* 			   "/usr/local/jail/charthouse/tmp/mysql.sock", 0) == NULL) { */
-    // loki configuration
-  if (mysql_real_connect(mysql_ds->mysql_con, "localhost", "routing", NULL, 
+  if (mysql_real_connect(mysql_ds->mysql_con, "localhost", "bgpstream", NULL, 
 			   "bgparchive", 0, NULL, 0) == NULL) {
     fprintf(stderr, "%s\n", mysql_error(mysql_ds->mysql_con));
     mysql_close(mysql_ds->mysql_con);
@@ -889,7 +884,7 @@ static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasou
       // reconnect and retry one more time
       // http://bugs.mysql.com/bug.php?id=35937
       // note that mysql prepared statement have to be reconfigured again
-      if (mysql_real_connect(mysql_ds->mysql_con, "localhost", "routing", NULL, 
+      if (mysql_real_connect(mysql_ds->mysql_con, "localhost", "bgpstream", NULL, 
 			     "bgparchive", 0, NULL, 0) != NULL)
 	{
 	  if(mysql_query(mysql_ds->mysql_con, "set time_zone='+0:0'") == 0)
