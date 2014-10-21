@@ -617,69 +617,6 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 
 
 #ifdef WITH_BGPWATCHER
-static int add_data_to_bw_pfx_table(bgpstream_prefix_t prefix, prefixdata_t prefix_data,
-				    char *collector_str, peerdata_t *peer_data,
-				    bgpstream_ip_address_t peer_address,
-				    bw_client_t *bw_client)
-{
-  int rc;
-  bgpwatcher_pfx_record_t *rec;  
-  if(bw_client != NULL && bw_client->pfx_table != NULL && bw_client->pfx_record != NULL)
-    {      
-      rec = bw_client->pfx_record;
-
-      /** Collector Name (string) */
-      strncpy(rec->collector_name, collector_str,
-	      BGPWATCHER_COLLECTOR_NAME_LEN);
-
-      /** IPv4 or IPv6 peer IP */
-      if(peer_address.type == BST_IPV4)
-  	{
-  	  ((struct sockaddr_in*)&rec->peer_ip)->sin_family = AF_INET;
-  	  ((struct sockaddr_in*)&rec->peer_ip)->sin_addr.s_addr = peer_address.address.v4_addr.s_addr;
-  	}
-      else
-  	{ // assert BST_IPV6
-  	  ((struct sockaddr_in6*)&rec->peer_ip)->sin6_family = AF_INET6;
-  	  memcpy(&((struct sockaddr_in6*)&rec->peer_ip)->sin6_addr.s6_addr,
-  		 &peer_address.address.v6_addr,
-  		 sizeof(peer_address.address.v6_addr));
-  	}
-
-      /** IPv4 or IPv6 prefix */
-      if(prefix.number.type == BST_IPV4)
-  	{
-  	  ((struct sockaddr_in*)&rec->prefix)->sin_family = AF_INET;
-  	  ((struct sockaddr_in*)&rec->prefix)->sin_addr.s_addr = prefix.number.address.v4_addr.s_addr;
-  	}
-      else
-  	{ // assert BST_IPV6
-  	  ((struct sockaddr_in6*)&rec->prefix)->sin6_family = AF_INET6;
-  	  memcpy(&((struct sockaddr_in6*)&rec->prefix)->sin6_addr.s6_addr,
-  		 &prefix.number.address.v6_addr,
-  		 sizeof(prefix.number.address.v6_addr));
-  	}
-
-      /** Prefix length */
-      rec->prefix_len = prefix.len;
-
-      /** Originating ASN */
-      rec->orig_asn = prefix_data.origin_as;
-
-      if((rc = bgpwatcher_client_pfx_table_add(bw_client->pfx_table, bw_client->pfx_record)) < 0)
-  	{
-  	  bgpwatcher_client_perr(bw_client->client);
-  	  fprintf(stderr, "Could not add to pfx table\n");
-	  return -1;
-  	}
-      return 0;
-    }
-  // data provided were not correct
-  return -1;
-}
-#endif
-
-#ifdef WITH_BGPWATCHER
 int peerdata_interval_end(char *project_str, char *collector_str,
 			  bgpstream_ip_address_t peer_address, peerdata_t *peer_data,
 			  aggregated_bgp_stats_t * collector_aggr_stats,
@@ -860,9 +797,13 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 		}
 	      avg_aspath_len_ipv4 += pd.aspath.hop_count;
 #ifdef WITH_BGPWATCHER
-	      if(add_data_to_bw_pfx_table(prefix, pd, collector_str, peer_data, peer_address, bw_client) != 0)
+	      if((rc = bgpwatcher_client_pfx_table_add(bw_client->pfx_table, 
+						       &prefix, &peer_address, pd.origin_as,
+						       collector_str)) < 0)
 		{
-		  return -1;
+		  bgpwatcher_client_perr(bw_client->client);
+		  fprintf(stderr, "Could not add to pfx table\n");
+		  return -1;		  
 		}
 #endif
 	    }
@@ -889,9 +830,13 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 		}
 	      avg_aspath_len_ipv6 += pd.aspath.hop_count;
 #ifdef WITH_BGPWATCHER
-	      if(add_data_to_bw_pfx_table(prefix, pd, collector_str, peer_data, peer_address, bw_client) != 0)
+	      if((rc = bgpwatcher_client_pfx_table_add(bw_client->pfx_table, 
+						       &prefix, &peer_address, pd.origin_as,
+						       collector_str)) < 0)
 		{
-		  return -1;
+		  bgpwatcher_client_perr(bw_client->client);
+		  fprintf(stderr, "Could not add to pfx table\n");
+		  return -1;		  
 		}
 #endif
 	    }
