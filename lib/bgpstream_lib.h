@@ -47,6 +47,11 @@ void bgpstream_add_interval_filter(bgpstream_t * const bs, bgpstream_filter_type
 /* configure the data interface */
 void bgpstream_set_data_interface(bgpstream_t * const bs, const bgpstream_datasource_type datasource);
 
+/* set up options for the data interface */
+void bgpstream_set_data_interface_options(bgpstream_t * const bs, 
+					  const bgpstream_datasource_option option_type,
+					  char *option);
+
 /* configure the interface so that it blocks waiting for new data */
 void bgpstream_set_blocking(bgpstream_t * const bs);
 

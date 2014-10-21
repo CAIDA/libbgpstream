@@ -63,8 +63,15 @@ void usage() {
 	  "                  allows bgpstream to be used to process data in real-time\n"
 	  "   -r             print information for each BGP record (in bgpstream format) [default]\n"
 	  "   -m             print information for each BGP valid record (in bgpdump -m format)\n"
-	  "   -e             print information for each elemnt of a valid BGP record\n"
+	  "   -e             print information for each element of a valid BGP record\n"
+	  "mysql specific options are:\n"
+	  "   -D <database_name>  the database name [default: bgparchive]\n"
+	  "   -U <user>           the user name to connect to the database [default: bgpstream]\n"
+	  "   -H <host>           the host that host the the database [default: localhost]\n"
+	  "csvfile specific options are:\n"
+	  "   -F <filename>  the csvfile to read\n"
 	  "\n"
+	  "   -h             print this help menu\n"
 	  "* denotes an option that can be given multiple times\n"
 	  );
 }
@@ -102,9 +109,13 @@ int main(int argc, char *argv[])
   int record_output_on = 0;
   int record_bgpdump_output_on = 0;
   int elem_output_on = 0;
+  char *mysql_dbname = NULL;
+  char *mysql_user = NULL;
+  char *mysql_host = NULL;
+  char *csvfile_file = NULL;
   
   while (prevoptind = optind,
-	 (opt = getopt (argc, argv, "P:C:T:W:d:brmeh?")) >= 0)
+	 (opt = getopt (argc, argv, "P:C:T:W:d:brmeD:U:H:F:h?")) >= 0)
     {
       if (optind == prevoptind + 2 && (optarg == NULL || *optarg == '-') ) {
         opt = ':';
@@ -175,6 +186,18 @@ int main(int argc, char *argv[])
 	case 'd':
 	  datasource_name = strdup(optarg);
 	  break;
+	case 'D':
+	  mysql_dbname = strdup(optarg);
+	  break;
+	case 'U':
+	  mysql_user = strdup(optarg);
+	  break;
+	case 'H':
+	  mysql_host = strdup(optarg);
+	  break;
+	case 'F':
+	  csvfile_file = strdup(optarg);
+	  break;
 	case 'b':
 	  blocking = 1;
 	  break;
@@ -240,6 +263,18 @@ int main(int argc, char *argv[])
 	    }
 	}
     }
+
+  // signal if there are incompatible arguments that will be ignored
+  if(
+     (datasource_type != BS_MYSQL && 
+     (mysql_dbname != NULL || mysql_user != NULL || mysql_host != NULL) ) ||
+     (datasource_type != BS_CSVFILE && csvfile_file != NULL) 
+     )
+    {
+      fprintf(stderr, "WARNING: some of the datasource options provided do not apply\n"
+	      "\t to the datasource choosen and they will be ignored.\n");	      
+    }
+
   
   // if the user did not specify any output format
   // then the default one is per record
@@ -290,6 +325,26 @@ int main(int argc, char *argv[])
 
   /* datasource */
   bgpstream_set_data_interface(bs, datasource_type);
+
+
+  /* datasource options */
+  if(mysql_dbname != NULL)
+    {
+      bgpstream_set_data_interface_options(bs, BS_MYSQL_DB, mysql_dbname);
+    }
+  if(mysql_user != NULL)
+    {
+      bgpstream_set_data_interface_options(bs, BS_MYSQL_USER, mysql_user);
+    }
+  if(mysql_host != NULL)
+    {
+      bgpstream_set_data_interface_options(bs, BS_MYSQL_HOST, mysql_host);
+    }
+  if(csvfile_file != NULL)
+    {
+      bgpstream_set_data_interface_options(bs, BS_CSVFILE_FILE, csvfile_file);
+    }
+
 
   /* blocking */
   if(blocking != 0)
@@ -358,6 +413,22 @@ int main(int argc, char *argv[])
   if(datasource_name != NULL)
     {
       free(datasource_name);
+    }
+  if(mysql_dbname != NULL)
+    {
+      free(mysql_dbname);
+    }
+  if(mysql_user != NULL)
+    {
+      free(mysql_user);
+    }
+  if(mysql_host != NULL)
+    {
+      free(mysql_host);
+    }
+  if(csvfile_file != NULL)
+    {
+      free(csvfile_file);
     }
 
   return 0;

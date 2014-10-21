@@ -45,13 +45,17 @@ static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customli
 static void bgpstream_customlist_datasource_destroy(bgpstream_customlist_datasource_t* customlist_ds);
 
 // csvfile datasource functions
-static bgpstream_csvfile_datasource_t *bgpstream_csvfile_datasource_create(bgpstream_filter_mgr_t *filter_mgr);
+static bgpstream_csvfile_datasource_t *bgpstream_csvfile_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
+									   char * csvfile_file);
 static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_datasource_t* csvfile_ds,
 							   bgpstream_input_mgr_t *input_mgr);
 static void bgpstream_csvfile_datasource_destroy(bgpstream_csvfile_datasource_t* csvfile_ds);
 
 // mysql datasource functions
-static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter_mgr_t *filter_mgr);
+static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
+								       char * mysql_dbname,
+								       char * mysql_user,
+								       char * mysql_host);
 static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasource_t* mysql_ds,
 							 bgpstream_input_mgr_t *input_mgr);
 static void bgpstream_mysql_datasource_destroy(bgpstream_mysql_datasource_t* mysql_ds);
@@ -75,11 +79,16 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
   datasource_mgr->datasource = BS_MYSQL; // default data source
   datasource_mgr->blocking = 0;
   datasource_mgr->backoff_time = bs_min_wait;
-  // datasources (none of them is active)
+  // datasources (none of them is active at the beginning)
   datasource_mgr->mysql_ds = NULL;
   datasource_mgr->customlist_ds = NULL;
   datasource_mgr->csvfile_ds = NULL;
   datasource_mgr->status = DS_OFF;
+  // datasource options
+  datasource_mgr->mysql_dbname = NULL;
+  datasource_mgr->mysql_user = NULL;
+  datasource_mgr->mysql_host = NULL;
+  datasource_mgr->csvfile_file = NULL;
   bgpstream_debug("\tBSDS_MGR: create end");
   return datasource_mgr;
 }
@@ -95,6 +104,45 @@ void bgpstream_datasource_mgr_set_data_interface(bgpstream_datasource_mgr_t *dat
 }
 
 
+void bgpstream_datasource_mgr_set_data_interface_option(bgpstream_datasource_mgr_t *datasource_mgr,
+							const bgpstream_datasource_option option_type,
+							char *option) {
+  // this option has no effect if the datasource selected is not
+  // using this option
+  switch(option_type)
+    {
+    case BS_MYSQL_DB:
+      if(datasource_mgr->mysql_dbname!=NULL)
+	{
+	  free(datasource_mgr->mysql_dbname);
+	}
+      datasource_mgr->mysql_dbname = strdup(option);      
+      break;
+    case BS_MYSQL_USER:
+      if(datasource_mgr->mysql_user!=NULL)
+	{
+	  free(datasource_mgr->mysql_user);
+	}
+      datasource_mgr->mysql_user = strdup(option);      
+      break;
+    case BS_MYSQL_HOST:
+      if(datasource_mgr->mysql_host!=NULL)
+	{
+	  free(datasource_mgr->mysql_host);
+	}
+      datasource_mgr->mysql_host = strdup(option);      
+      break;
+    case BS_CSVFILE_FILE:
+      if(datasource_mgr->csvfile_file!=NULL)
+	{
+	  free(datasource_mgr->csvfile_file);
+	}
+      datasource_mgr->csvfile_file = strdup(option);      
+      break;      
+    }
+}
+
+
 void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
 				   bgpstream_filter_mgr_t *filter_mgr){
   bgpstream_debug("\tBSDS_MGR: init start");
@@ -103,7 +151,10 @@ void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
   }
   // datasource_mgr->blocking can be set at any time
   if (datasource_mgr->datasource == BS_MYSQL) {
-    datasource_mgr->mysql_ds = bgpstream_mysql_datasource_create(filter_mgr);
+    datasource_mgr->mysql_ds = bgpstream_mysql_datasource_create(filter_mgr, 
+								 datasource_mgr->mysql_dbname,
+								 datasource_mgr->mysql_user,
+								 datasource_mgr->mysql_host);
     if(datasource_mgr->mysql_ds == NULL) {
       datasource_mgr->status = DS_ERROR;
     } 
@@ -121,7 +172,8 @@ void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
     }
   }
   if (datasource_mgr->datasource == BS_CSVFILE) {
-    datasource_mgr->csvfile_ds = bgpstream_csvfile_datasource_create(filter_mgr);
+    datasource_mgr->csvfile_ds = bgpstream_csvfile_datasource_create(filter_mgr,
+								     datasource_mgr->csvfile_file);
     if(datasource_mgr->csvfile_ds == NULL) {
       datasource_mgr->status = DS_ERROR;
     } 
@@ -224,6 +276,23 @@ void bgpstream_datasource_mgr_destroy(bgpstream_datasource_mgr_t *datasource_mgr
     bgpstream_csvfile_datasource_destroy(datasource_mgr->csvfile_ds);
     datasource_mgr->csvfile_ds = NULL;
   }
+  // destroy memory allocated for options
+  if(datasource_mgr->mysql_dbname!=NULL)
+    {
+      free(datasource_mgr->mysql_dbname);
+    }
+  if(datasource_mgr->mysql_user!=NULL)
+    {
+      free(datasource_mgr->mysql_user);
+    }
+  if(datasource_mgr->mysql_host!=NULL)
+    {
+      free(datasource_mgr->mysql_host);
+    }
+  if(datasource_mgr->csvfile_file!=NULL)
+    {
+      free(datasource_mgr->csvfile_file);
+    }
   free(datasource_mgr);  
   bgpstream_debug("\tBSDS_MGR: destroy end");
 }
@@ -400,13 +469,22 @@ static void bgpstream_customlist_datasource_destroy(bgpstream_customlist_datasou
 
 /* ----------- csvfile related functions ----------- */
 
-static bgpstream_csvfile_datasource_t *bgpstream_csvfile_datasource_create(bgpstream_filter_mgr_t *filter_mgr) {
+static bgpstream_csvfile_datasource_t *bgpstream_csvfile_datasource_create(bgpstream_filter_mgr_t *filter_mgr, 
+									   char *csvfile_file) {
   bgpstream_debug("\t\tBSDS_CSVFILE: create csvfile_ds start");  
   bgpstream_csvfile_datasource_t *csvfile_ds = (bgpstream_csvfile_datasource_t*) malloc(sizeof(bgpstream_csvfile_datasource_t));
   if(csvfile_ds == NULL) {
     bgpstream_log_err("\t\tBSDS_CSVFILE: create csvfile_ds can't allocate memory");    
     return NULL; // can't allocate memory
   }
+  if(csvfile_file == NULL)
+    {
+      csvfile_ds->csvfile_file = strdup("/Users/chiara/Desktop/local_db/bgp_data.csv");
+    }
+  else
+    {
+      csvfile_ds->csvfile_file = strdup(csvfile_file);
+    }
   csvfile_ds->filter_mgr = filter_mgr;
   csvfile_ds->csvfile_read = 0;
   bgpstream_debug("\t\tBSDS_CSVFILE: create csvfile_ds end");
@@ -498,7 +576,8 @@ static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_dat
   int i;
   // if list has not been read yet, then we push these files in the input queue
   if(csvfile_ds->csvfile_read == 0) {
-    stream = fopen("/Users/chiara/Desktop/local_db/bgp_data.csv", "r");
+    stream = fopen(csvfile_ds->csvfile_file, "r");
+    // stream = fopen("/Users/chiara/Desktop/local_db/bgp_data.csv", "r");
     //stream = fopen("/scratch/satc/chiaras_test/local_db/bgp_data.csv", "r");
     if(stream != NULL) {
       /* The flockfile function acquires the internal locking object associated
@@ -565,6 +644,10 @@ static void bgpstream_csvfile_datasource_destroy(bgpstream_csvfile_datasource_t*
   }
   csvfile_ds->filter_mgr = NULL;
   csvfile_ds->csvfile_read = 0;
+  if(csvfile_ds->csvfile_file !=NULL)
+    {
+      free(csvfile_ds->csvfile_file);
+    }
   free(csvfile_ds);
   bgpstream_debug("\t\tBSDS_CSVFILE: destroy csvfile_ds end");  
 }
@@ -572,12 +655,40 @@ static void bgpstream_csvfile_datasource_destroy(bgpstream_csvfile_datasource_t*
 
 /* ----------- mysql related functions ----------- */
 
-static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter_mgr_t *filter_mgr) {
+static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
+								       char *mysql_dbname,
+								       char *mysql_user,
+								       char *mysql_host) {
   bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds start");
   bgpstream_mysql_datasource_t *mysql_ds = (bgpstream_mysql_datasource_t*) malloc(sizeof(bgpstream_mysql_datasource_t));
   if(mysql_ds == NULL) {
     return NULL; // can't allocate memory
   }
+  // set up options or provide defaults
+  if(mysql_dbname == NULL)
+    {
+      mysql_ds->mysql_dbname = strdup("bgparchive");      
+    }
+  else 
+    {
+      mysql_ds->mysql_dbname = strdup(mysql_dbname);
+    }
+  if(mysql_user == NULL)
+    {
+      mysql_ds->mysql_user = strdup("bgpstream");      
+    }
+  else 
+    {
+      mysql_ds->mysql_user = strdup(mysql_user);
+    }
+  if(mysql_host == NULL)
+    {
+      mysql_ds->mysql_host = strdup("localhost");      
+    }
+  else 
+    {
+      mysql_ds->mysql_host = strdup(mysql_host);
+    }
   // Initialize a MySQL object suitable for connection
   bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds mysql connection init");
   mysql_ds->mysql_con = mysql_init(NULL);
@@ -590,8 +701,10 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
   }  
   // Establish a connection to the database
   bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds mysql connection establishment");
-  if (mysql_real_connect(mysql_ds->mysql_con, "loki-ge", "bgpstream", NULL, 
-			   "bgparchive", 0, NULL, 0) == NULL) {
+  //  if (mysql_real_connect(mysql_ds->mysql_con, "localhost", "bgpstream", NULL, 
+  //			   "bgparchive", 0, NULL, 0) == NULL) {
+  if (mysql_real_connect(mysql_ds->mysql_con, mysql_ds->mysql_host, mysql_ds->mysql_user, NULL, 
+			 mysql_ds->mysql_dbname, 0, NULL, 0) == NULL) {
     fprintf(stderr, "%s\n", mysql_error(mysql_ds->mysql_con));
     mysql_close(mysql_ds->mysql_con);
     free(mysql_ds);
@@ -971,6 +1084,18 @@ static void bgpstream_mysql_datasource_destroy(bgpstream_mysql_datasource_t* mys
   mysql_close(mysql_ds->mysql_con);
   mysql_ds->mysql_con = NULL;
   // free memory allocated for mysql datasource
+  if(mysql_ds->mysql_dbname != NULL)
+    {
+      free(mysql_ds->mysql_dbname);
+    }
+  if(mysql_ds->mysql_user != NULL)
+    {
+      free(mysql_ds->mysql_user);
+    }
+  if(mysql_ds->mysql_host != NULL)
+    {
+      free(mysql_ds->mysql_host);
+    }
   free(mysql_ds);
   bgpstream_debug("\t\tBSDS_MYSQL: destroy mysql_ds end");
   return;

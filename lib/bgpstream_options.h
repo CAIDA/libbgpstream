@@ -30,5 +30,7 @@ typedef enum {BS_PROJECT, BS_COLLECTOR, BS_BGP_TYPE, BS_TIME_INTERVAL} bgpstream
 
 typedef enum {BS_MYSQL, BS_CUSTOMLIST, BS_CSVFILE} bgpstream_datasource_type;
 
+typedef enum {BS_MYSQL_DB, BS_MYSQL_USER, BS_MYSQL_HOST, BS_CSVFILE_FILE} bgpstream_datasource_option;
+
 
 #endif /* _BGPSTREAM_OPTIONS_H */

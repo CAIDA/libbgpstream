@@ -54,6 +54,7 @@ typedef struct struct_bgpstream_customlist_datasource_t {
 
 
 typedef struct struct_bgpstream_csvfile_datasource_t {
+  char *csvfile_file;
   int csvfile_read; // 1 if list has bee read, 0 otherwise
   bgpstream_filter_mgr_t * filter_mgr;
   char filename[BGPSTREAM_DUMP_MAX_LEN];
@@ -66,6 +67,9 @@ typedef struct struct_bgpstream_csvfile_datasource_t {
 
 typedef struct struct_bgpstream_mysql_datasource_t {
   MYSQL * mysql_con;
+  char *mysql_dbname;
+  char *mysql_user;
+  char *mysql_host;
   char sql_query[2048];
   MYSQL_STMT *stmt;          // mysql statement
   MYSQL_BIND parameters[2];  // parameters for placeholders
@@ -87,14 +91,17 @@ typedef struct struct_bgpstream_mysql_datasource_t {
 
 
 
-typedef struct struct_bgpstream_datasource_mgr_t {
-  // char datasource_name[BGPSTREAM_DS_MAX_LEN];
+typedef struct struct_bgpstream_datasource_mgr_t {  
   bgpstream_datasource_type datasource;
-  // mysql datasource
+  // datasources available
   bgpstream_mysql_datasource_t *mysql_ds;
   bgpstream_customlist_datasource_t *customlist_ds;
   bgpstream_csvfile_datasource_t *csvfile_ds;
-  // other datasources
+  // datasource specific_options
+  char *mysql_dbname;
+  char *mysql_user;
+  char *mysql_host;
+  char *csvfile_file;
   // blocking options
   int blocking;
   int backoff_time;
@@ -107,6 +114,10 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create();
 
 void bgpstream_datasource_mgr_set_data_interface(bgpstream_datasource_mgr_t *datasource_mgr,
 						 const bgpstream_datasource_type datasource);
+
+void bgpstream_datasource_mgr_set_data_interface_option(bgpstream_datasource_mgr_t *datasource_mgr,
+							const bgpstream_datasource_option option_type,
+							char *option);
 
 /* init the datasource_mgr and start/init the selected datasource */
 void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,

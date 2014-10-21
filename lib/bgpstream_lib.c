@@ -118,6 +118,20 @@ void bgpstream_set_data_interface(bgpstream_t * const bs, const bgpstream_dataso
 }
 
 
+/* configure the datasource interface options */
+
+void bgpstream_set_data_interface_options(bgpstream_t * const bs, 
+					  const bgpstream_datasource_option option_type,
+					  char *option) {
+  bgpstream_debug("BS: set_data_interface_options start");
+  if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
+    return; // nothing to customize
+  }
+  bgpstream_datasource_mgr_set_data_interface_option(bs->datasource_mgr, option_type, option);
+  bgpstream_debug("BS: set_data_interface_options stop");
+}
+
+
 /* configure the interface so that it blocks
  * waiting for new data 
  */
