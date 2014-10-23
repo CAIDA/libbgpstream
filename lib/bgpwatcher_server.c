@@ -198,8 +198,7 @@ static void clients_free(bgpwatcher_server_t *server)
 
 static int send_reply(bgpwatcher_server_t *server,
 		      bgpwatcher_server_client_t *client,
-		      zframe_t *seq_frame,
-		      uint8_t rc)
+		      zframe_t *seq_frame)
 {
   uint8_t reply_t_p = BGPWATCHER_MSG_TYPE_REPLY;
   zmsg_t *msg;
@@ -239,14 +238,6 @@ static int send_reply(bgpwatcher_server_t *server,
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not add seq frame to reply message");
-      goto err;
-    }
-
-  /* add the return code */
-  if(zmsg_addmem(msg, &rc, sizeof(uint8_t)) != 0)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Failed to add rc to reply message");
       goto err;
     }
 
@@ -465,6 +456,12 @@ static int handle_data_message(bgpwatcher_server_t *server,
   /* grab the msg type */
   dmt = bgpwatcher_data_msg_type(msg);
 
+  /* regardless of what they asked for, let them know that we got the request */
+  if(send_reply(server, client, seq_frame) != 0)
+    {
+      goto err;
+    }
+
   switch(dmt)
     {
     case BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN:
@@ -506,7 +503,7 @@ static int handle_data_message(bgpwatcher_server_t *server,
 
   zmsg_destroy(&msg);
   *msg_p = NULL;
-  return send_reply(server, client, seq_frame, rc);
+  return rc;
 
  err:
   /* err means a broken request, just pretend we didn't get it */

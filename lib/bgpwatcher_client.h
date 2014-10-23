@@ -78,17 +78,16 @@ typedef struct bgpwatcher_client_peer_table bgpwatcher_client_peer_table_t;
  *
  * @{ */
 
-  /** Signals that the server has completed processing of a request made by the
-   *  client.
+  /** Signals that the server has received a request made by the client.
    *
    * @param client      pointer to the client instance that received the reply
    * @param seq_num     sequence number for matching with the request
-   * @param rc          return code from the server
-   *                    (0 indicates success, -1 failure)
+   *
+   * @note receipt of this message does not indicate that the server
+   * successfully processed the message, just that it was successfully received.
    */
 typedef void (bgpwatcher_client_cb_handle_reply_t)(bgpwatcher_client_t *client,
 						   seq_num_t seq_num,
-						   int rc,
 						   void *user);
 
 /** @} */

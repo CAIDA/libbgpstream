@@ -178,7 +178,6 @@ static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
 
   bgpwatcher_client_broker_req_t rx_rep = {0, 0};
   bgpwatcher_client_broker_req_t *req;
-  int rc;
 
   khiter_t khiter;
 
@@ -197,26 +196,6 @@ static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
       goto err;
     }
   memcpy(&rx_rep.seq_num, zframe_data(frame), sizeof(seq_num_t));
-
-  /* frame 3: return code */
-  if((frame = zmsg_next(msg)) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-			     "Invalid reply message (missing return code)");
-      goto err;
-    }
-  if(zframe_size(frame) != sizeof(uint8_t))
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-			     "Invalid message received from master "
-			     "(malformed return code)");
-      goto err;
-    }
-  rc = *zframe_data(frame);
-  if(rc != 0)
-    {
-      rc = -1;
-    }
 
   /* grab the corresponding record from the outstanding req set */
   if((khiter = kh_get(reqset, broker->req_hash, &rx_rep)) ==
@@ -238,7 +217,7 @@ static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
   /*fprintf(stderr, "MATCH: req.seq: %"PRIu32", req.msg_type: %d\n",
     req->seq_num, req->msg_type);*/
 
-  DO_CALLBACK(handle_reply, req->seq_num, rc);
+  DO_CALLBACK(handle_reply, req->seq_num);
 
   kh_del(reqset, broker->req_hash, khiter);
   /* still held by the list, don't free */

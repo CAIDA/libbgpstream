@@ -40,27 +40,19 @@
 #define TEST_TABLE_SIZE_DEFAULT 50
 #define PEER_TABLE_SIZE 20
 
-static uint64_t rx_success = 0;
-static uint64_t rx_fail = 0;
+static uint64_t rx = 0;
 
-static void handle_reply(bgpwatcher_client_t *client, seq_num_t seq_num,
-			 int rc, void *user)
+static void handle_reply(bgpwatcher_client_t *client,
+                         seq_num_t seq_num,
+                         void *user)
 {
 #ifdef DEBUG
   fprintf(stderr, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n");
   fprintf(stderr, "HANDLE: Handling reply\n");
   fprintf(stderr, "Seq Num: %"PRIu32"\n", seq_num);
-  fprintf(stderr, "Ret Code: %d\n", rc);
   fprintf(stderr, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n\n");
 #endif
-  if(rc == 0)
-    {
-      rx_success++;
-    }
-  else
-    {
-      rx_fail++;
-    }
+  rx++;
 }
 
 static bgpwatcher_peer_record_t *create_test_peer()
@@ -397,8 +389,7 @@ int main(int argc, char **argv)
   fprintf(stderr, "TEST: Shutdown complete\n");
 
   fprintf(stderr, "STATS: Sent %d requests\n", rc+1);
-  fprintf(stderr, "STATS: Rx %"PRIu64" success replies\n", rx_success);
-  fprintf(stderr, "STATS: Rx %"PRIu64" failure replies\n", rx_fail);
+  fprintf(stderr, "STATS: Rx %"PRIu64" replies\n", rx);
 
   /* complete successfully */
   return 0;
