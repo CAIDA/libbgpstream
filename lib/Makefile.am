@@ -22,8 +22,11 @@
 # along with bgpwatcher.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-SUBDIRS =
-AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/common
+SUBDIRS = libbgpstore
+
+AM_CPPFLAGS = 	-I$(top_srcdir) \
+	 	-I$(top_srcdir)/common \
+		-I$(top_srcdir)/lib/libbgpstore
 
 lib_LTLIBRARIES = libbgpwatcher.la
 
@@ -46,7 +49,8 @@ libbgpwatcher_la_SOURCES = 		\
 	bgpwatcher_server.h		\
 	bgpwatcher_server.c
 
-libbgpwatcher_la_LIBADD = $(top_builddir)/common/libcccommon.la
+libbgpwatcher_la_LIBADD = $(top_builddir)/common/libcccommon.la \
+			  $(top_builddir)/lib/libbgpstore/libbgpstore.la
 
 libbgpwatcher_la_LDFLAGS = -version-info @BGPWATCHER_MAJOR_VERSION@:@BGPWATCHER_MID_VERSION@:@BGPWATCHER_MINOR_VERSION@
 

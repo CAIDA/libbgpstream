@@ -124,6 +124,7 @@ AC_CONFIG_FILES([Makefile
 		common/libpatricia/Makefile
 		common/libcsv/Makefile
 		lib/Makefile
+		lib/libbgpstore/Makefile
 		tools/Makefile
 		])
 AC_OUTPUT

@@ -753,9 +753,16 @@ bgpwatcher_server_t *bgpwatcher_server_init(
       free(*cb_p);
       return NULL;
     }
-
+  
   server->callbacks = *cb_p;
   *cb_p = NULL;
+
+  if((server->bgp_store = bgpstore_create()) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Failed to create bgpstore");
+      goto err;
+    }
 
   /* init czmq */
   if((server->ctx = zctx_new()) == NULL)
@@ -814,7 +821,7 @@ int bgpwatcher_server_start(bgpwatcher_server_t *server)
     }
 
   /* seed the time for the next heartbeat sent to servers */
-  server->heartbeat_next = zclock_time() + server->heartbeat_interval;
+  server->heartbeat_next = zclock_time() + server->heartbeat_interval;  
 
   /* start processing requests */
   while((server->shutdown == 0) && (run_server(server) == 0))
@@ -863,6 +870,12 @@ void bgpwatcher_server_free(bgpwatcher_server_t *server)
   server->client_socket = NULL;
 
   zctx_destroy(&server->ctx);
+
+  if(server->bgp_store != NULL)
+    {
+      bgpstore_destroy(server->bgp_store);
+      server->bgp_store = NULL;
+    }
 
   free(server);
 

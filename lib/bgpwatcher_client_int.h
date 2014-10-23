@@ -29,7 +29,7 @@
 #include <czmq.h>
 #include <stdint.h>
 
-#include <bgpwatcher_client.h>
+#include "bgpwatcher_client.h"
 #include "bgpwatcher_client_broker.h"
 
 /** @file

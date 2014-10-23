@@ -30,6 +30,7 @@
 #include <stdint.h>
 
 #include <bgpwatcher_common.h>
+#include <bgpstore_lib.h>
 
 #include "khash.h"
 
@@ -227,6 +228,9 @@ struct bgpwatcher_server {
 
   /** Buffer for a re-usable pfx record */
   bgpwatcher_pfx_record_t pfx;
+
+  /** bgp data time series store */
+  bgpstore_t *bgp_store;
 
 };
 
