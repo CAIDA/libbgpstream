@@ -49,25 +49,29 @@
 /** @} */
 
 /**
- * @name Public Data Structures
+ * @name Protected Data Structures
  *
  * @{ */
 
 typedef struct bgpwatcher_client {
 
+  /** set of bgpwatcher_consumer_interest_t flags */
+  uint8_t interests;
+
+  /** set of bgpwatcher_producer_intent_t flags */
+  uint8_t intents;
+
+  /** shared config that we have prepared for our broker(s) */
+  bgpwatcher_client_broker_config_t broker_config;
+
   /** handle to communicate with our broker */
   zactor_t *broker;
-
-  /** config that we have prepared for our broker */
-  bgpwatcher_client_broker_t broker_state;
 
   /** Error status */
   bgpwatcher_err_t err;
 
   /** Next request sequence number to use */
   seq_num_t seq_num;
-
-  /** @todo add lazy pirate re-tx stuff here */
 
   /** Indicates that the client has been signaled to shutdown */
   int shutdown;

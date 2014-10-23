@@ -158,6 +158,8 @@ int main(int argc, char **argv)
   uint64_t request_timeout = BGPWATCHER_CLIENT_REQUEST_TIMEOUT_DEFAULT;
   int request_retries = BGPWATCHER_CLIENT_REQUEST_RETRIES_DEFAULT;
 
+  uint8_t interests = 0;
+  uint8_t intents = 0;
   bgpwatcher_client_t *client = NULL;
 
   /* test structures */
@@ -258,7 +260,11 @@ int main(int argc, char **argv)
   /* NB: once getopt completes, optind points to the first non-option
      argument */
 
-  if((client = bgpwatcher_client_init()) == NULL)
+  interests = 0;
+  intents = BGPWATCHER_PRODUCER_INTENT_PREFIX | BGPWATCHER_PRODUCER_INTENT_PEER;
+
+  if((client =
+      bgpwatcher_client_init(interests, intents)) == NULL)
     {
       fprintf(stderr, "ERROR: could not initialize bgpwatcher client\n");
       usage(argv[0]);

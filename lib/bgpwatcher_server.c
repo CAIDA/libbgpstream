@@ -35,10 +35,12 @@
 
 #define ERR (&server->err)
 
+#define VA_ARGS(...) , ##__VA_ARGS__
+
 /* evaluates to true IF there is a callback AND it fails */
 #define DO_CALLBACK(cbfunc, args...)					\
   ((server->callbacks != NULL) && (server->callbacks->cbfunc != NULL) && \
-   (server->callbacks->cbfunc(server, args,				\
+   (server->callbacks->cbfunc(server, (&client->info) VA_ARGS(args),    \
 			      server->callbacks->user) != 0))
 
 enum {
@@ -171,7 +173,7 @@ static int clients_purge(bgpwatcher_server_t *server)
 	  fprintf(stderr, "INFO: Removing dead client (%s)\n", client->id);
 	  fprintf(stderr, "INFO: Expiry: %"PRIu64" Time: %"PRIu64"\n",
 		  client->expiry, zclock_time());
-	  if(DO_CALLBACK(client_disconnect, (&client->info)) != 0)
+	  if(DO_CALLBACK(client_disconnect) != 0)
 	    {
 	      return -1;
 	    }
@@ -514,13 +516,67 @@ static int handle_data_message(bgpwatcher_server_t *server,
   return -1;
 }
 
+static int handle_ready_message(bgpwatcher_server_t *server,
+                                bgpwatcher_server_client_t *client,
+                                zmsg_t **msg_p)
+{
+  zmsg_t *msg = *msg_p;
+
+  zframe_t *frame = NULL;
+
+  assert(msg != NULL);
+  *msg_p = NULL;
+
+#ifdef DEBUG
+  fprintf(stderr, "DEBUG: Creating new client %s\n", client->id);
+#endif
+
+  if(client->info.interests != 0 || client->info.intents != 0)
+    {
+      fprintf(stderr, "WARN: Client is redefining their interests/intents\n");
+    }
+
+  /* first frame is their interests */
+  if((frame = zmsg_pop(msg)) == NULL || zframe_size(frame) != sizeof(uint8_t))
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+			     "Could not extract client interests");
+      goto err;
+    }
+  client->info.interests = *zframe_data(frame);
+  zframe_destroy(&frame);
+
+  /* next is the intents */
+  if((frame = zmsg_pop(msg)) == NULL || zframe_size(frame) != sizeof(uint8_t))
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+			     "Could not extract client interests");
+      goto err;
+    }
+  client->info.intents = *zframe_data(frame);
+  zframe_destroy(&frame);
+
+  /* call the "client connect" callback */
+  if(DO_CALLBACK(client_connect) != 0)
+    {
+      goto err;
+    }
+
+  zmsg_destroy(&msg);
+  return 0;
+
+ err:
+  zframe_destroy(&frame);
+  zmsg_destroy(&msg);
+  return -1;
+}
+
 /* OWNS MSG */
 static int handle_message(bgpwatcher_server_t *server,
 			  bgpwatcher_server_client_t **client_p,
+                          bgpwatcher_msg_type_t msg_type,
 			  zmsg_t **msg_p)
 {
-  bgpwatcher_msg_type_t msg_type;
-
   assert(client_p != NULL);
   bgpwatcher_server_client_t *client = *client_p;
   assert(client != NULL);
@@ -528,9 +584,6 @@ static int handle_message(bgpwatcher_server_t *server,
   assert(msg_p != NULL);
   zmsg_t *msg = *msg_p;
   assert(msg != NULL);
-
-  /* validate the message type and pass to the appropriate callback */
-  msg_type = bgpwatcher_msg_type(msg, 0);
 
   /* check each type we support (in descending order of frequency) */
   switch(msg_type)
@@ -562,17 +615,18 @@ static int handle_message(bgpwatcher_server_t *server,
 	  goto err;
 	}
 
-#ifdef DEBUG
-      fprintf(stderr, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n");
-#endif
-
       /* msg was destroyed by handle_data_message */
       break;
 
     case BGPWATCHER_MSG_TYPE_HEARTBEAT:
       /* safe to ignore these */
+      break;
+
     case BGPWATCHER_MSG_TYPE_READY:
-      /* and these */
+      if(handle_ready_message(server, client, &msg) != 0)
+        {
+          goto err;
+        }
       break;
 
     case BGPWATCHER_MSG_TYPE_TERM:
@@ -585,7 +639,7 @@ static int handle_message(bgpwatcher_server_t *server,
 #endif
 
       /* call the "client disconnect" callback */
-      if(DO_CALLBACK(client_disconnect, &client->info) != 0)
+      if(DO_CALLBACK(client_disconnect) != 0)
 	{
 	  goto err;
 	}
@@ -624,6 +678,8 @@ static int run_server(bgpwatcher_server_t *server)
   zmsg_t *msg = NULL;
   zframe_t *frame = NULL;
 
+  bgpwatcher_msg_type_t msg_type;
+
   bgpwatcher_server_client_t *client = NULL;
   khiter_t k;
 
@@ -653,33 +709,35 @@ static int run_server(bgpwatcher_server_t *server)
 	  goto err;
 	}
 
-      /* get the client that this corresponds to */
+      /* now grab the message type */
+      msg_type = bgpwatcher_msg_type(msg, 0);
+
+      /* check if this client is already registered */
       if((client = client_get(server, frame)) == NULL)
-	{
-	  /* create state for this client */
-	  if((client = client_init(server, &frame)) == NULL)
-	    {
-	      goto err;
-	    }
+        {
+          if(msg_type == BGPWATCHER_MSG_TYPE_READY)
+            {
+              /* create state for this client */
+              if((client = client_init(server, &frame)) == NULL)
+                {
+                  goto err;
+                }
+            }
+          else
+            {
+              /* somehow the client state was lost but the client didn't
+                 reconnect */
+              bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+                                     "Unknown client found");
+              goto err;
+            }
+        }
 
-#ifdef DEBUG
-	  fprintf(stderr, "DEBUG: Creating new client %s\n", client->id);
-#endif
-
-	  /* call the "client connect" callback */
-	  if(DO_CALLBACK(client_connect, &client->info) != 0)
-	    {
-	      goto err;
-	    }
-	}
-      else
-	{
-	  zframe_destroy(&frame);
-	}
+      zframe_destroy(&frame);
 
       /* by here we have a client object and it is time to handle whatever
 	 message we were sent */
-      if(handle_message(server, &client, &msg) != 0)
+      if(handle_message(server, &client, msg_type, &msg) != 0)
 	{
 	  goto err;
 	}

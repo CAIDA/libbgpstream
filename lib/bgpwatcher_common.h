@@ -155,6 +155,39 @@ typedef struct bgpwatcher_err {
  *
  * @{ */
 
+/** Consumer interests
+ *
+ * A consumer has interests: it interested in being sent notifications about
+ * something. E.g. a new prefix table being available.
+ */
+typedef enum {
+
+  /** Prefix Table */
+  BGPWATCHER_CONSUMER_INTEREST_PREFIX = 0x01,
+
+  /** Peer Table */
+  BGPWATCHER_CONSUMER_INTEREST_PEER   = 0x02,
+
+} bgpwatcher_consumer_interest_t;
+
+/** @todo add more generic consumer filters so that a consumer can filter
+    interests based on more than client ID */
+
+/** Producer Intents
+ *
+ * A producer has intents: it intends to send messages about something. E.g. a
+ * new prefix table.
+ */
+typedef enum {
+
+  /** Prefix Table */
+  BGPWATCHER_PRODUCER_INTENT_PREFIX = 0x01,
+
+  /** Peer Table */
+  BGPWATCHER_PRODUCER_INTENT_PEER   = 0x02,
+
+} bgpwatcher_producer_intent_t;
+
 /** Table types */
 typedef enum {
 

@@ -76,8 +76,15 @@ typedef struct bgpwatcher_server bgpwatcher_server_t;
  *  or disconnects
  */
 typedef struct bgpwatcher_server_client_info {
-  /** Client name (collector name) */
+  /** Client name */
   char *name;
+
+  /** Consumer Interests (bgpwatcher_consumer_interest_t flags) */
+  uint8_t interests;
+
+  /** Producer Intents (bgpwatcher_consumer_interest_t flags) */
+  uint8_t intents;
+
 } bgpwatcher_server_client_info_t;
 
 /** Protected information about a client used to handle client connections */
@@ -130,12 +137,14 @@ typedef struct bgpwatcher_server_callbacks {
   /** Signals that a prefix record has been received
    *
    * @param server      pointer to the server instance originating the signal
+   * @param client      pointer to a client info structure (server owns this)
    * @param table_id    unique id for the table that the record corresponds to
    * @param record      pointer to a prefix record structure (server owns this)
    * @param user        pointer to user data given at init time
    * @return 0 if signal successfully handled, -1 otherwise
    */
   int (*recv_pfx_record)(bgpwatcher_server_t *server,
+                         bgpwatcher_server_client_info_t *client,
 			 uint64_t table_id,
 			 bgpwatcher_pfx_record_t *record,
 			 void *user);
@@ -143,12 +152,14 @@ typedef struct bgpwatcher_server_callbacks {
   /** Signals that a peer record has been received
    *
    * @param server      pointer to the server instance originating the signal
+   * @param client      pointer to a client info structure (server owns this)
    * @param table_id    unique id for the table that the record corresponds to
    * @param record      pointer to a peer record structure (server owns this)
    * @param user        pointer to user data given at init time
    * @return 0 if signal successfully handled, -1 otherwise
    */
   int (*recv_peer_record)(bgpwatcher_server_t *server,
+                          bgpwatcher_server_client_info_t *client,
 			  uint64_t table_id,
 			  bgpwatcher_peer_record_t *record,
 			  void *user);
@@ -156,12 +167,14 @@ typedef struct bgpwatcher_server_callbacks {
   /** Signals that a new table is starting
    *
    * @param server      pointer to the server instance originating the signal
+   * @param client      pointer to a client info structure (server owns this)
    * @param table_id    unique id for the table that is starting
    * @param table_type  type of the table that is starting
    * @param user        pointer to user data given at init time
    * @return 0 if signal successfully handled, -1 otherwise
    */
   int (*table_begin)(bgpwatcher_server_t *server,
+                     bgpwatcher_server_client_info_t *client,
 		     uint64_t table_id,
 		     bgpwatcher_table_type_t table_type,
 		     uint32_t table_time,
@@ -170,12 +183,14 @@ typedef struct bgpwatcher_server_callbacks {
   /** Signals that all records for the given table have been received
    *
    * @param server      pointer to the server instance originating the signal
+   * @param client      pointer to a client info structure (server owns this)
    * @param table_id    unique id for the table that has been completed
    * @param table_type  type of the table that has been completed
    * @param user        pointer to user data given at init time
    * @return 0 if signal successfully handled, -1 otherwise
    */
   int (*table_end)(bgpwatcher_server_t *server,
+                   bgpwatcher_server_client_info_t *client,
 		   uint64_t table_id,
 		   bgpwatcher_table_type_t table_type,
 		   uint32_t table_time,

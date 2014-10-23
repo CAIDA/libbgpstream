@@ -102,10 +102,15 @@ typedef void (bgpwatcher_client_cb_handle_reply_t)(bgpwatcher_client_t *client,
 
 /** Initialize a new BGP Watcher client instance
  *
+ * @param interests     set of bgpwatcher_consumer_interest_t flags
+ * @param intents       set of bgpwatcher_producer_intent_t flags
  * @return a pointer to a bgpwatcher client instance if successful, NULL if an
  * error occurred.
+ *
+ * @note calling a producer function or registering a consumer callback for an
+ * intent/interest not registered will trigger an assert.
  */
-bgpwatcher_client_t *bgpwatcher_client_init();
+bgpwatcher_client_t *bgpwatcher_client_init(uint8_t interests, uint8_t intents);
 
 /** Register a function to be called to handle message replies from the server
  *

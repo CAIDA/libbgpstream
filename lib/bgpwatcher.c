@@ -41,6 +41,8 @@ static int client_connect(bgpwatcher_server_t *server,
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
   fprintf(stderr, "HANDLE: Handling client CONNECT\n");
   fprintf(stderr, "Client ID:\t%s\n", client->name);
+  fprintf(stderr, "Interests:\t0x%02X\n", client->interests);
+  fprintf(stderr, "Intents:\t0x%02X\n", client->intents);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
   return 0;
 }
@@ -57,6 +59,7 @@ static int client_disconnect(bgpwatcher_server_t *server,
 }
 
 static int recv_pfx_record(bgpwatcher_server_t *server,
+                           bgpwatcher_server_client_info_t *client,
 			   uint64_t table_id,
 			   bgpwatcher_pfx_record_t *record,
 			   void *user)
@@ -64,6 +67,7 @@ static int recv_pfx_record(bgpwatcher_server_t *server,
 #ifdef DEBUG
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
   fprintf(stderr, "HANDLE: Handling pfx record\n");
+  fprintf(stderr, "Client:\t%s\n", client->name);
   bgpwatcher_pfx_record_dump(record);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
 #endif
@@ -71,6 +75,7 @@ static int recv_pfx_record(bgpwatcher_server_t *server,
 }
 
 static int recv_peer_record(bgpwatcher_server_t *server,
+                            bgpwatcher_server_client_info_t *client,
 			    uint64_t table_id,
 			    bgpwatcher_peer_record_t *record,
 			    void *user)
@@ -78,6 +83,7 @@ static int recv_peer_record(bgpwatcher_server_t *server,
 #ifdef DEBUG
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
   fprintf(stderr, "HANDLE: Handling peer record\n");
+  fprintf(stderr, "Client:\t%s\n", client->name);
   bgpwatcher_peer_record_dump(record);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
 #endif
@@ -85,6 +91,7 @@ static int recv_peer_record(bgpwatcher_server_t *server,
 }
 
 static int table_begin(bgpwatcher_server_t *server,
+                       bgpwatcher_server_client_info_t *client,
 		       uint64_t table_id,
 		       bgpwatcher_table_type_t table_type,
 		       uint32_t table_time,
@@ -92,6 +99,7 @@ static int table_begin(bgpwatcher_server_t *server,
 {
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
   fprintf(stderr, "HANDLE: Handling table BEGIN\n");
+  fprintf(stderr, "Client:\t%s\n", client->name);
   fprintf(stderr, "Table Type:\t%d\n", table_type);
   fprintf(stderr, "Table Id:\t%"PRIu64"\n", table_id);
   fprintf(stderr, "Table Time:\t%"PRIu32"\n", table_time);
@@ -100,6 +108,7 @@ static int table_begin(bgpwatcher_server_t *server,
 }
 
 static int table_end(bgpwatcher_server_t *server,
+                     bgpwatcher_server_client_info_t *client,
 		     uint64_t table_id,
 		     bgpwatcher_table_type_t table_type,
 		     uint32_t table_time,
@@ -107,6 +116,7 @@ static int table_end(bgpwatcher_server_t *server,
 {
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
   fprintf(stderr, "HANDLE: Handling table END\n");
+  fprintf(stderr, "Client:\t%s\n", client->name);
   fprintf(stderr, "Table Type:\t%d\n", table_type);
   fprintf(stderr, "Table Id:\t%"PRIu64"\n", table_id);
   fprintf(stderr, "Table Time:\t%"PRIu32"\n", table_time);

@@ -32,16 +32,27 @@
 
 static int handle_server_msg(zloop_t *loop, zsock_t *reader, void *arg);
 
-#define ERR (&broker->err)
+#define ERR (&broker->cfg->err)
+#define CFG (broker->cfg)
 
 #define DO_CALLBACK(cbfunc, args...)					\
   do {									\
-    if(broker->callbacks.cbfunc != NULL)				\
+    if(CFG->callbacks.cbfunc != NULL)                                   \
       {									\
-	broker->callbacks.cbfunc(broker->master, args,			\
-				 broker->callbacks.user);		\
+	CFG->callbacks.cbfunc(CFG->master, args,			\
+                              CFG->callbacks.user);                  \
       }									\
   } while(0)
+
+static void reset_heartbeat_timer(bgpwatcher_client_broker_t *broker)
+{
+  broker->heartbeat_next = zclock_time() + CFG->heartbeat_interval;
+}
+
+static void reset_heartbeat_liveness(bgpwatcher_client_broker_t *broker)
+{
+  broker->heartbeat_liveness_remaining = CFG->heartbeat_liveness;
+}
 
 static int server_connect(bgpwatcher_client_broker_t *broker)
 {
@@ -49,7 +60,7 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
   zframe_t *frame;
 
   /* connect to server socket */
-  if((broker->server_socket = zsocket_new(broker->ctx, ZMQ_DEALER)) == NULL)
+  if((broker->server_socket = zsocket_new(CFG->ctx, ZMQ_DEALER)) == NULL)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_START_FAILED,
 			     "Failed to create server connection");
@@ -59,12 +70,16 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
   /* up the hwm */
   zsocket_set_sndhwm(broker->server_socket, MAX_OUTSTANDING_REQ*2);
 
-  if(broker->identity != NULL && strlen(broker->identity) > 0)
+  if(CFG->identity != NULL && strlen(CFG->identity) > 0)
     {
-      zsocket_set_identity(broker->server_socket, broker->identity);
+      zsock_set_identity(broker->server_socket, CFG->identity);
+    }
+  else
+    {
+      CFG->identity = zsock_identity(broker->server_socket);
     }
 
-  if(zsocket_connect(broker->server_socket, "%s", broker->server_uri) < 0)
+  if(zsocket_connect(broker->server_socket, "%s", CFG->server_uri) < 0)
     {
       bgpwatcher_err_set_err(ERR, errno, "Could not connect to server");
       return -1;
@@ -78,6 +93,34 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
       return -1;
     }
 
+  if(zframe_send(&frame, broker->server_socket, ZFRAME_MORE) == -1)
+    {
+      bgpwatcher_err_set_err(ERR, errno,
+			     "Could not send ready msg to server");
+      return -1;
+    }
+
+  /* send our interests */
+  if((frame = zframe_new(&CFG->interests, 1)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not create new client interests frame");
+      return -1;
+    }
+  if(zframe_send(&frame, broker->server_socket, ZFRAME_MORE) == -1)
+    {
+      bgpwatcher_err_set_err(ERR, errno,
+			     "Could not send ready msg to server");
+      return -1;
+    }
+
+  /* send our interests */
+  if((frame = zframe_new(&CFG->intents, 1)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not create new client intents frame");
+      return -1;
+    }
   if(zframe_send(&frame, broker->server_socket, 0) == -1)
     {
       bgpwatcher_err_set_err(ERR, errno,
@@ -85,6 +128,10 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
       return -1;
     }
 
+  /* reset the time for the next heartbeat sent to the server */
+  reset_heartbeat_timer(broker);
+
+  /* create a new reader for this server socket */
   if(zloop_reader(broker->loop, broker->server_socket,
                   handle_server_msg, broker) != 0)
     {
@@ -93,7 +140,6 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
       return -1;
     }
 
-  fprintf(stderr, "DEBUG: broker ready (%d)\n", msg_type_p);
   assert(broker->server_socket != NULL);
 
   return 0;
@@ -214,7 +260,7 @@ static int send_request(bgpwatcher_client_broker_t *broker,
   zframe_t *frame = zlist_first(req->msg_frames);
   int mask = ZFRAME_REUSE;
 
-  req->retry_at = zclock_time() + broker->request_timeout;
+  req->retry_at = zclock_time() + CFG->request_timeout;
 
   while(frame != NULL)
     {
@@ -336,7 +382,7 @@ static int handle_heartbeat_timer(zloop_t *loop, int timer_id, void *arg)
 
       zclock_sleep(broker->reconnect_interval_next);
 
-      if(broker->reconnect_interval_next < broker->reconnect_interval_max)
+      if(broker->reconnect_interval_next < CFG->reconnect_interval_max)
         {
           broker->reconnect_interval_next *= 2;
         }
@@ -344,19 +390,17 @@ static int handle_heartbeat_timer(zloop_t *loop, int timer_id, void *arg)
       /* remove the server reader from the reactor */
       zloop_reader_end(broker->loop, broker->server_socket);
       /* destroy the server socket */
-      zsocket_destroy(broker->ctx, broker->server_socket);
+      zsocket_destroy(CFG->ctx, broker->server_socket);
       /* reconnect */
       server_connect(broker);
       assert(broker->server_socket != NULL);
 
-      broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
+      reset_heartbeat_liveness(broker);
     }
 
   /* send heartbeat to server if it is time */
   if(zclock_time() > broker->heartbeat_next)
     {
-      broker->heartbeat_next = zclock_time() + broker->heartbeat_interval;
-
       msg_type_p = BGPWATCHER_MSG_TYPE_HEARTBEAT;
       if((frame = zframe_new(&msg_type_p, 1)) == NULL)
 	{
@@ -371,6 +415,8 @@ static int handle_heartbeat_timer(zloop_t *loop, int timer_id, void *arg)
 				 "Could not send heartbeat msg to server");
 	  goto err;
 	}
+
+      reset_heartbeat_timer(broker);
     }
 
   if(handle_timeouts(broker) != 0)
@@ -407,7 +453,7 @@ static int handle_server_msg(zloop_t *loop, zsock_t *reader, void *arg)
   switch(msg_type)
     {
     case BGPWATCHER_MSG_TYPE_REPLY:
-      broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
+      reset_heartbeat_liveness(broker);
       if(handle_reply(broker, &msg) != 0)
         {
           goto err;
@@ -420,7 +466,7 @@ static int handle_server_msg(zloop_t *loop, zsock_t *reader, void *arg)
       break;
 
     case BGPWATCHER_MSG_TYPE_HEARTBEAT:
-      broker->heartbeat_liveness_remaining = broker->heartbeat_liveness;
+      reset_heartbeat_liveness(broker);
       break;
 
     default:
@@ -432,7 +478,7 @@ static int handle_server_msg(zloop_t *loop, zsock_t *reader, void *arg)
 
   zmsg_destroy(&msg);
   broker->reconnect_interval_next =
-    broker->reconnect_interval_min;
+    CFG->reconnect_interval_min;
 
   /* have we just processed the last reply? */
   if(is_shutdown_time(broker) != 0)
@@ -467,6 +513,17 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
   if(is_shutdown_time(broker) != 0)
     {
       return -1;
+    }
+
+  /* there is a message waiting for us from our master, but if we already have
+     too many outstanding requests at the server, we risk filling the buffers
+     and entering deadlock (not to mention it is just plain rude) */
+  /* to avoid flapping, we remove ourselves at 100% of the max allowed, and the
+     handle_server_msg function will add us back when the queue drops to 80% of
+     allowed */
+  if(kh_size(broker->req_hash) >= MAX_OUTSTANDING_REQ)
+    {
+      fprintf(stderr, "INFO: Rate limiting\n");
     }
 
   if((msg = zmsg_recv(broker->master_pipe)) == NULL)
@@ -535,7 +592,7 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
       zmsg_destroy(&msg);
 
       /* init the re-transmit state */
-      req->retries_remaining = broker->request_retries;
+      req->retries_remaining = CFG->request_retries;
       /* retry_at is set by send_request */
 
 
@@ -578,7 +635,7 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
           if(broker->shutdown_time == 0)
             {
               broker->shutdown_time =
-                zclock_time() + broker->shutdown_linger;
+                zclock_time() + CFG->shutdown_linger;
             }
           if(is_shutdown_time(broker) != 0)
             {
@@ -609,37 +666,85 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
   return -1;
 }
 
-/* ========== PUBLIC FUNCS BELOW HERE ========== */
-
-/* broker owns none of the memory passed to it. only responsible for what it
-   mallocs itself (e.g. poller) */
-void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
+static void req_free_wrap(void **req)
 {
-  bgpwatcher_client_broker_t *broker = (bgpwatcher_client_broker_t*)args;
-  assert(broker != NULL);
-  assert(pipe != NULL);
+  bgpwatcher_client_broker_req_free((bgpwatcher_client_broker_req_t**)req);
+}
 
+static void broker_free(bgpwatcher_client_broker_t **broker_p)
+{
+  assert(broker_p != NULL);
+  bgpwatcher_client_broker_t *broker = *broker_p;
+
+  /* free our reactor */
+  zloop_destroy(&broker->loop);
+
+  if(broker->req_hash != NULL)
+    {
+      if(kh_size(broker->req_hash) > 0)
+	{
+	  fprintf(stderr,
+		  "WARNING: At shutdown there were %d outstanding requests\n",
+		  kh_size(broker->req_hash));
+	}
+      kh_destroy(reqset, broker->req_hash);
+      broker->req_hash = NULL;
+    }
+
+  /* the req_list shared the same objects as the hash, so just trash the list */
+  /* DO NOT set the destructor before this point otherwise zlist merrily free's
+     records on every _remove. sigh */
+  zlist_set_destructor(broker->req_list, req_free_wrap);
+  zlist_destroy(&broker->req_list);
+
+  /* free'd by zctx_destroy in master */
+  broker->server_socket = NULL;
+
+  free(broker);
+
+  *broker_p = NULL;
+  return;
+}
+
+static int init_req_state(bgpwatcher_client_broker_t *broker)
+{
+  /* init the outstanding req set */
+  if((broker->req_hash = kh_init(reqset)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Failed to create request set");
+      return -1;
+    }
+  if((broker->req_list = zlist_new()) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Failed to create request list");
+      return -1;
+    }
+  return 0;
+}
+
+static int init_reactor(bgpwatcher_client_broker_t *broker)
+{
   /* set up the reactor */
   if((broker->loop = zloop_new()) == NULL)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
 			     "Could not initialize reactor");
-      return;
+      return -1;
     }
   /* DEBUG */
   //zloop_set_verbose(broker->loop, true);
 
   /* add a heartbeat timer */
   if((broker->timer_id = zloop_timer(broker->loop,
-                                     broker->heartbeat_interval, 0,
+                                     CFG->heartbeat_interval, 0,
                                      handle_heartbeat_timer, broker)) < 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not add heartbeat timer reactor");
-      return;
+      return -1;
     }
-
-  broker->master_pipe = pipe;
 
   /* add master pipe to reactor */
   if(zloop_reader(broker->loop, broker->master_pipe,
@@ -647,6 +752,62 @@ void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not add master pipe to reactor");
+      return -1;
+    }
+
+  return 0;
+}
+
+static bgpwatcher_client_broker_t *broker_init(zsock_t *master_pipe,
+                                   bgpwatcher_client_broker_config_t *cfg)
+{
+  bgpwatcher_client_broker_t *broker;
+
+  if((broker = malloc_zero(sizeof(bgpwatcher_client_broker_t))) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Could not initialize broker state");
+      return NULL;
+    }
+
+  broker->master_pipe = master_pipe;
+  broker->cfg = cfg;
+
+  if(init_req_state(broker) != 0)
+    {
+      goto err;
+    }
+
+  /* init counters from options */
+  reset_heartbeat_liveness(broker);
+  broker->reconnect_interval_next = CFG->reconnect_interval_min;
+
+  if(init_reactor(broker) != 0)
+    {
+      goto err;
+    }
+
+  return broker;
+
+ err:
+  broker_free(&broker);
+  return NULL;
+}
+
+/* ========== PUBLIC FUNCS BELOW HERE ========== */
+
+/* broker owns none of the memory passed to it. only responsible for what it
+   mallocs itself (e.g. poller) */
+void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
+{
+  bgpwatcher_client_broker_t *broker;
+
+  assert(pipe != NULL);
+  assert(args != NULL);
+
+  if((broker =
+      broker_init(pipe, (bgpwatcher_client_broker_config_t*)args)) == NULL)
+    {
       return;
     }
 
@@ -655,9 +816,6 @@ void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
     {
       return;
     }
-
-  /* seed the time for the next heartbeat sent to the server */
-  broker->heartbeat_next = zclock_time() + broker->heartbeat_interval;
 
   /* signal to our master that we are ready */
   if(zsock_signal(pipe, 0) != 0)
@@ -676,11 +834,12 @@ void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
   if(server_disconnect(broker) != 0)
     {
       // err will be set
+      broker_free(&broker);
       return;
     }
 
-  /* free our reactor */
-  zloop_destroy(&broker->loop);
+  broker_free(&broker);
+  return;
 }
 
 bgpwatcher_client_broker_req_t *bgpwatcher_client_broker_req_init()
