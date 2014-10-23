@@ -28,7 +28,9 @@ noinst_LTLIBRARIES = libbgpstore.la
 
 libbgpstore_la_SOURCES = bgpstore_lib.h   \
 			 bgpstore_int.h   \
-			 bgpstore_lib.c
+			 bgpstore_lib.c	  \
+			 bgpstore_bgpview.h   \
+			 bgpstore_bgpview.c
 
 # libbgpstore_la_LIBADD =
 

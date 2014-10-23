@@ -23,21 +23,36 @@
  *
  */
 
-#ifndef __BGPSTORE_INT_H
-#define __BGPSTORE_INT_H
+#ifndef __BGPSTORE_BGPVIEW_H
+#define __BGPSTORE_BGPVIEW_H
 
-#include "bgpstore_lib.h"
-#include "bgpstore_bgpview.h"
-#include "khash.h"
+#include "config.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include "utils.h"
+#include <assert.h>
 
 
-KHASH_INIT(timebgpview, char*, bgpview_t*, 1,
-	   kh_int_hash_func, kh_int_hash_equal);
+typedef struct struct_bgpview_t {
+  // something
+  int test;
+} bgpview_t;
 
-struct bgpstore {
-  int registered_clients;
-  khash_t(timebgpview) *bgp_timeseries;
 
-};
+/** Allocate memory for a strucure that maintains
+ *  the bgp information collected for a single timestamp
+ *
+ * @return a pointer to the structure, or
+ *  NULL if an error occurred
+ */
+bgpview_t *bgpview_create();
 
-#endif /* __BGPSTORE_INT_H */
+
+/** Deallocate memory for the bgpview structure
+ *
+ * @param bgp_view a pointer to the bgpview memory
+ */
+void bgpview_destroy(bgpview_t *bgp_view);
+
+
+#endif /* __BGPSTORE_BGPVIEW_H */

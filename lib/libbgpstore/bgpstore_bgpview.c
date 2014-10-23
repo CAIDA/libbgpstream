@@ -24,50 +24,27 @@
  */
 
 
-#include "bgpstore_int.h"
+#include "bgpstore_bgpview.h"
 
 
-bgpstore_t *bgpstore_create()
+bgpview_t *bgpview_create()
 {
-  bgpstore_t *bgp_store;
-  if((bgp_store = malloc_zero(sizeof(bgpstore_t))) == NULL)
+  bgpview_t *bgp_view;
+  if((bgp_view = malloc_zero(sizeof(bgpview_t))) == NULL)
     {
       return NULL;
     }
-  if((bgp_store->bgp_timeseries = kh_init(timebgpview)) == NULL)
-    {
-      fprintf(stderr, "Failed to create bgp_timeseries\n");
-      goto err;
-    }
-  bgp_store->registered_clients = 0;
-#ifdef DEBUG
-  fprintf(stderr, "DEBUG: bgpstore created\n");
-#endif
-  return bgp_store;
-
- err:
-  if(bgp_store != NULL)
-    {
-      bgpstore_destroy(bgp_store);
-    }
-  return NULL;    
+  // init internal parameters
+  bgp_view->test = 0;
+  return bgp_view;
 }
 
 
-void bgpstore_destroy(bgpstore_t *bgp_store)
+void bgpview_destroy(bgpview_t *bgp_view)
 {
-  if(bgp_store != NULL)
+  if(bgp_view != NULL)
     {
-      if(bgp_store->bgp_timeseries != NULL)
-	{
-	  kh_free_vals(timebgpview, bgp_store->bgp_timeseries, bgpview_destroy);
-	  kh_destroy(timebgpview, bgp_store->bgp_timeseries);
-	  bgp_store->bgp_timeseries = NULL;
-	}
-      free(bgp_store);
-#ifdef DEBUG
-      fprintf(stderr, "DEBUG: bgpstore destroyed\n");
-#endif
+      free(bgp_view);
     }
 }
 
