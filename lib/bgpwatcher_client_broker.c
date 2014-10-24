@@ -804,11 +804,14 @@ void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
       return;
     }
 
+  zloop_start(broker->loop);
+  /*
   if(zloop_start(broker->loop))
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INTERRUPT,
-                             "Caught interrupt");
+                             "Broker terminating");
     }
+  */
 
   if(server_disconnect(broker) != 0)
     {

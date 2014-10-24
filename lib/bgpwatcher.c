@@ -60,15 +60,17 @@ static int client_disconnect(bgpwatcher_server_t *server,
 
 static int recv_pfx_record(bgpwatcher_server_t *server,
                            bgpwatcher_server_client_info_t *client,
-			   uint64_t table_id,
-			   bgpwatcher_pfx_record_t *record,
+                           bgpwatcher_pfx_table_t *table,
+                           bgpstream_prefix_t *prefix,
+                           uint32_t orig_asn,
 			   void *user)
 {
 #ifdef DEBUG
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
   fprintf(stderr, "HANDLE: Handling pfx record\n");
   fprintf(stderr, "Client:\t%s\n", client->name);
-  bgpwatcher_pfx_record_dump(record);
+  bgpwatcher_pfx_table_dump(table);
+  bgpwatcher_pfx_record_dump(prefix, orig_asn);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
 #endif
   return 0;
@@ -76,50 +78,70 @@ static int recv_pfx_record(bgpwatcher_server_t *server,
 
 static int recv_peer_record(bgpwatcher_server_t *server,
                             bgpwatcher_server_client_info_t *client,
-			    uint64_t table_id,
-			    bgpwatcher_peer_record_t *record,
+                            bgpwatcher_peer_table_t *table,
+                            bgpstream_ip_address_t *peer_ip,
+                            uint8_t status,
 			    void *user)
 {
 #ifdef DEBUG
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
   fprintf(stderr, "HANDLE: Handling peer record\n");
   fprintf(stderr, "Client:\t%s\n", client->name);
-  bgpwatcher_peer_record_dump(record);
+  bgpwatcher_peer_table_dump(table);
+  bgpwatcher_peer_record_dump(peer_ip, status);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
 #endif
   return 0;
 }
 
-static int table_begin(bgpwatcher_server_t *server,
-                       bgpwatcher_server_client_info_t *client,
-		       uint64_t table_id,
-		       bgpwatcher_table_type_t table_type,
-		       uint32_t table_time,
-		       void *user)
+static int table_begin_prefix(bgpwatcher_server_t *server,
+                              bgpwatcher_server_client_info_t *client,
+                              bgpwatcher_pfx_table_t *table,
+                              void *user)
 {
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
-  fprintf(stderr, "HANDLE: Handling table BEGIN\n");
+  fprintf(stderr, "HANDLE: Handling PREFIX BEGIN\n");
   fprintf(stderr, "Client:\t%s\n", client->name);
-  fprintf(stderr, "Table Type:\t%d\n", table_type);
-  fprintf(stderr, "Table Id:\t%"PRIu64"\n", table_id);
-  fprintf(stderr, "Table Time:\t%"PRIu32"\n", table_time);
+  bgpwatcher_pfx_table_dump(table);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
   return 0;
 }
 
-static int table_end(bgpwatcher_server_t *server,
-                     bgpwatcher_server_client_info_t *client,
-		     uint64_t table_id,
-		     bgpwatcher_table_type_t table_type,
-		     uint32_t table_time,
-		     void *user)
+static int table_end_prefix(bgpwatcher_server_t *server,
+                            bgpwatcher_server_client_info_t *client,
+                            bgpwatcher_pfx_table_t *table,
+                            void *user)
 {
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
-  fprintf(stderr, "HANDLE: Handling table END\n");
+  fprintf(stderr, "HANDLE: Handling PREFIX END\n");
   fprintf(stderr, "Client:\t%s\n", client->name);
-  fprintf(stderr, "Table Type:\t%d\n", table_type);
-  fprintf(stderr, "Table Id:\t%"PRIu64"\n", table_id);
-  fprintf(stderr, "Table Time:\t%"PRIu32"\n", table_time);
+  bgpwatcher_pfx_table_dump(table);
+  fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
+  return 0;
+}
+
+static int table_begin_peer(bgpwatcher_server_t *server,
+                            bgpwatcher_server_client_info_t *client,
+                            bgpwatcher_peer_table_t *table,
+                            void *user)
+{
+  fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
+  fprintf(stderr, "HANDLE: Handling PEER BEGIN\n");
+  fprintf(stderr, "Client:\t%s\n", client->name);
+  bgpwatcher_peer_table_dump(table);
+  fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
+  return 0;
+}
+
+static int table_end_peer(bgpwatcher_server_t *server,
+                          bgpwatcher_server_client_info_t *client,
+                          bgpwatcher_peer_table_t *table,
+                          void *user)
+{
+  fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
+  fprintf(stderr, "HANDLE: Handling PEER END\n");
+  fprintf(stderr, "Client:\t%s\n", client->name);
+  bgpwatcher_peer_table_dump(table);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
   return 0;
 }
@@ -129,8 +151,10 @@ static bgpwatcher_server_callbacks_t callback_template = {
   client_disconnect,
   recv_pfx_record,
   recv_peer_record,
-  table_begin,
-  table_end,
+  table_begin_prefix,
+  table_end_prefix,
+  table_begin_peer,
+  table_end_peer,
   NULL, /* user: to be filled with a 'self' pointer */
 };
 

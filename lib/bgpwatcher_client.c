@@ -85,44 +85,6 @@ int send_data_message(zmsg_t **msg_p,
   return -1;
 }
 
-int send_table(bgpwatcher_client_t *client,
-	       bgpwatcher_table_type_t table_type,
-	       bgpwatcher_data_msg_type_t begin_end,
-	       uint32_t table_time)
-{
-  zmsg_t *msg;
-
-  assert(begin_end == BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN ||
-	 begin_end == BGPWATCHER_DATA_MSG_TYPE_TABLE_END);
-
-  if((msg = zmsg_new()) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Failed to create table begin/end message");
-      return -1;
-    }
-
-  /* append the table type */
-  if(zmsg_addmem(msg, &table_type,
-		  bgpwatcher_table_type_size_t) != 0)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Could not add table type to message");
-      zmsg_destroy(&msg);
-    }
-
-  /* append the table start time */
-  table_time = htonl(table_time);
-  if(zmsg_addmem(msg, &table_time, sizeof(table_time)) != 0)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Could not add table time to message");
-      zmsg_destroy(&msg);
-    }
-
-  return send_data_message(&msg, begin_end, client);
-}
-
 /* ========== PUBLIC FUNCS BELOW HERE ========== */
 
 bgpwatcher_client_t *bgpwatcher_client_init(uint8_t interests, uint8_t intents)
@@ -256,37 +218,47 @@ void bgpwatcher_client_pfx_table_free(bgpwatcher_client_pfx_table_t **table_p)
 }
 
 int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_pfx_table_t *table,
+                                      const char *collector_name,
+                                      bgpstream_ip_address_t *peer_ip,
 				      uint32_t time)
 {
+  zmsg_t *msg = NULL;
   int rc;
   assert(table != NULL);
   assert(table->started == 0);
 
-  table->time = time;
+  /* fill the table */
+  table->info.time = time;
+  table->info.collector = collector_name;
+  table->info.peer_ip = *peer_ip;
 
-  if((rc = send_table(table->client,
-		      BGPWATCHER_TABLE_TYPE_PREFIX,
-		      BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN,
-		      table->time)) >= 0)
+  if((msg = bgpwatcher_pfx_table_msg_create(&table->info)) == NULL)
+    {
+      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
+			     "Failed to serialize prefix table");
+      return -1;
+    }
+
+  if((rc = send_data_message(&msg,
+                             BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN,
+                             table->client)) >= 0)
     {
       table->started = 1;
     }
 
+  zmsg_destroy(&msg);
   return rc;
 }
 
 int bgpwatcher_client_pfx_table_add(bgpwatcher_client_pfx_table_t *table,
 				    bgpstream_prefix_t *prefix,
-                                    bgpstream_ip_address_t *peer_ip,
-                                    uint32_t orig_asn,
-                                    char *collector_name)
+                                    uint32_t orig_asn)
 {
   zmsg_t *msg;
 
   assert(table != NULL);
 
-  if((msg = bgpwatcher_pfx_msg_create(prefix, peer_ip, orig_asn,
-                                      collector_name)) == NULL)
+  if((msg = bgpwatcher_pfx_msg_create(prefix, orig_asn)) == NULL)
     {
       bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
 			     "Failed to serialize prefix record");
@@ -302,21 +274,25 @@ int bgpwatcher_client_pfx_table_end(bgpwatcher_client_pfx_table_t *table)
   assert(table != NULL);
   assert(table->started == 1);
   int rc;
+  zmsg_t *msg = NULL;
 
-  /* send a table end message */
-  if((rc = send_table(table->client,
-		      BGPWATCHER_TABLE_TYPE_PREFIX,
-		      BGPWATCHER_DATA_MSG_TYPE_TABLE_END,
-		      table->time)) >= 0)
+  if((msg = bgpwatcher_pfx_table_msg_create(&table->info)) == NULL)
     {
-      table->started = 0;
+      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
+			     "Failed to serialize prefix table");
+      return -1;
     }
 
+  if((rc = send_data_message(&msg, BGPWATCHER_DATA_MSG_TYPE_TABLE_END,
+                             table->client)) >= 0)
+    {
+      table->started = 1;
+    }
+
+  zmsg_destroy(&msg);
   return rc;
 }
 
-/** consider making the table create/free/add/flush code more generic (a
-    macro?) */
 bgpwatcher_client_peer_table_t *bgpwatcher_client_peer_table_create(
 						   bgpwatcher_client_t *client)
 {
@@ -347,34 +323,45 @@ void bgpwatcher_client_peer_table_free(bgpwatcher_client_peer_table_t **table_p)
 }
 
 int bgpwatcher_client_peer_table_begin(bgpwatcher_client_peer_table_t *table,
-					uint32_t time)
+                                       const char *collector_name,
+                                       uint32_t time)
 {
   int rc;
+  zmsg_t *msg = NULL;
   assert(table != NULL);
   assert(table->started == 0);
 
-  table->time = time;
+  table->info.time = time;
+  table->info.collector = collector_name;
 
-  if((rc = send_table(table->client,
-		      BGPWATCHER_TABLE_TYPE_PEER,
-		      BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN,
-		      table->time)) >= 0)
+  if((msg = bgpwatcher_peer_table_msg_create(&table->info)) == NULL)
+    {
+      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
+			     "Failed to serialize peer table");
+      return -1;
+    }
+
+  if((rc = send_data_message(&msg,
+                             BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN,
+                             table->client)) >= 0)
     {
       table->started = 1;
     }
 
+  zmsg_destroy(&msg);
   return rc;
 }
 
 int bgpwatcher_client_peer_table_add(bgpwatcher_client_peer_table_t *table,
-				     bgpwatcher_peer_record_t *peer)
+                                     bgpstream_ip_address_t *peer_ip,
+                                     uint8_t status)
 {
   zmsg_t *msg;
 
   assert(table != NULL);
-  assert(peer != NULL);
+  assert(peer_ip != NULL);
 
-  if((msg = bgpwatcher_peer_record_serialize(peer)) == NULL)
+  if((msg = bgpwatcher_peer_msg_create(peer_ip, status)) == NULL)
     {
       bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
 			     "Failed to serialize peer record");
@@ -390,16 +377,23 @@ int bgpwatcher_client_peer_table_end(bgpwatcher_client_peer_table_t *table)
   assert(table != NULL);
   assert(table->started == 1);
   int rc;
+  zmsg_t *msg = NULL;
 
-  /* send a table end message */
-  if((rc = send_table(table->client,
-		      BGPWATCHER_TABLE_TYPE_PEER,
-		      BGPWATCHER_DATA_MSG_TYPE_TABLE_END,
-		      table->time)) >= 0)
+  if((msg = bgpwatcher_peer_table_msg_create(&table->info)) == NULL)
+    {
+      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
+			     "Failed to serialize peer table");
+      return -1;
+    }
+
+  if((rc = send_data_message(&msg,
+                             BGPWATCHER_DATA_MSG_TYPE_TABLE_END,
+                             table->client)) >= 0)
     {
       table->started = 0;
     }
 
+  zmsg_destroy(&msg);
   return rc;
 }
 

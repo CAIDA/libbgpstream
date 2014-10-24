@@ -29,7 +29,9 @@
 #include <czmq.h>
 #include <stdint.h>
 
-#include "khash.h"
+#include <khash.h>
+
+#include <bgpwatcher_common_int.h>
 
 /** @file
  *

@@ -55,45 +55,83 @@ static void handle_reply(bgpwatcher_client_t *client,
   rx++;
 }
 
-static bgpwatcher_peer_record_t *create_test_peer()
+/* pfx table */
+static bgpstream_ip_address_t  test_pfx_peer_ip;
+static char                   *test_pfx_collector_name;
+static uint32_t                test_pfx_time;
+
+/* pfx row */
+static bgpstream_prefix_t      test_pfx_prefix;
+static uint32_t                test_pfx_orig_asn;
+
+/* peer table */
+static char                   *test_peer_collector_name;
+static uint32_t                test_peer_time;
+
+/* peer row */
+static bgpstream_ip_address_t  test_peer_peer_ip;
+static uint8_t                 test_peer_status;
+
+static void create_test_data()
 {
-  bgpwatcher_peer_record_t *rec;
+  /* PREFIX TABLE */
 
-  rec = bgpwatcher_peer_record_init();
+  /* PEER IP */
+  test_pfx_peer_ip.address.v4_addr.s_addr = 0x0DFAD982;
+  test_pfx_peer_ip.type = BST_IPV4;
 
-  if(rec != NULL)
-    {
-      ((struct sockaddr_in6*)&rec->ip)->sin6_family = AF_INET6;
+  /* COLLECTOR NAME */
+  test_pfx_collector_name = "TEST-COLLECTOR-PFX";
 
-      /*2001:48d0:101:501:ec4:7aff:fe12:1108*/
-      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[0] = 0x20;
-      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[1] = 0x01;
+  /* TIME */
+  test_pfx_time = 1320969600;
 
-      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[2] = 0x48;
-      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[3] = 0xd0;
+  /* PREFIX */
+  test_pfx_prefix.number.address.v4_addr.s_addr = 0x00E2ACC0;
+  test_pfx_prefix.number.type = BST_IPV4;
+  test_pfx_prefix.len = 24;
 
-      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[4] = 0x01;
-      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[5] = 0x01;
+  /* ORIG ASN */
+  test_pfx_orig_asn = 12345;
 
-      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[6] = 0x05;
-      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[7] = 0x01;
+  /* -------------------------------------------------- */
+  /* PEER TABLE */
 
-      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[8] = 0x0e;
-      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[9] = 0xc4;
+  /* COLLECTOR NAME */
+  test_peer_collector_name = "TEST-COLLECTOR-PEER";
 
-      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[10] = 0x7a;
-      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[11] = 0xff;
+  /* TIME */
+  test_peer_time = 1410267600;
 
-      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[12] = 0xfe;
-      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[13] = 0x12;
+  /* PEER IP */
+  /*2001:48d0:101:501:ec4:7aff:fe12:1108*/
+  test_peer_peer_ip.address.v6_addr.s6_addr[0] = 0x20;
+  test_peer_peer_ip.address.v6_addr.s6_addr[1] = 0x01;
 
-      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[14] = 0x11;
-      ((struct sockaddr_in6*)&rec->ip)->sin6_addr.s6_addr[15] = 0x08;
+  test_peer_peer_ip.address.v6_addr.s6_addr[2] = 0x48;
+  test_peer_peer_ip.address.v6_addr.s6_addr[3] = 0xd0;
 
-      rec->status = 0xF3;
-    }
+  test_peer_peer_ip.address.v6_addr.s6_addr[4] = 0x01;
+  test_peer_peer_ip.address.v6_addr.s6_addr[5] = 0x01;
 
-  return rec;
+  test_peer_peer_ip.address.v6_addr.s6_addr[6] = 0x05;
+  test_peer_peer_ip.address.v6_addr.s6_addr[7] = 0x01;
+
+  test_peer_peer_ip.address.v6_addr.s6_addr[8] = 0x0e;
+  test_peer_peer_ip.address.v6_addr.s6_addr[9] = 0xc4;
+
+  test_peer_peer_ip.address.v6_addr.s6_addr[10] = 0x7a;
+  test_peer_peer_ip.address.v6_addr.s6_addr[11] = 0xff;
+
+  test_peer_peer_ip.address.v6_addr.s6_addr[12] = 0xfe;
+  test_peer_peer_ip.address.v6_addr.s6_addr[13] = 0x12;
+
+  test_peer_peer_ip.address.v6_addr.s6_addr[14] = 0x11;
+  test_peer_peer_ip.address.v6_addr.s6_addr[15] = 0x08;
+  test_peer_peer_ip.type = BST_IPV6;
+
+  /* STATUS */
+  test_peer_status = 0xF3;
 }
 
 static void usage(const char *name)
@@ -157,23 +195,9 @@ int main(int argc, char **argv)
   /* test structures */
   int rc;
   bgpwatcher_client_pfx_table_t *pfx_table = NULL;
-
-  /* initialize test prefix row data */
-  bgpstream_prefix_t prefix;
-  prefix.number.address.v4_addr.s_addr = 0xC0ACE200;
-  prefix.number.type = BST_IPV4;
-  prefix.len = 24;
-  bgpstream_ip_address_t peer_ip;
-  peer_ip.address.v4_addr.s_addr = 0x82D9FA0D;
-  peer_ip.type = BST_IPV4;
-  uint32_t orig_asn = 12345;
-  char *collector_name = "TEST-COLLECTOR";
-
-  uint32_t pfx_table_time = 1320969600;
-
   bgpwatcher_client_peer_table_t *peer_table = NULL;
-  bgpwatcher_peer_record_t *peer = NULL;
-  uint32_t peer_table_time = 1410267600;
+  /* initialize test data */
+  create_test_data();
 
   uint32_t test_table_size = TEST_TABLE_SIZE_DEFAULT;
 
@@ -293,7 +317,7 @@ int main(int argc, char **argv)
 
   bgpwatcher_client_set_request_retries(client, request_retries);
 
-  fprintf(stderr, "TEST: Init tables and records... ");
+  fprintf(stderr, "TEST: Init tables... ");
   if((pfx_table = bgpwatcher_client_pfx_table_create(client)) == NULL)
     {
       fprintf(stderr, "Could not create table\n");
@@ -303,11 +327,6 @@ int main(int argc, char **argv)
   if((peer_table = bgpwatcher_client_peer_table_create(client)) == NULL)
     {
       fprintf(stderr, "Could not create table\n");
-      goto err;
-    }
-  if((peer = create_test_peer()) == NULL)
-    {
-      fprintf(stderr, "Could not create test peer\n");
       goto err;
     }
   fprintf(stderr, "done\n");
@@ -322,21 +341,25 @@ int main(int argc, char **argv)
 
   /* issue a bunch of requests */
   fprintf(stderr, "--------------------[ PREFIX START ]--------------------\n");
-  if((rc = bgpwatcher_client_pfx_table_begin(pfx_table, pfx_table_time)) < 0)
+  if((rc = bgpwatcher_client_pfx_table_begin(pfx_table,
+                                             test_pfx_collector_name,
+                                             &test_pfx_peer_ip,
+                                             test_pfx_time)) < 0)
     {
-      fprintf(stderr, "Could not begin table\n");
+      fprintf(stderr, "Could not begin pfx table\n");
       goto err;
     }
-  fprintf(stderr, "TEST: Sending table begin: %d\n", rc);
+  fprintf(stderr, "TEST: Sending pfx table begin: %d\n", rc);
 
   fprintf(stderr, "TEST: Sending %d pfx table records\n", test_table_size);
   for(i=0; i<test_table_size; i++)
     {
-      if((rc = bgpwatcher_client_pfx_table_add(pfx_table,
-                                               &prefix, &peer_ip,
-                                               orig_asn, collector_name)) < 0)
+      if((rc =
+          bgpwatcher_client_pfx_table_add(pfx_table,
+                                          &test_pfx_prefix,
+                                          test_pfx_orig_asn)) < 0)
 	{
-	  fprintf(stderr, "Could not add pfx to table\n");
+	  fprintf(stderr, "Could not add pfx info to table\n");
 	  goto err;
 	}
     }
@@ -350,35 +373,38 @@ int main(int argc, char **argv)
   fprintf(stderr, "--------------------[ PREFIX DONE ]--------------------\n\n");
 
   fprintf(stderr, "--------------------[ PEER START ]--------------------\n");
-  if((rc = bgpwatcher_client_peer_table_begin(peer_table, peer_table_time)) < 0)
+  if((rc = bgpwatcher_client_peer_table_begin(peer_table,
+                                              test_peer_collector_name,
+                                              test_peer_time)) < 0)
     {
-      fprintf(stderr, "Could not begin table\n");
+      fprintf(stderr, "Could not begin peer table\n");
       goto err;
     }
-  fprintf(stderr, "TEST: Sending table begin: %d\n", rc);
+  fprintf(stderr, "TEST: Sending peer table begin: %d\n", rc);
 
   fprintf(stderr, "TEST: Sending %d peer table records\n", PEER_TABLE_SIZE);
   for(i=0; i<PEER_TABLE_SIZE; i++)
     {
-      if((rc = bgpwatcher_client_peer_table_add(peer_table, peer)) < 0)
+      if((rc = bgpwatcher_client_peer_table_add(peer_table,
+                                                &test_peer_peer_ip,
+                                                test_peer_status)) < 0)
 	{
-	  fprintf(stderr, "Could not add peer to table\n");
+	  fprintf(stderr, "Could not add peer info to table\n");
 	  goto err;
 	}
     }
 
   if((rc = bgpwatcher_client_peer_table_end(peer_table)) < 0)
     {
-      fprintf(stderr, "Could not end table\n");
+      fprintf(stderr, "Could not end peer table\n");
       goto err;
     }
-  fprintf(stderr, "TEST: Sending table end: %d\n", rc);
+  fprintf(stderr, "TEST: Sending peer table end: %d\n", rc);
   fprintf(stderr, "--------------------[ PEER DONE ]--------------------\n\n");
 
 
   fprintf(stderr, "TEST: Shutting down...\n");
   bgpwatcher_client_pfx_table_free(&pfx_table);
-  bgpwatcher_peer_record_free(&peer);
   bgpwatcher_client_peer_table_free(&peer_table);
 
   bgpwatcher_client_stop(client);
@@ -397,7 +423,6 @@ int main(int argc, char **argv)
  err:
   bgpwatcher_client_perr(client);
   bgpwatcher_client_pfx_table_free(&pfx_table);
-  bgpwatcher_peer_record_free(&peer);
   bgpwatcher_client_peer_table_free(&peer_table);
   if(client != NULL) {
     bgpwatcher_client_free(client);
