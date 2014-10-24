@@ -31,6 +31,7 @@
 #include "utils.h"
 
 static int handle_server_msg(zloop_t *loop, zsock_t *reader, void *arg);
+static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg);
 
 #define ERR (&broker->cfg->err)
 #define CFG (broker->cfg)
@@ -469,6 +470,22 @@ static int handle_server_msg(zloop_t *loop, zsock_t *reader, void *arg)
       return -1;
     }
 
+  /* check if the number of outstanding requests has dropped enough to start
+     accepting more from our master */
+  if(broker->master_removed != 0 &&
+     kh_size(broker->req_hash) < MAX_OUTSTANDING_REQ*0.8)
+    {
+      fprintf(stderr, "INFO: Accepting requests\n");
+      if(zloop_reader(broker->loop, broker->master_pipe,
+                      handle_master_msg, broker) != 0)
+        {
+          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+                                 "Could not re-add master pipe to reactor");
+          return -1;
+        }
+      broker->master_removed = 0;
+    }
+
   return 0;
 
  interrupt:
@@ -503,6 +520,8 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
   if(kh_size(broker->req_hash) >= MAX_OUTSTANDING_REQ)
     {
       fprintf(stderr, "INFO: Rate limiting\n");
+      zloop_reader_end(broker->loop, broker->master_pipe);
+      broker->master_removed = 1;
     }
 
   if((msg = zmsg_recv(broker->master_pipe)) == NULL)
@@ -804,14 +823,8 @@ void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
       return;
     }
 
+  /* blocks until broker exits */
   zloop_start(broker->loop);
-  /*
-  if(zloop_start(broker->loop))
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INTERRUPT,
-                             "Broker terminating");
-    }
-  */
 
   if(server_disconnect(broker) != 0)
     {
