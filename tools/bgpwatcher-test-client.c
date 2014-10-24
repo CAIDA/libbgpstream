@@ -37,6 +37,7 @@
 #include "config.h"
 #include "utils.h"
 
+#define TEST_TABLE_NUM_DEFAULT 1
 #define TEST_TABLE_SIZE_DEFAULT 50
 #define PEER_TABLE_SIZE 20
 
@@ -147,6 +148,7 @@ static void usage(const char *name)
 	  "       -M <msg-retries>      Number of times to retry a request before giving up\n"
 	  "                               (default: %d)\n"
 	  "       -n <identity>         Globally unique client name (default: random)\n"
+          "       -N <table-cnt>        Number of prefix tables (default: %d\n"
 	  "       -r <retry-min>        Min wait time (in msec) before reconnecting server\n"
 
 	  "                               (default: %d)\n"
@@ -156,12 +158,13 @@ static void usage(const char *name)
 	  "                               (default: %s)\n"
 	  "       -t <shutdown-timeout> Time to wait for requests on shutdown\n"
 	  "                               (default: %d)\n"
-	  "       -T <table-size>       Size of test tables (default: %d)\n",
+	  "       -T <table-size>       Size of prefix tables (default: %d)\n",
 	  name,
 	  BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT,
 	  BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT,
 	  BGPWATCHER_CLIENT_REQUEST_TIMEOUT_DEFAULT,
 	  BGPWATCHER_CLIENT_REQUEST_RETRIES_DEFAULT,
+          TEST_TABLE_NUM_DEFAULT,
 	  BGPWATCHER_RECONNECT_INTERVAL_MIN,
 	  BGPWATCHER_RECONNECT_INTERVAL_MAX,
 	  BGPWATCHER_CLIENT_SERVER_URI_DEFAULT,
@@ -171,7 +174,7 @@ static void usage(const char *name)
 
 int main(int argc, char **argv)
 {
-  int i;
+  int i, tbl;
   /* for option parsing */
   int opt;
   int prevoptind;
@@ -200,9 +203,10 @@ int main(int argc, char **argv)
   create_test_data();
 
   uint32_t test_table_size = TEST_TABLE_SIZE_DEFAULT;
+  uint32_t test_table_num = TEST_TABLE_NUM_DEFAULT;
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":i:l:m:M:n:r:R:s:t:T:v?")) >= 0)
+	(opt = getopt(argc, argv, ":i:l:m:M:n:N:r:R:s:t:T:v?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
@@ -234,6 +238,10 @@ int main(int argc, char **argv)
 
 	case 'n':
 	  identity = optarg;
+	  break;
+
+	case 'N':
+	  test_table_num = atoi(optarg);
 	  break;
 
 	case 'r':
@@ -340,37 +348,40 @@ int main(int argc, char **argv)
   fprintf(stderr, "done\n");
 
   /* issue a bunch of requests */
-  fprintf(stderr, "--------------------[ PREFIX START ]--------------------\n");
-  if((rc = bgpwatcher_client_pfx_table_begin(pfx_table,
-                                             test_pfx_collector_name,
-                                             &test_pfx_peer_ip,
-                                             test_pfx_time)) < 0)
+  for(tbl = 0; tbl < test_table_num; tbl++)
     {
-      fprintf(stderr, "Could not begin pfx table\n");
-      goto err;
-    }
-  fprintf(stderr, "TEST: Sending pfx table begin: %d\n", rc);
+      fprintf(stderr, "--------------------[ PREFIX START ]--------------------\n");
+      if((rc = bgpwatcher_client_pfx_table_begin(pfx_table,
+                                                 test_pfx_collector_name,
+                                                 &test_pfx_peer_ip,
+                                                 test_pfx_time)) < 0)
+        {
+          fprintf(stderr, "Could not begin pfx table\n");
+          goto err;
+        }
+      fprintf(stderr, "TEST: Sending pfx table begin: %d\n", rc);
 
-  fprintf(stderr, "TEST: Sending %d pfx table records\n", test_table_size);
-  for(i=0; i<test_table_size; i++)
-    {
-      if((rc =
-          bgpwatcher_client_pfx_table_add(pfx_table,
-                                          &test_pfx_prefix,
-                                          test_pfx_orig_asn)) < 0)
-	{
-	  fprintf(stderr, "Could not add pfx info to table\n");
-	  goto err;
-	}
-    }
+      fprintf(stderr, "TEST: Sending %d pfx table records\n", test_table_size);
+      for(i=0; i<test_table_size; i++)
+        {
+          if((rc =
+              bgpwatcher_client_pfx_table_add(pfx_table,
+                                              &test_pfx_prefix,
+                                              test_pfx_orig_asn)) < 0)
+            {
+              fprintf(stderr, "Could not add pfx info to table\n");
+              goto err;
+            }
+        }
 
-  if((rc = bgpwatcher_client_pfx_table_end(pfx_table)) < 0)
-    {
-      fprintf(stderr, "Could not end table\n");
-      goto err;
+      if((rc = bgpwatcher_client_pfx_table_end(pfx_table)) < 0)
+        {
+          fprintf(stderr, "Could not end table\n");
+          goto err;
+        }
+      fprintf(stderr, "TEST: Sending table end: %d\n", rc);
+      fprintf(stderr, "--------------------[ PREFIX DONE ]--------------------\n\n");
     }
-  fprintf(stderr, "TEST: Sending table end: %d\n", rc);
-  fprintf(stderr, "--------------------[ PREFIX DONE ]--------------------\n\n");
 
   fprintf(stderr, "--------------------[ PEER START ]--------------------\n");
   if((rc = bgpwatcher_client_peer_table_begin(peer_table,
