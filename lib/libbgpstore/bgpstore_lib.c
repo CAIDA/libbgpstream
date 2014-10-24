@@ -30,16 +30,38 @@
 bgpstore_t *bgpstore_create()
 {
   bgpstore_t *bgp_store;
+  // allocate memory for the structure
   if((bgp_store = malloc_zero(sizeof(bgpstore_t))) == NULL)
     {
       return NULL;
     }
+
   if((bgp_store->bgp_timeseries = kh_init(timebgpview)) == NULL)
     {
       fprintf(stderr, "Failed to create bgp_timeseries\n");
       goto err;
     }
-  bgp_store->registered_clients = 0;
+
+  if((bgp_store->active_clients = kh_init(strclientstatus)) == NULL)
+    {
+      fprintf(stderr, "Failed to create active_clients\n");
+      goto err;
+    }
+
+  if((bgp_store->collectorpeer_bsid = kh_init(collectorsidtable)) == NULL)
+    {
+      fprintf(stderr, "Failed to create (collectoridtable)\n");
+      goto err;
+    }
+
+  if((bgp_store->bsid_collectorpeer = kh_init(bsidtable)) == NULL)
+    {
+      fprintf(stderr, "Failed to create (collectorsidtable)\n");
+      goto err;
+    }
+
+  bgp_store->next_bs_id = 0;
+
 #ifdef DEBUG
   fprintf(stderr, "DEBUG: bgpstore created\n");
 #endif
@@ -64,6 +86,12 @@ void bgpstore_destroy(bgpstore_t *bgp_store)
 	  kh_destroy(timebgpview, bgp_store->bgp_timeseries);
 	  bgp_store->bgp_timeseries = NULL;
 	}
+      if(bgp_store->active_clients != NULL)
+	{
+	  kh_destroy(strclientstatus, bgp_store->active_clients);
+	  bgp_store->active_clients = NULL;
+	}
+      
       free(bgp_store);
 #ifdef DEBUG
       fprintf(stderr, "DEBUG: bgpstore destroyed\n");

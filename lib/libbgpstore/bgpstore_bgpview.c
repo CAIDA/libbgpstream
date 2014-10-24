@@ -27,16 +27,37 @@
 #include "bgpstore_bgpview.h"
 
 
+#define BW_PEER_TABLE_PENDING 0b00000001
+#define BW_PFX_TABLE_PENDING  0b00000010
+#define BW_PEER_TABLE_DONE    0b00000100
+#define BW_CLIENT_DONE        0b00001000
+
+
+
 bgpview_t *bgpview_create()
 {
   bgpview_t *bgp_view;
+  // allocate memory for the structure
   if((bgp_view = malloc_zero(sizeof(bgpview_t))) == NULL)
     {
       return NULL;
     }
   // init internal parameters
   bgp_view->test = 0;
+  if((bgp_view->client_status = kh_init(strclientstatus)) == NULL)
+    {
+      fprintf(stderr, "Failed to create client_status in bgpview\n");
+      goto err;
+    }
+
   return bgp_view;
+
+ err:
+  if(bgp_view != NULL)
+    {
+      bgpview_destroy(bgp_view);
+    }
+  return NULL;
 }
 
 
@@ -44,6 +65,11 @@ void bgpview_destroy(bgpview_t *bgp_view)
 {
   if(bgp_view != NULL)
     {
+      if(bgp_view->client_status != NULL)
+	{
+	  kh_destroy(strclientstatus, bgp_view->client_status);
+	  bgp_view->client_status = NULL;
+	}
       free(bgp_view);
     }
 }
