@@ -70,6 +70,7 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
 
   /* up the hwm */
   zsocket_set_sndhwm(broker->server_socket, MAX_OUTSTANDING_REQ*2);
+  zsocket_set_rcvhwm(broker->server_socket, MAX_OUTSTANDING_REQ*2);
 
   if(CFG->identity != NULL && strlen(CFG->identity) > 0)
     {

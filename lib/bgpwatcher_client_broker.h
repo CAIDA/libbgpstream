@@ -43,7 +43,7 @@
  */
 
 /** The maximum number of requests that we allow to be outstanding at any time */
-#define MAX_OUTSTANDING_REQ 10000
+#define MAX_OUTSTANDING_REQ 100000
 
 /**
  * @name Public Enums
