@@ -286,7 +286,7 @@ int bgpwatcher_client_pfx_table_end(bgpwatcher_client_pfx_table_t *table)
   if((rc = send_data_message(&msg, BGPWATCHER_DATA_MSG_TYPE_TABLE_END,
                              table->client)) >= 0)
     {
-      table->started = 1;
+      table->started = 0;
     }
 
   zmsg_destroy(&msg);
