@@ -30,40 +30,102 @@
 #include <string.h>
 #include <sys/socket.h>
 
-#include <bgpwatcher_common.h>
+#include <bgpstream_elem.h>
+
+#include <bgpwatcher_common_int.h>
 
 #include "utils.h"
 
-static void *get_in_addr(struct sockaddr *sa) {
-  return sa->sa_family == AF_INET
-    ? (void *) &(((struct sockaddr_in*)sa)->sin_addr)
-    : (void *) &(((struct sockaddr_in6*)sa)->sin6_addr);
+static void *get_in_addr(bgpstream_ip_address_t *ip) {
+  return ip->type == BST_IPV4
+    ? (void *) &(ip->address.v4_addr)
+    : (void *) &(ip->address.v6_addr);
 }
 
-/** @todo consider exporting this */
-static int msg_pop_ip(zmsg_t *msg, struct sockaddr_storage *ss)
+static zmsg_t *table_msg_create(bgpwatcher_table_type_t type,
+                                uint32_t time,
+                                const char *collector)
+{
+  zmsg_t *msg = NULL;
+
+  if((msg = zmsg_new()) == NULL)
+    {
+      goto err;
+    }
+
+  /* table type */
+  if(zmsg_addmem(msg, &type, bgpwatcher_table_type_size_t) != 0)
+    {
+      goto err;
+    }
+
+  /* time */
+  time = htonl(time);
+  if(zmsg_addmem(msg, &time, sizeof(time)) != 0)
+    {
+      goto err;
+    }
+
+  /* collector */
+  if(zmsg_addstr(msg, collector) != 0)
+    {
+      goto err;
+    }
+
+  return msg;
+
+ err:
+  zmsg_destroy(&msg);
+  return NULL;
+}
+
+/* ========== PROTECTED FUNCTIONS BELOW HERE ========== */
+/*     See bgpwatcher_common_int.h for declarations     */
+
+/* ========== UTILITIES ========== */
+
+int bgpwatcher_msg_addip(zmsg_t *msg, bgpstream_ip_address_t *ip)
+{
+  int rc = -1;
+  switch(ip->type)
+    {
+    case BST_IPV4:
+      rc = zmsg_addmem(msg, &ip->address.v4_addr.s_addr, sizeof(uint32_t));
+      break;
+
+    case BST_IPV6:
+      rc = zmsg_addmem(msg, &ip->address.v6_addr.s6_addr, (sizeof(uint8_t)*16));
+      break;
+    }
+
+  return rc;
+}
+
+int bgpwatcher_msg_popip(zmsg_t *msg,
+                         bgpstream_ip_address_t *ip)
 {
   zframe_t *frame;
+  assert(ip != NULL);
 
   if((frame = zmsg_pop(msg)) == NULL)
     {
-      return -1;
+      goto err;
     }
 
   /* 4 bytes means ipv4, 16 means ipv6 */
   if(zframe_size(frame) == sizeof(uint32_t))
     {
       /* v4 */
-      ss->ss_family = AF_INET;
-      memcpy(&((struct sockaddr_in *)ss)->sin_addr.s_addr,
+      ip->type = BST_IPV4;
+      memcpy(&ip->address.v4_addr.s_addr,
 	     zframe_data(frame),
 	     sizeof(uint32_t));
     }
   else if(zframe_size(frame) == sizeof(uint8_t)*16)
     {
       /* v6 */
-      ss->ss_family = AF_INET6;
-      memcpy(&((struct sockaddr_in6 *)ss)->sin6_addr.s6_addr,
+      ip->type = BST_IPV6;
+      memcpy(&ip->address.v6_addr.s6_addr,
 	     zframe_data(frame),
 	     sizeof(uint8_t)*16);
     }
@@ -79,76 +141,14 @@ static int msg_pop_ip(zmsg_t *msg, struct sockaddr_storage *ss)
   return 0;
 
  err:
+  free(ip);
   zframe_destroy(&frame);
   return -1;
 }
 
-static int msg_append_ip(zmsg_t *msg, struct sockaddr_storage *ss)
-{
-  if(ss->ss_family == AF_INET)
-    {
-      /* v4 */
-      if(zmsg_addmem(msg, &((struct sockaddr_in *)ss)->sin_addr.s_addr,
-		     sizeof(uint32_t)) != 0)
-	{
-	  return -1;
-	}
-    }
-  else if(ss->ss_family == AF_INET6)
-    {
-      /* v6 */
-      if(zmsg_addmem(msg, &((struct sockaddr_in6 *)ss)->sin6_addr.s6_addr,
-		     (sizeof(uint8_t)*16)) != 0)
-	{
-	  return -1;
-	}
-    }
-  else
-    {
-      return -1;
-    }
 
-  return 0;
-}
 
-void bgpwatcher_err_set_err(bgpwatcher_err_t *err, int errcode,
-			const char *msg, ...)
-{
-  char buf[256];
-  va_list va;
-
-  va_start(va,msg);
-
-  assert(errcode != 0 && "An error occurred, but it is unknown what it is");
-
-  err->err_num=errcode;
-
-  if (errcode>0) {
-    vsnprintf(buf, sizeof(buf), msg, va);
-    snprintf(err->problem, sizeof(err->problem), "%s: %s", buf,
-	     strerror(errcode));
-  } else {
-    vsnprintf(err->problem, sizeof(err->problem), msg, va);
-  }
-
-  va_end(va);
-}
-
-int bgpwatcher_err_is_err(bgpwatcher_err_t *err)
-{
-  return err->err_num != 0;
-}
-
-void bgpwatcher_err_perr(bgpwatcher_err_t *err)
-{
-  if(err->err_num) {
-    fprintf(stderr,"%s (%d)\n", err->problem, err->err_num);
-  } else {
-    fprintf(stderr,"No error\n");
-  }
-  err->err_num = 0; /* "OK" */
-  err->problem[0]='\0';
-}
+/* ========== MESSAGE TYPES ========== */
 
 bgpwatcher_msg_type_t bgpwatcher_msg_type_frame(zframe_t *frame)
 {
@@ -215,78 +215,104 @@ bgpwatcher_data_msg_type_t bgpwatcher_data_msg_type(zmsg_t *msg)
   return (bgpwatcher_data_msg_type_t)type;
 }
 
-bgpwatcher_pfx_record_t *bgpwatcher_pfx_record_init()
-{
-  return malloc_zero(sizeof(bgpwatcher_pfx_record_t));
-}
 
-void bgpwatcher_pfx_record_free(bgpwatcher_pfx_record_t **pfx_p)
-{
-  bgpwatcher_pfx_record_t *pfx = *pfx_p;
 
-  if(pfx != NULL)
+/* ========== PREFIX TABLES ========== */
+
+zmsg_t *bgpwatcher_pfx_table_msg_create(bgpwatcher_pfx_table_t *table)
+{
+  zmsg_t *msg = NULL;
+
+  /* prepare the common table headers */
+  if((msg =
+      table_msg_create(BGPWATCHER_TABLE_TYPE_PREFIX,
+                       table->time, table->collector)) == NULL)
     {
-      free(pfx);
+      goto err;
     }
 
-  *pfx_p = NULL;
+  /* peer ip */
+  if(bgpwatcher_msg_addip(msg, &table->peer_ip) != 0)
+    {
+      goto err;
+    }
+
+  return msg;
+
+ err:
+  zmsg_destroy(&msg);
+  return NULL;
 }
 
-int bgpwatcher_pfx_record_deserialize(zmsg_t *msg,
-				      bgpwatcher_pfx_record_t *pfx)
+int bgpwatcher_pfx_table_msg_deserialize(zmsg_t *msg,
+                                         bgpwatcher_pfx_table_t *table)
 {
   zframe_t *frame;
 
-  /* prefix */
-  if(msg_pop_ip(msg, &pfx->prefix) != 0)
-    {
-      goto err;
-    }
-
-  /* pfx len */
+  /* time */
   if((frame = zmsg_pop(msg)) == NULL ||
-     zframe_size(frame) != sizeof(pfx->prefix_len))
+     zframe_size(frame) != sizeof(table->time))
     {
       goto err;
     }
-  pfx->prefix_len = *zframe_data(frame);
+  memcpy(&table->time, zframe_data(frame), sizeof(table->time));
+  table->time = ntohl(table->time);
   zframe_destroy(&frame);
 
-  /* peer ip */
-  if(msg_pop_ip(msg, &pfx->peer_ip) != 0)
+  /* collector */
+  if((table->collector = zmsg_popstr(msg)) == NULL)
     {
       goto err;
     }
 
-  /* orig asn */
-  if((frame = zmsg_pop(msg)) == NULL ||
-     zframe_size(frame) != sizeof(pfx->orig_asn))
+  /* ip */
+  if(bgpwatcher_msg_popip(msg, &(table->peer_ip)) != 0)
     {
       goto err;
     }
-  memcpy(&pfx->orig_asn, zframe_data(frame), sizeof(pfx->orig_asn));
-  pfx->orig_asn = ntohl(pfx->orig_asn);
-  zframe_destroy(&frame);
-
-  /* name */
-  if((frame = zmsg_pop(msg)) == NULL ||
-     zframe_size(frame) >= BGPWATCHER_COLLECTOR_NAME_LEN)
-    {
-      goto err;
-    }
-  memcpy(&pfx->collector_name, zframe_data(frame), zframe_size(frame));
-  pfx->collector_name[zframe_size(frame)] = '\0';
-  zframe_destroy(&frame);
 
   return 0;
 
  err:
   zframe_destroy(&frame);
-  bgpwatcher_pfx_record_free(&pfx);
   return -1;
 }
 
-zmsg_t *bgpwatcher_pfx_record_serialize(bgpwatcher_pfx_record_t *pfx)
+void bgpwatcher_pfx_table_dump(bgpwatcher_pfx_table_t *table)
+{
+  char peer_str[INET6_ADDRSTRLEN] = "";
+
+  if(table == NULL)
+    {
+      fprintf(stdout,
+	      "------------------------------\n"
+	      "NULL\n"
+	      "------------------------------\n");
+    }
+  else
+    {
+      inet_ntop((table->peer_ip.type == BST_IPV4) ? AF_INET : AF_INET6,
+		get_in_addr(&table->peer_ip),
+		peer_str, INET6_ADDRSTRLEN);
+
+      fprintf(stdout,
+	      "------------------------------\n"
+	      "Time:\t%"PRIu32"\n"
+              "Collector:\t%s\n"
+              "Peer:\t%s\n"
+	      "------------------------------\n",
+              table->time,
+              table->collector,
+              peer_str);
+    }
+}
+
+
+
+/* ========== PREFIX RECORDS ========== */
+
+zmsg_t *bgpwatcher_pfx_msg_create(bgpstream_prefix_t *prefix,
+                                  uint32_t orig_asn)
 {
   zmsg_t *msg = NULL;
   uint32_t n32;
@@ -297,32 +323,20 @@ zmsg_t *bgpwatcher_pfx_record_serialize(bgpwatcher_pfx_record_t *pfx)
     }
 
   /* prefix */
-  if(msg_append_ip(msg, &pfx->prefix) != 0)
+  if(bgpwatcher_msg_addip(msg, &prefix->number) != 0)
     {
       goto err;
     }
 
   /* length */
-  if(zmsg_addmem(msg, &pfx->prefix_len, sizeof(pfx->prefix_len)) != 0)
-    {
-      goto err;
-    }
-
-  /* peer ip */
-  if(msg_append_ip(msg, &pfx->peer_ip) != 0)
+  if(zmsg_addmem(msg, &prefix->len, sizeof(prefix->len)) != 0)
     {
       goto err;
     }
 
   /* orig asn */
-  n32 = htonl(pfx->orig_asn);
+  n32 = htonl(orig_asn);
   if(zmsg_addmem(msg, &n32, sizeof(uint32_t)) != 0)
-    {
-      goto err;
-    }
-
-  /* name */
-  if(zmsg_addstr(msg, pfx->collector_name) != 0)
     {
       goto err;
     }
@@ -334,95 +348,149 @@ zmsg_t *bgpwatcher_pfx_record_serialize(bgpwatcher_pfx_record_t *pfx)
   return NULL;
 }
 
-void bgpwatcher_pfx_record_dump(bgpwatcher_pfx_record_t *pfx)
+int bgpwatcher_pfx_msg_deserialize(zmsg_t *msg,
+                                   bgpstream_prefix_t *pfx_out,
+                                   uint32_t *orig_asn_out)
+{
+  zframe_t *frame;
+
+  /* prefix */
+  if(bgpwatcher_msg_popip(msg, &(pfx_out->number)) != 0)
+    {
+      goto err;
+    }
+
+  /* pfx len */
+  if((frame = zmsg_pop(msg)) == NULL ||
+     zframe_size(frame) != sizeof(pfx_out->len))
+    {
+      goto err;
+    }
+  pfx_out->len = *zframe_data(frame);
+  zframe_destroy(&frame);
+
+  /* orig asn */
+  if((frame = zmsg_pop(msg)) == NULL ||
+     zframe_size(frame) != sizeof(*orig_asn_out))
+    {
+      goto err;
+    }
+  memcpy(orig_asn_out, zframe_data(frame), sizeof(*orig_asn_out));
+  *orig_asn_out = ntohl(*orig_asn_out);
+  zframe_destroy(&frame);
+
+  return 0;
+
+ err:
+  zframe_destroy(&frame);
+  return -1;
+}
+
+void bgpwatcher_pfx_record_dump(bgpstream_prefix_t *prefix,
+                                uint32_t orig_asn)
 {
   char pfx_str[INET6_ADDRSTRLEN] = "";
-  char peer_str[INET6_ADDRSTRLEN] = "";
 
-  if(pfx == NULL)
+  if(prefix == NULL)
     {
-      fprintf(stderr,
+      fprintf(stdout,
 	      "------------------------------\n"
 	      "NULL\n"
 	      "------------------------------\n");
     }
   else
     {
-      inet_ntop(pfx->prefix.ss_family,
-		get_in_addr((struct sockaddr *)&pfx->prefix),
+      inet_ntop((prefix->number.type == BST_IPV4) ? AF_INET : AF_INET6,
+		get_in_addr(&prefix->number),
 		pfx_str, INET6_ADDRSTRLEN);
 
-      inet_ntop(pfx->peer_ip.ss_family,
-		get_in_addr((struct sockaddr *)&pfx->peer_ip),
-		peer_str, INET6_ADDRSTRLEN);
-
-      fprintf(stderr,
+      fprintf(stdout,
 	      "------------------------------\n"
 	      "Prefix:\t%s/%"PRIu8"\n"
-	      "Peer:\t%s\n"
 	      "ASN:\t%"PRIu32"\n"
-	      "Name:\t%s\n"
 	      "------------------------------\n",
-	      pfx_str, pfx->prefix_len,
-	      peer_str,
-	      pfx->orig_asn,
-	      pfx->collector_name);
+	      pfx_str, prefix->len,
+	      orig_asn);
     }
 }
 
-bgpwatcher_peer_record_t *bgpwatcher_peer_record_init()
+
+
+/* ========== PEER TABLES ========== */
+
+zmsg_t *bgpwatcher_peer_table_msg_create(bgpwatcher_peer_table_t *table)
 {
-  return malloc_zero(sizeof(bgpwatcher_peer_record_t));
-}
+  zmsg_t *msg = NULL;
 
-void bgpwatcher_peer_record_free(bgpwatcher_peer_record_t **peer_p)
-{
-  bgpwatcher_peer_record_t *peer = *peer_p;
-
-  if(peer == NULL)
-    {
-      return;
-    }
-
-  free(peer);
-
-  *peer_p = NULL;
-}
-
-bgpwatcher_peer_record_t *bgpwatcher_peer_record_deserialize(zmsg_t *msg)
-{
-  bgpwatcher_peer_record_t *peer;
-  zframe_t *frame;
-
-  if((peer = bgpwatcher_peer_record_init()) == NULL)
-    {
-      return NULL;
-    }
-
-  /* peer ip */
-  if(msg_pop_ip(msg, &peer->ip) != 0)
+  /* prepare the common table headers */
+  if((msg =
+      table_msg_create(BGPWATCHER_TABLE_TYPE_PEER,
+                       table->time, table->collector)) == NULL)
     {
       goto err;
     }
 
-  /* status */
-  if((frame = zmsg_pop(msg)) == NULL ||
-     zframe_size(frame) != sizeof(peer->status))
-    {
-      goto err;
-    }
-  peer->status = *zframe_data(frame);
-  zframe_destroy(&frame);
-
-  return peer;
+  return msg;
 
  err:
-  zframe_destroy(&frame);
-  bgpwatcher_peer_record_free(&peer);
+  zmsg_destroy(&msg);
   return NULL;
 }
 
-zmsg_t *bgpwatcher_peer_record_serialize(bgpwatcher_peer_record_t *peer)
+int bgpwatcher_peer_table_msg_deserialize(zmsg_t *msg,
+                                          bgpwatcher_peer_table_t *table)
+{
+  zframe_t *frame;
+
+  /* time */
+  if((frame = zmsg_pop(msg)) == NULL ||
+     zframe_size(frame) != sizeof(table->time))
+    {
+      goto err;
+    }
+  memcpy(&table->time, zframe_data(frame), sizeof(table->time));
+  table->time = ntohl(table->time);
+  zframe_destroy(&frame);
+
+  /* collector */
+  if((table->collector = zmsg_popstr(msg)) == NULL)
+    {
+      goto err;
+    }
+
+  return 0;
+
+ err:
+  zframe_destroy(&frame);
+  return -1;
+}
+
+void bgpwatcher_peer_table_dump(bgpwatcher_peer_table_t *table)
+{
+  if(table == NULL)
+    {
+      fprintf(stdout,
+	      "------------------------------\n"
+	      "NULL\n"
+	      "------------------------------\n");
+    }
+  else
+    {
+      fprintf(stdout,
+	      "------------------------------\n"
+	      "Time:\t%"PRIu32"\n"
+              "Collector:\t%s\n"
+	      "------------------------------\n",
+              table->time,
+              table->collector);
+    }
+}
+
+
+/* ========== PEER RECORDS ========== */
+
+zmsg_t *bgpwatcher_peer_msg_create(bgpstream_ip_address_t *peer_ip,
+                                   uint8_t status)
 {
   zmsg_t *msg = NULL;
 
@@ -432,13 +500,13 @@ zmsg_t *bgpwatcher_peer_record_serialize(bgpwatcher_peer_record_t *peer)
     }
 
   /* peer ip */
-  if(msg_append_ip(msg, &peer->ip) != 0)
+  if(bgpwatcher_msg_addip(msg, peer_ip) != 0)
     {
       goto err;
     }
 
   /* status */
-  if(zmsg_addmem(msg, &peer->status, sizeof(peer->status)) != 0)
+  if(zmsg_addmem(msg, &status, sizeof(status)) != 0)
     {
       goto err;
     }
@@ -450,29 +518,100 @@ zmsg_t *bgpwatcher_peer_record_serialize(bgpwatcher_peer_record_t *peer)
   return NULL;
 }
 
-void bgpwatcher_peer_record_dump(bgpwatcher_peer_record_t *peer)
+int bgpwatcher_peer_msg_deserialize(zmsg_t *msg,
+                                    bgpstream_ip_address_t *peer_ip_out,
+                                    uint8_t *status_out)
+{
+  zframe_t *frame;
+
+  /* peer ip */
+  if(bgpwatcher_msg_popip(msg, peer_ip_out) != 0)
+    {
+      goto err;
+    }
+
+  /* status */
+  if((frame = zmsg_pop(msg)) == NULL ||
+     zframe_size(frame) != sizeof(*status_out))
+    {
+      goto err;
+    }
+  *status_out = *zframe_data(frame);
+  zframe_destroy(&frame);
+
+  return 0;
+
+ err:
+  zframe_destroy(&frame);
+  return -1;
+}
+
+void bgpwatcher_peer_record_dump(bgpstream_ip_address_t *peer_ip,
+                                 uint8_t status)
 {
   char ip_str[INET6_ADDRSTRLEN] = "";
 
-  if(peer == NULL)
+  if(peer_ip == NULL)
     {
-      fprintf(stderr,
+      fprintf(stdout,
 	      "------------------------------\n"
 	      "NULL\n"
 	      "------------------------------\n");
     }
   else
     {
-      inet_ntop(peer->ip.ss_family,
-		get_in_addr((struct sockaddr *)&peer->ip),
+      inet_ntop((peer_ip->type == BST_IPV4) ? AF_INET : AF_INET6,
+		get_in_addr(peer_ip),
 		ip_str, INET6_ADDRSTRLEN);
 
-      fprintf(stderr,
+      fprintf(stdout,
 	      "------------------------------\n"
 	      "IP:\t%s\n"
 	      "Status:\t%"PRIu8"\n"
 	      "------------------------------\n",
 	      ip_str,
-	      peer->status);
+	      status);
     }
+}
+
+/* ========== PUBLIC FUNCTIONS BELOW HERE ========== */
+/*      See bgpwatcher_common.h for declarations     */
+
+void bgpwatcher_err_set_err(bgpwatcher_err_t *err, int errcode,
+			const char *msg, ...)
+{
+  char buf[256];
+  va_list va;
+
+  va_start(va,msg);
+
+  assert(errcode != 0 && "An error occurred, but it is unknown what it is");
+
+  err->err_num=errcode;
+
+  if (errcode>0) {
+    vsnprintf(buf, sizeof(buf), msg, va);
+    snprintf(err->problem, sizeof(err->problem), "%s: %s", buf,
+	     strerror(errcode));
+  } else {
+    vsnprintf(err->problem, sizeof(err->problem), msg, va);
+  }
+
+  va_end(va);
+}
+
+int bgpwatcher_err_is_err(bgpwatcher_err_t *err)
+{
+  return err->err_num != 0;
+}
+
+void bgpwatcher_err_perr(bgpwatcher_err_t *err)
+{
+  if(err->err_num) {
+    fprintf(stderr,"%s (%d)\n", err->problem, err->err_num);
+  } else {
+    fprintf(stderr,"No error\n");
+  }
+  err->err_num = 0; /* "OK" */
+  err->problem[0]='\0';
 }

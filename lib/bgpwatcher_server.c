@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include <bgpwatcher_common_int.h>
 #include <bgpwatcher_server.h>
 
 #include "khash.h"
@@ -35,10 +36,12 @@
 
 #define ERR (&server->err)
 
+#define VA_ARGS(...) , ##__VA_ARGS__
+
 /* evaluates to true IF there is a callback AND it fails */
 #define DO_CALLBACK(cbfunc, args...)					\
   ((server->callbacks != NULL) && (server->callbacks->cbfunc != NULL) && \
-   (server->callbacks->cbfunc(server, args,				\
+   (server->callbacks->cbfunc(server, (&client->info) VA_ARGS(args),    \
 			      server->callbacks->user) != 0))
 
 enum {
@@ -171,7 +174,7 @@ static int clients_purge(bgpwatcher_server_t *server)
 	  fprintf(stderr, "INFO: Removing dead client (%s)\n", client->id);
 	  fprintf(stderr, "INFO: Expiry: %"PRIu64" Time: %"PRIu64"\n",
 		  client->expiry, zclock_time());
-	  if(DO_CALLBACK(client_disconnect, (&client->info)) != 0)
+	  if(DO_CALLBACK(client_disconnect) != 0)
 	    {
 	      return -1;
 	    }
@@ -196,11 +199,14 @@ static void clients_free(bgpwatcher_server_t *server)
 
 static int send_reply(bgpwatcher_server_t *server,
 		      bgpwatcher_server_client_t *client,
-		      zframe_t *seq_frame,
-		      uint8_t rc)
+		      zframe_t **seq_frame_p)
 {
   uint8_t reply_t_p = BGPWATCHER_MSG_TYPE_REPLY;
   zmsg_t *msg;
+
+  assert(seq_frame_p != NULL);
+  zframe_t *seq_frame = *seq_frame_p;
+  *seq_frame_p = NULL;
 
 #ifdef DEBUG
   fprintf(stderr, "======================================\n");
@@ -240,14 +246,6 @@ static int send_reply(bgpwatcher_server_t *server,
       goto err;
     }
 
-  /* add the return code */
-  if(zmsg_addmem(msg, &rc, sizeof(uint8_t)) != 0)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Failed to add rc to reply message");
-      goto err;
-    }
-
 #ifdef DEBUG
   zmsg_print(msg);
   fprintf(stderr, "======================================\n\n");
@@ -267,89 +265,68 @@ static int send_reply(bgpwatcher_server_t *server,
   return -1;
 }
 
-static int handle_table(bgpwatcher_server_t *server,
-			bgpwatcher_server_client_t *client,
-			zmsg_t *msg,
-			bgpwatcher_data_msg_type_t type)
+static int handle_table_prefix(bgpwatcher_server_t *server,
+                               bgpwatcher_server_client_t *client,
+                               bgpwatcher_data_msg_type_t type,
+                               zmsg_t *msg)
 {
-  zframe_t *frame;
-  uint8_t ttype;
-  uint32_t tmp_time;
-  /* set the table typefor this client */
-  if((frame = zmsg_pop(msg)) == NULL ||
-     zframe_size(frame) != bgpwatcher_table_type_size_t)
+  /* deserialize the table into the appropriate structure */
+  if(bgpwatcher_pfx_table_msg_deserialize(msg, &client->pfx_table) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-			     "Could not extract table type");
-      goto err;
-    }
-  ttype = *zframe_data(frame);
-  zframe_destroy(&frame);
-
-  if(ttype == BGPWATCHER_TABLE_TYPE_NONE || ttype > BGPWATCHER_TABLE_TYPE_MAX)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-			     "Invalid table type");
+                             "Failed to deserialized prefix table");
       goto err;
     }
 
-  /* get the table time */
-  if((frame = zmsg_pop(msg)) == NULL ||
-     zframe_size(frame) != sizeof(client->table_time[BGPWATCHER_TABLE_TYPE_NONE]))
+  /* hand off to callback */
+  switch(type)
     {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-			     "Could not extract table time");
-      goto err;
-    }
-  tmp_time = *zframe_data(frame);
-  tmp_time = htonl(tmp_time);
-  zframe_destroy(&frame);
-
-  if(type == BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN)
-    {
-      /* check if a table has already been started */
-      if(client->table_time[ttype] != 0 || client->table_num[ttype] != 0)
+    case BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN:
+      /* has this table already been started? */
+      if(client->pfx_table_started != 0)
         {
           bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-				 "Table already started for type %d",
-				 ttype);
-	  goto err;
+                                 "Prefix table already started");
+          goto err;
         }
 
-      client->table_time[ttype] = tmp_time;
-      client->table_num[ttype] = server->table_num++;
+      /* set the table number */
+      client->pfx_table.id = server->table_num++;
 
-      if(DO_CALLBACK(table_begin, client->table_num[ttype],
-		     ttype, client->table_time[ttype]) != 0)
-	{
-	  return -1;
-	}
-    }
-  else if(type == BGPWATCHER_DATA_MSG_TYPE_TABLE_END)
-    {
-      /* make sure they are talking about the same table */
-      if(client->table_time[ttype] != tmp_time)
-	{
-	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-				 "Table time mismatch (expecting %d, got %d)",
-				 client->table_time[ttype], tmp_time);
-	  goto err;
-	}
+      /* now the table is started */
+      client->pfx_table_started = 1;
 
-      if(DO_CALLBACK(table_end, client->table_num[ttype],
-                     ttype, client->table_time[ttype]) != 0)
-	{
-	  return -1;
-	}
+      if(DO_CALLBACK(table_begin_prefix,
+                     &client->pfx_table) != 0)
+        {
+          goto err;
+        }
+      break;
 
-      client->table_time[ttype] = 0;
-      client->table_num[ttype] = 0;
-    }
-  else
-    {
+    case BGPWATCHER_DATA_MSG_TYPE_TABLE_END:
+      /* this table must already be started */
+      if(client->pfx_table_started == 0)
+        {
+          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+                                 "Prefix table not started");
+          goto err;
+        }
+
+      /* now the table is not started */
+      client->pfx_table_started = 0;
+
+      if(DO_CALLBACK(table_end_prefix,
+                     &client->pfx_table) != 0)
+        {
+          goto err;
+        }
+      break;
+
+    default:
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-			     "Invalid handle_table message type",
-			     type);
+                             "Invalid handle_table message type",
+                             type);
+      break;
     }
 
   return 0;
@@ -358,18 +335,140 @@ static int handle_table(bgpwatcher_server_t *server,
   return -1;
 }
 
+static int handle_table_peer(bgpwatcher_server_t *server,
+                               bgpwatcher_server_client_t *client,
+                               bgpwatcher_data_msg_type_t type,
+                               zmsg_t *msg)
+{
+  /* deserialize the table into the appropriate structure */
+  if(bgpwatcher_peer_table_msg_deserialize(msg, &client->peer_table) != 0)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+                             "Failed to deserialize peer table");
+      goto err;
+    }
+
+  /* hand off to callback */
+  switch(type)
+    {
+    case BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN:
+      /* has this table already been started? */
+      if(client->peer_table_started != 0)
+        {
+          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+                                 "Peer table already started");
+          goto err;
+        }
+
+      /* set the table number */
+      client->peer_table.id = server->table_num++;
+
+      /* now the table is started */
+      client->peer_table_started = 1;
+
+      if(DO_CALLBACK(table_begin_peer,
+                     &client->peer_table) != 0)
+        {
+          goto err;
+        }
+      break;
+
+    case BGPWATCHER_DATA_MSG_TYPE_TABLE_END:
+      /* this table must already be started */
+      if(client->peer_table_started == 0)
+        {
+          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+                                 "Peer table not started");
+          goto err;
+        }
+
+      /* now the table is not started */
+      client->peer_table_started = 0;
+
+      if(DO_CALLBACK(table_end_peer,
+                     &client->peer_table) != 0)
+        {
+          goto err;
+        }
+      break;
+
+    default:
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+                             "Invalid handle_table message type",
+                             type);
+      break;
+    }
+
+  return 0;
+
+ err:
+  return -1;
+}
+
+static int handle_table(bgpwatcher_server_t *server,
+			bgpwatcher_server_client_t *client,
+			zmsg_t *msg,
+			bgpwatcher_data_msg_type_t type)
+{
+  zframe_t *frame = NULL;
+  uint8_t table_type;
+
+  /* set the table type for this client (prefix or peer) */
+  if((frame = zmsg_pop(msg)) == NULL ||
+     zframe_size(frame) != bgpwatcher_table_type_size_t)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+			     "Could not extract table type");
+      goto err;
+    }
+  table_type = *zframe_data(frame);
+  zframe_destroy(&frame);
+
+  switch(table_type)
+    {
+    case BGPWATCHER_TABLE_TYPE_PREFIX:
+      if(handle_table_prefix(server, client, type, msg) != 0)
+        {
+          goto err;
+        }
+      break;
+
+    case BGPWATCHER_TABLE_TYPE_PEER:
+      if(handle_table_peer(server, client, type, msg) != 0)
+        {
+          goto err;
+        }
+      break;
+
+    default:
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+                             "Invalid table type");
+      goto err;
+      break;
+    }
+
+  return 0;
+
+ err:
+  zframe_destroy(&frame);
+  return -1;
+}
+
 static int handle_pfx_record(bgpwatcher_server_t *server,
 			     bgpwatcher_server_client_t *client,
 			     zmsg_t *msg)
 {
-  if(client->table_time[BGPWATCHER_TABLE_TYPE_PREFIX] == 0)
+  bgpstream_prefix_t prefix;
+  uint32_t orig_asn;
+
+  if(client->pfx_table_started == 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 			     "Received prefix before table start");
       goto err;
     }
 
-  if(bgpwatcher_pfx_record_deserialize(msg, &server->pfx) != 0)
+  if(bgpwatcher_pfx_msg_deserialize(msg, &prefix, &orig_asn) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 			     "Could not deserialize prefix record");
@@ -377,8 +476,8 @@ static int handle_pfx_record(bgpwatcher_server_t *server,
     }
 
   if(DO_CALLBACK(recv_pfx_record,
-                 client->table_num[BGPWATCHER_TABLE_TYPE_PREFIX],
-                 &server->pfx) != 0)
+                 &client->pfx_table,
+                 &prefix, orig_asn) != 0)
     {
       goto err;
     }
@@ -393,16 +492,17 @@ static int handle_peer_record(bgpwatcher_server_t *server,
 			     bgpwatcher_server_client_t *client,
 			     zmsg_t *msg)
 {
-  bgpwatcher_peer_record_t *rec = NULL;
+  bgpstream_ip_address_t peer_ip;
+  uint8_t status;
 
-  if(client->table_time[BGPWATCHER_TABLE_TYPE_PEER] == 0)
+  if(client->peer_table_started == 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 			     "Received peer before table start");
       goto err;
     }
 
-  if((rec = bgpwatcher_peer_record_deserialize(msg)) == NULL)
+  if(bgpwatcher_peer_msg_deserialize(msg, &peer_ip, &status) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 			     "Could not deserialize peer record");
@@ -410,17 +510,16 @@ static int handle_peer_record(bgpwatcher_server_t *server,
     }
 
   if(DO_CALLBACK(recv_peer_record,
-                 client->table_num[BGPWATCHER_TABLE_TYPE_PEER],
-                                   rec) != 0)
+                 &client->peer_table,
+                 &peer_ip,
+                 status) != 0)
     {
       goto err;
     }
 
-  bgpwatcher_peer_record_free(&rec);
   return 0;
 
 err:
-  bgpwatcher_peer_record_free(&rec);
   return -1;
 }
 
@@ -463,12 +562,17 @@ static int handle_data_message(bgpwatcher_server_t *server,
   /* grab the msg type */
   dmt = bgpwatcher_data_msg_type(msg);
 
+  /* regardless of what they asked for, let them know that we got the request */
+  if(send_reply(server, client, &seq_frame) != 0)
+    {
+      goto err;
+    }
+
   switch(dmt)
     {
     case BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN:
     case BGPWATCHER_DATA_MSG_TYPE_TABLE_END:
-      hrc = handle_table(server, client, msg,
-			 dmt);
+      hrc = handle_table(server, client, msg, dmt);
       if(bgpwatcher_err_is_err(ERR) != 0)
 	{
 	  goto err;
@@ -504,7 +608,7 @@ static int handle_data_message(bgpwatcher_server_t *server,
 
   zmsg_destroy(&msg);
   *msg_p = NULL;
-  return send_reply(server, client, seq_frame, rc);
+  return rc;
 
  err:
   /* err means a broken request, just pretend we didn't get it */
@@ -514,13 +618,67 @@ static int handle_data_message(bgpwatcher_server_t *server,
   return -1;
 }
 
+static int handle_ready_message(bgpwatcher_server_t *server,
+                                bgpwatcher_server_client_t *client,
+                                zmsg_t **msg_p)
+{
+  zmsg_t *msg = *msg_p;
+
+  zframe_t *frame = NULL;
+
+  assert(msg != NULL);
+  *msg_p = NULL;
+
+#ifdef DEBUG
+  fprintf(stderr, "DEBUG: Creating new client %s\n", client->id);
+#endif
+
+  if(client->info.interests != 0 || client->info.intents != 0)
+    {
+      fprintf(stderr, "WARN: Client is redefining their interests/intents\n");
+    }
+
+  /* first frame is their interests */
+  if((frame = zmsg_pop(msg)) == NULL || zframe_size(frame) != sizeof(uint8_t))
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+			     "Could not extract client interests");
+      goto err;
+    }
+  client->info.interests = *zframe_data(frame);
+  zframe_destroy(&frame);
+
+  /* next is the intents */
+  if((frame = zmsg_pop(msg)) == NULL || zframe_size(frame) != sizeof(uint8_t))
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+			     "Could not extract client interests");
+      goto err;
+    }
+  client->info.intents = *zframe_data(frame);
+  zframe_destroy(&frame);
+
+  /* call the "client connect" callback */
+  if(DO_CALLBACK(client_connect) != 0)
+    {
+      goto err;
+    }
+
+  zmsg_destroy(&msg);
+  return 0;
+
+ err:
+  zframe_destroy(&frame);
+  zmsg_destroy(&msg);
+  return -1;
+}
+
 /* OWNS MSG */
 static int handle_message(bgpwatcher_server_t *server,
 			  bgpwatcher_server_client_t **client_p,
+                          bgpwatcher_msg_type_t msg_type,
 			  zmsg_t **msg_p)
 {
-  bgpwatcher_msg_type_t msg_type;
-
   assert(client_p != NULL);
   bgpwatcher_server_client_t *client = *client_p;
   assert(client != NULL);
@@ -528,9 +686,6 @@ static int handle_message(bgpwatcher_server_t *server,
   assert(msg_p != NULL);
   zmsg_t *msg = *msg_p;
   assert(msg != NULL);
-
-  /* validate the message type and pass to the appropriate callback */
-  msg_type = bgpwatcher_msg_type(msg, 0);
 
   /* check each type we support (in descending order of frequency) */
   switch(msg_type)
@@ -562,17 +717,18 @@ static int handle_message(bgpwatcher_server_t *server,
 	  goto err;
 	}
 
-#ifdef DEBUG
-      fprintf(stderr, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n");
-#endif
-
       /* msg was destroyed by handle_data_message */
       break;
 
     case BGPWATCHER_MSG_TYPE_HEARTBEAT:
       /* safe to ignore these */
+      break;
+
     case BGPWATCHER_MSG_TYPE_READY:
-      /* and these */
+      if(handle_ready_message(server, client, &msg) != 0)
+        {
+          goto err;
+        }
       break;
 
     case BGPWATCHER_MSG_TYPE_TERM:
@@ -585,7 +741,7 @@ static int handle_message(bgpwatcher_server_t *server,
 #endif
 
       /* call the "client disconnect" callback */
-      if(DO_CALLBACK(client_disconnect, &client->info) != 0)
+      if(DO_CALLBACK(client_disconnect) != 0)
 	{
 	  goto err;
 	}
@@ -616,34 +772,20 @@ static int handle_message(bgpwatcher_server_t *server,
 
 static int run_server(bgpwatcher_server_t *server)
 {
-  zmq_pollitem_t poll_items [] = {
-    {server->client_socket, 0, ZMQ_POLLIN, 0}, /* POLL_ITEM_CLIENT */
-  };
-  int rc;
-
   zmsg_t *msg = NULL;
   zframe_t *frame = NULL;
+
+  bgpwatcher_msg_type_t msg_type;
 
   bgpwatcher_server_client_t *client = NULL;
   khiter_t k;
 
   uint8_t msg_type_p;
 
-  /* poll for messages from clients */
-  if((rc = zmq_poll(poll_items, POLL_ITEM_CNT,
-		    server->heartbeat_interval * ZMQ_POLL_MSEC)) == -1)
-    {
-      goto interrupt;
-    }
+  msg = zmsg_recv(server->client_socket);
 
-  /* handle message from a client */
-  if(poll_items[POLL_ITEM_CLIENT].revents & ZMQ_POLLIN)
+  if(msg != NULL)
     {
-      if((msg = zmsg_recv(server->client_socket)) == NULL)
-	{
-	  goto interrupt;
-	}
-
       /* any kind of message from a client means that it is alive */
       /* treat the first frame as an identity frame */
       if((frame = zmsg_pop(msg)) == NULL)
@@ -653,37 +795,43 @@ static int run_server(bgpwatcher_server_t *server)
 	  goto err;
 	}
 
-      /* get the client that this corresponds to */
+      /* now grab the message type */
+      msg_type = bgpwatcher_msg_type(msg, 0);
+
+      /* check if this client is already registered */
       if((client = client_get(server, frame)) == NULL)
-	{
-	  /* create state for this client */
-	  if((client = client_init(server, &frame)) == NULL)
-	    {
-	      goto err;
-	    }
+        {
+          if(msg_type == BGPWATCHER_MSG_TYPE_READY)
+            {
+              /* create state for this client */
+              if((client = client_init(server, &frame)) == NULL)
+                {
+                  goto err;
+                }
+            }
+          else
+            {
+              /* somehow the client state was lost but the client didn't
+                 reconnect */
+              bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+                                     "Unknown client found");
+              goto err;
+            }
+        }
 
-#ifdef DEBUG
-	  fprintf(stderr, "DEBUG: Creating new client %s\n", client->id);
-#endif
-
-	  /* call the "client connect" callback */
-	  if(DO_CALLBACK(client_connect, &client->info) != 0)
-	    {
-	      goto err;
-	    }
-	}
-      else
-	{
-	  zframe_destroy(&frame);
-	}
+      zframe_destroy(&frame);
 
       /* by here we have a client object and it is time to handle whatever
 	 message we were sent */
-      if(handle_message(server, &client, &msg) != 0)
+      if(handle_message(server, &client, msg_type, &msg) != 0)
 	{
 	  goto err;
 	}
       /* handle message destroyed the message and the client too, maybe */
+    }
+  else if(errno != EAGAIN)
+    {
+      goto interrupt;
     }
 
   /* time for heartbeats */
@@ -813,6 +961,10 @@ int bgpwatcher_server_start(bgpwatcher_server_t *server)
 			     "Failed to create client socket");
       return -1;
     }
+
+  zsocket_set_router_mandatory(server->client_socket, 1);
+
+  zsocket_set_rcvtimeo(server->client_socket, server->heartbeat_interval);
 
   if(zsocket_bind(server->client_socket, "%s", server->client_uri) < 0)
     {

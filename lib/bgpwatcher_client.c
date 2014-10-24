@@ -32,7 +32,7 @@
 #include "utils.h"
 
 #define ERR (&client->err)
-#define BROKER (client->broker_state)
+#define BCFG (client->broker_config)
 
 /* given a formed data message, push on the needed headers and send */
 int send_data_message(zmsg_t **msg_p,
@@ -85,52 +85,9 @@ int send_data_message(zmsg_t **msg_p,
   return -1;
 }
 
-int send_table(bgpwatcher_client_t *client,
-	       bgpwatcher_table_type_t table_type,
-	       bgpwatcher_data_msg_type_t begin_end,
-	       uint32_t table_time)
-{
-  zmsg_t *msg;
-
-  assert(begin_end == BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN ||
-	 begin_end == BGPWATCHER_DATA_MSG_TYPE_TABLE_END);
-
-  if((msg = zmsg_new()) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Failed to create table begin/end message");
-      return -1;
-    }
-
-  /* append the table type */
-  if(zmsg_addmem(msg, &table_type,
-		  bgpwatcher_table_type_size_t) != 0)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Could not add table type to message");
-      zmsg_destroy(&msg);
-    }
-
-  /* append the table start time */
-  table_time = htonl(table_time);
-  if(zmsg_addmem(msg, &table_time, sizeof(table_time)) != 0)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Could not add table time to message");
-      zmsg_destroy(&msg);
-    }
-
-  return send_data_message(&msg, begin_end, client);
-}
-
-static void req_free_wrap(void **req)
-{
-  bgpwatcher_client_broker_req_free((bgpwatcher_client_broker_req_t**)req);
-}
-
 /* ========== PUBLIC FUNCS BELOW HERE ========== */
 
-bgpwatcher_client_t *bgpwatcher_client_init()
+bgpwatcher_client_t *bgpwatcher_client_init(uint8_t interests, uint8_t intents)
 {
   bgpwatcher_client_t *client;
   if((client = malloc_zero(sizeof(bgpwatcher_client_t))) == NULL)
@@ -140,30 +97,22 @@ bgpwatcher_client_t *bgpwatcher_client_init()
     }
   /* now we are ready to set errors... */
 
-  BROKER.master = client;
+  /* now init the shared state for our broker */
 
-  /* init the outstanding req set */
-  if((BROKER.req_hash = kh_init(reqset)) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Failed to create request set");
-      goto err;
-    }
-  if((BROKER.req_list = zlist_new()) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Failed to create request list");
-    }
+  BCFG.master = client;
+
+  BCFG.interests = interests;
+  BCFG.intents = intents;
 
   /* init czmq */
-  if((BROKER.ctx = zctx_new()) == NULL)
+  if((BCFG.ctx = zctx_new()) == NULL)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
 			     "Failed to create 0MQ context");
       goto err;
     }
 
-  if((BROKER.server_uri =
+  if((BCFG.server_uri =
       strdup(BGPWATCHER_CLIENT_SERVER_URI_DEFAULT)) == NULL)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
@@ -171,20 +120,18 @@ bgpwatcher_client_t *bgpwatcher_client_init()
       goto err;
     }
 
-  BROKER.heartbeat_interval = BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT;
+  BCFG.heartbeat_interval = BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT;
 
-  BROKER.heartbeat_liveness_remaining = BROKER.heartbeat_liveness =
-    BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT;
+  BCFG.heartbeat_liveness = BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT;
 
-  BROKER.reconnect_interval_next = BROKER.reconnect_interval_min =
-    BGPWATCHER_RECONNECT_INTERVAL_MIN;
+  BCFG.reconnect_interval_min = BGPWATCHER_RECONNECT_INTERVAL_MIN;
 
-  BROKER.reconnect_interval_max = BGPWATCHER_RECONNECT_INTERVAL_MAX;
+  BCFG.reconnect_interval_max = BGPWATCHER_RECONNECT_INTERVAL_MAX;
 
-  BROKER.shutdown_linger = BGPWATCHER_CLIENT_SHUTDOWN_LINGER_DEFAULT;
+  BCFG.shutdown_linger = BGPWATCHER_CLIENT_SHUTDOWN_LINGER_DEFAULT;
 
-  BROKER.request_timeout = BGPWATCHER_CLIENT_REQUEST_TIMEOUT_DEFAULT;
-  BROKER.request_retries = BGPWATCHER_CLIENT_REQUEST_RETRIES_DEFAULT;
+  BCFG.request_timeout = BGPWATCHER_CLIENT_REQUEST_TIMEOUT_DEFAULT;
+  BCFG.request_retries = BGPWATCHER_CLIENT_REQUEST_RETRIES_DEFAULT;
 
   return client;
 
@@ -200,24 +147,33 @@ void bgpwatcher_client_set_cb_handle_reply(bgpwatcher_client_t *client,
 					bgpwatcher_client_cb_handle_reply_t *cb)
 {
   assert(client != NULL);
-  client->broker_state.callbacks.handle_reply = cb;
+  BCFG.callbacks.handle_reply = cb;
 }
 
 void bgpwatcher_client_set_cb_userdata(bgpwatcher_client_t *client,
 				       void *user)
 {
   assert(client != NULL);
-  client->broker_state.callbacks.user = user;
+  BCFG.callbacks.user = user;
 }
 
 int bgpwatcher_client_start(bgpwatcher_client_t *client)
 {
   /* crank up the broker */
   if((client->broker =
-      zactor_new(bgpwatcher_client_broker_run, &BROKER)) == NULL)
+      zactor_new(bgpwatcher_client_broker_run, &BCFG)) == NULL)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
 			     "Failed to start broker");
+      return -1;
+    }
+
+  /* by the time the zactor_new function returns, the broker has been
+     initialized, so lets check for any error messages that it has signaled */
+  if(bgpwatcher_err_is_err(&BCFG.err) != 0)
+    {
+      client->err = BCFG.err;
+      client->shutdown = 1;
       return -1;
     }
 
@@ -230,10 +186,14 @@ void bgpwatcher_client_perr(bgpwatcher_client_t *client)
   bgpwatcher_err_perr(ERR);
 }
 
+#define ASSERT_INTENT(intent) assert((BCFG.intents & intent) != 0);
+
 bgpwatcher_client_pfx_table_t *bgpwatcher_client_pfx_table_create(
 						   bgpwatcher_client_t *client)
 {
   bgpwatcher_client_pfx_table_t *table;
+
+  ASSERT_INTENT(BGPWATCHER_PRODUCER_INTENT_PREFIX);
 
   if((table = malloc_zero(sizeof(bgpwatcher_client_pfx_table_t))) == NULL)
     {
@@ -258,34 +218,47 @@ void bgpwatcher_client_pfx_table_free(bgpwatcher_client_pfx_table_t **table_p)
 }
 
 int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_pfx_table_t *table,
+                                      const char *collector_name,
+                                      bgpstream_ip_address_t *peer_ip,
 				      uint32_t time)
 {
+  zmsg_t *msg = NULL;
   int rc;
   assert(table != NULL);
   assert(table->started == 0);
 
-  table->time = time;
+  /* fill the table */
+  table->info.time = time;
+  table->info.collector = collector_name;
+  table->info.peer_ip = *peer_ip;
 
-  if((rc = send_table(table->client,
-		      BGPWATCHER_TABLE_TYPE_PREFIX,
-		      BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN,
-		      table->time)) >= 0)
+  if((msg = bgpwatcher_pfx_table_msg_create(&table->info)) == NULL)
+    {
+      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
+			     "Failed to serialize prefix table");
+      return -1;
+    }
+
+  if((rc = send_data_message(&msg,
+                             BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN,
+                             table->client)) >= 0)
     {
       table->started = 1;
     }
 
+  zmsg_destroy(&msg);
   return rc;
 }
 
 int bgpwatcher_client_pfx_table_add(bgpwatcher_client_pfx_table_t *table,
-				    bgpwatcher_pfx_record_t *pfx)
+				    bgpstream_prefix_t *prefix,
+                                    uint32_t orig_asn)
 {
   zmsg_t *msg;
 
   assert(table != NULL);
-  assert(pfx != NULL);
 
-  if((msg = bgpwatcher_pfx_record_serialize(pfx)) == NULL)
+  if((msg = bgpwatcher_pfx_msg_create(prefix, orig_asn)) == NULL)
     {
       bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
 			     "Failed to serialize prefix record");
@@ -301,25 +274,31 @@ int bgpwatcher_client_pfx_table_end(bgpwatcher_client_pfx_table_t *table)
   assert(table != NULL);
   assert(table->started == 1);
   int rc;
+  zmsg_t *msg = NULL;
 
-  /* send a table end message */
-  if((rc = send_table(table->client,
-		      BGPWATCHER_TABLE_TYPE_PREFIX,
-		      BGPWATCHER_DATA_MSG_TYPE_TABLE_END,
-		      table->time)) >= 0)
+  if((msg = bgpwatcher_pfx_table_msg_create(&table->info)) == NULL)
+    {
+      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
+			     "Failed to serialize prefix table");
+      return -1;
+    }
+
+  if((rc = send_data_message(&msg, BGPWATCHER_DATA_MSG_TYPE_TABLE_END,
+                             table->client)) >= 0)
     {
       table->started = 0;
     }
 
+  zmsg_destroy(&msg);
   return rc;
 }
 
-/** consider making the table create/free/add/flush code more generic (a
-    macro?) */
 bgpwatcher_client_peer_table_t *bgpwatcher_client_peer_table_create(
 						   bgpwatcher_client_t *client)
 {
   bgpwatcher_client_peer_table_t *table;
+
+  ASSERT_INTENT(BGPWATCHER_PRODUCER_INTENT_PEER);
 
   if((table = malloc_zero(sizeof(bgpwatcher_client_peer_table_t))) == NULL)
     {
@@ -344,34 +323,45 @@ void bgpwatcher_client_peer_table_free(bgpwatcher_client_peer_table_t **table_p)
 }
 
 int bgpwatcher_client_peer_table_begin(bgpwatcher_client_peer_table_t *table,
-					uint32_t time)
+                                       const char *collector_name,
+                                       uint32_t time)
 {
   int rc;
+  zmsg_t *msg = NULL;
   assert(table != NULL);
   assert(table->started == 0);
 
-  table->time = time;
+  table->info.time = time;
+  table->info.collector = collector_name;
 
-  if((rc = send_table(table->client,
-		      BGPWATCHER_TABLE_TYPE_PEER,
-		      BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN,
-		      table->time)) >= 0)
+  if((msg = bgpwatcher_peer_table_msg_create(&table->info)) == NULL)
+    {
+      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
+			     "Failed to serialize peer table");
+      return -1;
+    }
+
+  if((rc = send_data_message(&msg,
+                             BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN,
+                             table->client)) >= 0)
     {
       table->started = 1;
     }
 
+  zmsg_destroy(&msg);
   return rc;
 }
 
 int bgpwatcher_client_peer_table_add(bgpwatcher_client_peer_table_t *table,
-				     bgpwatcher_peer_record_t *peer)
+                                     bgpstream_ip_address_t *peer_ip,
+                                     uint8_t status)
 {
   zmsg_t *msg;
 
   assert(table != NULL);
-  assert(peer != NULL);
+  assert(peer_ip != NULL);
 
-  if((msg = bgpwatcher_peer_record_serialize(peer)) == NULL)
+  if((msg = bgpwatcher_peer_msg_create(peer_ip, status)) == NULL)
     {
       bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
 			     "Failed to serialize peer record");
@@ -387,16 +377,23 @@ int bgpwatcher_client_peer_table_end(bgpwatcher_client_peer_table_t *table)
   assert(table != NULL);
   assert(table->started == 1);
   int rc;
+  zmsg_t *msg = NULL;
 
-  /* send a table end message */
-  if((rc = send_table(table->client,
-		      BGPWATCHER_TABLE_TYPE_PEER,
-		      BGPWATCHER_DATA_MSG_TYPE_TABLE_END,
-		      table->time)) >= 0)
+  if((msg = bgpwatcher_peer_table_msg_create(&table->info)) == NULL)
+    {
+      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
+			     "Failed to serialize peer table");
+      return -1;
+    }
+
+  if((rc = send_data_message(&msg,
+                             BGPWATCHER_DATA_MSG_TYPE_TABLE_END,
+                             table->client)) >= 0)
     {
       table->started = 0;
     }
 
+  zmsg_destroy(&msg);
   return rc;
 }
 
@@ -406,9 +403,9 @@ void bgpwatcher_client_stop(bgpwatcher_client_t *client)
   zactor_destroy(&client->broker);
 
   /* grab the error message from the broker */
-  if(bgpwatcher_err_is_err(&client->broker_state.err) != 0)
+  if(bgpwatcher_err_is_err(&BCFG.err) != 0)
     {
-      client->err = client->broker_state.err;
+      client->err = BCFG.err;
     }
 
   client->shutdown = 1;
@@ -425,42 +422,14 @@ void bgpwatcher_client_free(bgpwatcher_client_t *client)
       bgpwatcher_client_stop(client);
     }
 
-  /* broker now guaranteed to be shut down */
-  if(BROKER.req_hash != NULL)
-    {
-      if(kh_size(BROKER.req_hash) > 0)
-	{
-	  fprintf(stderr,
-		  "WARNING: At shutdown there were %d outstanding requests\n",
-		  kh_size(BROKER.req_hash));
-	}
-      kh_destroy(reqset, BROKER.req_hash);
-      BROKER.req_hash = NULL;
-    }
+  free(BCFG.server_uri);
+  BCFG.server_uri = NULL;
 
-  /* the req_list shared the same objects as the hash, so just trash the list */
-  /* DO NOT set the destructor before this point otherwise zlist merrily free's
-     records on every _remove. sigh */
-  zlist_set_destructor(BROKER.req_list, req_free_wrap);
-  zlist_destroy(&BROKER.req_list);
-
-  if(BROKER.server_uri != NULL)
-    {
-      free(BROKER.server_uri);
-      BROKER.server_uri = NULL;
-    }
-
-  if(BROKER.identity != NULL)
-    {
-      free(BROKER.identity);
-      BROKER.identity = NULL;
-    }
-
-  /* free'd by zctx_destroy */
-  BROKER.server_socket = NULL;
+  free(BCFG.identity);
+  BCFG.identity = NULL;
 
   /* frees our sockets */
-  zctx_destroy(&BROKER.ctx);
+  zctx_destroy(&BCFG.ctx);
 
   free(client);
 
@@ -479,9 +448,9 @@ int bgpwatcher_client_set_server_uri(bgpwatcher_client_t *client,
       return -1;
     }
 
-  free(BROKER.server_uri);
+  free(BCFG.server_uri);
 
-  if((BROKER.server_uri = strdup(uri)) == NULL)
+  if((BCFG.server_uri = strdup(uri)) == NULL)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not set server uri");
@@ -503,7 +472,7 @@ void bgpwatcher_client_set_heartbeat_interval(bgpwatcher_client_t *client,
       return;
     }
 
-  BROKER.heartbeat_interval = interval_ms;
+  BCFG.heartbeat_interval = interval_ms;
 }
 
 void bgpwatcher_client_set_heartbeat_liveness(bgpwatcher_client_t *client,
@@ -518,7 +487,7 @@ void bgpwatcher_client_set_heartbeat_liveness(bgpwatcher_client_t *client,
       return;
     }
 
-  BROKER.heartbeat_liveness = beats;
+  BCFG.heartbeat_liveness = beats;
 }
 
 void bgpwatcher_client_set_reconnect_interval_min(bgpwatcher_client_t *client,
@@ -534,7 +503,7 @@ void bgpwatcher_client_set_reconnect_interval_min(bgpwatcher_client_t *client,
       return;
     }
 
-  BROKER.reconnect_interval_min = reconnect_interval_min;
+  BCFG.reconnect_interval_min = reconnect_interval_min;
 }
 
 void bgpwatcher_client_set_reconnect_interval_max(bgpwatcher_client_t *client,
@@ -550,7 +519,7 @@ void bgpwatcher_client_set_reconnect_interval_max(bgpwatcher_client_t *client,
       return;
     }
 
-  BROKER.reconnect_interval_max = reconnect_interval_max;
+  BCFG.reconnect_interval_max = reconnect_interval_max;
 }
 
 void bgpwatcher_client_set_shutdown_linger(bgpwatcher_client_t *client,
@@ -558,7 +527,7 @@ void bgpwatcher_client_set_shutdown_linger(bgpwatcher_client_t *client,
 {
   assert(client != NULL);
 
-  BROKER.shutdown_linger = linger;
+  BCFG.shutdown_linger = linger;
 }
 
 void bgpwatcher_client_set_request_timeout(bgpwatcher_client_t *client,
@@ -566,7 +535,7 @@ void bgpwatcher_client_set_request_timeout(bgpwatcher_client_t *client,
 {
   assert(client != NULL);
 
-  BROKER.request_timeout = timeout_ms;
+  BCFG.request_timeout = timeout_ms;
 }
 
 void bgpwatcher_client_set_request_retries(bgpwatcher_client_t *client,
@@ -574,7 +543,7 @@ void bgpwatcher_client_set_request_retries(bgpwatcher_client_t *client,
 {
   assert(client != NULL);
 
-  BROKER.request_retries = retry_cnt;
+  BCFG.request_retries = retry_cnt;
 }
 
 int bgpwatcher_client_set_identity(bgpwatcher_client_t *client,
@@ -589,9 +558,9 @@ int bgpwatcher_client_set_identity(bgpwatcher_client_t *client,
       return -1;
     }
 
-  free(BROKER.identity);
+  free(BCFG.identity);
 
-  if((BROKER.identity = strdup(identity)) == NULL)
+  if((BCFG.identity = strdup(identity)) == NULL)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not set client identity");

@@ -26,9 +26,9 @@
 #ifndef __BGPWATCHER_COMMON_H
 #define __BGPWATCHER_COMMON_H
 
-#include <czmq.h>
 #include <stdint.h>
-#include <sys/socket.h>
+
+#include <bgpstream_elem.h>
 
 /** @file
  *
@@ -48,10 +48,10 @@
 #define BGPWATCHER_CLIENT_URI_DEFAULT "tcp://*:6300"
 
 /** Default the server/client heartbeat interval to 100 msec */
-#define BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT 15
+#define BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT 1500
 
 /** Default the server/client heartbeat liveness to 10 beats */
-#define BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT 100
+#define BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT 4
 
 /** Default the client reconnect minimum interval to 1 second */
 #define BGPWATCHER_RECONNECT_INTERVAL_MIN 1000
@@ -61,31 +61,6 @@
 
 /** Maximum allowed length for a collector name */
 #define BGPWATCHER_COLLECTOR_NAME_LEN 128
-
-#ifdef DEBUG_TIMING
-
-#define TIMER_START(timer)			\
-  struct timeval timer##_start;			\
-  do {						\
-  gettimeofday_wrap(&timer##_start);		\
-  } while(0)
-
-#define TIMER_END(timer)					\
-  struct timeval timer##_end, timer##_diff;				\
-  do {								\
-    gettimeofday_wrap(&timer##_end);				\
-    timeval_subtract(&timer##_diff, &timer##_end, &timer##_start);	\
-  } while(0)
-
-#define TIMER_VAL(timer)			\
-  ((timer##_diff.tv_sec*1000000) + timer##_diff.tv_usec)
-#else
-
-#define TIMER_START(timer)
-#define TIMER_END(timer)
-#define TIMER_VAL(timer) (uint64_t)(0)
-
-#endif
 
 /* shared constants are in bgpwatcher_common.h */
 
@@ -106,36 +81,42 @@
 /** Type of a sequence number */
 typedef uint32_t seq_num_t;
 
-/** State for a prefix row */
-typedef struct bgpwatcher_pfx_record {
+/** Information about the a prefix table */
+typedef struct bgpwatcher_pfx_table {
 
-  /** IPv4 or IPv6 prefix */
-  struct sockaddr_storage prefix;
+  /** Generated table ID (server-global) */
+  uint64_t id;
 
-  /** Prefix length */
-  uint8_t prefix_len;
+  /** Time that the table represents */
+  uint32_t time;
 
-  /** IPv4 or IPv6 peer IP */
-  struct sockaddr_storage peer_ip;
+  /** Collector that the table corresponds to */
+  const char *collector;
 
-  /** Originating ASN */
-  uint32_t orig_asn;
+  /** Peer that the table corresponds to */
+  bgpstream_ip_address_t peer_ip;
 
-  /** Collector Name (string) */
-  char collector_name[BGPWATCHER_COLLECTOR_NAME_LEN];
+  /** User-provided table ID */
+  uint16_t userid;
 
-} bgpwatcher_pfx_record_t;
+} bgpwatcher_pfx_table_t;
 
-/** State for a peer row */
-typedef struct bgpwatcher_peer_record {
+/** Information about the a peer table */
+typedef struct bgpwatcher_peer_table {
 
-  /** IPv4 or IPv6 peer IP */
-  struct sockaddr_storage ip;
+  /** Generated table ID (server-global) */
+  uint64_t id;
 
-  /** Peer Status */
-  uint8_t status;
+  /** Time that the table represents */
+  uint32_t time;
 
-} bgpwatcher_peer_record_t;
+  /** Collector that the table corresponds to */
+  const char *collector;
+
+  /** User-provided table ID */
+  uint16_t userid;
+
+} bgpwatcher_peer_table_t;
 
 /** bgpwatcher error information */
 typedef struct bgpwatcher_err {
@@ -153,82 +134,39 @@ typedef struct bgpwatcher_err {
  *
  * @{ */
 
-/** Table types */
-typedef enum {
-
-  /** Invalid table */
-  BGPWATCHER_TABLE_TYPE_NONE = 0,
-
-  /** Prefix table */
-  BGPWATCHER_TABLE_TYPE_PREFIX = 1,
-
-  /** Peer table */
-  BGPWATCHER_TABLE_TYPE_PEER = 2,
-
-  /** Highest table number in use */
-  BGPWATCHER_TABLE_TYPE_MAX = BGPWATCHER_TABLE_TYPE_PEER,
-
-} bgpwatcher_table_type_t;
-
-#define bgpwatcher_table_type_size_t sizeof(uint8_t)
-
-/** Enumeration of message types
+/** Consumer interests
  *
- * @note these will be cast to a uint8_t, so be sure that there are fewer than
- * 2^8 values
+ * A consumer has interests: it interested in being sent notifications about
+ * something. E.g. a new prefix table being available.
  */
 typedef enum {
-  /** Invalid message */
-  BGPWATCHER_MSG_TYPE_UNKNOWN   = 0,
 
-  /** Client is ready to send requests/Server is ready for requests */
-  BGPWATCHER_MSG_TYPE_READY     = 1,
+  /** Prefix Table */
+  BGPWATCHER_CONSUMER_INTEREST_PREFIX = 0x01,
 
-  /** Client is explicitly disconnecting (clean shutdown) */
-  BGPWATCHER_MSG_TYPE_TERM      = 2,
+  /** Peer Table */
+  BGPWATCHER_CONSUMER_INTEREST_PEER   = 0x02,
 
-  /** Server/Client is still alive */
-  BGPWATCHER_MSG_TYPE_HEARTBEAT = 3,
+} bgpwatcher_consumer_interest_t;
 
-  /** A request for the server to process */
-  BGPWATCHER_MSG_TYPE_DATA   = 4,
+/** @todo add more generic consumer filters so that a consumer can filter
+    interests based on more than client ID */
 
-  /** Server is sending a response to a client */
-  BGPWATCHER_MSG_TYPE_REPLY     = 5,
-
-  /** Highest message number in use */
-  BGPWATCHER_MSG_TYPE_MAX      = BGPWATCHER_MSG_TYPE_REPLY,
-
-} bgpwatcher_msg_type_t;
-
-#define bgpwatcher_msg_type_size_t sizeof(uint8_t)
-
-/** Enumeration of request message types
+/** Producer Intents
  *
- * @note these will be cast to a uint8_t, so be sure that there are fewer than
- * 2^8 values
+ * A producer has intents: it intends to send messages about something. E.g. a
+ * new prefix table.
  */
 typedef enum {
-  /** Invalid message */
-  BGPWATCHER_DATA_MSG_TYPE_UNKNOWN   = 0,
 
-  /** Client is beginning a new table */
-  BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN = 1,
+  /** Prefix Table */
+  BGPWATCHER_PRODUCER_INTENT_PREFIX = 0x01,
 
-  /* Client has completed a table */
-  BGPWATCHER_DATA_MSG_TYPE_TABLE_END = 2,
+  /** Peer Table */
+  BGPWATCHER_PRODUCER_INTENT_PEER   = 0x02,
 
-  /** Client is sending a prefix record */
-  BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD  = 3,
+} bgpwatcher_producer_intent_t;
 
-  /** Client is sending a peer record */
-  BGPWATCHER_DATA_MSG_TYPE_PEER_RECORD  = 4,
-
-  /** Highest message number in use */
-  BGPWATCHER_DATA_MSG_TYPE_MAX      = BGPWATCHER_DATA_MSG_TYPE_PEER_RECORD,
-} bgpwatcher_data_msg_type_t;
-
-#define bgpwatcher_data_msg_type_size_t sizeof(uint8_t)
 
 /** Enumeration of error codes
  *
@@ -283,100 +221,5 @@ int bgpwatcher_err_is_err(bgpwatcher_err_t *err);
  * @param err       pointer to bgpwatcher error status instance
  */
 void bgpwatcher_err_perr(bgpwatcher_err_t *err);
-
-/** Decodes the message type for the given message
- *
- * @param msg           zmsg object to inspect
- * @param peek          if set, the msg type frame will be left on the msg
- * @return the type of the message, or BGPWATCHER_MSG_TYPE_UNKNOWN if an error
- *         occurred
- *
- * This function will pop the type frame from the beginning of the message
- */
-bgpwatcher_msg_type_t bgpwatcher_msg_type(zmsg_t *msg, int peek);
-
-/** Decodes the message type for the given frame
- *
- * @param frame         zframe object to inspect
- * @return the type of the message, or BGPWATCHER_MSG_TYPE_UNKNOWN if an error
- *         occurred
- */
-bgpwatcher_msg_type_t bgpwatcher_msg_type_frame(zframe_t *frame);
-
-/** Decodes the request type for the given message
- *
- * @param msg           zmsg object to inspect
- * @return the type of the message, or BGPWATCHER_REQ_MSG_TYPE_UNKNOWN if an
- *         error occurred
- *
- * This function will pop the type frame from the beginning of the message
- */
-bgpwatcher_data_msg_type_t bgpwatcher_data_msg_type(zmsg_t *msg);
-
-/** Create a new prefix record
- *
- * @return pointer to a prefix record if successful, NULL otherwise
- */
-bgpwatcher_pfx_record_t *bgpwatcher_pfx_record_init();
-
-/** Free a prefix record
- *
- * @param pfx           pointer to prefix record to free
- */
-void bgpwatcher_pfx_record_free(bgpwatcher_pfx_record_t **pfx_p);
-
-/** Create fill the given pfx record from the given msg
- *
- * @param msg           pointer to a 0mq msg to extract the pfx from
- * @param pfx           pointer to an intialized pfx record to fill
- * @return 0 if the record was successfully deserialized, -1 otherwise
- */
-int bgpwatcher_pfx_record_deserialize(zmsg_t *msg,
-				      bgpwatcher_pfx_record_t *pfx);
-
-/** Create a new 0mq msg from the given pfx record
- *
- * @param pfx           pointer to a pfx record to serialize
- * @return pointer to a new zmsg if successful, NULL otherwise
- */
-zmsg_t *bgpwatcher_pfx_record_serialize(bgpwatcher_pfx_record_t *pfx);
-
-/** Dump the given prefix record to stderr
- *
- * @param pfx           pointer to a prefix record to dump
- */
-void bgpwatcher_pfx_record_dump(bgpwatcher_pfx_record_t *pfx);
-
-/** Create a new peer record
- *
- * @return pointer to a peer record if successful, NULL otherwise
- */
-bgpwatcher_peer_record_t *bgpwatcher_peer_record_init();
-
-/** Free a peer record
- *
- * @param peer           pointer to peer record to free
- */
-void bgpwatcher_peer_record_free(bgpwatcher_peer_record_t **peer_p);
-
-/** Create a new peer record from the given msg
- *
- * @param msg           pointer to a 0mq msg to extract the peer from
- * @return pointer to a new peer record if successful, NULL otherwise
- */
-bgpwatcher_peer_record_t *bgpwatcher_peer_record_deserialize(zmsg_t *msg);
-
-/** Create a new 0mq msg from the given peer record
- *
- * @param peer           pointer to a peer record to serialize
- * @return pointer to a new zmsg if successful, NULL otherwise
- */
-zmsg_t *bgpwatcher_peer_record_serialize(bgpwatcher_peer_record_t *peer);
-
-/** Dump the given peer record to stderr
- *
- * @param peer           pointer to a peer record to dump
- */
-void bgpwatcher_peer_record_dump(bgpwatcher_peer_record_t *peer);
 
 #endif

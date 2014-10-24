@@ -28,6 +28,8 @@
 
 #include <stdint.h>
 
+#include <bgpstream_elem.h>
+
 #include <bgpwatcher_common.h>
 
 /** @file
@@ -76,17 +78,16 @@ typedef struct bgpwatcher_client_peer_table bgpwatcher_client_peer_table_t;
  *
  * @{ */
 
-  /** Signals that the server has completed processing of a request made by the
-   *  client.
+  /** Signals that the server has received a request made by the client.
    *
    * @param client      pointer to the client instance that received the reply
    * @param seq_num     sequence number for matching with the request
-   * @param rc          return code from the server
-   *                    (0 indicates success, -1 failure)
+   *
+   * @note receipt of this message does not indicate that the server
+   * successfully processed the message, just that it was successfully received.
    */
 typedef void (bgpwatcher_client_cb_handle_reply_t)(bgpwatcher_client_t *client,
 						   seq_num_t seq_num,
-						   int rc,
 						   void *user);
 
 /** @} */
@@ -100,10 +101,15 @@ typedef void (bgpwatcher_client_cb_handle_reply_t)(bgpwatcher_client_t *client,
 
 /** Initialize a new BGP Watcher client instance
  *
+ * @param interests     set of bgpwatcher_consumer_interest_t flags
+ * @param intents       set of bgpwatcher_producer_intent_t flags
  * @return a pointer to a bgpwatcher client instance if successful, NULL if an
  * error occurred.
+ *
+ * @note calling a producer function or registering a consumer callback for an
+ * intent/interest not registered will trigger an assert.
  */
-bgpwatcher_client_t *bgpwatcher_client_init();
+bgpwatcher_client_t *bgpwatcher_client_init(uint8_t interests, uint8_t intents);
 
 /** Register a function to be called to handle message replies from the server
  *
@@ -156,18 +162,24 @@ void bgpwatcher_client_pfx_table_free(bgpwatcher_client_pfx_table_t **table);
  * (optionally) be matched against those received in the handle_reply callbacks.
  */
 int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_pfx_table_t *table,
+                                      const char *collector_name,
+                                      bgpstream_ip_address_t *peer_ip,
 				      uint32_t time);
 
 /** Add a prefix record to the given prefix table
  *
- * @param table         pointer to prefix table to add prefix record to
- * @param prefix        pointer to a completed prefix record
+ * @param table           pointer to prefix table to add prefix record to
+ * @param prefix          pointer to a bgpstream prefix
+ * @param peer_ip         pointer to a bgpstream ip address of the peer
+ * @param orig_asn        value of the origin ASN
+ * @param collector_name  pointer to a string collector name
  * @return 0 if the prefix was added successfully, -1 otherwise
  *
  * @note the caller maintains ownership of the prefix record
  */
 int bgpwatcher_client_pfx_table_add(bgpwatcher_client_pfx_table_t *table,
-				    bgpwatcher_pfx_record_t *pfx);
+				    bgpstream_prefix_t *prefix,
+                                    uint32_t orig_asn);
 
 /** Flush the given prefix table to the bgpwatcher server
  *
@@ -197,23 +209,28 @@ void bgpwatcher_client_peer_table_free(bgpwatcher_client_peer_table_t **table);
 
 /** Set the time that a table represents
  *
- * @param time          new time to set for the table
+ * @param table           pointer to an initialized table object
+ * @param collector_name  collector that this table refers to
+ * @param time            new time to set for the table
  * @return a unique message id used for asynchronous replies. this number can
  * (optionally) be matched against those received in the handle_reply callbacks
  */
 int bgpwatcher_client_peer_table_begin(bgpwatcher_client_peer_table_t *table,
-					uint32_t time);
+                                       const char *collector_name,
+                                       uint32_t time);
 
 /** Add a peer record to the given peer table
  *
  * @param table         pointer to peer table to add peer record to
- * @param peer          pointer to a completed peer record
+ * @param peer_ip       pointer to the peer ip
+ * @param status        status value
  * @return 0 if the peer was added successfully, -1 otherwise
  *
  * @note the caller maintains ownership of the peer record
  */
 int bgpwatcher_client_peer_table_add(bgpwatcher_client_peer_table_t *table,
-				     bgpwatcher_peer_record_t *peer);
+                                     bgpstream_ip_address_t *peer_ip,
+                                     uint8_t status);
 
 /** Flush the given peer table to the bgpwatcher server
  *

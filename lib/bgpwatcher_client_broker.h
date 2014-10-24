@@ -29,7 +29,9 @@
 #include <czmq.h>
 #include <stdint.h>
 
-#include "khash.h"
+#include <khash.h>
+
+#include <bgpwatcher_common_int.h>
 
 /** @file
  *
@@ -41,7 +43,14 @@
  */
 
 /** The maximum number of requests that we allow to be outstanding at any time */
-#define MAX_OUTSTANDING_REQ 10000
+#define MAX_OUTSTANDING_REQ 100000
+
+/**
+ * @name Public Enums
+ *
+ * @{ */
+
+/** @} */
 
 /**
  * @name Public Opaque Data Structures
@@ -97,27 +106,20 @@ typedef struct bgpwatcher_client_broker_req {
 KHASH_INIT(reqset, bgpwatcher_client_broker_req_t*, char, 0,
 	   req_hash_func, req_hash_equal);
 
-/** State for the zactor that transparently proxies requests between the client
-    and the server while managing hearbeats, reconnects etc. */
-typedef struct bgpwatcher_client_broker {
+/** Config for the broker. Populated by the client */
+typedef struct bgpwatcher_client_broker_config {
 
-  /** Pointer to the master's state (used for callbacks) */
+  /** set of bgpwatcher_consumer_interest_t flags */
+  uint8_t interests;
+
+  /** set of bgpwatcher_producer_intent_t flags */
+  uint8_t intents;
+
+  /** Pointer to the master's state (passed to callbacks) */
   struct bgpwatcher_client *master;
 
   /** Client callbacks */
   bgpwatcher_client_broker_callbacks_t callbacks;
-
-  /** Identity of this client. MUST be globally unique */
-  char *identity;
-
-  /** Hash of outstanding (un-acked) requests (used to look up replies) */
-  khash_t(reqset) *req_hash;
-
-  /** Ordered list of outstanding requests (used for re-transmits) */
-  zlist_t *req_list;
-
-  /** Error status */
-  bgpwatcher_err_t err;
 
   /** 0MQ context pointer (for broker->server comms) */
   zctx_t *ctx;
@@ -125,21 +127,12 @@ typedef struct bgpwatcher_client_broker {
   /** URI to connect to the server on */
   char *server_uri;
 
-  /** Socket used to connect to the server */
-  void *server_socket;
-
   /** Time (in ms) between heartbeats sent to the server */
   uint64_t heartbeat_interval;
-
-  /** Time (in ms) to send the next heartbeat to server */
-  uint64_t heartbeat_next;
 
   /** The number of heartbeats that can go by before the server is declared
       dead */
   int heartbeat_liveness;
-
-  /** The number of beats before the server is declared dead */
-  int heartbeat_liveness_remaining;
 
   /** The minimum time (in ms) after a server disconnect before we try to
       reconnect */
@@ -149,15 +142,8 @@ typedef struct bgpwatcher_client_broker {
       reconnect (after exponential back-off) */
   uint64_t reconnect_interval_max;
 
-  /** The time before we will next attempt to reconnect */
-  uint64_t reconnect_interval_next;
-
   /** The time that we will linger once a shutdown request has been received */
   uint64_t shutdown_linger;
-
-  /** Indicates the time that the broker must shut down by (calculated as
-      $TERM.time + shutdown_linger) */
-  uint64_t shutdown_time;
 
   /** Request timeout in msec */
   uint64_t request_timeout;
@@ -165,25 +151,59 @@ typedef struct bgpwatcher_client_broker {
   /** Request retries */
   int request_retries;
 
-  /* OWNED BY THE BROKER */
+  /** Error status (needs to be here so the master to retrieve err status) */
+  bgpwatcher_err_t err;
 
-  /** Pointer to the poller instance used by the broker */
-  zpoller_t *poller;
+  /** Identity of this client. MUST be globally unique.  If this field is set
+   * when the broker is started, it will be used to set the identity of the zmq
+   * socket
+   */
+  char *identity;
 
-  /** Indicates if the poller is currently polling the master pipe */
-  int poller_contains_master;
+} bgpwatcher_client_broker_config_t;
+
+
+/** State for a broker instance */
+typedef struct bgpwatcher_client_broker {
+
+  /** Pointer to the config info that our master prepared for us (READ-ONLY) */
+  bgpwatcher_client_broker_config_t *cfg;
 
   /** Pointer to the pipe used to talk to the master */
   zsock_t *master_pipe;
 
+  /** Has the master pipe been removed from the reactor? */
+  int master_removed;
+
+  /** Socket used to connect to the server */
+  void *server_socket;
+
+  /** Hash of outstanding (un-acked) requests (used to look up replies) */
+  khash_t(reqset) *req_hash;
+
+  /** Ordered list of outstanding requests (used for re-transmits) */
+  zlist_t *req_list;
+
+  /** Time (in ms) to send the next heartbeat to server */
+  uint64_t heartbeat_next;
+
+  /** The number of beats before the server is declared dead */
+  int heartbeat_liveness_remaining;
+
+  /** The time before we will next attempt to reconnect */
+  uint64_t reconnect_interval_next;
+
+  /** Indicates the time that the broker must shut down by (calculated as
+      $TERM.time + shutdown_linger) */
+  uint64_t shutdown_time;
+
+  /** Event loop */
+  zloop_t *loop;
+
+  /** Heartbeat timer ID */
+  int timer_id;
+
 } bgpwatcher_client_broker_t;
-
-/** @} */
-
-/**
- * @name Public Enums
- *
- * @{ */
 
 /** @} */
 
