@@ -772,11 +772,6 @@ static int handle_message(bgpwatcher_server_t *server,
 
 static int run_server(bgpwatcher_server_t *server)
 {
-  zmq_pollitem_t poll_items [] = {
-    {server->client_socket, 0, ZMQ_POLLIN, 0}, /* POLL_ITEM_CLIENT */
-  };
-  int rc;
-
   zmsg_t *msg = NULL;
   zframe_t *frame = NULL;
 
@@ -787,21 +782,10 @@ static int run_server(bgpwatcher_server_t *server)
 
   uint8_t msg_type_p;
 
-  /* poll for messages from clients */
-  if((rc = zmq_poll(poll_items, POLL_ITEM_CNT,
-		    server->heartbeat_interval * ZMQ_POLL_MSEC)) == -1)
-    {
-      goto interrupt;
-    }
+  msg = zmsg_recv(server->client_socket);
 
-  /* handle message from a client */
-  if(poll_items[POLL_ITEM_CLIENT].revents & ZMQ_POLLIN)
+  if(msg != NULL)
     {
-      if((msg = zmsg_recv(server->client_socket)) == NULL)
-	{
-	  goto interrupt;
-	}
-
       /* any kind of message from a client means that it is alive */
       /* treat the first frame as an identity frame */
       if((frame = zmsg_pop(msg)) == NULL)
@@ -844,6 +828,10 @@ static int run_server(bgpwatcher_server_t *server)
 	  goto err;
 	}
       /* handle message destroyed the message and the client too, maybe */
+    }
+  else if(errno != EAGAIN)
+    {
+      goto interrupt;
     }
 
   /* time for heartbeats */
@@ -968,6 +956,8 @@ int bgpwatcher_server_start(bgpwatcher_server_t *server)
     }
 
   zsocket_set_router_mandatory(server->client_socket, 1);
+
+  zsocket_set_rcvtimeo(server->client_socket, server->heartbeat_interval);
 
   if(zsocket_bind(server->client_socket, "%s", server->client_uri) < 0)
     {
