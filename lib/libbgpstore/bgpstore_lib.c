@@ -48,9 +48,9 @@ bgpstore_t *bgpstore_create()
       goto err;
     }
 
-  if((bgp_store->collectorpeer_bsid = kh_init(collectorsidtable)) == NULL)
+  if((bgp_store->collectorpeer_bsid = kh_init(collectorpeeridtable)) == NULL)
     {
-      fprintf(stderr, "Failed to create (collectoridtable)\n");
+      fprintf(stderr, "Failed to create (collectorpeeridtable)\n");
       goto err;
     }
 

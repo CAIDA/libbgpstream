@@ -30,20 +30,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "utils.h"
+#include <khash.h>
 #include <assert.h>
 
 
-KHASH_INIT(strclientstatus, char*, uint8_t*, 1,
-	   kh_str_hash_func, kh_str_hash_equal);
 
 
 typedef struct struct_bgpview_t {
   // something
   int test;
-  /** it maintain the status of each client
-   *  fore a specific bgp time */
-  khash_t(strclientstatus) *client_status;
-
 } bgpview_t;
 
 

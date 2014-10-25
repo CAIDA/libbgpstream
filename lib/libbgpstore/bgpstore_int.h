@@ -28,8 +28,9 @@
 
 #include "bgpstore_lib.h"
 #include "bgpstore_bgpview.h"
-#include "bgpstore_peertable.h"
-#include "bgpstore_pfxtable.h"
+
+#include "bgpwatcher_common.h"
+
 #include "bgpstream_elem.h"
 
 #include "khash.h"
@@ -42,36 +43,35 @@ KHASH_INIT(timebgpview, uint32_t, bgpview_t*, 1,
 /** The client status is a structur that maintains
  *  the interests of each client, i.e.: which data
  *  is the client interested as a consumer, and
- *  which date is the client interested as a 
+ *  which data is the client interested as a 
  *  producer.
  *  Every bit in the  array indicates whether
  *  an type of information is interesting or not.
  */
-typedef struct struct_clientinterests_t {
-  uint32_t producer_interests;
+typedef struct struct_clientstatus_t {
+  uint32_t producer_intents;
   uint32_t consumer_interests;
-} clientinterests_t;
+} clientstatus_t;
 
-KHASH_INIT(strclientstatus, char*, clientinterests, 1,
+KHASH_INIT(strclientstatus, char*, clientstatus_t , 1,
 	   kh_str_hash_func, kh_str_hash_equal);
 
 
-// TODO: change into specific functions!!!!!
-KHASH_INIT(peerbsid, bgpstream_ip_address_t, uint16_t, 1,
+// TODO: change!!!!!
+KHASH_INIT(peerbsid, int, uint16_t, 1,
 	   kh_int_hash_func, kh_int_hash_equal); 
-
 
 typedef struct struct_peeridtable_t {
   khash_t(peerbsid) *peer_bsid;
 } peeridtable_t;
 
-KHASH_INIT(collectoridtable, char*, peeridtable_t, 1,
+KHASH_INIT(collectorpeeridtable, char*, peeridtable_t, 1,
 	   kh_str_hash_func, kh_str_hash_equal);
 
 typedef struct struct_collector_peer_t {
   char collector_str[BGPWATCHER_COLLECTOR_NAME_LEN];
   bgpstream_ip_address_t peer_ip;
-} peerstable_t;
+} collector_peer_t;
 
 
 KHASH_INIT(bsidtable, uint16_t, collector_peer_t, 1,
@@ -92,7 +92,7 @@ struct bgpstore {
    *   by all the bgpviews and it is constant over time.
    *   Also, it enables faster lookup in the bgpview
    *   prefix tables. */
-  khash_t(collectoridtable) *collectorpeer_bsid;
+  khash_t(collectorpeeridtable) *collectorpeer_bsid;
   khash_t(bsidtable) *bsid_collectorpeer;
   /** next id that will be used to store a new (collector,
    *  peer) pair */
