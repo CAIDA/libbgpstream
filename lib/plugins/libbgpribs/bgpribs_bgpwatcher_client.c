@@ -34,16 +34,27 @@
 /* bw_client_t related functions */
 
 static void handle_reply(bgpwatcher_client_t *client, seq_num_t seq_num,
-			 int rc, void *user)
+			 void *user)
 {
-  assert(rc == 0);  // assert the reply is correct
+  // do nothing (where is RC?) :)
 }
 
 
 bw_client_t *bw_client_create() 
 {
-  bw_client_t * bwc = malloc_zero(sizeof(bw_client_t));
-  if((bwc->client = bgpwatcher_client_init()) == NULL)
+  bw_client_t * bwc = NULL;
+
+  if((bwc = malloc_zero(sizeof(bw_client_t))) == NULL)
+    {
+      return NULL;
+    }
+  
+  // init interests (no interests, this client is just a producer)
+  bwc->interests = 0;
+  // init intents: peer and prefix tables will be sent
+  bwc->intents = BGPWATCHER_PRODUCER_INTENT_PREFIX | BGPWATCHER_PRODUCER_INTENT_PEER;
+
+  if((bwc->client = bgpwatcher_client_init(bwc->interests, bwc->intents)) == NULL)
     {
       goto err;
     }
@@ -58,17 +69,7 @@ bw_client_t *bw_client_create()
       goto err;
     }
 
-  if((bwc->pfx_record = bgpwatcher_pfx_record_init()) == NULL)
-    {
-      goto err;
-    }
-
   if((bwc->peer_table = bgpwatcher_client_peer_table_create(bwc->client)) == NULL)
-    {
-      goto err;
-    }
-
-  if((bwc->peer_record = bgpwatcher_peer_record_init()) == NULL)
     {
       goto err;
     }
@@ -83,15 +84,7 @@ bw_client_t *bw_client_create()
  err:
   if(bwc!= NULL)
     {  
-      bgpwatcher_client_perr(bwc->client);
-      bgpwatcher_pfx_record_free(&bwc->pfx_record);
-      bgpwatcher_client_pfx_table_free(&bwc->pfx_table);
-      bgpwatcher_peer_record_free(&bwc->peer_record);
-      bgpwatcher_client_peer_table_free(&bwc->peer_table);
-      if(bwc->client != NULL) {
-	bgpwatcher_client_free(bwc->client);
-      }
-      free(bwc);
+      bw_client_destroy(bwc);
     }
   return NULL;
 }
@@ -101,9 +94,7 @@ void bw_client_destroy(bw_client_t * bwc)
 {  
   if(bwc!= NULL)
     {
-      bgpwatcher_pfx_record_free(&bwc->pfx_record);
       bgpwatcher_client_pfx_table_free(&bwc->pfx_table);
-      bgpwatcher_peer_record_free(&bwc->peer_record);
       bgpwatcher_client_peer_table_free(&bwc->peer_table);
       if(bwc->client != NULL)
 	{

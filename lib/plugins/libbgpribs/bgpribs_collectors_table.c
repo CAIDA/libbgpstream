@@ -136,7 +136,9 @@ int collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
 	      // send an empty peer table (the client is already registered
 	      // it is sending information, saying that no data are available
 	      uint32_t peer_table_time = interval_start;
-	      bgpwatcher_client_peer_table_begin(bw_client->peer_table, peer_table_time);
+	      bgpwatcher_client_peer_table_begin(bw_client->peer_table, 
+						 collector_data->dump_collector,
+						 peer_table_time);
 	      bgpwatcher_client_peer_table_end(bw_client->peer_table);
 	    }
 #endif

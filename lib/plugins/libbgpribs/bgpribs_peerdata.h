@@ -73,6 +73,13 @@ typedef struct struct_peerdata_t {
   ribs_tables_status_t rt_status;   /// current status of RIBs
   // statistics to reset every time the interval ends
   uint64_t elem_types[BGPSTREAM_ELEM_TYPE_MAX];  /// number of elements of a given type received in an interval
+  uint64_t state_up_elems;
+  uint64_t ignored_elems;
+  uint64_t out_of_order;
+  uint64_t soft_merge_cnt;
+  uint64_t ignored_out_of_order;
+  uint8_t new_rib;
+  uint8_t new_rib_length;
   /** statistics associated with one or multiple peers 
    *  that describe the behavior within a single interval */
   aggregated_bgp_stats_t *aggr_stats;            
@@ -132,7 +139,7 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
  *        -1 if something went wrong during the function execution
  */
 int peerdata_interval_end(char *project_str, char *collector_str,
-			  bgpstream_ip_address_t peer_address, peerdata_t *peer_data,
+			  bgpstream_ip_address_t * peer_address, peerdata_t *peer_data,
 			  aggregated_bgp_stats_t * collector_aggr_stats,
 			  bw_client_t *bw_client,
 			  int interval_start);

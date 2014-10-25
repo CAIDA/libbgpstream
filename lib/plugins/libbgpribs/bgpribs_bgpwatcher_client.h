@@ -50,12 +50,11 @@ typedef struct bw_client {
   bgpwatcher_client_t *client;
   /** prefix table on client */
   bgpwatcher_client_pfx_table_t *pfx_table;
-  /** prefix record on client */
-  bgpwatcher_pfx_record_t *pfx_record;
   /** peer table on client */
   bgpwatcher_client_peer_table_t *peer_table;
-  /** peer record on client */
-  bgpwatcher_peer_record_t *peer_record;
+  // TODO
+  uint8_t interests;
+  uint8_t intents;
 } bw_client_t;
 
 

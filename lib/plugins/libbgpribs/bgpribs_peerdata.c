@@ -209,6 +209,16 @@ int peerdata_apply_elem(peerdata_t *peer_data, bgpstream_record_t * bs_record, b
 
   // NOTE: there is no need to update peer_data->most_recent_ts, apply_record does that
 
+  if(bs_elem->timestamp < peer_data->most_recent_ts)
+    {
+      peer_data->out_of_order++;
+    }
+
+  if(bs_elem->type == BST_STATE && bs_elem->new_state == BST_ESTABLISHED)
+    {
+      peer_data->state_up_elems++;
+    }
+
   // type is update
   if(bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_WITHDRAWAL)
     {
@@ -252,12 +262,12 @@ int peerdata_apply_elem(peerdata_t *peer_data, bgpstream_record_t * bs_record, b
 	  // just received an out of order that invalidates the current status
 	  // i.e. the active rib, however, it does not affect the uc_ribs
 
-	  // in this case we just rely on the soft-rollback mechanism that is
+	  // in this case we just rely on the soft-merge mechanism that is
 	  // already embedded into the ribs_table_apply_elem mechanism
 	  ribs_table_apply_elem(peer_data->active_ribs_table, bs_elem);
 	  peerdata_update_affected_resources(peer_data,bs_elem);
 
-	  // TODO: signal an out of order 
+	  peer_data->soft_merge_cnt++;
 
 	  return 0;
 	}
@@ -333,7 +343,7 @@ int peerdata_apply_elem(peerdata_t *peer_data, bgpstream_record_t * bs_record, b
 	  return 0;
 	}				     
       // if here, we are ignoring this rib as it is not useful
-      //  (e.g UC_OFF and !DUMP_START) or it is out of order
+      // (e.g UC_OFF and !DUMP_START) or it is out of order
       // we log at the end of the function
     }
 
@@ -411,14 +421,15 @@ int peerdata_apply_elem(peerdata_t *peer_data, bgpstream_record_t * bs_record, b
     }
 
   // if the program is here, we ignored the elem
-  peer_data->elem_types[bs_elem->type]--;
+  if(bs_elem->timestamp < peer_data->most_recent_ts)
+    {
+      peer_data->ignored_out_of_order++;
+    }
 
-  // logging events that are not considered meaningful for further processing
-  peerdata_log_event(peer_data, bs_record, bs_elem);
+  peer_data->ignored_elems++;
 
   return 0;
 }
-
 
 
 /* apply the record to the peer_data provided:
@@ -510,7 +521,13 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 		  if(peer_data->status == PEER_NULL) 
 		    {
 		      peer_data->status = PEER_UP;
-		    }	 
+		    }
+
+		  // A new active rib is now in place
+		  peer_data->new_rib = 1;
+		  peer_data->new_rib_length = peer_data->active_ribs_table->reference_rib_end - 
+		    peer_data->active_ribs_table->reference_rib_start;
+
 		}
 	      else
 		{
@@ -618,13 +635,13 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 
 #ifdef WITH_BGPWATCHER
 int peerdata_interval_end(char *project_str, char *collector_str,
-			  bgpstream_ip_address_t peer_address, peerdata_t *peer_data,
+			  bgpstream_ip_address_t * peer_address, peerdata_t *peer_data,
 			  aggregated_bgp_stats_t * collector_aggr_stats,
 			  bw_client_t *bw_client,
 			  int interval_start)
 #else
 int peerdata_interval_end(char *project_str, char *collector_str,
-			  bgpstream_ip_address_t peer_address, peerdata_t *peer_data,
+			  bgpstream_ip_address_t * peer_address, peerdata_t *peer_data,
 			  aggregated_bgp_stats_t * collector_aggr_stats,
 			  int interval_start)
 #endif
@@ -675,8 +692,90 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  peer_data->elem_types[BST_STATE],
 	  interval_start);
 
-  // reset array
+  // OUTPUT METRIC: state elem detail
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.elem_state_established_cnt %"PRIu64" %d\n",
+	  project_str,
+	  collector_str,
+	  peer_data->peer_address_str,
+	  peer_data->state_up_elems,
+	  interval_start);
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.elem_state_down_cnt %"PRIu64" %d\n",
+	  project_str,
+	  collector_str,
+	  peer_data->peer_address_str,
+	  peer_data->elem_types[BST_STATE]-peer_data->state_up_elems,
+	  interval_start);
+
+  // OUTPUT METRIC: ignored elem
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.elem_ignored_cnt %"PRIu64" %d\n",
+	  project_str,
+	  collector_str,
+	  peer_data->peer_address_str,
+	  peer_data->ignored_elems,
+	  interval_start);
+
+  // OUTPUT METRIC: out of order details
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.elem_out_of_order_cnt %"PRIu64" %d\n",
+	  project_str,
+	  collector_str,
+	  peer_data->peer_address_str,
+	  peer_data->out_of_order,
+	  interval_start);
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.elem_soft_merge_cnt %"PRIu64" %d\n",
+	  project_str,
+	  collector_str,
+	  peer_data->peer_address_str,
+	  peer_data->soft_merge_cnt,
+	  interval_start);
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.elem_out_of_order_ignored_cnt %"PRIu64" %d\n",
+	  project_str,
+	  collector_str,
+	  peer_data->peer_address_str,
+	  peer_data->ignored_out_of_order,
+	  interval_start);
+  fprintf(stdout,
+	  METRIC_PREFIX".%s.%s.%s.elem_out_of_order_in_rib_cnt %"PRIu64" %d\n",
+	  project_str,
+	  collector_str,
+	  peer_data->peer_address_str,
+	  peer_data->out_of_order - (peer_data->soft_merge_cnt + peer_data->ignored_out_of_order),
+	  interval_start);
+
+
+  // OUTPUT METRIC:  new active rib related metrics
+  if(peer_data->new_rib == 1)
+    {
+      fprintf(stdout,
+	      METRIC_PREFIX".%s.%s.%s.new_rib_flag %"PRIu8" %d\n",
+	      project_str,
+	      collector_str,
+	      peer_data->peer_address_str,
+	      peer_data->new_rib,
+	      interval_start);
+      fprintf(stdout,
+	      METRIC_PREFIX".%s.%s.%s.new_rib_length %"PRIu8" %d\n",
+	      project_str,
+	      collector_str,
+	      peer_data->peer_address_str,
+	      peer_data->new_rib_length,
+	      interval_start);
+    }
+
+  // reset array and metrics
   memset(peer_data->elem_types, 0, sizeof(peer_data->elem_types));
+  peer_data->state_up_elems = 0;
+  peer_data->ignored_elems = 0;
+  peer_data->out_of_order = 0;
+  peer_data->soft_merge_cnt = 0;
+  peer_data->ignored_out_of_order = 0;
+  peer_data->new_rib = 0;
+  peer_data->new_rib_length = 0;
 
 
   // OUTPUT METRIC: peer_affected_ipv4_prefixes_cnt
@@ -751,20 +850,17 @@ int peerdata_interval_end(char *project_str, char *collector_str,
   // the following actions require the peer to be UP
 
 #ifdef WITH_BGPWATCHER
-  bool bw_on = (bw_client != NULL);
   int rc;
   uint32_t pfx_table_time = interval_start;
-
   // if the bgpwatcher client is enabled, then start to send the prefix table
-  if(bw_on)
+  if((rc = bgpwatcher_client_pfx_table_begin(bw_client->pfx_table,
+					     collector_str,
+					     peer_address,
+					     pfx_table_time)) < 0)
     {
-      if((rc = bgpwatcher_client_pfx_table_begin(bw_client->pfx_table, pfx_table_time)) < 0)
-	{
-	  fprintf(stderr, "Could not begin prefix table\n");
-	  bw_on = false;
-	  return -1;
-	}
-    }
+      fprintf(stderr, "Could not begin prefix table\n");
+      return -1;
+    }    
 #endif
   
   uint32_t ipv4_rib_size = 0;
@@ -798,8 +894,8 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	      avg_aspath_len_ipv4 += pd.aspath.hop_count;
 #ifdef WITH_BGPWATCHER
 	      if((rc = bgpwatcher_client_pfx_table_add(bw_client->pfx_table, 
-						       &prefix, &peer_address, pd.origin_as,
-						       collector_str)) < 0)
+						       &prefix,
+						       pd.origin_as)) < 0)
 		{
 		  bgpwatcher_client_perr(bw_client->client);
 		  fprintf(stderr, "Could not add to pfx table\n");
@@ -831,8 +927,8 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	      avg_aspath_len_ipv6 += pd.aspath.hop_count;
 #ifdef WITH_BGPWATCHER
 	      if((rc = bgpwatcher_client_pfx_table_add(bw_client->pfx_table, 
-						       &prefix, &peer_address, pd.origin_as,
-						       collector_str)) < 0)
+						       &prefix,
+						       pd.origin_as)) < 0)
 		{
 		  bgpwatcher_client_perr(bw_client->client);
 		  fprintf(stderr, "Could not add to pfx table\n");
@@ -844,14 +940,11 @@ int peerdata_interval_end(char *project_str, char *collector_str,
     }
 
 #ifdef WITH_BGPWATCHER
-  if(bw_on)
+  if((rc = bgpwatcher_client_pfx_table_end(bw_client->pfx_table)) < 0)
     {
-      if((rc = bgpwatcher_client_pfx_table_end(bw_client->pfx_table)) < 0)
-	{
-	  fprintf(stderr, "Could not end prefix table\n");
-	  return -1;
-	}
-    }
+      fprintf(stderr, "Could not end prefix table\n");
+      return -1;
+    }    
 #endif
 
   // OUTPUT METRIC: ipv4_rib_size
