@@ -34,6 +34,50 @@
 #define ERR (&client->err)
 #define BCFG (client->broker_config)
 
+/* create and send headers for a data message */
+int send_data_hdrs(void *dest,
+                   bgpwatcher_data_msg_type_t type,
+                   bgpwatcher_client_t *client,
+                   seq_num_t *seq_num)
+{
+  uint8_t type_b;
+  *seq_num = client->seq_num;
+
+  type_b = BGPWATCHER_MSG_TYPE_DATA;
+  if(zmq_send(dest, &type_b, bgpwatcher_msg_type_size_t, ZMQ_SNDMORE)
+     != bgpwatcher_msg_type_size_t)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not add request type to message");
+      goto err;
+    }
+
+  /* sequence number */
+  if(zmq_send(dest, seq_num, sizeof(seq_num_t), ZMQ_SNDMORE)
+     != sizeof(seq_num_t))
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not add sequence number to message");
+      goto err;
+    }
+
+  /* request type */
+  type_b = type;
+  if(zmq_send(dest, &type_b, bgpwatcher_data_msg_type_size_t, ZMQ_SNDMORE)
+     != bgpwatcher_data_msg_type_size_t)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not add request type to message");
+      goto err;
+    }
+
+  client->seq_num++;
+  return 0;
+
+ err:
+  return -1;
+}
+
 /* given a formed data message, push on the needed headers and send */
 int send_data_message(zmsg_t **msg_p,
 		      bgpwatcher_data_msg_type_t type,
@@ -177,6 +221,10 @@ int bgpwatcher_client_start(bgpwatcher_client_t *client)
       return -1;
     }
 
+  /* store a pointer to the socket we will use to talk with the broker */
+  client->broker_zocket = zactor_resolve(client->broker);
+  assert(client->broker_zocket != NULL);
+
   return 0;
 }
 
@@ -254,19 +302,25 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_pfx_table_t *table,
 				    bgpstream_prefix_t *prefix,
                                     uint32_t orig_asn)
 {
-  zmsg_t *msg;
-
   assert(table != NULL);
+  seq_num_t seq;
 
-  if((msg = bgpwatcher_pfx_msg_create(prefix, orig_asn)) == NULL)
+  if(send_data_hdrs(table->client->broker_zocket,
+                    BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD,
+                    table->client, &seq) != 0)
     {
-      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
-			     "Failed to serialize prefix record");
       return -1;
     }
 
-  return send_data_message(&msg, BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD,
-			   table->client);
+  if(bgpwatcher_pfx_record_send(table->client->broker_zocket,
+                                prefix, orig_asn, 0) != 0)
+    {
+      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
+			     "Failed to send prefix record");
+      return -1;
+    }
+
+  return seq;
 }
 
 int bgpwatcher_client_pfx_table_end(bgpwatcher_client_pfx_table_t *table)

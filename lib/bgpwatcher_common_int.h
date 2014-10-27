@@ -182,12 +182,7 @@ typedef enum {
 
 /* ========== UTILITIES ========== */
 
-/** Appends a BGP Stream IP address to the given message
- *
- * @param msg           pointer to an initialized zmsg
- * @param ip            pointer to the ip to add to the message
- * @return 0 if the IP was added successfully, -1 otherwise
- */
+/** @deprecated */
 int bgpwatcher_msg_addip(zmsg_t *msg, bgpstream_ip_address_t *ip);
 
 /** Extracts a BGP Stream IP address from the given message
@@ -264,16 +259,19 @@ void bgpwatcher_pfx_table_dump(bgpwatcher_pfx_table_t *table);
 
 /* ========== PREFIX RECORDS ========== */
 
-/** Create a new 0mq msg from the given pfx information
+/** Send msgs from the given pfx information on the given socket
  *
+ * @param dest            socket to send the prefix to
  * @param prefix          pointer to a bgpstream prefix
  * @param peer_ip         pointer to a bgpstream ip address of the peer
  * @param orig_asn        value of the origin ASN
- * @param collector_name  pointer to a string collector name
- * @return pointer to a new zmsg if successful, NULL otherwise
+ * @param sendmore        set to 1 if there is more to this message
+ * @return 0 if the record was sent successfully, -1 otherwise
  */
-zmsg_t *bgpwatcher_pfx_msg_create(bgpstream_prefix_t *prefix,
-                                  uint32_t orig_asn);
+int bgpwatcher_pfx_record_send(void *dest,
+                               bgpstream_prefix_t *prefix,
+                               uint32_t orig_asn,
+                               int sendmore);
 
 /** Deserialize a prefix message into provided memory
  *

@@ -67,6 +67,9 @@ typedef struct bgpwatcher_client {
   /** handle to communicate with our broker */
   zactor_t *broker;
 
+  /** raw socket to the broker */
+  void *broker_zocket;
+
   /** Error status */
   bgpwatcher_err_t err;
 
