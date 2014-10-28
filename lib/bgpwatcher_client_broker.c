@@ -109,7 +109,7 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
       return -1;
     }
 
-  /* send our interests */
+  /* send our intents */
   if(zmq_send(broker->server_socket, &CFG->intents, 1, 0) == -1)
     {
       bgpwatcher_err_set_err(ERR, errno,
