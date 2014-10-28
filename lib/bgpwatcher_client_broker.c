@@ -52,9 +52,10 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg);
     }                                           \
   else
 
-static void reset_heartbeat_timer(bgpwatcher_client_broker_t *broker)
+static void reset_heartbeat_timer(bgpwatcher_client_broker_t *broker,
+				  uint64_t clock)
 {
-  broker->heartbeat_next = zclock_time() + CFG->heartbeat_interval;
+  broker->heartbeat_next = clock + CFG->heartbeat_interval;
 }
 
 static void reset_heartbeat_liveness(bgpwatcher_client_broker_t *broker)
@@ -118,7 +119,7 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
     }
 
   /* reset the time for the next heartbeat sent to the server */
-  reset_heartbeat_timer(broker);
+  reset_heartbeat_timer(broker, zclock_time());
 
   /* create a new reader for this server socket */
   if(zloop_reader(broker->loop, broker->server_socket,
@@ -225,13 +226,14 @@ static int handle_reply(bgpwatcher_client_broker_t *broker)
 }
 
 static int send_request(bgpwatcher_client_broker_t *broker,
-			bgpwatcher_client_broker_req_t *req)
+			bgpwatcher_client_broker_req_t *req,
+			uint64_t clock)
 {
   int i = 1;
   zmq_msg_t llm_cpy;
   int mask;
 
-  req->retry_at = zclock_time() + CFG->request_timeout;
+  req->retry_at = clock + CFG->request_timeout;
 
   /* send the type */
   if(zmq_send(broker->server_socket, &req->msg_type,
@@ -272,11 +274,11 @@ static int send_request(bgpwatcher_client_broker_t *broker,
   return 0;
 }
 
-static int is_shutdown_time(bgpwatcher_client_broker_t *broker)
+static int is_shutdown_time(bgpwatcher_client_broker_t *broker, uint64_t clock)
 {
   if(broker->shutdown_time > 0 &&
      ((zlist_size(broker->req_list) == 0) ||
-      (broker->shutdown_time <= zclock_time())))
+      (broker->shutdown_time <= clock)))
     {
       /* time to end */
       return 1;
@@ -284,7 +286,7 @@ static int is_shutdown_time(bgpwatcher_client_broker_t *broker)
   return 0;
 }
 
-static int handle_timeouts(bgpwatcher_client_broker_t *broker)
+static int handle_timeouts(bgpwatcher_client_broker_t *broker, uint64_t clock)
 {
   bgpwatcher_client_broker_req_t *req;
 
@@ -292,7 +294,7 @@ static int handle_timeouts(bgpwatcher_client_broker_t *broker)
   req = zlist_first(broker->req_list);
   while(req != NULL)
     {
-      if(zclock_time() < req->retry_at)
+      if(clock < req->retry_at)
 	{
 	  /*fprintf(stderr, "DEBUG: at %"PRIu64", waiting for %"PRIu64"\n",
 	    zclock_time(), req->retry_at);*/
@@ -319,7 +321,7 @@ static int handle_timeouts(bgpwatcher_client_broker_t *broker)
 
       fprintf(stderr, "DEBUG: Retrying request %"PRIu32"\n", req->seq_num);
 
-      if(send_request(broker, req) != 0)
+      if(send_request(broker, req, clock) != 0)
 	{
 	  goto err;
 	}
@@ -347,7 +349,9 @@ static int handle_heartbeat_timer(zloop_t *loop, int timer_id, void *arg)
 
   uint8_t msg_type_p;
 
-  if(is_shutdown_time(broker) != 0)
+  uint64_t clock = zclock_time();
+
+  if(is_shutdown_time(broker, clock) != 0)
     {
       return -1;
     }
@@ -378,7 +382,7 @@ static int handle_heartbeat_timer(zloop_t *loop, int timer_id, void *arg)
     }
 
   /* send heartbeat to server if it is time */
-  if(zclock_time() > broker->heartbeat_next)
+  if(clock > broker->heartbeat_next)
     {
       msg_type_p = BGPWATCHER_MSG_TYPE_HEARTBEAT;
       if(zmq_send(broker->server_socket, &msg_type_p, 1, 0) == -1)
@@ -388,10 +392,10 @@ static int handle_heartbeat_timer(zloop_t *loop, int timer_id, void *arg)
 	  goto err;
 	}
 
-      reset_heartbeat_timer(broker);
+      reset_heartbeat_timer(broker, clock);
     }
 
-  if(handle_timeouts(broker) != 0)
+  if(handle_timeouts(broker, clock) != 0)
     {
       return -1;
     }
@@ -407,7 +411,9 @@ static int handle_server_msg(zloop_t *loop, zsock_t *reader, void *arg)
   bgpwatcher_client_broker_t *broker = (bgpwatcher_client_broker_t*)arg;
   bgpwatcher_msg_type_t msg_type;
 
-  if(is_shutdown_time(broker) != 0)
+  uint64_t clock = zclock_time();
+
+  if(is_shutdown_time(broker, clock) != 0)
     {
       return -1;
     }
@@ -449,11 +455,11 @@ static int handle_server_msg(zloop_t *loop, zsock_t *reader, void *arg)
     CFG->reconnect_interval_min;
 
   /* have we just processed the last reply? */
-  if(is_shutdown_time(broker) != 0)
+  if(is_shutdown_time(broker, clock) != 0)
     {
       return -1;
     }
-  if(handle_timeouts(broker) != 0)
+  if(handle_timeouts(broker, clock) != 0)
     {
       return -1;
     }
@@ -490,7 +496,9 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
   bgpwatcher_msg_type_t msg_type;
   bgpwatcher_client_broker_req_t *req = NULL;
 
-  if(is_shutdown_time(broker) != 0)
+  uint64_t clock = zclock_time();
+
+  if(is_shutdown_time(broker, clock) != 0)
     {
       return -1;
     }
@@ -594,7 +602,7 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
         }
 
       /* now send on to the server */
-      if(send_request(broker, req) != 0)
+      if(send_request(broker, req, clock) != 0)
         {
           goto err;
         }
@@ -608,16 +616,15 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
               "cycle\n");
       if(broker->shutdown_time == 0)
         {
-          broker->shutdown_time =
-            zclock_time() + CFG->shutdown_linger;
+          broker->shutdown_time = clock + CFG->shutdown_linger;
         }
-      if(is_shutdown_time(broker) != 0)
+      if(is_shutdown_time(broker, clock) != 0)
         {
           return -1;
         }
     }
 
-  if(handle_timeouts(broker) != 0)
+  if(handle_timeouts(broker, clock) != 0)
     {
       return -1;
     }
