@@ -335,6 +335,7 @@ int bgpwatcher_pfx_table_recv(void *src, bgpwatcher_pfx_table_t *table)
     }
 
   /* collector */
+  free(table->collector);
   if((table->collector = recv_str(src)) == NULL)
     {
       goto err;
@@ -530,6 +531,7 @@ int bgpwatcher_peer_table_recv(void *src, bgpwatcher_peer_table_t *table)
     }
 
   /* collector */
+  free(table->collector);
   if((table->collector = recv_str(src)) == NULL)
     {
       goto err;

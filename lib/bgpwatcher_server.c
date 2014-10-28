@@ -66,6 +66,12 @@ static void client_free(bgpwatcher_server_client_t **client_p)
       client->id = NULL;
     }
 
+  free(client->pfx_table.collector);
+  client->pfx_table.collector = NULL;
+
+  free(client->peer_table.collector);
+  client->peer_table.collector = NULL;
+
   free(client);
 
   *client_p = NULL;
@@ -278,7 +284,6 @@ static int send_reply(bgpwatcher_server_t *server,
     }
 
 #ifdef DEBUG
-  zmsg_print(msg);
   fprintf(stderr, "======================================\n\n");
 #endif
 
@@ -712,7 +717,6 @@ static int handle_message(bgpwatcher_server_t *server,
 #ifdef DEBUG
       fprintf(stderr, "**************************************\n");
       fprintf(stderr, "DEBUG: Got data from client:\n");
-      zmsg_print(msg);
       fprintf(stderr, "**************************************\n\n");
 #endif
 
@@ -1004,23 +1008,14 @@ void bgpwatcher_server_free(bgpwatcher_server_t *server)
 {
   assert(server != NULL);
 
-  if(server->callbacks != NULL)
-    {
-      free(server->callbacks);
-      server->callbacks = NULL;
-    }
+  free(server->callbacks);
+  server->callbacks = NULL;
 
-  if(server->client_uri != NULL)
-    {
-      free(server->client_uri);
-      server->client_uri = NULL;
-    }
+  free(server->client_uri);
+  server->client_uri = NULL;
 
-  if(server->clients != NULL)
-    {
-      clients_free(server);
-      server->clients = NULL;
-    }
+  clients_free(server);
+  server->clients = NULL;
 
   /* free'd by zctx_destroy */
   server->client_socket = NULL;
