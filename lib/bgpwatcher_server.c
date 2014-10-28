@@ -784,6 +784,7 @@ static int run_server(bgpwatcher_server_t *server)
   uint8_t msg_type_p;
 
   zmq_msg_t client_id;
+  zmq_msg_t id_cpy;
 
   /* get the client id frame */
   if(zmq_msg_init(&client_id) == -1)
@@ -869,10 +870,18 @@ static int run_server(bgpwatcher_server_t *server)
 
 	  client = kh_val(server->clients, k);
 
-	  if(zmq_msg_send(&client->identity,
+	  if(zmq_msg_init(&id_cpy) == -1 ||
+	     zmq_msg_copy(&id_cpy, &client->identity) == -1)
+	    {
+	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+				     "Failed to duplicate client id");
+	      goto err;
+	    }
+	  if(zmq_msg_send(&id_cpy,
 			  server->client_socket,
 			  ZMQ_SNDMORE) == -1)
 	    {
+	      zmq_msg_close(&id_cpy);
 	      bgpwatcher_err_set_err(ERR, errno,
 				     "Could not send client id to client %s",
 				     client->id);
