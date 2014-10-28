@@ -396,18 +396,18 @@ static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customli
     if(customlist_ds->list_read == 0) {
 
       // file 1:
-      strcpy(customlist_ds->filename, "./test-dumps/routeviews.route-views.jinx.ribs.1401487200.bz2");
-      strcpy(customlist_ds->project, "routeviews");
-      strcpy(customlist_ds->collector, "route-views.jinx");
-      strcpy(customlist_ds->bgp_type, "ribs");
-      customlist_ds->filetime = 1401487200;
-      if(bgpstream_customlist_datasource_filter_ok(customlist_ds)){
-	num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, strdup(customlist_ds->filename),
-							     strdup(customlist_ds->project),
-							     strdup(customlist_ds->collector),
-							     strdup(customlist_ds->bgp_type),
-							     customlist_ds->filetime);
-      }
+      /* strcpy(customlist_ds->filename, "./test-dumps/routeviews.route-views.jinx.ribs.1401487200.bz2"); */
+      /* strcpy(customlist_ds->project, "routeviews"); */
+      /* strcpy(customlist_ds->collector, "route-views.jinx"); */
+      /* strcpy(customlist_ds->bgp_type, "ribs"); */
+      /* customlist_ds->filetime = 1401487200; */
+      /* if(bgpstream_customlist_datasource_filter_ok(customlist_ds)){ */
+      /* 	num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, strdup(customlist_ds->filename), */
+      /* 							     strdup(customlist_ds->project), */
+      /* 							     strdup(customlist_ds->collector), */
+      /* 							     strdup(customlist_ds->bgp_type), */
+      /* 							     customlist_ds->filetime); */
+      /* } */
       // file 2:
       strcpy(customlist_ds->filename, "./test-dumps/routeviews.route-views.jinx.updates.1401493500.bz2");
       strcpy(customlist_ds->project, "routeviews");
@@ -422,18 +422,18 @@ static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customli
 							     customlist_ds->filetime);
       }
       // file 3:
-      strcpy(customlist_ds->filename, "./test-dumps/ris.rrc06.ribs.1400544000.gz");
-      strcpy(customlist_ds->project, "ris");
-      strcpy(customlist_ds->collector, "rrc06");
-      strcpy(customlist_ds->bgp_type, "ribs");
-      customlist_ds->filetime = 1400544000;
-      if(bgpstream_customlist_datasource_filter_ok(customlist_ds)){
-	num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, strdup(customlist_ds->filename),
-							     strdup(customlist_ds->project),
-							     strdup(customlist_ds->collector),
-							     strdup(customlist_ds->bgp_type),
-							     customlist_ds->filetime);
-      }
+      /* strcpy(customlist_ds->filename, "./test-dumps/ris.rrc06.ribs.1400544000.gz"); */
+      /* strcpy(customlist_ds->project, "ris"); */
+      /* strcpy(customlist_ds->collector, "rrc06"); */
+      /* strcpy(customlist_ds->bgp_type, "ribs"); */
+      /* customlist_ds->filetime = 1400544000; */
+      /* if(bgpstream_customlist_datasource_filter_ok(customlist_ds)){ */
+      /* 	num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, strdup(customlist_ds->filename), */
+      /* 							     strdup(customlist_ds->project), */
+      /* 							     strdup(customlist_ds->collector), */
+      /* 							     strdup(customlist_ds->bgp_type), */
+      /* 							     customlist_ds->filetime); */
+      /* } */
       // file 4:
       strcpy(customlist_ds->filename, "./test-dumps/ris.rrc06.updates.1401488100.gz");
       strcpy(customlist_ds->project, "ris");
