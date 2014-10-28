@@ -497,7 +497,7 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
   bgpwatcher_client_broker_t *broker = (bgpwatcher_client_broker_t*)arg;
   bgpwatcher_msg_type_t msg_type;
   zmq_msg_t *llm = NULL;
-  bgpwatcher_client_broker_req_t *req;
+  bgpwatcher_client_broker_req_t *req = NULL;
 
   if(is_shutdown_time(broker) != 0)
     {
