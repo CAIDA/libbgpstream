@@ -228,8 +228,6 @@ static int send_request(bgpwatcher_client_broker_t *broker,
 			bgpwatcher_client_broker_req_t *req)
 {
   int i = 1;
-  int llm_cnt = zlist_size(req->msg_frames);
-  zmq_msg_t *llm = zlist_first(req->msg_frames);
   zmq_msg_t llm_cpy;
   int mask;
 
@@ -252,11 +250,11 @@ static int send_request(bgpwatcher_client_broker_t *broker,
       return -1;
     }
 
-  while(llm != NULL)
+  for(i=0; i<req->msg_frames_cnt; i++)
     {
-      mask = (i < llm_cnt) ? ZMQ_SNDMORE : 0;
+      mask = (i < (req->msg_frames_cnt-1)) ? ZMQ_SNDMORE : 0;
       zmq_msg_init(&llm_cpy);
-      if(zmq_msg_copy(&llm_cpy, llm) == -1)
+      if(zmq_msg_copy(&llm_cpy, &req->msg_frames[i]) == -1)
         {
 	  bgpwatcher_err_set_err(ERR, errno,
 				 "Could not copy message");
@@ -269,9 +267,6 @@ static int send_request(bgpwatcher_client_broker_t *broker,
 				 "Could not pass message to server");
 	  return -1;
 	}
-
-      i++;
-      llm = zlist_next(req->msg_frames);
     }
 
   return 0;
@@ -493,7 +488,6 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
 {
   bgpwatcher_client_broker_t *broker = (bgpwatcher_client_broker_t*)arg;
   bgpwatcher_msg_type_t msg_type;
-  zmq_msg_t *llm = NULL;
   bgpwatcher_client_broker_req_t *req = NULL;
 
   if(is_shutdown_time(broker) != 0)
@@ -561,22 +555,21 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
       /* recv messages into the req list until rcvmore is false */
       while(1)
         {
-          if((llm = malloc(sizeof(zmq_msg_t))) == NULL ||
-             zmq_msg_init(llm) != 0)
+	  assert(req->msg_frames_cnt <
+		 BGPWATCHER_CLIENT_BROKER_REQ_MSG_FRAMES_MAX);
+
+          if(zmq_msg_init(&req->msg_frames[req->msg_frames_cnt]) != 0)
             {
               bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
                                      "Could not create llm");
               goto err;
             }
-          if(zmq_msg_recv(llm, broker->master_zocket, 0) == -1)
+          if(zmq_msg_recv(&req->msg_frames[req->msg_frames_cnt],
+			  broker->master_zocket, 0) == -1)
             {
               goto interrupt;
             }
-          if(zlist_append(req->msg_frames, llm) != 0)
-            {
-              bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-                                     "Could not add frame to req list");
-            }
+	  req->msg_frames_cnt++;
           if(zsocket_rcvmore(broker->master_zocket) == 0)
             {
               break;
@@ -811,11 +804,7 @@ bgpwatcher_client_broker_req_t *bgpwatcher_client_broker_req_init()
       return NULL;
     }
 
-  if((req->msg_frames = zlist_new()) == NULL)
-    {
-      free(req);
-      return NULL;
-    }
+  req->msg_frames_cnt = 0;
 
   return req;
 }
@@ -824,20 +813,16 @@ void bgpwatcher_client_broker_req_free(bgpwatcher_client_broker_req_t **req_p)
 {
   assert(req_p != NULL);
   bgpwatcher_client_broker_req_t *req = *req_p;
-  zmq_msg_t *llm;
+  int i;
 
   if(req != NULL)
     {
-      if(req->msg_frames != NULL)
-        {
-          while(zlist_size(req->msg_frames) > 0)
-            {
-              llm = zlist_pop(req->msg_frames);
-              zmq_msg_close(llm);
-              free(llm);
-            }
-          zlist_destroy(&req->msg_frames);
-        }
+      for(i=0; i<req->msg_frames_cnt; i++)
+	{
+	  zmq_msg_close(&req->msg_frames[i]);
+	}
+      req->msg_frames_cnt = 0;
+
       free(req);
       *req_p = NULL;
     }

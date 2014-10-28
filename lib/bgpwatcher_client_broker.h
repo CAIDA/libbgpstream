@@ -45,6 +45,8 @@
 /** The maximum number of requests that we allow to be outstanding at any time */
 #define MAX_OUTSTANDING_REQ 100000
 
+#define BGPWATCHER_CLIENT_BROKER_REQ_MSG_FRAMES_MAX 10
+
 /**
  * @name Public Enums
  *
@@ -93,7 +95,10 @@ typedef struct bgpwatcher_client_broker_req {
   uint8_t retries_remaining;
 
   /** Message to send to the server */
-  zlist_t *msg_frames;
+  zmq_msg_t msg_frames[BGPWATCHER_CLIENT_BROKER_REQ_MSG_FRAMES_MAX];
+
+  /** Number of used msg frames */
+  int msg_frames_cnt;
 
 } bgpwatcher_client_broker_req_t;
 
