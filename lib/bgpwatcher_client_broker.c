@@ -178,33 +178,28 @@ static int server_disconnect(bgpwatcher_client_broker_t *broker)
   return 0;
 }
 
-static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
+static int handle_reply(bgpwatcher_client_broker_t *broker)
 {
-  zmsg_t *msg = *msg_p;
-  zframe_t *frame;
-  assert(msg != NULL);
-  *msg_p = NULL;
-
   bgpwatcher_client_broker_req_t rx_rep = {0, 0};
   bgpwatcher_client_broker_req_t *req;
-
   khiter_t khiter;
 
-  /* frame 1: seq num */
-  if((frame = zmsg_first(msg)) == NULL)
+  /* there must be more frames for us */
+  if(zsocket_rcvmore(broker->server_socket) == 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-			     "Invalid reply message (missing sequence number)");
+			     "Invalid message received from server "
+			     "(missing seq num)");
       goto err;
     }
-  if(zframe_size(frame) != sizeof(seq_num_t))
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-			     "Invalid message received from master "
-			     "(malformed sequence number)");
-      goto err;
-    }
-  memcpy(&rx_rep.seq_num, zframe_data(frame), sizeof(seq_num_t));
+
+  if(zmq_recv(broker->server_socket, &(rx_rep.seq_num), sizeof(seq_num_t), 0)
+     != sizeof(seq_num_t))
+        {
+	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+				 "Invalid message received from server "
+				 "(malformed sequence number)");
+        }
 
   /* grab the corresponding record from the outstanding req set */
   if((khiter = kh_get(reqset, broker->req_hash, &rx_rep)) ==
@@ -214,7 +209,6 @@ static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
       fprintf(stderr,
 	      "WARN: No outstanding request info for seq num %"PRIu32"\n",
 	      rx_rep.seq_num);
-      zmsg_destroy(&msg);
       return 0;
     }
 
@@ -231,12 +225,9 @@ static int handle_reply(bgpwatcher_client_broker_t *broker, zmsg_t **msg_p)
   kh_del(reqset, broker->req_hash, khiter);
   /* still held by the list, don't free */
 
-  zmsg_destroy(&msg);
   return 0;
 
  err:
-  zmsg_destroy(&msg);
-  zframe_destroy(&frame);
   return -1;
 }
 
@@ -449,7 +440,6 @@ static int handle_heartbeat_timer(zloop_t *loop, int timer_id, void *arg)
 static int handle_server_msg(zloop_t *loop, zsock_t *reader, void *arg)
 {
   bgpwatcher_client_broker_t *broker = (bgpwatcher_client_broker_t*)arg;
-  zmsg_t *msg = NULL;
   bgpwatcher_msg_type_t msg_type;
 
   if(is_shutdown_time(broker) != 0)
@@ -457,18 +447,18 @@ static int handle_server_msg(zloop_t *loop, zsock_t *reader, void *arg)
       return -1;
     }
 
-  if((msg = zmsg_recv(broker->server_socket)) == NULL)
+  msg_type = bgpwatcher_recv_type(broker->server_socket);
+
+  if(zctx_interrupted != 0)
     {
       goto interrupt;
     }
-
-  msg_type = bgpwatcher_msg_type(msg, 0);
 
   switch(msg_type)
     {
     case BGPWATCHER_MSG_TYPE_REPLY:
       reset_heartbeat_liveness(broker);
-      if(handle_reply(broker, &msg) != 0)
+      if(handle_reply(broker) != 0)
         {
           goto err;
         }
@@ -490,7 +480,6 @@ static int handle_server_msg(zloop_t *loop, zsock_t *reader, void *arg)
       goto err;
     }
 
-  zmsg_destroy(&msg);
   broker->reconnect_interval_next =
     CFG->reconnect_interval_min;
 
@@ -527,7 +516,6 @@ static int handle_server_msg(zloop_t *loop, zsock_t *reader, void *arg)
   return -1;
 
  err:
-  zmsg_destroy(&msg);
   return -1;
 }
 
