@@ -268,7 +268,7 @@ void bgpwatcher_client_pfx_table_free(bgpwatcher_client_pfx_table_t **table_p)
 }
 
 int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_pfx_table_t *table,
-                                      const char *collector_name,
+                                      char *collector_name,
                                       bgpstream_ip_address_t *peer_ip,
 				      uint32_t time)
 {
@@ -379,7 +379,7 @@ void bgpwatcher_client_peer_table_free(bgpwatcher_client_peer_table_t **table_p)
 }
 
 int bgpwatcher_client_peer_table_begin(bgpwatcher_client_peer_table_t *table,
-                                       const char *collector_name,
+                                       char *collector_name,
                                        uint32_t time)
 {
   int rc;
