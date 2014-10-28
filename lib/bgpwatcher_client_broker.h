@@ -95,16 +95,7 @@ typedef struct bgpwatcher_client_broker_req {
   /** Message to send to the server */
   zlist_t *msg_frames;
 
-  /** Has a reply been received? */
-  uint8_t reply_rx;
-
 } bgpwatcher_client_broker_req_t;
-
-#define req_hash_func(key) ((key)->seq_num)
-#define req_hash_equal(a, b) ((a)->seq_num == (b)->seq_num)
-
-KHASH_INIT(reqset, bgpwatcher_client_broker_req_t*, char, 0,
-	   req_hash_func, req_hash_equal);
 
 /** Config for the broker. Populated by the client */
 typedef struct bgpwatcher_client_broker_config {
@@ -180,9 +171,6 @@ typedef struct bgpwatcher_client_broker {
 
   /** Socket used to connect to the server */
   void *server_socket;
-
-  /** Hash of outstanding (un-acked) requests (used to look up replies) */
-  khash_t(reqset) *req_hash;
 
   /** Ordered list of outstanding requests (used for re-transmits) */
   zlist_t *req_list;

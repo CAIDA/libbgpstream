@@ -180,9 +180,8 @@ static int server_disconnect(bgpwatcher_client_broker_t *broker)
 
 static int handle_reply(bgpwatcher_client_broker_t *broker)
 {
-  bgpwatcher_client_broker_req_t rx_rep = {0, 0};
+  seq_num_t seq_num;
   bgpwatcher_client_broker_req_t *req;
-  khiter_t khiter;
 
   /* there must be more frames for us */
   if(zsocket_rcvmore(broker->server_socket) == 0)
@@ -193,7 +192,7 @@ static int handle_reply(bgpwatcher_client_broker_t *broker)
       goto err;
     }
 
-  if(zmq_recv(broker->server_socket, &(rx_rep.seq_num), sizeof(seq_num_t), 0)
+  if(zmq_recv(broker->server_socket, &seq_num, sizeof(seq_num_t), 0)
      != sizeof(seq_num_t))
         {
 	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
@@ -201,29 +200,51 @@ static int handle_reply(bgpwatcher_client_broker_t *broker)
 				 "(malformed sequence number)");
         }
 
-  /* grab the corresponding record from the outstanding req set */
-  if((khiter = kh_get(reqset, broker->req_hash, &rx_rep)) ==
-     kh_end(broker->req_hash) || kh_exist(broker->req_hash, khiter) == 0)
+  /* find the corresponding record from the outstanding req set */
+
+  /* most likely, it will be at the head of the list */
+  /* so, first we just blindly pop the head, and if it happens not to match, we
+     reinsert and search */
+  req = zlist_pop(broker->req_list);
+  if(req == NULL)
     {
-      /* err, a reply for a non-existent request? */
       fprintf(stderr,
 	      "WARN: No outstanding request info for seq num %"PRIu32"\n",
-	      rx_rep.seq_num);
+	      seq_num);
       return 0;
     }
-
-  req = kh_key(broker->req_hash, khiter);
-  assert(req->seq_num == rx_rep.seq_num);
-
-  req->reply_rx = 1;
+  /* slow path... */
+  if(req->seq_num != seq_num)
+    {
+      /* need to search */
+      fprintf(stderr, "WARN: Searching for request %d\n", seq_num);
+      if(zlist_push(broker->req_list, req) != 0)
+	{
+	  goto err;
+	}
+      req = zlist_first(broker->req_list);
+      while(req != NULL && req->seq_num != seq_num)
+	{
+	  req = zlist_next(broker->req_list);
+	}
+      if(req == NULL)
+	{
+	  fprintf(stderr,
+		  "WARN: No outstanding request info for seq num %"PRIu32"\n",
+		  seq_num);
+	  return 0;
+	}
+      /* remove from list */
+      zlist_remove(broker->req_list, req);
+    }
 
   /*fprintf(stderr, "MATCH: req.seq: %"PRIu32", req.msg_type: %d\n",
     req->seq_num, req->msg_type);*/
 
   DO_CALLBACK(handle_reply, req->seq_num);
 
-  kh_del(reqset, broker->req_hash, khiter);
-  /* still held by the list, don't free */
+  /* destroy this req, we're done with it */
+  bgpwatcher_client_broker_req_free(&req);
 
   return 0;
 
@@ -287,7 +308,7 @@ static int send_request(bgpwatcher_client_broker_t *broker,
 static int is_shutdown_time(bgpwatcher_client_broker_t *broker)
 {
   if(broker->shutdown_time > 0 &&
-     ((kh_size(broker->req_hash) == 0) ||
+     ((zlist_size(broker->req_list) == 0) ||
       (broker->shutdown_time <= zclock_time())))
     {
       /* time to end */
@@ -304,16 +325,6 @@ static int handle_timeouts(bgpwatcher_client_broker_t *broker)
   req = zlist_first(broker->req_list);
   while(req != NULL)
     {
-      if(req->reply_rx != 0)
-	{
-	  /* a reply was received since we last checked */
-	  /*fprintf(stderr, "Removing ack'd message %d\n", req->seq_num);*/
-	  zlist_remove(broker->req_list, req);
-	  bgpwatcher_client_broker_req_free(&req);
-	  req = zlist_first(broker->req_list);
-	  continue;
-	}
-
       if(zclock_time() < req->retry_at)
 	{
 	  /*fprintf(stderr, "DEBUG: at %"PRIu64", waiting for %"PRIu64"\n",
@@ -496,7 +507,7 @@ static int handle_server_msg(zloop_t *loop, zsock_t *reader, void *arg)
   /* check if the number of outstanding requests has dropped enough to start
      accepting more from our master */
   if(broker->master_removed != 0 &&
-     kh_size(broker->req_hash) < MAX_OUTSTANDING_REQ*0.8)
+     zlist_size(broker->req_list) < MAX_OUTSTANDING_REQ*0.8)
     {
       fprintf(stderr, "INFO: Accepting requests\n");
       if(zloop_reader(broker->loop, broker->master_pipe,
@@ -525,7 +536,6 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
   bgpwatcher_msg_type_t msg_type;
   zmq_msg_t *llm = NULL;
   bgpwatcher_client_broker_req_t *req;
-  int khret;
 
   if(is_shutdown_time(broker) != 0)
     {
@@ -538,7 +548,7 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
   /* to avoid flapping, we remove ourselves at 100% of the max allowed, and the
      handle_server_msg function will add us back when the queue drops to 80% of
      allowed */
-  if(kh_size(broker->req_hash) >= MAX_OUTSTANDING_REQ)
+  if(zlist_size(broker->req_list) >= MAX_OUTSTANDING_REQ)
     {
       fprintf(stderr, "INFO: Rate limiting\n");
       zloop_reader_end(broker->loop, broker->master_pipe);
@@ -622,15 +632,6 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
       /*fprintf(stderr, "DEBUG: tx.seq: %"PRIu32", tx.msg_type: %d\n",
         req.seq_num, req.msg_type);*/
 
-      /* add to the req hash */
-      kh_put(reqset, broker->req_hash, req, &khret);
-      if(khret == -1)
-        {
-          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-                                 "Could not add request to set");
-          goto err;
-        }
-
       /* add to the end of the req list */
       /* list will be ordered oldest (smallest time) to newest (largest
          time) */
@@ -693,19 +694,12 @@ static void broker_free(bgpwatcher_client_broker_t **broker_p)
   /* free our reactor */
   zloop_destroy(&broker->loop);
 
-  if(broker->req_hash != NULL)
+  if(zlist_size(broker->req_list) > 0)
     {
-      if(kh_size(broker->req_hash) > 0)
-	{
-	  fprintf(stderr,
-		  "WARNING: At shutdown there were %d outstanding requests\n",
-		  kh_size(broker->req_hash));
-	}
-      kh_destroy(reqset, broker->req_hash);
-      broker->req_hash = NULL;
+      fprintf(stderr,
+	      "WARNING: At shutdown there were %"PRIuPTR" outstanding requests\n",
+	      zlist_size(broker->req_list));
     }
-
-  /* the req_list shared the same objects as the hash, so just trash the list */
   /* DO NOT set the destructor before this point otherwise zlist merrily free's
      records on every _remove. sigh */
   zlist_set_destructor(broker->req_list, req_free_wrap);
@@ -723,12 +717,6 @@ static void broker_free(bgpwatcher_client_broker_t **broker_p)
 static int init_req_state(bgpwatcher_client_broker_t *broker)
 {
   /* init the outstanding req set */
-  if((broker->req_hash = kh_init(reqset)) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Failed to create request set");
-      return -1;
-    }
   if((broker->req_list = zlist_new()) == NULL)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
@@ -863,8 +851,6 @@ bgpwatcher_client_broker_req_t *bgpwatcher_client_broker_req_init()
     {
       return NULL;
     }
-
-  req->reply_rx = 0;
 
   if((req->msg_frames = zlist_new()) == NULL)
     {
