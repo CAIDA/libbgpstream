@@ -45,6 +45,13 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg);
       }									\
   } while(0)
 
+#define ISERR                                  \
+  if(errno == EINTR || errno == ETERM)          \
+    {                                           \
+      goto interrupt;                           \
+    }                                           \
+  else
+
 static void reset_heartbeat_timer(bgpwatcher_client_broker_t *broker)
 {
   broker->heartbeat_next = zclock_time() + CFG->heartbeat_interval;
@@ -237,24 +244,50 @@ static int send_request(bgpwatcher_client_broker_t *broker,
 			bgpwatcher_client_broker_req_t *req)
 {
   int i = 1;
-  int frame_cnt = zlist_size(req->msg_frames);
-  zframe_t *frame = zlist_first(req->msg_frames);
-  int mask = ZFRAME_REUSE;
+  int llm_cnt = zlist_size(req->msg_frames);
+  zmq_msg_t *llm = zlist_first(req->msg_frames);
+  zmq_msg_t llm_cpy;
+  int mask;
 
   req->retry_at = zclock_time() + CFG->request_timeout;
 
-  while(frame != NULL)
+  /* send the type */
+  if(zmq_send(broker->server_socket, &req->msg_type,
+              bgpwatcher_msg_type_size_t, ZMQ_SNDMORE)
+     != bgpwatcher_msg_type_size_t)
     {
-      mask = (i == frame_cnt) ? ZFRAME_REUSE : (ZFRAME_REUSE | ZFRAME_MORE);
-      if(zframe_send(&frame, broker->server_socket, mask) == -1)
+      return -1;
+    }
+
+  /* send the seq num */
+  if(zmq_send(broker->server_socket,
+              &req->seq_num, sizeof(seq_num_t),
+              ZMQ_SNDMORE)
+     != sizeof(seq_num_t))
+    {
+      return -1;
+    }
+
+  while(llm != NULL)
+    {
+      mask = (i < llm_cnt) ? ZMQ_SNDMORE : 0;
+      zmq_msg_init(&llm_cpy);
+      if(zmq_msg_copy(&llm_cpy, llm) == -1)
+        {
+	  bgpwatcher_err_set_err(ERR, errno,
+				 "Could not copy message");
+	  return -1;
+        }
+      if(zmq_sendmsg(broker->server_socket, &llm_cpy, mask) == -1)
 	{
+          zmq_msg_close(&llm_cpy);
 	  bgpwatcher_err_set_err(ERR, errno,
 				 "Could not pass message to server");
 	  return -1;
 	}
 
       i++;
-      frame = zlist_next(req->msg_frames);
+      llm = zlist_next(req->msg_frames);
     }
 
   return 0;
@@ -501,9 +534,8 @@ static int handle_server_msg(zloop_t *loop, zsock_t *reader, void *arg)
 static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
 {
   bgpwatcher_client_broker_t *broker = (bgpwatcher_client_broker_t*)arg;
-  zmsg_t *msg = NULL;
-  zframe_t *frame = NULL;
   bgpwatcher_msg_type_t msg_type;
+  zmq_msg_t *llm = NULL;
   bgpwatcher_client_broker_req_t *req;
   int khret;
 
@@ -525,22 +557,19 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
       broker->master_removed = 1;
     }
 
-  if((msg = zmsg_recv(broker->master_pipe)) == NULL)
-    {
-      goto interrupt;
-    }
-
-  if((frame = zmsg_pop(msg)) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-                             "Invalid message received from client");
-      goto err;
-    }
-
   /* peek at the first frame (msg type) */
-  if((msg_type =
-      bgpwatcher_msg_type_frame(frame)) != BGPWATCHER_MSG_TYPE_UNKNOWN)
+  if((msg_type = bgpwatcher_recv_type(broker->master_zocket))
+     != BGPWATCHER_MSG_TYPE_UNKNOWN)
     {
+      /* there must be more frames for us */
+      if(zsocket_rcvmore(broker->master_zocket) == 0)
+        {
+          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+                                 "Invalid message received from master "
+                                 "(missing seq num)");
+          goto err;
+        }
+
       if((req = bgpwatcher_client_broker_req_init()) == NULL)
         {
           bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
@@ -548,47 +577,54 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
           goto err;
         }
 
-      if(zlist_append(req->msg_frames, frame) != 0)
-        {
-          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-                                 "Could not add msg type frame");
-          goto err;
-        }
-
       req->msg_type = msg_type;
 
       /* now we need the seq number */
-      if((frame = zmsg_pop(msg)) == NULL)
+      if(zmq_recv(broker->master_zocket, &req->seq_num, sizeof(seq_num_t), 0)
+         != sizeof(seq_num_t))
         {
-          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-                                 "Invalid message received from master");
-          goto err;
+          ISERR
+            {
+              bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+                                     "Invalid message received from master "
+                                     "(malformed sequence number)");
+              goto err;
+            }
         }
-      if(zframe_size(frame) != sizeof(seq_num_t))
+
+      /* read the payload of the message into a list to send to the server */
+      if(zsocket_rcvmore(broker->master_zocket) == 0)
         {
           bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
                                  "Invalid message received from master "
-                                 "(malformed sequence number)");
+                                 "(missing payload)");
           goto err;
         }
-      memcpy(&req->seq_num, zframe_data(frame), sizeof(seq_num_t));
 
-      if(zlist_append(req->msg_frames, frame) != 0)
+      /* recv messages into the req list until rcvmore is false */
+      while(1)
         {
-          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-                                 "Could not add seq num frame");
-        }
-
-      /* pop until we can't pop no more */
-      while((frame = zmsg_pop(msg)) != NULL)
-        {
-          if(zlist_append(req->msg_frames, frame) != 0)
+          if((llm = malloc(sizeof(zmq_msg_t))) == NULL ||
+             zmq_msg_init(llm) != 0)
             {
               bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-                                     "Could not add seq num frame");
+                                     "Could not create llm");
+              goto err;
+            }
+          if(zmq_recvmsg(broker->master_zocket, llm, 0) == -1)
+            {
+              goto interrupt;
+            }
+          if(zlist_append(req->msg_frames, llm) != 0)
+            {
+              bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+                                     "Could not add frame to req list");
+            }
+          if(zsocket_rcvmore(broker->master_zocket) == 0)
+            {
+              break;
             }
         }
-      zmsg_destroy(&msg);
 
       /* init the re-transmit state */
       req->retries_remaining = CFG->request_retries;
@@ -625,21 +661,18 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
     }
   else
     {
-      /* this is a message for us */
-      if(zframe_streq(frame, "$TERM") == 1)
+      /* this is a message for us, just shut down */
+      fprintf(stderr,
+              "INFO: Got $TERM, shutting down client broker on next "
+              "cycle\n");
+      if(broker->shutdown_time == 0)
         {
-          fprintf(stderr,
-                  "INFO: Got $TERM, shutting down client broker on next "
-                  "cycle\n");
-          if(broker->shutdown_time == 0)
-            {
-              broker->shutdown_time =
-                zclock_time() + CFG->shutdown_linger;
-            }
-          if(is_shutdown_time(broker) != 0)
-            {
-              return -1;
-            }
+          broker->shutdown_time =
+            zclock_time() + CFG->shutdown_linger;
+        }
+      if(is_shutdown_time(broker) != 0)
+        {
+          return -1;
         }
     }
 
@@ -648,20 +681,14 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
       return -1;
     }
 
-  zmsg_destroy(&msg);
-  zframe_destroy(&frame);
   return 0;
 
  interrupt:
-  zmsg_destroy(&msg);
-  zframe_destroy(&frame);
   bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INTERRUPT, "Caught interrupt");
   return -1;
 
  err:
   bgpwatcher_client_broker_req_free(&req);
-  zmsg_destroy(&msg);
-  zframe_destroy(&frame);
   return -1;
 }
 
@@ -770,6 +797,8 @@ static bgpwatcher_client_broker_t *broker_init(zsock_t *master_pipe,
     }
 
   broker->master_pipe = master_pipe;
+  broker->master_zocket = zsock_resolve(master_pipe);
+  assert(broker->master_zocket != NULL);
   broker->cfg = cfg;
 
   if(init_req_state(broker) != 0)
@@ -862,7 +891,7 @@ void bgpwatcher_client_broker_req_free(bgpwatcher_client_broker_req_t **req_p)
 {
   assert(req_p != NULL);
   bgpwatcher_client_broker_req_t *req = *req_p;
-  zframe_t *frame;
+  zmq_msg_t *llm;
 
   if(req != NULL)
     {
@@ -870,8 +899,9 @@ void bgpwatcher_client_broker_req_free(bgpwatcher_client_broker_req_t **req_p)
         {
           while(zlist_size(req->msg_frames) > 0)
             {
-              frame = zlist_pop (req->msg_frames);
-              zframe_destroy(&frame);
+              llm = zlist_pop(req->msg_frames);
+              zmq_msg_close(llm);
+              free(llm);
             }
           zlist_destroy(&req->msg_frames);
         }

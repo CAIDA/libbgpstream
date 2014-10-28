@@ -44,6 +44,8 @@ int send_data_hdrs(void *dest,
   *seq_num = client->seq_num;
 
   type_b = BGPWATCHER_MSG_TYPE_DATA;
+
+  /* message type */
   if(zmq_send(dest, &type_b, bgpwatcher_msg_type_size_t, ZMQ_SNDMORE)
      != bgpwatcher_msg_type_size_t)
     {

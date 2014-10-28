@@ -218,6 +218,20 @@ bgpwatcher_msg_type_t bgpwatcher_msg_type(zmsg_t *msg, int peek)
   return type;
 }
 
+bgpwatcher_msg_type_t bgpwatcher_recv_type(void *src)
+{
+  bgpwatcher_msg_type_t type = BGPWATCHER_MSG_TYPE_UNKNOWN;
+
+  if((zmq_recv(src, &type, bgpwatcher_msg_type_size_t, 0)
+      != bgpwatcher_msg_type_size_t) ||
+     (type > BGPWATCHER_MSG_TYPE_MAX))
+    {
+      return BGPWATCHER_MSG_TYPE_UNKNOWN;
+    }
+
+  return type;
+}
+
 bgpwatcher_data_msg_type_t bgpwatcher_data_msg_type(zmsg_t *msg)
 {
   zframe_t *frame;

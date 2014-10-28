@@ -206,6 +206,13 @@ int bgpwatcher_msg_popip(zmsg_t *msg,
  */
 bgpwatcher_msg_type_t bgpwatcher_msg_type_frame(zframe_t *frame);
 
+/** Receives one message from the given socket and decodes as a message type
+ *
+ * @param src          socket to receive on
+ * @return the type of the message, or BGPWATCHER_MSG_TYPE_UNKNOWN
+ */
+bgpwatcher_msg_type_t bgpwatcher_recv_type(void *src);
+
 /** Decodes the message type for the given message
  *
  * @param msg           zmsg object to inspect
