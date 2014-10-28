@@ -317,9 +317,6 @@ static int handle_timeouts(bgpwatcher_client_broker_t *broker)
 		  "abandoning\n",
 		  req->seq_num);
 
-	  /** @todo remove the request from the hash too (just for sake of
-	      memory) */
-
 	  bgpwatcher_client_broker_req_free(&req);
 	  req = zlist_first(broker->req_list);
 	  continue;
