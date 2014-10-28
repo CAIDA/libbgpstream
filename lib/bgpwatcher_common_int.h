@@ -182,20 +182,9 @@ typedef enum {
 
 /* ========== UTILITIES ========== */
 
-/** @deprecated */
-int bgpwatcher_msg_addip(zmsg_t *msg, bgpstream_ip_address_t *ip);
-
 
 
 /* ========== MESSAGE TYPES ========== */
-
-/** Decodes the message type for the given frame
- *
- * @param frame         zframe object to inspect
- * @return the type of the message, or BGPWATCHER_MSG_TYPE_UNKNOWN if an error
- *         occurred
- */
-bgpwatcher_msg_type_t bgpwatcher_msg_type_frame(zframe_t *frame);
 
 /** Receives one message from the given socket and decodes as a message type
  *
@@ -203,27 +192,6 @@ bgpwatcher_msg_type_t bgpwatcher_msg_type_frame(zframe_t *frame);
  * @return the type of the message, or BGPWATCHER_MSG_TYPE_UNKNOWN
  */
 bgpwatcher_msg_type_t bgpwatcher_recv_type(void *src);
-
-/** Decodes the message type for the given message
- *
- * @param msg           zmsg object to inspect
- * @param peek          if set, the msg type frame will be left on the msg
- * @return the type of the message, or BGPWATCHER_MSG_TYPE_UNKNOWN if an error
- *         occurred
- *
- * This function will pop the type frame from the beginning of the message
- */
-bgpwatcher_msg_type_t bgpwatcher_msg_type(zmsg_t *msg, int peek);
-
-/** Decodes the request type for the given message
- *
- * @param msg           zmsg object to inspect
- * @return the type of the message, or BGPWATCHER_REQ_MSG_TYPE_UNKNOWN if an
- *         error occurred
- *
- * This function will pop the type frame from the beginning of the message
- */
-bgpwatcher_data_msg_type_t bgpwatcher_data_msg_type(zmsg_t *msg);
 
 /** Receives one message from the given socket and decodes as data message type
  *
@@ -239,12 +207,13 @@ bgpwatcher_data_msg_type_t bgpwatcher_recv_data_type(void *src);
 
 /** Create a new 0mq msg from the given pfx table structure
  *
+ * @param dest            pointer to socket to send to
  * @param table           pointer to an initialized prefix table
- * @return pointer to a new zmsg if successful, NULL otherwise
+ * @return 0 if the table was sent successfully, -1 otherwise
  *
  * This message can be used for both the table_begin and table_end events
  */
-zmsg_t *bgpwatcher_pfx_table_msg_create(bgpwatcher_pfx_table_t *table);
+int bgpwatcher_pfx_table_send(void *dest, bgpwatcher_pfx_table_t *table);
 
 /** Deserialize a prefix table message into provided memory
  *
@@ -273,10 +242,8 @@ void bgpwatcher_pfx_table_dump(bgpwatcher_pfx_table_t *table);
  * @param sendmore        set to 1 if there is more to this message
  * @return 0 if the record was sent successfully, -1 otherwise
  */
-int bgpwatcher_pfx_record_send(void *dest,
-                               bgpstream_prefix_t *prefix,
-                               uint32_t orig_asn,
-                               int sendmore);
+int bgpwatcher_pfx_send(void *dest, bgpstream_prefix_t *prefix,
+			uint32_t orig_asn);
 
 /** Deserialize a prefix message into provided memory
  *
@@ -293,8 +260,8 @@ int bgpwatcher_pfx_recv(void *src, bgpstream_prefix_t *pfx_out,
  * @param prefix        pointer to a prefix structure
  * @param orig_asn      origin asn
  */
-void bgpwatcher_pfx_record_dump(bgpstream_prefix_t *prefix,
-                                uint32_t orig_asn);
+void bgpwatcher_pfx_dump(bgpstream_prefix_t *prefix,
+			 uint32_t orig_asn);
 
 
 
@@ -302,12 +269,13 @@ void bgpwatcher_pfx_record_dump(bgpstream_prefix_t *prefix,
 
 /** Create a new 0mq msg from the given peer table structure
  *
+ * @param dest            pointer to socket to send table to
  * @param table           pointer to an initialized peer table
- * @return pointer to a new zmsg if successful, NULL otherwise
+ * @return 0 if table was sent successfully, -1 otherwise
  *
  * This message can be used for both the table_begin and table_end events
  */
-zmsg_t *bgpwatcher_peer_table_msg_create(bgpwatcher_peer_table_t *table);
+int bgpwatcher_peer_table_send(void *dest, bgpwatcher_peer_table_t *table);
 
 /** Deserialize a peer table message into provided memory
  *
@@ -329,12 +297,13 @@ void bgpwatcher_peer_table_dump(bgpwatcher_peer_table_t *table);
 
 /** Create a new 0mq msg from the given peer information
  *
+ * @param dest          pointer to socket to send table to
  * @param peer_ip       pointer to the peer ip
  * @param status        status value
- * @return pointer to a new zmsg if successful, NULL otherwise
+ * @return 0 if table was sent successfully, -1 otherwise
  */
-zmsg_t *bgpwatcher_peer_msg_create(bgpstream_ip_address_t *peer_ip,
-                                   uint8_t status);
+int bgpwatcher_peer_send(void *dest, bgpstream_ip_address_t *peer_ip,
+			 uint8_t status);
 
 /** Deserialize a peer message into provided memory
  *

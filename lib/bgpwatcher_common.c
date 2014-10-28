@@ -134,41 +134,37 @@ static char *recv_str(void *src)
   return NULL;
 }
 
-static zmsg_t *table_msg_create(bgpwatcher_table_type_t type,
-                                uint32_t time,
-                                const char *collector)
+static int send_table(void *dest, bgpwatcher_table_type_t type,
+		      uint32_t time, const char *collector,
+		      int sndmore)
 {
-  zmsg_t *msg = NULL;
-
-  if((msg = zmsg_new()) == NULL)
-    {
-      goto err;
-    }
+  size_t len;
 
   /* table type */
-  if(zmsg_addmem(msg, &type, bgpwatcher_table_type_size_t) != 0)
+  if(zmq_send(dest, &type, bgpwatcher_table_type_size_t, ZMQ_SNDMORE)
+     != bgpwatcher_table_type_size_t)
     {
       goto err;
     }
 
   /* time */
   time = htonl(time);
-  if(zmsg_addmem(msg, &time, sizeof(time)) != 0)
+  if(zmq_send(dest, &time, sizeof(time), ZMQ_SNDMORE) != sizeof(time))
     {
       goto err;
     }
 
   /* collector */
-  if(zmsg_addstr(msg, collector) != 0)
+  len = strlen(collector);
+  if(zmq_send(dest, collector, len, (sndmore != 0) ? ZMQ_SNDMORE : 0) != len)
     {
       goto err;
     }
 
-  return msg;
+  return 0;
 
  err:
-  zmsg_destroy(&msg);
-  return NULL;
+  return -1;
 }
 
 /* ========== PROTECTED FUNCTIONS BELOW HERE ========== */
@@ -176,70 +172,9 @@ static zmsg_t *table_msg_create(bgpwatcher_table_type_t type,
 
 /* ========== UTILITIES ========== */
 
-/** @deprecated */
-int bgpwatcher_msg_addip(zmsg_t *msg, bgpstream_ip_address_t *ip)
-{
-  int rc = -1;
-  switch(ip->type)
-    {
-    case BST_IPV4:
-      rc = zmsg_addmem(msg, &ip->address.v4_addr.s_addr, sizeof(uint32_t));
-      break;
-
-    case BST_IPV6:
-      rc = zmsg_addmem(msg, &ip->address.v6_addr.s6_addr, (sizeof(uint8_t)*16));
-      break;
-    }
-
-  return rc;
-}
-
 
 
 /* ========== MESSAGE TYPES ========== */
-
-bgpwatcher_msg_type_t bgpwatcher_msg_type_frame(zframe_t *frame)
-{
-  uint8_t type;
-  if((zframe_size(frame) > bgpwatcher_msg_type_size_t) ||
-     (type = *zframe_data(frame)) > BGPWATCHER_MSG_TYPE_MAX)
-    {
-      return BGPWATCHER_MSG_TYPE_UNKNOWN;
-    }
-
-  return (bgpwatcher_msg_type_t)type;
-}
-
-bgpwatcher_msg_type_t bgpwatcher_msg_type(zmsg_t *msg, int peek)
-{
-  zframe_t *frame;
-  bgpwatcher_msg_type_t type;
-
-  /* first frame should be our type */
-  if(peek == 0)
-    {
-      if((frame = zmsg_pop(msg)) == NULL)
-	{
-	  return BGPWATCHER_MSG_TYPE_UNKNOWN;
-	}
-    }
-  else
-    {
-      if((frame = zmsg_first(msg)) == NULL)
-	{
-	  return BGPWATCHER_MSG_TYPE_UNKNOWN;
-	}
-    }
-
-  type = bgpwatcher_msg_type_frame(frame);
-
-  if(peek == 0)
-    {
-      zframe_destroy(&frame);
-    }
-
-  return type;
-}
 
 bgpwatcher_msg_type_t bgpwatcher_recv_type(void *src)
 {
@@ -253,28 +188,6 @@ bgpwatcher_msg_type_t bgpwatcher_recv_type(void *src)
     }
 
   return type;
-}
-
-bgpwatcher_data_msg_type_t bgpwatcher_data_msg_type(zmsg_t *msg)
-{
-  zframe_t *frame;
-  uint8_t type;
-
-  /* first frame should be our type */
-  if((frame = zmsg_pop(msg)) == NULL)
-    {
-      return BGPWATCHER_DATA_MSG_TYPE_UNKNOWN;
-    }
-
-  if((type = *zframe_data(frame)) > BGPWATCHER_DATA_MSG_TYPE_MAX)
-    {
-      zframe_destroy(&frame);
-      return BGPWATCHER_DATA_MSG_TYPE_UNKNOWN;
-    }
-
-  zframe_destroy(&frame);
-
-  return (bgpwatcher_data_msg_type_t)type;
 }
 
 bgpwatcher_data_msg_type_t bgpwatcher_recv_data_type(void *src)
@@ -295,29 +208,25 @@ bgpwatcher_data_msg_type_t bgpwatcher_recv_data_type(void *src)
 
 /* ========== PREFIX TABLES ========== */
 
-zmsg_t *bgpwatcher_pfx_table_msg_create(bgpwatcher_pfx_table_t *table)
+int bgpwatcher_pfx_table_send(void *dest, bgpwatcher_pfx_table_t *table)
 {
-  zmsg_t *msg = NULL;
-
   /* prepare the common table headers */
-  if((msg =
-      table_msg_create(BGPWATCHER_TABLE_TYPE_PREFIX,
-                       table->time, table->collector)) == NULL)
+  if(send_table(dest, BGPWATCHER_TABLE_TYPE_PREFIX,
+		table->time, table->collector, ZMQ_SNDMORE) != 0)
     {
       goto err;
     }
 
   /* peer ip */
-  if(bgpwatcher_msg_addip(msg, &table->peer_ip) != 0)
+  if(send_ip(dest, &table->peer_ip, 0) != 0)
     {
       goto err;
     }
 
-  return msg;
+  return 0;
 
  err:
-  zmsg_destroy(&msg);
-  return NULL;
+  return 0;
 }
 
 int bgpwatcher_pfx_table_recv(void *src, bgpwatcher_pfx_table_t *table)
@@ -391,10 +300,9 @@ void bgpwatcher_pfx_table_dump(bgpwatcher_pfx_table_t *table)
 
 /* ========== PREFIX RECORDS ========== */
 
-int bgpwatcher_pfx_record_send(void *dest,
-                               bgpstream_prefix_t *prefix,
-                               uint32_t orig_asn,
-                               int sendmore)
+int bgpwatcher_pfx_send(void *dest,
+			bgpstream_prefix_t *prefix,
+			uint32_t orig_asn)
 {
   uint32_t n32;
 
@@ -413,7 +321,7 @@ int bgpwatcher_pfx_record_send(void *dest,
 
   /* orig asn */
   n32 = htonl(orig_asn);
-  if(zmq_send(dest, &n32, sizeof(uint32_t), sendmore)
+  if(zmq_send(dest, &n32, sizeof(uint32_t), 0)
      != sizeof(uint32_t))
     {
       goto err;
@@ -465,8 +373,8 @@ int bgpwatcher_pfx_recv(void *src, bgpstream_prefix_t *pfx_out,
   return -1;
 }
 
-void bgpwatcher_pfx_record_dump(bgpstream_prefix_t *prefix,
-                                uint32_t orig_asn)
+void bgpwatcher_pfx_dump(bgpstream_prefix_t *prefix,
+			 uint32_t orig_asn)
 {
   char pfx_str[INET6_ADDRSTRLEN] = "";
 
@@ -497,23 +405,19 @@ void bgpwatcher_pfx_record_dump(bgpstream_prefix_t *prefix,
 
 /* ========== PEER TABLES ========== */
 
-zmsg_t *bgpwatcher_peer_table_msg_create(bgpwatcher_peer_table_t *table)
+int bgpwatcher_peer_table_send(void *dest, bgpwatcher_peer_table_t *table)
 {
-  zmsg_t *msg = NULL;
-
   /* prepare the common table headers */
-  if((msg =
-      table_msg_create(BGPWATCHER_TABLE_TYPE_PEER,
-                       table->time, table->collector)) == NULL)
+  if(send_table(dest, BGPWATCHER_TABLE_TYPE_PEER,
+		table->time, table->collector, 0) != 0)
     {
       goto err;
     }
 
-  return msg;
+  return 0;
 
  err:
-  zmsg_destroy(&msg);
-  return NULL;
+  return -1;
 }
 
 int bgpwatcher_peer_table_recv(void *src, bgpwatcher_peer_table_t *table)
@@ -567,33 +471,25 @@ void bgpwatcher_peer_table_dump(bgpwatcher_peer_table_t *table)
 
 /* ========== PEER RECORDS ========== */
 
-zmsg_t *bgpwatcher_peer_msg_create(bgpstream_ip_address_t *peer_ip,
-                                   uint8_t status)
+int bgpwatcher_peer_send(void *dest, bgpstream_ip_address_t *peer_ip,
+			 uint8_t status)
 {
-  zmsg_t *msg = NULL;
-
-  if((msg = zmsg_new()) == NULL)
-    {
-      goto err;
-    }
-
   /* peer ip */
-  if(bgpwatcher_msg_addip(msg, peer_ip) != 0)
+  if(send_ip(dest, peer_ip, ZMQ_SNDMORE) != 0)
     {
       goto err;
     }
 
   /* status */
-  if(zmsg_addmem(msg, &status, sizeof(status)) != 0)
+  if(zmq_send(dest, &status, sizeof(status), 0) != sizeof(status))
     {
       goto err;
     }
 
-  return msg;
+  return 0;
 
  err:
-  zmsg_destroy(&msg);
-  return NULL;
+  return -1;
 }
 
 int bgpwatcher_peer_recv(void *src, bgpstream_ip_address_t *peer_ip_out,
