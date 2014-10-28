@@ -66,6 +66,74 @@ static int send_ip(void *dest, bgpstream_ip_address_t *ip, int flags)
   return 0;
 }
 
+static int recv_ip(void *src, bgpstream_ip_address_t *ip)
+{
+  zmq_msg_t llm;
+  assert(ip != NULL);
+
+  if(zmq_msg_init(&llm) == -1 || zmq_msg_recv(&llm, src, 0) == -1)
+    {
+      goto err;
+    }
+
+  /* 4 bytes means ipv4, 16 means ipv6 */
+  if(zmq_msg_size(&llm) == sizeof(uint32_t))
+    {
+      /* v4 */
+      ip->type = BST_IPV4;
+      memcpy(&ip->address.v4_addr.s_addr,
+	     zmq_msg_data(&llm),
+	     sizeof(uint32_t));
+    }
+  else if(zmq_msg_size(&llm) == sizeof(uint8_t)*16)
+    {
+      /* v6 */
+      ip->type = BST_IPV6;
+      memcpy(&ip->address.v6_addr.s6_addr,
+	     zmq_msg_data(&llm),
+	     sizeof(uint8_t)*16);
+    }
+  else
+    {
+      /* invalid ip address */
+      fprintf(stderr, "Invalid IP address\n");
+      goto err;
+    }
+
+  zmq_msg_close(&llm);
+  return 0;
+
+ err:
+  zmq_msg_close(&llm);
+  return -1;
+}
+
+static char *recv_str(void *src)
+{
+  zmq_msg_t llm;
+  size_t len;
+  char *str = NULL;
+
+  if(zmq_msg_init(&llm) == -1 || zmq_msg_recv(&llm, src, 0) == -1)
+    {
+      goto err;
+    }
+  len = zmq_msg_size(&llm);
+  if((str = malloc(len + 1)) == NULL)
+    {
+      goto err;
+    }
+  memcpy(str, zmq_msg_data(&llm), len);
+  str[len] = '\0';
+  zmq_msg_close(&llm);
+
+  return str;
+
+ err:
+  free(str);
+  return NULL;
+}
+
 static zmsg_t *table_msg_create(bgpwatcher_table_type_t type,
                                 uint32_t time,
                                 const char *collector)
@@ -124,51 +192,6 @@ int bgpwatcher_msg_addip(zmsg_t *msg, bgpstream_ip_address_t *ip)
     }
 
   return rc;
-}
-
-int bgpwatcher_msg_popip(zmsg_t *msg,
-                         bgpstream_ip_address_t *ip)
-{
-  zframe_t *frame;
-  assert(ip != NULL);
-
-  if((frame = zmsg_pop(msg)) == NULL)
-    {
-      goto err;
-    }
-
-  /* 4 bytes means ipv4, 16 means ipv6 */
-  if(zframe_size(frame) == sizeof(uint32_t))
-    {
-      /* v4 */
-      ip->type = BST_IPV4;
-      memcpy(&ip->address.v4_addr.s_addr,
-	     zframe_data(frame),
-	     sizeof(uint32_t));
-    }
-  else if(zframe_size(frame) == sizeof(uint8_t)*16)
-    {
-      /* v6 */
-      ip->type = BST_IPV6;
-      memcpy(&ip->address.v6_addr.s6_addr,
-	     zframe_data(frame),
-	     sizeof(uint8_t)*16);
-    }
-  else
-    {
-      /* invalid ip address */
-      fprintf(stderr, "Invalid IP address\n");
-      zframe_print(frame, NULL);
-      goto err;
-    }
-
-  zframe_destroy(&frame);
-  return 0;
-
- err:
-  free(ip);
-  zframe_destroy(&frame);
-  return -1;
 }
 
 
@@ -254,6 +277,20 @@ bgpwatcher_data_msg_type_t bgpwatcher_data_msg_type(zmsg_t *msg)
   return (bgpwatcher_data_msg_type_t)type;
 }
 
+bgpwatcher_data_msg_type_t bgpwatcher_recv_data_type(void *src)
+{
+  bgpwatcher_data_msg_type_t type = BGPWATCHER_DATA_MSG_TYPE_UNKNOWN;
+
+  if((zmq_recv(src, &type, bgpwatcher_data_msg_type_size_t, 0)
+      != bgpwatcher_data_msg_type_size_t) ||
+     (type > BGPWATCHER_DATA_MSG_TYPE_MAX))
+    {
+      return BGPWATCHER_DATA_MSG_TYPE_UNKNOWN;
+    }
+
+  return type;
+}
+
 
 
 /* ========== PREFIX TABLES ========== */
@@ -283,29 +320,33 @@ zmsg_t *bgpwatcher_pfx_table_msg_create(bgpwatcher_pfx_table_t *table)
   return NULL;
 }
 
-int bgpwatcher_pfx_table_msg_deserialize(zmsg_t *msg,
-                                         bgpwatcher_pfx_table_t *table)
+int bgpwatcher_pfx_table_recv(void *src, bgpwatcher_pfx_table_t *table)
 {
-  zframe_t *frame;
-
   /* time */
-  if((frame = zmsg_pop(msg)) == NULL ||
-     zframe_size(frame) != sizeof(table->time))
+  if(zmq_recv(src, &table->time, sizeof(table->time), 0) != sizeof(table->time))
     {
       goto err;
     }
-  memcpy(&table->time, zframe_data(frame), sizeof(table->time));
   table->time = ntohl(table->time);
-  zframe_destroy(&frame);
+
+  if(zsocket_rcvmore(src) == 0)
+    {
+      goto err;
+    }
 
   /* collector */
-  if((table->collector = zmsg_popstr(msg)) == NULL)
+  if((table->collector = recv_str(src)) == NULL)
+    {
+      goto err;
+    }
+
+  if(zsocket_rcvmore(src) == 0)
     {
       goto err;
     }
 
   /* ip */
-  if(bgpwatcher_msg_popip(msg, &(table->peer_ip)) != 0)
+  if(recv_ip(src, &(table->peer_ip)) != 0)
     {
       goto err;
     }
@@ -313,7 +354,6 @@ int bgpwatcher_pfx_table_msg_deserialize(zmsg_t *msg,
   return 0;
 
  err:
-  zframe_destroy(&frame);
   return -1;
 }
 
@@ -384,41 +424,43 @@ int bgpwatcher_pfx_record_send(void *dest,
   return -1;
 }
 
-int bgpwatcher_pfx_msg_deserialize(zmsg_t *msg,
-                                   bgpstream_prefix_t *pfx_out,
-                                   uint32_t *orig_asn_out)
+int bgpwatcher_pfx_recv(void *src, bgpstream_prefix_t *pfx_out,
+			uint32_t *orig_asn_out)
 {
-  zframe_t *frame;
-
   /* prefix */
-  if(bgpwatcher_msg_popip(msg, &(pfx_out->number)) != 0)
+  if(recv_ip(src, &(pfx_out->number)) != 0)
+    {
+      goto err;
+    }
+
+  if(zsocket_rcvmore(src) == 0)
     {
       goto err;
     }
 
   /* pfx len */
-  if((frame = zmsg_pop(msg)) == NULL ||
-     zframe_size(frame) != sizeof(pfx_out->len))
+  if(zmq_recv(src, &pfx_out->len, sizeof(pfx_out->len), 0)
+     != sizeof(pfx_out->len))
     {
       goto err;
     }
-  pfx_out->len = *zframe_data(frame);
-  zframe_destroy(&frame);
+
+  if(zsocket_rcvmore(src) == 0)
+    {
+      goto err;
+    }
 
   /* orig asn */
-  if((frame = zmsg_pop(msg)) == NULL ||
-     zframe_size(frame) != sizeof(*orig_asn_out))
+  if(zmq_recv(src, orig_asn_out, sizeof(*orig_asn_out), 0)
+     != sizeof(*orig_asn_out))
     {
       goto err;
     }
-  memcpy(orig_asn_out, zframe_data(frame), sizeof(*orig_asn_out));
   *orig_asn_out = ntohl(*orig_asn_out);
-  zframe_destroy(&frame);
 
   return 0;
 
  err:
-  zframe_destroy(&frame);
   return -1;
 }
 
@@ -473,23 +515,22 @@ zmsg_t *bgpwatcher_peer_table_msg_create(bgpwatcher_peer_table_t *table)
   return NULL;
 }
 
-int bgpwatcher_peer_table_msg_deserialize(zmsg_t *msg,
-                                          bgpwatcher_peer_table_t *table)
+int bgpwatcher_peer_table_recv(void *src, bgpwatcher_peer_table_t *table)
 {
-  zframe_t *frame;
-
   /* time */
-  if((frame = zmsg_pop(msg)) == NULL ||
-     zframe_size(frame) != sizeof(table->time))
+  if(zmq_recv(src, &table->time, sizeof(table->time), 0) != sizeof(table->time))
     {
       goto err;
     }
-  memcpy(&table->time, zframe_data(frame), sizeof(table->time));
   table->time = ntohl(table->time);
-  zframe_destroy(&frame);
+
+  if(zsocket_rcvmore(src) == 0)
+    {
+      goto err;
+    }
 
   /* collector */
-  if((table->collector = zmsg_popstr(msg)) == NULL)
+  if((table->collector = recv_str(src)) == NULL)
     {
       goto err;
     }
@@ -497,7 +538,6 @@ int bgpwatcher_peer_table_msg_deserialize(zmsg_t *msg,
   return 0;
 
  err:
-  zframe_destroy(&frame);
   return -1;
 }
 
@@ -554,31 +594,24 @@ zmsg_t *bgpwatcher_peer_msg_create(bgpstream_ip_address_t *peer_ip,
   return NULL;
 }
 
-int bgpwatcher_peer_msg_deserialize(zmsg_t *msg,
-                                    bgpstream_ip_address_t *peer_ip_out,
-                                    uint8_t *status_out)
+int bgpwatcher_peer_recv(void *src, bgpstream_ip_address_t *peer_ip_out,
+			 uint8_t *status_out)
 {
-  zframe_t *frame;
-
   /* peer ip */
-  if(bgpwatcher_msg_popip(msg, peer_ip_out) != 0)
+  if(recv_ip(src, peer_ip_out) != 0)
     {
       goto err;
     }
 
   /* status */
-  if((frame = zmsg_pop(msg)) == NULL ||
-     zframe_size(frame) != sizeof(*status_out))
+  if(zmq_recv(src, status_out, sizeof(*status_out), 0) != sizeof(*status_out))
     {
       goto err;
     }
-  *status_out = *zframe_data(frame);
-  zframe_destroy(&frame);
 
   return 0;
 
  err:
-  zframe_destroy(&frame);
   return -1;
 }
 

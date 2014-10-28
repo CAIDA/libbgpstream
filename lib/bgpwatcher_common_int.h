@@ -185,15 +185,6 @@ typedef enum {
 /** @deprecated */
 int bgpwatcher_msg_addip(zmsg_t *msg, bgpstream_ip_address_t *ip);
 
-/** Extracts a BGP Stream IP address from the given message
- *
- * @param msg           pointer to an initialized zmsg
- * @param ip            pointer to an ip address to fill
- * @return 0 if the address was successfully extracted, -1 otherwise
- */
-int bgpwatcher_msg_popip(zmsg_t *msg,
-                         bgpstream_ip_address_t *ip);
-
 
 
 /* ========== MESSAGE TYPES ========== */
@@ -234,6 +225,14 @@ bgpwatcher_msg_type_t bgpwatcher_msg_type(zmsg_t *msg, int peek);
  */
 bgpwatcher_data_msg_type_t bgpwatcher_data_msg_type(zmsg_t *msg);
 
+/** Receives one message from the given socket and decodes as data message type
+ *
+ * @param src           socket to receive on
+ * @return the type of the message, or BGPWATCHER_REQ_MSG_TYPE_UNKNOWN if an
+ *         error occurred
+ */
+bgpwatcher_data_msg_type_t bgpwatcher_recv_data_type(void *src);
+
 
 
 /* ========== PREFIX TABLES ========== */
@@ -249,12 +248,11 @@ zmsg_t *bgpwatcher_pfx_table_msg_create(bgpwatcher_pfx_table_t *table);
 
 /** Deserialize a prefix table message into provided memory
  *
- * @param      msg           pointer to the message to deserialize
+ * @param      src           pointer to socket to receive on
  * @param[out] table         pointer to a prefix table structure to fill
  * @return 0 if the information was deserialized successfully, -1 otherwise
  */
-int bgpwatcher_pfx_table_msg_deserialize(zmsg_t *msg,
-                                         bgpwatcher_pfx_table_t *table);
+int bgpwatcher_pfx_table_recv(void *src, bgpwatcher_pfx_table_t *table);
 
 /** Dump the given prefix row information to stdout
  *
@@ -282,14 +280,13 @@ int bgpwatcher_pfx_record_send(void *dest,
 
 /** Deserialize a prefix message into provided memory
  *
- * @param      msg           pointer to the message to deserialize
+ * @param      src           pointer to socket to receive on
  * @param[out] pfx_out       pointer to a prefix structure to fill
  * @param[out] orig_asn_out  pointer to memory to fill with orig_asn
  * @return 0 if the information was deserialized successfully, -1 otherwise
  */
-int bgpwatcher_pfx_msg_deserialize(zmsg_t *msg,
-                                   bgpstream_prefix_t *pfx_out,
-                                   uint32_t *orig_asn_out);
+int bgpwatcher_pfx_recv(void *src, bgpstream_prefix_t *pfx_out,
+			uint32_t *orig_asn_out);
 
 /** Dump the given prefix row information to stdout
  *
@@ -314,12 +311,11 @@ zmsg_t *bgpwatcher_peer_table_msg_create(bgpwatcher_peer_table_t *table);
 
 /** Deserialize a peer table message into provided memory
  *
- * @param      msg           pointer to the message to deserialize
+ * @param      src           pointer to socket to receive on
  * @param[out] table         pointer to a peer table structure to fill
  * @return 0 if the information was deserialized successfully, -1 otherwise
  */
-int bgpwatcher_peer_table_msg_deserialize(zmsg_t *msg,
-                                          bgpwatcher_peer_table_t *table);
+int bgpwatcher_peer_table_recv(void *src, bgpwatcher_peer_table_t *table);
 
 /** Dump the given peer row information to stdout
  *
@@ -342,14 +338,13 @@ zmsg_t *bgpwatcher_peer_msg_create(bgpstream_ip_address_t *peer_ip,
 
 /** Deserialize a peer message into provided memory
  *
- * @param      msg           pointer to the message to deserialize
+ * @param      src           pointer to socket to receive on
  * @param[out] peer_ip_out   pointer to an ip structure to fill
  * @param[out] status_out    pointer to memory to fill with status code
  * @return 0 if the information was deserialized successfully, -1 otherwise
  */
-int bgpwatcher_peer_msg_deserialize(zmsg_t *msg,
-                                    bgpstream_ip_address_t *peer_ip_out,
-                                    uint8_t *status_out);
+int bgpwatcher_peer_recv(void *src, bgpstream_ip_address_t *peer_ip_out,
+			 uint8_t *status_out);
 
 /** Dump the given peer record information to stdout
  *
