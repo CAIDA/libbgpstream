@@ -135,10 +135,10 @@ AX_LIB_SOCKET_NSL
 
 
 # Checks for libraries.
-AC_CHECK_LIB([bgpstream], [bgpstream_create], ,[AC_MSG_ERROR(
-		      [libbgpstream required])])
 AC_CHECK_LIB([bgpdump], [bgpdump_read_next], ,
 	               [AC_MSG_ERROR( [libbgpdump required ])])
+AC_CHECK_LIB([bgpstream], [bgpstream_create], ,[AC_MSG_ERROR(
+		      [libbgpstream required])])
 AC_SEARCH_LIBS([wandio_create], [wandio trace], ,[AC_MSG_ERROR(
 		 [libwandio required (included with libtrace since 3.0.15)]
 		 )])
