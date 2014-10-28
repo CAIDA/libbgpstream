@@ -119,7 +119,7 @@ int bgpstream_prefix_ipv6_hash_equal(bgpstream_prefix_t prefix1,
 {
   assert(prefix1.number.type == BST_IPV6); // check type is ipv6
   assert(prefix2.number.type == BST_IPV6); // check type is ipv6
-  return memcmp(&prefix1,&prefix2, sizeof(bgpstream_ip_address_t));
+  return (memcmp(&prefix1,&prefix2, sizeof(bgpstream_prefix_t)) == 0);
 }
 
 
