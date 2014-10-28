@@ -65,7 +65,6 @@ static void reset_heartbeat_liveness(bgpwatcher_client_broker_t *broker)
 static int server_connect(bgpwatcher_client_broker_t *broker)
 {
   uint8_t msg_type_p;
-  zframe_t *frame;
 
   /* connect to server socket */
   if((broker->server_socket = zsocket_new(CFG->ctx, ZMQ_DEALER)) == NULL)
@@ -95,14 +94,7 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
     }
 
   msg_type_p = BGPWATCHER_MSG_TYPE_READY;
-  if((frame = zframe_new(&msg_type_p, 1)) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Could not create new client-ready frame");
-      return -1;
-    }
-
-  if(zframe_send(&frame, broker->server_socket, ZFRAME_MORE) == -1)
+  if(zmq_send(broker->server_socket, &msg_type_p, 1, ZMQ_SNDMORE) == -1)
     {
       bgpwatcher_err_set_err(ERR, errno,
 			     "Could not send ready msg to server");
@@ -110,13 +102,7 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
     }
 
   /* send our interests */
-  if((frame = zframe_new(&CFG->interests, 1)) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Could not create new client interests frame");
-      return -1;
-    }
-  if(zframe_send(&frame, broker->server_socket, ZFRAME_MORE) == -1)
+  if(zmq_send(broker->server_socket, &CFG->interests, 1, ZMQ_SNDMORE) == -1)
     {
       bgpwatcher_err_set_err(ERR, errno,
 			     "Could not send ready msg to server");
@@ -124,13 +110,7 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
     }
 
   /* send our interests */
-  if((frame = zframe_new(&CFG->intents, 1)) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Could not create new client intents frame");
-      return -1;
-    }
-  if(zframe_send(&frame, broker->server_socket, 0) == -1)
+  if(zmq_send(broker->server_socket, &CFG->intents, 1, 0) == -1)
     {
       bgpwatcher_err_set_err(ERR, errno,
 			     "Could not send ready msg to server");
@@ -157,18 +137,10 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
 static int server_disconnect(bgpwatcher_client_broker_t *broker)
 {
   uint8_t msg_type_p = BGPWATCHER_MSG_TYPE_TERM;
-  zframe_t *frame;
 
   fprintf(stderr, "DEBUG: broker sending TERM\n");
 
-  if((frame = zframe_new(&msg_type_p, 1)) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Could not create new client-term frame");
-      return -1;
-    }
-
-  if(zframe_send(&frame, broker->server_socket, 0) == -1)
+  if(zmq_send(broker->server_socket, &msg_type_p, 1, 0) == -1)
     {
       bgpwatcher_err_set_err(ERR, errno,
 			     "Could not send ready msg to server");
@@ -381,7 +353,6 @@ static int handle_heartbeat_timer(zloop_t *loop, int timer_id, void *arg)
 {
   bgpwatcher_client_broker_t *broker = (bgpwatcher_client_broker_t*)arg;
 
-  zframe_t *frame = NULL;
   uint8_t msg_type_p;
 
   if(is_shutdown_time(broker) != 0)
@@ -418,14 +389,7 @@ static int handle_heartbeat_timer(zloop_t *loop, int timer_id, void *arg)
   if(zclock_time() > broker->heartbeat_next)
     {
       msg_type_p = BGPWATCHER_MSG_TYPE_HEARTBEAT;
-      if((frame = zframe_new(&msg_type_p, 1)) == NULL)
-	{
-	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-				 "Could not create new heartbeat frame");
-	  goto err;
-	}
-
-      if(zframe_send(&frame, broker->server_socket, 0) == -1)
+      if(zmq_send(broker->server_socket, &msg_type_p, 1, 0) == -1)
 	{
 	  bgpwatcher_err_set_err(ERR, errno,
 				 "Could not send heartbeat msg to server");
@@ -440,11 +404,9 @@ static int handle_heartbeat_timer(zloop_t *loop, int timer_id, void *arg)
       return -1;
     }
 
-  zframe_destroy(&frame);
   return 0;
 
  err:
-  zframe_destroy(&frame);
   return -1;
 }
 
