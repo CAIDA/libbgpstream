@@ -139,8 +139,8 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
  *        -1 if something went wrong during the function execution
  */
 int peerdata_interval_end(char *project_str, char *collector_str,
-			  bgpstream_ip_address_t * peer_address, peerdata_t *peer_data,
-			  aggregated_bgp_stats_t * collector_aggr_stats,
+			  bgpstream_ip_address_t *peer_address, peerdata_t *peer_data,
+			  aggregated_bgp_stats_t *collector_aggr_stats,
 			  bw_client_t *bw_client,
 			  int interval_start);
 #else
@@ -157,8 +157,8 @@ int peerdata_interval_end(char *project_str, char *collector_str,
  *        -1 if something went wrong during the function execution
  */
 int peerdata_interval_end(char *project_str, char *collector_str,
-			  bgpstream_ip_address_t peer_address, peerdata_t *peer_data,
-			  aggregated_bgp_stats_t * collector_aggr_stats,
+			  bgpstream_ip_address_t *peer_address, peerdata_t *peer_data,
+			  aggregated_bgp_stats_t *collector_aggr_stats,
 			  int interval_start);
 #endif
 

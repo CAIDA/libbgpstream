@@ -326,7 +326,7 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 				   collector_aggr_stats, bw_client, interval_start) < 0)
 #else
 	  if(peerdata_interval_end(project_str, collector_str, 
-				   peer_address, peer_data, 
+				   &peer_address, peer_data, 
 				   collector_aggr_stats, interval_start) < 0)
 #endif
 	    {
