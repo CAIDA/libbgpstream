@@ -45,7 +45,7 @@
 /** The maximum number of requests that we allow to be outstanding at any time */
 #define MAX_OUTSTANDING_REQ 100000
 
-#define BGPWATCHER_CLIENT_BROKER_REQ_MSG_FRAMES_MAX 10
+#define BGPWATCHER_CLIENT_BROKER_REQ_MSG_FRAMES_MAX 5
 
 /**
  * @name Public Enums
