@@ -599,7 +599,7 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
                                      "Could not create llm");
               goto err;
             }
-          if(zmq_recvmsg(broker->master_zocket, llm, 0) == -1)
+          if(zmq_msg_recv(llm, broker->master_zocket, 0) == -1)
             {
               goto interrupt;
             }
