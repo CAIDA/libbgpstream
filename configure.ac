@@ -123,6 +123,7 @@ AC_CONFIG_FILES([Makefile
 		common/Makefile
 		common/libpatricia/Makefile
 		common/libcsv/Makefile
+		bgpcommon/Makefile
 		lib/Makefile
 		lib/libbgpstore/Makefile
 		tools/Makefile

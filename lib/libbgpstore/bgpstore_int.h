@@ -40,7 +40,7 @@
 KHASH_INIT(timebgpview, uint32_t, bgpview_t*, 1,
 	   kh_int_hash_func, kh_int_hash_equal);
 
-/** The client status is a structur that maintains
+/** The client status is a structure that maintains
  *  the interests of each client, i.e.: which data
  *  is the client interested as a consumer, and
  *  which data is the client interested as a 
