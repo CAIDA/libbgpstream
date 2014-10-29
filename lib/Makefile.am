@@ -51,6 +51,7 @@ libbgpwatcher_la_SOURCES = 		\
 	bgpwatcher_server.h		\
 	bgpwatcher_server.c
 
+
 libbgpwatcher_la_LIBADD = $(top_builddir)/common/libcccommon.la \
                           $(top_builddir)/bgpcommon/libbl.la \
 			  $(top_builddir)/lib/libbgpstore/libbgpstore.la

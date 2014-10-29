@@ -172,6 +172,9 @@ typedef struct bgpwatcher_client_broker {
   /** Pointer to the pipe used to talk to the master */
   zsock_t *master_pipe;
 
+  /** Pointer to the resolved zmq socket used to talk to the master */
+  void *master_zocket;
+
   /** Has the master pipe been removed from the reactor? */
   int master_removed;
 

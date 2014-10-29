@@ -42,6 +42,30 @@ static void *get_in_addr(bgpstream_ip_address_t *ip) {
     : (void *) &(ip->address.v6_addr);
 }
 
+static int send_ip(void *dest, bgpstream_ip_address_t *ip, int flags)
+{
+  switch(ip->type)
+    {
+    case BST_IPV4:
+      if(zmq_send(dest, &ip->address.v4_addr.s_addr,
+                  sizeof(uint32_t), flags) == sizeof(uint32_t))
+        {
+          return 0;
+        }
+      break;
+
+    case BST_IPV6:
+      if(zmq_send(dest, &ip->address.v6_addr.s6_addr,
+                  (sizeof(uint8_t)*16), flags) == sizeof(uint8_t)*16)
+        {
+          return 0;
+        }
+      break;
+    }
+
+  return 0;
+}
+
 static zmsg_t *table_msg_create(bgpwatcher_table_type_t type,
                                 uint32_t time,
                                 const char *collector)
@@ -84,6 +108,7 @@ static zmsg_t *table_msg_create(bgpwatcher_table_type_t type,
 
 /* ========== UTILITIES ========== */
 
+/** @deprecated */
 int bgpwatcher_msg_addip(zmsg_t *msg, bgpstream_ip_address_t *ip)
 {
   int rc = -1;
@@ -188,6 +213,20 @@ bgpwatcher_msg_type_t bgpwatcher_msg_type(zmsg_t *msg, int peek)
   if(peek == 0)
     {
       zframe_destroy(&frame);
+    }
+
+  return type;
+}
+
+bgpwatcher_msg_type_t bgpwatcher_recv_type(void *src)
+{
+  bgpwatcher_msg_type_t type = BGPWATCHER_MSG_TYPE_UNKNOWN;
+
+  if((zmq_recv(src, &type, bgpwatcher_msg_type_size_t, 0)
+      != bgpwatcher_msg_type_size_t) ||
+     (type > BGPWATCHER_MSG_TYPE_MAX))
+    {
+      return BGPWATCHER_MSG_TYPE_UNKNOWN;
     }
 
   return type;
@@ -311,41 +350,38 @@ void bgpwatcher_pfx_table_dump(bgpwatcher_pfx_table_t *table)
 
 /* ========== PREFIX RECORDS ========== */
 
-zmsg_t *bgpwatcher_pfx_msg_create(bgpstream_prefix_t *prefix,
-                                  uint32_t orig_asn)
+int bgpwatcher_pfx_record_send(void *dest,
+                               bgpstream_prefix_t *prefix,
+                               uint32_t orig_asn,
+                               int sendmore)
 {
-  zmsg_t *msg = NULL;
   uint32_t n32;
 
-  if((msg = zmsg_new()) == NULL)
-    {
-      goto err;
-    }
-
   /* prefix */
-  if(bgpwatcher_msg_addip(msg, &prefix->number) != 0)
+  if(send_ip(dest, &prefix->number, ZMQ_SNDMORE) != 0)
     {
       goto err;
     }
 
   /* length */
-  if(zmsg_addmem(msg, &prefix->len, sizeof(prefix->len)) != 0)
+  if(zmq_send(dest, &prefix->len, sizeof(prefix->len), ZMQ_SNDMORE)
+     != sizeof(prefix->len))
     {
       goto err;
     }
 
   /* orig asn */
   n32 = htonl(orig_asn);
-  if(zmsg_addmem(msg, &n32, sizeof(uint32_t)) != 0)
+  if(zmq_send(dest, &n32, sizeof(uint32_t), sendmore)
+     != sizeof(uint32_t))
     {
       goto err;
     }
 
-  return msg;
+  return 0;
 
  err:
-  zmsg_destroy(&msg);
-  return NULL;
+  return -1;
 }
 
 int bgpwatcher_pfx_msg_deserialize(zmsg_t *msg,

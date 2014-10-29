@@ -20,7 +20,7 @@
 TAGS
 
 # Compiled programs
-# ChangeLog
+ChangeLog
 *.tar.gz
 tools/bgpwatcher-server
 tools/bgpwatcher-test-client
