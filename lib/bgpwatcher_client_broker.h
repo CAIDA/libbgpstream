@@ -45,6 +45,8 @@
 /** The maximum number of requests that we allow to be outstanding at any time */
 #define MAX_OUTSTANDING_REQ 100000
 
+#define BGPWATCHER_CLIENT_BROKER_REQ_MSG_FRAMES_MAX 5
+
 /**
  * @name Public Enums
  *
@@ -93,18 +95,12 @@ typedef struct bgpwatcher_client_broker_req {
   uint8_t retries_remaining;
 
   /** Message to send to the server */
-  zlist_t *msg_frames;
+  zmq_msg_t msg_frames[BGPWATCHER_CLIENT_BROKER_REQ_MSG_FRAMES_MAX];
 
-  /** Has a reply been received? */
-  uint8_t reply_rx;
+  /** Number of used msg frames */
+  uint8_t msg_frames_cnt;
 
 } bgpwatcher_client_broker_req_t;
-
-#define req_hash_func(key) ((key)->seq_num)
-#define req_hash_equal(a, b) ((a)->seq_num == (b)->seq_num)
-
-KHASH_INIT(reqset, bgpwatcher_client_broker_req_t*, char, 0,
-	   req_hash_func, req_hash_equal);
 
 /** Config for the broker. Populated by the client */
 typedef struct bgpwatcher_client_broker_config {
@@ -172,14 +168,14 @@ typedef struct bgpwatcher_client_broker {
   /** Pointer to the pipe used to talk to the master */
   zsock_t *master_pipe;
 
+  /** Pointer to the resolved zmq socket used to talk to the master */
+  void *master_zocket;
+
   /** Has the master pipe been removed from the reactor? */
   int master_removed;
 
   /** Socket used to connect to the server */
   void *server_socket;
-
-  /** Hash of outstanding (un-acked) requests (used to look up replies) */
-  khash_t(reqset) *req_hash;
 
   /** Ordered list of outstanding requests (used for re-transmits) */
   zlist_t *req_list;

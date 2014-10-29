@@ -34,54 +34,49 @@
 #define ERR (&client->err)
 #define BCFG (client->broker_config)
 
-/* given a formed data message, push on the needed headers and send */
-int send_data_message(zmsg_t **msg_p,
-		      bgpwatcher_data_msg_type_t type,
-		      bgpwatcher_client_t *client)
+/* create and send headers for a data message */
+int send_data_hdrs(void *dest,
+                   bgpwatcher_data_msg_type_t type,
+                   bgpwatcher_client_t *client,
+                   seq_num_t *seq_num)
 {
   uint8_t type_b;
-  zmsg_t *msg = *msg_p;
-  seq_num_t seq_num = client->seq_num;
-  assert(msg != NULL);
-  *msg_p = NULL;
+  *seq_num = client->seq_num;
 
-  /* (working backward), we prepend the request type */
-  type_b = type;
-  if(zmsg_pushmem(msg, &type_b, bgpwatcher_data_msg_type_size_t) != 0)
+  type_b = BGPWATCHER_MSG_TYPE_DATA;
+
+  /* message type */
+  if(zmq_send(dest, &type_b, bgpwatcher_msg_type_size_t, ZMQ_SNDMORE)
+     != bgpwatcher_msg_type_size_t)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not add request type to message");
       goto err;
     }
 
-  /* now prepend the sequence number */
-  if(zmsg_pushmem(msg, &seq_num, sizeof(seq_num_t)) != 0)
+  /* sequence number */
+  if(zmq_send(dest, seq_num, sizeof(seq_num_t), ZMQ_SNDMORE)
+     != sizeof(seq_num_t))
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not add sequence number to message");
       goto err;
     }
 
-  type_b = BGPWATCHER_MSG_TYPE_DATA;
-  if(zmsg_pushmem(msg, &type_b, bgpwatcher_msg_type_size_t) != 0)
+  /* request type */
+  type_b = type;
+  if(zmq_send(dest, &type_b, bgpwatcher_data_msg_type_size_t, ZMQ_SNDMORE)
+     != bgpwatcher_data_msg_type_size_t)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not add request type to message");
       goto err;
     }
 
-  if(zmsg_send(&msg, client->broker) != 0)
-    {
-      bgpwatcher_err_set_err(ERR, errno,
-			     "Could not send data message to broker");
-      return -1;
-    }
-
   client->seq_num++;
-  return seq_num;
+  return 0;
 
  err:
-  zmsg_destroy(&msg);
   return -1;
 }
 
@@ -177,6 +172,10 @@ int bgpwatcher_client_start(bgpwatcher_client_t *client)
       return -1;
     }
 
+  /* store a pointer to the socket we will use to talk with the broker */
+  client->broker_zocket = zactor_resolve(client->broker);
+  assert(client->broker_zocket != NULL);
+
   return 0;
 }
 
@@ -218,12 +217,11 @@ void bgpwatcher_client_pfx_table_free(bgpwatcher_client_pfx_table_t **table_p)
 }
 
 int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_pfx_table_t *table,
-                                      const char *collector_name,
+                                      char *collector_name,
                                       bgpstream_ip_address_t *peer_ip,
 				      uint32_t time)
 {
-  zmsg_t *msg = NULL;
-  int rc;
+  seq_num_t seq;
   assert(table != NULL);
   assert(table->started == 0);
 
@@ -232,65 +230,74 @@ int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_pfx_table_t *table,
   table->info.collector = collector_name;
   table->info.peer_ip = *peer_ip;
 
-  if((msg = bgpwatcher_pfx_table_msg_create(&table->info)) == NULL)
+  if(send_data_hdrs(table->client->broker_zocket,
+                    BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN,
+                    table->client, &seq) != 0)
+    {
+      return -1;
+    }
+  table->started = 1;
+
+  if(bgpwatcher_pfx_table_send(table->client->broker_zocket,
+			       &table->info) != 0)
     {
       bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
-			     "Failed to serialize prefix table");
+			     "Failed to send prefix table");
       return -1;
     }
 
-  if((rc = send_data_message(&msg,
-                             BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN,
-                             table->client)) >= 0)
-    {
-      table->started = 1;
-    }
-
-  zmsg_destroy(&msg);
-  return rc;
+  return seq;
 }
 
 int bgpwatcher_client_pfx_table_add(bgpwatcher_client_pfx_table_t *table,
 				    bgpstream_prefix_t *prefix,
                                     uint32_t orig_asn)
 {
-  zmsg_t *msg;
-
   assert(table != NULL);
+  seq_num_t seq;
 
-  if((msg = bgpwatcher_pfx_msg_create(prefix, orig_asn)) == NULL)
+  if(send_data_hdrs(table->client->broker_zocket,
+                    BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD,
+                    table->client, &seq) != 0)
     {
-      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
-			     "Failed to serialize prefix record");
       return -1;
     }
 
-  return send_data_message(&msg, BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD,
-			   table->client);
+  if(bgpwatcher_pfx_send(table->client->broker_zocket,
+			 prefix, orig_asn) != 0)
+    {
+      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
+			     "Failed to send prefix record");
+      return -1;
+    }
+
+  return seq;
 }
 
 int bgpwatcher_client_pfx_table_end(bgpwatcher_client_pfx_table_t *table)
 {
+  seq_num_t seq;
   assert(table != NULL);
   assert(table->started == 1);
-  int rc;
-  zmsg_t *msg = NULL;
 
-  if((msg = bgpwatcher_pfx_table_msg_create(&table->info)) == NULL)
+  if(send_data_hdrs(table->client->broker_zocket,
+                    BGPWATCHER_DATA_MSG_TYPE_TABLE_END,
+                    table->client, &seq) != 0)
     {
-      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
-			     "Failed to serialize prefix table");
       return -1;
     }
 
-  if((rc = send_data_message(&msg, BGPWATCHER_DATA_MSG_TYPE_TABLE_END,
-                             table->client)) >= 0)
+  if(bgpwatcher_pfx_table_send(table->client->broker_zocket,
+			       &table->info) != 0)
     {
-      table->started = 0;
+      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
+			     "Failed to send prefix table");
+      return -1;
     }
 
-  zmsg_destroy(&msg);
-  return rc;
+  table->started = 0;
+
+  return seq;
 }
 
 bgpwatcher_client_peer_table_t *bgpwatcher_client_peer_table_create(
@@ -323,78 +330,85 @@ void bgpwatcher_client_peer_table_free(bgpwatcher_client_peer_table_t **table_p)
 }
 
 int bgpwatcher_client_peer_table_begin(bgpwatcher_client_peer_table_t *table,
-                                       const char *collector_name,
+                                       char *collector_name,
                                        uint32_t time)
 {
-  int rc;
-  zmsg_t *msg = NULL;
+  seq_num_t seq;
   assert(table != NULL);
   assert(table->started == 0);
 
   table->info.time = time;
   table->info.collector = collector_name;
 
-  if((msg = bgpwatcher_peer_table_msg_create(&table->info)) == NULL)
+  if(send_data_hdrs(table->client->broker_zocket,
+                    BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN,
+                    table->client, &seq) != 0)
+    {
+      return -1;
+    }
+  table->started = 1;
+
+  if(bgpwatcher_peer_table_send(table->client->broker_zocket,
+			       &table->info) != 0)
     {
       bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
-			     "Failed to serialize peer table");
+			     "Failed to send peer table");
       return -1;
     }
 
-  if((rc = send_data_message(&msg,
-                             BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN,
-                             table->client)) >= 0)
-    {
-      table->started = 1;
-    }
-
-  zmsg_destroy(&msg);
-  return rc;
+  return seq;
 }
 
 int bgpwatcher_client_peer_table_add(bgpwatcher_client_peer_table_t *table,
                                      bgpstream_ip_address_t *peer_ip,
                                      uint8_t status)
 {
-  zmsg_t *msg;
-
+  seq_num_t seq;
   assert(table != NULL);
   assert(peer_ip != NULL);
 
-  if((msg = bgpwatcher_peer_msg_create(peer_ip, status)) == NULL)
+  if(send_data_hdrs(table->client->broker_zocket,
+                    BGPWATCHER_DATA_MSG_TYPE_PEER_RECORD,
+                    table->client, &seq) != 0)
     {
-      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
-			     "Failed to serialize peer record");
       return -1;
     }
 
-  return send_data_message(&msg, BGPWATCHER_DATA_MSG_TYPE_PEER_RECORD,
-			   table->client);
+  if(bgpwatcher_peer_send(table->client->broker_zocket,
+			  peer_ip, status) != 0)
+    {
+      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
+			     "Failed to send peer record");
+      return -1;
+    }
+
+  return seq;
 }
 
 int bgpwatcher_client_peer_table_end(bgpwatcher_client_peer_table_t *table)
 {
+  seq_num_t seq;
   assert(table != NULL);
   assert(table->started == 1);
-  int rc;
-  zmsg_t *msg = NULL;
 
-  if((msg = bgpwatcher_peer_table_msg_create(&table->info)) == NULL)
+  if(send_data_hdrs(table->client->broker_zocket,
+                    BGPWATCHER_DATA_MSG_TYPE_TABLE_END,
+                    table->client, &seq) != 0)
     {
-      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
-			     "Failed to serialize peer table");
       return -1;
     }
 
-  if((rc = send_data_message(&msg,
-                             BGPWATCHER_DATA_MSG_TYPE_TABLE_END,
-                             table->client)) >= 0)
+  if(bgpwatcher_peer_table_send(table->client->broker_zocket,
+			       &table->info) != 0)
     {
-      table->started = 0;
+      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
+			     "Failed to send peer table");
+      return -1;
     }
 
-  zmsg_destroy(&msg);
-  return rc;
+  table->started = 0;
+
+  return seq;
 }
 
 void bgpwatcher_client_stop(bgpwatcher_client_t *client)
