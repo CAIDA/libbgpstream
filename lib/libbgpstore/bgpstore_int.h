@@ -28,11 +28,10 @@
 
 #include "bgpstore_lib.h"
 #include "bgpstore_bgpview.h"
-
 #include "bgpwatcher_common.h"
-
 #include "bgpstream_elem.h"
 
+#include "bl_bgp_utils.h"
 #include "khash.h"
 
 
@@ -57,9 +56,8 @@ KHASH_INIT(strclientstatus, char*, clientstatus_t , 1,
 	   kh_str_hash_func, kh_str_hash_equal);
 
 
-// TODO: change!!!!!
-KHASH_INIT(peerbsid, int, uint16_t, 1,
-	   kh_int_hash_func, kh_int_hash_equal); 
+KHASH_INIT(peerbsid, bl_addr_storage_t, uint16_t, 1,
+	   bl_addr_storage_hash_func, bl_addr_storage_hash_equal); 
 
 typedef struct struct_peeridtable_t {
   khash_t(peerbsid) *peer_bsid;
@@ -70,7 +68,7 @@ KHASH_INIT(collectorpeeridtable, char*, peeridtable_t, 1,
 
 typedef struct struct_collector_peer_t {
   char collector_str[BGPWATCHER_COLLECTOR_NAME_LEN];
-  bgpstream_ip_address_t peer_ip;
+  bl_addr_storage_t peer_ip_addr;
 } collector_peer_t;
 
 
@@ -87,7 +85,8 @@ struct bgpstore {
    *  its status.*/
   khash_t(strclientstatus) *active_clients;
   /**  id <-> (collector,peer) caches
-   *   These structures associate a numeric id to each
+   *   These structures associate a numeric id (a bpgstore 
+   *    id, aka bs_id, represented by a uint16) to each
    *   (collector,peer) pair. This identifier is shared
    *   by all the bgpviews and it is constant over time.
    *   Also, it enables faster lookup in the bgpview

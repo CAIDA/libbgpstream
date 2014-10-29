@@ -91,7 +91,9 @@ void bgpstore_destroy(bgpstore_t *bgp_store)
 	  kh_destroy(strclientstatus, bgp_store->active_clients);
 	  bgp_store->active_clients = NULL;
 	}
-      
+      // TODO destroy collectorpeer_bsid
+      // TODO destroy bsid_collectorpeer
+
       free(bgp_store);
 #ifdef DEBUG
       fprintf(stderr, "DEBUG: bgpstore destroyed\n");

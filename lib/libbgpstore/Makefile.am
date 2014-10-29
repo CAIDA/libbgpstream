@@ -23,7 +23,7 @@
 #
 
 AM_CPPFLAGS = -I$(top_srcdir)/common \
-              -I$(top_srcdir)/bpgcommon \
+              -I$(top_srcdir)/bgpcommon \
 	      -I$(top_srcdir)/lib
 
 noinst_LTLIBRARIES = libbgpstore.la

@@ -26,22 +26,121 @@
 
 #include "bgpstore_bgpview.h"
 
+static peerview_t* peerview_create()
+{
+  peerview_t *pv;
+  if((pv = malloc_zero(sizeof(peerview_t))) == NULL)
+    {
+      return NULL;
+    }
+  if((pv->peer_pfxview = kh_init(bsid_pfxview)) != NULL)
+    {
+      free(pv);
+      pv = NULL;
+    }
+  return pv;
+}
+
+
+static void peerview_destroy(peerview_t *pv)
+{
+  if(pv != NULL)
+    {
+      if(pv->peer_pfxview != NULL)
+	{
+	  kh_destroy(bsid_pfxview, pv->peer_pfxview);
+	  pv->peer_pfxview = NULL;
+	}
+      free(pv);
+    }
+}
+
+/* ###################################################### */
+/*          coll_status_t related functions               */
+/* ###################################################### */
+
+static void coll_status_destroy(coll_status_t *cs)
+{
+   if(cs != NULL)
+    {
+      if(cs->active_peer_ids_list != NULL)
+	{
+	  kh_destroy(id_set, cs->active_peer_ids_list);
+	  cs->active_peer_ids_list = NULL;
+	}
+      if(cs->inactive_peer_ids_list != NULL)
+	{
+	  kh_destroy(id_set, cs->inactive_peer_ids_list);
+	  cs->inactive_peer_ids_list = NULL;
+	}      
+      free(cs);
+    }
+}
+
+static coll_status_t *coll_status_create()
+{
+  coll_status_t *cs;
+  if((cs = malloc_zero(sizeof(coll_status_t))) == NULL)
+    {
+      return NULL;
+    }
+  if((cs->active_peer_ids_list = kh_init(id_set)) != NULL)
+    {
+      goto err;
+    }
+  if((cs->inactive_peer_ids_list = kh_init(id_set)) != NULL)
+    {
+      goto err;
+    }
+  return cs;
+
+ err:
+  coll_status_destroy(cs);
+  return NULL;
+}
+
+
+
 
 
 bgpview_t *bgpview_create()
 {
   bgpview_t *bgp_view;
-  // allocate memory for the structure
+
   if((bgp_view = malloc_zero(sizeof(bgpview_t))) == NULL)
     {
       return NULL;
     }
-  // init internal parameters
-  bgp_view->test = 0;
+
+  if((bgp_view->aggregated_pfxview_ipv4 = kh_init(aggr_pfxview_ipv4)) == NULL)
+    {
+      goto err;
+    }
+
+  if((bgp_view->aggregated_pfxview_ipv6 = kh_init(aggr_pfxview_ipv6)) == NULL)
+    {
+      goto err;
+    }
+
+  if((bgp_view->client_peertable_rcvd = kh_init(client_rcv_pt_cnt)) == NULL)
+    {
+      goto err;
+    }
+
+  if((bgp_view->collector_status = kh_init(collectorstr_status)) == NULL)
+    {
+      goto err;
+    }
+
+  if((bgp_view->peer_status = kh_init(id_status)) == NULL)
+    {
+      goto err;
+    }
 
   return bgp_view;
-
+    
  err:
+  fprintf(stderr, "Failed to create bgpstore bgpview\n");
   if(bgp_view != NULL)
     {
       bgpview_destroy(bgp_view);
@@ -54,6 +153,42 @@ void bgpview_destroy(bgpview_t *bgp_view)
 {
   if(bgp_view != NULL)
     {
+
+      if(bgp_view->aggregated_pfxview_ipv4 != NULL)
+	{
+	  kh_free_vals(aggr_pfxview_ipv4, bgp_view->aggregated_pfxview_ipv4,
+		       peerview_destroy);
+	  kh_destroy(aggr_pfxview_ipv4, bgp_view->aggregated_pfxview_ipv4);
+	  bgp_view->aggregated_pfxview_ipv4 = NULL;
+	}
+
+      if(bgp_view->aggregated_pfxview_ipv6 != NULL)
+	{
+	  kh_free_vals(aggr_pfxview_ipv6, bgp_view->aggregated_pfxview_ipv6,
+		       peerview_destroy);
+	  kh_destroy(aggr_pfxview_ipv6, bgp_view->aggregated_pfxview_ipv6);
+	  bgp_view->aggregated_pfxview_ipv6 = NULL;
+	}
+
+      if(bgp_view->client_peertable_rcvd != NULL)
+	{
+	  kh_destroy(client_rcv_pt_cnt, bgp_view->client_peertable_rcvd);
+	  bgp_view->client_peertable_rcvd = NULL;
+	}
+
+      if(bgp_view->collector_status != NULL)
+	{
+	  kh_free_vals(collectorstr_status, bgp_view->collector_status, coll_status_destroy);
+	  kh_destroy(collectorstr_status, bgp_view->collector_status);
+	  bgp_view->collector_status = NULL;
+	}
+      
+      if(bgp_view->peer_status != NULL)
+	{
+	  kh_destroy(id_status, bgp_view->peer_status);
+	  bgp_view->peer_status = NULL;
+	}
+
       free(bgp_view);
     }
 }
