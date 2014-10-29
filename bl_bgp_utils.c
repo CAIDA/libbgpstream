@@ -83,7 +83,6 @@ khint64_t bl_addr_storage_hash_func(bl_addr_storage_t ip)
 
 int bl_addr_storage_hash_equal(bl_addr_storage_t ip1, bl_addr_storage_t ip2)
 {
-  khint64_t h;
   if(ip1.version == BL_ADDR_IPV4 && ip2.version == BL_ADDR_IPV4)
     {
       return bl_ipv4_addr_hash_equal(ip1.ipv4,ip2.ipv4);
