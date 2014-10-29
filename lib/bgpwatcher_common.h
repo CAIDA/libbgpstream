@@ -91,7 +91,7 @@ typedef struct bgpwatcher_pfx_table {
   uint32_t time;
 
   /** Collector that the table corresponds to */
-  const char *collector;
+  char *collector;
 
   /** Peer that the table corresponds to */
   bgpstream_ip_address_t peer_ip;
@@ -111,7 +111,7 @@ typedef struct bgpwatcher_peer_table {
   uint32_t time;
 
   /** Collector that the table corresponds to */
-  const char *collector;
+  char *collector;
 
   /** User-provided table ID */
   uint16_t userid;

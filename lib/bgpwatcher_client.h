@@ -162,7 +162,7 @@ void bgpwatcher_client_pfx_table_free(bgpwatcher_client_pfx_table_t **table);
  * (optionally) be matched against those received in the handle_reply callbacks.
  */
 int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_pfx_table_t *table,
-                                      const char *collector_name,
+                                      char *collector_name,
                                       bgpstream_ip_address_t *peer_ip,
 				      uint32_t time);
 
@@ -216,7 +216,7 @@ void bgpwatcher_client_peer_table_free(bgpwatcher_client_peer_table_t **table);
  * (optionally) be matched against those received in the handle_reply callbacks
  */
 int bgpwatcher_client_peer_table_begin(bgpwatcher_client_peer_table_t *table,
-                                       const char *collector_name,
+                                       char *collector_name,
                                        uint32_t time);
 
 /** Add a peer record to the given peer table

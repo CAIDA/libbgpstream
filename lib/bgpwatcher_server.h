@@ -91,8 +91,9 @@ typedef struct bgpwatcher_server_client_info {
 
 /** Protected information about a client used to handle client connections */
 typedef struct bgpwatcher_server_client {
+
   /** Identity frame data that the client sent us */
-  zframe_t *identity;
+  zmq_msg_t identity;
 
   /** Printable ID of client (for debugging and logging) */
   char *id;

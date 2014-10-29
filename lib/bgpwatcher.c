@@ -70,7 +70,7 @@ static int recv_pfx_record(bgpwatcher_server_t *server,
   fprintf(stderr, "HANDLE: Handling pfx record\n");
   fprintf(stderr, "Client:\t%s\n", client->name);
   bgpwatcher_pfx_table_dump(table);
-  bgpwatcher_pfx_record_dump(prefix, orig_asn);
+  bgpwatcher_pfx_dump(prefix, orig_asn);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
 #endif
   return 0;
@@ -88,7 +88,7 @@ static int recv_peer_record(bgpwatcher_server_t *server,
   fprintf(stderr, "HANDLE: Handling peer record\n");
   fprintf(stderr, "Client:\t%s\n", client->name);
   bgpwatcher_peer_table_dump(table);
-  bgpwatcher_peer_record_dump(peer_ip, status);
+  bgpwatcher_peer_dump(peer_ip, status);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
 #endif
   return 0;
