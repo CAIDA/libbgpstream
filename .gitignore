@@ -1,0 +1,29 @@
+# temp files
+*~
+*.#*
+.DS_Store
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+
+# Compiled Dynamic libraries
+*.so
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# helpful to me only?
+TAGS
+
+# Autotools files
+# http://www.gnu.org/software/automake
+Makefile.in
+Makefile
+
+# http://www.gnu.org/software/autoconf
+.deps/
+.libs/
