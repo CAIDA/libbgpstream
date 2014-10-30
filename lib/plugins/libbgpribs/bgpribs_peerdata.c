@@ -893,14 +893,14 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 		}
 	      avg_aspath_len_ipv4 += pd.aspath.hop_count;
 #ifdef WITH_BGPWATCHER
-	      if((rc = bgpwatcher_client_pfx_table_add(bw_client->pfx_table, 
-						       &prefix,
-						       pd.origin_as)) < 0)
-		{
-		  bgpwatcher_client_perr(bw_client->client);
-		  fprintf(stderr, "Could not add to pfx table\n");
-		  return -1;		  
-		}
+	      if((rc = bgpwatcher_client_pfx_table_add(bw_client->pfx_table,
+	      					       &prefix,
+	      					       pd.origin_as)) < 0)
+	      	{
+	      	  bgpwatcher_client_perr(bw_client->client);
+	      	  fprintf(stderr, "Could not add to pfx table\n");
+	      	  return -1;
+	      	}
 #endif
 	    }
 	}
@@ -926,14 +926,14 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 		}
 	      avg_aspath_len_ipv6 += pd.aspath.hop_count;
 #ifdef WITH_BGPWATCHER
-	      if((rc = bgpwatcher_client_pfx_table_add(bw_client->pfx_table, 
-						       &prefix,
-						       pd.origin_as)) < 0)
-		{
-		  bgpwatcher_client_perr(bw_client->client);
-		  fprintf(stderr, "Could not add to pfx table\n");
-		  return -1;		  
-		}
+	      if((rc = bgpwatcher_client_pfx_table_add(bw_client->pfx_table,
+	      					       &prefix,
+	      					       pd.origin_as)) < 0)
+	      	{
+	      	  bgpwatcher_client_perr(bw_client->client);
+	      	  fprintf(stderr, "Could not add to pfx table\n");
+	      	  return -1;
+	      	}
 #endif
 	    }
 	}
