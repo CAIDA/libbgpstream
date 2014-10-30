@@ -28,7 +28,7 @@
 
 #include <stdint.h>
 
-#include <bgpstream_elem.h>
+#include <bl_bgp_utils.h>
 
 /** @file
  *
@@ -59,10 +59,7 @@
 /** Default the client reconnect maximum interval to 32 seconds */
 #define BGPWATCHER_RECONNECT_INTERVAL_MAX 32000
 
-/** Maximum allowed length for a collector name */
-#define BGPWATCHER_COLLECTOR_NAME_LEN 128
-
-/* shared constants are in bgpwatcher_common.h */
+#define BGPWATCHER_PEER_MAX_CNT 256
 
 /** @} */
 
@@ -81,6 +78,45 @@
 /** Type of a sequence number */
 typedef uint32_t seq_num_t;
 
+/** Information about a peer */
+typedef struct bgpwatcher_peer {
+
+  /** Peer IP address */
+  bl_addr_storage_t ip;
+
+  /** Peer status */
+  uint8_t status;
+
+} bgpwatcher_peer_t;
+
+/** Information about a prefix from a peer */
+typedef struct bgpwatcher_pfx_peer_info {
+
+  /** Origin ASN */
+  uint32_t orig_asn;
+
+  /** @todo add other pfx info fields here (AS path, etc) */
+
+  /** If set, this prefix is seen by this peer */
+  uint8_t in_use;
+
+  /** User-specific peer id (set by server) */
+  uint16_t userid;
+
+} bgpwatcher_pfx_peer_info_t;
+
+/** Information about a prefix row */
+typedef struct bgpwatcher_pfx_row {
+
+  /** Prefix */
+  bl_pfx_storage_t prefix;
+
+  /** Per-Peer Information
+   * @note index in this array corresponds to index in table.peers array */
+  bgpwatcher_pfx_peer_info_t info[BGPWATCHER_PEER_MAX_CNT];
+
+} bgpwatcher_pfx_row_t;
+
 /** Information about the a prefix table */
 typedef struct bgpwatcher_pfx_table {
 
@@ -93,30 +129,13 @@ typedef struct bgpwatcher_pfx_table {
   /** Collector that the table corresponds to */
   char *collector;
 
-  /** Peer that the table corresponds to */
-  bgpstream_ip_address_t peer_ip;
+  /** Peers that the table contains information for */
+  bgpwatcher_peer_t peers[BGPWATCHER_PEER_MAX_CNT];
 
-  /** User-provided table ID */
-  uint16_t userid;
+  /** Number of peers referenced in this table */
+  int peers_cnt;
 
 } bgpwatcher_pfx_table_t;
-
-/** Information about the a peer table */
-typedef struct bgpwatcher_peer_table {
-
-  /** Generated table ID (server-global) */
-  uint64_t id;
-
-  /** Time that the table represents */
-  uint32_t time;
-
-  /** Collector that the table corresponds to */
-  char *collector;
-
-  /** User-provided table ID */
-  uint16_t userid;
-
-} bgpwatcher_peer_table_t;
 
 /** bgpwatcher error information */
 typedef struct bgpwatcher_err {

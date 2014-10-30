@@ -45,7 +45,7 @@
 /** The maximum number of requests that we allow to be outstanding at any time */
 #define MAX_OUTSTANDING_REQ 100000
 
-#define BGPWATCHER_CLIENT_BROKER_REQ_MSG_FRAMES_MAX 5
+#define BGPWATCHER_CLIENT_BROKER_REQ_MSG_FRAMES_MAX 512
 
 /**
  * @name Public Enums
@@ -69,8 +69,6 @@
 /** Collection of asynchronous callbacks used to notify the client of incoming
     messages from the server. */
 typedef struct bgpwatcher_client_broker_callbacks {
-
-  bgpwatcher_client_cb_handle_reply_t *handle_reply;
 
   /** @todo add other signals from server here (table rx, etc) */
 

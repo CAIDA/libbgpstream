@@ -30,8 +30,6 @@
 #include <stdint.h>
 #include <sys/socket.h>
 
-#include <bgpstream_elem.h>
-
 #include <bgpwatcher_common.h>
 
 /** @file
@@ -109,11 +107,8 @@ typedef enum {
   /** Prefix table */
   BGPWATCHER_TABLE_TYPE_PREFIX = 1,
 
-  /** Peer table */
-  BGPWATCHER_TABLE_TYPE_PEER = 2,
-
   /** Highest table number in use */
-  BGPWATCHER_TABLE_TYPE_MAX = BGPWATCHER_TABLE_TYPE_PEER,
+  BGPWATCHER_TABLE_TYPE_MAX = BGPWATCHER_TABLE_TYPE_PREFIX,
 
 } bgpwatcher_table_type_t;
 
@@ -168,11 +163,8 @@ typedef enum {
   /** Client is sending a prefix record */
   BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD  = 3,
 
-  /** Client is sending a peer record */
-  BGPWATCHER_DATA_MSG_TYPE_PEER_RECORD  = 4,
-
   /** Highest message number in use */
-  BGPWATCHER_DATA_MSG_TYPE_MAX      = BGPWATCHER_DATA_MSG_TYPE_PEER_RECORD,
+  BGPWATCHER_DATA_MSG_TYPE_MAX      = BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD,
 } bgpwatcher_data_msg_type_t;
 
 #define bgpwatcher_data_msg_type_size_t sizeof(uint8_t)
@@ -181,7 +173,6 @@ typedef enum {
 /** @} */
 
 /* ========== UTILITIES ========== */
-
 
 
 /* ========== MESSAGE TYPES ========== */
@@ -205,7 +196,15 @@ bgpwatcher_data_msg_type_t bgpwatcher_recv_data_type(void *src);
 
 /* ========== PREFIX TABLES ========== */
 
-/** Create a new 0mq msg from the given pfx table structure
+/** Transmit a pfx table begin message from the given pfx table structure
+ *
+ * @param dest            pointer to socket to send to
+ * @param table           pointer to an initialized prefix table
+ * @return 0 if the table was sent successfully, -1 otherwise
+ */
+int bgpwatcher_pfx_table_begin_send(void *dest, bgpwatcher_pfx_table_t *table);
+
+/** Transmit a pfx table end message from the given pfx table structure
  *
  * @param dest            pointer to socket to send to
  * @param table           pointer to an initialized prefix table
@@ -213,15 +212,23 @@ bgpwatcher_data_msg_type_t bgpwatcher_recv_data_type(void *src);
  *
  * This message can be used for both the table_begin and table_end events
  */
-int bgpwatcher_pfx_table_send(void *dest, bgpwatcher_pfx_table_t *table);
+int bgpwatcher_pfx_table_end_send(void *dest, bgpwatcher_pfx_table_t *table);
 
-/** Deserialize a prefix table message into provided memory
+/** Receive a prefix table begin message into provided memory
  *
  * @param      src           pointer to socket to receive on
  * @param[out] table         pointer to a prefix table structure to fill
  * @return 0 if the information was deserialized successfully, -1 otherwise
  */
-int bgpwatcher_pfx_table_recv(void *src, bgpwatcher_pfx_table_t *table);
+int bgpwatcher_pfx_table_begin_recv(void *src, bgpwatcher_pfx_table_t *table);
+
+/** Receive a prefix table end message and check it matches the given table
+ *
+ * @param      src           pointer to socket to receive on
+ * @param[out] table         pointer to a prefix table structure to end
+ * @return 0 if the information was deserialized successfully, -1 otherwise
+ */
+int bgpwatcher_pfx_table_end_recv(void *src, bgpwatcher_pfx_table_t *table);
 
 /** Dump the given prefix row information to stdout
  *
@@ -231,98 +238,34 @@ void bgpwatcher_pfx_table_dump(bgpwatcher_pfx_table_t *table);
 
 
 
-/* ========== PREFIX RECORDS ========== */
+/* ========== PREFIX ROWS ========== */
 
 /** Send msgs from the given pfx information on the given socket
  *
  * @param dest            socket to send the prefix to
- * @param prefix          pointer to a bgpstream prefix
- * @param peer_ip         pointer to a bgpstream ip address of the peer
- * @param orig_asn        value of the origin ASN
- * @param sendmore        set to 1 if there is more to this message
+ * @param row             pointer to the prefix row to send
+ * @param peer_cnt        number of peers in the row info array
  * @return 0 if the record was sent successfully, -1 otherwise
  */
-int bgpwatcher_pfx_send(void *dest, bgpstream_prefix_t *prefix,
-			uint32_t orig_asn);
+int bgpwatcher_pfx_row_send(void *dest, bgpwatcher_pfx_row_t *row,
+                            int peer_cnt);
 
 /** Deserialize a prefix message into provided memory
  *
  * @param      src           pointer to socket to receive on
- * @param[out] pfx_out       pointer to a prefix structure to fill
- * @param[out] orig_asn_out  pointer to memory to fill with orig_asn
+ * @param[out] row_out       pointer to a prefix row structure to fill
+ * @param      peer_cnt      number of peer info records expected
  * @return 0 if the information was deserialized successfully, -1 otherwise
  */
-int bgpwatcher_pfx_recv(void *src, bgpstream_prefix_t *pfx_out,
-			uint32_t *orig_asn_out);
+int bgpwatcher_pfx_row_recv(void *src, bgpwatcher_pfx_row_t *row_out,
+                            int peer_cnt);
 
 /** Dump the given prefix row information to stdout
  *
- * @param prefix        pointer to a prefix structure
- * @param orig_asn      origin asn
+ * @param table      pointer to a prefix table (for peer info)
+ * @param row        pointer to a prefix row
  */
-void bgpwatcher_pfx_dump(bgpstream_prefix_t *prefix,
-			 uint32_t orig_asn);
-
-
-
-/* ========== PEER TABLES ========== */
-
-/** Create a new 0mq msg from the given peer table structure
- *
- * @param dest            pointer to socket to send table to
- * @param table           pointer to an initialized peer table
- * @return 0 if table was sent successfully, -1 otherwise
- *
- * This message can be used for both the table_begin and table_end events
- */
-int bgpwatcher_peer_table_send(void *dest, bgpwatcher_peer_table_t *table);
-
-/** Deserialize a peer table message into provided memory
- *
- * @param      src           pointer to socket to receive on
- * @param[out] table         pointer to a peer table structure to fill
- * @return 0 if the information was deserialized successfully, -1 otherwise
- */
-int bgpwatcher_peer_table_recv(void *src, bgpwatcher_peer_table_t *table);
-
-/** Dump the given peer row information to stdout
- *
- * @param prefix        pointer to a peer table structure
- */
-void bgpwatcher_peer_table_dump(bgpwatcher_peer_table_t *table);
-
-
-
-/* ========== PEER RECORDS ========== */
-
-/** Create a new 0mq msg from the given peer information
- *
- * @param dest          pointer to socket to send table to
- * @param peer_ip       pointer to the peer ip
- * @param status        status value
- * @return 0 if table was sent successfully, -1 otherwise
- */
-int bgpwatcher_peer_send(void *dest, bgpstream_ip_address_t *peer_ip,
-			 uint8_t status);
-
-/** Deserialize a peer message into provided memory
- *
- * @param      src           pointer to socket to receive on
- * @param[out] peer_ip_out   pointer to an ip structure to fill
- * @param[out] status_out    pointer to memory to fill with status code
- * @return 0 if the information was deserialized successfully, -1 otherwise
- */
-int bgpwatcher_peer_recv(void *src, bgpstream_ip_address_t *peer_ip_out,
-			 uint8_t *status_out);
-
-/** Dump the given peer record information to stdout
- *
- * @param ip            pointer to the peer IP
- * @param status        peer status value
- */
-void bgpwatcher_peer_record_dump(bgpstream_ip_address_t *peer_ip,
-                                 uint8_t status);
-
-
+void bgpwatcher_pfx_row_dump(bgpwatcher_pfx_table_t *table,
+                             bgpwatcher_pfx_row_t *row);
 
 #endif

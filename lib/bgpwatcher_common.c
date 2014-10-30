@@ -30,43 +30,45 @@
 #include <string.h>
 #include <sys/socket.h>
 
-#include <bgpstream_elem.h>
-
 #include <bgpwatcher_common_int.h>
 
 #include "utils.h"
 
-static void *get_in_addr(bgpstream_ip_address_t *ip) {
-  return ip->type == BST_IPV4
-    ? (void *) &(ip->address.v4_addr)
-    : (void *) &(ip->address.v6_addr);
+static void *get_in_addr(bl_addr_storage_t *ip) {
+  assert(ip->version != BL_ADDR_TYPE_UNKNOWN);
+  return ip->version == BL_ADDR_IPV4
+    ? (void *) &(ip->ipv4)
+    : (void *) &(ip->ipv6);
 }
 
-static int send_ip(void *dest, bgpstream_ip_address_t *ip, int flags)
+static int send_ip(void *dest, bl_addr_storage_t *ip, int flags)
 {
-  switch(ip->type)
+  switch(ip->version)
     {
-    case BST_IPV4:
-      if(zmq_send(dest, &ip->address.v4_addr.s_addr,
+    case BL_ADDR_IPV4:
+      if(zmq_send(dest, &ip->ipv4.s_addr,
                   sizeof(uint32_t), flags) == sizeof(uint32_t))
         {
           return 0;
         }
       break;
 
-    case BST_IPV6:
-      if(zmq_send(dest, &ip->address.v6_addr.s6_addr,
+    case BL_ADDR_IPV6:
+      if(zmq_send(dest, &ip->ipv6.s6_addr,
                   (sizeof(uint8_t)*16), flags) == sizeof(uint8_t)*16)
         {
           return 0;
         }
       break;
+
+    case BL_ADDR_TYPE_UNKNOWN:
+      return -1;
     }
 
-  return 0;
+  return -1;
 }
 
-static int recv_ip(void *src, bgpstream_ip_address_t *ip)
+static int recv_ip(void *src, bl_addr_storage_t *ip)
 {
   zmq_msg_t llm;
   assert(ip != NULL);
@@ -80,16 +82,16 @@ static int recv_ip(void *src, bgpstream_ip_address_t *ip)
   if(zmq_msg_size(&llm) == sizeof(uint32_t))
     {
       /* v4 */
-      ip->type = BST_IPV4;
-      memcpy(&ip->address.v4_addr.s_addr,
+      ip->version = BL_ADDR_IPV4;
+      memcpy(&ip->ipv4.s_addr,
 	     zmq_msg_data(&llm),
 	     sizeof(uint32_t));
     }
   else if(zmq_msg_size(&llm) == sizeof(uint8_t)*16)
     {
       /* v6 */
-      ip->type = BST_IPV6;
-      memcpy(&ip->address.v6_addr.s6_addr,
+      ip->version = BL_ADDR_IPV6;
+      memcpy(&ip->ipv6.s6_addr,
 	     zmq_msg_data(&llm),
 	     sizeof(uint8_t)*16);
     }
@@ -135,11 +137,8 @@ static char *recv_str(void *src)
 }
 
 static int send_table(void *dest, bgpwatcher_table_type_t type,
-		      uint32_t time, const char *collector,
-		      int sndmore)
+		      uint32_t time, int sndmore)
 {
-  size_t len;
-
   /* table type */
   if(zmq_send(dest, &type, bgpwatcher_table_type_size_t, ZMQ_SNDMORE)
      != bgpwatcher_table_type_size_t)
@@ -149,14 +148,8 @@ static int send_table(void *dest, bgpwatcher_table_type_t type,
 
   /* time */
   time = htonl(time);
-  if(zmq_send(dest, &time, sizeof(time), ZMQ_SNDMORE) != sizeof(time))
-    {
-      goto err;
-    }
-
-  /* collector */
-  len = strlen(collector);
-  if(zmq_send(dest, collector, len, (sndmore != 0) ? ZMQ_SNDMORE : 0) != len)
+  if(zmq_send(dest, &time, sizeof(time),
+              (sndmore != 0) ? ZMQ_SNDMORE : 0) != sizeof(time))
     {
       goto err;
     }
@@ -166,6 +159,121 @@ static int send_table(void *dest, bgpwatcher_table_type_t type,
  err:
   return -1;
 }
+
+static int send_peer(void *dest, bgpwatcher_peer_t *peer, int sndmore)
+{
+  /* peer ip */
+  if(send_ip(dest, &peer->ip, ZMQ_SNDMORE) != 0)
+    {
+      goto err;
+    }
+
+  /* status */
+  if(zmq_send(dest, &peer->status, sizeof(peer->status),
+              (sndmore != 0) ? ZMQ_SNDMORE : 0) != sizeof(peer->status))
+    {
+      goto err;
+    }
+
+  return 0;
+
+ err:
+  return -1;
+}
+
+static int recv_peer(void *src, bgpwatcher_peer_t *peer)
+{
+  /* peer ip */
+  if(recv_ip(src, &peer->ip) != 0)
+    {
+      goto err;
+    }
+
+  if(zsocket_rcvmore(src) == 0)
+    {
+      goto err;
+    }
+
+  /* status */
+  if(zmq_recv(src, &peer->status, sizeof(peer->status), 0)
+     != sizeof(peer->status))
+    {
+      goto err;
+    }
+
+  return 0;
+
+ err:
+  return -1;
+}
+
+static int send_pfx_peer_info(void *dest, bgpwatcher_pfx_peer_info_t *info,
+                              int sndmore)
+{
+  uint32_t n32;
+
+  /* in use */
+  if(zmq_send(dest, &info->in_use, sizeof(info->in_use),
+              (info->in_use != 0 || sndmore != 0) ? ZMQ_SNDMORE : 0)
+     != sizeof(info->in_use))
+    {
+      goto err;
+    }
+
+  if(info->in_use == 0)
+    {
+      return 0;
+    }
+
+  /* orig asn */
+  n32 = htonl(info->orig_asn);
+  if(zmq_send(dest, &n32, sizeof(uint32_t), (sndmore != 0) ? ZMQ_SNDMORE : 0)
+     != sizeof(uint32_t))
+    {
+      goto err;
+    }
+
+  /** @todo add more info fields here */
+
+  return 0;
+
+ err:
+  return -1;
+}
+
+static int recv_pfx_peer_info(void *src, bgpwatcher_pfx_peer_info_t *info)
+{
+  /* in use */
+  if(zmq_recv(src, &info->in_use, sizeof(info->in_use), 0)
+     != sizeof(info->in_use))
+    {
+      goto err;
+    }
+
+  if(info->in_use == 0)
+    {
+      return 0;
+    }
+
+  if(zsocket_rcvmore(src) == 0)
+    {
+      goto err;
+    }
+
+  /* orig asn */
+  if(zmq_recv(src, &info->orig_asn, sizeof(info->orig_asn), 0)
+     != sizeof(info->orig_asn))
+    {
+      goto err;
+    }
+  info->orig_asn = ntohl(info->orig_asn);
+
+  return 0;
+
+ err:
+  return -1;
+}
+
 
 /* ========== PROTECTED FUNCTIONS BELOW HERE ========== */
 /*     See bgpwatcher_common_int.h for declarations     */
@@ -208,17 +316,54 @@ bgpwatcher_data_msg_type_t bgpwatcher_recv_data_type(void *src)
 
 /* ========== PREFIX TABLES ========== */
 
-int bgpwatcher_pfx_table_send(void *dest, bgpwatcher_pfx_table_t *table)
+int bgpwatcher_pfx_table_begin_send(void *dest, bgpwatcher_pfx_table_t *table)
 {
-  /* prepare the common table headers */
+  size_t len;
+  uint16_t cnt;
+  int i;
+
+  /* send the common table headers (TYPE, TIME) */
   if(send_table(dest, BGPWATCHER_TABLE_TYPE_PREFIX,
-		table->time, table->collector, ZMQ_SNDMORE) != 0)
+                table->time, ZMQ_SNDMORE) != 0)
     {
       goto err;
     }
 
-  /* peer ip */
-  if(send_ip(dest, &table->peer_ip, 0) != 0)
+  /* collector */
+  len = strlen(table->collector);
+  if(zmq_send(dest, table->collector, len, ZMQ_SNDMORE) != len)
+    {
+      goto err;
+    }
+
+  /* peer cnt */
+  assert(table->peers_cnt <= UINT16_MAX);
+  cnt = htons(table->peers_cnt);
+  if(zmq_send(dest, &cnt, sizeof(cnt),
+              (table->peers_cnt) > 0 ? ZMQ_SNDMORE : 0) != sizeof(cnt))
+    {
+      goto err;
+    }
+
+  for(i=0; i<table->peers_cnt; i++)
+    {
+      if(send_peer(dest, &table->peers[i],
+                   (i < table->peers_cnt-1) ? ZMQ_SNDMORE : 0) != 0)
+        {
+          goto err;
+        }
+    }
+
+  return 0;
+
+ err:
+  return -1;
+}
+
+int bgpwatcher_pfx_table_end_send(void *dest, bgpwatcher_pfx_table_t *table)
+{
+  /* just send the common table headers (TYPE, TIME) */
+  if(send_table(dest, BGPWATCHER_TABLE_TYPE_PREFIX, table->time, 0) != 0)
     {
       goto err;
     }
@@ -226,11 +371,13 @@ int bgpwatcher_pfx_table_send(void *dest, bgpwatcher_pfx_table_t *table)
   return 0;
 
  err:
-  return 0;
+  return -1;
 }
 
-int bgpwatcher_pfx_table_recv(void *src, bgpwatcher_pfx_table_t *table)
+int bgpwatcher_pfx_table_begin_recv(void *src, bgpwatcher_pfx_table_t *table)
 {
+  int peers_rx = 0;
+
   /* time */
   if(zmq_recv(src, &table->time, sizeof(table->time), 0) != sizeof(table->time))
     {
@@ -255,8 +402,46 @@ int bgpwatcher_pfx_table_recv(void *src, bgpwatcher_pfx_table_t *table)
       goto err;
     }
 
-  /* ip */
-  if(recv_ip(src, &(table->peer_ip)) != 0)
+  /* peer cnt */
+  if(zmq_recv(src, &table->peers_cnt, sizeof(uint16_t), 0) != sizeof(uint16_t))
+    {
+      goto err;
+    }
+  table->peers_cnt = ntohs(table->peers_cnt);
+
+  /* receive all the peers */
+  while(zsocket_rcvmore(src) != 0)
+    {
+      if(recv_peer(src, &(table->peers[peers_rx++])) != 0)
+        {
+          goto err;
+        }
+    }
+  assert(peers_rx == table->peers_cnt);
+
+  return 0;
+
+ err:
+  return -1;
+}
+
+int bgpwatcher_pfx_table_end_recv(void *src, bgpwatcher_pfx_table_t *table)
+{
+  uint32_t time;
+
+  /* time */
+  if(zmq_recv(src, &time, sizeof(time), 0) != sizeof(time))
+    {
+      goto err;
+    }
+  time = ntohl(time);
+
+  if(time != table->time)
+    {
+      goto err;
+    }
+
+  if(zsocket_rcvmore(src) != 0)
     {
       goto err;
     }
@@ -269,6 +454,7 @@ int bgpwatcher_pfx_table_recv(void *src, bgpwatcher_pfx_table_t *table)
 
 void bgpwatcher_pfx_table_dump(bgpwatcher_pfx_table_t *table)
 {
+  int i;
   char peer_str[INET6_ADDRSTRLEN] = "";
 
   if(table == NULL)
@@ -280,51 +466,62 @@ void bgpwatcher_pfx_table_dump(bgpwatcher_pfx_table_t *table)
     }
   else
     {
-      inet_ntop((table->peer_ip.type == BST_IPV4) ? AF_INET : AF_INET6,
-		get_in_addr(&table->peer_ip),
-		peer_str, INET6_ADDRSTRLEN);
-
       fprintf(stdout,
 	      "------------------------------\n"
 	      "Time:\t%"PRIu32"\n"
               "Collector:\t%s\n"
-              "Peer:\t%s\n"
-	      "------------------------------\n",
+              "Peer Cnt:\t%d\n",
               table->time,
               table->collector,
-              peer_str);
+              table->peers_cnt);
+
+      for(i=0; i<table->peers_cnt; i++)
+        {
+          inet_ntop(table->peers[i].ip.version,
+                    get_in_addr(&table->peers[i].ip),
+                    peer_str, INET6_ADDRSTRLEN);
+          fprintf(stdout,
+                  "Peer %03d:\t%s (%d)\n",
+                  i,
+                  peer_str,
+                  table->peers[i].status);
+        }
     }
 }
 
 
 
-/* ========== PREFIX RECORDS ========== */
+/* ========== PREFIX ROWS ========== */
 
-int bgpwatcher_pfx_send(void *dest,
-			bgpstream_prefix_t *prefix,
-			uint32_t orig_asn)
+int bgpwatcher_pfx_row_send(void *dest, bgpwatcher_pfx_row_t *row,
+                            int peer_cnt)
 {
-  uint32_t n32;
+  int i;
+
+  assert(peer_cnt <= BGPWATCHER_PEER_MAX_CNT);
 
   /* prefix */
-  if(send_ip(dest, &prefix->number, ZMQ_SNDMORE) != 0)
+  if(send_ip(dest, &row->prefix.address, ZMQ_SNDMORE) != 0)
     {
       goto err;
     }
 
   /* length */
-  if(zmq_send(dest, &prefix->len, sizeof(prefix->len), ZMQ_SNDMORE)
-     != sizeof(prefix->len))
+  if(zmq_send(dest, &row->prefix.mask_len, sizeof(row->prefix.mask_len),
+              ZMQ_SNDMORE)
+     != sizeof(row->prefix.mask_len))
     {
       goto err;
     }
 
-  /* orig asn */
-  n32 = htonl(orig_asn);
-  if(zmq_send(dest, &n32, sizeof(uint32_t), 0)
-     != sizeof(uint32_t))
+  /* foreach peer, dump the info */
+  for(i=0; i<peer_cnt; i++)
     {
-      goto err;
+      if(send_pfx_peer_info(dest, &row->info[i],
+                            (i < peer_cnt-1) ? ZMQ_SNDMORE : 0) != 0)
+        {
+          goto err;
+        }
     }
 
   return 0;
@@ -333,11 +530,13 @@ int bgpwatcher_pfx_send(void *dest,
   return -1;
 }
 
-int bgpwatcher_pfx_recv(void *src, bgpstream_prefix_t *pfx_out,
-			uint32_t *orig_asn_out)
+int bgpwatcher_pfx_row_recv(void *src, bgpwatcher_pfx_row_t *row_out,
+                            int peer_cnt)
 {
+  int peers_rx = 0;
+
   /* prefix */
-  if(recv_ip(src, &(pfx_out->number)) != 0)
+  if(recv_ip(src, &(row_out->prefix.address)) != 0)
     {
       goto err;
     }
@@ -348,8 +547,9 @@ int bgpwatcher_pfx_recv(void *src, bgpstream_prefix_t *pfx_out,
     }
 
   /* pfx len */
-  if(zmq_recv(src, &pfx_out->len, sizeof(pfx_out->len), 0)
-     != sizeof(pfx_out->len))
+  if(zmq_recv(src, &row_out->prefix.mask_len,
+              sizeof(row_out->prefix.mask_len), 0)
+     != sizeof(row_out->prefix.mask_len))
     {
       goto err;
     }
@@ -359,13 +559,14 @@ int bgpwatcher_pfx_recv(void *src, bgpstream_prefix_t *pfx_out,
       goto err;
     }
 
-  /* orig asn */
-  if(zmq_recv(src, orig_asn_out, sizeof(*orig_asn_out), 0)
-     != sizeof(*orig_asn_out))
+  while(zsocket_rcvmore(src) != 0)
     {
-      goto err;
+      if(recv_pfx_peer_info(src, &(row_out->info[peers_rx++])) != 0)
+        {
+          goto err;
+        }
     }
-  *orig_asn_out = ntohl(*orig_asn_out);
+  assert(peers_rx == peer_cnt);
 
   return 0;
 
@@ -373,12 +574,14 @@ int bgpwatcher_pfx_recv(void *src, bgpstream_prefix_t *pfx_out,
   return -1;
 }
 
-void bgpwatcher_pfx_dump(bgpstream_prefix_t *prefix,
-			 uint32_t orig_asn)
+void bgpwatcher_pfx_row_dump(bgpwatcher_pfx_table_t *table,
+                             bgpwatcher_pfx_row_t *row)
 {
   char pfx_str[INET6_ADDRSTRLEN] = "";
+  int i;
+  char peer_str[INET6_ADDRSTRLEN] = "";
 
-  if(prefix == NULL)
+  if(row == NULL)
     {
       fprintf(stdout,
 	      "------------------------------\n"
@@ -387,159 +590,33 @@ void bgpwatcher_pfx_dump(bgpstream_prefix_t *prefix,
     }
   else
     {
-      inet_ntop((prefix->number.type == BST_IPV4) ? AF_INET : AF_INET6,
-		get_in_addr(&prefix->number),
-		pfx_str, INET6_ADDRSTRLEN);
+      inet_ntop(row->prefix.address.version,
+                get_in_addr(&row->prefix.address),
+                pfx_str, INET6_ADDRSTRLEN);
 
       fprintf(stdout,
 	      "------------------------------\n"
-	      "Prefix:\t%s/%"PRIu8"\n"
-	      "ASN:\t%"PRIu32"\n"
-	      "------------------------------\n",
-	      pfx_str, prefix->len,
-	      orig_asn);
+	      "Prefix:\t%s/%"PRIu8"\n",
+              pfx_str, row->prefix.mask_len);
+
+      for(i=0; i<table->peers_cnt; i++)
+        {
+          if(row->info[i].in_use != 0)
+            {
+              inet_ntop(table->peers[i].ip.version,
+                        get_in_addr(&table->peers[i].ip),
+                        peer_str, INET6_ADDRSTRLEN);
+
+              fprintf(stdout,
+                      "\tPeer:\t%s\n"
+                      "\t\tOrig ASN:\t%"PRIu32"\n",
+                      peer_str,
+                      row->info[i].orig_asn);
+            }
+        }
     }
 }
 
-
-
-/* ========== PEER TABLES ========== */
-
-int bgpwatcher_peer_table_send(void *dest, bgpwatcher_peer_table_t *table)
-{
-  /* prepare the common table headers */
-  if(send_table(dest, BGPWATCHER_TABLE_TYPE_PEER,
-		table->time, table->collector, 0) != 0)
-    {
-      goto err;
-    }
-
-  return 0;
-
- err:
-  return -1;
-}
-
-int bgpwatcher_peer_table_recv(void *src, bgpwatcher_peer_table_t *table)
-{
-  /* time */
-  if(zmq_recv(src, &table->time, sizeof(table->time), 0) != sizeof(table->time))
-    {
-      goto err;
-    }
-  table->time = ntohl(table->time);
-
-  if(zsocket_rcvmore(src) == 0)
-    {
-      goto err;
-    }
-
-  /* collector */
-  free(table->collector);
-  if((table->collector = recv_str(src)) == NULL)
-    {
-      goto err;
-    }
-
-  return 0;
-
- err:
-  return -1;
-}
-
-void bgpwatcher_peer_table_dump(bgpwatcher_peer_table_t *table)
-{
-  if(table == NULL)
-    {
-      fprintf(stdout,
-	      "------------------------------\n"
-	      "NULL\n"
-	      "------------------------------\n");
-    }
-  else
-    {
-      fprintf(stdout,
-	      "------------------------------\n"
-	      "Time:\t%"PRIu32"\n"
-              "Collector:\t%s\n"
-	      "------------------------------\n",
-              table->time,
-              table->collector);
-    }
-}
-
-
-/* ========== PEER RECORDS ========== */
-
-int bgpwatcher_peer_send(void *dest, bgpstream_ip_address_t *peer_ip,
-			 uint8_t status)
-{
-  /* peer ip */
-  if(send_ip(dest, peer_ip, ZMQ_SNDMORE) != 0)
-    {
-      goto err;
-    }
-
-  /* status */
-  if(zmq_send(dest, &status, sizeof(status), 0) != sizeof(status))
-    {
-      goto err;
-    }
-
-  return 0;
-
- err:
-  return -1;
-}
-
-int bgpwatcher_peer_recv(void *src, bgpstream_ip_address_t *peer_ip_out,
-			 uint8_t *status_out)
-{
-  /* peer ip */
-  if(recv_ip(src, peer_ip_out) != 0)
-    {
-      goto err;
-    }
-
-  /* status */
-  if(zmq_recv(src, status_out, sizeof(*status_out), 0) != sizeof(*status_out))
-    {
-      goto err;
-    }
-
-  return 0;
-
- err:
-  return -1;
-}
-
-void bgpwatcher_peer_record_dump(bgpstream_ip_address_t *peer_ip,
-                                 uint8_t status)
-{
-  char ip_str[INET6_ADDRSTRLEN] = "";
-
-  if(peer_ip == NULL)
-    {
-      fprintf(stdout,
-	      "------------------------------\n"
-	      "NULL\n"
-	      "------------------------------\n");
-    }
-  else
-    {
-      inet_ntop((peer_ip->type == BST_IPV4) ? AF_INET : AF_INET6,
-		get_in_addr(peer_ip),
-		ip_str, INET6_ADDRSTRLEN);
-
-      fprintf(stdout,
-	      "------------------------------\n"
-	      "IP:\t%s\n"
-	      "Status:\t%"PRIu8"\n"
-	      "------------------------------\n",
-	      ip_str,
-	      status);
-    }
-}
 
 /* ========== PUBLIC FUNCTIONS BELOW HERE ========== */
 /*      See bgpwatcher_common.h for declarations     */

@@ -28,8 +28,6 @@
 
 #include <stdint.h>
 
-#include <bgpstream_elem.h>
-
 #include <bgpwatcher_common.h>
 
 /** @file
@@ -69,26 +67,12 @@ typedef struct bgpwatcher_client bgpwatcher_client_t;
 
 typedef struct bgpwatcher_client_pfx_table bgpwatcher_client_pfx_table_t;
 
-typedef struct bgpwatcher_client_peer_table bgpwatcher_client_peer_table_t;
-
 /** @} */
 
 /**
  * @name Public Data Structures
  *
  * @{ */
-
-  /** Signals that the server has received a request made by the client.
-   *
-   * @param client      pointer to the client instance that received the reply
-   * @param seq_num     sequence number for matching with the request
-   *
-   * @note receipt of this message does not indicate that the server
-   * successfully processed the message, just that it was successfully received.
-   */
-typedef void (bgpwatcher_client_cb_handle_reply_t)(bgpwatcher_client_t *client,
-						   seq_num_t seq_num,
-						   void *user);
 
 /** @} */
 
@@ -111,17 +95,9 @@ typedef void (bgpwatcher_client_cb_handle_reply_t)(bgpwatcher_client_t *client,
  */
 bgpwatcher_client_t *bgpwatcher_client_init(uint8_t interests, uint8_t intents);
 
-/** Register a function to be called to handle message replies from the server
- *
- * @param client        pointer to a client instance to set callback for
- * @param cb            pointer to a handle_reply callback function
- */
-void bgpwatcher_client_set_cb_handle_reply(bgpwatcher_client_t *client,
-				       bgpwatcher_client_cb_handle_reply_t *cb);
-
 /** Set the user data that will provided to each callback function */
 void bgpwatcher_client_set_cb_userdata(bgpwatcher_client_t *client,
-				       void *user);
+                                       void *user);
 
 /** Start the given bgpwatcher client instance
  *
@@ -139,108 +115,57 @@ void bgpwatcher_client_perr(bgpwatcher_client_t *client);
 
 /** @todo add other error functions if needed (is_err, get_err) */
 
-/** Create a re-usable prefix table
+/** Begin a new prefix table dump for the given client
  *
- * @param client        pointer to bgpwatcher client instance to associate the
- *                      table with
- * @return pointer to a bgpwatcher pfx table instance if successful, NULL
- * otherwise
+ * @param client        pointer to a client instance to start table for
+ * @param collector     name of the collector
+ * @param peer_cnt      number of peers that will be added to the table
+ *                        (must not exceed BGPWATCHER_PEER_MAX_CNT)
+ * @return 0 if the table was begun successfully, -1 otherwise
+ *
+ * @note the caller maintains ownership of collector memory
  */
-bgpwatcher_client_pfx_table_t *bgpwatcher_client_pfx_table_create(
-						   bgpwatcher_client_t *client);
+int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_t *client,
+                                      uint32_t time,
+                                      char *collector,
+                                      int peer_cnt);
 
-/** Free a prefix table
+/** Add a peer record to the given client
  *
- * @param table         pointer to the prefix table to free
+ * @param client        pointer to a client instance to add peer to
+ * @param peer_ip       pointer to the peer ip
+ * @param status        status value
+ * @return a peer ID (to be used with bgpwatcher_client_pfx_table_add) if
+ *         successful, -1 otherwise
+ *
+ * @note the caller maintains ownership of the peer record
  */
-void bgpwatcher_client_pfx_table_free(bgpwatcher_client_pfx_table_t **table);
+int bgpwatcher_client_pfx_table_add_peer(bgpwatcher_client_t *client,
+                                         bl_addr_storage_t *peer_ip,
+                                         uint8_t status);
 
-/** Begin a new prefix table dump
+/** Add a prefix record to the given client
  *
- * @param time          new time to set for the table
- * @return a unique message id used for asynchronous replies. this number can
- * (optionally) be matched against those received in the handle_reply callbacks.
- */
-int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_pfx_table_t *table,
-                                      char *collector_name,
-                                      bgpstream_ip_address_t *peer_ip,
-				      uint32_t time);
-
-/** Add a prefix record to the given prefix table
- *
- * @param table           pointer to prefix table to add prefix record to
+ * @param client          pointer to a client instance to add prefix to
+ * @param peer_id         peer id
+ *                          (returned by bgpwatcher_client_pfx_table_add_peer)
  * @param prefix          pointer to a bgpstream prefix
- * @param peer_ip         pointer to a bgpstream ip address of the peer
  * @param orig_asn        value of the origin ASN
- * @param collector_name  pointer to a string collector name
  * @return 0 if the prefix was added successfully, -1 otherwise
  *
  * @note the caller maintains ownership of the prefix record
  */
-int bgpwatcher_client_pfx_table_add(bgpwatcher_client_pfx_table_t *table,
-				    bgpstream_prefix_t *prefix,
+int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
+                                    int peer_id,
+				    bl_pfx_storage_t *prefix,
                                     uint32_t orig_asn);
 
-/** Flush the given prefix table to the bgpwatcher server
+/** Flush prefix table to the bgpwatcher server
  *
- * @param table         pointer to prefix table to flush
+ * @param client        pointer the a client instance to flush table for
  * @return 0 if the table was flushed successfully, -1 otherwise
- *
- * @note you may safely re-use the table after calling this function followed by
- * bgpwatcher_client_pfx_table_begin
  */
-int bgpwatcher_client_pfx_table_end(bgpwatcher_client_pfx_table_t *table);
-
-/** Create a re-usable peer table
- *
- * @param client        pointer to bgpwatcher client instance to associate the
- *                      table with
- * @return pointer to a bgpwatcher peer table instance if successful, NULL
- * otherwise
- */
-bgpwatcher_client_peer_table_t *bgpwatcher_client_peer_table_create(
-						   bgpwatcher_client_t *client);
-
-/** Free a peer table
- *
- * @param table         pointer to the peer table to free
- */
-void bgpwatcher_client_peer_table_free(bgpwatcher_client_peer_table_t **table);
-
-/** Set the time that a table represents
- *
- * @param table           pointer to an initialized table object
- * @param collector_name  collector that this table refers to
- * @param time            new time to set for the table
- * @return a unique message id used for asynchronous replies. this number can
- * (optionally) be matched against those received in the handle_reply callbacks
- */
-int bgpwatcher_client_peer_table_begin(bgpwatcher_client_peer_table_t *table,
-                                       char *collector_name,
-                                       uint32_t time);
-
-/** Add a peer record to the given peer table
- *
- * @param table         pointer to peer table to add peer record to
- * @param peer_ip       pointer to the peer ip
- * @param status        status value
- * @return 0 if the peer was added successfully, -1 otherwise
- *
- * @note the caller maintains ownership of the peer record
- */
-int bgpwatcher_client_peer_table_add(bgpwatcher_client_peer_table_t *table,
-                                     bgpstream_ip_address_t *peer_ip,
-                                     uint8_t status);
-
-/** Flush the given peer table to the bgpwatcher server
- *
- * @param table         pointer to peer table to flush
- * @return 0 if the table was flushed successfully, -1 otherwise
- *
- * @note you may safely re-use the table after calling this function followed by
- * bgpwatcher_client_pfx_table_begin
- */
-int bgpwatcher_client_peer_table_end(bgpwatcher_client_peer_table_t *table);
+int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client);
 
 /** Stop the given bgpwatcher client instance
  *
