@@ -35,6 +35,9 @@ CONDITIONAL_LIBS=
 libbl_la_SOURCES =   \
 	bl_bgp_utils.c  \
 	bl_bgp_utils.h  \
+	bl_peersign_map.c  \
+	bl_peersign_map_int.h  \
+	bl_peersign_map.h  \
 	bl_str_set.c  \
 	bl_str_set.h  \
 	bl_as_set.c     \

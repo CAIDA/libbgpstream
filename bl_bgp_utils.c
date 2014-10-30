@@ -69,7 +69,7 @@ bl_as_storage_t bl_get_origin_as(bl_aspath_storage_t *aspath)
 /* addresses */
 khint64_t bl_addr_storage_hash_func(bl_addr_storage_t ip)
 {
-  khint64_t h;
+  khint64_t h = 0;
   if(ip.version == BL_ADDR_IPV4)
     {
       h = bl_ipv4_addr_hash_func(ip.ipv4);
@@ -107,7 +107,8 @@ int bl_ipv4_addr_hash_equal(bl_ipv4_addr_t ip1, bl_ipv4_addr_t ip2)
 
 khint64_t bl_ipv6_addr_hash_func(bl_ipv6_addr_t ip)
 {
-  khint64_t h = *((khint64_t *) &(ip.s6_addr[0]));
+  unsigned char *s6 =  &(ip.s6_addr[0]);
+  khint64_t h = *((khint64_t *) s6);
   return __ac_Wang_hash(h);
 }
 
@@ -121,14 +122,16 @@ int bl_ipv6_addr_hash_equal(bl_ipv6_addr_t ip1, bl_ipv6_addr_t ip2)
 khint64_t bl_pfx_storage_hash_func(bl_pfx_storage_t prefix)
 {
   khint64_t h;
-  uint64_t address;
+  uint64_t address = 0;
+  unsigned char *s6 = NULL;
   if(prefix.address.version == BL_ADDR_IPV4)
     {
       address = ntohl(prefix.address.ipv4.s_addr);
     }
   if(prefix.address.version == BL_ADDR_IPV6)
     {
-      address = *((uint64_t *) &(prefix.address.ipv6.s6_addr[0]));
+      s6 =  &(prefix.address.ipv6.s6_addr[0]);
+      address = *((uint64_t *) s6);
       address = ntohll(address);
     }
   h = address | (uint64_t) prefix.mask_len;
@@ -164,7 +167,8 @@ int bl_ipv4_pfx_hash_equal(bl_ipv4_pfx_t prefix1, bl_ipv4_pfx_t prefix2)
 khint64_t bl_ipv6_pfx_hash_func(bl_ipv6_pfx_t prefix)
 {
   // ipv6 number - we take most significative 64 bits only (in host order)
-  uint64_t address = *((uint64_t *) &(prefix.address.s6_addr[0]));
+  unsigned char *s6 =  &(prefix.address.s6_addr[0]);
+  uint64_t address = *((uint64_t *) s6);
   address = ntohll(address);
   // embed the network mask length in the 64 bits
   khint64_t h = address | (uint64_t) prefix.mask_len;
@@ -180,7 +184,7 @@ int bl_ipv6_pfx_hash_equal(bl_ipv6_pfx_t prefix1, bl_ipv6_pfx_t prefix2)
 /** as numbers */
 khint32_t bl_as_storage_hash_func(bl_as_storage_t as)
 {
-  khint32_t h;
+  khint32_t h = 0;
   if(as.type == BL_AS_NUMERIC)
     {
       h = as.as_number;
@@ -196,6 +200,7 @@ khint32_t bl_as_storage_hash_func(bl_as_storage_t as)
 	}
       else
 	{
+	  // TODO: this could originate a lot of collisions
 	  // otherwise 0
 	  h = 0; 
 	}
