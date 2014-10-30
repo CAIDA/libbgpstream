@@ -122,7 +122,7 @@ bgpview_t *bgpview_create()
       goto err;
     }
 
-  if((bgp_view->client_peertable_rcvd = kh_init(client_rcv_pt_cnt)) == NULL)
+  if((bgp_view->done_clients = bl_string_set_create()) == NULL)
     {
       goto err;
     }
@@ -170,10 +170,10 @@ void bgpview_destroy(bgpview_t *bgp_view)
 	  bgp_view->aggregated_pfxview_ipv6 = NULL;
 	}
 
-      if(bgp_view->client_peertable_rcvd != NULL)
+      if(bgp_view->done_clients != NULL)
 	{
-	  kh_destroy(client_rcv_pt_cnt, bgp_view->client_peertable_rcvd);
-	  bgp_view->client_peertable_rcvd = NULL;
+	  bl_string_set_destroy(bgp_view->done_clients);
+	  bgp_view->done_clients = NULL;
 	}
 
       if(bgp_view->collector_status != NULL)

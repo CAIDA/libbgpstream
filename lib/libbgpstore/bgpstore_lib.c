@@ -76,6 +76,58 @@ bgpstore_t *bgpstore_create()
 }
 
 
+
+int bgpstore_client_connect(bgpstore_t *bgp_store, char *client_name,
+			    uint8_t client_interests, uint8_t client_intents)
+{  
+  khiter_t k;
+  int khret;
+
+  char *client_name_cpy;
+  clientstatus_t client_info;
+  client_info.consumer_interests = client_interests;
+  client_info.producer_intents = client_intents;
+
+  // check if it does not exist
+  if((k = kh_get(strclientstatus, bgp_store->active_clients,
+		client_name)) == kh_end(bgp_store->active_clients))
+    {  
+      // in case it doesn't allocate new memory for the string
+      if((client_name_cpy = strdup(client_name)) == NULL)
+	{
+	  return -1;
+	}
+      // put key in table
+      k = kh_put(strclientstatus, bgp_store->active_clients,
+		 client_name_cpy, &khret);
+    }
+
+  // update or insert new client info
+  kh_value(bgp_store->active_clients, k) = client_info;
+
+  return 0;
+}
+
+
+
+int bgpstore_client_disconnect(bgpstore_t *bgp_store, char *client_name)
+{
+  khiter_t k;
+  // check if it does not exist
+  if((k = kh_get(strclientstatus, bgp_store->active_clients,
+		client_name)) != kh_end(bgp_store->active_clients))
+    {
+      // free memory allocated for the key (string)
+      free(kh_key(bgp_store->active_clients,k));
+      // delete entry
+      kh_del(strclientstatus,bgp_store->active_clients,k);
+    }
+  return 0;
+}
+
+
+
+
 void bgpstore_destroy(bgpstore_t *bgp_store)
 {
   if(bgp_store != NULL)

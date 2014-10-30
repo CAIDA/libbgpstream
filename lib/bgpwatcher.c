@@ -28,6 +28,8 @@
 #include <stdint.h>
 
 #include <bgpwatcher_int.h>
+#include <bgpstore_lib.h>
+
 
 #include "utils.h"
 
@@ -44,7 +46,9 @@ static int client_connect(bgpwatcher_server_t *server,
   fprintf(stderr, "Interests:\t0x%02X\n", client->interests);
   fprintf(stderr, "Intents:\t0x%02X\n", client->intents);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
-  return 0;
+  int ret = bgpstore_client_connect(server->bgp_store, client->name,
+				    client->interests, client->intents);
+  return ret;
 }
 
 static int client_disconnect(bgpwatcher_server_t *server,
@@ -55,7 +59,8 @@ static int client_disconnect(bgpwatcher_server_t *server,
   fprintf(stderr, "HANDLE: Handling client DISCONNECT\n");
   fprintf(stderr, "Client ID:\t%s\n", client->name);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
-  return 0;
+  int ret = bgpstore_client_disconnect(server->bgp_store, client->name);
+  return ret;
 }
 
 static int recv_pfx_record(bgpwatcher_server_t *server,

@@ -34,6 +34,8 @@
 #include <assert.h>
 
 #include "bl_bgp_utils.h"
+#include "bl_str_set.h"
+
 #include "khash.h"
 
 
@@ -66,8 +68,8 @@ KHASH_INIT(aggr_pfxview_ipv6, bl_ipv6_pfx_t, peerview_t*, 1,
 
 /************ client #peer_tables_rcvd map ************/
 
-KHASH_INIT(client_rcv_pt_cnt, char*, uint8_t , 1,
-	   kh_int_hash_func, kh_int_hash_equal);
+// KHASH_INIT(client_rcv_pt_cnt, char*, uint8_t , 1,
+// 	   kh_int_hash_func, kh_int_hash_equal);
 
 
 /************ set of unique numeric ids ************/
@@ -123,9 +125,14 @@ typedef struct struct_bgpview_t {
   khash_t(aggr_pfxview_ipv4) *aggregated_pfxview_ipv4;
   khash_t(aggr_pfxview_ipv6) *aggregated_pfxview_ipv6;
 
+  /** list of clients that have sent at least one
+   *   complete table  */
+  kh_bl_string_set_t *done_clients;
+
   /** for each client (string) we store the number of 
    *  peer tables received (uint8) */
-  khash_t(client_rcv_pt_cnt) *client_peertable_rcvd;
+  // khash_t(client_rcv_pt_cnt) *client_peertable_rcvd;
+
   /** for each collector (string) we store the number of 
    *  peer tables received (uint8) and the number of peer
    *  tables received (uint8), also we register the status

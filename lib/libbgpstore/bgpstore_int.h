@@ -29,9 +29,10 @@
 #include "bgpstore_lib.h"
 #include "bgpstore_bgpview.h"
 #include "bgpwatcher_common.h"
-#include "bgpstream_elem.h"
+// #include "bgpstream_elem.h"
 
 #include "bl_bgp_utils.h"
+
 #include "khash.h"
 
 
@@ -48,8 +49,8 @@ KHASH_INIT(timebgpview, uint32_t, bgpview_t*, 1,
  *  an type of information is interesting or not.
  */
 typedef struct struct_clientstatus_t {
-  uint32_t producer_intents;
-  uint32_t consumer_interests;
+  uint8_t producer_intents;
+  uint8_t consumer_interests;
 } clientstatus_t;
 
 KHASH_INIT(strclientstatus, char*, clientstatus_t , 1,
