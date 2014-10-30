@@ -23,7 +23,9 @@
 #
 
 SUBDIRS =
-AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/common -I$(top_srcdir)/bgpcommon
+AM_CPPFLAGS = 	-I$(top_srcdir) \
+		-I$(top_srcdir)/common \
+		-I$(top_srcdir)/bgpcommon
 
 lib_LTLIBRARIES = libbgpwatcher.la
 
@@ -47,7 +49,8 @@ libbgpwatcher_la_SOURCES = 		\
 	bgpwatcher_server.h		\
 	bgpwatcher_server.c
 
-libbgpwatcher_la_LIBADD = $(top_builddir)/common/libcccommon.la $(top_builddir)/bgpcommon/libbl.la
+libbgpwatcher_la_LIBADD = $(top_builddir)/common/libcccommon.la \
+			  $(top_builddir)/bgpcommon/libbl.la
 
 libbgpwatcher_la_LDFLAGS = -version-info @BGPWATCHER_MAJOR_VERSION@:@BGPWATCHER_MID_VERSION@:@BGPWATCHER_MINOR_VERSION@
 
