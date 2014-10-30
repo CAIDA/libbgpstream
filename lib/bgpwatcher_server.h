@@ -30,7 +30,6 @@
 #include <stdint.h>
 
 #include <bgpstore_lib.h>
-#include <bgpstream_elem.h>
 #include <bgpwatcher_common_int.h>
 
 #include "khash.h"
@@ -110,12 +109,6 @@ typedef struct bgpwatcher_server_client {
   /** Indicates if a table_begin message has been received for the pfx table */
   int pfx_table_started;
 
-  /** Current peer table */
-  bgpwatcher_peer_table_t peer_table;
-
-  /** Indicates if a table_begin message has been received for the peer table */
-  int peer_table_started;
-
 } bgpwatcher_server_client_t;
 
 typedef struct bgpwatcher_server_callbacks {
@@ -142,38 +135,6 @@ typedef struct bgpwatcher_server_callbacks {
 			   bgpwatcher_server_client_info_t *client,
 			   void *user);
 
-  /** Signals that a prefix record has been received
-   *
-   * @param server      pointer to the server instance originating the signal
-   * @param client      pointer to a client info structure (server owns this)
-   * @param table       pointer to the table for this record
-   * @param record      pointer to a prefix record structure (server owns this)
-   * @param user        pointer to user data given at init time
-   * @return 0 if signal successfully handled, -1 otherwise
-   */
-  int (*recv_pfx_record)(bgpwatcher_server_t *server,
-                         bgpwatcher_server_client_info_t *client,
-                         bgpwatcher_pfx_table_t *table,
-                         bgpstream_prefix_t *prefix,
-                         uint32_t orig_asn,
-			 void *user);
-
-  /** Signals that a peer record has been received
-   *
-   * @param server      pointer to the server instance originating the signal
-   * @param client      pointer to a client info structure (server owns this)
-   * @param table       pointer to the table for this record
-   * @param record      pointer to a peer record structure (server owns this)
-   * @param user        pointer to user data given at init time
-   * @return 0 if signal successfully handled, -1 otherwise
-   */
-  int (*recv_peer_record)(bgpwatcher_server_t *server,
-                          bgpwatcher_server_client_info_t *client,
-                          bgpwatcher_peer_table_t *table,
-                          bgpstream_ip_address_t *peer_ip,
-                          uint8_t status,
-			  void *user);
-
   /** Signals that a new prefix table is starting
    *
    * @param server      pointer to the server instance originating the signal
@@ -187,6 +148,21 @@ typedef struct bgpwatcher_server_callbacks {
                             bgpwatcher_pfx_table_t *table,
                             void *user);
 
+  /** Signals that a prefix row has been received
+   *
+   * @param server      pointer to the server instance originating the signal
+   * @param client      pointer to a client info structure (server owns this)
+   * @param table       pointer to the table for this record
+   * @param row         pointer to a prefix row structure (server owns this)
+   * @param user        pointer to user data given at init time
+   * @return 0 if signal successfully handled, -1 otherwise
+   */
+  int (*prefix_row)(bgpwatcher_server_t *server,
+                    bgpwatcher_server_client_info_t *client,
+                    bgpwatcher_pfx_table_t *table,
+                    bgpwatcher_pfx_row_t *row,
+                    void *user);
+
   /** Signals that a prefix table is ending
    *
    * @param server      pointer to the server instance originating the signal
@@ -199,32 +175,6 @@ typedef struct bgpwatcher_server_callbacks {
                           bgpwatcher_server_client_info_t *client,
                           bgpwatcher_pfx_table_t *table,
                           void *user);
-
-  /** Signals that a new peer table is starting
-   *
-   * @param server      pointer to the server instance originating the signal
-   * @param client      pointer to a client info structure (server owns this)
-   * @param table       pointer to to a completed peer table
-   * @param user        pointer to user data given at init time
-   * @return 0 if signal successfully handled, -1 otherwise
-   */
-  int (*table_begin_peer)(bgpwatcher_server_t *server,
-                          bgpwatcher_server_client_info_t *client,
-                          bgpwatcher_peer_table_t *table,
-                          void *user);
-
-  /** Signals that a peer table is ending
-   *
-   * @param server      pointer to the server instance originating the signal
-   * @param client      pointer to a client info structure (server owns this)
-   * @param table       pointer to to a completed peer table
-   * @param user        pointer to user data given at init time
-   * @return 0 if signal successfully handled, -1 otherwise
-   */
-  int (*table_end_peer)(bgpwatcher_server_t *server,
-                        bgpwatcher_server_client_info_t *client,
-                        bgpwatcher_peer_table_t *table,
-                        void *user);
 
   /** User data passed along with each callback */
   void *user;

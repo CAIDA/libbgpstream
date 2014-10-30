@@ -33,20 +33,20 @@
 
 #define ERR (&client->err)
 #define BCFG (client->broker_config)
+#define TBL (client->pfx_table)
 
 /* create and send headers for a data message */
-int send_data_hdrs(void *dest,
-                   bgpwatcher_data_msg_type_t type,
-                   bgpwatcher_client_t *client,
-                   seq_num_t *seq_num)
+int send_data_hdrs(bgpwatcher_client_t *client,
+                   bgpwatcher_data_msg_type_t type)
 {
   uint8_t type_b;
-  *seq_num = client->seq_num;
+  seq_num_t seq_num = client->seq_num++;
 
   type_b = BGPWATCHER_MSG_TYPE_DATA;
 
   /* message type */
-  if(zmq_send(dest, &type_b, bgpwatcher_msg_type_size_t, ZMQ_SNDMORE)
+  if(zmq_send(client->broker_zocket, &type_b,
+              bgpwatcher_msg_type_size_t, ZMQ_SNDMORE)
      != bgpwatcher_msg_type_size_t)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
@@ -55,7 +55,7 @@ int send_data_hdrs(void *dest,
     }
 
   /* sequence number */
-  if(zmq_send(dest, seq_num, sizeof(seq_num_t), ZMQ_SNDMORE)
+  if(zmq_send(client->broker_zocket, &seq_num, sizeof(seq_num_t), ZMQ_SNDMORE)
      != sizeof(seq_num_t))
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
@@ -65,7 +65,8 @@ int send_data_hdrs(void *dest,
 
   /* request type */
   type_b = type;
-  if(zmq_send(dest, &type_b, bgpwatcher_data_msg_type_size_t, ZMQ_SNDMORE)
+  if(zmq_send(client->broker_zocket, &type_b,
+              bgpwatcher_data_msg_type_size_t, ZMQ_SNDMORE)
      != bgpwatcher_data_msg_type_size_t)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
@@ -73,7 +74,6 @@ int send_data_hdrs(void *dest,
       goto err;
     }
 
-  client->seq_num++;
   return 0;
 
  err:
@@ -91,6 +91,13 @@ bgpwatcher_client_t *bgpwatcher_client_init(uint8_t interests, uint8_t intents)
       return NULL;
     }
   /* now we are ready to set errors... */
+
+  if((TBL.pfx_peers = kh_init(pfx_peers)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Failed to init pfx peers set");
+      goto err;
+    }
 
   /* now init the shared state for our broker */
 
@@ -138,13 +145,6 @@ bgpwatcher_client_t *bgpwatcher_client_init(uint8_t interests, uint8_t intents)
   return NULL;
 }
 
-void bgpwatcher_client_set_cb_handle_reply(bgpwatcher_client_t *client,
-					bgpwatcher_client_cb_handle_reply_t *cb)
-{
-  assert(client != NULL);
-  BCFG.callbacks.handle_reply = cb;
-}
-
 void bgpwatcher_client_set_cb_userdata(bgpwatcher_client_t *client,
 				       void *user)
 {
@@ -187,228 +187,139 @@ void bgpwatcher_client_perr(bgpwatcher_client_t *client)
 
 #define ASSERT_INTENT(intent) assert((BCFG.intents & intent) != 0);
 
-bgpwatcher_client_pfx_table_t *bgpwatcher_client_pfx_table_create(
-						   bgpwatcher_client_t *client)
+int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_t *client,
+                                      uint32_t time,
+                                      char *collector,
+                                      int peer_cnt)
 {
-  bgpwatcher_client_pfx_table_t *table;
-
-  ASSERT_INTENT(BGPWATCHER_PRODUCER_INTENT_PREFIX);
-
-  if((table = malloc_zero(sizeof(bgpwatcher_client_pfx_table_t))) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Could not malloc pfx table");
-      return NULL;
-    }
-
-  table->client = client;
-
-  return table;
-}
-
-void bgpwatcher_client_pfx_table_free(bgpwatcher_client_pfx_table_t **table_p)
-{
-  bgpwatcher_client_pfx_table_t *table = *table_p;
-  if(table != NULL)
-    {
-      free(table);
-      *table_p = NULL;
-    }
-}
-
-int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_pfx_table_t *table,
-                                      char *collector_name,
-                                      bgpstream_ip_address_t *peer_ip,
-				      uint32_t time)
-{
-  seq_num_t seq;
-  assert(table != NULL);
-  assert(table->started == 0);
+  assert(TBL.started == 0);
+  assert(peer_cnt <= BGPWATCHER_PEER_MAX_CNT);
 
   /* fill the table */
-  table->info.time = time;
-  table->info.collector = collector_name;
-  table->info.peer_ip = *peer_ip;
+  TBL.info.time = time;
+  TBL.info.collector = collector;
 
-  if(send_data_hdrs(table->client->broker_zocket,
-                    BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN,
-                    table->client, &seq) != 0)
-    {
-      return -1;
-    }
-  table->started = 1;
+  /* @todo optimize memory used by the hash by using this? */
+  /* reset the peer cnt */
+  TBL.info.peers_cnt = peer_cnt;
+  TBL.peers_added = 0;
 
-  if(bgpwatcher_pfx_table_send(table->client->broker_zocket,
-			       &table->info) != 0)
-    {
-      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
-			     "Failed to send prefix table");
-      return -1;
-    }
+  /* reset the pfx_peers hash */
+  kh_clear(pfx_peers, TBL.pfx_peers);
 
-  return seq;
+  TBL.started = 1;
+
+  /* delay tx until table end */
+
+  return 0;
 }
 
-int bgpwatcher_client_pfx_table_add(bgpwatcher_client_pfx_table_t *table,
-				    bgpstream_prefix_t *prefix,
+int bgpwatcher_client_pfx_table_add_peer(bgpwatcher_client_t *client,
+                                         bl_addr_storage_t *peer_ip,
+                                         uint8_t status)
+{
+  int peer_id;
+  assert(client != NULL);
+  /* make sure we aren't about to add to many peers */
+  assert(TBL.peers_added < BGPWATCHER_PEER_MAX_CNT);
+  /* make sure they aren't trying to add more peers than they promised */
+  assert(TBL.info.peers_cnt > TBL.peers_added);
+
+  peer_id = TBL.peers_added++;
+  TBL.info.peers[peer_id].ip = *peer_ip;
+  TBL.info.peers[peer_id].status = status;
+  return peer_id;
+}
+
+int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
+                                    int peer_id,
+				    bl_pfx_storage_t *prefix,
                                     uint32_t orig_asn)
 {
-  assert(table != NULL);
-  seq_num_t seq;
+  int khret;
+  khiter_t k;
+  bgpwatcher_pfx_row_t findme;
+  bgpwatcher_pfx_row_t *row;
 
-  if(send_data_hdrs(table->client->broker_zocket,
-                    BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD,
-                    table->client, &seq) != 0)
+  assert(client != NULL);
+  assert(peer_id >= 0 && peer_id < TBL.peers_added);
+  assert(prefix != NULL);
+
+  findme.prefix = *prefix;
+
+  /* either get or insert this prefix */
+  if((k = kh_get(pfx_peers, TBL.pfx_peers, findme)) == kh_end(TBL.pfx_peers))
     {
-      return -1;
+      /* set the peer info to unused */
+      memset(&findme.info, 0,
+             sizeof(bgpwatcher_pfx_peer_info_t)*BGPWATCHER_PEER_MAX_CNT);
+      k = kh_put(pfx_peers, TBL.pfx_peers, findme, &khret);
     }
 
-  if(bgpwatcher_pfx_send(table->client->broker_zocket,
-			 prefix, orig_asn) != 0)
-    {
-      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
-			     "Failed to send prefix record");
-      return -1;
-    }
+  /* now update the peer info */
+  row = &kh_key(TBL.pfx_peers, k);
+  assert(row != NULL);
+  row->info[peer_id].orig_asn = orig_asn;
+  row->info[peer_id].in_use = 1;
 
-  return seq;
+  return 0;
 }
 
-int bgpwatcher_client_pfx_table_end(bgpwatcher_client_pfx_table_t *table)
+int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client)
 {
-  seq_num_t seq;
-  assert(table != NULL);
-  assert(table->started == 1);
+  khiter_t k;
+  bgpwatcher_pfx_row_t *row;
 
-  if(send_data_hdrs(table->client->broker_zocket,
-                    BGPWATCHER_DATA_MSG_TYPE_TABLE_END,
-                    table->client, &seq) != 0)
+  /* send table begin message */
+  if(send_data_hdrs(client, BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN) != 0)
     {
       return -1;
     }
-
-  if(bgpwatcher_pfx_table_send(table->client->broker_zocket,
-			       &table->info) != 0)
+  if(bgpwatcher_pfx_table_begin_send(client->broker_zocket,
+                                     &TBL.info) != 0)
     {
-      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Failed to send prefix table");
       return -1;
     }
 
-  table->started = 0;
+  /* send all the prefixes */
+  for(k = kh_begin(TBL.pfx_peers); k != kh_end(TBL.pfx_peers); ++k)
+    {
+      if(kh_exist(TBL.pfx_peers, k))
+        {
+          row = &kh_key(TBL.pfx_peers, k);
 
-  return seq;
-}
+          if(send_data_hdrs(client,
+                            BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD) != 0)
+            {
+              return -1;
+            }
+          if(bgpwatcher_pfx_row_send(client->broker_zocket, row,
+                                     TBL.info.peers_cnt) != 0)
+            {
+              bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+                                     "Failed to send prefix row");
+              return -1;
+            }
+        }
+    }
 
-bgpwatcher_client_peer_table_t *bgpwatcher_client_peer_table_create(
-						   bgpwatcher_client_t *client)
-{
-  bgpwatcher_client_peer_table_t *table;
-
-  ASSERT_INTENT(BGPWATCHER_PRODUCER_INTENT_PEER);
-
-  if((table = malloc_zero(sizeof(bgpwatcher_client_peer_table_t))) == NULL)
+  /* send table end */
+  if(send_data_hdrs(client, BGPWATCHER_DATA_MSG_TYPE_TABLE_END) != 0)
+    {
+      return -1;
+    }
+  if(bgpwatcher_pfx_table_end_send(client->broker_zocket, &TBL.info) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Could not malloc peer table");
-      return NULL;
-    }
-
-  table->client = client;
-
-  return table;
-}
-
-void bgpwatcher_client_peer_table_free(bgpwatcher_client_peer_table_t **table_p)
-{
-  bgpwatcher_client_peer_table_t *table = *table_p;
-  if(table != NULL)
-    {
-      free(table);
-      *table_p = NULL;
-    }
-}
-
-int bgpwatcher_client_peer_table_begin(bgpwatcher_client_peer_table_t *table,
-                                       char *collector_name,
-                                       uint32_t time)
-{
-  seq_num_t seq;
-  assert(table != NULL);
-  assert(table->started == 0);
-
-  table->info.time = time;
-  table->info.collector = collector_name;
-
-  if(send_data_hdrs(table->client->broker_zocket,
-                    BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN,
-                    table->client, &seq) != 0)
-    {
-      return -1;
-    }
-  table->started = 1;
-
-  if(bgpwatcher_peer_table_send(table->client->broker_zocket,
-			       &table->info) != 0)
-    {
-      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
-			     "Failed to send peer table");
+			     "Failed to send prefix table");
       return -1;
     }
 
-  return seq;
-}
+  TBL.started = 0;
 
-int bgpwatcher_client_peer_table_add(bgpwatcher_client_peer_table_t *table,
-                                     bgpstream_ip_address_t *peer_ip,
-                                     uint8_t status)
-{
-  seq_num_t seq;
-  assert(table != NULL);
-  assert(peer_ip != NULL);
-
-  if(send_data_hdrs(table->client->broker_zocket,
-                    BGPWATCHER_DATA_MSG_TYPE_PEER_RECORD,
-                    table->client, &seq) != 0)
-    {
-      return -1;
-    }
-
-  if(bgpwatcher_peer_send(table->client->broker_zocket,
-			  peer_ip, status) != 0)
-    {
-      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
-			     "Failed to send peer record");
-      return -1;
-    }
-
-  return seq;
-}
-
-int bgpwatcher_client_peer_table_end(bgpwatcher_client_peer_table_t *table)
-{
-  seq_num_t seq;
-  assert(table != NULL);
-  assert(table->started == 1);
-
-  if(send_data_hdrs(table->client->broker_zocket,
-                    BGPWATCHER_DATA_MSG_TYPE_TABLE_END,
-                    table->client, &seq) != 0)
-    {
-      return -1;
-    }
-
-  if(bgpwatcher_peer_table_send(table->client->broker_zocket,
-			       &table->info) != 0)
-    {
-      bgpwatcher_err_set_err(&table->client->err, BGPWATCHER_ERR_MALLOC,
-			     "Failed to send peer table");
-      return -1;
-    }
-
-  table->started = 0;
-
-  return seq;
+  return 0;
 }
 
 void bgpwatcher_client_stop(bgpwatcher_client_t *client)

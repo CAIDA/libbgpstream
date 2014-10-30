@@ -22,7 +22,10 @@
 # along with bgpwatcher.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/common -I$(top_srcdir)/lib
+AM_CPPFLAGS = -I$(top_srcdir) \
+	      -I$(top_srcdir)/common \
+	      -I$(top_srcdir)/bgpcommon \
+	      -I$(top_srcdir)/lib
 
 dist_bin_SCRIPTS =
 

@@ -53,13 +53,30 @@
  *
  * @{ */
 
+#define hash_row(row) (bl_pfx_storage_hash_func(row.prefix))
+
+#define hash_eq_row(a, b) (bl_pfx_storage_hash_equal(a.prefix, b.prefix))
+
+KHASH_INIT(pfx_peers, bgpwatcher_pfx_row_t, char, 0, hash_row, hash_eq_row)
+
+typedef struct bgpwatcher_client_pfx_table {
+
+  /** Indicates that a table_start message should not be sent on the next
+      pfx_add */
+  int started;
+
+  /** Table information (partially used) */
+  bgpwatcher_pfx_table_t info;
+
+  /** Count of peers added so far */
+  int peers_added;
+
+  /** Hash table of prefixes being added */
+  kh_pfx_peers_t *pfx_peers;
+
+} bgpwatcher_client_pfx_table_t;
+
 typedef struct bgpwatcher_client {
-
-  /** set of bgpwatcher_consumer_interest_t flags */
-  uint8_t interests;
-
-  /** set of bgpwatcher_producer_intent_t flags */
-  uint8_t intents;
 
   /** shared config that we have prepared for our broker(s) */
   bgpwatcher_client_broker_config_t broker_config;
@@ -76,39 +93,13 @@ typedef struct bgpwatcher_client {
   /** Next request sequence number to use */
   seq_num_t seq_num;
 
+  /** State for the current prefix table */
+  bgpwatcher_client_pfx_table_t pfx_table;
+
   /** Indicates that the client has been signaled to shutdown */
   int shutdown;
 
 } bgpwatcher_client_t;
-
-/** @todo consider merging pfx and peer tables into a single table type */
-typedef struct bgpwatcher_client_pfx_table {
-
-  /** Client instance that owns this table */
-  bgpwatcher_client_t *client;
-
-  /** Indicates that a table_start message should not be sent on the next
-      pfx_add */
-  int started;
-
-  /** Table information (partially used) */
-  bgpwatcher_pfx_table_t info;
-
-} bgpwatcher_client_pfx_table_t;
-
-typedef struct bgpwatcher_client_peer_table {
-
-  /** Client instance that owns this table */
-  bgpwatcher_client_t *client;
-
-  /** Indicates that a table_start message should not be sent on the next
-      peer_add */
-  int started;
-
-  /** Table information (partially used) */
-  bgpwatcher_peer_table_t info;
-
-} bgpwatcher_client_peer_table_t;
 
 /** @} */
 

@@ -39,100 +39,43 @@
 
 #define TEST_TABLE_NUM_DEFAULT 1
 #define TEST_TABLE_SIZE_DEFAULT 50
-#define PEER_TABLE_SIZE 20
-
-static uint64_t rx = 0;
-
-static void handle_reply(bgpwatcher_client_t *client,
-                         seq_num_t seq_num,
-                         void *user)
-{
-#ifdef DEBUG
-  fprintf(stderr, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n");
-  fprintf(stderr, "HANDLE: Handling reply\n");
-  fprintf(stderr, "Seq Num: %"PRIu32"\n", seq_num);
-  fprintf(stderr, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n\n");
-#endif
-  rx++;
-}
+#define TEST_PEER_NUM_DEFAULT 1
 
 /* pfx table */
-static bgpstream_ip_address_t  test_pfx_peer_ip;
-static char                   *test_pfx_collector_name;
-static uint32_t                test_pfx_time;
+static char                   *test_collector_name;
+static uint32_t                test_time;
+static bl_addr_storage_t       test_peer_ip;
+static uint8_t                 test_peer_status;
 
 /* pfx row */
-static bgpstream_prefix_t      test_pfx_prefix;
-static uint32_t                test_pfx_orig_asn;
-
-/* peer table */
-static char                   *test_peer_collector_name;
-static uint32_t                test_peer_time;
-
-/* peer row */
-static bgpstream_ip_address_t  test_peer_peer_ip;
-static uint8_t                 test_peer_status;
+static bl_pfx_storage_t        test_prefix;
+static uint32_t                test_prefix_first_addr;
+static uint32_t                test_orig_asn;
 
 static void create_test_data()
 {
   /* PREFIX TABLE */
 
-  /* PEER IP */
-  test_pfx_peer_ip.address.v4_addr.s_addr = 0x0DFAD982;
-  test_pfx_peer_ip.type = BST_IPV4;
+  /* TIME */
+  test_time = 1320969600;
 
   /* COLLECTOR NAME */
-  test_pfx_collector_name = "TEST-COLLECTOR-PFX";
+  test_collector_name = "TEST-COLLECTOR";
 
-  /* TIME */
-  test_pfx_time = 1320969600;
+  /* FIRST PEER IP */
+  test_peer_ip.ipv4.s_addr = 0x00FAD982; /* add one each time */
+  test_peer_ip.version = BL_ADDR_IPV4;
 
-  /* PREFIX */
-  test_pfx_prefix.number.address.v4_addr.s_addr = 0x00E2ACC0;
-  test_pfx_prefix.number.type = BST_IPV4;
-  test_pfx_prefix.len = 24;
+  /* FIRST PEER STATUS */
+  test_peer_status = 0x01;
+
+  /* FIRST PREFIX */
+  test_prefix_first_addr = test_prefix.address.ipv4.s_addr = 0x000000C0;
+  test_prefix.address.version = BL_ADDR_IPV4;
+  test_prefix.mask_len = 24;
 
   /* ORIG ASN */
-  test_pfx_orig_asn = 12345;
-
-  /* -------------------------------------------------- */
-  /* PEER TABLE */
-
-  /* COLLECTOR NAME */
-  test_peer_collector_name = "TEST-COLLECTOR-PEER";
-
-  /* TIME */
-  test_peer_time = 1410267600;
-
-  /* PEER IP */
-  /*2001:48d0:101:501:ec4:7aff:fe12:1108*/
-  test_peer_peer_ip.address.v6_addr.s6_addr[0] = 0x20;
-  test_peer_peer_ip.address.v6_addr.s6_addr[1] = 0x01;
-
-  test_peer_peer_ip.address.v6_addr.s6_addr[2] = 0x48;
-  test_peer_peer_ip.address.v6_addr.s6_addr[3] = 0xd0;
-
-  test_peer_peer_ip.address.v6_addr.s6_addr[4] = 0x01;
-  test_peer_peer_ip.address.v6_addr.s6_addr[5] = 0x01;
-
-  test_peer_peer_ip.address.v6_addr.s6_addr[6] = 0x05;
-  test_peer_peer_ip.address.v6_addr.s6_addr[7] = 0x01;
-
-  test_peer_peer_ip.address.v6_addr.s6_addr[8] = 0x0e;
-  test_peer_peer_ip.address.v6_addr.s6_addr[9] = 0xc4;
-
-  test_peer_peer_ip.address.v6_addr.s6_addr[10] = 0x7a;
-  test_peer_peer_ip.address.v6_addr.s6_addr[11] = 0xff;
-
-  test_peer_peer_ip.address.v6_addr.s6_addr[12] = 0xfe;
-  test_peer_peer_ip.address.v6_addr.s6_addr[13] = 0x12;
-
-  test_peer_peer_ip.address.v6_addr.s6_addr[14] = 0x11;
-  test_peer_peer_ip.address.v6_addr.s6_addr[15] = 0x08;
-  test_peer_peer_ip.type = BST_IPV6;
-
-  /* STATUS */
-  test_peer_status = 0xF3;
+  test_orig_asn = 1;
 }
 
 static void usage(const char *name)
@@ -148,7 +91,8 @@ static void usage(const char *name)
 	  "       -M <msg-retries>      Number of times to retry a request before giving up\n"
 	  "                               (default: %d)\n"
 	  "       -n <identity>         Globally unique client name (default: random)\n"
-          "       -N <table-cnt>        Number of prefix tables (default: %d\n"
+          "       -N <table-cnt>        Number of tables (default: %d)\n"
+          "       -P <peer-cnt>         Number of peers (default: %d)\n"
 	  "       -r <retry-min>        Min wait time (in msec) before reconnecting server\n"
 
 	  "                               (default: %d)\n"
@@ -165,6 +109,7 @@ static void usage(const char *name)
 	  BGPWATCHER_CLIENT_REQUEST_TIMEOUT_DEFAULT,
 	  BGPWATCHER_CLIENT_REQUEST_RETRIES_DEFAULT,
           TEST_TABLE_NUM_DEFAULT,
+          TEST_PEER_NUM_DEFAULT,
 	  BGPWATCHER_RECONNECT_INTERVAL_MIN,
 	  BGPWATCHER_RECONNECT_INTERVAL_MAX,
 	  BGPWATCHER_CLIENT_SERVER_URI_DEFAULT,
@@ -174,7 +119,7 @@ static void usage(const char *name)
 
 int main(int argc, char **argv)
 {
-  int i, tbl;
+  int i, tbl, peer, peer_id;
   /* for option parsing */
   int opt;
   int prevoptind;
@@ -195,18 +140,15 @@ int main(int argc, char **argv)
   uint8_t intents = 0;
   bgpwatcher_client_t *client = NULL;
 
-  /* test structures */
-  int rc;
-  bgpwatcher_client_pfx_table_t *pfx_table = NULL;
-  bgpwatcher_client_peer_table_t *peer_table = NULL;
   /* initialize test data */
   create_test_data();
 
   uint32_t test_table_size = TEST_TABLE_SIZE_DEFAULT;
   uint32_t test_table_num = TEST_TABLE_NUM_DEFAULT;
+  uint32_t test_peer_num = TEST_PEER_NUM_DEFAULT;
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":i:l:m:M:n:N:r:R:s:t:T:v?")) >= 0)
+	(opt = getopt(argc, argv, ":i:l:m:M:n:N:P:r:R:s:t:T:v?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
@@ -242,6 +184,10 @@ int main(int argc, char **argv)
 
 	case 'N':
 	  test_table_num = atoi(optarg);
+	  break;
+
+	case 'P':
+	  test_peer_num = atoi(optarg);
 	  break;
 
 	case 'r':
@@ -295,8 +241,6 @@ int main(int argc, char **argv)
       goto err;
     }
 
-  bgpwatcher_client_set_cb_handle_reply(client, handle_reply);
-
   if(server_uri != NULL &&
      bgpwatcher_client_set_server_uri(client, server_uri) != 0)
     {
@@ -325,20 +269,6 @@ int main(int argc, char **argv)
 
   bgpwatcher_client_set_request_retries(client, request_retries);
 
-  fprintf(stderr, "TEST: Init tables... ");
-  if((pfx_table = bgpwatcher_client_pfx_table_create(client)) == NULL)
-    {
-      fprintf(stderr, "Could not create table\n");
-      goto err;
-    }
-
-  if((peer_table = bgpwatcher_client_peer_table_create(client)) == NULL)
-    {
-      fprintf(stderr, "Could not create table\n");
-      goto err;
-    }
-  fprintf(stderr, "done\n");
-
   fprintf(stderr, "TEST: Starting client... ");
   if(bgpwatcher_client_start(client) != 0)
     {
@@ -348,75 +278,64 @@ int main(int argc, char **argv)
   fprintf(stderr, "done\n");
 
   /* issue a bunch of requests */
+
   for(tbl = 0; tbl < test_table_num; tbl++)
     {
-      fprintf(stderr, "--------------------[ PREFIX START ]--------------------\n");
-      if((rc = bgpwatcher_client_pfx_table_begin(pfx_table,
-                                                 test_pfx_collector_name,
-                                                 &test_pfx_peer_ip,
-                                                 test_pfx_time)) < 0)
+      fprintf(stderr,
+              "--------------------[ PREFIX START %03d ]--------------------\n",
+              tbl);
+
+      if(bgpwatcher_client_pfx_table_begin(client,
+                                           test_time+(tbl*60),
+                                           test_collector_name,
+                                           test_peer_num) != 0)
         {
           fprintf(stderr, "Could not begin pfx table\n");
           goto err;
         }
-      fprintf(stderr, "TEST: Sending pfx table begin: %d\n", rc);
 
-      fprintf(stderr, "TEST: Sending %d pfx table records\n", test_table_size);
-      for(i=0; i<test_table_size; i++)
+      fprintf(stderr, "TEST: Simulating %d peer(s)\n", test_peer_num);
+      for(peer = 0; peer < test_peer_num; peer++)
         {
-          if((rc =
-              bgpwatcher_client_pfx_table_add(pfx_table,
-                                              &test_pfx_prefix,
-                                              test_pfx_orig_asn)) < 0)
+          test_peer_ip.ipv4.s_addr += htonl(1);
+          if((peer_id =
+              bgpwatcher_client_pfx_table_add_peer(client,
+                                                   &test_peer_ip,
+                                                   test_peer_status+peer)) < 0)
             {
-              fprintf(stderr, "Could not add pfx info to table\n");
+              fprintf(stderr, "Could not add peer to table\n");
               goto err;
+            }
+          fprintf(stderr, "TEST: Added peer %d\n", peer_id);
+
+          fprintf(stderr, "TEST: Adding %d prefixes...\n", test_table_size);
+          test_prefix.address.ipv4.s_addr = test_prefix_first_addr;
+          for(i=0; i<test_table_size; i++)
+            {
+              test_prefix.address.ipv4.s_addr+=htonl(256);
+              if(bgpwatcher_client_pfx_table_add(client,
+                                                 peer_id,
+                                                 &test_prefix,
+                                                 test_orig_asn++) != 0)
+                {
+                  fprintf(stderr, "Could not add pfx info to table\n");
+                  goto err;
+                }
             }
         }
 
-      if((rc = bgpwatcher_client_pfx_table_end(pfx_table)) < 0)
+      if(bgpwatcher_client_pfx_table_end(client) != 0)
         {
           fprintf(stderr, "Could not end table\n");
           goto err;
         }
-      fprintf(stderr, "TEST: Sending table end: %d\n", rc);
-      fprintf(stderr, "--------------------[ PREFIX DONE ]--------------------\n\n");
-    }
 
-  fprintf(stderr, "--------------------[ PEER START ]--------------------\n");
-  if((rc = bgpwatcher_client_peer_table_begin(peer_table,
-                                              test_peer_collector_name,
-                                              test_peer_time)) < 0)
-    {
-      fprintf(stderr, "Could not begin peer table\n");
-      goto err;
+      fprintf(stderr,
+              "--------------------[ PREFIX DONE %03d ]--------------------\n\n",
+              tbl);
     }
-  fprintf(stderr, "TEST: Sending peer table begin: %d\n", rc);
-
-  fprintf(stderr, "TEST: Sending %d peer table records\n", PEER_TABLE_SIZE);
-  for(i=0; i<PEER_TABLE_SIZE; i++)
-    {
-      if((rc = bgpwatcher_client_peer_table_add(peer_table,
-                                                &test_peer_peer_ip,
-                                                test_peer_status)) < 0)
-	{
-	  fprintf(stderr, "Could not add peer info to table\n");
-	  goto err;
-	}
-    }
-
-  if((rc = bgpwatcher_client_peer_table_end(peer_table)) < 0)
-    {
-      fprintf(stderr, "Could not end peer table\n");
-      goto err;
-    }
-  fprintf(stderr, "TEST: Sending peer table end: %d\n", rc);
-  fprintf(stderr, "--------------------[ PEER DONE ]--------------------\n\n");
-
 
   fprintf(stderr, "TEST: Shutting down...\n");
-  bgpwatcher_client_pfx_table_free(&pfx_table);
-  bgpwatcher_client_peer_table_free(&peer_table);
 
   bgpwatcher_client_stop(client);
   bgpwatcher_client_perr(client);
@@ -425,16 +344,11 @@ int main(int argc, char **argv)
   bgpwatcher_client_free(client);
   fprintf(stderr, "TEST: Shutdown complete\n");
 
-  fprintf(stderr, "STATS: Sent %d requests\n", rc+1);
-  fprintf(stderr, "STATS: Rx %"PRIu64" replies\n", rx);
-
   /* complete successfully */
   return 0;
 
  err:
   bgpwatcher_client_perr(client);
-  bgpwatcher_client_pfx_table_free(&pfx_table);
-  bgpwatcher_client_peer_table_free(&peer_table);
   if(client != NULL) {
     bgpwatcher_client_free(client);
   }

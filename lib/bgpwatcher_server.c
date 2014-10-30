@@ -69,9 +69,6 @@ static void client_free(bgpwatcher_server_client_t **client_p)
   free(client->pfx_table.collector);
   client->pfx_table.collector = NULL;
 
-  free(client->peer_table.collector);
-  client->peer_table.collector = NULL;
-
   free(client);
 
   *client_p = NULL;
@@ -293,68 +290,36 @@ static int send_reply(bgpwatcher_server_t *server,
   return -1;
 }
 
-static int handle_table_prefix(bgpwatcher_server_t *server,
-                               bgpwatcher_server_client_t *client,
-                               bgpwatcher_data_msg_type_t type)
+static int handle_table_prefix_begin(bgpwatcher_server_t *server,
+                                     bgpwatcher_server_client_t *client)
 {
   /* deserialize the table into the appropriate structure */
-  if(bgpwatcher_pfx_table_recv(server->client_socket,
-			       &client->pfx_table) != 0)
+  if(bgpwatcher_pfx_table_begin_recv(server->client_socket,
+                                     &client->pfx_table) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
                              "Failed to deserialized prefix table");
       goto err;
     }
 
-  /* hand off to callback */
-  switch(type)
+  /* has this table already been started? */
+  if(client->pfx_table_started != 0)
     {
-    case BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN:
-      /* has this table already been started? */
-      if(client->pfx_table_started != 0)
-        {
-          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-                                 "Prefix table already started");
-          goto err;
-        }
-
-      /* set the table number */
-      client->pfx_table.id = server->table_num++;
-
-      /* now the table is started */
-      client->pfx_table_started = 1;
-
-      if(DO_CALLBACK(table_begin_prefix,
-                     &client->pfx_table) != 0)
-        {
-          goto err;
-        }
-      break;
-
-    case BGPWATCHER_DATA_MSG_TYPE_TABLE_END:
-      /* this table must already be started */
-      if(client->pfx_table_started == 0)
-        {
-          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-                                 "Prefix table not started");
-          goto err;
-        }
-
-      /* now the table is not started */
-      client->pfx_table_started = 0;
-
-      if(DO_CALLBACK(table_end_prefix,
-                     &client->pfx_table) != 0)
-        {
-          goto err;
-        }
-      break;
-
-    default:
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-                             "Invalid handle_table message type",
-                             type);
-      break;
+                             "Prefix table already started");
+      goto err;
+    }
+
+  /* set the table number */
+  client->pfx_table.id = server->table_num++;
+
+  /* now the table is started */
+  client->pfx_table_started = 1;
+
+  if(DO_CALLBACK(table_begin_prefix,
+                 &client->pfx_table) != 0)
+    {
+      goto err;
     }
 
   return 0;
@@ -363,68 +328,33 @@ static int handle_table_prefix(bgpwatcher_server_t *server,
   return -1;
 }
 
-static int handle_table_peer(bgpwatcher_server_t *server,
-			     bgpwatcher_server_client_t *client,
-			     bgpwatcher_data_msg_type_t type)
+static int handle_table_prefix_end(bgpwatcher_server_t *server,
+                                   bgpwatcher_server_client_t *client)
 {
   /* deserialize the table into the appropriate structure */
-  if(bgpwatcher_peer_table_recv(server->client_socket,
-				&client->peer_table) != 0)
+  if(bgpwatcher_pfx_table_end_recv(server->client_socket,
+                                   &client->pfx_table) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-                             "Failed to deserialize peer table");
+                             "Failed to receive prefix table");
       goto err;
     }
 
-  /* hand off to callback */
-  switch(type)
+  /* this table must already be started */
+  if(client->pfx_table_started == 0)
     {
-    case BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN:
-      /* has this table already been started? */
-      if(client->peer_table_started != 0)
-        {
-          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-                                 "Peer table already started");
-          goto err;
-        }
-
-      /* set the table number */
-      client->peer_table.id = server->table_num++;
-
-      /* now the table is started */
-      client->peer_table_started = 1;
-
-      if(DO_CALLBACK(table_begin_peer,
-                     &client->peer_table) != 0)
-        {
-          goto err;
-        }
-      break;
-
-    case BGPWATCHER_DATA_MSG_TYPE_TABLE_END:
-      /* this table must already be started */
-      if(client->peer_table_started == 0)
-        {
-          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-                                 "Peer table not started");
-          goto err;
-        }
-
-      /* now the table is not started */
-      client->peer_table_started = 0;
-
-      if(DO_CALLBACK(table_end_peer,
-                     &client->peer_table) != 0)
-        {
-          goto err;
-        }
-      break;
-
-    default:
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-                             "Invalid handle_table message type",
-                             type);
-      break;
+                             "Prefix table not started");
+      goto err;
+    }
+
+  /* now the table is not started */
+  client->pfx_table_started = 0;
+
+  if(DO_CALLBACK(table_end_prefix,
+                 &client->pfx_table) != 0)
+    {
+      goto err;
     }
 
   return 0;
@@ -439,7 +369,7 @@ static int handle_table(bgpwatcher_server_t *server,
 {
   uint8_t table_type;
 
-  /* set the table type for this client (prefix or peer) */
+  /* get the table type for this client (always prefix) */
   if(zmq_recv(server->client_socket, &table_type,
 	      bgpwatcher_table_type_size_t, 0)
      != bgpwatcher_table_type_size_t)
@@ -455,15 +385,24 @@ static int handle_table(bgpwatcher_server_t *server,
   switch(table_type)
     {
     case BGPWATCHER_TABLE_TYPE_PREFIX:
-      if(handle_table_prefix(server, client, type) != 0)
+      switch(type)
         {
-          goto err;
-        }
-      break;
+        case BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN:
+          if(handle_table_prefix_begin(server, client) != 0)
+            {
+              goto err;
+            }
+          break;
 
-    case BGPWATCHER_TABLE_TYPE_PEER:
-      if(handle_table_peer(server, client, type) != 0)
-        {
+        case BGPWATCHER_DATA_MSG_TYPE_TABLE_END:
+          if(handle_table_prefix_end(server, client) != 0)
+            {
+              goto err;
+            }
+          break;
+        default:
+          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+                             "Invalid prefix table message");
           goto err;
         }
       break;
@@ -484,8 +423,8 @@ static int handle_table(bgpwatcher_server_t *server,
 static int handle_pfx_record(bgpwatcher_server_t *server,
 			     bgpwatcher_server_client_t *client)
 {
-  bgpstream_prefix_t prefix;
-  uint32_t orig_asn;
+  /** @todo test moving into server structure */
+  bgpwatcher_pfx_row_t row;
 
   if(client->pfx_table_started == 0)
     {
@@ -494,50 +433,17 @@ static int handle_pfx_record(bgpwatcher_server_t *server,
       goto err;
     }
 
-  if(bgpwatcher_pfx_recv(server->client_socket, &prefix, &orig_asn) != 0)
+  if(bgpwatcher_pfx_row_recv(server->client_socket, &row,
+                             client->pfx_table.peers_cnt) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-			     "Could not deserialize prefix record");
+			     "Could not receive prefix record");
       goto err;
     }
 
-  if(DO_CALLBACK(recv_pfx_record,
+  if(DO_CALLBACK(prefix_row,
                  &client->pfx_table,
-                 &prefix, orig_asn) != 0)
-    {
-      goto err;
-    }
-
-  return 0;
-
-err:
-  return -1;
-}
-
-static int handle_peer_record(bgpwatcher_server_t *server,
-			     bgpwatcher_server_client_t *client)
-{
-  bgpstream_ip_address_t peer_ip;
-  uint8_t status;
-
-  if(client->peer_table_started == 0)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-			     "Received peer before table start");
-      goto err;
-    }
-
-  if(bgpwatcher_peer_recv(server->client_socket, &peer_ip, &status) != 0)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-			     "Could not deserialize peer record");
-      goto err;
-    }
-
-  if(DO_CALLBACK(recv_peer_record,
-                 &client->peer_table,
-                 &peer_ip,
-                 status) != 0)
+                 &row) != 0)
     {
       goto err;
     }
@@ -620,15 +526,6 @@ static int handle_data_message(bgpwatcher_server_t *server,
       rc = hrc;
       break;
 
-    case BGPWATCHER_DATA_MSG_TYPE_PEER_RECORD:
-      hrc = handle_peer_record(server, client);
-      if(bgpwatcher_err_is_err(ERR) != 0)
-	{
-	  goto err;
-	}
-      rc = hrc;
-      break;
-
     case BGPWATCHER_DATA_MSG_TYPE_UNKNOWN:
     default:
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
@@ -640,7 +537,6 @@ static int handle_data_message(bgpwatcher_server_t *server,
   return rc;
 
  err:
-  /* err means a broken request, just pretend we didn't get it */
   zmq_msg_close(&seq_msg);
   return -1;
 }
@@ -701,7 +597,6 @@ static int handle_ready_message(bgpwatcher_server_t *server,
   return -1;
 }
 
-/* OWNS MSG */
 static int handle_message(bgpwatcher_server_t *server,
 			  bgpwatcher_server_client_t **client_p,
                           bgpwatcher_msg_type_t msg_type)

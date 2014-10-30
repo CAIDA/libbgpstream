@@ -214,7 +214,7 @@ static int handle_reply(bgpwatcher_client_broker_t *broker)
   /*fprintf(stderr, "MATCH: req.seq: %"PRIu32", req.msg_type: %d\n",
     req->seq_num, req->msg_type);*/
 
-  DO_CALLBACK(handle_reply, req->seq_num);
+  /** @todo consider how/if we should tell the client about a reply */
 
   /* destroy this req, we're done with it */
   bgpwatcher_client_broker_req_free(&req);
@@ -611,11 +611,11 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
   else
     {
       /* this is a message for us, just shut down */
-      fprintf(stderr,
-              "INFO: Got $TERM, shutting down client broker on next "
-              "cycle\n");
       if(broker->shutdown_time == 0)
         {
+          fprintf(stderr,
+                  "INFO: Got $TERM, shutting down client broker on next "
+                  "cycle\n");
           broker->shutdown_time = clock + CFG->shutdown_linger;
         }
       if(is_shutdown_time(broker, clock) != 0)
