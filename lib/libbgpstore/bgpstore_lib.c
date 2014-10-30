@@ -133,7 +133,7 @@ int bgpstore_some_table_start(bgpstore_t *bgp_store, char *client_name,
 	{
 	  return -1;
 	}
-      k = kh_put(timebgpview, bgp_store->bgp_timeseries, table_time,&khret);
+      // k = kh_put(timebgpview, bgp_store->bgp_timeseries, table_time,&khret);
 
       // HERE
       

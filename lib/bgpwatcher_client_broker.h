@@ -96,7 +96,7 @@ typedef struct bgpwatcher_client_broker_req {
   zmq_msg_t msg_frames[BGPWATCHER_CLIENT_BROKER_REQ_MSG_FRAMES_MAX];
 
   /** Number of used msg frames */
-  uint8_t msg_frames_cnt;
+  uint16_t msg_frames_cnt;
 
 } bgpwatcher_client_broker_req_t;
 
