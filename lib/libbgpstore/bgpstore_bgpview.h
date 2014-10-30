@@ -138,8 +138,10 @@ typedef struct struct_bgpview_t {
    *  tables received (uint8), also we register the status
    *  of each single peer */
   khash_t(collectorstr_status) *collector_status;
+  
   /** for each active id we store its status */
   khash_t(id_status) *peer_status;
+
 } bgpview_t;
 
 
@@ -151,6 +153,11 @@ typedef struct struct_bgpview_t {
  *  NULL if an error occurred
  */
 bgpview_t *bgpview_create();
+
+
+
+
+
 
 
 /** Deallocate memory for the bgpview structure

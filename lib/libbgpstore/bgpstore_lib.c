@@ -48,26 +48,18 @@ bgpstore_t *bgpstore_create()
       goto err;
     }
 
-  if((bgp_store->collectorpeer_bsid = kh_init(collectorpeeridtable)) == NULL)
+  if((bgp_store->peer_signature_id = bl_peersign_map_create()) == NULL)
     {
-      fprintf(stderr, "Failed to create (collectorpeeridtable)\n");
+      fprintf(stderr, "Failed to create (peer_signature_id)\n");
       goto err;
     }
-
-  if((bgp_store->bsid_collectorpeer = kh_init(bsidtable)) == NULL)
-    {
-      fprintf(stderr, "Failed to create (collectorsidtable)\n");
-      goto err;
-    }
-
-  bgp_store->next_bs_id = 0;
 
 #ifdef DEBUG
   fprintf(stderr, "DEBUG: bgpstore created\n");
 #endif
-  return bgp_store;
+return bgp_store;
 
- err:
+err:
   if(bgp_store != NULL)
     {
       bgpstore_destroy(bgp_store);
@@ -126,6 +118,53 @@ int bgpstore_client_disconnect(bgpstore_t *bgp_store, char *client_name)
 }
 
 
+int bgpstore_some_table_start(bgpstore_t *bgp_store, char *client_name,
+			      uint32_t table_time, char *collector_str,
+			      bl_addr_storage_t *peer_ip)
+{
+  bl_peersign_map_set_and_get(bgp_store->peer_signature_id, collector_str, peer_ip);
+  // TODO!
+  khiter_t k;
+  bgpview_t *bgp_view = NULL;
+  if((k = kh_get(timebgpview, bgp_store->bgp_timeseries, table_time)) == kh_end(bgp_store->bgp_timeseries))
+    {
+      // first time we receive this table time -> create bgp_view
+      if((bgp_view = bgpview_create()) == NULL)
+	{
+	  return -1;
+	}
+      k = kh_put(timebgpview, bgp_store->bgp_timeseries, table_time,&khret);
+
+      // HERE
+      
+    }
+
+  return 0;
+}
+
+int bgpstore_some_table_end(bgpstore_t *bgp_store, char *client_name,
+			    uint32_t table_time, char *collector_str,
+			    bl_addr_storage_t *peer_ip)
+{
+  khiter_t k;
+  bgpview_t *bgp_view = NULL;
+  if((k = kh_get(timebgpview, bgp_store->bgp_timeseries, table_time)) != kh_end(bgp_store->bgp_timeseries))
+    {
+      if (kh_exist(bgp_store->bgp_timeseries, k))
+	{
+	  bgp_view = kh_value(bgp_store->bgp_timeseries,k);
+	  
+	  return 0;
+
+	}
+    }
+
+  // TODO: error, receiving a table end for a time that has never been
+  // processed
+  return -1;    
+}
+
+
 
 
 void bgpstore_destroy(bgpstore_t *bgp_store)
@@ -143,9 +182,11 @@ void bgpstore_destroy(bgpstore_t *bgp_store)
 	  kh_destroy(strclientstatus, bgp_store->active_clients);
 	  bgp_store->active_clients = NULL;
 	}
-      // TODO destroy collectorpeer_bsid
-      // TODO destroy bsid_collectorpeer
-
+      if(bgp_store->peer_signature_id != NULL)
+	{
+	  bl_peersign_map_destroy(bgp_store->peer_signature_id);
+	  bgp_store->peer_signature_id = NULL;
+	}
       free(bgp_store);
 #ifdef DEBUG
       fprintf(stderr, "DEBUG: bgpstore destroyed\n");

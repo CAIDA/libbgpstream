@@ -29,9 +29,11 @@
 #include "bgpstore_lib.h"
 #include "bgpstore_bgpview.h"
 #include "bgpwatcher_common.h"
-// #include "bgpstream_elem.h"
+
+#include "bgpstore_common.h"
 
 #include "bl_bgp_utils.h"
+#include "bl_peersign_map.h"
 
 #include "khash.h"
 
@@ -40,41 +42,6 @@
 KHASH_INIT(timebgpview, uint32_t, bgpview_t*, 1,
 	   kh_int_hash_func, kh_int_hash_equal);
 
-/** The client status is a structure that maintains
- *  the interests of each client, i.e.: which data
- *  is the client interested as a consumer, and
- *  which data is the client interested as a 
- *  producer.
- *  Every bit in the  array indicates whether
- *  an type of information is interesting or not.
- */
-typedef struct struct_clientstatus_t {
-  uint8_t producer_intents;
-  uint8_t consumer_interests;
-} clientstatus_t;
-
-KHASH_INIT(strclientstatus, char*, clientstatus_t , 1,
-	   kh_str_hash_func, kh_str_hash_equal);
-
-
-KHASH_INIT(peerbsid, bl_addr_storage_t, uint16_t, 1,
-	   bl_addr_storage_hash_func, bl_addr_storage_hash_equal); 
-
-typedef struct struct_peeridtable_t {
-  khash_t(peerbsid) *peer_bsid;
-} peeridtable_t;
-
-KHASH_INIT(collectorpeeridtable, char*, peeridtable_t, 1,
-	   kh_str_hash_func, kh_str_hash_equal);
-
-typedef struct struct_collector_peer_t {
-  char collector_str[BGPWATCHER_COLLECTOR_NAME_LEN];
-  bl_addr_storage_t peer_ip_addr;
-} collector_peer_t;
-
-
-KHASH_INIT(bsidtable, uint16_t, collector_peer_t, 1,
-	   kh_int_hash_func, kh_int_hash_equal);
 
 
 struct bgpstore {
@@ -92,11 +59,7 @@ struct bgpstore {
    *   by all the bgpviews and it is constant over time.
    *   Also, it enables faster lookup in the bgpview
    *   prefix tables. */
-  khash_t(collectorpeeridtable) *collectorpeer_bsid;
-  khash_t(bsidtable) *bsid_collectorpeer;
-  /** next id that will be used to store a new (collector,
-   *  peer) pair */
-  uint16_t next_bs_id;
+  bl_peersign_map_t *peer_signature_id;  
 };
 
 #endif /* __BGPSTORE_INT_H */

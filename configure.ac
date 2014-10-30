@@ -120,10 +120,10 @@ AC_SUBST([BGPWATCHER_MID_VERSION])
 AC_SUBST([BGPWATCHER_MINOR_VERSION])
 
 AC_CONFIG_FILES([Makefile
-                bgpcommon/Makefile
 		common/Makefile
 		common/libpatricia/Makefile
 		common/libcsv/Makefile
+                bgpcommon/Makefile
 		lib/Makefile
 		lib/libbgpstore/Makefile
 		tools/Makefile

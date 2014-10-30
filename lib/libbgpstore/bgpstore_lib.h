@@ -32,6 +32,8 @@
 #include "utils.h"
 #include <assert.h>
 
+#include "bl_bgp_utils.h"
+
 
 typedef struct bgpstore bgpstore_t;
 
@@ -52,6 +54,14 @@ int bgpstore_client_connect(bgpstore_t *bgp_store, char *client_name,
 
 // TODO: documentation
 int bgpstore_client_disconnect(bgpstore_t *bgp_store, char *client_name);
+
+
+
+// TODO: documentation
+// every table end triggers a completion check for the table_time associated
+int bgpstore_some_table_end(bgpstore_t *bgp_store, char *client_name,
+			    uint32_t table_time, char *collector_str,
+			    bl_addr_storage_t *peer_ip);
 
 
 /** Deallocate memory for the bgpstore structure
