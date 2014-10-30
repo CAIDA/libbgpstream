@@ -35,6 +35,8 @@ CONDITIONAL_LIBS=
 libbl_la_SOURCES =   \
 	bl_bgp_utils.c  \
 	bl_bgp_utils.h  \
+	bl_str_set.c  \
+	bl_str_set.h  \
 	bl_as_set.c     \
 	bl_as_set.h     \
 	bl_pfx_set.c  \
