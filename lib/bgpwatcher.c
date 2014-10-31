@@ -75,7 +75,9 @@ static int table_begin_prefix(bgpwatcher_server_t *server,
   fprintf(stderr, "Client:\t%s\n", client->name);
   bgpwatcher_pfx_table_dump(table);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
-  return 0;
+  bgpwatcher_t *bw = WATCHER(user);
+  int ret = bgpstore_prefix_table_begin(bw->bgp_store, client->name, table);
+  return ret;
 }
 
 static int prefix_row(bgpwatcher_server_t *server,
@@ -92,7 +94,10 @@ static int prefix_row(bgpwatcher_server_t *server,
   bgpwatcher_pfx_row_dump(table, row);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
 #endif
-  return 0;
+  bgpwatcher_t *bw = WATCHER(user);
+  int ret = bgpstore_prefix_table_row(bw->bgp_store, client->name, table,row);
+  return ret;
+
 }
 
 static int table_end_prefix(bgpwatcher_server_t *server,
@@ -105,7 +110,9 @@ static int table_end_prefix(bgpwatcher_server_t *server,
   fprintf(stderr, "Client:\t%s\n", client->name);
   bgpwatcher_pfx_table_dump(table);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
-  return 0;
+  bgpwatcher_t *bw = WATCHER(user);
+  int ret = bgpstore_prefix_table_begin(bw->bgp_store, client->name, table);
+  return ret;
 }
 
 static bgpwatcher_server_callbacks_t callback_template = {

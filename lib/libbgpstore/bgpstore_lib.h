@@ -32,6 +32,7 @@
 #include "utils.h"
 #include <assert.h>
 
+#include "bgpwatcher_common.h"
 #include "bl_bgp_utils.h"
 
 
@@ -55,6 +56,18 @@ int bgpstore_client_connect(bgpstore_t *bgp_store, char *client_name,
 // TODO: documentation
 int bgpstore_client_disconnect(bgpstore_t *bgp_store, char *client_name);
 
+
+// TODO: documentation
+int bgpstore_prefix_table_begin(bgpstore_t *bgp_store, char *client_name,
+				bgpwatcher_pfx_table_t *table);
+
+// TODO: documentation
+int bgpstore_prefix_table_row(bgpstore_t *bgp_store, char *client_name,
+			      bgpwatcher_pfx_table_t *table, bgpwatcher_pfx_row_t *row);
+
+// TODO: documentation
+int bgpstore_prefix_table_end(bgpstore_t *bgp_store, char *client_name,
+				bgpwatcher_pfx_table_t *table);
 
 
 // TODO: documentation
