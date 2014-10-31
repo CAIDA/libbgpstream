@@ -149,7 +149,23 @@ bgpview_t *bgpview_create()
 }
 
 
-int bgpview_add_peer(bgpview_t *bgp_view, char *collector, uint16_t local_peer_id, uint8_t peer_status)
+int bgpview_add_peer(bgpview_t *bgp_view, char *collector, bgpwatcher_peer_t* peer_info)
+{
+  // TODO
+  return 0;
+}
+
+
+int bgpview_add_row(bgpview_t *bgp_view, bgpwatcher_pfx_table_t *table,
+		    bgpwatcher_pfx_row_t *row)
+{
+  // TODO
+  return 0;
+}
+
+
+int bgpview_table_end(bgpview_t *bgp_view, char *client_name,
+		      bgpwatcher_pfx_table_t *table)
 {
   // TODO
   return 0;

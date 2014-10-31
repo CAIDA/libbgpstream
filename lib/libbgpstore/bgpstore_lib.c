@@ -122,13 +122,14 @@ int bgpstore_client_disconnect(bgpstore_t *bgp_store, char *client_name)
 int bgpstore_prefix_table_begin(bgpstore_t *bgp_store, char *client_name,
 				bgpwatcher_pfx_table_t *table)
 {
-
-  // insert new bgp_view if time does not exist yet
+  
   bgpview_t *bgp_view = NULL;
   khiter_t k;
   int khret;
 
-  if((k = kh_get(timebgpview, bgp_store->bgp_timeseries, table->time)) == kh_end(bgp_store->bgp_timeseries))
+  // insert new bgp_view if time does not exist yet
+  if((k = kh_get(timebgpview, bgp_store->bgp_timeseries,
+		 table->time)) == kh_end(bgp_store->bgp_timeseries))
     {
       // first time we receive this table time -> create bgp_view
       if((bgp_view = bgpview_create()) == NULL)
@@ -145,69 +146,58 @@ int bgpstore_prefix_table_begin(bgpstore_t *bgp_store, char *client_name,
   // get the list of peers associated with current pfx table
   
   int remote_peer_id; // id assigned to (collector,peer) by remote process
-  uint16_t local_peer_id;  // "static" id assigned to (collector,peer) by current process
 
-  bgpwatcher_peer_t peer_info;
+  bgpwatcher_peer_t* peer_info;
   for(remote_peer_id = 0; remote_peer_id < table->peers_cnt; remote_peer_id++)
     {
-      peer_info = table->peers[remote_peer_id];
-      // TODO: check how to efficiently use it, e.g. associate local_peer_id to peer_info   
-      local_peer_id = bl_peersign_map_set_and_get(bgp_store->peer_signature_id, table->collector, &peer_info.ip);
-      bgpview_add_peer(bgp_view, table->collector, local_peer_id, peer_info.status);
+      peer_info = &(table->peers[remote_peer_id]);      
+      // set "static" id assigned to (collector,peer) by current process
+      peer_info->userid = bl_peersign_map_set_and_get(bgp_store->peer_signature_id,
+						      table->collector, &(peer_info->ip));
+      if(bgpview_add_peer(bgp_view, table->collector, peer_info) < 0)
+	{
+	  // TODO: comment
+	  return -1;
+	}
     }  
   return 0;
 }
 
 
-
-
-int bgpstore_some_table_start(bgpstore_t *bgp_store, char *client_name,
-			      uint32_t table_time, char *collector_str,
-			      bl_addr_storage_t *peer_ip)
-{
-  bl_peersign_map_set_and_get(bgp_store->peer_signature_id, collector_str, peer_ip);
-  // TODO!
-  khiter_t k;
-  bgpview_t *bgp_view = NULL;
-  if((k = kh_get(timebgpview, bgp_store->bgp_timeseries, table_time)) == kh_end(bgp_store->bgp_timeseries))
-    {
-      // first time we receive this table time -> create bgp_view
-      if((bgp_view = bgpview_create()) == NULL)
-	{
-	  return -1;
-	}
-      // k = kh_put(timebgpview, bgp_store->bgp_timeseries, table_time,&khret);
-
-      // HERE
-      
-    }
-
-  return 0;
-}
-
-int bgpstore_some_table_end(bgpstore_t *bgp_store, char *client_name,
-			    uint32_t table_time, char *collector_str,
-			    bl_addr_storage_t *peer_ip)
+int bgpstore_prefix_table_row(bgpstore_t *bgp_store, char *client_name,
+			      bgpwatcher_pfx_table_t *table, bgpwatcher_pfx_row_t *row)
 {
   khiter_t k;
-  bgpview_t *bgp_view = NULL;
-  if((k = kh_get(timebgpview, bgp_store->bgp_timeseries, table_time)) != kh_end(bgp_store->bgp_timeseries))
+
+  if((k = kh_get(timebgpview, bgp_store->bgp_timeseries,
+		 table->time)) == kh_end(bgp_store->bgp_timeseries))
     {
-      if (kh_exist(bgp_store->bgp_timeseries, k))
-	{
-	  bgp_view = kh_value(bgp_store->bgp_timeseries,k);
-	  
-	  return 0;
-
-	}
+      // view for this time must exist
+      return -1;
     }
-
-  // TODO: error, receiving a table end for a time that has never been
-  // processed
-  return -1;    
+  
+  bgpview_t * bgp_view = kh_value(bgp_store->bgp_timeseries,k);
+  
+  return bgpview_add_row(bgp_view, table, row);
 }
 
 
+int bgpstore_prefix_table_end(bgpstore_t *bgp_store, char *client_name,
+			      bgpwatcher_pfx_table_t *table)
+{
+  khiter_t k;
+
+  if((k = kh_get(timebgpview, bgp_store->bgp_timeseries,
+		 table->time)) == kh_end(bgp_store->bgp_timeseries))
+    {
+      // view for this time must exist
+      return -1;
+    }
+  
+  bgpview_t * bgp_view = kh_value(bgp_store->bgp_timeseries,k);
+  
+  return bgpview_table_end(bgp_view, client_name, table);
+}
 
 
 void bgpstore_destroy(bgpstore_t *bgp_store)

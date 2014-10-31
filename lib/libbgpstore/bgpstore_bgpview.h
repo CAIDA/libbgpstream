@@ -33,6 +33,8 @@
 #include <khash.h>
 #include <assert.h>
 
+#include "bgpwatcher_common.h"
+
 #include "bl_bgp_utils.h"
 #include "bl_str_set.h"
 
@@ -156,10 +158,21 @@ bgpview_t *bgpview_create();
 
 
 
-// TODO: documentation
-int bgpview_add_peer(bgpview_t *bgp_view, char *collector, uint16_t local_peer_id, uint8_t peer_status);
+// TODO: add documentation
+
+int bgpview_add_peer(bgpview_t *bgp_view, char *collector, bgpwatcher_peer_t* peer_info);
 
 
+// TODO: add documentation
+
+int bgpview_add_row(bgpview_t *bgp_view, bgpwatcher_pfx_table_t *table,
+		    bgpwatcher_pfx_row_t *row);
+
+
+// TODO: add documentation
+
+int bgpview_table_end(bgpview_t *bgp_view, char *client_name,
+		      bgpwatcher_pfx_table_t *table);
 
 
 /** Deallocate memory for the bgpview structure

@@ -67,15 +67,9 @@ int bgpstore_prefix_table_row(bgpstore_t *bgp_store, char *client_name,
 			      bgpwatcher_pfx_table_t *table, bgpwatcher_pfx_row_t *row);
 
 // TODO: documentation
-int bgpstore_prefix_table_end(bgpstore_t *bgp_store, char *client_name,
-				bgpwatcher_pfx_table_t *table);
-
-
-// TODO: documentation
 // every table end triggers a completion check for the table_time associated
-int bgpstore_some_table_end(bgpstore_t *bgp_store, char *client_name,
-			    uint32_t table_time, char *collector_str,
-			    bl_addr_storage_t *peer_ip);
+int bgpstore_prefix_table_end(bgpstore_t *bgp_store, char *client_name,
+			      bgpwatcher_pfx_table_t *table);
 
 
 /** Deallocate memory for the bgpstore structure
