@@ -66,7 +66,7 @@ void bl_id_set_reset(bl_id_set_t *id_set)
   kh_clear(bl_id_set, id_set);
 }
 
-void id_set_destroy(bl_id_set_t *id_set) 
+void bl_id_set_destroy(bl_id_set_t *id_set) 
 {
   kh_destroy(bl_id_set, id_set);
 }
