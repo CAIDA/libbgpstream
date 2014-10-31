@@ -183,6 +183,12 @@ typedef struct struct_bl_elem_t {
 /** Utility functions */
 
 
+bl_ipv4_pfx_t bl_pfx_storage2ipv4(bl_pfx_storage_t *prefix);
+bl_ipv6_pfx_t bl_pfx_storage2ipv6(bl_pfx_storage_t *prefix);
+
+bl_pfx_storage_t bl_pfx_ipv42storage(bl_ipv4_pfx_t *prefix);
+bl_pfx_storage_t bl_pfx_ipv62storage(bl_ipv6_pfx_t *prefix);
+
 /** as-path utility functions */
 
 bl_as_storage_t bl_get_origin_as(bl_aspath_storage_t *aspath);

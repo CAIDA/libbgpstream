@@ -29,6 +29,35 @@
 #include <assert.h>
 
 
+// TODO: THINK ABOUT RETURNING MASK_LEN = 255 FOR INVALID CONVERSIONS
+
+
+/** Utility functions */
+
+bl_ipv4_pfx_t bl_pfx_storage2ipv4(bl_pfx_storage_t *prefix)
+{
+  bl_ipv4_pfx_t ipv4_pfx;
+  ipv4_pfx.mask_len = 0; // in case the conversion is not possible
+  if(prefix->address.version == BL_ADDR_IPV4)
+    {
+      ipv4_pfx.mask_len = prefix->mask_len;
+      ipv4_pfx.address  = prefix->address.ipv4;
+    }
+  return ipv4_pfx;
+}
+
+bl_ipv6_pfx_t bl_pfx_storage2ipv6(bl_pfx_storage_t *prefix)
+{
+  bl_ipv6_pfx_t ipv6_pfx;
+  ipv6_pfx.mask_len = 0; // in case the conversion is not possible
+  if(prefix->address.version == BL_ADDR_IPV6)
+    {
+      ipv6_pfx.mask_len = prefix->mask_len;
+      ipv6_pfx.address  = prefix->address.ipv6;
+    }
+  return ipv6_pfx;
+}
+
 /* as-path utility functions */
 
 
