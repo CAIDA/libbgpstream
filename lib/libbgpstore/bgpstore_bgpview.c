@@ -28,17 +28,20 @@
 
 static peerview_t* peerview_create()
 {
-  peerview_t *pv;
-  if((pv = malloc_zero(sizeof(peerview_t))) == NULL)
+  return kh_init(bsid_pfxview);    
+}
+
+static int peerview_insert(peerview_t *peer_view, uint16_t server_id, pfxinfo_t *pfx_info)
+{
+  khiter_t k;
+  int khret;
+ 
+  if((k = kh_get(bsid_pfxview, peer_view, server_id)) == kh_end(peer_view))
     {
-      return NULL;
+      k = kh_put(bsid_pfxview, peer_view, server_id, &khret);
     }
-  if((pv->peer_pfxview = kh_init(bsid_pfxview)) != NULL)
-    {
-      free(pv);
-      pv = NULL;
-    }
-  return pv;
+  kh_value(peer_view,k) = *pfx_info;
+  return 0;
 }
 
 
@@ -46,61 +49,24 @@ static void peerview_destroy(peerview_t *pv)
 {
   if(pv != NULL)
     {
-      if(pv->peer_pfxview != NULL)
-	{
-	  kh_destroy(bsid_pfxview, pv->peer_pfxview);
-	  pv->peer_pfxview = NULL;
-	}
-      free(pv);
+      kh_destroy(bsid_pfxview, pv);	
     }
 }
 
-/* ###################################################### */
-/*          coll_status_t related functions               */
-/* ###################################################### */
 
-static void coll_status_destroy(coll_status_t *cs)
+static active_peer_status_t * peer_status_map_get_status(peer_status_map_t *ps_map, uint16_t server_id)
 {
-   if(cs != NULL)
-    {
-      if(cs->active_peer_ids_list != NULL)
-	{
-	  kh_destroy(id_set, cs->active_peer_ids_list);
-	  cs->active_peer_ids_list = NULL;
-	}
-      if(cs->inactive_peer_ids_list != NULL)
-	{
-	  kh_destroy(id_set, cs->inactive_peer_ids_list);
-	  cs->inactive_peer_ids_list = NULL;
-	}      
-      free(cs);
-    }
-}
+  khiter_t k;
 
-static coll_status_t *coll_status_create()
-{
-  coll_status_t *cs;
-  if((cs = malloc_zero(sizeof(coll_status_t))) == NULL)
+  if((k = kh_get(peer_status_map, ps_map, server_id)) == kh_end(ps_map))
     {
+      // TODO: error, we received a server id which has not been registered before!
       return NULL;
     }
-  if((cs->active_peer_ids_list = kh_init(id_set)) != NULL)
-    {
-      goto err;
-    }
-  if((cs->inactive_peer_ids_list = kh_init(id_set)) != NULL)
-    {
-      goto err;
-    }
-  return cs;
-
- err:
-  coll_status_destroy(cs);
-  return NULL;
+  // return active_peer_status_t *
+  return &(kh_value(ps_map,k));	  
 }
-
-
-
+     
 
 
 bgpview_t *bgpview_create()
@@ -127,16 +93,16 @@ bgpview_t *bgpview_create()
       goto err;
     }
 
-  if((bgp_view->collector_status = kh_init(collectorstr_status)) == NULL)
+  if((bgp_view->inactive_peers = bl_id_set_create()) == NULL)
     {
       goto err;
     }
 
-  if((bgp_view->peer_status = kh_init(id_status)) == NULL)
+  if((bgp_view->active_peers_info = kh_init(peer_status_map)) == NULL)
     {
       goto err;
     }
-
+  
   return bgp_view;
     
  err:
@@ -149,17 +115,132 @@ bgpview_t *bgpview_create()
 }
 
 
-int bgpview_add_peer(bgpview_t *bgp_view, char *collector, bgpwatcher_peer_t* peer_info)
+int bgpview_add_peer(bgpview_t *bgp_view, bgpwatcher_peer_t* peer_info)
 {
-  // TODO
+  khiter_t k;
+  int khret;
+  active_peer_status_t *ap_status = NULL;
+
+  // if peer is up
+  if(peer_info->status == 2) // ####################### TODO: use bl_bgp_utils!!!!!!!!!!!!!!!! #######################
+    {
+      // update active peers info
+      if((k = kh_get(peer_status_map, bgp_view->active_peers_info,
+		     peer_info->server_id)) == kh_end(bgp_view->active_peers_info))
+	{
+	  k = kh_put(peer_status_map, bgp_view->active_peers_info,
+		     peer_info->server_id, &khret);
+	  ap_status = &(kh_value(bgp_view->active_peers_info,k));
+	  // initialize internal values (all zeros)
+	  memset(ap_status, 0, sizeof(active_peer_status_t));
+	}
+      ap_status = &(kh_value(bgp_view->active_peers_info,k));
+      // a new pfx table segment is expected from this peer
+      ap_status->expected_pfx_tables_cnt++;
+    }
+  else
+    {
+      // add a new inactive peer to the list
+      bl_id_set_insert(bgp_view->inactive_peers, peer_info->server_id);
+    }
+  
   return 0;
+}
+
+
+static peerview_t *get_ipv4_peerview(aggr_pfxview_ipv4_t *ipv4_table, bl_ipv4_pfx_t *pfx_ipv4)
+{
+  peerview_t *peer_view;
+  khiter_t k;
+  int khret;
+
+  if((k = kh_get(aggr_pfxview_ipv4, ipv4_table, *pfx_ipv4)) == kh_end(ipv4_table))
+    {
+      if((peer_view = peerview_create()) == NULL)
+	{
+	  return NULL;
+	}
+      k = kh_put(aggr_pfxview_ipv4, ipv4_table, *pfx_ipv4, &khret);
+      kh_value(ipv4_table,k) = peer_view;     
+    }
+    return kh_value(ipv4_table,k);
+}
+
+static peerview_t *get_ipv6_peerview(aggr_pfxview_ipv6_t *ipv6_table, bl_ipv6_pfx_t *pfx_ipv6)
+{
+  peerview_t *peer_view;
+  khiter_t k;
+  int khret;
+
+  if((k = kh_get(aggr_pfxview_ipv6, ipv6_table, *pfx_ipv6)) == kh_end(ipv6_table))
+    {
+      if((peer_view = peerview_create()) == NULL)
+	{
+	  return NULL;
+	}
+      k = kh_put(aggr_pfxview_ipv6, ipv6_table, *pfx_ipv6, &khret);
+      kh_value(ipv6_table,k) = peer_view;     
+    }
+    return kh_value(ipv6_table,k);
 }
 
 
 int bgpview_add_row(bgpview_t *bgp_view, bgpwatcher_pfx_table_t *table,
 		    bgpwatcher_pfx_row_t *row)
 {
-  // TODO
+  int remote_peer_id;
+  peerview_t *peer_view;
+  pfxinfo_t pfx_info;
+  uint16_t server_id;
+  active_peer_status_t *ap_status;
+  // convert pfx_storage in a ip version specific pfx
+  // and get the appropriate peer_view
+  bl_ipv4_pfx_t pfx_ipv4;
+  bl_ipv6_pfx_t pfx_ipv6;
+  if(row->prefix.address.version == BL_ADDR_IPV4)
+    {
+      pfx_ipv4 = bl_pfx_storage2ipv4(&row->prefix);
+      peer_view = get_ipv4_peerview(bgp_view->aggregated_pfxview_ipv4, &pfx_ipv4);
+    }
+  else
+    {
+      pfx_ipv6 = bl_pfx_storage2ipv6(&row->prefix);
+      peer_view = get_ipv6_peerview(bgp_view->aggregated_pfxview_ipv6, &pfx_ipv6);
+    }
+  
+  for(remote_peer_id = 0; remote_peer_id < table->peers_cnt; remote_peer_id++)
+    {
+      // for each peer in use
+      if(row->info[remote_peer_id].in_use)
+	{
+	  // get pfx_info 
+	  pfx_info.orig_asn = row->info[remote_peer_id].orig_asn;
+	  // get server id
+	  server_id = table->peers[remote_peer_id].server_id;	  
+	  // insert in pfx_view
+	  if(peerview_insert(peer_view, server_id, &pfx_info) < 0)
+	    {
+	      // TODO: documentation
+	      return -1;
+	    }
+	  // get the active peer status ptr for the current id
+	  if((ap_status = peer_status_map_get_status(bgp_view->active_peers_info, server_id)) == NULL)
+	    {
+	      // TODO: documentation
+	      return -1;
+	    }
+	  // update counters
+	    if(row->prefix.address.version == BL_ADDR_IPV4)
+	      {
+		ap_status->recived_ipv4_pfx_cnt++;
+	      }
+	    else
+	      {
+		ap_status->recived_ipv6_pfx_cnt++;				
+	      }
+	}
+    }
+  
   return 0;
 }
 
@@ -167,7 +248,31 @@ int bgpview_add_row(bgpview_t *bgp_view, bgpwatcher_pfx_table_t *table,
 int bgpview_table_end(bgpview_t *bgp_view, char *client_name,
 		      bgpwatcher_pfx_table_t *table)
 {
-  // TODO
+  int remote_peer_id;
+  uint16_t server_id;
+  active_peer_status_t *ap_status;
+
+  for(remote_peer_id = 0; remote_peer_id < table->peers_cnt; remote_peer_id++)
+    {
+      if(table->peers[remote_peer_id].status == 2)  // ####### TODO: use bl_bgp_utils!!!!!!!!!!!!!!!! #######################
+	{
+	  server_id = table->peers[remote_peer_id].server_id;
+	  // get the active peer status ptr for the current id
+	  if((ap_status = peer_status_map_get_status(bgp_view->active_peers_info, server_id)) == NULL)
+	    {
+	      // TODO: documentation
+	      return -1;
+	    }
+	  // update active peers counters (i.e. signal table received)
+	  ap_status->received_pfx_tables_cnt++;
+	}
+    }
+  
+  // add this client to the list of clients done
+  bl_string_set_insert(bgp_view->done_clients, client_name);
+
+  // TODO: trigger the completion check  
+  
   return 0;
 }
 
@@ -180,7 +285,7 @@ void bgpview_destroy(bgpview_t *bgp_view)
       if(bgp_view->aggregated_pfxview_ipv4 != NULL)
 	{
 	  kh_free_vals(aggr_pfxview_ipv4, bgp_view->aggregated_pfxview_ipv4,
-		       peerview_destroy);
+		       peerview_destroy);	  
 	  kh_destroy(aggr_pfxview_ipv4, bgp_view->aggregated_pfxview_ipv4);
 	  bgp_view->aggregated_pfxview_ipv4 = NULL;
 	}
@@ -188,7 +293,7 @@ void bgpview_destroy(bgpview_t *bgp_view)
       if(bgp_view->aggregated_pfxview_ipv6 != NULL)
 	{
 	  kh_free_vals(aggr_pfxview_ipv6, bgp_view->aggregated_pfxview_ipv6,
-		       peerview_destroy);
+		       peerview_destroy);	  
 	  kh_destroy(aggr_pfxview_ipv6, bgp_view->aggregated_pfxview_ipv6);
 	  bgp_view->aggregated_pfxview_ipv6 = NULL;
 	}
@@ -199,17 +304,16 @@ void bgpview_destroy(bgpview_t *bgp_view)
 	  bgp_view->done_clients = NULL;
 	}
 
-      if(bgp_view->collector_status != NULL)
+      if(bgp_view->inactive_peers != NULL)
 	{
-	  kh_free_vals(collectorstr_status, bgp_view->collector_status, coll_status_destroy);
-	  kh_destroy(collectorstr_status, bgp_view->collector_status);
-	  bgp_view->collector_status = NULL;
+	  bl_id_set_destroy(bgp_view->inactive_peers);
+	  bgp_view->inactive_peers = NULL;
 	}
-      
-      if(bgp_view->peer_status != NULL)
+
+      if(bgp_view->active_peers_info != NULL)
 	{
-	  kh_destroy(id_status, bgp_view->peer_status);
-	  bgp_view->peer_status = NULL;
+	  kh_destroy(peer_status_map, bgp_view->active_peers_info);
+	  bgp_view->active_peers_info = NULL;
 	}
 
       free(bgp_view);

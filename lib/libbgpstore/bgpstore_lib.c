@@ -84,7 +84,7 @@ int bgpstore_client_connect(bgpstore_t *bgp_store, char *client_name,
   if((k = kh_get(strclientstatus, bgp_store->active_clients,
 		client_name)) == kh_end(bgp_store->active_clients))
     {  
-      // in case it doesn't allocate new memory for the string
+      // allocate new memory for the string
       if((client_name_cpy = strdup(client_name)) == NULL)
 	{
 	  return -1;
@@ -105,7 +105,7 @@ int bgpstore_client_connect(bgpstore_t *bgp_store, char *client_name,
 int bgpstore_client_disconnect(bgpstore_t *bgp_store, char *client_name)
 {
   khiter_t k;
-  // check if it does not exist
+  // check if it exists
   if((k = kh_get(strclientstatus, bgp_store->active_clients,
 		client_name)) != kh_end(bgp_store->active_clients))
     {
@@ -119,7 +119,7 @@ int bgpstore_client_disconnect(bgpstore_t *bgp_store, char *client_name)
 
 
 
-int bgpstore_prefix_table_begin(bgpstore_t *bgp_store, char *client_name,
+int bgpstore_prefix_table_begin(bgpstore_t *bgp_store, 
 				bgpwatcher_pfx_table_t *table)
 {
   
@@ -140,7 +140,8 @@ int bgpstore_prefix_table_begin(bgpstore_t *bgp_store, char *client_name,
       k = kh_put(timebgpview, bgp_store->bgp_timeseries, table->time, &khret);
       kh_value(bgp_store->bgp_timeseries,k) = bgp_view;
     }
-  
+
+  // retrieve pointer to the correct bgpview
   bgp_view = kh_value(bgp_store->bgp_timeseries,k);
 
   // get the list of peers associated with current pfx table
@@ -150,11 +151,13 @@ int bgpstore_prefix_table_begin(bgpstore_t *bgp_store, char *client_name,
   bgpwatcher_peer_t* peer_info;
   for(remote_peer_id = 0; remote_peer_id < table->peers_cnt; remote_peer_id++)
     {
+      // get address to peer_info structure in current table
       peer_info = &(table->peers[remote_peer_id]);      
-      // set "static" id assigned to (collector,peer) by current process
-      peer_info->userid = bl_peersign_map_set_and_get(bgp_store->peer_signature_id,
-						      table->collector, &(peer_info->ip));
-      if(bgpview_add_peer(bgp_view, table->collector, peer_info) < 0)
+      // set "static" (server) id assigned to (collector,peer) by current process
+      peer_info->server_id = bl_peersign_map_set_and_get(bgp_store->peer_signature_id,
+							 table->collector, &(peer_info->ip));
+      // send peer info to the appropriate bgp view
+      if(bgpview_add_peer(bgp_view, peer_info) < 0)
 	{
 	  // TODO: comment
 	  return -1;
@@ -164,8 +167,7 @@ int bgpstore_prefix_table_begin(bgpstore_t *bgp_store, char *client_name,
 }
 
 
-int bgpstore_prefix_table_row(bgpstore_t *bgp_store, char *client_name,
-			      bgpwatcher_pfx_table_t *table, bgpwatcher_pfx_row_t *row)
+int bgpstore_prefix_table_row(bgpstore_t *bgp_store, bgpwatcher_pfx_table_t *table, bgpwatcher_pfx_row_t *row)
 {
   khiter_t k;
 

@@ -88,7 +88,7 @@ typedef struct bgpwatcher_peer {
   uint8_t status;
 
   /** User-specific peer id (set by server) */
-  uint16_t userid;
+  uint16_t server_id;
 
 } bgpwatcher_peer_t;
 
@@ -102,9 +102,6 @@ typedef struct bgpwatcher_pfx_peer_info {
 
   /** If set, this prefix is seen by this peer */
   uint8_t in_use;
-
-  /** User-specific peer id (set by server) */
-  //  uint16_t userid;
 
 } bgpwatcher_pfx_peer_info_t;
 

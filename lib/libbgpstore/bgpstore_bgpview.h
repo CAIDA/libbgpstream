@@ -37,6 +37,7 @@
 
 #include "bl_bgp_utils.h"
 #include "bl_str_set.h"
+#include "bl_id_set.h"
 
 #include "khash.h"
 
@@ -54,54 +55,26 @@ typedef struct struct_pfxinfo_t {
 KHASH_INIT(bsid_pfxview, uint16_t, pfxinfo_t, 1,
 	   kh_int_hash_func, kh_int_hash_equal);
 
-typedef struct struct_peerview_t {
-  khash_t(bsid_pfxview) *peer_pfxview;
-} peerview_t;
+// TODO: add documentation
+
+typedef khash_t(bsid_pfxview) peerview_t;
 
 
 /************ aggregated prefix views ************/
 
-KHASH_INIT(aggr_pfxview_ipv4, bl_ipv4_pfx_t, peerview_t*, 1,
+KHASH_INIT(aggr_pfxview_ipv4, bl_ipv4_pfx_t, peerview_t *, 1,
 	   bl_ipv4_pfx_hash_func, bl_ipv4_pfx_hash_equal);
 
-KHASH_INIT(aggr_pfxview_ipv6, bl_ipv6_pfx_t, peerview_t*, 1,
+typedef khash_t(aggr_pfxview_ipv4) aggr_pfxview_ipv4_t;
+			      
+KHASH_INIT(aggr_pfxview_ipv6, bl_ipv6_pfx_t, peerview_t *, 1,
 	   bl_ipv6_pfx_hash_func, bl_ipv6_pfx_hash_equal);
 
+typedef khash_t(aggr_pfxview_ipv6) aggr_pfxview_ipv6_t;
+				   
+/*** status of an active peer ***/
 
-/************ client #peer_tables_rcvd map ************/
-
-// KHASH_INIT(client_rcv_pt_cnt, char*, uint8_t , 1,
-// 	   kh_int_hash_func, kh_int_hash_equal);
-
-
-/************ set of unique numeric ids ************/
-
-KHASH_INIT(id_set, uint16_t, char , 0,
-	   kh_int_hash_func, kh_int_hash_equal);
-
-
-/************ status of a single collector ************/
-
-typedef struct struct_coll_status_t {
-  // number of peer tables expected
-  uint8_t expected_peer_tables_cnt;
-  // number of peer tables already received/processed
-  uint8_t received_peer_tables_cnt;
-  // set of ids associated with peers up
-  khash_t(id_set) *active_peer_ids_list;
-  // set of ids associated with peers not up
-  khash_t(id_set) *inactive_peer_ids_list;
-} coll_status_t;
-
-
-/************ collector -> status ************/
-
-KHASH_INIT(collectorstr_status, char*, coll_status_t *, 1,
-	   kh_int_hash_func, kh_int_hash_equal);
-
-/*** status of a single (collector,peer) aka id ***/
-
-typedef struct struct_id_status_t {
+typedef struct struct_active_peer_status_t {
   // number of expected prefix tables expected from this peer
   uint32_t expected_pfx_tables_cnt;
   // number of expected prefix tables received from this peer
@@ -110,13 +83,14 @@ typedef struct struct_id_status_t {
   uint32_t recived_ipv4_pfx_cnt;
   // number of ipv6 prefixes received
   uint32_t recived_ipv6_pfx_cnt; 
-} id_status_t;
+} active_peer_status_t;
 
 
 /************ id -> status ************/
-KHASH_INIT(id_status, char*, id_status_t , 1,
+KHASH_INIT(peer_status_map, uint16_t, active_peer_status_t , 1,
 	   kh_int_hash_func, kh_int_hash_equal);
 
+typedef khash_t(peer_status_map) peer_status_map_t;
 
 /************ bgpview ************/
 
@@ -124,25 +98,18 @@ typedef struct struct_bgpview_t {
 
   /** a table that aggregates all the information
    *  collected for any received prefix */
-  khash_t(aggr_pfxview_ipv4) *aggregated_pfxview_ipv4;
-  khash_t(aggr_pfxview_ipv6) *aggregated_pfxview_ipv6;
+  aggr_pfxview_ipv4_t *aggregated_pfxview_ipv4;
+  aggr_pfxview_ipv6_t *aggregated_pfxview_ipv6;
 
   /** list of clients that have sent at least one
    *   complete table  */
-  kh_bl_string_set_t *done_clients;
+  bl_string_set_t *done_clients;
 
-  /** for each client (string) we store the number of 
-   *  peer tables received (uint8) */
-  // khash_t(client_rcv_pt_cnt) *client_peertable_rcvd;
+  /** list of inactive peers (status null or down) */
+  bl_id_set_t *inactive_peers;
 
-  /** for each collector (string) we store the number of 
-   *  peer tables received (uint8) and the number of peer
-   *  tables received (uint8), also we register the status
-   *  of each single peer */
-  khash_t(collectorstr_status) *collector_status;
-  
   /** for each active id we store its status */
-  khash_t(id_status) *peer_status;
+  peer_status_map_t *active_peers_info;
 
 } bgpview_t;
 
@@ -157,10 +124,9 @@ typedef struct struct_bgpview_t {
 bgpview_t *bgpview_create();
 
 
-
 // TODO: add documentation
 
-int bgpview_add_peer(bgpview_t *bgp_view, char *collector, bgpwatcher_peer_t* peer_info);
+int bgpview_add_peer(bgpview_t *bgp_view, bgpwatcher_peer_t* peer_info);
 
 
 // TODO: add documentation
