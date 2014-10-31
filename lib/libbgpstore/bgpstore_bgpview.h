@@ -156,6 +156,8 @@ bgpview_t *bgpview_create();
 
 
 
+// TODO: documentation
+int bgpview_add_peer(bgpview_t *bgp_view, char *collector, uint16_t local_peer_id, uint8_t peer_status);
 
 
 

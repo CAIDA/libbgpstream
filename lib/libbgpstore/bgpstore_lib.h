@@ -49,6 +49,7 @@ typedef struct bgpstore bgpstore_t;
  */
 bgpstore_t *bgpstore_create();
 
+
 // TODO: documentation
 int bgpstore_client_connect(bgpstore_t *bgp_store, char *client_name,
 			    uint8_t client_interests, uint8_t client_intents);
