@@ -848,24 +848,15 @@ int peerdata_interval_end(char *project_str, char *collector_str,
     }
   
   // the following actions require the peer to be UP
-
-#ifdef WITH_BGPWATCHER
-  int rc;
-  uint32_t pfx_table_time = interval_start;
-  // if the bgpwatcher client is enabled, then start to send the prefix table
-  if((rc = bgpwatcher_client_pfx_table_begin(bw_client->pfx_table,
-					     collector_str,
-					     peer_address,
-					     pfx_table_time)) < 0)
-    {
-      fprintf(stderr, "Could not begin prefix table\n");
-      return -1;
-    }    
-#endif
   
   uint32_t ipv4_rib_size = 0;
   uint32_t ipv6_rib_size = 0;
 
+#ifdef WITH_BGPWATCHER
+  bl_pfx_storage_t ip_prefix;
+
+#endif
+  
   // go through ipv4 an ipv6 ribs and get the standard origin
   // ases, plus integrate the data into collector_data structs
   double avg_aspath_len_ipv4 = 0;
@@ -893,9 +884,15 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 		}
 	      avg_aspath_len_ipv4 += pd.aspath.hop_count;
 #ifdef WITH_BGPWATCHER
-	      if((rc = bgpwatcher_client_pfx_table_add(bw_client->pfx_table,
-	      					       &prefix,
-	      					       pd.origin_as)) < 0)
+
+	      ip_prefix.mask_len = prefix.len;
+	      ip_prefix.address.version = BL_ADDR_IPV4;
+	      ip_prefix.address.ipv4.s_addr = prefix.number.address.v4_addr.s_addr;
+
+	      if(bgpwatcher_client_pfx_table_add(bw_client->client,
+						       bw_client->peer_id,
+	      					       &ip_prefix,
+	      					       pd.origin_as) < 0)
 	      	{
 	      	  bgpwatcher_client_perr(bw_client->client);
 	      	  fprintf(stderr, "Could not add to pfx table\n");
@@ -926,9 +923,15 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 		}
 	      avg_aspath_len_ipv6 += pd.aspath.hop_count;
 #ifdef WITH_BGPWATCHER
-	      if((rc = bgpwatcher_client_pfx_table_add(bw_client->pfx_table,
-	      					       &prefix,
-	      					       pd.origin_as)) < 0)
+
+	      ip_prefix.mask_len = prefix.len;
+	      ip_prefix.address.version = BL_ADDR_IPV6;
+	      memcpy(&ip_prefix.address.ipv6.s6_addr, &prefix.number.address.v6_addr.s6_addr,16);
+
+	      if(bgpwatcher_client_pfx_table_add(bw_client->client,
+						       bw_client->peer_id,
+	      					       &ip_prefix,
+	      					       pd.origin_as) < 0)
 	      	{
 	      	  bgpwatcher_client_perr(bw_client->client);
 	      	  fprintf(stderr, "Could not add to pfx table\n");
@@ -938,14 +941,6 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	    }
 	}
     }
-
-#ifdef WITH_BGPWATCHER
-  if((rc = bgpwatcher_client_pfx_table_end(bw_client->pfx_table)) < 0)
-    {
-      fprintf(stderr, "Could not end prefix table\n");
-      return -1;
-    }    
-#endif
 
   // OUTPUT METRIC: ipv4_rib_size
   fprintf(stdout,

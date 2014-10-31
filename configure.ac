@@ -279,7 +279,9 @@ AC_HEADER_ASSERT
 
 AC_CONFIG_FILES([Makefile lib/Makefile lib/plugins/Makefile
 			  lib/plugins/libbgpribs/Makefile
-			  tools/Makefile common/Makefile
+			  tools/Makefile
+			  common/Makefile
 			  common/libpatricia/Makefile
-			  common/libcsv/Makefile])
+			  common/libcsv/Makefile
+			  bgpcommon/Makefile])
 AC_OUTPUT

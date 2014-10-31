@@ -47,14 +47,11 @@
  *  to the server */
 typedef struct bw_client {
   /** bgpwatcher client */
-  bgpwatcher_client_t *client;
-  /** prefix table on client */
-  bgpwatcher_client_pfx_table_t *pfx_table;
-  /** peer table on client */
-  bgpwatcher_client_peer_table_t *peer_table;
-  // TODO
+  bgpwatcher_client_t *client;  
+  // TODO: comment
   uint8_t interests;
   uint8_t intents;
+  int peer_id;
 } bw_client_t;
 
 

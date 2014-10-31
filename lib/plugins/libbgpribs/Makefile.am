@@ -22,7 +22,7 @@
 # along with bgpcorsaro.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-AM_CPPFLAGS = -I$(top_srcdir)/common 
+AM_CPPFLAGS = -I$(top_srcdir)/common -I$(top_srcdir)/bgpcommon 
 
 noinst_LTLIBRARIES = libbgpribs.la
 

@@ -22,9 +22,9 @@
 # along with bgpcorsaro.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-SUBDIRS = common lib tools
+SUBDIRS = common bgpcommon lib tools
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/lib -I$(top_srcdir)/common \
-	-I$(top_srcdir)/lib/plugins
+	      -I$(top_srcdir)/bgpcommon -I$(top_srcdir)/lib/plugins
 
 EXTRA_DIST =
 

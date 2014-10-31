@@ -31,14 +31,6 @@
 #ifdef WITH_BGPWATCHER
 
 
-/* bw_client_t related functions */
-
-static void handle_reply(bgpwatcher_client_t *client, seq_num_t seq_num,
-			 void *user)
-{
-  // do nothing (where is RC?) :)
-}
-
 
 bw_client_t *bw_client_create() 
 {
@@ -59,20 +51,8 @@ bw_client_t *bw_client_create()
       goto err;
     }
   
-  // handle server reply using "handle_reply" callback: just assert reply is correct
-  bgpwatcher_client_set_cb_handle_reply(bwc->client, handle_reply);
   
   // OPTIONAL settings HERE!
-
-  if((bwc->pfx_table = bgpwatcher_client_pfx_table_create(bwc->client)) == NULL)
-    {
-      goto err;
-    }
-
-  if((bwc->peer_table = bgpwatcher_client_peer_table_create(bwc->client)) == NULL)
-    {
-      goto err;
-    }
 
   if(bgpwatcher_client_start(bwc->client) != 0)
     {
@@ -94,8 +74,6 @@ void bw_client_destroy(bw_client_t * bwc)
 {  
   if(bwc!= NULL)
     {
-      bgpwatcher_client_pfx_table_free(&bwc->pfx_table);
-      bgpwatcher_client_peer_table_free(&bwc->peer_table);
       if(bwc->client != NULL)
 	{
 	  bgpwatcher_client_stop(bwc->client);

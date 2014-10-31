@@ -259,18 +259,20 @@ int peers_table_interval_end(char *project_str, char *collector_str,
   khiter_t k;
   bgpstream_ip_address_t peer_address;
   peerdata_t * peer_data;
-
 #ifdef WITH_BGPWATCHER
   int rc;
+  bl_addr_storage_t peer_ip;
   uint32_t peer_table_time = interval_start;
-  // if the bgpwatcher client is enabled, then start to send the peer table
-  if((rc = bgpwatcher_client_peer_table_begin(bw_client->peer_table,
-					      collector_str,
-					      peer_table_time)) < 0)
+  int peers_cnt = kh_size(peers_table->ipv4_peers_table) + kh_size(peers_table->ipv6_peers_table);
+  if(bgpwatcher_client_pfx_table_begin(bw_client->client,
+				       peer_table_time,
+				       collector_str,
+				       peers_cnt) < 0)
     {
-      fprintf(stderr, "Could not begin peer table\n");
+      fprintf(stderr, "Could not begin pfx table\n");
       return -1;
     }
+
 #endif
 
   // print stats for ipv4 peers
@@ -282,9 +284,12 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 	  peer_address = kh_key(peers_table->ipv4_peers_table, k);
 	  peer_data = kh_value(peers_table->ipv4_peers_table, k);
 #ifdef WITH_BGPWATCHER
-	  if(bgpwatcher_client_peer_table_add(bw_client->peer_table,
-					      &peer_address, 
-					      peer_data->status) < 0)
+
+	  peer_ip.version = BL_ADDR_IPV4;
+	  peer_ip.ipv4.s_addr = peer_address.address.v4_addr.s_addr;
+	  if((bw_client->peer_id = bgpwatcher_client_pfx_table_add_peer(bw_client->client,
+									&peer_ip, 
+									peer_data->status)) < 0)
 	    {
 	      // something went wrong with bgpwatcher
 	      fprintf(stderr, "Something went wrong with bgpwatcher peer table add\n");
@@ -313,9 +318,12 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 	  peer_address = kh_key(peers_table->ipv6_peers_table, k);
 	  peer_data = kh_value(peers_table->ipv6_peers_table, k);
 #ifdef WITH_BGPWATCHER
-	  if(bgpwatcher_client_peer_table_add(bw_client->peer_table,
-					      &peer_address, 
-					      peer_data->status) < 0)
+	  peer_ip.version = BL_ADDR_IPV6;
+	  memcpy(&peer_ip.ipv6.s6_addr, &peer_address.address.v6_addr.s6_addr,16);
+	  
+	  if((bw_client->peer_id = bgpwatcher_client_pfx_table_add_peer(bw_client->client,
+									&peer_ip, 
+									peer_data->status)) < 0)
 	    {
 	      // something went wrong with bgpwatcher
 	      fprintf(stderr, "Something went wrong with bgpwatcher peer table add\n");
@@ -336,9 +344,9 @@ int peers_table_interval_end(char *project_str, char *collector_str,
     }
 
 #ifdef WITH_BGPWATCHER
-  if((rc = bgpwatcher_client_peer_table_end(bw_client->peer_table)) < 0)
+  if(bgpwatcher_client_pfx_table_end(bw_client->client) < 0 )
     {
-      fprintf(stderr, "Could not end peer table\n");
+      fprintf(stderr, "Could not end pfx table\n");
       return -1;
     }
 #endif
