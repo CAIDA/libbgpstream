@@ -40,6 +40,8 @@ libbl_la_SOURCES =   \
 	bl_peersign_map.h  \
 	bl_str_set.c  \
 	bl_str_set.h  \
+	bl_id_set.c     \
+	bl_id_set.h     \
 	bl_as_set.c     \
 	bl_as_set.h     \
 	bl_pfx_set.c  \
