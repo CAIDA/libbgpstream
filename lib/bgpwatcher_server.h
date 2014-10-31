@@ -220,9 +220,6 @@ struct bgpwatcher_server {
   /** Next table number */
   uint64_t table_num;
 
-  /** bgp data time series store */
-  bgpstore_t *bgp_store;
-
 };
 
 /** @} */

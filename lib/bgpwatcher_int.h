@@ -59,6 +59,9 @@ typedef struct bgpwatcher {
   /** Error status */
   bgpwatcher_err_t err;
 
+  /** bgp data time series store */
+  bgpstore_t *bgp_store;
+  
 } bgpwatcher_t;
 
 /** @} */

@@ -824,13 +824,6 @@ bgpwatcher_server_t *bgpwatcher_server_init(
   server->callbacks = *cb_p;
   *cb_p = NULL;
 
-  if((server->bgp_store = bgpstore_create()) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
-			     "Failed to create bgpstore");
-      goto err;
-    }
-
   /* init czmq */
   if((server->ctx = zctx_new()) == NULL)
     {
@@ -932,12 +925,6 @@ void bgpwatcher_server_free(bgpwatcher_server_t *server)
   server->client_socket = NULL;
 
   zctx_destroy(&server->ctx);
-
-  if(server->bgp_store != NULL)
-    {
-      bgpstore_destroy(server->bgp_store);
-      server->bgp_store = NULL;
-    }
 
   free(server);
 

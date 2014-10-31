@@ -46,7 +46,8 @@ static int client_connect(bgpwatcher_server_t *server,
   fprintf(stderr, "Interests:\t0x%02X\n", client->interests);
   fprintf(stderr, "Intents:\t0x%02X\n", client->intents);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
-  int ret = bgpstore_client_connect(server->bgp_store, client->name,
+  bgpwatcher_t *bw = WATCHER(user);
+  int ret = bgpstore_client_connect(bw->bgp_store, client->name,
 				    client->interests, client->intents);
   return ret;
 }
@@ -59,7 +60,8 @@ static int client_disconnect(bgpwatcher_server_t *server,
   fprintf(stderr, "HANDLE: Handling client DISCONNECT\n");
   fprintf(stderr, "Client ID:\t%s\n", client->name);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
-  int ret = bgpstore_client_disconnect(server->bgp_store, client->name);
+  bgpwatcher_t *bw = WATCHER(user);
+  int ret = bgpstore_client_disconnect(bw->bgp_store, client->name);
   return ret;
 }
 
@@ -82,7 +84,7 @@ static int prefix_row(bgpwatcher_server_t *server,
                       bgpwatcher_pfx_row_t *row,
                       void *user)
 {
-#if 1
+#ifdef DEBUG
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
   fprintf(stderr, "HANDLE: Handling PREFIX ROW\n");
   fprintf(stderr, "Client:\t%s\n", client->name);
@@ -127,6 +129,15 @@ bgpwatcher_t *bgpwatcher_init()
     }
 
   /* can set errors now */
+
+  /* create the bgp store */
+  if((watcher->bgp_store = bgpstore_create()) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Failed to create bgpstore");
+      free(watcher);
+      return NULL;
+    }
 
   /* grab a copy of our callback pointers (owned by _server) */
   if((callbacks = malloc(sizeof(bgpwatcher_server_callbacks_t))) == NULL)
@@ -184,6 +195,12 @@ void bgpwatcher_free(bgpwatcher_t *watcher)
     {
       bgpwatcher_server_free(watcher->server);
       watcher->server = NULL;
+    }
+
+  if(watcher->bgp_store != NULL)
+    {
+      bgpstore_destroy(watcher->bgp_store);
+      watcher->bgp_store = NULL;
     }
 
   free(watcher);
