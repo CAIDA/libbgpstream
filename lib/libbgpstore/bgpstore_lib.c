@@ -25,6 +25,7 @@
 
 
 #include "bgpstore_int.h"
+#include "bgpstore_interests_dispatcher.h"
 
 
 bgpstore_t *bgpstore_create()
@@ -114,6 +115,21 @@ int bgpstore_client_disconnect(bgpstore_t *bgp_store, char *client_name)
       // delete entry
       kh_del(strclientstatus,bgp_store->active_clients,k);
     }
+
+  bgpview_t *bgp_view;
+  uint32_t ts;
+  for (k = kh_begin(bgp_store->bgp_timeseries); k != kh_end(bgp_store->bgp_timeseries); ++k)
+    {
+      if (kh_exist(bgp_store->bgp_timeseries, k))
+	{
+	  ts = kh_key(bgp_store->bgp_timeseries, k);
+	  bgp_view = kh_value(bgp_store->bgp_timeseries, k);
+	  if(bgpview_completion_check(bgp_view, bgp_store->active_clients) == 1)
+	    {
+	      bgpstore_ts_completed_handler(bgp_store, ts);
+	    }
+	}
+    }
   return 0;
 }
 
@@ -122,7 +138,6 @@ int bgpstore_client_disconnect(bgpstore_t *bgp_store, char *client_name)
 int bgpstore_prefix_table_begin(bgpstore_t *bgp_store, 
 				bgpwatcher_pfx_table_t *table)
 {
-  
   bgpview_t *bgp_view = NULL;
   khiter_t k;
   int khret;
@@ -131,6 +146,15 @@ int bgpstore_prefix_table_begin(bgpstore_t *bgp_store,
   if((k = kh_get(timebgpview, bgp_store->bgp_timeseries,
 		 table->time)) == kh_end(bgp_store->bgp_timeseries))
     {
+      // check if 
+      if(kh_size(bgp_store->bgp_timeseries) >= BGPSTORE_MAX_TS_CNT)
+	{
+	  // TODO: signal ~error, handle case
+	  fprintf(stderr, "Maximum number of bgp_timeseries reached!\n");
+
+	  return -1;
+	}
+
       // first time we receive this table time -> create bgp_view
       if((bgp_view = bgpview_create()) == NULL)
 	{
@@ -162,7 +186,7 @@ int bgpstore_prefix_table_begin(bgpstore_t *bgp_store,
 	  // TODO: comment
 	  return -1;
 	}
-    }  
+    }
   return 0;
 }
 
@@ -175,6 +199,7 @@ int bgpstore_prefix_table_row(bgpstore_t *bgp_store, bgpwatcher_pfx_table_t *tab
 		 table->time)) == kh_end(bgp_store->bgp_timeseries))
     {
       // view for this time must exist
+      fprintf(stderr, "A bgpview for time %"PRIu32" must exist!\n", table->time);
       return -1;
     }
   
@@ -193,13 +218,49 @@ int bgpstore_prefix_table_end(bgpstore_t *bgp_store, char *client_name,
 		 table->time)) == kh_end(bgp_store->bgp_timeseries))
     {
       // view for this time must exist
+      fprintf(stderr, "A bgpview for time %"PRIu32" must exist!\n", table->time);
       return -1;
     }
   
   bgpview_t * bgp_view = kh_value(bgp_store->bgp_timeseries,k);
   
-  return bgpview_table_end(bgp_view, client_name, table);
+  int ret = bgpview_table_end(bgp_view, client_name, table, bgp_store->active_clients);
+  if(ret == 1)
+    {
+     ret = bgpstore_ts_completed_handler(bgp_store, table->time);
+    }
+  return ret;
 }
+
+
+int bgpstore_ts_completed_handler(bgpstore_t *bgp_store, uint32_t ts)
+{
+    
+  // get current completed bgpview
+  khiter_t k;
+  if((k = kh_get(timebgpview, bgp_store->bgp_timeseries,
+		 ts)) == kh_end(bgp_store->bgp_timeseries))
+    {
+      // view for this time must exist ? TODO: check policies!
+      fprintf(stderr, "A bgpview for time %"PRIu32" must exist!\n", ts);
+      return -1;
+    }
+  bgpview_t *bgp_view = kh_value(bgp_store->bgp_timeseries,k);
+
+  int ret = bgpstore_interests_dispatcher_run(bgp_store->active_clients, bgp_view, ts);
+
+  // TODO: decide whether to destroy the bgp_view or not
+
+  // destroy view
+  bgpview_destroy(bgp_view);
+
+  // destroy time entry
+  kh_del(timebgpview,bgp_store->bgp_timeseries,k);
+
+  return ret;
+}
+
+
 
 
 void bgpstore_destroy(bgpstore_t *bgp_store)

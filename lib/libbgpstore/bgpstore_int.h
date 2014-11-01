@@ -39,9 +39,11 @@
 
 
 
+#define BGPSTORE_MAX_TS_CNT 15
+
+
 KHASH_INIT(timebgpview, uint32_t, bgpview_t*, 1,
 	   kh_int_hash_func, kh_int_hash_equal);
-
 
 
 struct bgpstore {
@@ -51,7 +53,7 @@ struct bgpstore {
   /** active_clients contains, for each registered/active
    *  client (i.e. those that are currently connected)
    *  its status.*/
-  khash_t(strclientstatus) *active_clients;
+  clientinfo_map_t *active_clients;
   /**  id <-> (collector,peer) caches
    *   These structures associate a numeric id (a bpgstore 
    *    id, aka bs_id, represented by a uint16) to each

@@ -160,11 +160,8 @@ typedef struct bgpwatcher_err {
  */
 typedef enum {
 
-  /** Prefix Table */
-  BGPWATCHER_CONSUMER_INTEREST_PREFIX = 0x01,
-
-  /** Peer Table */
-  BGPWATCHER_CONSUMER_INTEREST_PEER   = 0x02,
+  /** Current status of bgpview */
+  BGPWATCHER_CONSUMER_INTEREST_BGPVIEWSTATUS = 0x01,
 
 } bgpwatcher_consumer_interest_t;
 
@@ -180,9 +177,6 @@ typedef enum {
 
   /** Prefix Table */
   BGPWATCHER_PRODUCER_INTENT_PREFIX = 0x01,
-
-  /** Peer Table */
-  BGPWATCHER_PRODUCER_INTENT_PEER   = 0x02,
 
 } bgpwatcher_producer_intent_t;
 

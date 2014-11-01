@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>       /* time */
 
 /* this must be all we include from bgpwatcher */
 #include <bgpwatcher_client.h>
@@ -231,7 +232,7 @@ int main(int argc, char **argv)
      argument */
 
   interests = 0;
-  intents = BGPWATCHER_PRODUCER_INTENT_PREFIX | BGPWATCHER_PRODUCER_INTENT_PEER;
+  intents = BGPWATCHER_PRODUCER_INTENT_PREFIX;
 
   if((client =
       bgpwatcher_client_init(interests, intents)) == NULL)
@@ -278,6 +279,10 @@ int main(int argc, char **argv)
   fprintf(stderr, "done\n");
 
   /* issue a bunch of requests */
+  
+  /* initialize random seed: */  
+  srand(1);
+
 
   for(tbl = 0; tbl < test_table_num; tbl++)
     {
@@ -298,16 +303,18 @@ int main(int argc, char **argv)
       for(peer = 0; peer < test_peer_num; peer++)
         {
           test_peer_ip.ipv4.s_addr += htonl(1);
+	  test_peer_status = rand() % 3; // returns number from 0 to 2
           if((peer_id =
               bgpwatcher_client_pfx_table_add_peer(client,
                                                    &test_peer_ip,
-                                                   test_peer_status+peer)) < 0)
+						   test_peer_status)) < 0)
             {
               fprintf(stderr, "Could not add peer to table\n");
               goto err;
             }
           fprintf(stderr, "TEST: Added peer %d\n", peer_id);
 
+	  if (test_peer_status == 2) {
           fprintf(stderr, "TEST: Adding %d prefixes...\n", test_table_size);
           test_prefix.address.ipv4.s_addr = test_prefix_first_addr;
           for(i=0; i<test_table_size; i++)
@@ -322,6 +329,7 @@ int main(int argc, char **argv)
                   goto err;
                 }
             }
+	  }
         }
 
       if(bgpwatcher_client_pfx_table_end(client) != 0)

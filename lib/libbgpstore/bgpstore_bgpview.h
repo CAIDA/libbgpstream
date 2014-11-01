@@ -34,6 +34,7 @@
 #include <assert.h>
 
 #include "bgpwatcher_common.h"
+#include "bgpstore_common.h"
 
 #include "bl_bgp_utils.h"
 #include "bl_str_set.h"
@@ -87,7 +88,7 @@ typedef struct struct_active_peer_status_t {
 
 
 /************ id -> status ************/
-KHASH_INIT(peer_status_map, uint16_t, active_peer_status_t , 1,
+KHASH_INIT(peer_status_map, uint16_t, active_peer_status_t, 1,
 	   kh_int_hash_func, kh_int_hash_equal);
 
 typedef khash_t(peer_status_map) peer_status_map_t;
@@ -135,10 +136,23 @@ int bgpview_add_row(bgpview_t *bgp_view, bgpwatcher_pfx_table_t *table,
 		    bgpwatcher_pfx_row_t *row);
 
 
-// TODO: add documentation
-
+/** Update the control information associated with specific
+ *  bgp view and performs a completion check to verify if
+ *  additional prefix tables are expected for this timestamp.
+ *
+ * @return -1 if an error occurred, 0 if the function updated
+ *         correctly the bgp_view structure and more pfx tables
+ *         are expected, 1 if the function updated correctly the
+ *         bgp_view structure and no more pfx tables are expected.
+ */
 int bgpview_table_end(bgpview_t *bgp_view, char *client_name,
-		      bgpwatcher_pfx_table_t *table);
+		      bgpwatcher_pfx_table_t *table,
+		      clientinfo_map_t *active_clients);
+
+
+// TODO: add documentation
+// 1 if completed, 0 if incomplete, -1 if something wrong
+int bgpview_completion_check(bgpview_t *bgp_view, clientinfo_map_t *active_clients);
 
 
 /** Deallocate memory for the bgpview structure

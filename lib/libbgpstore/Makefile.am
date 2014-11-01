@@ -34,8 +34,9 @@ libbgpstore_la_SOURCES = bgpstore_lib.h       \
 			 bgpstore_common.h    \
 			 bgpstore_common.c    \
 			 bgpstore_bgpview.h   \
-			 bgpstore_bgpview.c   
-
+			 bgpstore_bgpview.c   \
+			 bgpstore_interests_dispatcher.h   \
+			 bgpstore_interests_dispatcher.c   
 
 
 ACLOCAL_AMFLAGS = -I m4

@@ -34,8 +34,7 @@ static peerview_t* peerview_create()
 static int peerview_insert(peerview_t *peer_view, uint16_t server_id, pfxinfo_t *pfx_info)
 {
   khiter_t k;
-  int khret;
- 
+  int khret; 
   if((k = kh_get(bsid_pfxview, peer_view, server_id)) == kh_end(peer_view))
     {
       k = kh_put(bsid_pfxview, peer_view, server_id, &khret);
@@ -60,7 +59,7 @@ static active_peer_status_t * peer_status_map_get_status(peer_status_map_t *ps_m
 
   if((k = kh_get(peer_status_map, ps_map, server_id)) == kh_end(ps_map))
     {
-      // TODO: error, we received a server id which has not been registered before!
+      fprintf(stderr, "Processing a server id which has not been registered before!\n");
       return NULL;
     }
   // return active_peer_status_t *
@@ -102,7 +101,7 @@ bgpview_t *bgpview_create()
     {
       goto err;
     }
-  
+
   return bgp_view;
     
  err:
@@ -143,7 +142,6 @@ int bgpview_add_peer(bgpview_t *bgp_view, bgpwatcher_peer_t* peer_info)
       // add a new inactive peer to the list
       bl_id_set_insert(bgp_view->inactive_peers, peer_info->server_id);
     }
-  
   return 0;
 }
 
@@ -187,7 +185,7 @@ static peerview_t *get_ipv6_peerview(aggr_pfxview_ipv6_t *ipv6_table, bl_ipv6_pf
 
 int bgpview_add_row(bgpview_t *bgp_view, bgpwatcher_pfx_table_t *table,
 		    bgpwatcher_pfx_row_t *row)
-{
+{    
   int remote_peer_id;
   peerview_t *peer_view;
   pfxinfo_t pfx_info;
@@ -196,22 +194,29 @@ int bgpview_add_row(bgpview_t *bgp_view, bgpwatcher_pfx_table_t *table,
   // convert pfx_storage in a ip version specific pfx
   // and get the appropriate peer_view
   bl_ipv4_pfx_t pfx_ipv4;
-  bl_ipv6_pfx_t pfx_ipv6;
+  bl_ipv6_pfx_t pfx_ipv6;  
   if(row->prefix.address.version == BL_ADDR_IPV4)
     {
       pfx_ipv4 = bl_pfx_storage2ipv4(&row->prefix);
       peer_view = get_ipv4_peerview(bgp_view->aggregated_pfxview_ipv4, &pfx_ipv4);
     }
-  else
+  else 
     {
-      pfx_ipv6 = bl_pfx_storage2ipv6(&row->prefix);
-      peer_view = get_ipv6_peerview(bgp_view->aggregated_pfxview_ipv6, &pfx_ipv6);
+      if(row->prefix.address.version == BL_ADDR_IPV6)
+	{
+	  pfx_ipv6 = bl_pfx_storage2ipv6(&row->prefix);
+	  peer_view = get_ipv6_peerview(bgp_view->aggregated_pfxview_ipv6, &pfx_ipv6);
+	}
+      else {	
+	fprintf(stderr, "Unknown ip version prefix provided!\n");
+	return -1;
+      }
     }
-  
+
   for(remote_peer_id = 0; remote_peer_id < table->peers_cnt; remote_peer_id++)
     {
       // for each peer in use
-      if(row->info[remote_peer_id].in_use)
+      if(row->info[remote_peer_id].in_use == 1)
 	{
 	  // get pfx_info 
 	  pfx_info.orig_asn = row->info[remote_peer_id].orig_asn;
@@ -220,33 +225,32 @@ int bgpview_add_row(bgpview_t *bgp_view, bgpwatcher_pfx_table_t *table,
 	  // insert in pfx_view
 	  if(peerview_insert(peer_view, server_id, &pfx_info) < 0)
 	    {
-	      // TODO: documentation
 	      return -1;
 	    }
 	  // get the active peer status ptr for the current id
 	  if((ap_status = peer_status_map_get_status(bgp_view->active_peers_info, server_id)) == NULL)
 	    {
-	      // TODO: documentation
 	      return -1;
 	    }
 	  // update counters
-	    if(row->prefix.address.version == BL_ADDR_IPV4)
-	      {
-		ap_status->recived_ipv4_pfx_cnt++;
-	      }
-	    else
-	      {
-		ap_status->recived_ipv6_pfx_cnt++;				
-	      }
+	  if(row->prefix.address.version == BL_ADDR_IPV4)
+	    {
+	      ap_status->recived_ipv4_pfx_cnt++;
+	    }
+	  else
+	    {
+	      ap_status->recived_ipv6_pfx_cnt++;				
+	    }
 	}
     }
-  
+
   return 0;
 }
 
 
 int bgpview_table_end(bgpview_t *bgp_view, char *client_name,
-		      bgpwatcher_pfx_table_t *table)
+		      bgpwatcher_pfx_table_t *table,
+		      clientinfo_map_t *active_clients)
 {
   int remote_peer_id;
   uint16_t server_id;
@@ -271,9 +275,39 @@ int bgpview_table_end(bgpview_t *bgp_view, char *client_name,
   // add this client to the list of clients done
   bl_string_set_insert(bgp_view->done_clients, client_name);
 
-  // TODO: trigger the completion check  
+  // check if this bgp_view is completed
+  if(bgpview_completion_check(bgp_view, active_clients) == 1)
+    {
+      return 1;
+    }
   
   return 0;
+}
+
+int bgpview_completion_check(bgpview_t *bgp_view, clientinfo_map_t *active_clients)
+{
+  khiter_t k;
+  clientstatus_t *cl_status;
+  char *client_name;
+
+  for (k = kh_begin(active_clients); k != kh_end(active_clients); ++k)
+    {
+      if (kh_exist(active_clients, k))
+	{
+	  client_name = kh_key(active_clients,k);
+	  cl_status = &(kh_value(active_clients,k));
+	  if(cl_status->producer_intents & BGPWATCHER_PRODUCER_INTENT_PREFIX)
+	    {
+	      // check if all the producers are done with sending pfx tables
+	      if(bl_string_set_exists(bgp_view->done_clients, client_name) == 0)
+		{
+		  return 0;
+		}
+	    }
+	}
+    } 
+  // bgp_view complete
+  return 1;
 }
 
 

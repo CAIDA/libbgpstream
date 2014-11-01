@@ -48,13 +48,15 @@ typedef struct struct_clientstatus_t {
 KHASH_INIT(strclientstatus, char*, clientstatus_t , 1,
 	   kh_str_hash_func, kh_str_hash_equal);
 
+typedef khash_t(strclientstatus) clientinfo_map_t;
 
-// TODO: documentation
+				 
+// TODO: documentation / remove 
 
-int compatible_intents(khash_t(strclientstatus) *active_clients, char* client_str, uint8_t mask);
+int compatible_intents(clientinfo_map_t *active_clients, char* client_str, uint8_t mask);
 
-int compatible_interests(khash_t(strclientstatus) *active_clients, char* client_str, uint8_t mask);
-
+int compatible_interests(clientinfo_map_t *active_clients, char* client_str, uint8_t mask);
+				 
 
 #endif /* __BGPSTORE_COMMON_H */
 

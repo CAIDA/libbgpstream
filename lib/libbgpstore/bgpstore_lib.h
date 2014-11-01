@@ -72,6 +72,11 @@ int bgpstore_prefix_table_end(bgpstore_t *bgp_store, char *client_name,
 			      bgpwatcher_pfx_table_t *table);
 
 
+// TODO: documentation
+// what happens when a bgpview is declared complete
+int bgpstore_ts_completed_handler(bgpstore_t *bgp_store, uint32_t ts);
+
+
 /** Deallocate memory for the bgpstore structure
  *
  * @param bgp_store a pointer to the bgpstore memory
