@@ -29,6 +29,8 @@
 
 #include "bgpwatcher_common.h" // interests masks
 
+#include "utils.h"
+
 #include "bl_bgp_utils.h"
 #include "bl_str_set.h"
 #include "bl_id_set.h"
@@ -37,14 +39,110 @@
 #include <assert.h>
 
 
+/** Interests structures and functions */
+
+
+typedef struct struct_bgpviewstatus_interest {
+  // TODO
+} bgpviewstatus_interest_t;
+
+static bgpviewstatus_interest_t* bgpviewstatus_interest_create(bgpview_t *bgp_view, uint32_t ts)
+{
+  bgpviewstatus_interest_t *bvstatus = (bgpviewstatus_interest_t *)malloc_zero(sizeof(bgpviewstatus_interest_t));
+  return bvstatus;
+}
+
+static int bgpviewstatus_interest_send(char *client_name, bgpviewstatus_interest_t* bvstatus)
+{
+  // TODO
+  fprintf(stderr, "Sending BGPVIEWSTATUS to client: %s\n", client_name);
+  return 0;
+}
+
+static void bgpviewstatus_interest_destroy(bgpviewstatus_interest_t* bvstatus)
+{
+  if(bvstatus !=NULL)
+    {
+      free(bvstatus);
+    }
+}
+
+
+
+typedef struct struct_bgpstore_interests_dispatcher {
+
+  // TODO: a structure for every possible interest
+  bgpviewstatus_interest_t *bvstatus;
+
+} bgpstore_interests_dispatcher_t;
+
+
+
+static bgpstore_interests_dispatcher_t *bgpstore_interests_dispatcher_create()
+{
+  bgpstore_interests_dispatcher_t *bid = (bgpstore_interests_dispatcher_t *)malloc_zero(sizeof(bgpstore_interests_dispatcher_t));
+  // interests are created on demand
+  bid->bvstatus = NULL;
+  return bid;
+}
+
+
+static void bgpstore_interests_dispatcher_destroy(bgpstore_interests_dispatcher_t *bid)
+{
+  if(bid != NULL)
+    {
+      if(bid->bvstatus != NULL)
+	{
+	  bgpviewstatus_interest_destroy(bid->bvstatus);
+	}
+      bid->bvstatus = NULL;
+      free(bid);
+    }
+}
+
+
+
 int bgpstore_interests_dispatcher_run(clientinfo_map_t *active_clients, bgpview_t *bgp_view, uint32_t ts) {
 
-  // TODO:
   // create an empty interests dispatcher structure
-  // for each active client:
-  // if the interest does not exists in the structure, compute that aggregation
-  // send the structure to the requesting client
-  // destroy the interests dispatcher structure
+  bgpstore_interests_dispatcher_t *bid = bgpstore_interests_dispatcher_create();
+  if(bid == NULL)
+    {
+      fprintf(stderr, "ERROR: could not initialize bgpstore interests dispatcher\n");
+      return -1;
+    }
   
+  khiter_t k;
+  clientstatus_t *cl_status;
+  char *client_name;
+  
+  // for each active client:
+  for (k = kh_begin(active_clients); k != kh_end(active_clients); ++k)
+    {
+      if (kh_exist(active_clients, k))
+	{
+	  client_name = kh_key(active_clients,k);
+	  cl_status = &(kh_value(active_clients,k));
+
+	  // one if for each interest
+	  if(cl_status->consumer_interests & BGPWATCHER_CONSUMER_INTEREST_BGPVIEWSTATUS)
+	    {
+	      if(bid->bvstatus == NULL)
+		{
+		  bid->bvstatus = bgpviewstatus_interest_create(bgp_view, ts);
+		  if(bid->bvstatus == NULL)
+		    {
+		      fprintf(stderr, "ERROR: could not create bgpstore bgpviewstatus interest\n");
+		      return -1;
+		    }
+		}	      
+	      bgpviewstatus_interest_send(client_name, bid->bvstatus);
+	    }
+	}
+    }
+
+  // destroy the interests dispatcher structure
+  bgpstore_interests_dispatcher_destroy(bid);
+
   return 0;
 }
