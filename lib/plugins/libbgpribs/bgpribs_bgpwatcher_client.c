@@ -44,7 +44,7 @@ bw_client_t *bw_client_create()
   // init interests (no interests, this client is just a producer)
   bwc->interests = 0;
   // init intents: peer and prefix tables will be sent
-  bwc->intents = BGPWATCHER_PRODUCER_INTENT_PREFIX | BGPWATCHER_PRODUCER_INTENT_PEER;
+  bwc->intents = BGPWATCHER_PRODUCER_INTENT_PREFIX;
 
   if((bwc->client = bgpwatcher_client_init(bwc->interests, bwc->intents)) == NULL)
     {
