@@ -46,7 +46,7 @@ typedef struct struct_clientstatus_t {
 } clientstatus_t;
 
 KHASH_INIT(strclientstatus, char*, clientstatus_t , 1,
-	   kh_str_hash_func, kh_str_hash_equal);
+	   kh_str_hash_func, kh_str_hash_equal)
 
 typedef khash_t(strclientstatus) clientinfo_map_t;
 
@@ -57,6 +57,12 @@ int compatible_intents(clientinfo_map_t *active_clients, char* client_str, uint8
 
 int compatible_interests(clientinfo_map_t *active_clients, char* client_str, uint8_t mask);
 				 
+
+typedef struct struct_dispatch_status {
+  uint8_t sent;
+  uint8_t modified;
+} dispatch_status_t;
+
 
 #endif /* __BGPSTORE_COMMON_H */
 

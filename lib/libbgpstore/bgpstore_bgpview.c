@@ -103,6 +103,10 @@ bgpview_t *bgpview_create()
       goto err;
     }
 
+  bgp_view->state = BGPVIEW_STATE_UNKNOWN;
+
+  // dis_status -> everything is set to zero
+  
   gettimeofday (&bgp_view->bv_created_time, NULL);
 
   return bgp_view;
@@ -121,6 +125,9 @@ int bgpview_add_peer(bgpview_t *bgp_view, bgpwatcher_peer_t* peer_info)
 {
   khiter_t k;
   int khret;
+
+  bgp_view->state = BGPVIEW_STATE_UNKNOWN;
+
   active_peer_status_t *ap_status = NULL;
 
   // if peer is up
@@ -194,6 +201,7 @@ int bgpview_add_row(bgpview_t *bgp_view, bgpwatcher_pfx_table_t *table,
   pfxinfo_t pfx_info;
   uint16_t server_id;
   active_peer_status_t *ap_status;
+  bgp_view->state = BGPVIEW_STATE_UNKNOWN;
   // convert pfx_storage in a ip version specific pfx
   // and get the appropriate peer_view
   bl_ipv4_pfx_t pfx_ipv4;
@@ -257,7 +265,7 @@ int bgpview_table_end(bgpview_t *bgp_view, char *client_name,
   int remote_peer_id;
   uint16_t server_id;
   active_peer_status_t *ap_status;
-
+  bgp_view->state = BGPVIEW_STATE_UNKNOWN;
   for(remote_peer_id = 0; remote_peer_id < table->peers_cnt; remote_peer_id++)
     {
       if(table->peers[remote_peer_id].status == 2)  // ####### TODO: use bl_bgp_utils!!!!!!!!!!!!!!!! #######################
@@ -276,6 +284,12 @@ int bgpview_table_end(bgpview_t *bgp_view, char *client_name,
   
   // add this client to the list of clients done
   bl_string_set_insert(bgp_view->done_clients, client_name);
+
+  int i;
+  for(i = 0; i < BGPVIEW_STATE_MAX; i++)
+    {
+      bgp_view->dis_status[i].modified = 1;
+    }
   
   return 0;
 }

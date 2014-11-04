@@ -100,7 +100,7 @@ typedef enum {BGPVIEW_STATE_UNKNOWN = 0,
 	      BGPVIEW_FULL          = 2
 } bgpview_state_t;
 
-				 
+#define BGPVIEW_STATE_MAX 3
 
 /************ bgpview ************/
 
@@ -108,6 +108,11 @@ typedef struct struct_bgpview_t {
 
   // TODO: documentation
   bgpview_state_t state;
+  dispatch_status_t dis_status[BGPVIEW_STATE_MAX];
+
+  /** whether the bgpview has been modified
+   *  since the last dump */
+  uint8_t modified;
 
   /** time when the bgpview was created */
   struct timeval bv_created_time;

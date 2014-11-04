@@ -100,7 +100,8 @@ int bgpstore_client_connect(bgpstore_t *bgp_store, char *client_name,
   // update or insert new client info
   kh_value(bgp_store->active_clients, k) = client_info;
 
-  return 0;
+  // every time there is a new event we check the timeout
+  return bpgstore_check_timeouts(bgp_store);  
 }
 
 
@@ -182,7 +183,8 @@ int bgpstore_prefix_table_begin(bgpstore_t *bgp_store,
 	{
 	  if(table->time < bgp_store->min_ts)
 	    {
-	      fprintf(stderr, "bgpviews for time %"PRIu32" have been already processed!\n", ts);
+	      //DEBUG fprintf(stderr, "bgpviews for time %"PRIu32" have been already processed!\n", ts);
+	      return bpgstore_check_timeouts(bgp_store);
 	    }
 	}
     }
@@ -237,9 +239,9 @@ int bgpstore_prefix_table_row(bgpstore_t *bgp_store, bgpwatcher_pfx_table_t *tab
   if((k = kh_get(timebgpview, bgp_store->bgp_timeseries,
 		 table->time)) == kh_end(bgp_store->bgp_timeseries))
     {
-      // view for this time must exist
-      fprintf(stderr, "A bgpview for time %"PRIu32" must exist!\n", table->time);
-      return -1;
+      // the view for this ts has been already removed
+      // ignore this message, and check timeouts
+      return bpgstore_check_timeouts(bgp_store);
     }
   
   bgpview_t * bgp_view = kh_value(bgp_store->bgp_timeseries,k);
@@ -256,9 +258,9 @@ int bgpstore_prefix_table_end(bgpstore_t *bgp_store, char *client_name,
   if((k = kh_get(timebgpview, bgp_store->bgp_timeseries,
 		 table->time)) == kh_end(bgp_store->bgp_timeseries))
     {
-      // view for this time must exist
-      fprintf(stderr, "A bgpview for time %"PRIu32" must exist!\n", table->time);
-      return -1;
+      // the view for this ts has been already removed
+      // ignore this message, and check timeouts
+      return bpgstore_check_timeouts(bgp_store);
     }
   
   bgpview_t * bgp_view = kh_value(bgp_store->bgp_timeseries,k);
@@ -280,8 +282,21 @@ int bgpstore_completion_check(bgpstore_t *bgp_store, bgpview_t *bgp_view, uint32
   
   uint8_t remove_view;
 
-  // TODO: documentation here ##################
-
+  /** The completion check can be triggered by different events:
+   *  BGPSTORE_TABLE_END         - a new prefix table has been completely received
+   *  BGPSTORE_WDW_EXCEEDED      - the bgpview sliding window has moved forward
+   *                               and some "old" views need to be destroyed
+   *  BGPSTORE_CLIENT_DISCONNECT - a client has disconnected 
+   *  BGPSTORE_TIMEOUT_EXPIRED   - the timeout for a given view is expired
+   *
+   *  if the completion check gives a positive result (1) or if the trigger is either
+   *  a timeout expired or a window exceeded, the view is passed to the dispatcher and
+   *  never processed again
+   *
+   *  if the completion check returns 0 (not all clients are done) and the trigger is 
+   *  either a table end or a client disconnect, then the view is passed to the 
+   *  dispatcher but it is not destroyed, as further processing may be performed
+   */
   if((trigger == BGPSTORE_WDW_EXCEEDED || trigger == BGPSTORE_TIMEOUT_EXPIRED) ||
      ((trigger == BGPSTORE_TABLE_END || trigger == BGPSTORE_CLIENT_DISCONNECT) && ret == 1) 
     )
@@ -346,35 +361,35 @@ int bgpstore_remove_view(bgpstore_t *bgp_store, uint32_t ts)
 
 
   
-int bgpstore_ts_completed_handler(bgpstore_t *bgp_store, uint32_t ts)
-{
+/* int bgpstore_ts_completed_handler(bgpstore_t *bgp_store, uint32_t ts) */
+/* { */
     
-  // get current completed bgpview
-  khiter_t k;
-  if((k = kh_get(timebgpview, bgp_store->bgp_timeseries,
-		 ts)) == kh_end(bgp_store->bgp_timeseries))
-    {
-      // view for this time must exist ? TODO: check policies!
-      fprintf(stderr, "A bgpview for time %"PRIu32" must exist!\n", ts);
-      return -1;
-    }
-  bgpview_t *bgp_view = kh_value(bgp_store->bgp_timeseries,k);
+/*   // get current completed bgpview */
+/*   khiter_t k; */
+/*   if((k = kh_get(timebgpview, bgp_store->bgp_timeseries, */
+/* 		 ts)) == kh_end(bgp_store->bgp_timeseries)) */
+/*     { */
+/*       // view for this time must exist ? TODO: check policies! */
+/*       fprintf(stderr, "A bgpview for time %"PRIu32" must exist!\n", ts); */
+/*       return -1; */
+/*     } */
+/*   bgpview_t *bgp_view = kh_value(bgp_store->bgp_timeseries,k); */
 
-  int ret = bgpstore_interests_dispatcher_run(bgp_store->active_clients, bgp_view, ts);
+/*   int ret = bgpstore_interests_dispatcher_run(bgp_store->active_clients, bgp_view, ts); */
 
-  // TODO: decide whether to destroy the bgp_view or not
+/*   // TODO: decide whether to destroy the bgp_view or not */
 
-  // destroy view
-  bgpview_destroy(bgp_view);
+/*   // destroy view */
+/*   bgpview_destroy(bgp_view); */
 
-  // destroy time entry
-  kh_del(timebgpview,bgp_store->bgp_timeseries,k);
+/*   // destroy time entry */
+/*   kh_del(timebgpview,bgp_store->bgp_timeseries,k); */
 
-  return ret;
-}
+/*   return ret; */
+/* } */
 
 
-void bpgstore_check_timeouts(bgpstore_t *bgp_store)
+int bpgstore_check_timeouts(bgpstore_t *bgp_store)
 {
   bgpview_t *bgp_view = NULL;
   uint32_t ts;
@@ -389,11 +404,11 @@ void bpgstore_check_timeouts(bgpstore_t *bgp_store)
 	  bgp_view = kh_value(bgp_store->bgp_timeseries, k);
 	  if( (time_now.tv_sec - bgp_view->bv_created_time.tv_sec) > BGPSTORE_BGPVIEW_TIMEOUT)
 	    {
-	      bgpstore_completion_check(bgp_store, bgp_view, ts, BGPSTORE_TIMEOUT_EXPIRED);
+	      return bgpstore_completion_check(bgp_store, bgp_view, ts, BGPSTORE_TIMEOUT_EXPIRED);
 	    }
 	}
     }
-  return;
+  return 0;
 }
 
 

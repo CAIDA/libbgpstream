@@ -162,7 +162,7 @@ typedef enum {
 
   /** Current status of bgpview */
   BGPWATCHER_CONSUMER_INTEREST_BGPVIEWSTATUS = 0x01,
-
+  BGPWATCHER_CONSUMER_INTEREST_ASVISIBILITY  = 0x02,
 } bgpwatcher_consumer_interest_t;
 
 /** @todo add more generic consumer filters so that a consumer can filter

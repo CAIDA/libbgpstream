@@ -81,7 +81,7 @@ struct bgpstore {
   
 };
 
-void bpgstore_check_timeouts(bgpstore_t *bgp_store);
+int bpgstore_check_timeouts(bgpstore_t *bgp_store);
 int bgpstore_completion_check(bgpstore_t *bgp_store, bgpview_t *bgp_view, uint32_t ts, bgpstore_completion_trigger_t trigger);
 int bgpstore_remove_view(bgpstore_t *bgp_store, uint32_t ts);
 
