@@ -149,9 +149,6 @@ int bgpstore_interests_dispatcher_run(clientinfo_map_t *active_clients, bgpview_
   clientstatus_t *cl_status;
   char *client_name;
 
-  // TODO:
-  // suppose there is one client interested in ASVISIBILITY
-
   
   // for each active client:
   for (k = kh_begin(active_clients); k != kh_end(active_clients); ++k)
@@ -173,6 +170,7 @@ int bgpstore_interests_dispatcher_run(clientinfo_map_t *active_clients, bgpview_
 		      return -1;
 		    }
 		}
+	      bgpviewstatus_interest_send(bid->bvstatus, client_name);
 	    }
 	    
 	  if(cl_status->consumer_interests & BGPWATCHER_CONSUMER_INTEREST_ASVISIBILITY)
@@ -186,10 +184,11 @@ int bgpstore_interests_dispatcher_run(clientinfo_map_t *active_clients, bgpview_
 		      return -1;
 		    }
 		}
+	      perasvisibility_interest_send(bid->peras_vis, client_name);
 	    }
 	    
 	  // TODO: satisfy other interests	  
-	  bgpstore_interests_dispatcher_send(bid, client_name);
+	  // bgpstore_interests_dispatcher_send(bid, client_name);
 
 	}
     }

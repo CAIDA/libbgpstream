@@ -44,6 +44,7 @@
 struct bgpviewstatus_interest {
   // timestamp
   uint32_t ts;
+  
   // TODO
 };
 
@@ -57,6 +58,14 @@ bgpviewstatus_interest_t* bgpviewstatus_interest_create(bgpview_t *bgp_view,
   khiter_t k;
   uint16_t i;
   active_peer_status_t *aps;
+
+  // number of done clients
+  // number of active peers
+  // number of inactive peers
+  // number of collectors
+  // number of full feed peers
+
+  
   /* printf("TIME: %d\n", ts); */
   /* printf("\tC: %d \tA: %d \tI: %d \n", */
   /* 	 kh_size(bgp_view->done_clients), */

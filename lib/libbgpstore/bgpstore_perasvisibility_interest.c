@@ -108,7 +108,7 @@ perasvisibility_interest_t* perasvisibility_interest_create(bgpview_t *bgp_view,
   
   if((peras_vis->as_vis_map = kh_init(as_visibility)) == NULL)
     {
-      fprintf(stderr, "Error: unable to create the eligible_peers set\n");
+      fprintf(stderr, "Error: unable to create the as visibility map\n");
       goto err;
     }
 

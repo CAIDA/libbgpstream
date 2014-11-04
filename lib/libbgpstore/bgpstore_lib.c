@@ -57,6 +57,14 @@ bgpstore_t *bgpstore_create()
       goto err;
     }
 
+
+  // TODO: remove later
+  // create a fake client that requires interests
+  bgpstore_client_connect(bgp_store, "Consumer",
+			  BGPWATCHER_CONSUMER_INTEREST_BGPVIEWSTATUS | BGPWATCHER_CONSUMER_INTEREST_ASVISIBILITY,
+			  0);
+
+  
 #ifdef DEBUG
   fprintf(stderr, "DEBUG: bgpstore created\n");
 #endif
