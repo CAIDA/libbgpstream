@@ -40,12 +40,14 @@ static int client_connect(bgpwatcher_server_t *server,
 			  bgpwatcher_server_client_info_t *client,
 			  void *user)
 {
+#ifdef DEBUG
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
   fprintf(stderr, "HANDLE: Handling client CONNECT\n");
   fprintf(stderr, "Client ID:\t%s\n", client->name);
   fprintf(stderr, "Interests:\t0x%02X\n", client->interests);
   fprintf(stderr, "Intents:\t0x%02X\n", client->intents);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
+#endif
   bgpwatcher_t *bw = WATCHER(user);
   int ret = bgpstore_client_connect(bw->bgp_store, client->name,
 				    client->interests, client->intents);
@@ -56,10 +58,12 @@ static int client_disconnect(bgpwatcher_server_t *server,
 			     bgpwatcher_server_client_info_t *client,
 			     void *user)
 {
+#ifdef DEBUG
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
   fprintf(stderr, "HANDLE: Handling client DISCONNECT\n");
   fprintf(stderr, "Client ID:\t%s\n", client->name);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
+#endif  
   bgpwatcher_t *bw = WATCHER(user);
   int ret = bgpstore_client_disconnect(bw->bgp_store, client->name);
   return ret;
@@ -70,11 +74,13 @@ static int table_begin_prefix(bgpwatcher_server_t *server,
                               bgpwatcher_pfx_table_t *table,
                               void *user)
 {
+#ifdef DEBUG
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
   fprintf(stderr, "HANDLE: Handling PREFIX BEGIN\n");
   fprintf(stderr, "Client:\t%s\n", client->name);
   bgpwatcher_pfx_table_dump(table);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
+#endif
   bgpwatcher_t *bw = WATCHER(user);
   int ret = bgpstore_prefix_table_begin(bw->bgp_store, table);
   return ret;
@@ -105,11 +111,13 @@ static int table_end_prefix(bgpwatcher_server_t *server,
                             bgpwatcher_pfx_table_t *table,
                             void *user)
 {
+#ifdef DEBUG  
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n");
   fprintf(stderr, "HANDLE: Handling PREFIX END\n");
   fprintf(stderr, "Client:\t%s\n", client->name);
   bgpwatcher_pfx_table_dump(table);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
+#endif
   bgpwatcher_t *bw = WATCHER(user);
   int ret = bgpstore_prefix_table_end(bw->bgp_store, client->name, table);
   return ret;

@@ -39,7 +39,18 @@
 
 
 
-#define BGPSTORE_MAX_TS_CNT 15
+#define BGPSTORE_TS_WDW_SIZE 30
+#define BGPSTORE_BGPVIEW_TIMEOUT 1800 
+
+
+typedef enum {BGPSTORE_STATE_UNKNOWN        = 0,
+	      BGPSTORE_WDW_EXCEEDED         = 1,
+	      BGPSTORE_CLIENT_DISCONNECT    = 2,
+	      BGPSTORE_TABLE_END            = 3,
+	      BGPSTORE_TIMEOUT_EXPIRED      = 4
+} bgpstore_completion_trigger_t;
+
+
 
 
 KHASH_INIT(timebgpview, uint32_t, bgpview_t*, 1,
@@ -61,10 +72,24 @@ struct bgpstore {
    *   by all the bgpviews and it is constant over time.
    *   Also, it enables faster lookup in the bgpview
    *   prefix tables. */
-  bl_peersign_map_t *peer_signature_id;  
+  bl_peersign_map_t *peer_signature_id;
+  /** sliding window interval:
+   *  we process a maximum of 30 timestamps 
+   *  at a given time, when a new ts arrive
+   *  TODO: finish documentation */
+  uint32_t min_ts;
+  
 };
 
+void bpgstore_check_timeouts(bgpstore_t *bgp_store);
+int bgpstore_completion_check(bgpstore_t *bgp_store, bgpview_t *bgp_view, uint32_t ts, bgpstore_completion_trigger_t trigger);
+int bgpstore_remove_view(bgpstore_t *bgp_store, uint32_t ts);
+
+
 #endif /* __BGPSTORE_INT_H */
+
+
+
 
 
 

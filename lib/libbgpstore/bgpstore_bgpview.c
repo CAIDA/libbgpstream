@@ -25,6 +25,7 @@
 
 
 #include "bgpstore_bgpview.h"
+#include <sys/time.h>
 
 static peerview_t* peerview_create()
 {
@@ -101,6 +102,8 @@ bgpview_t *bgpview_create()
     {
       goto err;
     }
+
+  gettimeofday (&bgp_view->bv_created_time, NULL);
 
   return bgp_view;
     
@@ -249,8 +252,7 @@ int bgpview_add_row(bgpview_t *bgp_view, bgpwatcher_pfx_table_t *table,
 
 
 int bgpview_table_end(bgpview_t *bgp_view, char *client_name,
-		      bgpwatcher_pfx_table_t *table,
-		      clientinfo_map_t *active_clients)
+		      bgpwatcher_pfx_table_t *table)
 {
   int remote_peer_id;
   uint16_t server_id;
@@ -274,15 +276,10 @@ int bgpview_table_end(bgpview_t *bgp_view, char *client_name,
   
   // add this client to the list of clients done
   bl_string_set_insert(bgp_view->done_clients, client_name);
-
-  // check if this bgp_view is completed
-  if(bgpview_completion_check(bgp_view, active_clients) == 1)
-    {
-      return 1;
-    }
   
   return 0;
 }
+
 
 int bgpview_completion_check(bgpview_t *bgp_view, clientinfo_map_t *active_clients)
 {
@@ -301,12 +298,14 @@ int bgpview_completion_check(bgpview_t *bgp_view, clientinfo_map_t *active_clien
 	      // check if all the producers are done with sending pfx tables
 	      if(bl_string_set_exists(bgp_view->done_clients, client_name) == 0)
 		{
+		  bgp_view->state = BGPVIEW_PARTIAL;
 		  return 0;
 		}
 	    }
 	}
     } 
   // bgp_view complete
+  bgp_view->state = BGPVIEW_FULL;
   return 1;
 }
 

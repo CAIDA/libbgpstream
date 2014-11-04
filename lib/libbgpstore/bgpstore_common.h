@@ -29,7 +29,7 @@
 
 #include "khash.h"
 #include <assert.h>
-
+#include <stdint.h>
 
 
 /** The client status is a structure that maintains

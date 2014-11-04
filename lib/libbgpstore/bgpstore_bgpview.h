@@ -40,6 +40,8 @@
 #include "bl_str_set.h"
 #include "bl_id_set.h"
 
+#include <sys/time.h>
+
 #include "khash.h"
 
 
@@ -54,7 +56,7 @@ typedef struct struct_pfxinfo_t {
 /************ per peer prefix view ************/
 
 KHASH_INIT(bsid_pfxview, uint16_t, pfxinfo_t, 1,
-	   kh_int_hash_func, kh_int_hash_equal);
+	   kh_int_hash_func, kh_int_hash_equal)
 
 // TODO: add documentation
 
@@ -64,12 +66,12 @@ typedef khash_t(bsid_pfxview) peerview_t;
 /************ aggregated prefix views ************/
 
 KHASH_INIT(aggr_pfxview_ipv4, bl_ipv4_pfx_t, peerview_t *, 1,
-	   bl_ipv4_pfx_hash_func, bl_ipv4_pfx_hash_equal);
+	   bl_ipv4_pfx_hash_func, bl_ipv4_pfx_hash_equal)
 
 typedef khash_t(aggr_pfxview_ipv4) aggr_pfxview_ipv4_t;
 			      
 KHASH_INIT(aggr_pfxview_ipv6, bl_ipv6_pfx_t, peerview_t *, 1,
-	   bl_ipv6_pfx_hash_func, bl_ipv6_pfx_hash_equal);
+	   bl_ipv6_pfx_hash_func, bl_ipv6_pfx_hash_equal)
 
 typedef khash_t(aggr_pfxview_ipv6) aggr_pfxview_ipv6_t;
 				   
@@ -89,14 +91,27 @@ typedef struct struct_active_peer_status_t {
 
 /************ id -> status ************/
 KHASH_INIT(peer_status_map, uint16_t, active_peer_status_t, 1,
-	   kh_int_hash_func, kh_int_hash_equal);
+	   kh_int_hash_func, kh_int_hash_equal)
 
 typedef khash_t(peer_status_map) peer_status_map_t;
+				 
+typedef enum {BGPVIEW_STATE_UNKNOWN = 0,
+	      BGPVIEW_PARTIAL       = 1,
+	      BGPVIEW_FULL          = 2
+} bgpview_state_t;
+
+				 
 
 /************ bgpview ************/
 
 typedef struct struct_bgpview_t {
 
+  // TODO: documentation
+  bgpview_state_t state;
+
+  /** time when the bgpview was created */
+  struct timeval bv_created_time;
+  
   /** a table that aggregates all the information
    *  collected for any received prefix */
   aggr_pfxview_ipv4_t *aggregated_pfxview_ipv4;
@@ -142,12 +157,10 @@ int bgpview_add_row(bgpview_t *bgp_view, bgpwatcher_pfx_table_t *table,
  *
  * @return -1 if an error occurred, 0 if the function updated
  *         correctly the bgp_view structure and more pfx tables
- *         are expected, 1 if the function updated correctly the
- *         bgp_view structure and no more pfx tables are expected.
+ *         are expected
  */
 int bgpview_table_end(bgpview_t *bgp_view, char *client_name,
-		      bgpwatcher_pfx_table_t *table,
-		      clientinfo_map_t *active_clients);
+		      bgpwatcher_pfx_table_t *table);
 
 
 // TODO: add documentation
