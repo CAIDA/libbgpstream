@@ -100,8 +100,11 @@ static void bgpstore_interests_dispatcher_destroy(bgpstore_interests_dispatcher_
 }
 
 
-int bgpstore_interests_dispatcher_run(clientinfo_map_t *active_clients, bgpview_t *bgp_view, uint32_t ts) {
+int bgpstore_interests_dispatcher_run(bgpstore_t *bgp_store, bgpview_t *bgp_view, uint32_t ts) {
 
+
+  clientinfo_map_t *active_clients = bgp_store->active_clients;
+  
   // create an empty interests dispatcher structure
   bgpstore_interests_dispatcher_t *bid = bgpstore_interests_dispatcher_create();
   if(bid == NULL)
@@ -143,6 +146,14 @@ int bgpstore_interests_dispatcher_run(clientinfo_map_t *active_clients, bgpview_
       return 0;
     }
 
+
+  // TODO: remove later, dispatch to FULL only
+  if(! (bid->sendto_mask & DISPATCH_TO_FULL))
+    {
+      return 0;
+    }
+  
+
   // 2. satisfy consumer interests (specific)
    
   khiter_t k;
@@ -163,7 +174,7 @@ int bgpstore_interests_dispatcher_run(clientinfo_map_t *active_clients, bgpview_
 	    {
 	      if(bid->bvstatus == NULL)
 		{
-		  bid->bvstatus = bgpviewstatus_interest_create(bgp_view, ts);
+		  bid->bvstatus = bgpviewstatus_interest_create(bgp_store,bgp_view, ts);
 		  if(bid->bvstatus == NULL)
 		    {
 		      fprintf(stderr, "ERROR: could not create bgpstore bgpviewstatus interest\n");

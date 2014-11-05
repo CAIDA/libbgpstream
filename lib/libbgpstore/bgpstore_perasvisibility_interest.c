@@ -42,6 +42,7 @@
 
 #define METRIC_PREFIX "bgp.visibility"
 
+
 // AS -> prefix set
 
 KHASH_INIT(as_visibility /* name */, 
@@ -130,8 +131,8 @@ perasvisibility_interest_t* perasvisibility_interest_create(bgpview_t *bgp_view,
 	  if(aps->expected_pfx_tables_cnt == aps->received_pfx_tables_cnt)
 	    {
 	      // check full feed
-	      if(aps->recived_ipv4_pfx_cnt > 500000 ||
-		 aps->recived_ipv6_pfx_cnt > 10000 )
+	      if(aps->recived_ipv4_pfx_cnt > IPV4_FULLFEED ||
+		 aps->recived_ipv6_pfx_cnt > IPV6_FULLFEED )
 		{
 		  bl_id_set_insert(peras_vis->eligible_peers, i);
 		}
@@ -147,6 +148,7 @@ perasvisibility_interest_t* perasvisibility_interest_create(bgpview_t *bgp_view,
   peerview_t *pv;
   pfxinfo_t *pi;
   khiter_t k_inn;
+  int num_peers;
 
   for (k = kh_begin(bgp_view->aggregated_pfxview_ipv4);
        k != kh_end(bgp_view->aggregated_pfxview_ipv4); ++k)
@@ -155,6 +157,8 @@ perasvisibility_interest_t* perasvisibility_interest_create(bgpview_t *bgp_view,
 	{
 	  pfx = &(kh_key(bgp_view->aggregated_pfxview_ipv4,k));
 	  pv = kh_value(bgp_view->aggregated_pfxview_ipv4,k);
+	  // check if prefix is routed
+	  num_peers = 0;
 	  // for each id check if it is eligible
 	  for (k_inn = kh_begin(pv); k_inn != kh_end(pv); ++k_inn)
 	    {
@@ -163,19 +167,33 @@ perasvisibility_interest_t* perasvisibility_interest_create(bgpview_t *bgp_view,
 		  i = kh_key(pv, k_inn);
 		  if(bl_id_set_exists(peras_vis->eligible_peers,i) == 1)
 		    {
-		      pi = &(kh_value(pv,k_inn));
-		      // get origin AS
-		      if(pi->orig_asn != 0) // not a special case
+		      num_peers++;
+		    }
+		}
+	    }
+	  // insert in as visibility if routed
+	  if(num_peers > ROUTED_PFX_PEERCOUNT)
+	    {
+	      for (k_inn = kh_begin(pv); k_inn != kh_end(pv); ++k_inn)
+		{
+		  if (kh_exist(pv, k_inn))	
+		    {
+		      i = kh_key(pv, k_inn);
+		      if(bl_id_set_exists(peras_vis->eligible_peers,i) == 1)
 			{
-			  // insert (AS, ipv4_pfx)
-			  as_visibility_insert(peras_vis->as_vis_map, pi->orig_asn, pfx);
+			  pi = &(kh_value(pv,k_inn));
+			  // get origin AS
+			  if(pi->orig_asn != 0) // not a special case
+			    {
+			      // insert (AS, ipv4_pfx)
+			      as_visibility_insert(peras_vis->as_vis_map, pi->orig_asn, pfx);
+			    }
 			}
 		    }
 		}
 	    }
 	}
     }
-
 
   return peras_vis;
 
@@ -207,12 +225,16 @@ int perasvisibility_interest_send(perasvisibility_interest_t* peras_vis, char *c
 	{
 	  asn = kh_key(peras_vis->as_vis_map,k);
 	  ipv4_pfx_cnt = kh_size(kh_value(peras_vis->as_vis_map,k));
-	  // OUTPUT: number of ipv4 prefixes seen by each AS
-	  fprintf(stdout,
-		  METRIC_PREFIX".ipv4.%"PRIu32" %"PRIu64" %"PRIu32"\n",
-		  asn,
-		  ipv4_pfx_cnt,
-		  peras_vis->ts);
+	  // TODO remove later
+	  if(asn == 1909) // SDSC AS number
+	    {
+	      // OUTPUT: number of ipv4 prefixes seen by each AS
+	      fprintf(stdout,
+		      METRIC_PREFIX".ipv4.%"PRIu32" %"PRIu64" %"PRIu32"\n",
+		      asn,
+		      ipv4_pfx_cnt,
+		      peras_vis->ts);
+	    }
 	}
     }
   

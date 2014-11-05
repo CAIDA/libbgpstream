@@ -61,7 +61,8 @@ bgpstore_t *bgpstore_create()
   // TODO: remove later
   // create a fake client that requires interests
   bgpstore_client_connect(bgp_store, "Consumer",
-			  BGPWATCHER_CONSUMER_INTEREST_BGPVIEWSTATUS | BGPWATCHER_CONSUMER_INTEREST_ASVISIBILITY,
+			  //BGPWATCHER_CONSUMER_INTEREST_BGPVIEWSTATUS | BGPWATCHER_CONSUMER_INTEREST_ASVISIBILITY,
+			  BGPWATCHER_CONSUMER_INTEREST_BGPVIEWSTATUS,
 			  0);
 
   
@@ -191,7 +192,7 @@ int bgpstore_prefix_table_begin(bgpstore_t *bgp_store,
 	{
 	  if(table->time < bgp_store->min_ts)
 	    {
-	      //DEBUG fprintf(stderr, "bgpviews for time %"PRIu32" have been already processed!\n", ts);
+	      fprintf(stderr, "bgpviews for time %"PRIu32" have been already processed\n", ts);
 	      return bpgstore_check_timeouts(bgp_store);
 	    }
 	}
@@ -280,6 +281,25 @@ int bgpstore_prefix_table_end(bgpstore_t *bgp_store, char *client_name,
 }
 
 
+
+static char *print_trigger(bgpstore_completion_trigger_t trigger)
+{
+  switch(trigger)
+    {
+    case BGPSTORE_TABLE_END:
+      return "table_end";
+    case BGPSTORE_TIMEOUT_EXPIRED:
+      return "timeout";
+    case BGPSTORE_CLIENT_DISCONNECT:
+      return "client_disconnect";
+    case BGPSTORE_WDW_EXCEEDED:
+      return "window_exceeded";
+    default:
+      return "";
+    }   
+  return "";
+}
+
 int bgpstore_completion_check(bgpstore_t *bgp_store, bgpview_t *bgp_view, uint32_t ts, bgpstore_completion_trigger_t trigger)
 {
   int ret;
@@ -316,11 +336,16 @@ int bgpstore_completion_check(bgpstore_t *bgp_store, bgpview_t *bgp_view, uint32
       remove_view = 0;
     }
 
+  
+  
+  fprintf(stderr,"CC[%d]: reason %s remove-scheduled %d state %d\n", ts,print_trigger(trigger),remove_view, bgp_view->state);
+
+  
   // TODO: documentation
-  ret = bgpstore_interests_dispatcher_run(bgp_store->active_clients, bgp_view, ts);
+  ret = bgpstore_interests_dispatcher_run(bgp_store, bgp_view, ts);
 
   // TODO: documentation
-  if(ret && remove_view == 1)
+  if(ret == 0 && remove_view == 1)
     {
       return bgpstore_remove_view(bgp_store, ts);
     }

@@ -30,8 +30,14 @@
 
 
 #include "bgpstore_common.h"  // clientinfo_map_t
+#include "bgpstore_lib.h"
+#include "bgpstore_int.h"
 #include "bgpstore_bgpview.h" // bgpview_t
 
+
+#define IPV4_FULLFEED   400000
+#define IPV6_FULLFEED    10000
+#define ROUTED_PFX_PEERCOUNT    10
 
 
 // TODO: comments about interest
@@ -46,7 +52,7 @@ void perasvisibility_interest_destroy(perasvisibility_interest_t* peras_vis);
 
 typedef struct bgpviewstatus_interest bgpviewstatus_interest_t;
 
-bgpviewstatus_interest_t* bgpviewstatus_interest_create(bgpview_t *bgp_view, uint32_t ts);
+bgpviewstatus_interest_t* bgpviewstatus_interest_create(bgpstore_t *bgp_store, bgpview_t *bgp_view, uint32_t ts);
 int bgpviewstatus_interest_send(bgpviewstatus_interest_t* bvstatus, char* client);
 void bgpviewstatus_interest_destroy(bgpviewstatus_interest_t* bvstatus);
 
