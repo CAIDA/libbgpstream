@@ -46,8 +46,6 @@
 struct bgpviewstatus_interest {
   // timestamp
   uint32_t ts;
-  uint32_t min_ts;
-  int connected_clients;
   int done_clients;
   int active_peers;
   int peers_done;
@@ -56,8 +54,7 @@ struct bgpviewstatus_interest {
 };
 
 
-bgpviewstatus_interest_t* bgpviewstatus_interest_create(bgpstore_t *bgp_store,
-							bgpview_t *bgp_view,
+bgpviewstatus_interest_t* bgpviewstatus_interest_create(bgpview_t *bgp_view,
 							uint32_t ts)
 {
   bgpviewstatus_interest_t *bvstatus = (bgpviewstatus_interest_t *)malloc_zero(sizeof(bgpviewstatus_interest_t));
@@ -66,8 +63,6 @@ bgpviewstatus_interest_t* bgpviewstatus_interest_create(bgpstore_t *bgp_store,
   uint16_t i;
   active_peer_status_t *aps;
   bvstatus->ts = ts;
-  bvstatus->min_ts = bgp_store->min_ts;
-  bvstatus->connected_clients = kh_size(bgp_store->active_clients);
   bvstatus->done_clients = kh_size(bgp_view->done_clients);
   bvstatus->active_peers = kh_size(bgp_view->active_peers_info);
   bvstatus->inactive_peers = kh_size(bgp_view->inactive_peers);
@@ -105,9 +100,6 @@ int bgpviewstatus_interest_send(bgpviewstatus_interest_t* bvstatus, char* client
   strftime(buffer, sizeof(buffer), "%H:%M:%S", tm_info);
 
   fprintf(stdout,"\n[%s] processing bgp time: %d \n", buffer, bvstatus->ts);
-  fprintf(stdout,"\tCONNECTED CLIENTS:\t%d\n", bvstatus->connected_clients);
-  fprintf(stdout,"\tCURRENT WINDOW:\t[%d,%d]\n", bvstatus->min_ts,
-	  (bvstatus->min_ts + BGPSTORE_TS_WDW_SIZE - BGPSTORE_TS_WDW_LEN));
   fprintf(stdout,"\tDONE CLIENTS:\t%d\n", bvstatus->done_clients);
   fprintf(stdout,"\tINACTIVE PEERS:\t%d\n", bvstatus->inactive_peers);
   fprintf(stdout,"\tACTIVE PEERS:\t%d\n", bvstatus->active_peers);

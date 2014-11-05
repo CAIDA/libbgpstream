@@ -192,7 +192,8 @@ int bgpstore_prefix_table_begin(bgpstore_t *bgp_store,
 	{
 	  if(table->time < bgp_store->min_ts)
 	    {
-	      fprintf(stderr, "bgpviews for time %"PRIu32" have been already processed\n", ts);
+	      fprintf(stderr, "bgpviews for time %"PRIu32" have been already processed\n",
+		      table->time);
 	      return bpgstore_check_timeouts(bgp_store);
 	    }
 	}
@@ -282,23 +283,57 @@ int bgpstore_prefix_table_end(bgpstore_t *bgp_store, char *client_name,
 
 
 
-static char *print_trigger(bgpstore_completion_trigger_t trigger)
+static void dump_bgpstore_cc_status(bgpstore_t *bgp_store, bgpview_t *bgp_view, uint32_t ts,
+				    bgpstore_completion_trigger_t trigger,
+				    uint8_t remove_view)
 {
+  time_t timer;
+  char buffer[25];
+  struct tm* tm_info;
+  time(&timer);
+  tm_info = localtime(&timer);
+  strftime(buffer, sizeof(buffer), "%H:%M:%S", tm_info);
+
+  fprintf(stderr,"\n[%s] CC on bgp time: %d \n", buffer, ts);
   switch(trigger)
     {
     case BGPSTORE_TABLE_END:
-      return "table_end";
+      fprintf(stderr,"\tReason:\t\tTABLE_END\n");
+      break;
     case BGPSTORE_TIMEOUT_EXPIRED:
-      return "timeout";
+      fprintf(stderr,"\tReason:\t\tTIMEOUT_EXPIRED\n");
+      break;
     case BGPSTORE_CLIENT_DISCONNECT:
-      return "client_disconnect";
+      fprintf(stderr,"\tReason:\t\tCLIENT_DISCONNECT\n");
+      break;
     case BGPSTORE_WDW_EXCEEDED:
-      return "window_exceeded";
+      fprintf(stderr,"\tReason:\t\tWDW_EXCEEDED\n");
+      break;
     default:
-      return "";
-    }   
-  return "";
+      fprintf(stderr,"\tReason:\t\tUNKNOWN\n");
+      break;
+    }  
+  switch(bgp_view->state)
+    {
+    case BGPVIEW_PARTIAL:
+      fprintf(stderr,"\tView state:\tPARTIAL\n");
+      break;
+    case BGPVIEW_FULL:
+      fprintf(stderr,"\tView state:\tCOMPLETE\n");
+      break;
+    default:
+      fprintf(stderr,"\tView state:\tUNKNOWN\n");
+      break;
+    }
+  fprintf(stderr,"\tView removal:\t%d\n", remove_view);
+  fprintf(stderr,"\tConnected clients:\t%d\n", kh_size(bgp_store->active_clients));
+  fprintf(stderr,"\tts window:\t[%d,%d]\n", bgp_store->min_ts,
+	  bgp_store->min_ts + BGPSTORE_TS_WDW_SIZE - BGPSTORE_TS_WDW_LEN);
+  fprintf(stderr,"\ttimeseries size:\t%d\n", kh_size(bgp_store->bgp_timeseries));
+
+  fprintf(stderr,"\n");
 }
+
 
 int bgpstore_completion_check(bgpstore_t *bgp_store, bgpview_t *bgp_view, uint32_t ts, bgpstore_completion_trigger_t trigger)
 {
@@ -336,13 +371,10 @@ int bgpstore_completion_check(bgpstore_t *bgp_store, bgpview_t *bgp_view, uint32
       remove_view = 0;
     }
 
-  
-  
-  fprintf(stderr,"CC[%d]: reason %s remove-scheduled %d state %d\n", ts,print_trigger(trigger),remove_view, bgp_view->state);
-
+  dump_bgpstore_cc_status(bgp_store, bgp_view, ts, trigger, remove_view);
   
   // TODO: documentation
-  ret = bgpstore_interests_dispatcher_run(bgp_store, bgp_view, ts);
+  ret = bgpstore_interests_dispatcher_run(bgp_store->active_clients, bgp_view, ts);
 
   // TODO: documentation
   if(ret == 0 && remove_view == 1)

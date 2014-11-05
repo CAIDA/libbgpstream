@@ -31,12 +31,10 @@
 
 #include "bgpstore_common.h"  // clientinfo_map_t
 #include "bgpstore_bgpview.h" // bgpview_t
-#include "bgpstore_lib.h"     // bgpstore_t
-#include "bgpstore_int.h"     // bgpstore_t
 
 
 
-int bgpstore_interests_dispatcher_run(bgpstore_t *bgp_store, bgpview_t *bgp_view, uint32_t ts);
+int bgpstore_interests_dispatcher_run(clientinfo_map_t *active_clients, bgpview_t *bgp_view, uint32_t ts);
 
 
 

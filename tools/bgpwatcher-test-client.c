@@ -231,7 +231,7 @@ int main(int argc, char **argv)
   /* NB: once getopt completes, optind points to the first non-option
      argument */
 
-  interests = BGPWATCHER_CONSUMER_INTEREST_BGPVIEWSTATUS;
+  interests = 0;
   intents = BGPWATCHER_PRODUCER_INTENT_PREFIX;
 
   if((client =
