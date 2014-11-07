@@ -890,9 +890,9 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	      ip_prefix.address.ipv4.s_addr = prefix.number.address.v4_addr.s_addr;
 
 	      if(bgpwatcher_client_pfx_table_add(bw_client->client,
-						       bw_client->peer_id,
-	      					       &ip_prefix,
-	      					       pd.origin_as) < 0)
+						 bw_client->peer_id,
+						 &ip_prefix,
+						 pd.origin_as) < 0)
 	      	{
 	      	  bgpwatcher_client_perr(bw_client->client);
 	      	  fprintf(stderr, "Could not add to pfx table\n");

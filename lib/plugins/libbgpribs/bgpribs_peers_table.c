@@ -265,14 +265,13 @@ int peers_table_interval_end(char *project_str, char *collector_str,
   uint32_t peer_table_time = interval_start;
   int peers_cnt = kh_size(peers_table->ipv4_peers_table) + kh_size(peers_table->ipv6_peers_table);
   if(bgpwatcher_client_pfx_table_begin(bw_client->client,
-				       peer_table_time,
-				       collector_str,
-				       peers_cnt) < 0)
+  				       peer_table_time,
+  				       collector_str,
+  				       peers_cnt) < 0)
     {
       fprintf(stderr, "Could not begin pfx table\n");
       return -1;
     }
-
 #endif
 
   // print stats for ipv4 peers

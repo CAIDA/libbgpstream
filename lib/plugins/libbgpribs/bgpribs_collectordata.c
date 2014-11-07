@@ -264,15 +264,15 @@ int collectordata_interval_end(collectordata_t *collector_data,
   int ret = 0;
 #ifdef WITH_BGPWATCHER
   ret = peers_table_interval_end(collector_data->dump_project, collector_data->dump_collector,
-			   collector_data->peers_table,
-			   collector_data->aggr_stats,
-			   bw_client,
-			   interval_start);
+				 collector_data->peers_table,
+				 collector_data->aggr_stats,
+				 bw_client,
+				 interval_start);
 #else
   ret = peers_table_interval_end(collector_data->dump_project, collector_data->dump_collector,
-			   collector_data->peers_table,
-			   collector_data->aggr_stats,
-			   interval_start);
+				 collector_data->peers_table,
+				 collector_data->aggr_stats,
+				 interval_start);
 #endif
   if(ret < 0)
     {

@@ -92,6 +92,29 @@ int collectors_table_process_record(collectors_table_wrapper_t *collectors_table
 } 
 
 
+
+static int collectors_table_peers_cnt(collectors_table_wrapper_t *collectors_table)
+{
+  khiter_t k;
+  collectordata_t * collector_data;
+  int cnt = 0;
+  for (k = kh_begin(collectors_table->table);
+       k != kh_end(collectors_table->table); ++k)
+    {
+      if (kh_exist(collectors_table->table, k))
+	{
+	  collector_data = kh_value(collectors_table->table, k);
+	  if(collector_data->status != COLLECTOR_NULL)
+	    {
+	      cnt += kh_size(collector_data->peers_table->ipv4_peers_table);
+	      cnt += kh_size(collector_data->peers_table->ipv6_peers_table);
+	    }
+	}
+    }
+  return cnt;
+}
+
+
 /* dump statistics for each collector */
 #ifdef WITH_BGPWATCHER
 int collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
@@ -108,6 +131,9 @@ int collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
   khiter_t k;
   collectordata_t * collector_data;
   int ret = 0;
+
+  int total_peers_cnt = collectors_table_peers_cnt(collectors_table);
+  
   for (k = kh_begin(collectors_table->table);
        k != kh_end(collectors_table->table); ++k)
     {
@@ -139,24 +165,25 @@ int collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
 
 	      
 	      if(bgpwatcher_client_pfx_table_begin(bw_client->client,
-						peer_table_time,
-						collector_data->dump_collector,
-						   0) < 0)
-		{
-		  // TODO comment here
-		  return -1;
-		}
+	  					   peer_table_time,
+	  					   collector_data->dump_collector,
+	  					   0) < 0)
+	  	{
+	  	  // TODO comment here
+	  	  return -1;
+	  	}
 	      
 	      if(bgpwatcher_client_pfx_table_end(bw_client->client) < 0)
-		{
-		  // TODO comment here
-		  return -1;
-		}
+	  	{
+	  	  // TODO comment here
+	  	  return -1;
+	  	}
 	      
 	    }
 #endif
 	}
     }
+
 
   // if there is only 1 collector, then output its processing statistics
   // otherwise use the word "multiple"
