@@ -84,6 +84,8 @@ int bgpribs_process_record(bgpribs_t *bgp_ribs, bgpstream_record_t *bs_record)
 int bgpribs_interval_end(bgpribs_t *bgp_ribs, int interval_end)
 {
   bgp_ribs->interval_end = interval_end;
+  fprintf(stderr, "End of interval %d\n", interval_end);
+  
 #ifdef WITH_BGPWATCHER
   return collectors_table_interval_end(bgp_ribs->collectors_table, 
 				       bgp_ribs->interval_processing_start,

@@ -439,7 +439,6 @@ int main(int argc, char *argv[])
     }
 
 
-
   /* we support multiple datasources, mysql is the default */
 
   bgpstream_datasource_type datasource_type = BS_MYSQL;
