@@ -43,8 +43,8 @@ khint32_t bgpstream_ipv4_address_hash_func(bgpstream_ip_address_t ip)
 int bgpstream_ipv4_address_hash_equal(bgpstream_ip_address_t ip1,
 					     bgpstream_ip_address_t ip2)
 {
-  assert(ip1.type == BST_IPV4); // check type is ipv4
-  assert(ip2.type == BST_IPV4); // check type is ipv4
+  // assert(ip1.type == BST_IPV4); // check type is ipv4
+  // assert(ip2.type == BST_IPV4); // check type is ipv4
   // we cannot use memcmp as these are unions and ipv4 is not the
   // largest data structure that can fit in the union, ipv6 is
   return (ip1.address.v4_addr.s_addr == ip2.address.v4_addr.s_addr);
@@ -62,11 +62,16 @@ khint64_t bgpstream_ipv6_address_hash_func(bgpstream_ip_address_t ip)
 }
 
 int bgpstream_ipv6_address_hash_equal(bgpstream_ip_address_t ip1,
-					     bgpstream_ip_address_t ip2) 
+				      bgpstream_ip_address_t ip2) 
 {
-  assert(ip1.type == BST_IPV6); // check type is ipv6
-  assert(ip2.type == BST_IPV6); // check type is ipv6
-  return (memcmp(&ip1,&ip2, sizeof(bgpstream_ip_address_t)) == 0);
+  //assert(ip1.type == BST_IPV6); // check type is ipv6
+  //assert(ip2.type == BST_IPV6); // check type is ipv6
+  return ( (memcmp(&(ip1.address.v6_addr.s6_addr[0]),
+		   &(ip2.address.v6_addr.s6_addr[0]),
+		   sizeof(uint64_t)) == 0) &&
+	   (memcmp(&(ip1.address.v6_addr.s6_addr[8]),
+		   &(ip2.address.v6_addr.s6_addr[8]),
+		   sizeof(uint64_t)) == 0) );
 }
 
 
@@ -90,8 +95,8 @@ khint32_t bgpstream_prefix_ipv4_hash_func(bgpstream_prefix_t prefix)
 int bgpstream_prefix_ipv4_hash_equal(bgpstream_prefix_t prefix1,
 				     bgpstream_prefix_t prefix2)
 {
-  assert(prefix1.number.type == BST_IPV4); // check type is ipv4
-  assert(prefix2.number.type == BST_IPV4); // check type is ipv4
+  // assert(prefix1.number.type == BST_IPV4); // check type is ipv4
+  // assert(prefix2.number.type == BST_IPV4); // check type is ipv4
   return (prefix1.number.address.v4_addr.s_addr == prefix2.number.address.v4_addr.s_addr) &&
     (prefix1.len == prefix2.len);
 }
@@ -117,9 +122,20 @@ khint64_t bgpstream_prefix_ipv6_hash_func(bgpstream_prefix_t prefix)
 int bgpstream_prefix_ipv6_hash_equal(bgpstream_prefix_t prefix1,
 				     bgpstream_prefix_t prefix2) 
 {
-  assert(prefix1.number.type == BST_IPV6); // check type is ipv6
-  assert(prefix2.number.type == BST_IPV6); // check type is ipv6
-  return (memcmp(&prefix1,&prefix2, sizeof(bgpstream_prefix_t)) == 0);
+  // assert(prefix1.number.type == BST_IPV6); // check type is ipv6
+  // assert(prefix2.number.type == BST_IPV6); // check type is ipv6
+  return ( (memcmp(&(prefix1.number.address.v6_addr.s6_addr[0]),
+		   &(prefix2.number.address.v6_addr.s6_addr[0]),
+		   sizeof(uint64_t)) == 0) &&
+	   (prefix1.len == prefix2.len) && // this should be enough
+	   (memcmp(&(prefix1.number.address.v6_addr.s6_addr[8]),
+		   &(prefix2.number.address.v6_addr.s6_addr[8]),
+		   sizeof(uint64_t)) == 0)	    
+	   /* (  *((uint64_t *) &(prefix1.number.address.v6_addr.s6_addr[0])) == */
+	   /*    *((uint64_t *) &(prefix2.number.address.v6_addr.s6_addr[0])) ) && */
+	   /* (  *((uint64_t *) &(prefix1.number.address.v6_addr.s6_addr[8])) == */
+	   /*    *((uint64_t *) &(prefix2.number.address.v6_addr.s6_addr[8])) ) */
+	   );
 }
 
 

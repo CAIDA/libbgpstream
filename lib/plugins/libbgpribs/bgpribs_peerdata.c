@@ -266,7 +266,7 @@ int peerdata_apply_elem(peerdata_t *peer_data, bgpstream_record_t * bs_record, b
 	  // already embedded into the ribs_table_apply_elem mechanism
 	  ribs_table_apply_elem(peer_data->active_ribs_table, bs_elem);
 	  peerdata_update_affected_resources(peer_data,bs_elem);
-
+	  
 	  peer_data->soft_merge_cnt++;
 
 	  return 0;
@@ -525,9 +525,9 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 
 		  // A new active rib is now in place
 		  peer_data->new_rib = 1;
-		  peer_data->new_rib_length = peer_data->active_ribs_table->reference_rib_end - 
+		  peer_data->new_rib_length = peer_data->active_ribs_table->reference_rib_end -
 		    peer_data->active_ribs_table->reference_rib_start;
-
+		  
 		}
 	      else
 		{
@@ -635,14 +635,14 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 
 #ifdef WITH_BGPWATCHER
 int peerdata_interval_end(char *project_str, char *collector_str,
-			  bgpstream_ip_address_t * peer_address, peerdata_t *peer_data,
-			  aggregated_bgp_stats_t * collector_aggr_stats,
+			  bgpstream_ip_address_t *peer_address, peerdata_t *peer_data,
+			  aggregated_bgp_stats_t *collector_aggr_stats,
 			  bw_client_t *bw_client,
 			  int interval_start)
 #else
 int peerdata_interval_end(char *project_str, char *collector_str,
-			  bgpstream_ip_address_t * peer_address, peerdata_t *peer_data,
-			  aggregated_bgp_stats_t * collector_aggr_stats,
+			  bgpstream_ip_address_t *peer_address, peerdata_t *peer_data,
+			  aggregated_bgp_stats_t *collector_aggr_stats,
 			  int interval_start)
 #endif
 {
@@ -694,77 +694,77 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 
   // OUTPUT METRIC: state elem detail
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.elem_state_established_cnt %"PRIu64" %d\n",
-	  project_str,
-	  collector_str,
-	  peer_data->peer_address_str,
-	  peer_data->state_up_elems,
-	  interval_start);
+  	  METRIC_PREFIX".%s.%s.%s.elem_state_established_cnt %"PRIu64" %d\n",
+  	  project_str,
+  	  collector_str,
+  	  peer_data->peer_address_str,
+  	  peer_data->state_up_elems,
+  	  interval_start);
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.elem_state_down_cnt %"PRIu64" %d\n",
-	  project_str,
-	  collector_str,
-	  peer_data->peer_address_str,
-	  peer_data->elem_types[BST_STATE]-peer_data->state_up_elems,
-	  interval_start);
+  	  METRIC_PREFIX".%s.%s.%s.elem_state_down_cnt %"PRIu64" %d\n",
+  	  project_str,
+  	  collector_str,
+  	  peer_data->peer_address_str,
+  	  peer_data->elem_types[BST_STATE]-peer_data->state_up_elems,
+  	  interval_start);
 
   // OUTPUT METRIC: ignored elem
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.elem_ignored_cnt %"PRIu64" %d\n",
-	  project_str,
-	  collector_str,
-	  peer_data->peer_address_str,
-	  peer_data->ignored_elems,
-	  interval_start);
+  	  METRIC_PREFIX".%s.%s.%s.elem_ignored_cnt %"PRIu64" %d\n",
+  	  project_str,
+  	  collector_str,
+  	  peer_data->peer_address_str,
+  	  peer_data->ignored_elems,
+  	  interval_start);
 
   // OUTPUT METRIC: out of order details
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.elem_out_of_order_cnt %"PRIu64" %d\n",
-	  project_str,
-	  collector_str,
-	  peer_data->peer_address_str,
-	  peer_data->out_of_order,
-	  interval_start);
+  	  METRIC_PREFIX".%s.%s.%s.elem_out_of_order_cnt %"PRIu64" %d\n",
+  	  project_str,
+  	  collector_str,
+  	  peer_data->peer_address_str,
+  	  peer_data->out_of_order,
+  	  interval_start);
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.elem_soft_merge_cnt %"PRIu64" %d\n",
-	  project_str,
-	  collector_str,
-	  peer_data->peer_address_str,
-	  peer_data->soft_merge_cnt,
-	  interval_start);
+  	  METRIC_PREFIX".%s.%s.%s.elem_soft_merge_cnt %"PRIu64" %d\n",
+  	  project_str,
+  	  collector_str,
+  	  peer_data->peer_address_str,
+  	  peer_data->soft_merge_cnt,
+  	  interval_start);
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.elem_out_of_order_ignored_cnt %"PRIu64" %d\n",
-	  project_str,
-	  collector_str,
-	  peer_data->peer_address_str,
-	  peer_data->ignored_out_of_order,
-	  interval_start);
+  	  METRIC_PREFIX".%s.%s.%s.elem_out_of_order_ignored_cnt %"PRIu64" %d\n",
+  	  project_str,
+  	  collector_str,
+  	  peer_data->peer_address_str,
+  	  peer_data->ignored_out_of_order,
+  	  interval_start);
   fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.elem_out_of_order_in_rib_cnt %"PRIu64" %d\n",
-	  project_str,
-	  collector_str,
-	  peer_data->peer_address_str,
-	  peer_data->out_of_order - (peer_data->soft_merge_cnt + peer_data->ignored_out_of_order),
-	  interval_start);
+  	  METRIC_PREFIX".%s.%s.%s.elem_out_of_order_in_rib_cnt %"PRIu64" %d\n",
+  	  project_str,
+  	  collector_str,
+  	  peer_data->peer_address_str,
+  	  peer_data->out_of_order - (peer_data->soft_merge_cnt + peer_data->ignored_out_of_order),
+  	  interval_start);
 
 
   // OUTPUT METRIC:  new active rib related metrics
   if(peer_data->new_rib == 1)
     {
       fprintf(stdout,
-	      METRIC_PREFIX".%s.%s.%s.new_rib_flag %"PRIu8" %d\n",
-	      project_str,
-	      collector_str,
-	      peer_data->peer_address_str,
-	      peer_data->new_rib,
-	      interval_start);
+  	      METRIC_PREFIX".%s.%s.%s.new_rib_flag %"PRIu8" %d\n",
+  	      project_str,
+  	      collector_str,
+  	      peer_data->peer_address_str,
+  	      peer_data->new_rib,
+  	      interval_start);
       fprintf(stdout,
-	      METRIC_PREFIX".%s.%s.%s.new_rib_length %"PRIu8" %d\n",
-	      project_str,
-	      collector_str,
-	      peer_data->peer_address_str,
-	      peer_data->new_rib_length,
-	      interval_start);
+  	      METRIC_PREFIX".%s.%s.%s.new_rib_length %"PRIu8" %d\n",
+  	      project_str,
+  	      collector_str,
+  	      peer_data->peer_address_str,
+  	      peer_data->new_rib_length,
+  	      interval_start);
     }
 
   // reset array and metrics
@@ -849,14 +849,13 @@ int peerdata_interval_end(char *project_str, char *collector_str,
   
   // the following actions require the peer to be UP
   
+#ifdef WITH_BGPWATCHER
+  bl_pfx_storage_t ip_prefix;
+#endif
+
   uint32_t ipv4_rib_size = 0;
   uint32_t ipv6_rib_size = 0;
 
-#ifdef WITH_BGPWATCHER
-  bl_pfx_storage_t ip_prefix;
-
-#endif
-  
   // go through ipv4 an ipv6 ribs and get the standard origin
   // ases, plus integrate the data into collector_data structs
   double avg_aspath_len_ipv4 = 0;

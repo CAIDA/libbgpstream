@@ -282,8 +282,8 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 	{
 	  peer_address = kh_key(peers_table->ipv4_peers_table, k);
 	  peer_data = kh_value(peers_table->ipv4_peers_table, k);
-#ifdef WITH_BGPWATCHER
 
+#ifdef WITH_BGPWATCHER
 	  peer_ip.version = BL_ADDR_IPV4;
 	  peer_ip.ipv4.s_addr = peer_address.address.v4_addr.s_addr;
 	  if((bw_client->peer_id = bgpwatcher_client_pfx_table_add_peer(bw_client->client,
@@ -298,7 +298,7 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 				   &peer_address, peer_data, 
 				   collector_aggr_stats, bw_client, interval_start) < 0)
 #else
-	    if(peerdata_interval_end(project_str, collector_str, 
+	  if(peerdata_interval_end(project_str, collector_str, 
 				   &peer_address, peer_data, 
 				   collector_aggr_stats, interval_start) < 0)
 #endif

@@ -123,8 +123,8 @@ int collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
 				   bw_client_t *bw_client)
 #else
 int collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
-				   int interval_processing_start,
-				   int interval_start, int interval_end)
+				  int interval_processing_start,
+				  int interval_start, int interval_end)
 #endif
 {
   assert(collectors_table != NULL); 
@@ -132,7 +132,7 @@ int collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
   collectordata_t * collector_data;
   int ret = 0;
 
-  int total_peers_cnt = collectors_table_peers_cnt(collectors_table);
+  // int total_peers_cnt = collectors_table_peers_cnt(collectors_table);
   
   for (k = kh_begin(collectors_table->table);
        k != kh_end(collectors_table->table); ++k)
@@ -156,6 +156,7 @@ int collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
 		  return -1;
 		}
 	    }
+	  
 #ifdef WITH_BGPWATCHER
 	  else
 	    {
@@ -183,7 +184,6 @@ int collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
 #endif
 	}
     }
-
 
   // if there is only 1 collector, then output its processing statistics
   // otherwise use the word "multiple"
