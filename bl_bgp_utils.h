@@ -186,6 +186,7 @@ typedef struct struct_bl_elem_t {
 bl_ipv4_pfx_t bl_pfx_storage2ipv4(bl_pfx_storage_t *prefix);
 bl_ipv6_pfx_t bl_pfx_storage2ipv6(bl_pfx_storage_t *prefix);
 
+// TODO
 bl_pfx_storage_t bl_pfx_ipv42storage(bl_ipv4_pfx_t *prefix);
 bl_pfx_storage_t bl_pfx_ipv62storage(bl_ipv6_pfx_t *prefix);
 

@@ -143,7 +143,8 @@ khint64_t bl_ipv6_addr_hash_func(bl_ipv6_addr_t ip)
 
 int bl_ipv6_addr_hash_equal(bl_ipv6_addr_t ip1, bl_ipv6_addr_t ip2)
 {
-  return (memcmp(&ip1,&ip2, sizeof(bl_ipv6_addr_t)) == 0);
+  return ( (memcmp(&(ip1.s6_addr[0]), &(ip2.s6_addr[0]), sizeof(uint64_t)) == 0) &&
+	   (memcmp(&(ip1.s6_addr[8]), &(ip2.s6_addr[8]), sizeof(uint64_t)) == 0) );
 }
 
 

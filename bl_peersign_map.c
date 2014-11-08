@@ -36,7 +36,7 @@ khint64_t bl_peer_signature_hash_func(bl_peer_signature_t ps)
   /* assuming that the number of peers that have the same ip
    * and belong to two different collectors is low
    * (in this specific case there will be a collision in terms
-   * of hash. */
+   * of hash). */
   return bl_addr_storage_hash_func(ps.peer_ip_addr);
 }
 
@@ -94,7 +94,7 @@ uint16_t bl_peersign_map_set_and_get(bl_peersign_map_t *map, char *collector_str
 
 
 bl_peer_signature_t* bl_peersign_map_get_peersign(bl_peersign_map_t *map,
-						       uint16_t id)
+						  uint16_t id)
 {
   bl_peer_signature_t *ps = NULL;
   khiter_t k;

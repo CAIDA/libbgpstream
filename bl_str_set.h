@@ -71,7 +71,7 @@ int bl_string_set_exists(bl_string_set_t *string_set, char * string_val);
  *
  * @param string_val pointer to the string set
  */
-			       int bl_string_set_size(bl_string_set_t *string_set);
+int bl_string_set_size(bl_string_set_t *string_set);
 
 /** Empty the string set.
  *
