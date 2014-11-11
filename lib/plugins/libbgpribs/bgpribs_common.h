@@ -28,8 +28,13 @@
 
 #include <assert.h>
 #include <stdio.h>
-#include "bgpribs_ases_table.h"
-#include "bgpribs_prefixes_table.h"
+#include "bl_bgp_utils.h"
+#include "bl_pfx_set.h"
+#include "bl_id_set.h"
+#include "bgpstream_lib.h"
+
+// #include "bgpribs_ases_table.h"
+// #include "bgpribs_prefixes_table.h"
 
 /** @file
  *
@@ -40,7 +45,7 @@
  *
  */
 
-#define METRIC_PREFIX "bgp.bgpribs"
+#define METRIC_PREFIX "bgp.test.bgpribs"
 
 
 /** Modifies the string provided so that it
@@ -57,10 +62,16 @@ void graphite_safe(char *p);
  *  grouping that considers one peer or more.
  */
 typedef struct aggregated_bgp_stats {
-  prefixes_table_t *unique_prefixes;          /// set of unique prefixes that are at least in one rib at the end of the interval
-  ases_table_wrapper_t * unique_origin_ases;  /// number of unique origin ASes observed at the end of the interval
-  prefixes_table_t * affected_prefixes;       /// set of unique prefixes affected by at least one update during the interval
-  ases_table_wrapper_t * announcing_origin_ases; /// set of unique origin ASes announcing at least one prefix during the interval
+  /// set of unique prefixes that are at least in one rib at the end of the interval
+  bl_ipv4_pfx_set_t *unique_ipv4_prefixes;    
+  bl_ipv6_pfx_set_t *unique_ipv6_prefixes;
+  /// number of unique origin ASes observed at the end of the interval
+  bl_id_set_t *unique_origin_ases;  
+   /// set of unique prefixes affected by at least one update during the interval
+  bl_ipv4_pfx_set_t *affected_ipv4_prefixes;
+  bl_ipv6_pfx_set_t *affected_ipv6_prefixes;
+  /// set of unique origin ASes announcing at least one prefix during the interval
+  bl_id_set_t *announcing_origin_ases; 
 } aggregated_bgp_stats_t;
 
 

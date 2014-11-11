@@ -29,7 +29,9 @@
 #include <assert.h>
 #include "khash.h"
 #include "utils.h"
-#include "bgpribs_khash.h"
+#include "bl_bgp_utils.h"
+#include "bl_pfx_set.h"
+
 
 /** @file
  *
@@ -41,35 +43,15 @@
  */
 
 
-/** prefixes table (set of unique prefixes)
- *  this structure contains two separate sets: 
- *  the set  of unique ipv4 prefixes and the set
- *  of unique ipv6 prefixes
- */
-
-KHASH_INIT(ipv4_prefixes_table_t /* name */, 
-	   bgpstream_prefix_t /* khkey_t */, 
-	   char /* khval_t */, 
-	   0  /* kh_is_set */, 
-	   bgpstream_prefix_ipv4_hash_func /*__hash_func */,  
-	   bgpstream_prefix_ipv4_hash_equal /* __hash_equal */);
-
-
-KHASH_INIT(ipv6_prefixes_table_t /* name */, 
-	   bgpstream_prefix_t /* khkey_t */, 
-	   char /* khval_t */, 
-	   0  /* kh_is_map */, 
-	   bgpstream_prefix_ipv6_hash_func /*__hash_func */,  
-	   bgpstream_prefix_ipv6_hash_equal /* __hash_equal */);
-
 /** Structure that manage a set of unique IP prefixes 
  *  one hash is for ipv4 prefixes, the other one is for
  *  ipv6 prefixes.
  */
 typedef struct struct_prefixes_table_t {
-  khash_t(ipv4_prefixes_table_t) * ipv4_prefixes_table;
-  khash_t(ipv6_prefixes_table_t) * ipv6_prefixes_table;
+  bl_ipv4_pfx_set_t *ipv4_prefixes_table;
+  bl_ipv6_pfx_set_t *ipv6_prefixes_table;
 } prefixes_table_t;
+
 
 /** Allocate memory for a strucure that maintains
  *  unique IP prefixes.
@@ -84,8 +66,11 @@ prefixes_table_t *prefixes_table_create();
  * @param prefixes_table a pointer to the prefixes table
  * @param prefix a prefix to insert in the table
  */
-void prefixes_table_insert(prefixes_table_t *prefixes_table,
-			   bgpstream_prefix_t prefix);
+void prefixes_table_insert_ipv4(prefixes_table_t *prefixes_table,
+				bl_ipv4_pfx_t *prefix);
+
+void prefixes_table_insert_ipv6(prefixes_table_t *prefixes_table,
+				bl_ipv6_pfx_t *prefix);
 
 /** Empty the prefix table.
  *

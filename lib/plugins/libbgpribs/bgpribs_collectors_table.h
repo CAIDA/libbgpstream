@@ -82,7 +82,7 @@ collectors_table_wrapper_t *collectors_table_create();
  *        -1 if something went wrong during the function execution
  */
 int collectors_table_process_record(collectors_table_wrapper_t *collectors_table,
-				    bgpstream_record_t * bs_record);
+				    bgpstream_record_t *bs_record);
 
 #ifdef WITH_BGPWATCHER
 /** The function prints the statistics of a set of collectors for the interval of time

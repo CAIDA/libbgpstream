@@ -34,51 +34,35 @@ prefixes_table_t *prefixes_table_create()
       return NULL;
     }
   // init ipv4 and ipv6 khashes
-  prefixes_table->ipv4_prefixes_table = kh_init(ipv4_prefixes_table_t);
-  prefixes_table->ipv6_prefixes_table = kh_init(ipv6_prefixes_table_t);
+  prefixes_table->ipv4_prefixes_table = bl_ipv4_pfx_set_create();
+  prefixes_table->ipv6_prefixes_table = bl_ipv6_pfx_set_create();
   return prefixes_table;
 }
 
 
-void prefixes_table_insert(prefixes_table_t *prefixes_table, bgpstream_prefix_t prefix)
+void prefixes_table_insert_ipv4(prefixes_table_t *prefixes_table, bl_ipv4_pfx_t *prefix)
 {
-  int khret;
-  khiter_t k;
-  if(prefix.number.type == BST_IPV4)
-    {
-      if((k = kh_get(ipv4_prefixes_table_t, prefixes_table->ipv4_prefixes_table,
-		     prefix)) == kh_end(prefixes_table->ipv4_prefixes_table))
-	{
-	  k = kh_put(ipv4_prefixes_table_t, prefixes_table->ipv4_prefixes_table, 
-		     prefix, &khret);
-	}
-    }
-  else
-    { // assert(prefix.number.type == BST_IPV6)
-      if((k = kh_get(ipv6_prefixes_table_t, prefixes_table->ipv6_prefixes_table,
-		     prefix)) == kh_end(prefixes_table->ipv6_prefixes_table))
-	{
-	  k = kh_put(ipv6_prefixes_table_t, prefixes_table->ipv6_prefixes_table, 
-		     prefix, &khret);
-	}
-    }
+  bl_ipv4_pfx_set_insert(prefixes_table->ipv4_prefixes_table, *prefix);  
 }
 
+void prefixes_table_insert_ipv6(prefixes_table_t *prefixes_table, bl_ipv6_pfx_t *prefix)
+{
+  bl_ipv6_pfx_set_insert(prefixes_table->ipv6_prefixes_table, *prefix);  
+}
 
 void prefixes_table_reset(prefixes_table_t *prefixes_table) 
 {
   assert(prefixes_table);
-  kh_clear(ipv4_prefixes_table_t, prefixes_table->ipv4_prefixes_table);
-  kh_clear(ipv6_prefixes_table_t, prefixes_table->ipv6_prefixes_table);
+  bl_ipv4_pfx_set_reset(prefixes_table->ipv4_prefixes_table);
+  bl_ipv6_pfx_set_reset(prefixes_table->ipv6_prefixes_table);
 }
-
 
 void prefixes_table_destroy(prefixes_table_t *prefixes_table) 
 {
   if(prefixes_table == NULL) 
     {
-      kh_destroy(ipv4_prefixes_table_t, prefixes_table->ipv4_prefixes_table);
-      kh_destroy(ipv6_prefixes_table_t, prefixes_table->ipv6_prefixes_table);
+      bl_ipv4_pfx_set_destroy(prefixes_table->ipv4_prefixes_table);
+      bl_ipv6_pfx_set_destroy(prefixes_table->ipv6_prefixes_table);
       // free prefixes_table
       free(prefixes_table);
     }

@@ -33,8 +33,8 @@ ribs_table_t *ribs_table_create()
       return NULL;
     }
   // init ipv4 and ipv6 khashes
-  ribs_table->ipv4_rib = kh_init(ipv4_rib_t);
-  ribs_table->ipv6_rib = kh_init(ipv6_rib_t);
+  ribs_table->ipv4_rib = kh_init(ipv4_rib_map);
+  ribs_table->ipv6_rib = kh_init(ipv6_rib_map);
   return ribs_table;
 }
 
@@ -62,15 +62,21 @@ void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs_elem)
 	}  
     } 
 
+  bl_ipv4_pfx_t ipv4_prefix;
+  bl_ipv6_pfx_t ipv6_prefix;
+  
   if(bs_elem->prefix.number.type == BST_IPV4) 
     { // ipv4 prefix
-      k = kh_get(ipv4_rib_t, ribs_table->ipv4_rib,
-		 bs_elem->prefix);
+      ipv4_prefix.mask_len = bs_elem->prefix.len;
+      ipv4_prefix.address = bs_elem->prefix.number.address.v4_addr;
+      
+      k = kh_get(ipv4_rib_map, ribs_table->ipv4_rib,
+		 ipv4_prefix);
       // if it doesn't exist
       if(k == kh_end(ribs_table->ipv4_rib))
 	{
-	  k = kh_put(ipv4_rib_t, ribs_table->ipv4_rib, 
-		     bs_elem->prefix, &khret);
+	  k = kh_put(ipv4_rib_map, ribs_table->ipv4_rib, 
+		     ipv4_prefix, &khret);
 	  kh_value(ribs_table->ipv4_rib, k) = pd;
 	}
       else
@@ -85,14 +91,17 @@ void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs_elem)
 	}
     }
   else
-    { // ipv6 prefix  // assert(bs_elem->prefix.number.type == BST_IPV6) 
-      k = kh_get(ipv6_rib_t, ribs_table->ipv6_rib,
-		 bs_elem->prefix);
+    { // ipv6 prefix  // assert(bs_elem->prefix.number.type == BST_IPV6)
+      ipv6_prefix.mask_len = bs_elem->prefix.len;
+      ipv6_prefix.address = bs_elem->prefix.number.address.v6_addr;
+
+      k = kh_get(ipv6_rib_map, ribs_table->ipv6_rib,
+		 ipv6_prefix);
       // if it doesn't exist
       if(k == kh_end(ribs_table->ipv6_rib))
 	{
-	  k = kh_put(ipv6_rib_t, ribs_table->ipv6_rib, 
-		     bs_elem->prefix, &khret);
+	  k = kh_put(ipv6_rib_map, ribs_table->ipv6_rib, 
+		     ipv6_prefix, &khret);
 	  kh_value(ribs_table->ipv6_rib, k) = pd;
 	}
       else
@@ -116,9 +125,9 @@ void ribs_table_reset(ribs_table_t *ribs_table)
   ribs_table->reference_rib_end = 0;
   ribs_table->reference_dump_time = 0;
   // ipv4_rib_t has static keys and values
-  kh_clear(ipv4_rib_t, ribs_table->ipv4_rib);
+  kh_clear(ipv4_rib_map, ribs_table->ipv4_rib);
   // ipv6_rib_t has static keys and values
-  kh_clear(ipv6_rib_t,ribs_table->ipv6_rib);    
+  kh_clear(ipv6_rib_map,ribs_table->ipv6_rib);    
 }
 
 
@@ -126,8 +135,8 @@ void ribs_table_destroy(ribs_table_t *ribs_table)
 {
   if(ribs_table != NULL) 
     {
-      kh_destroy(ipv4_rib_t, ribs_table->ipv4_rib);
-      kh_destroy(ipv6_rib_t, ribs_table->ipv6_rib);
+      kh_destroy(ipv4_rib_map, ribs_table->ipv4_rib);
+      kh_destroy(ipv6_rib_map, ribs_table->ipv6_rib);
       // free ribs_table
       free(ribs_table);
     }

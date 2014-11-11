@@ -29,7 +29,8 @@
 #include <assert.h>
 #include "khash.h"
 #include "utils.h"
-#include "bgpribs_khash.h"
+#include "bl_bgp_utils.h"
+#include "bgpstream_elem.h"
 
 /** @file
  *
@@ -39,7 +40,6 @@
  * @author Chiara Orsini
  *
  */
-
 
 
 /** prefixdata
@@ -70,19 +70,25 @@ typedef struct struct_prefixdata_t {
 } prefixdata_t;
 
 
-KHASH_INIT(ipv4_rib_t /* name */, 
-	   bgpstream_prefix_t /* khkey_t */, 
-	   prefixdata_t /* khval_t */, 
-	   1  /* kh_is_map */, 
-	   bgpstream_prefix_ipv4_hash_func /*__hash_func */,  
-	   bgpstream_prefix_ipv4_hash_equal /* __hash_equal */);
 
-KHASH_INIT(ipv6_rib_t /* name */, 
-	   bgpstream_prefix_t /* khkey_t */, 
+KHASH_INIT(ipv4_rib_map /* name */, 
+	   bl_ipv4_pfx_t /* khkey_t */, 
 	   prefixdata_t /* khval_t */, 
 	   1  /* kh_is_map */, 
-	   bgpstream_prefix_ipv6_hash_func /*__hash_func */,  
-	   bgpstream_prefix_ipv6_hash_equal /* __hash_equal */);
+	   bl_ipv4_pfx_hash_func /*__hash_func */,  
+	   bl_ipv4_pfx_hash_equal /* __hash_equal */);
+
+typedef khash_t(ipv4_rib_map) ipv4_rib_map_t;
+
+
+KHASH_INIT(ipv6_rib_map /* name */, 
+	   bl_ipv6_pfx_t /* khkey_t */, 
+	   prefixdata_t /* khval_t */, 
+	   1  /* kh_is_map */, 
+	   bl_ipv6_pfx_hash_func /*__hash_func */,  
+	   bl_ipv6_pfx_hash_equal /* __hash_equal */);
+
+typedef khash_t(ipv6_rib_map) ipv6_rib_map_t;
 
 
 /** ribs table
@@ -92,9 +98,9 @@ KHASH_INIT(ipv6_rib_t /* name */,
  */
 typedef struct struct_ribs_table_t {
   /** ipv4 rib table */
-  khash_t(ipv4_rib_t) * ipv4_rib;
+  ipv4_rib_map_t *ipv4_rib;
   /** ipv6 rib table */
-  khash_t(ipv6_rib_t) * ipv6_rib;
+  ipv6_rib_map_t *ipv6_rib;
   // reference rib = last rib applied to this ribs_table
   long int reference_rib_start; // when the reference rib starts
   long int reference_rib_end;   // when the reference rib ends

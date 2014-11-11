@@ -60,7 +60,7 @@ typedef struct collectordata {
   long int most_recent_ts;    /// most recent timestamp "processed"
   int active_peers;           /// number of peers whose state is up
   collector_status_t status;  /// it tells whether the collector is up or down, or null  
-  peers_table_t * peers_table; /// table containing information about each peer of the collector
+  peers_table_t *peers_table; /// table containing information about each peer of the collector
   uint64_t record_types[BGPSTREAM_RECORD_TYPE_MAX]; /// number of records of a given type received in the interval
   /** bgp statistics extracted from all the active peers
    *  that describe the behavior within a single interval */

@@ -24,6 +24,7 @@
  */
 
 #include "bgpribs_peerdata.h"
+#include "bl_bgp_utils.h"
 
 
 peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
@@ -64,9 +65,14 @@ peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
       return NULL;
     }
 
-  peer_data->aggr_stats->unique_prefixes = NULL; // it is not used at peer level
+  // TODO: fix this (it may cause leaks)
+  peer_data->aggr_stats->unique_ipv4_prefixes = NULL; // it is not used at peer level
+  peer_data->aggr_stats->unique_ipv6_prefixes = NULL;
 
-  if((peer_data->aggr_stats->unique_origin_ases = ases_table_create()) == NULL)
+  if((peer_data->aggr_stats->affected_ipv4_prefixes = bl_ipv4_pfx_set_create()) == NULL ||
+     (peer_data->aggr_stats->affected_ipv6_prefixes = bl_ipv6_pfx_set_create()) == NULL ||
+     (peer_data->aggr_stats->unique_origin_ases = bl_id_set_create()) == NULL ||
+     (peer_data->aggr_stats->announcing_origin_ases = bl_id_set_create()) == NULL )
     {
       free(peer_data->aggr_stats);
       peer_data->aggr_stats = NULL;
@@ -78,35 +84,6 @@ peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
       return NULL;
     }
 
-  if((peer_data->aggr_stats->affected_prefixes = prefixes_table_create()) == NULL)
-    {
-      ases_table_destroy(peer_data->aggr_stats->unique_origin_ases);
-      peer_data->aggr_stats->unique_origin_ases = NULL;      
-      free(peer_data->aggr_stats);
-      peer_data->aggr_stats = NULL;
-      ribs_table_destroy(peer_data->uc_ribs_table);
-      peer_data->uc_ribs_table = NULL;
-      ribs_table_destroy(peer_data->active_ribs_table);
-      peer_data->active_ribs_table = NULL;
-      free(peer_data);
-      return NULL;
-    }
-
-  if((peer_data->aggr_stats->announcing_origin_ases = ases_table_create()) == NULL)
-    {
-      prefixes_table_destroy(peer_data->aggr_stats->affected_prefixes);
-      peer_data->aggr_stats->affected_prefixes = NULL;      
-      ases_table_destroy(peer_data->aggr_stats->unique_origin_ases);
-      peer_data->aggr_stats->unique_origin_ases = NULL;      
-      free(peer_data->aggr_stats);
-      peer_data->aggr_stats = NULL;
-      ribs_table_destroy(peer_data->uc_ribs_table);
-      peer_data->uc_ribs_table = NULL;
-      ribs_table_destroy(peer_data->active_ribs_table);
-      peer_data->active_ribs_table = NULL;
-      free(peer_data);
-      return NULL;
-    }
 
   char ip_str[INET6_ADDRSTRLEN];
   ip_str[0] = '\0';
@@ -121,12 +98,7 @@ peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
   
   if( (peer_data->peer_address_str = strdup(ip_str)) == NULL ) 
     {
-      ases_table_destroy(peer_data->aggr_stats->announcing_origin_ases);
-      peer_data->aggr_stats->announcing_origin_ases = NULL;      
-      prefixes_table_destroy(peer_data->aggr_stats->affected_prefixes);
-      peer_data->aggr_stats->affected_prefixes = NULL;      
-      ases_table_destroy(peer_data->aggr_stats->unique_origin_ases);
-      peer_data->aggr_stats->unique_origin_ases = NULL;      
+      // TODO: add a proper destroy for aggregated stats
       free(peer_data->aggr_stats);
       peer_data->aggr_stats = NULL;
       ribs_table_destroy(peer_data->uc_ribs_table);
@@ -179,22 +151,34 @@ static void peerdata_log_event(peerdata_t *peer_data,
 
 static void peerdata_update_affected_resources(peerdata_t *peer_data, bgpstream_elem_t *bs_elem)
 {
-  if(bs_elem->type == BST_ANNOUNCEMENT)
+
+  if(bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_WITHDRAWAL)
     {
-      prefixes_table_insert(peer_data->aggr_stats->affected_prefixes,bs_elem->prefix);
-      if(bs_elem->aspath.hop_count > 0 && 
-	 bs_elem->aspath.type == BST_UINT32_ASPATH ) 
+      if(bs_elem->prefix.number.type == BST_IPV4)
 	{
-	  ases_table_insert(peer_data->aggr_stats->announcing_origin_ases,
-			    bs_elem->aspath.numeric_aspath[(bs_elem->aspath.hop_count-1)]);
-	}  
-      return;
+	  bl_ipv4_pfx_t ipv4_prefix;
+	  ipv4_prefix.mask_len = bs_elem->prefix.len;
+	  ipv4_prefix.address = bs_elem->prefix.number.address.v4_addr;
+	  bl_ipv4_pfx_set_insert(peer_data->aggr_stats->affected_ipv4_prefixes, ipv4_prefix);
+	}
+      else
+	{
+	  bl_ipv6_pfx_t ipv6_prefix;
+	  ipv6_prefix.mask_len = bs_elem->prefix.len;
+	  ipv6_prefix.address = bs_elem->prefix.number.address.v6_addr;
+	  bl_ipv6_pfx_set_insert(peer_data->aggr_stats->affected_ipv6_prefixes, ipv6_prefix);
+	}
+      if(bs_elem->type == BST_ANNOUNCEMENT)
+	{
+	  if(bs_elem->aspath.hop_count > 0 && bs_elem->aspath.type == BST_UINT32_ASPATH)
+	    {
+	      bl_id_set_insert(peer_data->aggr_stats->announcing_origin_ases,
+			       bs_elem->aspath.numeric_aspath[(bs_elem->aspath.hop_count-1)]);
+	    }
+	}
     }
-  if(bs_elem->type == BST_WITHDRAWAL) 
-    {
-      prefixes_table_insert(peer_data->aggr_stats->affected_prefixes,bs_elem->prefix);
-      return;
-    }
+  
+  return;
 }
 
 
@@ -784,7 +768,7 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
-	  kh_size(peer_data->aggr_stats->affected_prefixes->ipv4_prefixes_table),
+	  kh_size(peer_data->aggr_stats->affected_ipv4_prefixes),
 	  interval_start);
 
   // OUTPUT METRIC: peer_affected_ipv6_prefixes_cnt
@@ -793,7 +777,7 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
-	  kh_size(peer_data->aggr_stats->affected_prefixes->ipv6_prefixes_table),
+	  kh_size(peer_data->aggr_stats->affected_ipv6_prefixes),
 	  interval_start);
 
   // OUTPUT METRIC: peer_announcing_origin_ases_cnt
@@ -802,45 +786,53 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
-	  kh_size(peer_data->aggr_stats->announcing_origin_ases->table),
+	  kh_size(peer_data->aggr_stats->announcing_origin_ases),
 	  interval_start);
 
   // "Aggregation" of affected resources per collector
 
-  for(k = kh_begin(peer_data->aggr_stats->affected_prefixes->ipv4_prefixes_table);
-      k != kh_end(peer_data->aggr_stats->affected_prefixes->ipv4_prefixes_table); ++k)
+  bl_ipv4_pfx_t ipv4_prefix;
+  bl_ipv6_pfx_t ipv6_prefix;
+
+  for(k = kh_begin(peer_data->aggr_stats->affected_ipv4_prefixes);
+      k != kh_end(peer_data->aggr_stats->affected_ipv4_prefixes); ++k)
     {
-      if (kh_exist(peer_data->aggr_stats->affected_prefixes->ipv4_prefixes_table, k))
+      if (kh_exist(peer_data->aggr_stats->affected_ipv4_prefixes, k))
 	{
-	  prefix = kh_key(peer_data->aggr_stats->affected_prefixes->ipv4_prefixes_table, k);
-	  prefixes_table_insert(collector_aggr_stats->affected_prefixes, prefix);
+	  ipv4_prefix = kh_key(peer_data->aggr_stats->affected_ipv4_prefixes, k);
+	  bl_ipv4_pfx_set_insert(collector_aggr_stats->affected_ipv4_prefixes,ipv4_prefix);
 	}
     }
-  for(k = kh_begin(peer_data->aggr_stats->affected_prefixes->ipv6_prefixes_table);
-      k != kh_end(peer_data->aggr_stats->affected_prefixes->ipv6_prefixes_table); ++k)
+  // then clear data
+  bl_ipv4_pfx_set_reset(peer_data->aggr_stats->affected_ipv4_prefixes);
+
+  for(k = kh_begin(peer_data->aggr_stats->affected_ipv6_prefixes);
+      k != kh_end(peer_data->aggr_stats->affected_ipv6_prefixes); ++k)
     {
-      if (kh_exist(peer_data->aggr_stats->affected_prefixes->ipv6_prefixes_table, k))
+      if (kh_exist(peer_data->aggr_stats->affected_ipv6_prefixes, k))
 	{
-	  prefix = kh_key(peer_data->aggr_stats->affected_prefixes->ipv6_prefixes_table, k);
-	  prefixes_table_insert(collector_aggr_stats->affected_prefixes, prefix);
+	  ipv6_prefix = kh_key(peer_data->aggr_stats->affected_ipv6_prefixes, k);
+	  bl_ipv6_pfx_set_insert(collector_aggr_stats->affected_ipv6_prefixes,ipv6_prefix);
 	}
     }
 
   // then clear data
-  prefixes_table_reset(peer_data->aggr_stats->affected_prefixes);
+  bl_ipv6_pfx_set_reset(peer_data->aggr_stats->affected_ipv6_prefixes);
 
-  for(k = kh_begin(peer_data->aggr_stats->announcing_origin_ases->table);
-      k != kh_end(peer_data->aggr_stats->announcing_origin_ases->table); ++k)
+
+  for(k = kh_begin(peer_data->aggr_stats->announcing_origin_ases);
+      k != kh_end(peer_data->aggr_stats->announcing_origin_ases); ++k)
     {
-      if (kh_exist(peer_data->aggr_stats->announcing_origin_ases->table, k))
+      if (kh_exist(peer_data->aggr_stats->announcing_origin_ases, k))
 	{
-	  as = kh_key(peer_data->aggr_stats->announcing_origin_ases->table, k);
-	  ases_table_insert(collector_aggr_stats->announcing_origin_ases, as);
+	  as = kh_key(peer_data->aggr_stats->announcing_origin_ases, k);
+	  bl_id_set_insert(collector_aggr_stats->announcing_origin_ases, as);
 	}
     }
 
   // then clear data
-  ases_table_reset(peer_data->aggr_stats->announcing_origin_ases);
+  bl_id_set_reset(peer_data->aggr_stats->announcing_origin_ases);
+
 
   if(peer_data->status != PEER_UP)
     {
@@ -852,7 +844,7 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 #ifdef WITH_BGPWATCHER
   bl_pfx_storage_t ip_prefix;
 #endif
-
+  
   uint32_t ipv4_rib_size = 0;
   uint32_t ipv6_rib_size = 0;
 
@@ -869,24 +861,24 @@ int peerdata_interval_end(char *project_str, char *collector_str,
       if (kh_exist(peer_data->active_ribs_table->ipv4_rib, k))
 	{
 	  // get prefix
-	  prefix = kh_key(peer_data->active_ribs_table->ipv4_rib, k);
+	  ipv4_prefix = kh_key(peer_data->active_ribs_table->ipv4_rib, k);
 	  // get prefix_data
 	  pd = kh_value(peer_data->active_ribs_table->ipv4_rib, k);
 	  if(pd.is_active == 1) 
 	    {
 	      ipv4_rib_size++;
-	      prefixes_table_insert(collector_aggr_stats->unique_prefixes, prefix);
+	      bl_ipv4_pfx_set_insert(collector_aggr_stats->unique_ipv4_prefixes, ipv4_prefix);
 	      if(pd.origin_as != 0)
 		{
-		  ases_table_insert(peer_data->aggr_stats->unique_origin_ases, pd.origin_as);
-		  ases_table_insert(collector_aggr_stats->unique_origin_ases, pd.origin_as);
+		  bl_id_set_insert(peer_data->aggr_stats->unique_origin_ases, pd.origin_as);
+		  bl_id_set_insert(collector_aggr_stats->unique_origin_ases, pd.origin_as);
 		}
 	      avg_aspath_len_ipv4 += pd.aspath.hop_count;
 #ifdef WITH_BGPWATCHER
 
-	      ip_prefix.mask_len = prefix.len;
+	      ip_prefix.mask_len = ipv4_prefix.mask_len;
 	      ip_prefix.address.version = BL_ADDR_IPV4;
-	      ip_prefix.address.ipv4.s_addr = prefix.number.address.v4_addr.s_addr;
+	      ip_prefix.address.ipv4 = ipv4_prefix.address;
 
 	      if(bgpwatcher_client_pfx_table_add(bw_client->client,
 						 bw_client->peer_id,
@@ -908,24 +900,24 @@ int peerdata_interval_end(char *project_str, char *collector_str,
       if (kh_exist(peer_data->active_ribs_table->ipv6_rib, k))
 	{
 	  // get prefix
-	  prefix = kh_key(peer_data->active_ribs_table->ipv6_rib, k);
+	  ipv6_prefix = kh_key(peer_data->active_ribs_table->ipv6_rib, k);
 	  // get prefix_data
 	  pd = kh_value(peer_data->active_ribs_table->ipv6_rib, k);
 	  if(pd.is_active == 1) 
 	    {
 	      ipv6_rib_size++;
-	      prefixes_table_insert(collector_aggr_stats->unique_prefixes, prefix);
+	      bl_ipv6_pfx_set_insert(collector_aggr_stats->unique_ipv6_prefixes, ipv6_prefix);
 	      if(pd.origin_as != 0)
 		{
-		  ases_table_insert(peer_data->aggr_stats->unique_origin_ases, pd.origin_as);
-		  ases_table_insert(collector_aggr_stats->unique_origin_ases, pd.origin_as);
+		  bl_id_set_insert(peer_data->aggr_stats->unique_origin_ases, pd.origin_as);
+		  bl_id_set_insert(collector_aggr_stats->unique_origin_ases, pd.origin_as);
 		}
 	      avg_aspath_len_ipv6 += pd.aspath.hop_count;
 #ifdef WITH_BGPWATCHER
 
-	      ip_prefix.mask_len = prefix.len;
+	      ip_prefix.mask_len = ipv6_prefix.mask_len;
 	      ip_prefix.address.version = BL_ADDR_IPV6;
-	      memcpy(&ip_prefix.address.ipv6.s6_addr, &prefix.number.address.v6_addr.s6_addr,16);
+	      ip_prefix.address.ipv6 = ipv6_prefix.address;
 
 	      if(bgpwatcher_client_pfx_table_add(bw_client->client,
 						       bw_client->peer_id,
@@ -965,7 +957,7 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
-	  kh_size(peer_data->aggr_stats->unique_origin_ases->table),
+	  kh_size(peer_data->aggr_stats->unique_origin_ases),
 	  interval_start);
 
   
@@ -997,7 +989,8 @@ int peerdata_interval_end(char *project_str, char *collector_str,
   
   // reset per interval variables
   memset(peer_data->elem_types, 0, sizeof(peer_data->elem_types));
-  ases_table_reset(peer_data->aggr_stats->unique_origin_ases);
+  bl_id_set_reset(peer_data->aggr_stats->unique_origin_ases);
+  
   return 0;
 }
 
@@ -1018,21 +1011,12 @@ void peerdata_destroy(peerdata_t *peer_data)
 	}
       if(peer_data->aggr_stats != NULL)
 	{
-	  if(peer_data->aggr_stats->unique_origin_ases != NULL) 
-	    {
-	      ases_table_destroy(peer_data->aggr_stats->unique_origin_ases);
-	      peer_data->aggr_stats->unique_origin_ases = NULL;
-	    }
-	  if(peer_data->aggr_stats->affected_prefixes != NULL) 
-	    {
-	      prefixes_table_destroy(peer_data->aggr_stats->affected_prefixes);
-	      peer_data->aggr_stats->affected_prefixes = NULL;
-	    }
-	  if(peer_data->aggr_stats->announcing_origin_ases != NULL) 
-	    {
-	      ases_table_destroy(peer_data->aggr_stats->announcing_origin_ases);
-	      peer_data->aggr_stats->announcing_origin_ases = NULL;
-	    }
+	  bl_ipv4_pfx_set_destroy(peer_data->aggr_stats->affected_ipv4_prefixes);
+	  bl_ipv6_pfx_set_destroy(peer_data->aggr_stats->affected_ipv6_prefixes);
+
+	  bl_id_set_destroy(peer_data->aggr_stats->unique_origin_ases);
+	  bl_id_set_destroy(peer_data->aggr_stats->announcing_origin_ases);
+
 	  free(peer_data->aggr_stats);
 	  peer_data->aggr_stats = NULL;
 	}

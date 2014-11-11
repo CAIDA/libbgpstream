@@ -26,6 +26,7 @@
 #include "bgpribs_collectordata.h"
 
 
+
 collectordata_t *collectordata_create(const char *project,
 				      const char *collector)
 {
@@ -79,8 +80,13 @@ collectordata_t *collectordata_create(const char *project,
       return NULL;
     }
 
-
-  if((collector_data->aggr_stats->unique_prefixes = prefixes_table_create()) == NULL)
+  // TODO: fix this (it may cause leaks)
+  if((collector_data->aggr_stats->unique_ipv4_prefixes = bl_ipv4_pfx_set_create()) == NULL ||
+     (collector_data->aggr_stats->unique_ipv6_prefixes = bl_ipv6_pfx_set_create()) == NULL ||
+     (collector_data->aggr_stats->affected_ipv4_prefixes = bl_ipv4_pfx_set_create()) == NULL ||
+     (collector_data->aggr_stats->affected_ipv6_prefixes = bl_ipv6_pfx_set_create()) == NULL ||
+     (collector_data->aggr_stats->unique_origin_ases = bl_id_set_create()) == NULL ||
+     (collector_data->aggr_stats->announcing_origin_ases = bl_id_set_create()) == NULL )
     {
       free(collector_data->aggr_stats);
       collector_data->aggr_stats = NULL;
@@ -91,55 +97,7 @@ collectordata_t *collectordata_create(const char *project,
       free(collector_data);
       return NULL;
     }
-
-  if((collector_data->aggr_stats->unique_origin_ases = ases_table_create()) == NULL)
-    {
-      prefixes_table_destroy(collector_data->aggr_stats->unique_prefixes);
-      collector_data->aggr_stats->unique_prefixes = NULL;
-      free(collector_data->aggr_stats);
-      collector_data->aggr_stats = NULL;
-      peers_table_destroy(collector_data->peers_table);
-      collector_data->peers_table = NULL;
-      free(collector_data->dump_collector);
-      free(collector_data->dump_project);
-      free(collector_data);
-      return NULL;
-    }
-
-  if((collector_data->aggr_stats->affected_prefixes = prefixes_table_create()) == NULL)
-    {
-      ases_table_destroy(collector_data->aggr_stats->unique_origin_ases);
-      collector_data->aggr_stats->unique_origin_ases = NULL;
-      prefixes_table_destroy(collector_data->aggr_stats->unique_prefixes);
-      collector_data->aggr_stats->unique_prefixes = NULL;
-      free(collector_data->aggr_stats);
-      collector_data->aggr_stats = NULL;
-      peers_table_destroy(collector_data->peers_table);
-      collector_data->peers_table = NULL;
-      free(collector_data->dump_collector);
-      free(collector_data->dump_project);
-      free(collector_data);
-      return NULL;
-    }
-
-  if((collector_data->aggr_stats->announcing_origin_ases = ases_table_create()) == NULL)
-    {
-      prefixes_table_destroy(collector_data->aggr_stats->affected_prefixes);
-      collector_data->aggr_stats->affected_prefixes = NULL;
-      ases_table_destroy(collector_data->aggr_stats->unique_origin_ases);
-      collector_data->aggr_stats->unique_origin_ases = NULL;
-      prefixes_table_destroy(collector_data->aggr_stats->unique_prefixes);
-      collector_data->aggr_stats->unique_prefixes = NULL;
-      free(collector_data->aggr_stats);
-      collector_data->aggr_stats = NULL;
-      peers_table_destroy(collector_data->peers_table);
-      collector_data->peers_table = NULL;
-      free(collector_data->dump_collector);
-      free(collector_data->dump_project);
-      free(collector_data);
-      return NULL;
-    }
-
+ 
   /* make the project name graphite-safe */
   graphite_safe(collector_data->dump_project);
 
@@ -285,28 +243,27 @@ int collectordata_interval_end(collectordata_t *collector_data,
 	  METRIC_PREFIX".%s.%s.collector_affected_ipv4_prefixes_cnt %d %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
-	  kh_size(collector_data->aggr_stats->affected_prefixes->ipv4_prefixes_table),
+	  kh_size(collector_data->aggr_stats->affected_ipv4_prefixes),
 	  interval_start);
+  bl_ipv4_pfx_set_reset(collector_data->aggr_stats->affected_ipv4_prefixes);
 
   // OUTPUT METRIC: collector_affected_ipv6_prefixes_cnt
   fprintf(stdout,
 	  METRIC_PREFIX".%s.%s.collector_affected_ipv6_prefixes_cnt %d %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
-	  kh_size(collector_data->aggr_stats->affected_prefixes->ipv6_prefixes_table),
+	  kh_size(collector_data->aggr_stats->affected_ipv6_prefixes),
 	  interval_start);
-
-  prefixes_table_reset(collector_data->aggr_stats->affected_prefixes);
+  bl_ipv6_pfx_set_reset(collector_data->aggr_stats->affected_ipv6_prefixes);
 
   // OUTPUT METRIC: collector_announcing_origin_ases_cnt
   fprintf(stdout,
 	  METRIC_PREFIX".%s.%s.collector_announcing_origin_ases_cnt %d %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
-	  kh_size(collector_data->aggr_stats->announcing_origin_ases->table),
+	  kh_size(collector_data->aggr_stats->announcing_origin_ases),
 	  interval_start);
-  
-  ases_table_reset(collector_data->aggr_stats->announcing_origin_ases);
+  bl_id_set_reset(collector_data->aggr_stats->announcing_origin_ases);
 
 
   // OUTPUT METRIC: unique_ipv4_prefixes_cnt
@@ -314,28 +271,29 @@ int collectordata_interval_end(collectordata_t *collector_data,
 	  METRIC_PREFIX".%s.%s.collector_unique_ipv4_prefixes_cnt %d %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
-	  kh_size(collector_data->aggr_stats->unique_prefixes->ipv4_prefixes_table),
+	  kh_size(collector_data->aggr_stats->unique_ipv4_prefixes),
 	  interval_start);
+  bl_ipv4_pfx_set_reset(collector_data->aggr_stats->unique_ipv4_prefixes);
 
   // OUTPUT METRIC: unique_ipv6_prefixes_cnt
   fprintf(stdout,
 	  METRIC_PREFIX".%s.%s.collector_unique_ipv6_prefixes_cnt %d %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
-	  kh_size(collector_data->aggr_stats->unique_prefixes->ipv6_prefixes_table),
+	  kh_size(collector_data->aggr_stats->unique_ipv6_prefixes),
 	  interval_start);
+  bl_ipv6_pfx_set_reset(collector_data->aggr_stats->unique_ipv6_prefixes);
 
-  prefixes_table_reset(collector_data->aggr_stats->unique_prefixes);
 
   // OUTPUT METRIC: unique_std_origin_ases_cnt
   fprintf(stdout,
 	  METRIC_PREFIX".%s.%s.collector_unique_std_origin_ases_cnt %d %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
-	  kh_size(collector_data->aggr_stats->unique_origin_ases->table),
+	  kh_size(collector_data->aggr_stats->unique_origin_ases),
 	  interval_start);
   
-  ases_table_reset(collector_data->aggr_stats->unique_origin_ases);
+  bl_id_set_reset(collector_data->aggr_stats->unique_origin_ases);
 
 
   // Note: this metric has to be the last one
@@ -377,26 +335,16 @@ void collectordata_destroy(collectordata_t *collector_data)
 	}
       if(collector_data->aggr_stats != NULL)
 	{
-	  if(collector_data->aggr_stats->unique_prefixes != NULL)
-	    {
-	      prefixes_table_destroy(collector_data->aggr_stats->unique_prefixes);
-	      collector_data->aggr_stats->unique_prefixes = NULL;
-	    }
-	  if(collector_data->aggr_stats->unique_origin_ases != NULL)
-	    {
-	      ases_table_destroy(collector_data->aggr_stats->unique_origin_ases);
-	      collector_data->aggr_stats->unique_origin_ases = NULL;
-	    }
-	  if(collector_data->aggr_stats->affected_prefixes != NULL)
-	    {
-	      prefixes_table_destroy(collector_data->aggr_stats->affected_prefixes);
-	      collector_data->aggr_stats->affected_prefixes = NULL;
-	    }
-	  if(collector_data->aggr_stats->announcing_origin_ases != NULL)
-	    {
-	      ases_table_destroy(collector_data->aggr_stats->announcing_origin_ases);
-	      collector_data->aggr_stats->announcing_origin_ases = NULL;	  
-	    }
+	  // TODO fix this later
+	  bl_ipv4_pfx_set_destroy(collector_data->aggr_stats->unique_ipv4_prefixes);
+	  bl_ipv6_pfx_set_destroy(collector_data->aggr_stats->unique_ipv6_prefixes);
+	  
+	  bl_ipv4_pfx_set_destroy(collector_data->aggr_stats->affected_ipv4_prefixes);
+	  bl_ipv6_pfx_set_destroy(collector_data->aggr_stats->affected_ipv6_prefixes);
+
+	  bl_id_set_destroy(collector_data->aggr_stats->unique_origin_ases);
+	  bl_id_set_destroy(collector_data->aggr_stats->announcing_origin_ases);
+	  
 	  free(collector_data->aggr_stats);
 	  collector_data->aggr_stats = NULL;
 	}
