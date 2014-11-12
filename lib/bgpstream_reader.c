@@ -44,7 +44,7 @@ static bool bgpstream_reader_filter_bd_entry(const BGPDUMP_ENTRY * const bd_entr
         bgpstream_debug("\t\tBSR: filter entry: end");  
 	return true; // no time filtering, 
     }
-    long current_entry_time = (long) bd_entry->time;
+    int current_entry_time = bd_entry->time;
     tif = filter_mgr->time_intervals;
     while(tif != NULL) {      
       if(current_entry_time >= tif->time_interval_start &&
