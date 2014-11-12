@@ -3,9 +3,9 @@
  *
  * Chiara Orsini, CAIDA, UC San Diego
  * corsaro-info@caida.org
- *
+ * 
  * Copyright (C) 2014 The Regents of the University of California.
- *
+ * 
  * This file is part of bgpcorsaro.
  *
  * bgpcorsaro is free software: you can redistribute it and/or modify
@@ -23,19 +23,20 @@
  *
  */
 
-#ifndef __BGPCORSARO_BGPRIBS_H
-#define __BGPCORSARO_BGPRIBS_H
+
+#ifndef __BGPCORSARO_FILTERVIS_H
+#define __BGPCORSARO_FILTERVIS_H
 
 #include "bgpcorsaro_plugin.h"
 
 /** @file
  *
- * @brief Header file which exports bgpcorsaro_stats plugin API
+ * @brief Header file which exports bgpcorsaro_filtervis plugin API
  *
  * @author Chiara Orsini
  *
  */
 
-BGPCORSARO_PLUGIN_GENERATE_PROTOS(bgpcorsaro_bgpribs)
+BGPCORSARO_PLUGIN_GENERATE_PROTOS(bgpcorsaro_filtervis)
 
-#endif /* __BGPCORSARO_BGPRIBS_H */
+#endif /* __BGPCORSARO_FILTERVIS_H */

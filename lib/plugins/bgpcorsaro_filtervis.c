@@ -43,14 +43,13 @@
 #include "bgpcorsaro_plugin.h"
 
 #include "khash.h"
-#include "bgpcorsaro_bgpribs.h"
+#include "bgpcorsaro_filtervis.h"
 
-#include "bgpribs_lib.h"
 
 
 /** @file
  *
- * @brief Bgpcorsaro BgpRibs plugin implementation
+ * @brief Bgpcorsaro FilterVis plugin implementation
  *
  * @author Chiara Orsini
  *
@@ -62,23 +61,29 @@
 #define OUTFILE_POINTERS 2
 
 /** The name of this plugin */
-#define PLUGIN_NAME "bgpribs"
+#define PLUGIN_NAME "filtervis"
 
 /** The version of this plugin */
 #define PLUGIN_VERSION "0.1"
 
 /** Common plugin information across all instances */
-static bgpcorsaro_plugin_t bgpcorsaro_bgpribs_plugin = {
+static bgpcorsaro_plugin_t bgpcorsaro_filtervis_plugin = {
   PLUGIN_NAME,                                          /* name */
   PLUGIN_VERSION,                                       /* version */
-  BGPCORSARO_PLUGIN_ID_BGPRIBS,                        /* id */
-  BGPCORSARO_PLUGIN_GENERATE_PTRS(bgpcorsaro_bgpribs), /* func ptrs */
+  BGPCORSARO_PLUGIN_ID_FILTERVIS,                       /* id */
+  BGPCORSARO_PLUGIN_GENERATE_PTRS(bgpcorsaro_filtervis), /* func ptrs */
   BGPCORSARO_PLUGIN_GENERATE_TAIL,
 };
 
 
+
+typedef struct struct_filter_vis_t {
+  int filter;
+} filter_vis_t;
+
+
 /** Holds the state for an instance of this plugin */
-struct bgpcorsaro_bgpribs_state_t {
+struct bgpcorsaro_filtervis_state_t {
 
   /** The outfile for the plugin */
   iow_t *outfile;
@@ -87,17 +92,17 @@ struct bgpcorsaro_bgpribs_state_t {
   /** The current outfile */
   int outfile_n;
   
-  bgpribs_t *bgp_ribs;  /// plugin-related structure  
+  filter_vis_t *filter_vis;  /// plugin-related structure  
 };
 
 
 /** Extends the generic plugin state convenience macro in bgpcorsaro_plugin.h */
 #define STATE(bgpcorsaro)						\
-  (BGPCORSARO_PLUGIN_STATE(bgpcorsaro, bgpribs, BGPCORSARO_PLUGIN_ID_BGPRIBS))
+  (BGPCORSARO_PLUGIN_STATE(bgpcorsaro, filtervis, BGPCORSARO_PLUGIN_ID_FILTERVIS))
 
 /** Extends the generic plugin plugin convenience macro in bgpcorsaro_plugin.h */
 #define PLUGIN(bgpcorsaro)						\
-  (BGPCORSARO_PLUGIN_PLUGIN(bgpcorsaro, BGPCORSARO_PLUGIN_ID_BGPRIBS))
+  (BGPCORSARO_PLUGIN_PLUGIN(bgpcorsaro, BGPCORSARO_PLUGIN_ID_FILTERVIS))
 
 #if 0
 /** Print usage information to stderr */
@@ -118,7 +123,7 @@ static void usage(bgpcorsaro_plugin_t *plugin)
 static int parse_args(bgpcorsaro_t *bgpcorsaro)
 {
   bgpcorsaro_plugin_t *plugin = PLUGIN(bgpcorsaro);
-  struct bgpcorsaro_bgpribs_state_t *state = STATE(bgpcorsaro);
+  struct bgpcorsaro_filtervis_state_t *state = STATE(bgpcorsaro);
   int opt;
   //TODO modify this: right now it doesn't do anything
 
@@ -170,23 +175,23 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
 /* == PUBLIC PLUGIN FUNCS BELOW HERE == */
 
 /** Implements the alloc function of the plugin API */
-bgpcorsaro_plugin_t *bgpcorsaro_bgpribs_alloc(bgpcorsaro_t *bgpcorsaro)
+bgpcorsaro_plugin_t *bgpcorsaro_filtervis_alloc(bgpcorsaro_t *bgpcorsaro)
 {
-  return &bgpcorsaro_bgpribs_plugin;
+  return &bgpcorsaro_filtervis_plugin;
 }
 
 
 /** Implements the init_output function of the plugin API */
-int bgpcorsaro_bgpribs_init_output(bgpcorsaro_t *bgpcorsaro)
+int bgpcorsaro_filtervis_init_output(bgpcorsaro_t *bgpcorsaro)
 {
-  struct bgpcorsaro_bgpribs_state_t *state;
+  struct bgpcorsaro_filtervis_state_t *state;
   bgpcorsaro_plugin_t *plugin = PLUGIN(bgpcorsaro);
   assert(plugin != NULL);
 
-  if((state = malloc_zero(sizeof(struct bgpcorsaro_bgpribs_state_t))) == NULL)
+  if((state = malloc_zero(sizeof(struct bgpcorsaro_filtervis_state_t))) == NULL)
     {
       bgpcorsaro_log(__func__, bgpcorsaro,
-		     "could not malloc bgpcorsaro_bgpribs_state_t");
+		     "could not malloc bgpcorsaro_filtervis_state_t");
       goto err;
     }
 
@@ -199,11 +204,11 @@ int bgpcorsaro_bgpribs_init_output(bgpcorsaro_t *bgpcorsaro)
 #endif
 
   /** plugin initialization */
-  if((state->bgp_ribs = bgpribs_create()) == NULL) 
-    {
+  if((state->filter_vis = (filter_vis_t *)malloc_zero(sizeof(filter_vis_t *))) == NULL)
+   {
       bgpcorsaro_log(__func__, bgpcorsaro,
-		     "could not create bgpribs in bgpcorsaro_bgpribs_state_t");
-      goto err;      
+		     "could not create bgpribs in bgpcorsaro_filtervis_state_t");
+      goto err;
     }
   
   bgpcorsaro_plugin_register_state(bgpcorsaro->plugin_manager, plugin, state);
@@ -212,17 +217,17 @@ int bgpcorsaro_bgpribs_init_output(bgpcorsaro_t *bgpcorsaro)
   return 0;
 
  err:
-  bgpcorsaro_bgpribs_close_output(bgpcorsaro);
+  bgpcorsaro_filtervis_close_output(bgpcorsaro);
   return -1;
 }
 
 
 /** Implements the close_output function of the plugin API */
-int bgpcorsaro_bgpribs_close_output(bgpcorsaro_t *bgpcorsaro)
+int bgpcorsaro_filtervis_close_output(bgpcorsaro_t *bgpcorsaro)
 {
   int i;
   khiter_t k;
-  struct bgpcorsaro_bgpribs_state_t *state = STATE(bgpcorsaro);
+  struct bgpcorsaro_filtervis_state_t *state = STATE(bgpcorsaro);
 
   if(state != NULL)
     {
@@ -238,9 +243,9 @@ int bgpcorsaro_bgpribs_close_output(bgpcorsaro_t *bgpcorsaro)
       state->outfile = NULL;
 
       /** plugin cleanup */
-      bgpribs_destroy(state->bgp_ribs);
-      state->bgp_ribs = NULL;
-
+      free(state->filter_vis);
+      state->filter_vis = NULL;
+      
       bgpcorsaro_plugin_free_state(bgpcorsaro->plugin_manager,
 				   PLUGIN(bgpcorsaro));
     }
@@ -249,10 +254,10 @@ int bgpcorsaro_bgpribs_close_output(bgpcorsaro_t *bgpcorsaro)
 
 
 /** Implements the start_interval function of the plugin API */
-int bgpcorsaro_bgpribs_start_interval(bgpcorsaro_t *bgpcorsaro,
-				      bgpcorsaro_interval_t *int_start)
+int bgpcorsaro_filtervis_start_interval(bgpcorsaro_t *bgpcorsaro,
+					bgpcorsaro_interval_t *int_start)
 {
-  struct bgpcorsaro_bgpribs_state_t *state = STATE(bgpcorsaro);
+  struct bgpcorsaro_filtervis_state_t *state = STATE(bgpcorsaro);
   if(state->outfile == NULL)
     {
       if((
@@ -265,12 +270,12 @@ int bgpcorsaro_bgpribs_start_interval(bgpcorsaro_t *bgpcorsaro,
 			 PLUGIN(bgpcorsaro)->name);
 	  return -1;
 	}
-      state->outfile = state->
-	outfile_p[state->outfile_n];
+      state->outfile = state->outfile_p[state->outfile_n];
     }
 
   /** plugin interval start operations */
-  bgpribs_interval_start(state->bgp_ribs, int_start->time);
+  // TODO
+  // bgpribs_interval_start(state->filter_vis, int_start->time);
 
   bgpcorsaro_io_write_interval_start(bgpcorsaro, state->outfile, int_start);
 
@@ -279,22 +284,23 @@ int bgpcorsaro_bgpribs_start_interval(bgpcorsaro_t *bgpcorsaro,
 
 
 /** Implements the end_interval function of the plugin API */
-int bgpcorsaro_bgpribs_end_interval(bgpcorsaro_t *bgpcorsaro,
-				    bgpcorsaro_interval_t *int_end)
+int bgpcorsaro_filtervis_end_interval(bgpcorsaro_t *bgpcorsaro,
+				      bgpcorsaro_interval_t *int_end)
 {
-  struct bgpcorsaro_bgpribs_state_t *state = STATE(bgpcorsaro);
+  struct bgpcorsaro_filtervis_state_t *state = STATE(bgpcorsaro);
 
   bgpcorsaro_log(__func__, bgpcorsaro, "Dumping stats for interval %d",
 		 int_end->number);
 
   /** plugin end of interval operations */
-  if(bgpribs_interval_end(state->bgp_ribs, int_end->time) < 0)
-    {
-      // an error occurred during the interval_end operations
-      bgpcorsaro_log(__func__, bgpcorsaro, "could not dump stats for %s plugin",
-		     PLUGIN(bgpcorsaro)->name);      
-      return -1;
-    }
+  // TODO
+  /* if(bgpribs_interval_end(state->filter_vis, int_end->time) < 0) */
+  /*   { */
+  /*     // an error occurred during the interval_end operations */
+  /*     bgpcorsaro_log(__func__, bgpcorsaro, "could not dump stats for %s plugin", */
+  /* 		     PLUGIN(bgpcorsaro)->name);       */
+  /*     return -1; */
+  /*   } */
 
   bgpcorsaro_io_write_interval_end(bgpcorsaro, state->outfile, int_end);
 
@@ -322,10 +328,10 @@ int bgpcorsaro_bgpribs_end_interval(bgpcorsaro_t *bgpcorsaro,
 
 
 /** Implements the process_record function of the plugin API */
-int bgpcorsaro_bgpribs_process_record(bgpcorsaro_t *bgpcorsaro,
-				       bgpcorsaro_record_t *record)
+int bgpcorsaro_filtervis_process_record(bgpcorsaro_t *bgpcorsaro,
+					bgpcorsaro_record_t *record)
 {
-  struct bgpcorsaro_bgpribs_state_t *state = STATE(bgpcorsaro);
+  struct bgpcorsaro_filtervis_state_t *state = STATE(bgpcorsaro);
 
   /* no point carrying on if a previous plugin has already decided we should
      ignore this record */
@@ -339,7 +345,9 @@ int bgpcorsaro_bgpribs_process_record(bgpcorsaro_t *bgpcorsaro,
   bgpstream_record_t * bs_record = BS_REC(record);
   assert(bs_record != NULL);
   /** plugin operations related to a single record*/
-  return bgpribs_process_record(state->bgp_ribs, bs_record);
+// TODO
+  // return bgpribs_process_record(state->filter_vis, bs_record);
+return 0;
 
 }
 

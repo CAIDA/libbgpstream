@@ -237,6 +237,7 @@ ED_WITH_PLUGIN([bgpcorsaro_dump],[dump],[DUMP],[yes])
 # optional plugins
 ED_WITH_PLUGIN([bgpcorsaro_bgpstats],[bgpstats],[BGPSTATS],[no])
 ED_WITH_PLUGIN([bgpcorsaro_bgpribs],[bgpribs],[BGPRIBS],[no])
+ED_WITH_PLUGIN([bgpcorsaro_filtervis],[filtervis],[FILTERVIS],[no])
 
 # optional plugins
 ED_WITH_PLUGIN([bgpcorsaro_tagstats],[tagstats],[TAGSTATS],[no])

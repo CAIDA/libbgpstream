@@ -44,6 +44,9 @@ PLUGIN_LIBS += $(top_builddir)/lib/plugins/libbgpribs/libbgpribs.la
 AM_CPPFLAGS += -I$(top_srcdir)/lib/plugins/libbgpribs
 PLUGIN_SRC += bgpcorsaro_bgpribs.c bgpcorsaro_bgpribs.h
 endif
+if WITH_PLUGIN_FILTERVIS
+PLUGIN_SRC+=bgpcorsaro_filtervis.c bgpcorsaro_filtervis.h
+endif
 if WITH_PLUGIN_DUMP
 PLUGIN_SRC+=bgpcorsaro_dump.c bgpcorsaro_dump.h
 endif
