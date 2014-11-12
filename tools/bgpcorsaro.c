@@ -46,6 +46,7 @@
  *
  */
 
+#define DATASOURCE_CMD_CNT 10
 #define PROJECT_CMD_CNT 10
 #define TYPE_CMD_CNT    10
 #define COLLECTOR_CMD_CNT 100
@@ -119,6 +120,7 @@ static void usage()
 	  "usage: bgpcorsaro -o outfile [<options>]\n"
 	  "\n"
 	  "Available options are:\n"
+	  "   -d datasource  select the bgpstream datasource (default: mysql)\n"
 	  "   -a             align the end time of the first interval\n"
 	  "   -b             make blocking requests for BGP records\n"
 	  "                   allows bgpcorsaro to be used to process data in real-time\n"
@@ -171,6 +173,10 @@ int main(int argc, char *argv[])
   int meta_rotate = -1;
   int logfile_disable = 0;
 
+
+  char datasource[PROJECT_CMD_CNT];
+  int datasource_set = 0;
+  
   char *projects[PROJECT_CMD_CNT];
   int projects_cnt = 0;
 
@@ -191,7 +197,7 @@ int main(int argc, char *argv[])
   signal(SIGINT, catch_sigint);
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":C:i:n:o:p:P:r:R:T:W:abLv?")) >= 0)
+	(opt = getopt(argc, argv, ":d:C:i:n:o:p:P:r:R:T:W:abLv?")) >= 0)
     {
       if (optind == prevoptind + 2 && (optarg == NULL || *optarg == '-') ) {
         opt = ':';
@@ -199,6 +205,19 @@ int main(int argc, char *argv[])
       }
       switch(opt)
 	{
+	case 'd':
+	  if(datasource_set == 1)
+	    {
+	      fprintf(stderr,
+		      "ERROR: Only one datasource can be specified on "
+		      "the command line\n");
+	      usage();
+	      exit(-1);
+	    }
+	  datasource_set = 1;
+	  strcpy(datasource, optarg);
+	  break;
+
 	case 'a':
 	  align = 1;
 	  break;
@@ -419,9 +438,41 @@ int main(int argc, char *argv[])
       return -1;
     }
 
-  /* we only support MYSQL as the datasource */
-  bgpstream_set_data_interface(stream, BS_MYSQL);
-  //bgpstream_set_data_interface(stream, BS_CSVFILE);
+
+  /* we support multiple datasources, mysql is the default */
+
+  bgpstream_datasource_type datasource_type = BS_MYSQL;
+
+  if(datasource_set == 1)
+    {
+      if(strcmp(datasource, "mysql") == 0) 
+	{
+	  datasource_type = BS_MYSQL;
+	}
+      else 
+	{
+	  if(strcmp(datasource, "csvfile") == 0)
+	    {
+	  datasource_type = BS_CSVFILE;
+	    }
+	  else 
+	    {
+	      if(strcmp(datasource, "customlist") == 0) 
+		{
+		  datasource_type = BS_CUSTOMLIST;
+		}
+	      else 
+		{
+		  fprintf(stderr, "ERROR: Datasource %s is not valid.\n", datasource);
+		  usage();
+		  exit(-1);
+		}
+	    }
+	}      
+    }
+
+  bgpstream_set_data_interface(stream, datasource_type);
+  
 
   /* pass along the user's filter requests to bgpstream */
 

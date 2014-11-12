@@ -25,7 +25,8 @@
 SUBDIRS = plugins
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/common \
 	-I$(top_srcdir)/common/libpatricia \
-	-I$(top_srcdir)/lib/plugins
+	-I$(top_srcdir)/lib/plugins \
+	-I$(top_srcdir)/bgpcommon 
 
 lib_LTLIBRARIES = libbgpcorsaro.la
 
@@ -45,6 +46,7 @@ libbgpcorsaro_la_SOURCES = 	\
 	bgpcorsaro_tag.h
 
 libbgpcorsaro_la_LIBADD = $(top_builddir)/common/libcccommon.la \
+			  $(top_builddir)/bgpcommon/libbl.la \
 		          $(top_builddir)/lib/plugins/libbgpcorsaroplugins.la
 
 libbgpcorsaro_la_LDFLAGS = -version-info @BGPCORSARO_MAJOR_VERSION@:@BGPCORSARO_MINOR_VERSION@:@BGPCORSARO_MID_VERSION@

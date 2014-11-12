@@ -86,14 +86,8 @@ struct bgpcorsaro_bgpribs_state_t {
   iow_t *outfile_p[OUTFILE_POINTERS];
   /** The current outfile */
   int outfile_n;
-
-  // bgpribs_structures
-
-  /** interval start time */
-  int interval_start;
-  int interval_processing_start;
-  /** Hash of collector string to collector data */
-  collectors_table_wrapper_t * collectors_table; 
+  
+  bgpribs_t *bgp_ribs;  /// plugin-related structure  
 };
 
 
@@ -173,75 +167,6 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
 
 
 
-
-/** initialize the structures in the plugin state that
- *  are specific for the current plugin:
- *  interval_start and collectors_table
- */
-static int bgpribs_structures_init(struct bgpcorsaro_bgpribs_state_t *state)
-{
-  assert(state);
-  if((state->collectors_table = collectors_table_create()) == NULL) 
-    {
-      return -1;
-    }
-  state->interval_start = 0;
-  return 0; // successful
-}
-
-
-static void bgpribs_structures_interval_start(struct bgpcorsaro_bgpribs_state_t *state,
-					      bgpcorsaro_interval_t *int_start)
-{
-  assert(state != NULL);
-  // http://pubs.opengroup.org/onlinepubs/009695399/functions/time.html
-  time_t now = time(NULL);
-  state->interval_start = int_start->time;
-  state->interval_processing_start = now; // uintmax_t
-}
-
-
-static int bgpribs_structures_process_record(struct bgpcorsaro_bgpribs_state_t *state,
-					     bgpcorsaro_record_t *record)
-{
-  assert(state != NULL);
-  assert(state->collectors_table != NULL);
-  assert(record != NULL);
-
-  bgpstream_record_t * bs_record = BS_REC(record);
-  assert(bs_record != NULL);
-
-  // returns 0 if everything is fine
-  return collectors_table_process_record(state->collectors_table, bs_record);
-}
-
-
-static void bgpribs_structures_interval_end(struct bgpcorsaro_bgpribs_state_t *state)
-{
-  assert(state != NULL);
-  collectors_table_interval_end(state->collectors_table, 
-				state->interval_processing_start, state->interval_start);
-}
-
-
-/** destroy the structures in the plugin state that
- *  are specific for the current plugin:
- *  collectors_table (and reset interval start)
- */
-static void bgpribs_structures_close(struct bgpcorsaro_bgpribs_state_t *state)
-{
-  assert(state);
-  if(state->collectors_table != NULL) 
-    {
-      collectors_table_destroy(state->collectors_table);
-      state->collectors_table = NULL;
-    }
-  state->interval_start = 0;
-}
-
-
-
-
 /* == PUBLIC PLUGIN FUNCS BELOW HERE == */
 
 /** Implements the alloc function of the plugin API */
@@ -265,15 +190,6 @@ int bgpcorsaro_bgpribs_init_output(bgpcorsaro_t *bgpcorsaro)
       goto err;
     }
 
-  if(bgpribs_structures_init(state) == -1) 
-    {
-      bgpcorsaro_log(__func__, bgpcorsaro,
-		     "could not create collectors_table in bgpcorsaro_bgpribs_state_t");
-      goto err;      
-    }
-  
-  bgpcorsaro_plugin_register_state(bgpcorsaro->plugin_manager, plugin, state);
-
 #if 0
   /* parse the arguments */
   if(parse_args(bgpcorsaro) != 0)
@@ -282,6 +198,15 @@ int bgpcorsaro_bgpribs_init_output(bgpcorsaro_t *bgpcorsaro)
     }
 #endif
 
+  /** plugin initialization */
+  if((state->bgp_ribs = bgpribs_create()) == NULL) 
+    {
+      bgpcorsaro_log(__func__, bgpcorsaro,
+		     "could not create bgpribs in bgpcorsaro_bgpribs_state_t");
+      goto err;      
+    }
+  
+  bgpcorsaro_plugin_register_state(bgpcorsaro->plugin_manager, plugin, state);
   /* defer opening the output file until we start the first interval */
 
   return 0;
@@ -312,7 +237,9 @@ int bgpcorsaro_bgpribs_close_output(bgpcorsaro_t *bgpcorsaro)
 	}
       state->outfile = NULL;
 
-      bgpribs_structures_close(state);
+      /** plugin cleanup */
+      bgpribs_destroy(state->bgp_ribs);
+      state->bgp_ribs = NULL;
 
       bgpcorsaro_plugin_free_state(bgpcorsaro->plugin_manager,
 				   PLUGIN(bgpcorsaro));
@@ -342,7 +269,8 @@ int bgpcorsaro_bgpribs_start_interval(bgpcorsaro_t *bgpcorsaro,
 	outfile_p[state->outfile_n];
     }
 
-  bgpribs_structures_interval_start(state, int_start);
+  /** plugin interval start operations */
+  bgpribs_interval_start(state->bgp_ribs, int_start->time);
 
   bgpcorsaro_io_write_interval_start(bgpcorsaro, state->outfile, int_start);
 
@@ -359,8 +287,14 @@ int bgpcorsaro_bgpribs_end_interval(bgpcorsaro_t *bgpcorsaro,
   bgpcorsaro_log(__func__, bgpcorsaro, "Dumping stats for interval %d",
 		 int_end->number);
 
-  /* dump metrics */
-  bgpribs_structures_interval_end(state);
+  /** plugin end of interval operations */
+  if(bgpribs_interval_end(state->bgp_ribs, int_end->time) < 0)
+    {
+      // an error occurred during the interval_end operations
+      bgpcorsaro_log(__func__, bgpcorsaro, "could not dump stats for %s plugin",
+		     PLUGIN(bgpcorsaro)->name);      
+      return -1;
+    }
 
   bgpcorsaro_io_write_interval_end(bgpcorsaro, state->outfile, int_end);
 
@@ -401,6 +335,11 @@ int bgpcorsaro_bgpribs_process_record(bgpcorsaro_t *bgpcorsaro,
     }
 
   assert(state != NULL);
-  return bgpribs_structures_process_record(state, record);
+  assert(record != NULL);
+  bgpstream_record_t * bs_record = BS_REC(record);
+  assert(bs_record != NULL);
+  /** plugin operations related to a single record*/
+  return bgpribs_process_record(state->bgp_ribs, bs_record);
+
 }
 

@@ -135,10 +135,10 @@ AX_LIB_SOCKET_NSL
 
 
 # Checks for libraries.
-AC_CHECK_LIB([bgpstream], [bgpstream_create], ,[AC_MSG_ERROR(
-		      [libbgpstream required])])
 AC_CHECK_LIB([bgpdump], [bgpdump_read_next], ,
 	               [AC_MSG_ERROR( [libbgpdump required ])])
+AC_CHECK_LIB([bgpstream], [bgpstream_create], ,[AC_MSG_ERROR(
+		      [libbgpstream required])])
 AC_SEARCH_LIBS([wandio_create], [wandio trace], ,[AC_MSG_ERROR(
 		 [libwandio required (included with libtrace since 3.0.15)]
 		 )])
@@ -180,6 +180,33 @@ AS_IF([test "x$with_plugin_timing" != xno],
 	])
 
 AC_MSG_RESULT([$with_plugin_timing])
+
+# are we going to use the bgpwatcher connection?
+# turn on if people asked for it
+AC_MSG_CHECKING([whether to use bgpwatcher for sending peer/prefix information])
+AC_ARG_WITH([bgpwatcher],
+	[AS_HELP_STRING([--with-bgpwatcher],
+	  [use bgpwatcher for sending peer/prefix information (defaults to no)])],
+	  [],
+	  [with_bgpwatcher=no])
+
+AS_IF([test "x$with_bgpwatcher" != xno],
+	[
+	    AC_DEFINE_UNQUOTED([WITH_BGPWATCHER],[1],
+		[Use bgpwatcher for sending peer/prefix information])
+	])
+
+AC_MSG_RESULT([$with_bgpwatcher])
+
+if test "x$with_bgpwatcher" == xyes; then
+   	AC_SEARCH_LIBS([bgpwatcher_start], [bgpwatcher], ,[AC_MSG_ERROR(
+		 [libbgpwatcher required (https://github.com/CAIDA/bgpwatcher)]
+		 )])
+fi
+
+AM_CONDITIONAL([WITH_BGPWATCHER], [test "x$with_bgpwatcher" == xyes])
+
+
 
 # configure options to disable plugins
 #AC_DEFINE([ED_PLUGIN_INIT_ALL_ENABLED],[],[Plugin init functions])
@@ -252,7 +279,9 @@ AC_HEADER_ASSERT
 
 AC_CONFIG_FILES([Makefile lib/Makefile lib/plugins/Makefile
 			  lib/plugins/libbgpribs/Makefile
-			  tools/Makefile common/Makefile
+			  tools/Makefile
+			  common/Makefile
 			  common/libpatricia/Makefile
-			  common/libcsv/Makefile])
+			  common/libcsv/Makefile
+			  bgpcommon/Makefile])
 AC_OUTPUT
