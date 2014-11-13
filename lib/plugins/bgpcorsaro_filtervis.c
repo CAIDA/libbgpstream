@@ -157,7 +157,7 @@ static filter_vis_t *filter_vis_create(){
       fv->ipv6_vis = kh_init(peer_ipv6prefix_map);
       assert(fv->ipv6_vis != NULL);
       fv->min_ipv4_mask_len = 7;
-      fv->max_ipv4_mask_len = 7;
+      fv->max_ipv4_mask_len = 24;
       fv->max_ipv6_mask_len = 64;
       fv->ipv4_full_feed_th = 400000;
       fv->ipv6_full_feed_th = 10000;
@@ -204,8 +204,8 @@ static void insert_into_ipv6(peer_ipv6prefix_map_t *vis_map, uint16_t peer_id, b
 static int filter_vis_update(filter_vis_t *fv, bgpstream_record_t *bs_record)
 {
   
-  bgpstream_elem_t * bs_elem_queue;
-  bgpstream_elem_t * bs_iterator;
+  bgpstream_elem_t *bs_elem_queue;
+  bgpstream_elem_t *bs_iterator;
   bl_addr_storage_t peer_ip; // TODO conversion
   uint16_t peer_id;
   bl_ipv4_pfx_t ipv4_prefix;
@@ -237,25 +237,28 @@ static int filter_vis_update(filter_vis_t *fv, bgpstream_record_t *bs_record)
 		{
 		  if(bs_iterator->prefix.len < fv->min_ipv4_mask_len || bs_iterator->prefix.len > fv->max_ipv4_mask_len)
 		    {
+		      bs_iterator = bs_iterator->next;
 		      continue;
 		    }
 		  
 		  ipv4_prefix.mask_len = bs_iterator->prefix.len;
 		  ipv4_prefix.address = bs_iterator->prefix.number.address.v4_addr;
 		  insert_into_ipv4(fv->ipv4_vis, peer_id, &ipv4_prefix);
-
 		}
 	      else
 		{
 		  if(bs_iterator->prefix.len > fv->max_ipv6_mask_len)
 		    {
+		      bs_iterator = bs_iterator->next;
 		      continue;
 		    }
 		  ipv6_prefix.mask_len = bs_iterator->prefix.len;
 		  ipv6_prefix.address = bs_iterator->prefix.number.address.v6_addr;
 		  insert_into_ipv6(fv->ipv6_vis, peer_id, &ipv6_prefix);
-		}	      
+		}
+	     
 	    }
+	  bs_iterator = bs_iterator->next;
 	}
     }
   return 0;  
@@ -313,9 +316,13 @@ static void insert_ipv6_pfxpeer_pair(ipv6prefix_peer_map_t *ipv6_pfx_visinfo, bl
   kh_value(ipv6_pfx_visinfo,k) = pbd;      
 }
 
+#include "bl_peersign_map_int.h"
 static void filter_vis_end(filter_vis_t *fv, int end_time)
 {
-  printf("END\n");
+  printf("%d - %d\n", kh_size(fv->ipv4_vis), kh_size(fv->ipv6_vis));
+
+  printf("%d - %d - END\n", fv->start_time,   kh_size(fv->ps_map->id_ps));
+
   fv->end_time = end_time;
 
   int khret;
@@ -402,7 +409,7 @@ static void filter_vis_end(filter_vis_t *fv, int end_time)
 
   // Step 3: print results
   peer_breakdown_t pbd;
-
+  char *ip_str;
   // printing ipv4 prefixes (all)
   for (k = kh_begin(ipv4_pfx_visinfo); k != kh_end(ipv4_pfx_visinfo); ++k)
     {
@@ -410,9 +417,10 @@ static void filter_vis_end(filter_vis_t *fv, int end_time)
 	{
 	  ipv4_pfx = &kh_key(ipv4_pfx_visinfo, k);
 	  pbd = kh_value(ipv4_pfx_visinfo, k);
-	  // print
-	  printf("%d/%d\t%u\t%u\n", ipv4_pfx->address.s_addr,
+	  ip_str = print_ipv4_addr(&ipv4_pfx->address);
+	  printf("%d\t%s/%d\t%u\t%u\n", fv->start_time, ip_str,
 		 ipv4_pfx->mask_len, pbd.full_feed_peers_cnt, pbd.all_peers_cnt);
+	  free(ip_str);
 	}
     }
 
@@ -423,7 +431,10 @@ static void filter_vis_end(filter_vis_t *fv, int end_time)
 	{
 	  ipv6_pfx = &kh_key(ipv6_pfx_visinfo, k);
 	  pbd = kh_value(ipv6_pfx_visinfo, k);
-	  // print
+	  ip_str = print_ipv6_addr(&ipv6_pfx->address);
+	  printf("%d\t%s/%d\t%u\t%u\n", fv->start_time, ip_str,
+		 ipv6_pfx->mask_len, pbd.full_feed_peers_cnt, pbd.all_peers_cnt);
+	  free(ip_str);
 	}
     }
 
