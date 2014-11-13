@@ -94,42 +94,56 @@ char *print_pfx_storage(bl_pfx_storage_t* pfx)
   char pfx_str[64];
   pfx_str[0] ='\0';
   char *addr_str = print_addr_storage(pfx.address);
-
+  sprintf(pfx_str, "%s/%"PRIu8, addr_str, pfx.mask_len);
+  if(addr_str != NULL)
+    {
+      free(addr_str);
+    }       
+  return strdup(pfx_str);
 }
 
 
 
-// TODO: THINK ABOUT RETURNING MASK_LEN = 255 FOR INVALID CONVERSIONS
-
-
-/** Utility functions */
+/** Utility functions (conversion between address types) */
 
 bl_ipv4_pfx_t bl_pfx_storage2ipv4(bl_pfx_storage_t *prefix)
 {
-  bl_ipv4_pfx_t ipv4_pfx;
-  ipv4_pfx.mask_len = 0; // in case the conversion is not possible
-  if(prefix->address.version == BL_ADDR_IPV4)
-    {
-      ipv4_pfx.mask_len = prefix->mask_len;
-      ipv4_pfx.address  = prefix->address.ipv4;
-    }
+  assert(prefix->address.version == BL_ADDR_IPV4);
+  bl_ipv4_pfx_t ipv4_pfx;    
+  ipv4_pfx.mask_len = prefix->mask_len;
+  ipv4_pfx.address  = prefix->address.ipv4;
   return ipv4_pfx;
 }
 
 bl_ipv6_pfx_t bl_pfx_storage2ipv6(bl_pfx_storage_t *prefix)
 {
+  assert(prefix->address.version == BL_ADDR_IPV6);
   bl_ipv6_pfx_t ipv6_pfx;
-  ipv6_pfx.mask_len = 0; // in case the conversion is not possible
-  if(prefix->address.version == BL_ADDR_IPV6)
-    {
-      ipv6_pfx.mask_len = prefix->mask_len;
-      ipv6_pfx.address  = prefix->address.ipv6;
-    }
+  ipv6_pfx.mask_len = prefix->mask_len;
+  ipv6_pfx.address  = prefix->address.ipv6; 
   return ipv6_pfx;
 }
 
-/* as-path utility functions */
+bl_pfx_storage_t bl_pfx_ipv42storage(bl_ipv4_pfx_t *prefix)
+{
+  bl_pfx_storage_t st_pfx;
+  st_pfx.address.version = BL_ADDR_IPV4;
+  st_pfx.mask_len = prefix->mask_len;
+  st_pfx.address.ipv4 = prefix->address;
+  return st_pfx;
+}
 
+bl_pfx_storage_t bl_pfx_ipv62storage(bl_ipv6_pfx_t *prefix)
+{
+  bl_pfx_storage_t st_pfx;
+  st_pfx.address.version = BL_ADDR_IPV6;
+  st_pfx.mask_len = prefix->mask_len;
+  st_pfx.address.ipv6 = prefix->address;
+  return st_pfx;
+}
+
+
+/* as-path utility functions */
 
 bl_as_storage_t bl_get_origin_as(bl_aspath_storage_t *aspath)
 {
