@@ -94,12 +94,17 @@ typedef struct struct_bl_addr_storage_t {
   };
 } bl_addr_storage_t;
 
+char *print_addr_storage(bl_addr_storage_t* addr);
+
+
 typedef struct struct_bl_ipv4_pfx_t {
   /** the address */
   bl_ipv4_addr_t address;
   /** length of the prefix mask */
   uint8_t mask_len;
 } bl_ipv4_pfx_t;
+
+char *print_ipv4_pfx(bl_ipv4_pfx_t* pfx);
 
 typedef struct struct_bl_ipv6_pfx_t {
   /** the address */
@@ -108,12 +113,16 @@ typedef struct struct_bl_ipv6_pfx_t {
   uint8_t mask_len;
 } bl_ipv6_pfx_t;
 
+char *print_ipv6_pfx(bl_ipv6_pfx_t* pfx);
+
 typedef struct struct_bl_pfx_storage_t {
   /** the address */
   bl_addr_storage_t address;
   /** length of the prefix mask */
   uint8_t mask_len;
 } bl_pfx_storage_t;
+
+char *print_pfx_storage(bl_pfx_storage_t* pfx);
 
 
 typedef enum {BL_AS_TYPE_UNKNOWN = 0,

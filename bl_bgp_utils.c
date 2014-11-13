@@ -26,26 +26,80 @@
 #include "bl_bgp_utils.h"
 #include <stdio.h>
 #include "utils.h"
+#include <inttypes.h>
 #include <assert.h>
 
 
-// TODO: THINK ABOUT RETURNING MASK_LEN = 255 FOR INVALID CONVERSIONS
+/** Print functions */
+
 
 char *print_ipv4_addr(bl_ipv4_addr_t* addr)
 {
-  char prefix[INET_ADDRSTRLEN];
-  prefix[0] ='\0';
-  inet_ntop(AF_INET, addr, prefix, INET_ADDRSTRLEN);
-  return strdup(prefix);
+  char addr_str[INET_ADDRSTRLEN];
+  addr_str[0] ='\0';
+  inet_ntop(AF_INET, addr, addr_str, INET_ADDRSTRLEN);
+  return strdup(addr_str);
 }
 
 char *print_ipv6_addr(bl_ipv6_addr_t* addr)
 {
-  char prefix[INET6_ADDRSTRLEN];
-  prefix[0] ='\0';
-  inet_ntop(AF_INET6, addr, prefix, INET6_ADDRSTRLEN);
-  return strdup(prefix);
+  char addr_str[INET6_ADDRSTRLEN];
+  addr_str[0] ='\0';
+  inet_ntop(AF_INET6, addr, addr_str, INET6_ADDRSTRLEN);
+  return strdup(addr_str);
 }
+
+char *print_addr_storage(bl_addr_storage_t* addr)
+{
+  if(addr.version == BL_ADDR_IPV4)
+    {
+      return print_ipv4_addr(addr.ipv4);
+    }
+  if(addr.version == BL_ADDR_IPV6)
+    {
+      return print_ipv6_addr(addr.ipv6);
+    }
+  return NULL;
+}
+
+
+char *print_ipv4_pfx(bl_ipv4_pfx_t* pfx)
+{
+  char pfx_str[24];
+  pfx_str[0] ='\0';
+  char *addr_str = print_ipv4_addr(pfx.address);
+  sprintf(pfx_str, "%s/%"PRIu8, addr_str, pfx.mask_len);
+  if(addr_str != NULL)
+    {
+      free(addr_str);
+    }       
+  return strdup(pfx_str);
+}
+
+char *print_ipv6_pfx(bl_ipv6_pfx_t* pfx)
+{
+  char pfx_str[64];
+  pfx_str[0] ='\0';
+  char *addr_str = print_ipv6_addr(pfx.address);
+  sprintf(pfx_str, "%s/%"PRIu8, addr_str, pfx.mask_len);
+  if(addr_str != NULL)
+    {
+      free(addr_str);
+    }       
+  return strdup(pfx_str);
+}
+
+char *print_pfx_storage(bl_pfx_storage_t* pfx)
+{
+  char pfx_str[64];
+  pfx_str[0] ='\0';
+  char *addr_str = print_addr_storage(pfx.address);
+
+}
+
+
+
+// TODO: THINK ABOUT RETURNING MASK_LEN = 255 FOR INVALID CONVERSIONS
 
 
 /** Utility functions */
