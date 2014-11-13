@@ -31,6 +31,22 @@
 
 // TODO: THINK ABOUT RETURNING MASK_LEN = 255 FOR INVALID CONVERSIONS
 
+char *print_ipv4_addr(bl_ipv4_addr_t* addr)
+{
+  char prefix[INET_ADDRSTRLEN];
+  prefix[0] ='\0';
+  inet_ntop(AF_INET, addr, prefix, INET_ADDRSTRLEN);
+  return strdup(prefix);
+}
+
+char *print_ipv6_addr(bl_ipv6_addr_t* addr)
+{
+  char prefix[INET6_ADDRSTRLEN];
+  prefix[0] ='\0';
+  inet_ntop(AF_INET6, addr, prefix, INET6_ADDRSTRLEN);
+  return strdup(prefix);
+}
+
 
 /** Utility functions */
 

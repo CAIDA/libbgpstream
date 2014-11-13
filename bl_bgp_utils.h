@@ -81,6 +81,9 @@ typedef enum {BL_ADDR_TYPE_UNKNOWN  = 0,
 typedef struct in_addr  bl_ipv4_addr_t;
 typedef struct in6_addr bl_ipv6_addr_t;
 
+char *print_ipv4_addr(bl_ipv4_addr_t* addr);
+char *print_ipv6_addr(bl_ipv6_addr_t* addr);
+
 typedef struct struct_bl_addr_storage_t {
   /** ip version (v4 o v6) */
   bl_addr_type_t version;
