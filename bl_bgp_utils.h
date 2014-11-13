@@ -81,8 +81,6 @@ typedef enum {BL_ADDR_TYPE_UNKNOWN  = 0,
 typedef struct in_addr  bl_ipv4_addr_t;
 typedef struct in6_addr bl_ipv6_addr_t;
 
-char *print_ipv4_addr(bl_ipv4_addr_t* addr);
-char *print_ipv6_addr(bl_ipv6_addr_t* addr);
 
 typedef struct struct_bl_addr_storage_t {
   /** ip version (v4 o v6) */
@@ -94,8 +92,6 @@ typedef struct struct_bl_addr_storage_t {
   };
 } bl_addr_storage_t;
 
-char *print_addr_storage(bl_addr_storage_t* addr);
-
 
 typedef struct struct_bl_ipv4_pfx_t {
   /** the address */
@@ -104,8 +100,6 @@ typedef struct struct_bl_ipv4_pfx_t {
   uint8_t mask_len;
 } bl_ipv4_pfx_t;
 
-char *print_ipv4_pfx(bl_ipv4_pfx_t* pfx);
-
 typedef struct struct_bl_ipv6_pfx_t {
   /** the address */
   bl_ipv6_addr_t address;
@@ -113,16 +107,12 @@ typedef struct struct_bl_ipv6_pfx_t {
   uint8_t mask_len;
 } bl_ipv6_pfx_t;
 
-char *print_ipv6_pfx(bl_ipv6_pfx_t* pfx);
-
 typedef struct struct_bl_pfx_storage_t {
   /** the address */
   bl_addr_storage_t address;
   /** length of the prefix mask */
   uint8_t mask_len;
 } bl_pfx_storage_t;
-
-char *print_pfx_storage(bl_pfx_storage_t* pfx);
 
 
 typedef enum {BL_AS_TYPE_UNKNOWN = 0,
@@ -191,15 +181,31 @@ typedef struct struct_bl_elem_t {
 } bl_elem_t;
 
 
+/** Print functions */
+
+char *print_ipv4_addr(bl_ipv4_addr_t* addr);
+char *print_ipv6_addr(bl_ipv6_addr_t* addr);
+char *print_addr_storage(bl_addr_storage_t* addr);
+
+char *print_ipv4_pfx(bl_ipv4_pfx_t* pfx);
+char *print_ipv6_pfx(bl_ipv6_pfx_t* pfx);
+char *print_pfx_storage(bl_pfx_storage_t* pfx);
+
 
 /** Utility functions (conversion between address types) */
 
+bl_ipv4_addr_t bl_addr_storage2ipv4(bl_addr_storage_t *address);
+bl_ipv6_addr_t bl_addr_storage2ipv6(bl_addr_storage_t *address);
 
 bl_ipv4_pfx_t bl_pfx_storage2ipv4(bl_pfx_storage_t *prefix);
 bl_ipv6_pfx_t bl_pfx_storage2ipv6(bl_pfx_storage_t *prefix);
 
+bl_addr_storage_t bl_addr_ipv42storage(bl_ipv4_addr_t *address);
+bl_addr_storage_t bl_addr_ipv62storage(bl_ipv6_addr_t *address);
+
 bl_pfx_storage_t bl_pfx_ipv42storage(bl_ipv4_pfx_t *prefix);
 bl_pfx_storage_t bl_pfx_ipv62storage(bl_ipv6_pfx_t *prefix);
+
 
 /** as-path utility functions */
 

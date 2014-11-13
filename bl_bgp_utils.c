@@ -51,13 +51,13 @@ char *print_ipv6_addr(bl_ipv6_addr_t* addr)
 
 char *print_addr_storage(bl_addr_storage_t* addr)
 {
-  if(addr.version == BL_ADDR_IPV4)
+  if(addr->version == BL_ADDR_IPV4)
     {
-      return print_ipv4_addr(addr.ipv4);
+      return print_ipv4_addr(&(addr->ipv4));
     }
-  if(addr.version == BL_ADDR_IPV6)
+  if(addr->version == BL_ADDR_IPV6)
     {
-      return print_ipv6_addr(addr.ipv6);
+      return print_ipv6_addr(&(addr->ipv6));
     }
   return NULL;
 }
@@ -67,8 +67,8 @@ char *print_ipv4_pfx(bl_ipv4_pfx_t* pfx)
 {
   char pfx_str[24];
   pfx_str[0] ='\0';
-  char *addr_str = print_ipv4_addr(pfx.address);
-  sprintf(pfx_str, "%s/%"PRIu8, addr_str, pfx.mask_len);
+  char *addr_str = print_ipv4_addr(&(pfx->address));
+  sprintf(pfx_str, "%s/%"PRIu8, addr_str, pfx->mask_len);
   if(addr_str != NULL)
     {
       free(addr_str);
@@ -80,8 +80,8 @@ char *print_ipv6_pfx(bl_ipv6_pfx_t* pfx)
 {
   char pfx_str[64];
   pfx_str[0] ='\0';
-  char *addr_str = print_ipv6_addr(pfx.address);
-  sprintf(pfx_str, "%s/%"PRIu8, addr_str, pfx.mask_len);
+  char *addr_str = print_ipv6_addr(&(pfx->address));
+  sprintf(pfx_str, "%s/%"PRIu8, addr_str, pfx->mask_len);
   if(addr_str != NULL)
     {
       free(addr_str);
@@ -93,8 +93,8 @@ char *print_pfx_storage(bl_pfx_storage_t* pfx)
 {
   char pfx_str[64];
   pfx_str[0] ='\0';
-  char *addr_str = print_addr_storage(pfx.address);
-  sprintf(pfx_str, "%s/%"PRIu8, addr_str, pfx.mask_len);
+  char *addr_str = print_addr_storage(&(pfx->address));
+  sprintf(pfx_str, "%s/%"PRIu8, addr_str, pfx->mask_len);
   if(addr_str != NULL)
     {
       free(addr_str);
@@ -103,8 +103,23 @@ char *print_pfx_storage(bl_pfx_storage_t* pfx)
 }
 
 
-
 /** Utility functions (conversion between address types) */
+
+bl_ipv4_addr_t bl_addr_storage2ipv4(bl_addr_storage_t *address)
+{
+  assert(address->version == BL_ADDR_IPV4);
+  bl_ipv4_addr_t ipv4_addr;    
+  ipv4_addr = address->ipv4;
+  return ipv4_addr;
+}
+
+bl_ipv6_addr_t bl_addr_storage2ipv6(bl_addr_storage_t *address)
+{
+  assert(address->version == BL_ADDR_IPV6);
+  bl_ipv6_addr_t ipv6_addr;    
+  ipv6_addr = address->ipv6;
+  return ipv6_addr;
+}
 
 bl_ipv4_pfx_t bl_pfx_storage2ipv4(bl_pfx_storage_t *prefix)
 {
@@ -122,6 +137,22 @@ bl_ipv6_pfx_t bl_pfx_storage2ipv6(bl_pfx_storage_t *prefix)
   ipv6_pfx.mask_len = prefix->mask_len;
   ipv6_pfx.address  = prefix->address.ipv6; 
   return ipv6_pfx;
+}
+
+bl_addr_storage_t bl_addr_ipv42storage(bl_ipv4_addr_t *address)
+{
+  bl_addr_storage_t st_addr;
+  st_addr.version = BL_ADDR_IPV4;
+  st_addr.ipv4 = *address;
+  return st_addr;
+}
+
+bl_addr_storage_t bl_addr_ipv62storage(bl_ipv6_addr_t *address)
+{
+  bl_addr_storage_t st_addr;
+  st_addr.version = BL_ADDR_IPV6;
+  st_addr.ipv6 = *address;
+  return st_addr;
 }
 
 bl_pfx_storage_t bl_pfx_ipv42storage(bl_ipv4_pfx_t *prefix)
