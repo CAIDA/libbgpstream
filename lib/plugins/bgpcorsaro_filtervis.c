@@ -51,6 +51,10 @@
 #include "bl_id_set.h"
 
 
+#define FV_IPV4_FULLFEED_SIZE 400000
+#define FV_IPV6_FULLFEED_SIZE 10000
+
+
 
 /** @file
  *
@@ -134,16 +138,18 @@ typedef struct struct_filter_vis_t {
   bl_peersign_map_t *ps_map;
   peer_ipv4prefix_map_t *ipv4_vis;
   peer_ipv6prefix_map_t *ipv6_vis;
-  // OTHER ?
+  // thresholds
   int min_ipv4_mask_len;
   int max_ipv4_mask_len;
   int max_ipv6_mask_len ;
   int ipv4_full_feed_th;
   int ipv6_full_feed_th;
+  // show flags
+  uint8_t show_ipv4;
+  uint8_t show_ipv6;
 } filter_vis_t;
 
 static filter_vis_t *filter_vis_create(){
-  // TODO
   filter_vis_t *fv = NULL;
   fv = (filter_vis_t*)malloc_zero(sizeof(filter_vis_t));
   if(fv != NULL)
@@ -156,11 +162,15 @@ static filter_vis_t *filter_vis_create(){
       assert(fv->ipv4_vis != NULL);
       fv->ipv6_vis = kh_init(peer_ipv6prefix_map);
       assert(fv->ipv6_vis != NULL);
+      // thresholds
       fv->min_ipv4_mask_len = 7;
       fv->max_ipv4_mask_len = 24;
       fv->max_ipv6_mask_len = 64;
-      fv->ipv4_full_feed_th = 400000;
-      fv->ipv6_full_feed_th = 10000;
+      fv->ipv4_full_feed_th = FV_IPV4_FULLFEED_SIZE;
+      fv->ipv6_full_feed_th = FV_IPV6_FULLFEED_SIZE;
+      // show flags
+      fv->show_ipv4 = 0;
+      fv->show_ipv6 = 0;
     }
   return fv;
 }
@@ -315,7 +325,6 @@ static void insert_ipv6_pfxpeer_pair(ipv6prefix_peer_map_t *ipv6_pfx_visinfo, bl
   kh_value(ipv6_pfx_visinfo,k) = pbd;      
 }
 
-#include "bl_peersign_map_int.h"
 static void filter_vis_end(filter_vis_t *fv, int end_time)
 {
 
@@ -404,33 +413,41 @@ static void filter_vis_end(filter_vis_t *fv, int end_time)
     }
 
   // Step 3: print results
+
   peer_breakdown_t pbd;
   char *ip_str;
-  // printing ipv4 prefixes (all)
-  for (k = kh_begin(ipv4_pfx_visinfo); k != kh_end(ipv4_pfx_visinfo); ++k)
+  
+  if(fv->show_ipv4 == 1)
     {
-      if (kh_exist(ipv4_pfx_visinfo, k))
+      // printing ipv4 prefixes (all)
+      for (k = kh_begin(ipv4_pfx_visinfo); k != kh_end(ipv4_pfx_visinfo); ++k)
 	{
-	  ipv4_pfx = &kh_key(ipv4_pfx_visinfo, k);
-	  pbd = kh_value(ipv4_pfx_visinfo, k);
-	  ip_str = print_ipv4_addr(&ipv4_pfx->address);
-	  printf("%d\t%s/%d\t%u\t%u\n", fv->start_time, ip_str,
-		 ipv4_pfx->mask_len, pbd.full_feed_peers_cnt, pbd.all_peers_cnt);
-	  free(ip_str);
+	  if (kh_exist(ipv4_pfx_visinfo, k))
+	    {
+	      ipv4_pfx = &kh_key(ipv4_pfx_visinfo, k);
+	      pbd = kh_value(ipv4_pfx_visinfo, k);
+	      ip_str = print_ipv4_addr(&ipv4_pfx->address);
+	      printf("%d\t%s/%d\t%u\t%u\n", fv->start_time, ip_str,
+		     ipv4_pfx->mask_len, pbd.full_feed_peers_cnt, pbd.all_peers_cnt);
+	      free(ip_str);
+	    }
 	}
     }
 
-  // printing ipv6 prefixes (all)
-  for (k = kh_begin(ipv6_pfx_visinfo); k != kh_end(ipv6_pfx_visinfo); ++k)
+  if(fv->show_ipv6 == 1)
     {
-      if (kh_exist(ipv6_pfx_visinfo, k))
+      // printing ipv6 prefixes (all)
+      for (k = kh_begin(ipv6_pfx_visinfo); k != kh_end(ipv6_pfx_visinfo); ++k)
 	{
-	  ipv6_pfx = &kh_key(ipv6_pfx_visinfo, k);
-	  pbd = kh_value(ipv6_pfx_visinfo, k);
-	  ip_str = print_ipv6_addr(&ipv6_pfx->address);
-	  printf("%d\t%s/%d\t%u\t%u\n", fv->start_time, ip_str,
-		 ipv6_pfx->mask_len, pbd.full_feed_peers_cnt, pbd.all_peers_cnt);
-	  free(ip_str);
+	  if (kh_exist(ipv6_pfx_visinfo, k))
+	    {
+	      ipv6_pfx = &kh_key(ipv6_pfx_visinfo, k);
+	      pbd = kh_value(ipv6_pfx_visinfo, k);
+	      ip_str = print_ipv6_addr(&ipv6_pfx->address);
+	      printf("%d\t%s/%d\t%u\t%u\n", fv->start_time, ip_str,
+		     ipv6_pfx->mask_len, pbd.full_feed_peers_cnt, pbd.all_peers_cnt);
+	      free(ip_str);
+	    }
 	}
     }
 
@@ -536,19 +553,17 @@ struct bgpcorsaro_filtervis_state_t {
 #define PLUGIN(bgpcorsaro)						\
   (BGPCORSARO_PLUGIN_PLUGIN(bgpcorsaro, BGPCORSARO_PLUGIN_ID_FILTERVIS))
 
-#if 0
+
 /** Print usage information to stderr */
 static void usage(bgpcorsaro_plugin_t *plugin)
 {
-  //TODO modify usage
   fprintf(stderr,
-	  "plugin usage: %s [-HmM] [-t mode]\n"
-	  "       -H         multi-line, human-readable (default)\n"
-	  "       -m         one-line per entry with unix timestamps\n"
-	  "       -M         one-line per entry with human readable timestamps (and some other differences that no human could ever comprehend)\n"
-	  "       -t dump    timestamps for RIB dumps reflect the time of the dump (default)\n"
-	  "       -t change  timestamps for RIB dumps reflect the last route modification\n",
-	  plugin->argv[0]);
+	  "plugin usage: %s [-46] [-f ipv4_ff_size] [-F ipv6_ff_size]\n"
+	  "       -4         print ipv4 prefixes visibility (default: both version on)\n"
+	  "       -6         print ipv6 prefixes visibility (default: both version on)\n"
+	  "       -f <num>   set the full feed threshold for ipv4 peers (default: %d)\n"
+	  "       -F <num>   set the full feed threshold for ipv6 peers (default: %d)\n",
+	  plugin->argv[0], FV_IPV4_FULLFEED_SIZE, FV_IPV6_FULLFEED_SIZE);
 }
 
 /** Parse the arguments given to the plugin */
@@ -557,7 +572,6 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
   bgpcorsaro_plugin_t *plugin = PLUGIN(bgpcorsaro);
   struct bgpcorsaro_filtervis_state_t *state = STATE(bgpcorsaro);
   int opt;
-  //TODO modify this: right now it doesn't do anything
 
   if(plugin->argc <= 0)
     {
@@ -567,20 +581,21 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
   /* NB: remember to reset optind to 1 before using getopt! */
   optind = 1;
 
-  while((opt = getopt(plugin->argc, plugin->argv, ":t:HmM?")) >= 0)
+  while((opt = getopt(plugin->argc, plugin->argv, "46f:F:?")) >= 0)
     {
       switch(opt)
 	{
-	case 'H':
+	case '4':
+	  state->filter_vis->show_ipv4 = 1;
 	  break;
-
-	case 'm':
+	case 'f':
+	  state->filter_vis->ipv4_full_feed_th = atoi(optarg);
 	  break;
-
-	case 'M':
+	case '6':
+	  state->filter_vis->show_ipv6 = 1;
 	  break;
-
-	case 't':
+	case 'F':
+	  state->filter_vis->ipv6_full_feed_th = atoi(optarg);
 	  break;
 
 	case '?':
@@ -591,6 +606,13 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
 	}
     }
 
+  // if both of them are set or none of them (i.e. default)
+  if(state->filter_vis->show_ipv4 == state->filter_vis->show_ipv6)
+    {
+      state->filter_vis->show_ipv4 = 1;
+      state->filter_vis->show_ipv6 = 1;
+    }
+    
   /* dump doesn't take any arguments */
   if(optind != plugin->argc)
     {
@@ -600,8 +622,6 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
 
   return 0;
 }
-#endif
-
 
 
 /* == PUBLIC PLUGIN FUNCS BELOW HERE == */
@@ -627,14 +647,6 @@ int bgpcorsaro_filtervis_init_output(bgpcorsaro_t *bgpcorsaro)
       goto err;
     }
 
-#if 0
-  /* parse the arguments */
-  if(parse_args(bgpcorsaro) != 0)
-    {
-      return -1;
-    }
-#endif
-
   /** plugin initialization */
   if((state->filter_vis = filter_vis_create()) == NULL)
    {
@@ -644,8 +656,15 @@ int bgpcorsaro_filtervis_init_output(bgpcorsaro_t *bgpcorsaro)
     }
   
   bgpcorsaro_plugin_register_state(bgpcorsaro->plugin_manager, plugin, state);
+
   /* defer opening the output file until we start the first interval */
 
+  /* parse the arguments */
+  if(parse_args(bgpcorsaro) != 0)
+    {
+      return -1;
+    }
+  
   return 0;
 
  err:
