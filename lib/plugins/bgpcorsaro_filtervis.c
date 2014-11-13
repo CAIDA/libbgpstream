@@ -255,8 +255,7 @@ static int filter_vis_update(filter_vis_t *fv, bgpstream_record_t *bs_record)
 		  ipv6_prefix.mask_len = bs_iterator->prefix.len;
 		  ipv6_prefix.address = bs_iterator->prefix.number.address.v6_addr;
 		  insert_into_ipv6(fv->ipv6_vis, peer_id, &ipv6_prefix);
-		}
-	     
+		}	     
 	    }
 	  bs_iterator = bs_iterator->next;
 	}
@@ -319,9 +318,6 @@ static void insert_ipv6_pfxpeer_pair(ipv6prefix_peer_map_t *ipv6_pfx_visinfo, bl
 #include "bl_peersign_map_int.h"
 static void filter_vis_end(filter_vis_t *fv, int end_time)
 {
-  printf("%d - %d\n", kh_size(fv->ipv4_vis), kh_size(fv->ipv6_vis));
-
-  printf("%d - %d - END\n", fv->start_time,   kh_size(fv->ps_map->id_ps));
 
   fv->end_time = end_time;
 
@@ -438,14 +434,41 @@ static void filter_vis_end(filter_vis_t *fv, int end_time)
 	}
     }
 
+  // destroy tmp structures
+  bl_id_set_destroy(ipv4_full_feed);
+  bl_id_set_destroy(ipv6_full_feed);
+  kh_destroy(ipv4prefix_peer_map, ipv4_pfx_visinfo);
+  kh_destroy(ipv6prefix_peer_map, ipv6_pfx_visinfo);
   
+  // reset persistent structure
+  for (k = kh_begin(fv->ipv4_vis); k != kh_end(fv->ipv4_vis); ++k)
+    {
+      if (kh_exist(fv->ipv4_vis, k))
+	{
+	  ipv4_set = kh_value(fv->ipv4_vis, k);
+	  bl_ipv4_pfx_set_destroy(ipv4_set);
+	}
+    }
+  kh_clear(peer_ipv4prefix_map, fv->ipv4_vis);
 
-  // TODO: destroy tmp structures
-  // TODO: reset persistent structure
+    for (k = kh_begin(fv->ipv6_vis); k != kh_end(fv->ipv6_vis); ++k)
+    {
+      if (kh_exist(fv->ipv6_vis, k))
+	{
+	  ipv6_set = kh_value(fv->ipv6_vis, k);
+	  bl_ipv6_pfx_set_destroy(ipv6_set);
+	}
+    }
+    kh_clear(peer_ipv6prefix_map, fv->ipv6_vis);
 }
 
 static void filter_vis_destroy(filter_vis_t *fv)
 {
+  int khret;
+  khiter_t k;
+  bl_ipv4_pfx_set_t *ipv4_set;
+  bl_ipv6_pfx_set_t *ipv6_set;
+
   if(fv != NULL)
     {
       if(fv->ps_map != NULL)
@@ -453,9 +476,38 @@ static void filter_vis_destroy(filter_vis_t *fv)
 	  bl_peersign_map_destroy(fv->ps_map);
 	  fv->ps_map = NULL;
 	}
-      free(fv);
-    }
+      
+      if(fv->ipv4_vis != NULL)
+	{
+	  for (k = kh_begin(fv->ipv4_vis); k != kh_end(fv->ipv4_vis); ++k)
+	    {
+	      if (kh_exist(fv->ipv4_vis, k))
+		{
+		  ipv4_set = kh_value(fv->ipv4_vis, k);
+		  bl_ipv4_pfx_set_destroy(ipv4_set);
+		}
+	    }
+	  kh_destroy(peer_ipv4prefix_map, fv->ipv4_vis);
+	}
+      fv->ipv4_vis = NULL;
+      
+      if(fv->ipv6_vis != NULL)
+	{
+	  for (k = kh_begin(fv->ipv6_vis); k != kh_end(fv->ipv6_vis); ++k)
+	    {
+	      if (kh_exist(fv->ipv6_vis, k))
+		{
+		  ipv6_set = kh_value(fv->ipv6_vis, k);
+		  bl_ipv6_pfx_set_destroy(ipv6_set);
+		}
+	    }
+	  kh_destroy(peer_ipv6prefix_map, fv->ipv6_vis);
+	}
+      fv->ipv6_vis = NULL;
 
+      // finally free fv
+      free(fv);  
+    }
   // TODO: destroy other objects
 }
 
