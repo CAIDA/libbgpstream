@@ -51,6 +51,10 @@
 #include "bgpcorsaro_bgpribs.h"
 #endif
 
+#ifdef WITH_PLUGIN_FILTERVIS
+#include "bgpcorsaro_filtervis.h"
+#endif
+
 #ifdef WITH_PLUGIN_IPMETA
 #include "bgpcorsaro_ipmeta.h"
 #endif

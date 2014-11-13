@@ -4,7 +4,7 @@
  * Chiara Orsini, CAIDA, UC San Diego
  * corsaro-info@caida.org
  *
- * Copyright (C) 2012 The Regents of the University of California.
+ * Copyright (C) 2014 The Regents of the University of California.
  *
  * This file is part of bgpcorsaro.
  *
