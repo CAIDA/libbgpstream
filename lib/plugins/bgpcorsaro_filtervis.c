@@ -247,7 +247,7 @@ static int filter_vis_update(filter_vis_t *fv, bgpstream_record_t *bs_record)
 	      // getting peer_id	      
 	      peer_id = bl_peersign_map_set_and_get(fv->ps_map, bs_record->attributes.dump_collector, &peer_ip);
 
-	      if(bs_iterator->prefix.number.type == BST_IPV4)
+	      if(bs_iterator->prefix.number.type == BST_IPV4 && fv->show_ipv4 == 1)
 		{
 		  if(bs_iterator->prefix.len < fv->min_ipv4_mask_len || bs_iterator->prefix.len > fv->max_ipv4_mask_len)
 		    {
@@ -259,7 +259,8 @@ static int filter_vis_update(filter_vis_t *fv, bgpstream_record_t *bs_record)
 		  ipv4_prefix.address = bs_iterator->prefix.number.address.v4_addr;
 		  insert_into_ipv4(fv->ipv4_vis, peer_id, &ipv4_prefix);
 		}
-	      else
+	      
+	      if(bs_iterator->prefix.number.type == BST_IPV6 && fv->show_ipv6 == 1)
 		{
 		  if(bs_iterator->prefix.len > fv->max_ipv6_mask_len)
 		    {
@@ -349,33 +350,39 @@ static void filter_vis_end(filter_vis_t *fv, int end_time)
   
   bl_ipv4_pfx_set_t *ipv4_set;
   bl_ipv6_pfx_set_t *ipv6_set;
-
-  for (k = kh_begin(fv->ipv4_vis); k != kh_end(fv->ipv4_vis); ++k)
+  if(fv->show_ipv4 == 1)
     {
-      if (kh_exist(fv->ipv4_vis, k))
+
+      for (k = kh_begin(fv->ipv4_vis); k != kh_end(fv->ipv4_vis); ++k)
 	{
-	  peer_id = kh_key(fv->ipv4_vis, k);
-	  ipv4_set = kh_value(fv->ipv4_vis, k);
-	  if(kh_size(ipv4_set) > fv->ipv4_full_feed_th)
+	  if (kh_exist(fv->ipv4_vis, k))
 	    {
-	      bl_id_set_insert(ipv4_full_feed, peer_id);
+	      peer_id = kh_key(fv->ipv4_vis, k);
+	      ipv4_set = kh_value(fv->ipv4_vis, k);
+	      if(kh_size(ipv4_set) > fv->ipv4_full_feed_th)
+		{
+		  bl_id_set_insert(ipv4_full_feed, peer_id);
+		}
+	    }
+	}
+    }
+
+  if(fv->show_ipv6 == 1)
+    {
+      for (k = kh_begin(fv->ipv6_vis); k != kh_end(fv->ipv6_vis); ++k)
+	{
+	  if (kh_exist(fv->ipv6_vis, k))
+	    {
+	      peer_id = kh_key(fv->ipv6_vis, k);
+	      ipv6_set = kh_value(fv->ipv6_vis, k);
+	      if(kh_size(ipv6_set) > fv->ipv6_full_feed_th)
+		{
+		  bl_id_set_insert(ipv6_full_feed, peer_id);
+		}
 	    }
 	}
     }
   
-  for (k = kh_begin(fv->ipv6_vis); k != kh_end(fv->ipv6_vis); ++k)
-    {
-      if (kh_exist(fv->ipv6_vis, k))
-	{
-	  peer_id = kh_key(fv->ipv6_vis, k);
-	  ipv6_set = kh_value(fv->ipv6_vis, k);
-	  if(kh_size(ipv6_set) > fv->ipv6_full_feed_th)
-	    {
-	      bl_id_set_insert(ipv6_full_feed, peer_id);
-	    }
-	}
-    }
-    
   // Step 2: for each prefix count the number of peers (total and full)
   ipv4prefix_peer_map_t *ipv4_pfx_visinfo = kh_init(ipv4prefix_peer_map);
   ipv6prefix_peer_map_t *ipv6_pfx_visinfo = kh_init(ipv6prefix_peer_map);
@@ -383,35 +390,41 @@ static void filter_vis_end(filter_vis_t *fv, int end_time)
   bl_ipv6_pfx_t *ipv6_pfx;
   khiter_t inn_k;
   // fill ipv4 structure
-  for (k = kh_begin(fv->ipv4_vis); k != kh_end(fv->ipv4_vis); ++k)
+  if(fv->show_ipv4 == 1)
     {
-      if (kh_exist(fv->ipv4_vis, k))
+      for (k = kh_begin(fv->ipv4_vis); k != kh_end(fv->ipv4_vis); ++k)
 	{
-	  peer_id = kh_key(fv->ipv4_vis, k);
-	  ipv4_set = kh_value(fv->ipv4_vis, k);
-	  for (inn_k = kh_begin(ipv4_set); inn_k != kh_end(ipv4_set); ++inn_k)
+	  if (kh_exist(fv->ipv4_vis, k))
 	    {
-	      if (kh_exist(ipv4_set, inn_k))
+	      peer_id = kh_key(fv->ipv4_vis, k);
+	      ipv4_set = kh_value(fv->ipv4_vis, k);
+	      for (inn_k = kh_begin(ipv4_set); inn_k != kh_end(ipv4_set); ++inn_k)
 		{
-		  ipv4_pfx = &kh_key(ipv4_set, inn_k);
-		  insert_ipv4_pfxpeer_pair(ipv4_pfx_visinfo, ipv4_pfx, peer_id, ipv4_full_feed);
+		  if (kh_exist(ipv4_set, inn_k))
+		    {
+		      ipv4_pfx = &kh_key(ipv4_set, inn_k);
+		      insert_ipv4_pfxpeer_pair(ipv4_pfx_visinfo, ipv4_pfx, peer_id, ipv4_full_feed);
+		    }
 		}
 	    }
 	}
     }
   // fill ipv6 structure
-  for (k = kh_begin(fv->ipv6_vis); k != kh_end(fv->ipv6_vis); ++k)
+  if(fv->show_ipv6 == 1)
     {
-      if (kh_exist(fv->ipv6_vis, k))
+      for (k = kh_begin(fv->ipv6_vis); k != kh_end(fv->ipv6_vis); ++k)
 	{
-	  peer_id = kh_key(fv->ipv6_vis, k);
-	  ipv6_set = kh_value(fv->ipv6_vis, k);
-	  for (inn_k = kh_begin(ipv6_set); inn_k != kh_end(ipv6_set); ++inn_k)
+	  if (kh_exist(fv->ipv6_vis, k))
 	    {
-	      if (kh_exist(ipv6_set, inn_k))
+	      peer_id = kh_key(fv->ipv6_vis, k);
+	      ipv6_set = kh_value(fv->ipv6_vis, k);
+	      for (inn_k = kh_begin(ipv6_set); inn_k != kh_end(ipv6_set); ++inn_k)
 		{
-		  ipv6_pfx = &kh_key(ipv6_set, inn_k);
-		  insert_ipv6_pfxpeer_pair(ipv6_pfx_visinfo, ipv6_pfx, peer_id, ipv6_full_feed);
+		  if (kh_exist(ipv6_set, inn_k))
+		    {
+		      ipv6_pfx = &kh_key(ipv6_set, inn_k);
+		      insert_ipv6_pfxpeer_pair(ipv6_pfx_visinfo, ipv6_pfx, peer_id, ipv6_full_feed);
+		    }
 		}
 	    }
 	}
