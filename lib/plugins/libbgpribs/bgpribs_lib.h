@@ -38,7 +38,14 @@ typedef struct bgpribs bgpribs_t;
  * @return a pointer to the structure, or
  *  NULL if an error occurred
  */
-bgpribs_t *bgpribs_create();
+bgpribs_t *bgpribs_create(char *metric_pfx);
+
+
+/** Set the prefix that will be prepended to each
+ *  metric dumped to standard output.
+ *
+ */
+void bgpribs_set_metric_pfx(bgpribs_t *bgp_ribs, char* met_pfx);
 
 
 /** The function modifies the bgpribs plugin state in order

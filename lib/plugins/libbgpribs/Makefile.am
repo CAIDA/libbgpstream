@@ -39,14 +39,8 @@ libbgpribs_la_SOURCES = bgpribs_lib.h   \
 			bgpribs_peerdata.c	\
 			bgpribs_ribs_table.h	\
 			bgpribs_ribs_table.c	\
-			bgpribs_prefixes_table.h	\
-			bgpribs_prefixes_table.c	\
-			bgpribs_ases_table.h	\
-			bgpribs_ases_table.c	\
 			bgpribs_bgpwatcher_client.h	\
 			bgpribs_bgpwatcher_client.c	\
-			bgpribs_khash.h	\
-			bgpribs_khash.c	\
 			bgpribs_common.h	\
 			bgpribs_common.c	
 

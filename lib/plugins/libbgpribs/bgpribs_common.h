@@ -33,8 +33,6 @@
 #include "bl_id_set.h"
 #include "bgpstream_lib.h"
 
-// #include "bgpribs_ases_table.h"
-// #include "bgpribs_prefixes_table.h"
 
 /** @file
  *

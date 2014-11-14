@@ -92,14 +92,17 @@ int collectors_table_process_record(collectors_table_wrapper_t *collectors_table
  * @param interval_processing_start when we started processing the current interval
  * @param interval_start start of the interval in epoch time
  * @param interval_end end of the interval in epoch time
+ * @param metric_pfx string that prepends every metric provided in output
  * @param bw_client a pointer to the bgpwatcher client used to send data to the bgpwatcher
  * @return 0 if the function ended correctly,
  *        -1 if something went wrong during the function execution
  */
 int collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
-				   int interval_processing_start,
-				   int interval_start, int interval_end,
-				   bw_client_t *bw_client);
+				  int interval_processing_start,
+				  int interval_start,
+				  int interval_end,
+				  char *metric_pfx,
+				  bw_client_t *bw_client);
 #else
 /** The function prints the statistics of a set of collectors for the interval of time
  *  that starts at interval_start if the status is not NULL.
@@ -108,12 +111,15 @@ int collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
  * @param interval_processing_start when we started processing the current interval
  * @param interval_start start of the interval in epoch time
  * @param interval_end end of the interval in epoch time
+ * @param metric_pfx string that prepends every metric provided in output
  * @return 0 if the function ended correctly,
  *        -1 if something went wrong during the function execution
  */
 int collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
-				   int interval_processing_start,
-				   int interval_start, int interval_end);
+				  int interval_processing_start,
+				  int interval_start,
+				  int interval_end,
+				  char *metric_pfx);
 #endif
 
 

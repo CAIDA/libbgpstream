@@ -77,6 +77,8 @@ static bgpcorsaro_plugin_t bgpcorsaro_bgpribs_plugin = {
 };
 
 
+#define BGPRIBS_METRIC_PREFIX "bgpribs"
+
 /** Holds the state for an instance of this plugin */
 struct bgpcorsaro_bgpribs_state_t {
 
@@ -99,19 +101,15 @@ struct bgpcorsaro_bgpribs_state_t {
 #define PLUGIN(bgpcorsaro)						\
   (BGPCORSARO_PLUGIN_PLUGIN(bgpcorsaro, BGPCORSARO_PLUGIN_ID_BGPRIBS))
 
-#if 0
+
 /** Print usage information to stderr */
 static void usage(bgpcorsaro_plugin_t *plugin)
 {
   //TODO modify usage
   fprintf(stderr,
-	  "plugin usage: %s [-HmM] [-t mode]\n"
-	  "       -H         multi-line, human-readable (default)\n"
-	  "       -m         one-line per entry with unix timestamps\n"
-	  "       -M         one-line per entry with human readable timestamps (and some other differences that no human could ever comprehend)\n"
-	  "       -t dump    timestamps for RIB dumps reflect the time of the dump (default)\n"
-	  "       -t change  timestamps for RIB dumps reflect the last route modification\n",
-	  plugin->argv[0]);
+	  "plugin usage: %s [-m pfx]\n"
+	  "       -m         metric prefix (default: %s)\n",
+	  plugin->argv[0], BGPRIBS_METRIC_PREFIX);
 }
 
 /** Parse the arguments given to the plugin */
@@ -120,8 +118,9 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
   bgpcorsaro_plugin_t *plugin = PLUGIN(bgpcorsaro);
   struct bgpcorsaro_bgpribs_state_t *state = STATE(bgpcorsaro);
   int opt;
-  //TODO modify this: right now it doesn't do anything
 
+  char *met_pfx = NULL;
+  
   if(plugin->argc <= 0)
     {
       return 0;
@@ -130,20 +129,12 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
   /* NB: remember to reset optind to 1 before using getopt! */
   optind = 1;
 
-  while((opt = getopt(plugin->argc, plugin->argv, ":t:HmM?")) >= 0)
+  while((opt = getopt(plugin->argc, plugin->argv, ":m:?")) >= 0)
     {
       switch(opt)
 	{
-	case 'H':
-	  break;
-
 	case 'm':
-	  break;
-
-	case 'M':
-	  break;
-
-	case 't':
+	  met_pfx = strdup(optarg);
 	  break;
 
 	case '?':
@@ -161,9 +152,15 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
       return -1;
     }
 
+  if(met_pfx != NULL)
+    {
+      bgpribs_set_metric_pfx(state->bgp_ribs, met_pfx);
+      free(met_pfx);
+      met_pfx = NULL;
+    }
+
   return 0;
 }
-#endif
 
 
 
@@ -190,16 +187,8 @@ int bgpcorsaro_bgpribs_init_output(bgpcorsaro_t *bgpcorsaro)
       goto err;
     }
 
-#if 0
-  /* parse the arguments */
-  if(parse_args(bgpcorsaro) != 0)
-    {
-      return -1;
-    }
-#endif
-
   /** plugin initialization */
-  if((state->bgp_ribs = bgpribs_create()) == NULL) 
+  if((state->bgp_ribs = bgpribs_create(BGPRIBS_METRIC_PREFIX)) == NULL) 
     {
       bgpcorsaro_log(__func__, bgpcorsaro,
 		     "could not create bgpribs in bgpcorsaro_bgpribs_state_t");
@@ -207,8 +196,16 @@ int bgpcorsaro_bgpribs_init_output(bgpcorsaro_t *bgpcorsaro)
     }
   
   bgpcorsaro_plugin_register_state(bgpcorsaro->plugin_manager, plugin, state);
+
   /* defer opening the output file until we start the first interval */
 
+    /* parse the arguments */
+  if(parse_args(bgpcorsaro) != 0)
+    {
+      return -1;
+    }
+
+  
   return 0;
 
  err:

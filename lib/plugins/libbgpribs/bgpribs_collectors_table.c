@@ -118,13 +118,17 @@ static int collectors_table_peers_cnt(collectors_table_wrapper_t *collectors_tab
 /* dump statistics for each collector */
 #ifdef WITH_BGPWATCHER
 int collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
-				   int interval_processing_start,
-				   int interval_start, int interval_end,
-				   bw_client_t *bw_client)
+				  int interval_processing_start,
+				  int interval_start,
+				  int interval_end,
+				  char *metric_pfx,
+				  bw_client_t *bw_client)
 #else
 int collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
 				  int interval_processing_start,
-				  int interval_start, int interval_end)
+				  int interval_start,
+				  int interval_end,
+				  char *metric_pfx)
 #endif
 {
   assert(collectors_table != NULL); 
@@ -146,9 +150,9 @@ int collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
 	  if(collector_data->status != COLLECTOR_NULL)
 	    {
 #ifdef WITH_BGPWATCHER
-	      ret = collectordata_interval_end(collector_data,interval_start, bw_client);
+	      ret = collectordata_interval_end(collector_data,interval_start, metric_pfx, bw_client);
 #else
-	      ret = collectordata_interval_end(collector_data,interval_start);
+	      ret = collectordata_interval_end(collector_data,interval_start, metric_pfx);
 #endif
 	      if(ret < 0)
 		{
@@ -162,21 +166,17 @@ int collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
 	    {
 	      // send an empty peer table (the client is already registered
 	      // it is sending information, saying that no data are available
+	      // for the current collector
 	      uint32_t peer_table_time = interval_start;
 
-	      
-	      if(bgpwatcher_client_pfx_table_begin(bw_client->client,
-	  					   peer_table_time,
-	  					   collector_data->dump_collector,
-	  					   0) < 0)
+	      if(bgpwatcher_client_pfx_table_begin(bw_client->client, peer_table_time,
+	  					   collector_data->dump_collector, 0) < 0)
 	  	{
-	  	  // TODO comment here
 	  	  return -1;
 	  	}
 	      
 	      if(bgpwatcher_client_pfx_table_end(bw_client->client) < 0)
 	  	{
-	  	  // TODO comment here
 	  	  return -1;
 	  	}
 	      
@@ -184,7 +184,7 @@ int collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
 #endif
 	}
     }
-
+  
   // if there is only 1 collector, then output its processing statistics
   // otherwise use the word "multiple"
   char collector_str[64];
@@ -211,9 +211,10 @@ int collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
 
   // OUTPUT METRIC: Interval processing time
   time_t now = time(NULL); 
-  fprintf(stdout,
-	  METRIC_PREFIX".%s.interval_processing_time %ld %d\n",
-	  collector_str, (now - interval_processing_start),
+  fprintf(stdout, "%s.%s.interval_processing_time %ld %d\n",
+	  metric_pfx,
+	  collector_str,
+	  (now - interval_processing_start),
 	  interval_start);
 
   return 0;

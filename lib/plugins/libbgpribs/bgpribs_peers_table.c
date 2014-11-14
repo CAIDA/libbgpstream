@@ -53,6 +53,8 @@ int peers_table_process_record(peers_table_t *peers_table,
   bgpstream_elem_t * bs_iterator;
   khiter_t k;
   int khret;
+  bl_ipv4_addr_t ipv4_addr;
+  bl_ipv6_addr_t ipv6_addr;
   peerdata_t * peer_data = NULL;
 
   /* if we receive a VALID_RECORD we extract the 
@@ -70,9 +72,9 @@ int peers_table_process_record(peers_table_t *peers_table,
 	  /* update peer information and check return value*/
 	  if(bs_iterator->peer_address.type == BST_IPV4)
 	    {
+	      ipv4_addr = bs_iterator->peer_address.address.v4_addr;
 	      /* check if this peer is in the hash already */
-	      if((k = kh_get(ipv4_peers_table_t, peers_table->ipv4_peers_table,
-			     bs_iterator->peer_address)) ==
+	      if((k = kh_get(ipv4_peers_table_t, peers_table->ipv4_peers_table, ipv4_addr)) ==
 		 kh_end(peers_table->ipv4_peers_table))
 		{
 		  /* create a new peerdata structure */
@@ -84,8 +86,9 @@ int peers_table_process_record(peers_table_t *peers_table,
 		    }
 		  /* add it to the hash */
 		  k = kh_put(ipv4_peers_table_t, peers_table->ipv4_peers_table, 
-			     bs_iterator->peer_address, &khret);
+			     ipv4_addr, &khret);
 		  kh_value(peers_table->ipv4_peers_table, k) = peer_data;
+		  
 		  // if we have just created a peer_data and we are reading
 		  // a BGPSTREAM_RIB, we move the rt_status to UC_ON
 		  if(bs_record->attributes.dump_type == BGPSTREAM_RIB)
@@ -104,8 +107,9 @@ int peers_table_process_record(peers_table_t *peers_table,
 	  else 
 	    { // assert(bs_iterator->peer_address.type == BST_IPV6) 
 	      /* check if this peer is in the hash already */
-	      if((k = kh_get(ipv6_peers_table_t, peers_table->ipv6_peers_table,
-			     bs_iterator->peer_address)) ==
+	      ipv6_addr = bs_iterator->peer_address.address.v6_addr;
+
+	      if((k = kh_get(ipv6_peers_table_t, peers_table->ipv6_peers_table, ipv6_addr)) ==
 		 kh_end(peers_table->ipv6_peers_table))
 		{
 		  /* create a new peerdata structure */
@@ -117,7 +121,7 @@ int peers_table_process_record(peers_table_t *peers_table,
 		    }
 		  /* add it to the hash */
 		  k = kh_put(ipv6_peers_table_t, peers_table->ipv6_peers_table, 
-			     bs_iterator->peer_address, &khret);
+			     ipv6_addr, &khret);
 		  kh_value(peers_table->ipv6_peers_table, k) = peer_data;
 		  // if we have just created a peer_data and we are reading
 		  // a BGPSTREAM_RIB, we move the rt_status to UC_ON
@@ -246,19 +250,23 @@ int peers_table_process_record(peers_table_t *peers_table,
 int peers_table_interval_end(char *project_str, char *collector_str,
 			     peers_table_t *peers_table,
 			     aggregated_bgp_stats_t * collector_aggr_stats,
-			     bw_client_t *bw_client,
-			     int interval_start)
+			     int interval_start,
+			     char *metric_pfx,
+			     bw_client_t *bw_client)
 #else
 int peers_table_interval_end(char *project_str, char *collector_str,
 			     peers_table_t *peers_table,
 			     aggregated_bgp_stats_t * collector_aggr_stats,
-			     int interval_start)
+			     int interval_start,
+			     char *metric_pfx)
 #endif
 {
   assert(peers_table);
   khiter_t k;
-  bgpstream_ip_address_t peer_address;
   peerdata_t * peer_data;
+  bl_ipv4_addr_t ipv4_addr;
+  bl_ipv6_addr_t ipv6_addr;
+
 #ifdef WITH_BGPWATCHER
   int rc;
   bl_addr_storage_t peer_ip;
@@ -280,12 +288,11 @@ int peers_table_interval_end(char *project_str, char *collector_str,
     {
       if (kh_exist(peers_table->ipv4_peers_table, k))
 	{
-	  peer_address = kh_key(peers_table->ipv4_peers_table, k);
+	  ipv4_addr = kh_key(peers_table->ipv4_peers_table, k);
 	  peer_data = kh_value(peers_table->ipv4_peers_table, k);
 
 #ifdef WITH_BGPWATCHER
-	  peer_ip.version = BL_ADDR_IPV4;
-	  peer_ip.ipv4.s_addr = peer_address.address.v4_addr.s_addr;
+	  peer_ip = bl_addr_ipv42storage(&ipv4_addr);
 	  if((bw_client->peer_id = bgpwatcher_client_pfx_table_add_peer(bw_client->client,
 									&peer_ip, 
 									peer_data->status)) < 0)
@@ -294,13 +301,11 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 	      fprintf(stderr, "Something went wrong with bgpwatcher peer table add\n");
 	      return -1;
 	    }
-	  if(peerdata_interval_end(project_str, collector_str, 
-				   &peer_address, peer_data, 
-				   collector_aggr_stats, bw_client, interval_start) < 0)
+	  if(peerdata_interval_end(project_str, collector_str, peer_data, 
+				   collector_aggr_stats, interval_start, metric_pfx, bw_client) < 0)
 #else
-	  if(peerdata_interval_end(project_str, collector_str, 
-				   &peer_address, peer_data, 
-				   collector_aggr_stats, interval_start) < 0)
+	  if(peerdata_interval_end(project_str, collector_str, peer_data, 
+				   collector_aggr_stats, interval_start, metric_pfx) < 0)
 #endif
 	    {
 	      return -1;
@@ -314,11 +319,11 @@ int peers_table_interval_end(char *project_str, char *collector_str,
     {
       if (kh_exist(peers_table->ipv6_peers_table, k))
 	{
-	  peer_address = kh_key(peers_table->ipv6_peers_table, k);
+	  ipv6_addr = kh_key(peers_table->ipv6_peers_table, k);
 	  peer_data = kh_value(peers_table->ipv6_peers_table, k);
+	  
 #ifdef WITH_BGPWATCHER
-	  peer_ip.version = BL_ADDR_IPV6;
-	  memcpy(&peer_ip.ipv6.s6_addr, &peer_address.address.v6_addr.s6_addr,16);
+	  peer_ip = bl_addr_ipv62storage(&ipv6_addr);
 	  
 	  if((bw_client->peer_id = bgpwatcher_client_pfx_table_add_peer(bw_client->client,
 									&peer_ip, 
@@ -328,13 +333,11 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 	      fprintf(stderr, "Something went wrong with bgpwatcher peer table add\n");
 	      return -1;
 	    }
-	  if(peerdata_interval_end(project_str, collector_str, 
-				   &peer_address, peer_data, 
-				   collector_aggr_stats, bw_client, interval_start) < 0)
+	  if(peerdata_interval_end(project_str, collector_str, peer_data, 
+				   collector_aggr_stats, interval_start, metric_pfx, bw_client) < 0)
 #else
-	  if(peerdata_interval_end(project_str, collector_str, 
-				   &peer_address, peer_data, 
-				   collector_aggr_stats, interval_start) < 0)
+	  if(peerdata_interval_end(project_str, collector_str, peer_data, 
+				   collector_aggr_stats, interval_start, metric_pfx) < 0)
 #endif
 	    {
 	      return -1;

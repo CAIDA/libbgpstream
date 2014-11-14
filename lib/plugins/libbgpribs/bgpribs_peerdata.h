@@ -133,16 +133,17 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
  * @param peer_address IP address of the current peer
  * @param peer_data a pointer to the peerdata structure
  * @param collector_aggr_stats a pointer to a structure that aggregates data collector-wise
- * @param bw_client a pointer to the bgpwatcher client used to send data to the bgpwatcher
  * @param interval_start start of the interval in epoch time
+ * @param metric_pfx string that prepends every metric provided in output
+ * @param bw_client a pointer to the bgpwatcher client used to send data to the bgpwatcher
  * @return 0 if the function ended correctly,
  *        -1 if something went wrong during the function execution
  */
-int peerdata_interval_end(char *project_str, char *collector_str,
-			  bgpstream_ip_address_t *peer_address, peerdata_t *peer_data,
+int peerdata_interval_end(char *project_str, char *collector_str, peerdata_t *peer_data,
 			  aggregated_bgp_stats_t *collector_aggr_stats,
-			  bw_client_t *bw_client,
-			  int interval_start);
+			  int interval_start,
+			  char *metric_pfx,
+			  bw_client_t *bw_client);
 #else
 /** The function prints the statistics of a given peer for the interval of time
  *  that starts at interval_start.
@@ -153,13 +154,14 @@ int peerdata_interval_end(char *project_str, char *collector_str,
  * @param peer_data a pointer to the peerdata structure
  * @param collector_aggr_stats a pointer to a structure that aggregates data collector-wise
  * @param interval_start start of the interval in epoch time
+ * @param metric_pfx string that prepends every metric provided in output
  * @return 0 if the function ended correctly,
  *        -1 if something went wrong during the function execution
  */
-int peerdata_interval_end(char *project_str, char *collector_str,
-			  bgpstream_ip_address_t *peer_address, peerdata_t *peer_data,
+int peerdata_interval_end(char *project_str, char *collector_str, peerdata_t *peer_data,
 			  aggregated_bgp_stats_t *collector_aggr_stats,
-			  int interval_start);
+			  int interval_start,
+			  char *metric_pfx);
 #endif
 
 

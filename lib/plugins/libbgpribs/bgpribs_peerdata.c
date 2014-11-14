@@ -117,8 +117,9 @@ peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
 static void peerdata_log_event(peerdata_t *peer_data, 
 			bgpstream_record_t * bs_record, bgpstream_elem_t *bs_elem)
 {
-  // TODO: print in log
+  // TODO: printing log ?
   return;
+  
   if(bs_elem != NULL)
     {
       // print bs_elem variables
@@ -619,15 +620,15 @@ int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record)
 
 #ifdef WITH_BGPWATCHER
 int peerdata_interval_end(char *project_str, char *collector_str,
-			  bgpstream_ip_address_t *peer_address, peerdata_t *peer_data,
+			  peerdata_t *peer_data,
 			  aggregated_bgp_stats_t *collector_aggr_stats,
-			  bw_client_t *bw_client,
-			  int interval_start)
+			  int interval_start, char *metric_pfx,
+			  bw_client_t *bw_client)
 #else
 int peerdata_interval_end(char *project_str, char *collector_str,
-			  bgpstream_ip_address_t *peer_address, peerdata_t *peer_data,
+			  peerdata_t *peer_data,
 			  aggregated_bgp_stats_t *collector_aggr_stats,
-			  int interval_start)
+			  int interval_start, char *metric_pfx)
 #endif
 {
   khiter_t k;
@@ -637,8 +638,8 @@ int peerdata_interval_end(char *project_str, char *collector_str,
   uint32_t as;
 
  // OUTPUT METRIC: peer_status
-  fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.peer_status %d %d\n",
+  fprintf(stdout, "%s.%s.%s.%s.peer_status %d %d\n",
+	  metric_pfx,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
@@ -647,29 +648,29 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  interval_start);
 
   // OUTPUT METRIC: elem_types[]
-  fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.elem_announcements_cnt %"PRIu64" %d\n",
+  fprintf(stdout,"%s.%s.%s.%s.elem_announcements_cnt %"PRIu64" %d\n",
+	  metric_pfx,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
 	  peer_data->elem_types[BST_ANNOUNCEMENT],
 	  interval_start);
-  fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.elem_withdrawals_cnt %"PRIu64" %d\n",
+  fprintf(stdout, "%s.%s.%s.%s.elem_withdrawals_cnt %"PRIu64" %d\n",
+	  metric_pfx,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
 	  peer_data->elem_types[BST_WITHDRAWAL],
 	  interval_start);
-  fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.elem_rib_cnt %"PRIu64" %d\n",
+  fprintf(stdout, "%s.%s.%s.%s.elem_rib_cnt %"PRIu64" %d\n",
+	  metric_pfx,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
 	  peer_data->elem_types[BST_RIB],
 	  interval_start);
-  fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.elem_state_cnt %"PRIu64" %d\n",
+  fprintf(stdout, "%s.%s.%s.%s.elem_state_cnt %"PRIu64" %d\n",
+	  metric_pfx,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
@@ -677,15 +678,15 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  interval_start);
 
   // OUTPUT METRIC: state elem detail
-  fprintf(stdout,
-  	  METRIC_PREFIX".%s.%s.%s.elem_state_established_cnt %"PRIu64" %d\n",
+  fprintf(stdout, "%s.%s.%s.%s.elem_state_established_cnt %"PRIu64" %d\n",
+	  metric_pfx,
   	  project_str,
   	  collector_str,
   	  peer_data->peer_address_str,
   	  peer_data->state_up_elems,
   	  interval_start);
-  fprintf(stdout,
-  	  METRIC_PREFIX".%s.%s.%s.elem_state_down_cnt %"PRIu64" %d\n",
+  fprintf(stdout, "%s.%s.%s.%s.elem_state_down_cnt %"PRIu64" %d\n",
+	  metric_pfx,
   	  project_str,
   	  collector_str,
   	  peer_data->peer_address_str,
@@ -693,8 +694,8 @@ int peerdata_interval_end(char *project_str, char *collector_str,
   	  interval_start);
 
   // OUTPUT METRIC: ignored elem
-  fprintf(stdout,
-  	  METRIC_PREFIX".%s.%s.%s.elem_ignored_cnt %"PRIu64" %d\n",
+  fprintf(stdout, "%s.%s.%s.%s.elem_ignored_cnt %"PRIu64" %d\n",
+	  metric_pfx,
   	  project_str,
   	  collector_str,
   	  peer_data->peer_address_str,
@@ -702,29 +703,29 @@ int peerdata_interval_end(char *project_str, char *collector_str,
   	  interval_start);
 
   // OUTPUT METRIC: out of order details
-  fprintf(stdout,
-  	  METRIC_PREFIX".%s.%s.%s.elem_out_of_order_cnt %"PRIu64" %d\n",
+  fprintf(stdout, "%s.%s.%s.%s.elem_out_of_order_cnt %"PRIu64" %d\n",
+	  metric_pfx,
   	  project_str,
   	  collector_str,
   	  peer_data->peer_address_str,
   	  peer_data->out_of_order,
   	  interval_start);
-  fprintf(stdout,
-  	  METRIC_PREFIX".%s.%s.%s.elem_soft_merge_cnt %"PRIu64" %d\n",
+  fprintf(stdout, "%s.%s.%s.%s.elem_soft_merge_cnt %"PRIu64" %d\n",
+	  metric_pfx,
   	  project_str,
   	  collector_str,
   	  peer_data->peer_address_str,
   	  peer_data->soft_merge_cnt,
   	  interval_start);
-  fprintf(stdout,
-  	  METRIC_PREFIX".%s.%s.%s.elem_out_of_order_ignored_cnt %"PRIu64" %d\n",
+  fprintf(stdout, "%s.%s.%s.%s.elem_out_of_order_ignored_cnt %"PRIu64" %d\n",
+	  metric_pfx,
   	  project_str,
   	  collector_str,
   	  peer_data->peer_address_str,
   	  peer_data->ignored_out_of_order,
   	  interval_start);
-  fprintf(stdout,
-  	  METRIC_PREFIX".%s.%s.%s.elem_out_of_order_in_rib_cnt %"PRIu64" %d\n",
+  fprintf(stdout,  "%s.%s.%s.%s.elem_out_of_order_in_rib_cnt %"PRIu64" %d\n",
+	  metric_pfx,
   	  project_str,
   	  collector_str,
   	  peer_data->peer_address_str,
@@ -735,15 +736,15 @@ int peerdata_interval_end(char *project_str, char *collector_str,
   // OUTPUT METRIC:  new active rib related metrics
   if(peer_data->new_rib == 1)
     {
-      fprintf(stdout,
-  	      METRIC_PREFIX".%s.%s.%s.new_rib_flag %"PRIu8" %d\n",
+      fprintf(stdout, "%s.%s.%s.%s.new_rib_flag %"PRIu8" %d\n",
+	      metric_pfx,
   	      project_str,
   	      collector_str,
   	      peer_data->peer_address_str,
   	      peer_data->new_rib,
   	      interval_start);
-      fprintf(stdout,
-  	      METRIC_PREFIX".%s.%s.%s.new_rib_length %"PRIu8" %d\n",
+      fprintf(stdout, "%s.%s.%s.%s.new_rib_length %"PRIu8" %d\n",
+	      metric_pfx,
   	      project_str,
   	      collector_str,
   	      peer_data->peer_address_str,
@@ -763,8 +764,8 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 
 
   // OUTPUT METRIC: peer_affected_ipv4_prefixes_cnt
-  fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.peer_affected_ipv4_prefixes_cnt %d %d\n",
+  fprintf(stdout, "%s.%s.%s.%s.peer_affected_ipv4_prefixes_cnt %d %d\n",
+	  metric_pfx,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
@@ -772,8 +773,8 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  interval_start);
 
   // OUTPUT METRIC: peer_affected_ipv6_prefixes_cnt
-  fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.peer_affected_ipv6_prefixes_cnt %d %d\n",
+  fprintf(stdout, "%s.%s.%s.%s.peer_affected_ipv6_prefixes_cnt %d %d\n",
+	  metric_pfx,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
@@ -781,8 +782,8 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  interval_start);
 
   // OUTPUT METRIC: peer_announcing_origin_ases_cnt
-  fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.peer_announcing_origin_ases_cnt %d %d\n",
+  fprintf(stdout, "%s.%s.%s.%s.peer_announcing_origin_ases_cnt %d %d\n",
+	  metric_pfx,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
@@ -934,8 +935,8 @@ int peerdata_interval_end(char *project_str, char *collector_str,
     }
 
   // OUTPUT METRIC: ipv4_rib_size
-  fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.peer_ipv4_rib_size %d %d\n",
+  fprintf(stdout, "%s.%s.%s.%s.peer_ipv4_rib_size %d %d\n",
+	  metric_pfx,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
@@ -943,8 +944,8 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  interval_start);
 
   // OUTPUT METRIC: ipv6_rib_size
-  fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.peer_ipv6_rib_size %d %d\n",
+  fprintf(stdout, "%s.%s.%s.%s.peer_ipv6_rib_size %d %d\n",
+	  metric_pfx,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
@@ -952,8 +953,8 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  interval_start);
 
   // OUTPUT METRIC: unique_std_origin_ases_cnt
-  fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.peer_unique_std_origin_ases_cnt %d %d\n",
+  fprintf(stdout, "%s.%s.%s.%s.peer_unique_std_origin_ases_cnt %d %d\n",
+	  metric_pfx,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
@@ -966,8 +967,8 @@ int peerdata_interval_end(char *project_str, char *collector_str,
     {
       avg_aspath_len_ipv4 = avg_aspath_len_ipv4 / ipv4_size;
     }
-  fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.peer_avg_aspathlen_ipv4 %f %d\n",
+  fprintf(stdout, "%s.%s.%s.%s.peer_avg_aspathlen_ipv4 %f %d\n",
+	  metric_pfx,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
@@ -979,8 +980,8 @@ int peerdata_interval_end(char *project_str, char *collector_str,
     {
       avg_aspath_len_ipv6 = avg_aspath_len_ipv6 / ipv6_size;
     }
-  fprintf(stdout,
-	  METRIC_PREFIX".%s.%s.%s.peer_avg_aspathlen_ipv6 %f %d\n",
+  fprintf(stdout, "%s.%s.%s.%s.peer_avg_aspathlen_ipv6 %f %d\n",
+	  metric_pfx,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,

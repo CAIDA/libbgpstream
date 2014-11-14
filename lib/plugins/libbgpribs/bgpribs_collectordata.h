@@ -98,23 +98,28 @@ int collectordata_process_record(collectordata_t *collector_data,
  * 
  * @param collector_data a pointer to the collector data structure
  * @param interval_start start of the interval in epoch time
+ * @param metric_pfx string that prepends every metric provided in output
  * @param bw_client a pointer to the bgpwatcher client used to send data to the bgpwatcher
  * @return 0 if the function ended correctly,
  *        -1 if something went wrong during the function execution
  */
 int collectordata_interval_end(collectordata_t *collector_data, 
-			       int interval_start, bw_client_t *bw_client);
+			       int interval_start,
+			       char *metric_pfx,
+			       bw_client_t *bw_client);
 #else
 /** The function prints the statistics of a given collector for the interval of time
  *  that starts at interval_start if the status is not NULL.
  * 
  * @param collector_data a pointer to the collector data structure
  * @param interval_start start of the interval in epoch time
+ * @param metric_pfx string that prepends every metric provided in output
  * @return 0 if the function ended correctly,
  *        -1 if something went wrong during the function execution
  */
 int collectordata_interval_end(collectordata_t *collector_data, 
-			       int interval_start);
+			       int interval_start,
+			       char *metric_pfx);
 #endif
 
 /** Deallocate memory for the collector's data.

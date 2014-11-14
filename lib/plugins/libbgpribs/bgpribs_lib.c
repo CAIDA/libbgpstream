@@ -36,7 +36,7 @@
 #endif
 
 
-bgpribs_t *bgpribs_create()
+bgpribs_t *bgpribs_create(char *metric_pfx)
 {
   bgpribs_t *bgp_ribs;
   if((bgp_ribs = malloc_zero(sizeof(bgpribs_t))) == NULL)
@@ -51,10 +51,18 @@ bgpribs_t *bgpribs_create()
       free(bgp_ribs);
       return NULL;
     }
-
+  if((bgp_ribs->metric_pfx = strdup(metric_pfx)) == NULL)
+    {
+      collectors_table_destroy(bgp_ribs->collectors_table);
+      bgp_ribs->collectors_table = NULL;
+      free(bgp_ribs);
+      return NULL;
+    }
+  
 #ifdef WITH_BGPWATCHER
   if((bgp_ribs->bw_client = bw_client_create()) == NULL)
     {
+      free(bgp_ribs->metric_pfx);
       collectors_table_destroy(bgp_ribs->collectors_table);
       bgp_ribs->collectors_table = NULL;
       free(bgp_ribs);
@@ -65,6 +73,15 @@ bgpribs_t *bgpribs_create()
   return bgp_ribs;
 }
 
+
+void bgpribs_set_metric_pfx(bgpribs_t *bgp_ribs, char* met_pfx)
+{
+  if(bgp_ribs->metric_pfx != NULL)
+    {
+      free(bgp_ribs->metric_pfx);
+    }
+  bgp_ribs->metric_pfx = strdup(met_pfx);
+}
 
 void bgpribs_interval_start(bgpribs_t *bgp_ribs, int interval_start)
 {
@@ -87,12 +104,16 @@ int bgpribs_interval_end(bgpribs_t *bgp_ribs, int interval_end)
 #ifdef WITH_BGPWATCHER
   return collectors_table_interval_end(bgp_ribs->collectors_table, 
 				       bgp_ribs->interval_processing_start,
-				       bgp_ribs->interval_start, bgp_ribs->interval_end,
+				       bgp_ribs->interval_start,
+				       bgp_ribs->interval_end,
+				       bgp_ribs->metric_pfx,
 				       bgp_ribs->bw_client);
 #else
   return collectors_table_interval_end(bgp_ribs->collectors_table, 
 				       bgp_ribs->interval_processing_start,
-				       bgp_ribs->interval_start, bgp_ribs->interval_end);
+				       bgp_ribs->interval_start,
+				       bgp_ribs->interval_end,
+				       bgp_ribs->metric_pfx);
 #endif
 }
 
@@ -106,6 +127,11 @@ void bgpribs_destroy(bgpribs_t *bgp_ribs)
     {
       collectors_table_destroy(bgp_ribs->collectors_table);
       bgp_ribs->collectors_table = NULL;
+    }
+  if(bgp_ribs->metric_pfx != NULL)
+    {
+      free(bgp_ribs->metric_pfx);
+      bgp_ribs->metric_pfx = NULL;
     }
 #ifdef WITH_BGPWATCHER
   if(bgp_ribs->bw_client != NULL)
