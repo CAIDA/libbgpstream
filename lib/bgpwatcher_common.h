@@ -48,10 +48,10 @@
 #define BGPWATCHER_CLIENT_URI_DEFAULT "tcp://*:6300"
 
 /** Default the server/client heartbeat interval to 100 msec */
-#define BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT 1500
+#define BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT 1000
 
-/** Default the server/client heartbeat liveness to 10 beats */
-#define BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT 4
+/** Default the server/client heartbeat liveness to 120 beats */
+#define BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT 120
 
 /** Default the client reconnect minimum interval to 1 second */
 #define BGPWATCHER_RECONNECT_INTERVAL_MIN 1000

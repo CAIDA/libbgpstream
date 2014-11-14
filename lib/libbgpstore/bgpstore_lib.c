@@ -62,7 +62,7 @@ bgpstore_t *bgpstore_create()
   // create a fake client that requires interests
   bgpstore_client_connect(bgp_store, "Consumer",
 			  //BGPWATCHER_CONSUMER_INTEREST_BGPVIEWSTATUS | BGPWATCHER_CONSUMER_INTEREST_ASVISIBILITY,
-			  BGPWATCHER_CONSUMER_INTEREST_BGPVIEWSTATUS,
+			  BGPWATCHER_CONSUMER_INTEREST_ASVISIBILITY,
 			  0);
 
   
@@ -343,7 +343,7 @@ int bgpstore_completion_check(bgpstore_t *bgp_store, bgpview_t *bgp_view, uint32
       return ret;
     }
   
-  uint8_t remove_view;
+  uint8_t remove_view = 0;
 
   /** The completion check can be triggered by different events:
    *  BGPSTORE_TABLE_END         - a new prefix table has been completely received
@@ -352,26 +352,20 @@ int bgpstore_completion_check(bgpstore_t *bgp_store, bgpview_t *bgp_view, uint32
    *  BGPSTORE_CLIENT_DISCONNECT - a client has disconnected 
    *  BGPSTORE_TIMEOUT_EXPIRED   - the timeout for a given view is expired
    *
-   *  if the completion check gives a positive result (1) or if the trigger is either
-   *  a timeout expired or a window exceeded, the view is passed to the dispatcher and
-   *  never processed again
+   *  if the trigger is either a timeout expired or a window exceeded, the view is 
+   *  passed to the dispatcher and never processed again
    *
-   *  if the completion check returns 0 (not all clients are done) and the trigger is 
-   *  either a table end or a client disconnect, then the view is passed to the 
-   *  dispatcher but it is not destroyed, as further processing may be performed
+   *  in any other case the view is passed to the dispatcher but it is not
+   *  destroyed, as further processing may be performed
    */
-  if((trigger == BGPSTORE_WDW_EXCEEDED || trigger == BGPSTORE_TIMEOUT_EXPIRED) ||
-     ((trigger == BGPSTORE_TABLE_END || trigger == BGPSTORE_CLIENT_DISCONNECT) && ret == 1) 
-    )
+
+  if((trigger == BGPSTORE_WDW_EXCEEDED || trigger == BGPSTORE_TIMEOUT_EXPIRED))
     {
       remove_view = 1;
     }
-  if((trigger == BGPSTORE_TABLE_END || trigger == BGPSTORE_CLIENT_DISCONNECT) && ret == 0)
-    {
-      remove_view = 0;
-    }
 
-  dump_bgpstore_cc_status(bgp_store, bgp_view, ts, trigger, remove_view);
+  // DEBUG information about the current status
+  // dump_bgpstore_cc_status(bgp_store, bgp_view, ts, trigger, remove_view);
   
   // TODO: documentation
   ret = bgpstore_interests_dispatcher_run(bgp_store->active_clients, bgp_view, ts);

@@ -40,7 +40,7 @@
 #include <assert.h>
 
 
-#define METRIC_PREFIX "bgp.visibility"
+#define METRIC_PREFIX "bgp.test.visibility"
 
 
 // AS -> prefix set
@@ -225,16 +225,12 @@ int perasvisibility_interest_send(perasvisibility_interest_t* peras_vis, char *c
 	{
 	  asn = kh_key(peras_vis->as_vis_map,k);
 	  ipv4_pfx_cnt = kh_size(kh_value(peras_vis->as_vis_map,k));
-	  // TODO remove later
-	  if(asn == 1909) // SDSC AS number
-	    {
-	      // OUTPUT: number of ipv4 prefixes seen by each AS
-	      fprintf(stdout,
-		      METRIC_PREFIX".ipv4.%"PRIu32" %"PRIu64" %"PRIu32"\n",
-		      asn,
-		      ipv4_pfx_cnt,
-		      peras_vis->ts);
-	    }
+	  // OUTPUT: number of ipv4 prefixes seen by each AS
+	  fprintf(stdout,
+		  METRIC_PREFIX".%"PRIu32".ipv4_cnt %"PRIu64" %"PRIu32"\n",
+		  asn,
+		  ipv4_pfx_cnt,
+		  peras_vis->ts);
 	}
     }
   
