@@ -269,6 +269,7 @@ static int filter_vis_update(filter_vis_t *fv, bgpstream_record_t *bs_record)
 	    }
 	  bs_iterator = bs_iterator->next;
 	}
+      bgpstream_destroy_elem_queue( bs_elem_queue);	    
     }
   return 0;  
 }
