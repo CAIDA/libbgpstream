@@ -147,6 +147,8 @@ typedef struct struct_filter_vis_t {
   // show flags
   uint8_t show_ipv4;
   uint8_t show_ipv6;
+  // incremental flag
+  uint8_t incremental;
 } filter_vis_t;
 
 static filter_vis_t *filter_vis_create(){
@@ -171,6 +173,8 @@ static filter_vis_t *filter_vis_create(){
       // show flags
       fv->show_ipv4 = 0;
       fv->show_ipv6 = 0;
+      // incremental flag
+      fv->incremental = 0;
     }
   return fv;
 }
@@ -459,25 +463,28 @@ static void filter_vis_end(filter_vis_t *fv, int end_time)
   kh_destroy(ipv6prefix_peer_map, ipv6_pfx_visinfo);
   
   // reset persistent structure
-  for (k = kh_begin(fv->ipv4_vis); k != kh_end(fv->ipv4_vis); ++k)
+  if(fv->incremental == 0)
     {
-      if (kh_exist(fv->ipv4_vis, k))
+      for (k = kh_begin(fv->ipv4_vis); k != kh_end(fv->ipv4_vis); ++k)
 	{
-	  ipv4_set = kh_value(fv->ipv4_vis, k);
-	  bl_ipv4_pfx_set_destroy(ipv4_set);
+	  if (kh_exist(fv->ipv4_vis, k))
+	    {
+	      ipv4_set = kh_value(fv->ipv4_vis, k);
+	      bl_ipv4_pfx_set_destroy(ipv4_set);
+	    }
 	}
-    }
-  kh_clear(peer_ipv4prefix_map, fv->ipv4_vis);
+      kh_clear(peer_ipv4prefix_map, fv->ipv4_vis);
 
-    for (k = kh_begin(fv->ipv6_vis); k != kh_end(fv->ipv6_vis); ++k)
-    {
-      if (kh_exist(fv->ipv6_vis, k))
+      for (k = kh_begin(fv->ipv6_vis); k != kh_end(fv->ipv6_vis); ++k)
 	{
-	  ipv6_set = kh_value(fv->ipv6_vis, k);
-	  bl_ipv6_pfx_set_destroy(ipv6_set);
+	  if (kh_exist(fv->ipv6_vis, k))
+	    {
+	      ipv6_set = kh_value(fv->ipv6_vis, k);
+	      bl_ipv6_pfx_set_destroy(ipv6_set);
+	    }
 	}
+      kh_clear(peer_ipv6prefix_map, fv->ipv6_vis);
     }
-    kh_clear(peer_ipv6prefix_map, fv->ipv6_vis);
 }
 
 static void filter_vis_destroy(filter_vis_t *fv)
@@ -526,7 +533,7 @@ static void filter_vis_destroy(filter_vis_t *fv)
       // finally free fv
       free(fv);  
     }
-  // TODO: destroy other objects
+  
 }
 
 /** ************************************************** */
@@ -559,11 +566,12 @@ struct bgpcorsaro_filtervis_state_t {
 static void usage(bgpcorsaro_plugin_t *plugin)
 {
   fprintf(stderr,
-	  "plugin usage: %s [-46] [-f ipv4_ff_size] [-F ipv6_ff_size]\n"
+	  "plugin usage: %s [-46i] [-f ipv4_ff_size] [-F ipv6_ff_size]\n"
 	  "       -4         print ipv4 prefixes visibility (default: both version on)\n"
 	  "       -6         print ipv6 prefixes visibility (default: both version on)\n"
 	  "       -f <num>   set the full feed threshold for ipv4 peers (default: %d)\n"
-	  "       -F <num>   set the full feed threshold for ipv6 peers (default: %d)\n",
+	  "       -F <num>   set the full feed threshold for ipv6 peers (default: %d)\n"
+	  "       -i         incremental output (default: off)\n",
 	  plugin->argv[0], FV_IPV4_FULLFEED_SIZE, FV_IPV6_FULLFEED_SIZE);
 }
 
@@ -582,7 +590,7 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
   /* NB: remember to reset optind to 1 before using getopt! */
   optind = 1;
 
-  while((opt = getopt(plugin->argc, plugin->argv, "46f:F:?")) >= 0)
+  while((opt = getopt(plugin->argc, plugin->argv, "46f:F:i?")) >= 0)
     {
       switch(opt)
 	{
@@ -598,7 +606,9 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
 	case 'F':
 	  state->filter_vis->ipv6_full_feed_th = atoi(optarg);
 	  break;
-
+	case 'i':
+	  state->filter_vis->incremental = 1;
+	  break;
 	case '?':
 	case ':':
 	default:
