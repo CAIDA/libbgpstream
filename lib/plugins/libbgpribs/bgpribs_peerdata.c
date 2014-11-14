@@ -876,20 +876,22 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 		}
 	      avg_aspath_len_ipv4 += pd.aspath.hop_count;
 #ifdef WITH_BGPWATCHER
+	      if(bw_client->bwatcher_on)
+		{
+		  ip_prefix.mask_len = ipv4_prefix.mask_len;
+		  ip_prefix.address.version = BL_ADDR_IPV4;
+		  ip_prefix.address.ipv4 = ipv4_prefix.address;
 
-	      ip_prefix.mask_len = ipv4_prefix.mask_len;
-	      ip_prefix.address.version = BL_ADDR_IPV4;
-	      ip_prefix.address.ipv4 = ipv4_prefix.address;
-
-	      if(bgpwatcher_client_pfx_table_add(bw_client->client,
-						 bw_client->peer_id,
-						 &ip_prefix,
-						 pd.origin_as) < 0)
-	      	{
-	      	  bgpwatcher_client_perr(bw_client->client);
-	      	  fprintf(stderr, "Could not add to pfx table\n");
-	      	  return -1;
-	      	}
+		  if(bgpwatcher_client_pfx_table_add(bw_client->client,
+						     bw_client->peer_id,
+						     &ip_prefix,
+						     pd.origin_as) < 0)
+		    {
+		      bgpwatcher_client_perr(bw_client->client);
+		      fprintf(stderr, "Could not add to pfx table\n");
+		      return -1;
+		    }
+		}
 #endif
 	    }
 	}
@@ -915,20 +917,22 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 		}
 	      avg_aspath_len_ipv6 += pd.aspath.hop_count;
 #ifdef WITH_BGPWATCHER
+	      if(bw_client->bwatcher_on)
+		{		  
+		  ip_prefix.mask_len = ipv6_prefix.mask_len;
+		  ip_prefix.address.version = BL_ADDR_IPV6;
+		  ip_prefix.address.ipv6 = ipv6_prefix.address;
 
-	      ip_prefix.mask_len = ipv6_prefix.mask_len;
-	      ip_prefix.address.version = BL_ADDR_IPV6;
-	      ip_prefix.address.ipv6 = ipv6_prefix.address;
-
-	      if(bgpwatcher_client_pfx_table_add(bw_client->client,
-						       bw_client->peer_id,
-	      					       &ip_prefix,
-	      					       pd.origin_as) < 0)
-	      	{
-	      	  bgpwatcher_client_perr(bw_client->client);
-	      	  fprintf(stderr, "Could not add to pfx table\n");
-	      	  return -1;
-	      	}
+		  if(bgpwatcher_client_pfx_table_add(bw_client->client,
+						     bw_client->peer_id,
+						     &ip_prefix,
+						     pd.origin_as) < 0)
+		    {
+		      bgpwatcher_client_perr(bw_client->client);
+		      fprintf(stderr, "Could not add to pfx table\n");
+		      return -1;
+		    }
+		}
 #endif
 	    }
 	}

@@ -272,13 +272,17 @@ int peers_table_interval_end(char *project_str, char *collector_str,
   bl_addr_storage_t peer_ip;
   uint32_t peer_table_time = interval_start;
   int peers_cnt = kh_size(peers_table->ipv4_peers_table) + kh_size(peers_table->ipv6_peers_table);
-  if(bgpwatcher_client_pfx_table_begin(bw_client->client,
-  				       peer_table_time,
-  				       collector_str,
-  				       peers_cnt) < 0)
+  if(bw_client->bwatcher_on)
     {
-      fprintf(stderr, "Could not begin pfx table\n");
-      return -1;
+		  
+      if(bgpwatcher_client_pfx_table_begin(bw_client->client,
+					   peer_table_time,
+					   collector_str,
+					   peers_cnt) < 0)
+	{
+	  fprintf(stderr, "Could not begin pfx table\n");
+	  return -1;
+	}
     }
 #endif
 
@@ -292,14 +296,17 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 	  peer_data = kh_value(peers_table->ipv4_peers_table, k);
 
 #ifdef WITH_BGPWATCHER
-	  peer_ip = bl_addr_ipv42storage(&ipv4_addr);
-	  if((bw_client->peer_id = bgpwatcher_client_pfx_table_add_peer(bw_client->client,
-									&peer_ip, 
-									peer_data->status)) < 0)
-	    {
-	      // something went wrong with bgpwatcher
-	      fprintf(stderr, "Something went wrong with bgpwatcher peer table add\n");
-	      return -1;
+	  if(bw_client->bwatcher_on)
+	    {	      
+	      peer_ip = bl_addr_ipv42storage(&ipv4_addr);
+	      if((bw_client->peer_id = bgpwatcher_client_pfx_table_add_peer(bw_client->client,
+									    &peer_ip, 
+									    peer_data->status)) < 0)
+		{
+		  // something went wrong with bgpwatcher
+		  fprintf(stderr, "Something went wrong with bgpwatcher peer table add\n");
+		  return -1;
+		}
 	    }
 	  if(peerdata_interval_end(project_str, collector_str, peer_data, 
 				   collector_aggr_stats, interval_start, metric_pfx, bw_client) < 0)
@@ -323,15 +330,17 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 	  peer_data = kh_value(peers_table->ipv6_peers_table, k);
 	  
 #ifdef WITH_BGPWATCHER
-	  peer_ip = bl_addr_ipv62storage(&ipv6_addr);
-	  
-	  if((bw_client->peer_id = bgpwatcher_client_pfx_table_add_peer(bw_client->client,
-									&peer_ip, 
-									peer_data->status)) < 0)
+	  if(bw_client->bwatcher_on)
 	    {
-	      // something went wrong with bgpwatcher
-	      fprintf(stderr, "Something went wrong with bgpwatcher peer table add\n");
-	      return -1;
+	      peer_ip = bl_addr_ipv62storage(&ipv6_addr);	  
+	      if((bw_client->peer_id = bgpwatcher_client_pfx_table_add_peer(bw_client->client,
+									    &peer_ip, 
+									    peer_data->status)) < 0)
+		{
+		  // something went wrong with bgpwatcher
+		  fprintf(stderr, "Something went wrong with bgpwatcher peer table add\n");
+		  return -1;
+		}
 	    }
 	  if(peerdata_interval_end(project_str, collector_str, peer_data, 
 				   collector_aggr_stats, interval_start, metric_pfx, bw_client) < 0)
@@ -346,10 +355,13 @@ int peers_table_interval_end(char *project_str, char *collector_str,
     }
 
 #ifdef WITH_BGPWATCHER
-  if(bgpwatcher_client_pfx_table_end(bw_client->client) < 0 )
+  if(bw_client->bwatcher_on)
     {
-      fprintf(stderr, "Could not end pfx table\n");
-      return -1;
+      if(bgpwatcher_client_pfx_table_end(bw_client->client) < 0 )
+	{
+	  fprintf(stderr, "Could not end pfx table\n");
+	  return -1;
+	}
     }
 #endif
   return 0;

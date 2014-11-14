@@ -164,22 +164,24 @@ int collectors_table_interval_end(collectors_table_wrapper_t *collectors_table,
 #ifdef WITH_BGPWATCHER
 	  else
 	    {
-	      // send an empty peer table (the client is already registered
-	      // it is sending information, saying that no data are available
-	      // for the current collector
-	      uint32_t peer_table_time = interval_start;
+	      if(bw_client->bwatcher_on)
+		{
+		  // send an empty peer table (the client is already registered
+		  // it is sending information, saying that no data are available
+		  // for the current collector
+		  uint32_t peer_table_time = interval_start;
 
-	      if(bgpwatcher_client_pfx_table_begin(bw_client->client, peer_table_time,
-	  					   collector_data->dump_collector, 0) < 0)
-	  	{
-	  	  return -1;
-	  	}
+		  if(bgpwatcher_client_pfx_table_begin(bw_client->client, peer_table_time,
+						       collector_data->dump_collector, 0) < 0)
+		    {
+		      return -1;
+		    }
 	      
-	      if(bgpwatcher_client_pfx_table_end(bw_client->client) < 0)
-	  	{
-	  	  return -1;
-	  	}
-	      
+		  if(bgpwatcher_client_pfx_table_end(bw_client->client) < 0)
+		    {
+		      return -1;
+		    }
+		} 
 	    }
 #endif
 	}

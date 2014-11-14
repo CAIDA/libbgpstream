@@ -48,24 +48,19 @@ bgpribs_t *bgpribs_create(char *metric_pfx)
   bgp_ribs->interval_processing_start = 0;
   if((bgp_ribs->collectors_table = collectors_table_create()) == NULL)
     {
-      free(bgp_ribs);
+      bgpribs_destroy(bgp_ribs);
       return NULL;
     }
   if((bgp_ribs->metric_pfx = strdup(metric_pfx)) == NULL)
     {
-      collectors_table_destroy(bgp_ribs->collectors_table);
-      bgp_ribs->collectors_table = NULL;
-      free(bgp_ribs);
+      bgpribs_destroy(bgp_ribs);
       return NULL;
     }
   
 #ifdef WITH_BGPWATCHER
   if((bgp_ribs->bw_client = bw_client_create()) == NULL)
     {
-      free(bgp_ribs->metric_pfx);
-      collectors_table_destroy(bgp_ribs->collectors_table);
-      bgp_ribs->collectors_table = NULL;
-      free(bgp_ribs);
+      bgpribs_destroy(bgp_ribs);
       return NULL;
     }
 #endif
@@ -82,6 +77,15 @@ void bgpribs_set_metric_pfx(bgpribs_t *bgp_ribs, char* met_pfx)
     }
   bgp_ribs->metric_pfx = strdup(met_pfx);
 }
+
+
+#ifdef WITH_BGPWATCHER
+int bgpribs_set_watcher(bgpribs_t *bgp_ribs)
+{
+  return bw_client_start(bgp_ribs->bw_client);
+}
+#endif
+
 
 void bgpribs_interval_start(bgpribs_t *bgp_ribs, int interval_start)
 {

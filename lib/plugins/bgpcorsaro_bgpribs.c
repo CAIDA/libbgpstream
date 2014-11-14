@@ -105,11 +105,19 @@ struct bgpcorsaro_bgpribs_state_t {
 /** Print usage information to stderr */
 static void usage(bgpcorsaro_plugin_t *plugin)
 {
-  //TODO modify usage
+#ifdef WITH_BGPWATCHER
+  fprintf(stderr,
+	  "plugin usage: %s [-w][-m pfx]\n"
+	  "       -w         enables bgpwatcher transmission (default: off)\n",
+	  "       -m         metric prefix (default: %s)\n",
+	  plugin->argv[0], BGPRIBS_METRIC_PREFIX);
+#else
   fprintf(stderr,
 	  "plugin usage: %s [-m pfx]\n"
 	  "       -m         metric prefix (default: %s)\n",
 	  plugin->argv[0], BGPRIBS_METRIC_PREFIX);
+#endif
+
 }
 
 /** Parse the arguments given to the plugin */
@@ -128,15 +136,25 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
 
   /* NB: remember to reset optind to 1 before using getopt! */
   optind = 1;
-
-  while((opt = getopt(plugin->argc, plugin->argv, ":m:?")) >= 0)
+#ifdef WITH_BGPWATCHER
+  while((opt = getopt(plugin->argc, plugin->argv, ":m:w?")) >= 0)
+#else
+    while((opt = getopt(plugin->argc, plugin->argv, ":m:?")) >= 0)
+#endif
     {
       switch(opt)
 	{
 	case 'm':
 	  met_pfx = strdup(optarg);
 	  break;
-
+#ifdef WITH_BGPWATCHER
+	case 'w':
+	  if(bgpribs_set_watcher(state->bgp_ribs) == -1)
+	    {
+	      return -1;
+	    }
+	  break;
+#endif
 	case '?':
 	case ':':
 	default:

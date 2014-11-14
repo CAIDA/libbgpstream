@@ -26,6 +26,7 @@
 #ifndef __BGPRIBS_LIB_H
 #define __BGPRIBS_LIB_H
 
+#include "config.h"
 #include "bgpstream_lib.h"
 
 
@@ -46,6 +47,12 @@ bgpribs_t *bgpribs_create(char *metric_pfx);
  *
  */
 void bgpribs_set_metric_pfx(bgpribs_t *bgp_ribs, char* met_pfx);
+
+
+#ifdef WITH_BGPWATCHER
+/** Turn on the bgpwatcher communication. */
+int bgpribs_set_watcher(bgpribs_t *bgp_ribs);
+#endif
 
 
 /** The function modifies the bgpribs plugin state in order

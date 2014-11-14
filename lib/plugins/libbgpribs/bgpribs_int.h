@@ -40,7 +40,7 @@ struct bgpribs {
   int interval_end;                              /// interval end time 
   int interval_processing_start;                 /// local time when a new interval is started
   collectors_table_wrapper_t *collectors_table;  /// set of collectors to manage
-  char *metric_pfx;                              /// prefix that is prepended to every metric 
+  char *metric_pfx;                              /// prefix that is prepended to every metric
 #ifdef WITH_BGPWATCHER
   bw_client_t *bw_client;
 #endif

@@ -45,9 +45,11 @@
 /** Set of data structures that are required to
  *  send peers and prefixes tables from this client
  *  to the server */
-typedef struct bw_client {
+typedef struct bw_client {  
   /** bgpwatcher client */
-  bgpwatcher_client_t *client;  
+  bgpwatcher_client_t *client;
+  /** turn communication on */
+  uint8_t bwatcher_on;
   // TODO: comment
   uint8_t interests;
   uint8_t intents;
@@ -55,13 +57,20 @@ typedef struct bw_client {
 } bw_client_t;
 
 
+/** Allocate memory for the client and prepare
+ *  structures for communication
+ * @return a pointer to the bw_client structure, or
+ *  NULL if an error occurred
+ */
+bw_client_t *bw_client_create();
+
 /** Create a connection to the bgpwatcher server
  *  and allocate memory for peer and prefix tables
  *
  * @return a pointer to the bw_client structure, or
  *  NULL if an error occurred
  */
-bw_client_t *bw_client_create();
+int bw_client_start(bw_client_t *bwc);
 
 /** Close the connection to the bgpwatcher server
  *  and deallocate the memory used for peer and

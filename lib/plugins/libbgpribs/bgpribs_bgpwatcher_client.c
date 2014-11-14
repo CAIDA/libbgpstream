@@ -40,6 +40,9 @@ bw_client_t *bw_client_create()
     {
       return NULL;
     }
+
+  // communication is off by default
+  bwc->bwatcher_on = 0;
   
   // init interests (no interests, this client is just a producer)
   bwc->interests = 0;
@@ -48,26 +51,28 @@ bw_client_t *bw_client_create()
 
   if((bwc->client = bgpwatcher_client_init(bwc->interests, bwc->intents)) == NULL)
     {
-      goto err;
+      return NULL;
     }
-  
   
   // OPTIONAL settings HERE!
-
-  if(bgpwatcher_client_start(bwc->client) != 0)
-    {
-      goto err;
-    }
-
+  
   return bwc;
 
- err:
-  if(bwc!= NULL)
-    {  
-      bw_client_destroy(bwc);
-    }
-  return NULL;
 }
+
+
+int bw_client_start(bw_client_t *bwc)
+{
+  bwc->bwatcher_on = 1;
+  
+  if(bgpwatcher_client_start(bwc->client) != 0)
+    {
+      return -1;
+    }
+
+  return 0;
+}
+
 
 
 void bw_client_destroy(bw_client_t * bwc) 
