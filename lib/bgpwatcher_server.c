@@ -874,7 +874,7 @@ int bgpwatcher_server_start(bgpwatcher_server_t *server)
       return -1;
     }
 
-  zsocket_set_router_mandatory(server->client_socket, 1);
+  //zsocket_set_router_mandatory(server->client_socket, 1);
 
   zsocket_set_rcvtimeo(server->client_socket, server->heartbeat_interval);
 
