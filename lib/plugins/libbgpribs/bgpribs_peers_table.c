@@ -284,9 +284,13 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 	  return -1;
 	}
     }
+
+  uint32_t ipv4_appr_size;
+  uint32_t ipv6_appr_size;
+  
 #endif
 
-  // print stats for ipv4 peers
+  // print stats for ipv4 peers (i.e. peers with an ipv4 address)
   for (k = kh_begin(peers_table->ipv4_peers_table);
        k != kh_end(peers_table->ipv4_peers_table); ++k)
     {
@@ -296,7 +300,17 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 	  peer_data = kh_value(peers_table->ipv4_peers_table, k);
 
 #ifdef WITH_BGPWATCHER
-	  if(bw_client->bwatcher_on)
+	  
+	  // these two numbers roughly provide a way to to
+	  // tell whether we are sending the table for this peer
+	  // i.e. the peer is full or partial
+	  ipv4_appr_size = kh_size(peer_data->active_ribs_table->ipv4_rib);
+	  ipv6_appr_size = kh_size(peer_data->active_ribs_table->ipv6_rib);
+
+	  if(bw_client->bwatcher_on &&
+	     ((bw_client->ipv4_full_only == 0 || ipv4_appr_size >= bw_client->ipv4_full_size) ||
+	      (bw_client->ipv6_full_only == 0 || ipv6_appr_size >= bw_client->ipv6_full_size) )
+	     )
 	    {	      
 	      peer_ip = bl_addr_ipv42storage(&ipv4_addr);
 	      if((bw_client->peer_id = bgpwatcher_client_pfx_table_add_peer(bw_client->client,
@@ -307,6 +321,8 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 		  fprintf(stderr, "Something went wrong with bgpwatcher peer table add\n");
 		  return -1;
 		}
+	      // DEBUG
+	      fprintf(stderr,"Adding peer: %s\n", print_addr_storage(&peer_ip));
 	    }
 	  if(peerdata_interval_end(project_str, collector_str, peer_data, 
 				   collector_aggr_stats, interval_start, metric_pfx, bw_client) < 0)
@@ -320,7 +336,7 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 	}
     }   
 
-  // print stats for ipv6 peers
+  // print stats for ipv6 peers (i.e. peers with an ipv6 address)
   for (k = kh_begin(peers_table->ipv6_peers_table);
        k != kh_end(peers_table->ipv6_peers_table); ++k)
     {
@@ -330,7 +346,15 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 	  peer_data = kh_value(peers_table->ipv6_peers_table, k);
 	  
 #ifdef WITH_BGPWATCHER
-	  if(bw_client->bwatcher_on)
+	  // these two numbers roughly provide a way to to
+	  // tell whether we are sending the table for this peer
+	  // i.e. the peer is full or partial
+	  ipv4_appr_size = kh_size(peer_data->active_ribs_table->ipv4_rib);
+	  ipv6_appr_size = kh_size(peer_data->active_ribs_table->ipv6_rib);
+	  if(bw_client->bwatcher_on &&
+	     ((bw_client->ipv4_full_only == 0 || ipv4_appr_size >= bw_client->ipv4_full_size) ||
+	      (bw_client->ipv6_full_only == 0 || ipv6_appr_size >= bw_client->ipv6_full_size) )
+	     )
 	    {
 	      peer_ip = bl_addr_ipv62storage(&ipv6_addr);	  
 	      if((bw_client->peer_id = bgpwatcher_client_pfx_table_add_peer(bw_client->client,
@@ -341,6 +365,8 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 		  fprintf(stderr, "Something went wrong with bgpwatcher peer table add\n");
 		  return -1;
 		}
+	      // DEBUG
+	      fprintf(stderr,"Adding peer: %s\n", print_addr_storage(&peer_ip));
 	    }
 	  if(peerdata_interval_end(project_str, collector_str, peer_data, 
 				   collector_aggr_stats, interval_start, metric_pfx, bw_client) < 0)

@@ -50,6 +50,10 @@ typedef struct bw_client {
   bgpwatcher_client_t *client;
   /** turn communication on */
   uint8_t bwatcher_on;
+  uint8_t ipv4_full_only;
+  uint32_t ipv4_full_size;
+  uint8_t ipv6_full_only;
+  uint32_t ipv6_full_size;
   // TODO: comment
   uint8_t interests;
   uint8_t intents;
@@ -71,6 +75,17 @@ bw_client_t *bw_client_create();
  *  NULL if an error occurred
  */
 int bw_client_start(bw_client_t *bwc);
+
+
+/** decide to send just the full feed ipv4 peers,
+ *  i.e. pfx table size above full_size
+ */
+void bw_client_set_ipv4full(bw_client_t *bwc, uint32_t full_size);
+
+/** decide to send just the full feed ipv6 peers,
+ *  i.e. pfx table size above full_size
+ */
+void bw_client_set_ipv6full(bw_client_t *bwc, uint32_t full_size);
 
 /** Close the connection to the bgpwatcher server
  *  and deallocate the memory used for peer and

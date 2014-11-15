@@ -43,6 +43,12 @@ bw_client_t *bw_client_create()
 
   // communication is off by default
   bwc->bwatcher_on = 0;
+
+  // we send all peers by default
+  bwc->ipv4_full_only = 0;
+  bwc->ipv4_full_size = 0;
+  bwc->ipv6_full_only = 0;
+  bwc->ipv6_full_size = 0; 
   
   // init interests (no interests, this client is just a producer)
   bwc->interests = 0;
@@ -73,6 +79,18 @@ int bw_client_start(bw_client_t *bwc)
   return 0;
 }
 
+void bw_client_set_ipv4full(bw_client_t *bwc, uint32_t full_size)
+{
+  bwc->ipv4_full_only = 1;
+  bwc->ipv4_full_size = full_size;
+}
+
+
+void bw_client_set_ipv6full(bw_client_t *bwc, uint32_t full_size)
+{
+  bwc->ipv6_full_only = 1;
+  bwc->ipv6_full_size = full_size;
+}
 
 
 void bw_client_destroy(bw_client_t * bwc) 

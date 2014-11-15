@@ -84,6 +84,22 @@ int bgpribs_set_watcher(bgpribs_t *bgp_ribs)
 {
   return bw_client_start(bgp_ribs->bw_client);
 }
+
+
+void bgpribs_set_fullfeed_filters(bgpribs_t *bgp_ribs,
+				  uint8_t ipv4_fff_on, uint8_t ipv6_fff_on,
+				  uint32_t ipv4_ff_size, uint32_t ipv6_ff_size)
+{
+  if(ipv4_fff_on == 1)
+    {
+      bw_client_set_ipv4full(bgp_ribs->bw_client, ipv4_ff_size);
+    }
+  if(ipv6_fff_on == 1)
+    {
+      bw_client_set_ipv6full(bgp_ribs->bw_client, ipv6_ff_size);
+    }
+}
+
 #endif
 
 

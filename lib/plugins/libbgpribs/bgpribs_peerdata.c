@@ -844,17 +844,24 @@ int peerdata_interval_end(char *project_str, char *collector_str,
   
 #ifdef WITH_BGPWATCHER
   bl_pfx_storage_t ip_prefix;
+  uint32_t ipv4_appr_size;
+  uint32_t ipv6_appr_size;
+  // these two numbers roughly provide a way to to
+  // tell whether we are sending the table for this peer
+  // i.e. the peer is full or partial
+  ipv4_appr_size = kh_size(peer_data->active_ribs_table->ipv4_rib);
+  ipv6_appr_size = kh_size(peer_data->active_ribs_table->ipv6_rib);
 #endif
   
-  uint32_t ipv4_rib_size = 0;
-  uint32_t ipv6_rib_size = 0;
-
+  
   // go through ipv4 an ipv6 ribs and get the standard origin
   // ases, plus integrate the data into collector_data structs
   double avg_aspath_len_ipv4 = 0;
-  double ipv4_size = kh_size(peer_data->active_ribs_table->ipv4_rib);
+  uint32_t ipv4_rib_size = 0;
+  uint32_t ipv6_rib_size = 0;
+
+
   double avg_aspath_len_ipv6 = 0;
-  double ipv6_size = kh_size(peer_data->active_ribs_table->ipv6_rib);
 
   for(k = kh_begin(peer_data->active_ribs_table->ipv4_rib);
       k != kh_end(peer_data->active_ribs_table->ipv4_rib); ++k)
@@ -876,7 +883,8 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 		}
 	      avg_aspath_len_ipv4 += pd.aspath.hop_count;
 #ifdef WITH_BGPWATCHER
-	      if(bw_client->bwatcher_on)
+	      if(bw_client->bwatcher_on &&
+		 (bw_client->ipv4_full_only == 0 || ipv4_appr_size >= bw_client->ipv4_full_size))
 		{
 		  ip_prefix.mask_len = ipv4_prefix.mask_len;
 		  ip_prefix.address.version = BL_ADDR_IPV4;
@@ -917,7 +925,8 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 		}
 	      avg_aspath_len_ipv6 += pd.aspath.hop_count;
 #ifdef WITH_BGPWATCHER
-	      if(bw_client->bwatcher_on)
+	      if(bw_client->bwatcher_on &&
+		 (bw_client->ipv6_full_only == 0 || ipv6_appr_size >= bw_client->ipv6_full_size))
 		{		  
 		  ip_prefix.mask_len = ipv6_prefix.mask_len;
 		  ip_prefix.address.version = BL_ADDR_IPV6;
@@ -967,9 +976,9 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 
   
   // OUTPUT METRIC: peer_avg_aspathlen_ipv4
-  if(ipv4_size > 0) 
+  if(ipv4_rib_size > 0) 
     {
-      avg_aspath_len_ipv4 = avg_aspath_len_ipv4 / ipv4_size;
+      avg_aspath_len_ipv4 = avg_aspath_len_ipv4 / (double)ipv4_rib_size;
     }
   fprintf(stdout, "%s.%s.%s.%s.peer_avg_aspathlen_ipv4 %f %d\n",
 	  metric_pfx,
@@ -980,9 +989,9 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  interval_start);
 
   // OUTPUT METRIC: peer_avg_aspathlen_ipv6
-  if(ipv6_size > 0) 
+  if(ipv6_rib_size > 0) 
     {
-      avg_aspath_len_ipv6 = avg_aspath_len_ipv6 / ipv6_size;
+      avg_aspath_len_ipv6 = avg_aspath_len_ipv6 / (double)ipv6_rib_size;
     }
   fprintf(stdout, "%s.%s.%s.%s.peer_avg_aspathlen_ipv6 %f %d\n",
 	  metric_pfx,

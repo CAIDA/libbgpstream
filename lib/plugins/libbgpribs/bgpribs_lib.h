@@ -52,6 +52,11 @@ void bgpribs_set_metric_pfx(bgpribs_t *bgp_ribs, char* met_pfx);
 #ifdef WITH_BGPWATCHER
 /** Turn on the bgpwatcher communication. */
 int bgpribs_set_watcher(bgpribs_t *bgp_ribs);
+
+/** Set the communication filters related to full feed peers */
+void bgpribs_set_fullfeed_filters(bgpribs_t *bgp_ribs,
+				  uint8_t ipv4_fff_on, uint8_t ipv6_fff_on,
+				  uint32_t ipv4_ff_size, uint32_t ipv6_ff_size);
 #endif
 
 
