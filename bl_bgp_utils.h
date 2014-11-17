@@ -178,6 +178,9 @@ typedef struct struct_bl_elem_t {
   /** new state of the peer */
   bl_peerstate_type_t new_state;
 
+  /** a pointer in case we want to keep
+      elems in a queue*/
+  struct struct_bl_elem_t *next;
 } bl_elem_t;
 
 
