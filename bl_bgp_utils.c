@@ -322,7 +322,11 @@ khint64_t bl_ipv6_pfx_hash_func(bl_ipv6_pfx_t prefix)
 
 int bl_ipv6_pfx_hash_equal(bl_ipv6_pfx_t prefix1, bl_ipv6_pfx_t prefix2)
 {
-  return (memcmp(&prefix1,&prefix2, sizeof(bl_ipv6_addr_t)) == 0);
+
+  return ( (memcmp(&(prefix1.address.s6_addr[0]), &(prefix2.address.s6_addr[0]), sizeof(uint64_t)) == 0) &&
+	   (memcmp(&(prefix1.address.s6_addr[8]), &(prefix2.address.s6_addr[8]), sizeof(uint64_t)) == 0) &&
+	   prefix1.mask_len == prefix2.mask_len );
+
 }
 
 
