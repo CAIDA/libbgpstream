@@ -99,8 +99,12 @@ typedef khash_t(ipv6_rib_map) ipv6_rib_map_t;
 typedef struct struct_ribs_table_t {
   /** ipv4 rib table */
   ipv4_rib_map_t *ipv4_rib;
+  /** number of active ipv4 prefixes in table */
+  uint32_t ipv4_size;
   /** ipv6 rib table */
   ipv6_rib_map_t *ipv6_rib;
+  /** number of active ipv6 prefixes in table */
+  uint32_t ipv6_size;
   // reference rib = last rib applied to this ribs_table
   long int reference_rib_start; // when the reference rib starts
   long int reference_rib_end;   // when the reference rib ends

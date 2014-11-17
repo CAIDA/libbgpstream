@@ -34,7 +34,9 @@ ribs_table_t *ribs_table_create()
     }
   // init ipv4 and ipv6 khashes
   ribs_table->ipv4_rib = kh_init(ipv4_rib_map);
+  ribs_table->ipv4_size = 0;
   ribs_table->ipv6_rib = kh_init(ipv6_rib_map);
+  ribs_table->ipv6_size = 0;
   return ribs_table;
 }
 
@@ -78,6 +80,9 @@ void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs_elem)
 	  k = kh_put(ipv4_rib_map, ribs_table->ipv4_rib, 
 		     ipv4_prefix, &khret);
 	  kh_value(ribs_table->ipv4_rib, k) = pd;
+	  // the table size is increased if a new element
+	  // is inserted and it is active
+	  ribs_table->ipv4_size += pd.is_active;
 	}
       else
 	{
@@ -87,6 +92,11 @@ void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs_elem)
 	  if(pd.ts >= current_pd.ts)
 	    {
 	      kh_value(ribs_table->ipv4_rib, k) = pd;
+
+	      // the table size is decreased only if an entry
+	      // that was active is now inactive, or increased
+	      // if an entry that was inactive now is active
+	      ribs_table->ipv4_size += (pd.is_active - current_pd.is_active); 
 	    }
 	}
     }
@@ -103,6 +113,7 @@ void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs_elem)
 	  k = kh_put(ipv6_rib_map, ribs_table->ipv6_rib, 
 		     ipv6_prefix, &khret);
 	  kh_value(ribs_table->ipv6_rib, k) = pd;
+	  ribs_table->ipv6_size += pd.is_active;		  
 	}
       else
 	{
@@ -112,6 +123,7 @@ void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs_elem)
 	  if(pd.ts >= current_pd.ts)
 	    {
 	      kh_value(ribs_table->ipv6_rib, k) = pd;
+	      ribs_table->ipv6_size += (pd.is_active - current_pd.is_active);        	      
 	    }
 	}
     }
@@ -126,8 +138,10 @@ void ribs_table_reset(ribs_table_t *ribs_table)
   ribs_table->reference_dump_time = 0;
   // ipv4_rib_t has static keys and values
   kh_clear(ipv4_rib_map, ribs_table->ipv4_rib);
+  ribs_table->ipv4_size = 0;
   // ipv6_rib_t has static keys and values
-  kh_clear(ipv6_rib_map,ribs_table->ipv6_rib);    
+  kh_clear(ipv6_rib_map,ribs_table->ipv6_rib);
+  ribs_table->ipv6_size = 0;
 }
 
 
