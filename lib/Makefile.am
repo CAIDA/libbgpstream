@@ -24,13 +24,18 @@
 
 
 # AM_CPPFLAGS - The contents of this variable are passed to every compilation that invokes the C preprocessor; it is a list of arguments to the preprocessor. For instance, -I and -D options should be listed here.
-AM_CPPFLAGS = 
+AM_CPPFLAGS = 	-I$(top_srcdir) \
+	 	-I$(top_srcdir)/common \
+                -I$(top_srcdir)/bgpcommon
 
 # Each _LTLIBRARIES variable is a list of libtool libraries to build. 
 lib_LTLIBRARIES = libbgpstream.la
 
 # Public header files that need to be installed in order for people to use the library.
-include_HEADERS = bgpstream_lib.h bgpstream_record.h bgpstream_elem.h bgpstream_options.h bgpstream_config.h
+include_HEADERS = bgpstream_lib.h   \
+		  bgpstream_record.h \
+		  bgpstream_options.h
+
 
 libbgpstream_la_SOURCES = 	\
 	bgpstream_lib.h		\
@@ -54,8 +59,9 @@ libbgpstream_la_SOURCES = 	\
 
 
 libbgpstream_la_CFLAGS = -Wall
-libbgpstream_la_CPPFLAGS=
-libbgpstream_la_LIBADD = 
+
+libbgpstream_la_LIBADD = $(top_builddir)/common/libcccommon.la \
+			 $(top_builddir)/bgpcommon/libbl.la	
 
 libbgpstream_la_LDFLAGS = -version-info @BGPSTREAM_MAJOR_VERSION@:@BGPSTREAM_MINOR_VERSION@:@BGPSTREAM_MID_VERSION@
 

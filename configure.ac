@@ -44,7 +44,7 @@ AM_INIT_AUTOMAKE
 AC_CONFIG_MACRO_DIR([m4])
 
 AC_CONFIG_SRCDIR([lib/bgpstream_lib.c])
-AC_CONFIG_HEADERS([lib/bgpstream_config.h])
+AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
 AC_PROG_LIBTOOL
@@ -119,5 +119,8 @@ AC_HEADER_ASSERT
 AC_CONFIG_FILES([Makefile
 		lib/Makefile
 		tools/Makefile
-		])
+		common/Makefile
+		common/libpatricia/Makefile
+		common/libcsv/Makefile
+		bgpcommon/Makefile])
 AC_OUTPUT

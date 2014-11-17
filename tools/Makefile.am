@@ -22,28 +22,16 @@
 # along with bgpstream.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/lib 
+AM_CPPFLAGS = 	-I$(top_srcdir) \
+	 	-I$(top_srcdir)/lib \
+	 	-I$(top_srcdir)/common \
+                -I$(top_srcdir)/bgpcommon
 
 bin_PROGRAMS =  bgpstream
 
 bgpstream_SOURCES = bgpstream.c process_bdump.c
-bgpstream_LDADD = -lbgpstream 
+bgpstream_LDADD   = -lbgpstream 
 bgpstream_LDFLAGS = -L$(top_builddir)/lib
-
-# don't build the following
-
-# bgpstream_test_customlist_SOURCES = bgpstream-test-customlist.c process_bdump.c print_elem_queue.c
-# bgpstream_test_customlist_LDADD = -lbgpstream 
-# bgpstream_test_customlist_LDFLAGS = -L$(top_builddir)/lib
-
-# bgpstream_test_csvfile_SOURCES = bgpstream-test-csvfile.c process_bdump.c print_elem_queue.c
-# bgpstream_test_csvfile_LDADD = -lbgpstream 
-# bgpstream_test_csvfile_LDFLAGS = -L$(top_builddir)/lib
-
-
-# bgpstream_best_collectors_SOURCES = bgpstream-best-collectors.c process_bdump.c
-# bgpstream_best_collectors_LDADD = -lbgpstream 
-# bgpstream_best_collectors_LDFLAGS = -L$(top_builddir)/lib
 
 
 ACLOCAL_AMFLAGS = -I m4

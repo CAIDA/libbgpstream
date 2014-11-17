@@ -22,8 +22,12 @@
 # along with bgpstream.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-SUBDIRS = lib tools
-AM_CPPFLAGS = -I$(top_srcdir)
+SUBDIRS = common bgpcommon lib tools
+
+AM_CPPFLAGS =   -I$(top_srcdir)     		\
+		-I$(top_srcdir)/lib 		\
+		-I$(top_srcdir)/common 		\
+	      	-I$(top_srcdir)/bgpcommon 
 
 EXTRA_DIST = 
 
