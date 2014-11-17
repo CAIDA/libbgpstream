@@ -270,6 +270,8 @@ int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client)
   khiter_t k;
   bgpwatcher_pfx_row_t *row;
 
+  assert(TBL.peers_added == TBL.info.peers_cnt);
+  
   /* send table begin message */
   if(send_data_hdrs(client, BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN) != 0)
     {
