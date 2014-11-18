@@ -72,7 +72,7 @@ typedef struct struct_peerdata_t {
   long int most_recent_ts;          /// last time this peer was updated
   ribs_tables_status_t rt_status;   /// current status of RIBs
   // statistics to reset every time the interval ends
-  uint64_t elem_types[BGPSTREAM_ELEM_TYPE_MAX];  /// number of elements of a given type received in an interval
+  uint64_t elem_types[BL_ELEM_TYPE_MAX];  /// number of elements of a given type received in an interval
   uint64_t state_up_elems;
   uint64_t ignored_elems;
   uint64_t out_of_order;
@@ -93,7 +93,7 @@ typedef struct struct_peerdata_t {
  * @return a pointer to the structure, or
  *  NULL if an error occurred
  */
-peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address);
+peerdata_t *peerdata_create(bl_addr_storage_t * peer_address);
 
 /** The function considers the BGP information embedded into the
  *  bgpstream element as well as the information within the bgpstream
@@ -106,7 +106,7 @@ peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address);
  * @return 0 if the function ended correctly, or a negative 
  *  number if an error occurred
  */
-int peerdata_apply_elem(peerdata_t *peer_data, bgpstream_record_t * bs_record, bgpstream_elem_t *bs_elem);
+int peerdata_apply_elem(peerdata_t *peer_data, bgpstream_record_t * bs_record, bl_elem_t *bs_elem);
 
 
 /** The function considers the BGP information embedded into the

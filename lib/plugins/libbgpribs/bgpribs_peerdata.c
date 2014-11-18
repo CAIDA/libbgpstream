@@ -27,7 +27,7 @@
 #include "bl_bgp_utils.h"
 
 
-peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
+peerdata_t *peerdata_create(bl_addr_storage_t * peer_address)
 {
   peerdata_t *peer_data;
   if((peer_data = malloc_zero(sizeof(peerdata_t))) == NULL)
@@ -85,18 +85,7 @@ peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
     }
 
 
-  char ip_str[INET6_ADDRSTRLEN];
-  ip_str[0] = '\0';
-  if(peer_address->type == BST_IPV4)
-    {
-      inet_ntop(AF_INET, &(peer_address->address.v4_addr), ip_str, INET6_ADDRSTRLEN);
-    }
-  else // assert(peer_address->type == BST_IPV6)
-    {
-      inet_ntop(AF_INET6, &(peer_address->address.v6_addr), ip_str, INET6_ADDRSTRLEN);
-    }
-  
-  if( (peer_data->peer_address_str = strdup(ip_str)) == NULL ) 
+  if( (peer_data->peer_address_str = bl_print_addr_storage(peer_address)) == NULL ) 
     {
       // TODO: add a proper destroy for aggregated stats
       free(peer_data->aggr_stats);
@@ -115,7 +104,7 @@ peerdata_t *peerdata_create(bgpstream_ip_address_t * peer_address)
 
 
 static void peerdata_log_event(peerdata_t *peer_data, 
-			bgpstream_record_t * bs_record, bgpstream_elem_t *bs_elem)
+			bgpstream_record_t * bs_record, bl_elem_t *bs_elem)
 {
   // TODO: printing log ?
   return;
@@ -128,7 +117,7 @@ static void peerdata_log_event(peerdata_t *peer_data,
 	     peer_data->most_recent_ts,
 	     peer_data->peer_address_str,
 	     peer_data->status, peer_data->rt_status);
-      printf("\t %ld \t %d - dt: %ld dp: %d \n", 
+      printf("\t %"PRIu32" \t %d - dt: %ld dp: %d \n", 
 	     bs_elem->timestamp,
 	     bs_elem->type,
 	     bs_record->attributes.dump_time,
@@ -150,28 +139,23 @@ static void peerdata_log_event(peerdata_t *peer_data,
 }
 
 
-static void peerdata_update_affected_resources(peerdata_t *peer_data, bgpstream_elem_t *bs_elem)
+static void peerdata_update_affected_resources(peerdata_t *peer_data, bl_elem_t *bs_elem)
 {
 
-  if(bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_WITHDRAWAL)
+  if(bs_elem->type == BL_ANNOUNCEMENT_ELEM || bs_elem->type == BL_WITHDRAWAL_ELEM)
     {
-      if(bs_elem->prefix.number.type == BST_IPV4)
+      if(bs_elem->prefix.address.version == BL_ADDR_IPV4)
 	{
-	  bl_ipv4_pfx_t ipv4_prefix;
-	  ipv4_prefix.mask_len = bs_elem->prefix.len;
-	  ipv4_prefix.address = bs_elem->prefix.number.address.v4_addr;
-	  bl_ipv4_pfx_set_insert(peer_data->aggr_stats->affected_ipv4_prefixes, ipv4_prefix);
+	  bl_ipv4_pfx_set_insert(peer_data->aggr_stats->affected_ipv4_prefixes, *(bl_pfx_storage2ipv4(&(bs_elem->prefix))));
 	}
-      else
+      if(bs_elem->prefix.address.version == BL_ADDR_IPV6)
 	{
-	  bl_ipv6_pfx_t ipv6_prefix;
-	  ipv6_prefix.mask_len = bs_elem->prefix.len;
-	  ipv6_prefix.address = bs_elem->prefix.number.address.v6_addr;
-	  bl_ipv6_pfx_set_insert(peer_data->aggr_stats->affected_ipv6_prefixes, ipv6_prefix);
+	  bl_ipv6_pfx_set_insert(peer_data->aggr_stats->affected_ipv6_prefixes, *(bl_pfx_storage2ipv6(&(bs_elem->prefix))));
 	}
-      if(bs_elem->type == BST_ANNOUNCEMENT)
+      if(bs_elem->type == BL_ANNOUNCEMENT_ELEM)
 	{
-	  if(bs_elem->aspath.hop_count > 0 && bs_elem->aspath.type == BST_UINT32_ASPATH)
+	  // TODO: use AS STORAGE SET
+	  if(bs_elem->aspath.hop_count > 0 && bs_elem->aspath.type == BL_AS_NUMERIC)
 	    {
 	      bl_id_set_insert(peer_data->aggr_stats->announcing_origin_ases,
 			       bs_elem->aspath.numeric_aspath[(bs_elem->aspath.hop_count-1)]);
@@ -183,7 +167,7 @@ static void peerdata_update_affected_resources(peerdata_t *peer_data, bgpstream_
 }
 
 
-int peerdata_apply_elem(peerdata_t *peer_data, bgpstream_record_t * bs_record, bgpstream_elem_t *bs_elem)
+int peerdata_apply_elem(peerdata_t *peer_data, bgpstream_record_t * bs_record, bl_elem_t *bs_elem)
 {
   assert(peer_data);
   assert(bs_record);
@@ -199,13 +183,13 @@ int peerdata_apply_elem(peerdata_t *peer_data, bgpstream_record_t * bs_record, b
       peer_data->out_of_order++;
     }
 
-  if(bs_elem->type == BST_STATE && bs_elem->new_state == BST_ESTABLISHED)
+  if(bs_elem->type == BL_PEERSTATE_ELEM && bs_elem->new_state == BL_PEERSTATE_ESTABLISHED)
     {
       peer_data->state_up_elems++;
     }
 
   // type is update
-  if(bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_WITHDRAWAL)
+  if(bs_elem->type == BL_ANNOUNCEMENT_ELEM || bs_elem->type == BL_WITHDRAWAL_ELEM)
     {
       // case 1
       if(peer_data->status == PEER_UP &&
@@ -276,7 +260,7 @@ int peerdata_apply_elem(peerdata_t *peer_data, bgpstream_record_t * bs_record, b
     }
 
   // type is RIB
-  if(bs_elem->type == BST_RIB)
+  if(bs_elem->type == BL_RIB_ELEM)
     {
       // case 5
       if(bs_record->dump_pos == DUMP_START && 
@@ -333,15 +317,15 @@ int peerdata_apply_elem(peerdata_t *peer_data, bgpstream_record_t * bs_record, b
     }
 
   // type is STATE
-  if(bs_elem->type == BST_STATE)
+  if(bs_elem->type == BL_PEERSTATE_ELEM)
     {
       // case 7
-      if((bs_elem->new_state != BST_ESTABLISHED && 
+      if((bs_elem->new_state != BL_PEERSTATE_ESTABLISHED && 
 	  bs_elem->timestamp >= peer_data->most_recent_ts) ||
-	 (bs_elem->new_state != BST_ESTABLISHED && 
+	 (bs_elem->new_state != BL_PEERSTATE_ESTABLISHED && 
 	  peer_data->rt_status == UC_ON &&
 	  bs_elem->timestamp >= peer_data->uc_ribs_table->reference_rib_start) ||
-	 (bs_elem->new_state != BST_ESTABLISHED && 
+	 (bs_elem->new_state != BL_PEERSTATE_ESTABLISHED && 
 	  peer_data->rt_status == UC_OFF &&
 	  peer_data->status == PEER_UP &&
 	  bs_elem->timestamp >= peer_data->active_ribs_table->reference_rib_start))
@@ -366,7 +350,7 @@ int peerdata_apply_elem(peerdata_t *peer_data, bgpstream_record_t * bs_record, b
 	  return 0;
 	}
       // case 8
-      if(bs_elem->new_state != BST_ESTABLISHED && 
+      if(bs_elem->new_state != BL_PEERSTATE_ESTABLISHED && 
 	 peer_data->status == PEER_UP &&
 	 peer_data->rt_status == UC_ON &&
 	 bs_elem->timestamp >= peer_data->active_ribs_table->reference_rib_start &&
@@ -387,7 +371,7 @@ int peerdata_apply_elem(peerdata_t *peer_data, bgpstream_record_t * bs_record, b
 	  return 0;
 	}
       // case 9
-      if(bs_elem->new_state == BST_ESTABLISHED && 
+      if(bs_elem->new_state == BL_PEERSTATE_ESTABLISHED && 
 	 peer_data->status == PEER_DOWN &&
 	 bs_elem->timestamp >= peer_data->most_recent_ts)
 	{
@@ -633,7 +617,6 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 {
   khiter_t k;
   int khret;
-  bgpstream_prefix_t prefix;
   prefixdata_t pd;
   uint32_t as;
 
@@ -653,28 +636,28 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
-	  peer_data->elem_types[BST_ANNOUNCEMENT],
+	  peer_data->elem_types[BL_ANNOUNCEMENT_ELEM],
 	  interval_start);
   fprintf(stdout, "%s.%s.%s.%s.elem_withdrawals_cnt %"PRIu64" %d\n",
 	  metric_pfx,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
-	  peer_data->elem_types[BST_WITHDRAWAL],
+	  peer_data->elem_types[BL_WITHDRAWAL_ELEM],
 	  interval_start);
   fprintf(stdout, "%s.%s.%s.%s.elem_rib_cnt %"PRIu64" %d\n",
 	  metric_pfx,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
-	  peer_data->elem_types[BST_RIB],
+	  peer_data->elem_types[BL_RIB_ELEM],
 	  interval_start);
   fprintf(stdout, "%s.%s.%s.%s.elem_state_cnt %"PRIu64" %d\n",
 	  metric_pfx,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
-	  peer_data->elem_types[BST_STATE],
+	  peer_data->elem_types[BL_PEERSTATE_ELEM],
 	  interval_start);
 
   // OUTPUT METRIC: state elem detail
@@ -690,7 +673,7 @@ int peerdata_interval_end(char *project_str, char *collector_str,
   	  project_str,
   	  collector_str,
   	  peer_data->peer_address_str,
-  	  peer_data->elem_types[BST_STATE]-peer_data->state_up_elems,
+  	  peer_data->elem_types[BL_PEERSTATE_ELEM]-peer_data->state_up_elems,
   	  interval_start);
 
   // OUTPUT METRIC: ignored elem
@@ -792,34 +775,35 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 
   // "Aggregation" of affected resources per collector
 
-  bl_ipv4_pfx_t ipv4_prefix;
-  bl_ipv6_pfx_t ipv6_prefix;
+  bl_ipv4_pfx_t *ipv4_prefix;
+  bl_ipv6_pfx_t *ipv6_prefix;
 
+  
   for(k = kh_begin(peer_data->aggr_stats->affected_ipv4_prefixes);
       k != kh_end(peer_data->aggr_stats->affected_ipv4_prefixes); ++k)
     {
       if (kh_exist(peer_data->aggr_stats->affected_ipv4_prefixes, k))
 	{
-	  ipv4_prefix = kh_key(peer_data->aggr_stats->affected_ipv4_prefixes, k);
-	  bl_ipv4_pfx_set_insert(collector_aggr_stats->affected_ipv4_prefixes,ipv4_prefix);
+	  ipv4_prefix = &(kh_key(peer_data->aggr_stats->affected_ipv4_prefixes, k));
+	  bl_ipv4_pfx_set_insert(collector_aggr_stats->affected_ipv4_prefixes, *ipv4_prefix);
 	}
     }
   // then clear data
   bl_ipv4_pfx_set_reset(peer_data->aggr_stats->affected_ipv4_prefixes);
 
+  
   for(k = kh_begin(peer_data->aggr_stats->affected_ipv6_prefixes);
       k != kh_end(peer_data->aggr_stats->affected_ipv6_prefixes); ++k)
     {
       if (kh_exist(peer_data->aggr_stats->affected_ipv6_prefixes, k))
 	{
-	  ipv6_prefix = kh_key(peer_data->aggr_stats->affected_ipv6_prefixes, k);
-	  bl_ipv6_pfx_set_insert(collector_aggr_stats->affected_ipv6_prefixes,ipv6_prefix);
+	  ipv6_prefix = &(kh_key(peer_data->aggr_stats->affected_ipv6_prefixes, k));
+	  bl_ipv6_pfx_set_insert(collector_aggr_stats->affected_ipv6_prefixes, *ipv6_prefix);
 	}
     }
 
   // then clear data
   bl_ipv6_pfx_set_reset(peer_data->aggr_stats->affected_ipv6_prefixes);
-
 
   for(k = kh_begin(peer_data->aggr_stats->announcing_origin_ases);
       k != kh_end(peer_data->aggr_stats->announcing_origin_ases); ++k)
@@ -834,7 +818,6 @@ int peerdata_interval_end(char *project_str, char *collector_str,
   // then clear data
   bl_id_set_reset(peer_data->aggr_stats->announcing_origin_ases);
 
-
   if(peer_data->status != PEER_UP)
     {
       return 0;
@@ -843,7 +826,6 @@ int peerdata_interval_end(char *project_str, char *collector_str,
   // the following actions require the peer to be UP
   
 #ifdef WITH_BGPWATCHER
-  bl_pfx_storage_t ip_prefix;
   uint8_t send_ipv4 = 0;
   if(bw_client->bwatcher_on &&
      (bw_client->ipv4_full_only == 0 || peer_data->active_ribs_table->ipv4_size >= bw_client->ipv4_full_size))
@@ -864,37 +846,36 @@ int peerdata_interval_end(char *project_str, char *collector_str,
   double avg_aspath_len_ipv4 = 0;
   double avg_aspath_len_ipv6 = 0;
 
+  uint32_t origin_as = 0;
  
-
   for(k = kh_begin(peer_data->active_ribs_table->ipv4_rib);
       k != kh_end(peer_data->active_ribs_table->ipv4_rib); ++k)
     {
       if (kh_exist(peer_data->active_ribs_table->ipv4_rib, k))
 	{
+
 	  // get prefix
-	  ipv4_prefix = kh_key(peer_data->active_ribs_table->ipv4_rib, k);
+	  ipv4_prefix = &(kh_key(peer_data->active_ribs_table->ipv4_rib, k));
 	  // get prefix_data
 	  pd = kh_value(peer_data->active_ribs_table->ipv4_rib, k);
 	  if(pd.is_active == 1) 
 	    {
-	      bl_ipv4_pfx_set_insert(collector_aggr_stats->unique_ipv4_prefixes, ipv4_prefix);
-	      if(pd.origin_as != 0)
+	      origin_as = 0;
+	      bl_ipv4_pfx_set_insert(collector_aggr_stats->unique_ipv4_prefixes, *ipv4_prefix);
+	      if(pd.origin_as.type == BL_AS_NUMERIC && pd.origin_as.as_number != 0)
 		{
-		  bl_id_set_insert(peer_data->aggr_stats->unique_origin_ases, pd.origin_as);
-		  bl_id_set_insert(collector_aggr_stats->unique_origin_ases, pd.origin_as);
+		  origin_as = pd.origin_as.as_number;
+		  bl_id_set_insert(peer_data->aggr_stats->unique_origin_ases, origin_as);
+		  bl_id_set_insert(collector_aggr_stats->unique_origin_ases, origin_as);		  
 		}
 	      avg_aspath_len_ipv4 += pd.aspath.hop_count;
 #ifdef WITH_BGPWATCHER
 	      if(send_ipv4)
 		{
-		  ip_prefix.mask_len = ipv4_prefix.mask_len;
-		  ip_prefix.address.version = BL_ADDR_IPV4;
-		  ip_prefix.address.ipv4 = ipv4_prefix.address;
-
 		  if(bgpwatcher_client_pfx_table_add(bw_client->client,
 						     bw_client->peer_id,
-						     &ip_prefix,
-						     pd.origin_as) < 0)
+						     bl_pfx_ipv42storage(ipv4_prefix),
+						     origin_as) < 0)
 		    {
 		      bgpwatcher_client_perr(bw_client->client);
 		      fprintf(stderr, "Could not add to pfx table\n");
@@ -912,29 +893,27 @@ int peerdata_interval_end(char *project_str, char *collector_str,
       if (kh_exist(peer_data->active_ribs_table->ipv6_rib, k))
 	{
 	  // get prefix
-	  ipv6_prefix = kh_key(peer_data->active_ribs_table->ipv6_rib, k);
+	  ipv6_prefix = &(kh_key(peer_data->active_ribs_table->ipv6_rib, k));
 	  // get prefix_data
 	  pd = kh_value(peer_data->active_ribs_table->ipv6_rib, k);
 	  if(pd.is_active == 1) 
 	    {
-	      bl_ipv6_pfx_set_insert(collector_aggr_stats->unique_ipv6_prefixes, ipv6_prefix);
-	      if(pd.origin_as != 0)
+	      origin_as = 0;
+	      bl_ipv6_pfx_set_insert(collector_aggr_stats->unique_ipv6_prefixes, *ipv6_prefix);
+	      if(pd.origin_as.type == BL_AS_NUMERIC && pd.origin_as.as_number != 0)
 		{
-		  bl_id_set_insert(peer_data->aggr_stats->unique_origin_ases, pd.origin_as);
-		  bl_id_set_insert(collector_aggr_stats->unique_origin_ases, pd.origin_as);
+		  origin_as = pd.origin_as.as_number;
+		  bl_id_set_insert(peer_data->aggr_stats->unique_origin_ases, origin_as);
+		  bl_id_set_insert(collector_aggr_stats->unique_origin_ases, origin_as);		  
 		}
 	      avg_aspath_len_ipv6 += pd.aspath.hop_count;
 #ifdef WITH_BGPWATCHER
 	      if(send_ipv6)
 		{		  
-		  ip_prefix.mask_len = ipv6_prefix.mask_len;
-		  ip_prefix.address.version = BL_ADDR_IPV6;
-		  ip_prefix.address.ipv6 = ipv6_prefix.address;
-
 		  if(bgpwatcher_client_pfx_table_add(bw_client->client,
 						     bw_client->peer_id,
-						     &ip_prefix,
-						     pd.origin_as) < 0)
+						     bl_pfx_ipv62storage(ipv6_prefix),
+						     origin_as) < 0)
 		    {
 		      bgpwatcher_client_perr(bw_client->client);
 		      fprintf(stderr, "Could not add to pfx table\n");

@@ -40,45 +40,38 @@ ribs_table_t *ribs_table_create()
   return ribs_table;
 }
 
-void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs_elem)
+void ribs_table_apply_elem(ribs_table_t *ribs_table, bl_elem_t *bs_elem)
 {
   khiter_t k;
   int khret;
 
   // prepare pd in case of insert
   prefixdata_t pd;
-  pd.origin_as = 0;
   pd.is_active = 0; // if it is a withdrawal it will remain 0
   pd.ts = bs_elem->timestamp;
   prefixdata_t current_pd;
 
-  if(bs_elem->type == BST_ANNOUNCEMENT || bs_elem->type == BST_RIB)
+  if(bs_elem->type == BL_ANNOUNCEMENT_ELEM || bs_elem->type == BL_RIB_ELEM)
     {
       pd.is_active = 1;
       pd.aspath = bs_elem->aspath;
-      // compute origin_as
-      if(bs_elem->aspath.hop_count > 0 && 
-	 bs_elem->aspath.type == BST_UINT32_ASPATH ) 
-	{
-	  pd.origin_as = bs_elem->aspath.numeric_aspath[(bs_elem->aspath.hop_count-1)];
-	}  
+      pd.origin_as = bl_get_origin_as(&(pd.aspath));
     } 
 
-  bl_ipv4_pfx_t ipv4_prefix;
-  bl_ipv6_pfx_t ipv6_prefix;
+  bl_ipv4_pfx_t *ipv4_prefix;
+  bl_ipv6_pfx_t *ipv6_prefix;
   
-  if(bs_elem->prefix.number.type == BST_IPV4) 
+  if(bs_elem->prefix.address.version == BL_ADDR_IPV4) 
     { // ipv4 prefix
-      ipv4_prefix.mask_len = bs_elem->prefix.len;
-      ipv4_prefix.address = bs_elem->prefix.number.address.v4_addr;
+      ipv4_prefix = bl_pfx_storage2ipv4(&(bs_elem->prefix));
       
       k = kh_get(ipv4_rib_map, ribs_table->ipv4_rib,
-		 ipv4_prefix);
+		 *ipv4_prefix);
       // if it doesn't exist
       if(k == kh_end(ribs_table->ipv4_rib))
 	{
 	  k = kh_put(ipv4_rib_map, ribs_table->ipv4_rib, 
-		     ipv4_prefix, &khret);
+		     *ipv4_prefix, &khret);
 	  kh_value(ribs_table->ipv4_rib, k) = pd;
 	  // the table size is increased if a new element
 	  // is inserted and it is active
@@ -101,17 +94,15 @@ void ribs_table_apply_elem(ribs_table_t *ribs_table, bgpstream_elem_t *bs_elem)
 	}
     }
   else
-    { // ipv6 prefix  // assert(bs_elem->prefix.number.type == BST_IPV6)
-      ipv6_prefix.mask_len = bs_elem->prefix.len;
-      ipv6_prefix.address = bs_elem->prefix.number.address.v6_addr;
-
+    { // ipv6 prefix  // assert(bs_elem->prefix.number.type == BL_ADDR_IPV6)
+      ipv6_prefix = bl_pfx_storage2ipv6(&(bs_elem->prefix));
       k = kh_get(ipv6_rib_map, ribs_table->ipv6_rib,
-		 ipv6_prefix);
+		 *ipv6_prefix);
       // if it doesn't exist
       if(k == kh_end(ribs_table->ipv6_rib))
 	{
 	  k = kh_put(ipv6_rib_map, ribs_table->ipv6_rib, 
-		     ipv6_prefix, &khret);
+		     *ipv6_prefix, &khret);
 	  kh_value(ribs_table->ipv6_rib, k) = pd;
 	  ribs_table->ipv6_size += pd.is_active;		  
 	}

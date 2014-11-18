@@ -49,8 +49,8 @@ int peers_table_process_record(peers_table_t *peers_table,
   assert(peers_table);
   assert(bs_record);
   int num_active_peers = 0;
-  bgpstream_elem_t * bs_elem_queue;
-  bgpstream_elem_t * bs_iterator;
+  bl_elem_t * bs_elem_queue;
+  bl_elem_t * bs_iterator;
   khiter_t k;
   int khret;
   bl_ipv4_addr_t ipv4_addr;
@@ -70,9 +70,10 @@ int peers_table_process_record(peers_table_t *peers_table,
 	   * create the peerdata structure if necessary
 	   * and send the elem to the corresponding peerdata */
 	  /* update peer information and check return value*/
-	  if(bs_iterator->peer_address.type == BST_IPV4)
+	  if(bs_iterator->peer_address.version == BL_ADDR_IPV4)
 	    {
-	      ipv4_addr = bs_iterator->peer_address.address.v4_addr;
+	      ipv4_addr = *(bl_addr_storage2ipv4(&(bs_iterator->peer_address)));
+	      
 	      /* check if this peer is in the hash already */
 	      if((k = kh_get(ipv4_peers_table_t, peers_table->ipv4_peers_table, ipv4_addr)) ==
 		 kh_end(peers_table->ipv4_peers_table))
@@ -104,41 +105,49 @@ int peers_table_process_record(peers_table_t *peers_table,
 		  peer_data = kh_value(peers_table->ipv4_peers_table, k);
 		}
 	    }
-	  else 
-	    { // assert(bs_iterator->peer_address.type == BST_IPV6) 
-	      /* check if this peer is in the hash already */
-	      ipv6_addr = bs_iterator->peer_address.address.v6_addr;
-
-	      if((k = kh_get(ipv6_peers_table_t, peers_table->ipv6_peers_table, ipv6_addr)) ==
-		 kh_end(peers_table->ipv6_peers_table))
+	  else
+	    {
+	      if(bs_iterator->peer_address.version == BL_ADDR_IPV6)
 		{
-		  /* create a new peerdata structure */
-		  if((peer_data = peerdata_create(&(bs_iterator->peer_address))) == NULL)
+		  /* check if this peer is in the hash already */
+		  ipv6_addr = *(bl_addr_storage2ipv6(&(bs_iterator->peer_address)));
+
+		  if((k = kh_get(ipv6_peers_table_t, peers_table->ipv6_peers_table, ipv6_addr)) ==
+		     kh_end(peers_table->ipv6_peers_table))
 		    {
-		      // TODO: output some error message
-		      bgpstream_destroy_elem_queue(bs_elem_queue);
-		      return -1;
+		      /* create a new peerdata structure */
+		      if((peer_data = peerdata_create(&(bs_iterator->peer_address))) == NULL)
+			{
+			  // TODO: output some error message
+			  bgpstream_destroy_elem_queue(bs_elem_queue);
+			  return -1;
+			}
+		      /* add it to the hash */
+		      k = kh_put(ipv6_peers_table_t, peers_table->ipv6_peers_table, 
+				 ipv6_addr, &khret);
+		      kh_value(peers_table->ipv6_peers_table, k) = peer_data;
+		      // if we have just created a peer_data and we are reading
+		      // a BGPSTREAM_RIB, we move the rt_status to UC_ON
+		      if(bs_record->attributes.dump_type == BGPSTREAM_RIB)
+			{
+			  peer_data->rt_status = UC_ON;
+			  peer_data->uc_ribs_table->reference_dump_time = bs_record->attributes.dump_time;
+			  peer_data->uc_ribs_table->reference_rib_start = 0;
+			  peer_data->uc_ribs_table->reference_rib_end = 0;
+			}
 		    }
-		  /* add it to the hash */
-		  k = kh_put(ipv6_peers_table_t, peers_table->ipv6_peers_table, 
-			     ipv6_addr, &khret);
-		  kh_value(peers_table->ipv6_peers_table, k) = peer_data;
-		  // if we have just created a peer_data and we are reading
-		  // a BGPSTREAM_RIB, we move the rt_status to UC_ON
-		  if(bs_record->attributes.dump_type == BGPSTREAM_RIB)
-		    {
-		      peer_data->rt_status = UC_ON;
-		      peer_data->uc_ribs_table->reference_dump_time = bs_record->attributes.dump_time;
-		      peer_data->uc_ribs_table->reference_rib_start = 0;
-		      peer_data->uc_ribs_table->reference_rib_end = 0;
-		    }
+		  else
+		    { /* already exists, just get it */
+		      peer_data = kh_value(peers_table->ipv6_peers_table, k);
+		    }    
 		}
 	      else
-		{ /* already exists, just get it */
-		  peer_data = kh_value(peers_table->ipv6_peers_table, k);
-		}    
-	    }	  
-
+		{
+		  fprintf(stderr, "Undefined peer address version\n");
+		  bgpstream_destroy_elem_queue(bs_elem_queue);			
+		  return -1;
+		}
+	    }
 	  // DEBUG:
 	  /* ribs_tables_status_t old_rt_status = peer_data->rt_status; */
 	  /* peer_status_t old_status = peer_data->status; */
@@ -269,7 +278,6 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 
 #ifdef WITH_BGPWATCHER
   int rc;
-  bl_addr_storage_t peer_ip;
   uint32_t peer_table_time = interval_start;
   int peers_tosend_cnt = 0;
   if(bw_client->bwatcher_on)
@@ -327,9 +335,8 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 	      (bw_client->ipv6_full_only == 0 || peer_data->active_ribs_table->ipv6_size >= bw_client->ipv6_full_size) )
 	     )
 	    {	      
-	      peer_ip = bl_addr_ipv42storage(&ipv4_addr);
 	      if((bw_client->peer_id = bgpwatcher_client_pfx_table_add_peer(bw_client->client,
-									    &peer_ip, 
+									    (bl_addr_storage_t *) &ipv4_addr, 
 									    peer_data->status)) < 0)
 		{
 		  // something went wrong with bgpwatcher
@@ -368,9 +375,8 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 	      (bw_client->ipv6_full_only == 0 || peer_data->active_ribs_table->ipv6_size >= bw_client->ipv6_full_size) )
 	     )
 	    {
-	      peer_ip = bl_addr_ipv62storage(&ipv6_addr);	  
 	      if((bw_client->peer_id = bgpwatcher_client_pfx_table_add_peer(bw_client->client,
-									    &peer_ip, 
+									     (bl_addr_storage_t *) &ipv6_addr, 
 									    peer_data->status)) < 0)
 		{
 		  // something went wrong with bgpwatcher
