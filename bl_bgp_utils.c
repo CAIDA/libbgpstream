@@ -56,7 +56,7 @@ char *bl_print_ipv4_addr(bl_ipv4_addr_t* addr)
 {
   char addr_str[INET_ADDRSTRLEN];
   addr_str[0] ='\0';
-  inet_ntop(AF_INET, addr.ipv4, addr_str, INET_ADDRSTRLEN);
+  inet_ntop(AF_INET, &(addr->ipv4), addr_str, INET_ADDRSTRLEN);
   return strdup(addr_str);
 }
 
@@ -64,7 +64,7 @@ char *bl_print_ipv6_addr(bl_ipv6_addr_t* addr)
 {
   char addr_str[INET6_ADDRSTRLEN];
   addr_str[0] ='\0';
-  inet_ntop(AF_INET6, addr.ipv6, addr_str, INET6_ADDRSTRLEN);
+  inet_ntop(AF_INET6, &(addr->ipv6), addr_str, INET6_ADDRSTRLEN);
   return strdup(addr_str);
 }
 
