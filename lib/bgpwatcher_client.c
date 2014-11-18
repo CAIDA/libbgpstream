@@ -245,7 +245,23 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
   assert(peer_id >= 0 && peer_id < TBL.peers_added);
   assert(prefix != NULL);
 
-  findme.prefix = *prefix;
+  // it can cause segfault, as it could potentially access
+  // a non allocated space
+  // findme.prefix = *prefix;
+
+  switch(prefix->address.version)
+    {
+    case BL_ADDR_IPV4:
+      memcpy(&findme, prefix, sizeof(bl_ipv4_pfx_t));
+      break;
+    case BL_ADDR_IPV6:
+      memcpy(&findme, prefix, sizeof(bl_ipv6_pfx_t));
+      break;
+    default:
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Wrong prefix version");
+      return -1;
+    }
 
   /* either get or insert this prefix */
   if((k = kh_get(pfx_peers, TBL.pfx_peers, findme)) == kh_end(TBL.pfx_peers))

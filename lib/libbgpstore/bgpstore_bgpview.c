@@ -204,19 +204,19 @@ int bgpview_add_row(bgpview_t *bgp_view, bgpwatcher_pfx_table_t *table,
   bgp_view->state = BGPVIEW_STATE_UNKNOWN;
   // convert pfx_storage in a ip version specific pfx
   // and get the appropriate peer_view
-  bl_ipv4_pfx_t pfx_ipv4;
-  bl_ipv6_pfx_t pfx_ipv6;  
+  bl_ipv4_pfx_t *pfx_ipv4;
+  bl_ipv6_pfx_t *pfx_ipv6;  
   if(row->prefix.address.version == BL_ADDR_IPV4)
     {
       pfx_ipv4 = bl_pfx_storage2ipv4(&row->prefix);
-      peer_view = get_ipv4_peerview(bgp_view->aggregated_pfxview_ipv4, &pfx_ipv4);
+      peer_view = get_ipv4_peerview(bgp_view->aggregated_pfxview_ipv4, pfx_ipv4);
     }
   else 
     {
       if(row->prefix.address.version == BL_ADDR_IPV6)
 	{
 	  pfx_ipv6 = bl_pfx_storage2ipv6(&row->prefix);
-	  peer_view = get_ipv6_peerview(bgp_view->aggregated_pfxview_ipv6, &pfx_ipv6);
+	  peer_view = get_ipv6_peerview(bgp_view->aggregated_pfxview_ipv6, pfx_ipv6);
 	}
       else {	
 	fprintf(stderr, "Unknown ip version prefix provided!\n");
