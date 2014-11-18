@@ -29,7 +29,10 @@ AM_CPPFLAGS =   -I$(top_srcdir)     		\
 		-I$(top_srcdir)/common 		\
 	      	-I$(top_srcdir)/bgpcommon 
 
-EXTRA_DIST = 
+EXTRA_DIST =
+
+include_HEADERS = bgpcommon/bl_bgp_utils.h   
+
 
 ACLOCAL_AMFLAGS = -I m4
 
