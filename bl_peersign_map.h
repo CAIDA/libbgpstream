@@ -53,6 +53,8 @@ uint16_t bl_peersign_map_set_and_get(bl_peersign_map_t *map,
 bl_peer_signature_t* bl_peersign_map_get_peersign(bl_peersign_map_t *map,
 						  uint16_t id);
 
+int bl_peersign_map_get_size(bl_peersign_map_t *map);
+
 void bl_peersign_map_destroy(bl_peersign_map_t *map);
 
 

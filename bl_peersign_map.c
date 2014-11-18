@@ -38,11 +38,15 @@ khint64_t bl_peer_signature_hash_func(bl_peer_signature_t ps)
    * (in this specific case there will be a collision in terms
    * of hash). */
   return bl_addr_storage_hash_func(ps.peer_ip_addr);
+  // the following hash is slower but would decrease the collision chance
+  /* assert(strlen(ps.collector_str) > 2); */
+  /* uint16_t *last_chars =(uint16_t *) &(ps.collector_str[strlen(ps.collector_str)-2]); */
+  /* return bl_addr_storage_hash_func(ps.peer_ip_addr) & (uint64_t) (*last_chars); */
 }
 
 int bl_peer_signature_hash_equal(bl_peer_signature_t ps1,bl_peer_signature_t ps2)
 {
-  return (bl_addr_storage_hash_equal(ps1.peer_ip_addr, ps2.peer_ip_addr) &&
+  return (bl_addr_storage_hash_equal(ps1.peer_ip_addr, ps2.peer_ip_addr) &&	  
 	  (strcmp(ps1.collector_str,ps2.collector_str) == 0));    
 }
 
@@ -105,7 +109,12 @@ bl_peer_signature_t* bl_peersign_map_get_peersign(bl_peersign_map_t *map,
   return ps;
 }
 
+int bl_peersign_map_get_size(bl_peersign_map_t *map)
+{  
+  return kh_size(map->id_ps);
+}
 
+  
 void bl_peersign_map_destroy(bl_peersign_map_t *map)
 {
   if(map != NULL)

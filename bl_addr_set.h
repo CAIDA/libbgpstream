@@ -86,10 +86,10 @@ KHASH_INIT(bl_ipv4_addr_set /* name */,
 typedef khash_t(bl_ipv4_addr_set) bl_ipv4_addr_set_t;
 
 
-bl_ipv4_addr_set_t *ipv4_address_set_create();
-void ipv4_address_set_insert(bl_ipv4_addr_set_t *ip_address_set, bl_ipv4_addr_t ip_address);
-void ipv4_address_set_reset(bl_ipv4_addr_set_t *ip_address_set);
-void ipv4_address_set_destroy(bl_ipv4_addr_set_t *ip_address_set);
+bl_ipv4_addr_set_t *bl_ipv4_addr_set_create();
+int bl_ipv4_addr_set_insert(bl_ipv4_addr_set_t *ip_address_set, bl_ipv4_addr_t ip_address);
+void bl_ipv4_addr_set_reset(bl_ipv4_addr_set_t *ip_address_set);
+void bl_ipv4_addr_set_destroy(bl_ipv4_addr_set_t *ip_address_set);
 
 // same functions, ipv6 specific
 
@@ -103,10 +103,10 @@ KHASH_INIT(bl_ipv6_addr_set /* name */,
 typedef khash_t(bl_ipv6_addr_set) bl_ipv6_addr_set_t;
 
 
-bl_ipv6_addr_set_t *ipv6_address_set_create();
-void ipv6_address_set_insert(bl_ipv6_addr_set_t *ip_address_set, bl_ipv6_addr_t ip_address);
-void ipv6_address_set_reset(bl_ipv6_addr_set_t *ip_address_set);
-void ipv6_address_set_destroy(bl_ipv6_addr_set_t *ip_address_set);
+bl_ipv6_addr_set_t *bl_ipv6_addr_set_create();
+int bl_ipv6_addr_set_insert(bl_ipv6_addr_set_t *ip_address_set, bl_ipv6_addr_t ip_address);
+void bl_ipv6_addr_set_reset(bl_ipv6_addr_set_t *ip_address_set);
+void bl_ipv6_addr_set_destroy(bl_ipv6_addr_set_t *ip_address_set);
 
 
 #endif /* _BL_ADDR_SET_H */
