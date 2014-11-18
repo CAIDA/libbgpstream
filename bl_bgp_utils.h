@@ -78,8 +78,20 @@ typedef enum {BL_ADDR_TYPE_UNKNOWN  = 0,
 
 #define BL_ADDR_TYPE_MAX 3
 
-typedef struct in_addr  bl_ipv4_addr_t;
-typedef struct in6_addr bl_ipv6_addr_t;
+
+typedef struct struct_bl_ip_addr_t {
+  bl_addr_type_t version;
+} bl_ip_addr_t;
+
+typedef struct struct_bl_ipv4_addr_t {
+  bl_addr_type_t version;
+  struct in_addr ipv4;
+} bl_ipv4_addr_t;
+
+typedef struct struct_bl_ipv6_addr_t {
+  bl_addr_type_t version;
+  struct in6_addr ipv6;
+} bl_ipv6_addr_t;
 
 
 typedef struct struct_bl_addr_storage_t {
@@ -87,31 +99,49 @@ typedef struct struct_bl_addr_storage_t {
   bl_addr_type_t version;
   /** ip address */
   union {
-    bl_ipv4_addr_t ipv4;
-    bl_ipv6_addr_t ipv6;
+    struct in_addr ipv4;
+    struct in6_addr ipv6;
   };
 } bl_addr_storage_t;
 
 
+
+// old
+
+/* typedef struct in_addr  bl_ipv4_addr_t; */
+/* typedef struct in6_addr bl_ipv6_addr_t; */
+
+
+/* typedef struct struct_bl_addr_storage_t { */
+/*   /\** ip version (v4 o v6) *\/ */
+/*   bl_addr_type_t version; */
+/*   /\** ip address *\/ */
+/*   union { */
+/*     bl_ipv4_addr_t ipv4; */
+/*     bl_ipv6_addr_t ipv6; */
+/*   }; */
+/* } bl_addr_storage_t; */
+
+
 typedef struct struct_bl_ipv4_pfx_t {
-  /** the address */
-  bl_ipv4_addr_t address;
   /** length of the prefix mask */
   uint8_t mask_len;
+  /** the address */
+  bl_ipv4_addr_t address;
 } bl_ipv4_pfx_t;
 
 typedef struct struct_bl_ipv6_pfx_t {
-  /** the address */
-  bl_ipv6_addr_t address;
   /** length of the prefix mask */
   uint8_t mask_len;
+  /** the address */
+  bl_ipv6_addr_t address;
 } bl_ipv6_pfx_t;
 
 typedef struct struct_bl_pfx_storage_t {
-  /** the address */
-  bl_addr_storage_t address;
   /** length of the prefix mask */
   uint8_t mask_len;
+  /** the address */
+  bl_addr_storage_t address;
 } bl_pfx_storage_t;
 
 
@@ -179,40 +209,50 @@ typedef struct struct_bl_elem_t {
   bl_peerstate_type_t new_state;
 
   /** a pointer in case we want to keep
-      elems in a queue*/
+   *  elems in a queue*/
   struct struct_bl_elem_t *next;
 } bl_elem_t;
 
 
 /** Print functions */
 
-char *print_ipv4_addr(bl_ipv4_addr_t* addr);
-char *print_ipv6_addr(bl_ipv6_addr_t* addr);
-char *print_addr_storage(bl_addr_storage_t* addr);
+char *bl_print_elemtype(bl_elem_type_t type);
 
-char *print_ipv4_pfx(bl_ipv4_pfx_t* pfx);
-char *print_ipv6_pfx(bl_ipv6_pfx_t* pfx);
-char *print_pfx_storage(bl_pfx_storage_t* pfx);
+char *bl_print_ipv4_addr(bl_ipv4_addr_t* addr);
+char *bl_print_ipv6_addr(bl_ipv6_addr_t* addr);
+char *bl_print_addr_storage(bl_addr_storage_t* addr);
+
+char *bl_print_ipv4_pfx(bl_ipv4_pfx_t* pfx);
+char *bl_print_ipv6_pfx(bl_ipv6_pfx_t* pfx);
+char *bl_print_pfx_storage(bl_pfx_storage_t* pfx);
+
+char *bl_print_as(bl_as_storage_t *as);
+char *bl_print_aspath(bl_aspath_storage_t *aspath);
+
+char *bl_print_peerstate(bl_peerstate_type_t state);
+
+char *bl_print_elem(bl_elem_t *elem);
 
 
 /** Utility functions (conversion between address types) */
 
-bl_ipv4_addr_t bl_addr_storage2ipv4(bl_addr_storage_t *address);
-bl_ipv6_addr_t bl_addr_storage2ipv6(bl_addr_storage_t *address);
+bl_ipv4_addr_t *bl_addr_storage2ipv4(bl_addr_storage_t *address);
+bl_ipv6_addr_t *bl_addr_storage2ipv6(bl_addr_storage_t *address);
 
-bl_ipv4_pfx_t bl_pfx_storage2ipv4(bl_pfx_storage_t *prefix);
-bl_ipv6_pfx_t bl_pfx_storage2ipv6(bl_pfx_storage_t *prefix);
+bl_ipv4_pfx_t *bl_pfx_storage2ipv4(bl_pfx_storage_t *prefix);
+bl_ipv6_pfx_t *bl_pfx_storage2ipv6(bl_pfx_storage_t *prefix);
 
-bl_addr_storage_t bl_addr_ipv42storage(bl_ipv4_addr_t *address);
-bl_addr_storage_t bl_addr_ipv62storage(bl_ipv6_addr_t *address);
+bl_addr_storage_t *bl_addr_ipv42storage(bl_ipv4_addr_t *address);
+bl_addr_storage_t *bl_addr_ipv62storage(bl_ipv6_addr_t *address);
 
-bl_pfx_storage_t bl_pfx_ipv42storage(bl_ipv4_pfx_t *prefix);
-bl_pfx_storage_t bl_pfx_ipv62storage(bl_ipv6_pfx_t *prefix);
+bl_pfx_storage_t *bl_pfx_ipv42storage(bl_ipv4_pfx_t *prefix);
+bl_pfx_storage_t *bl_pfx_ipv62storage(bl_ipv6_pfx_t *prefix);
 
 
 /** as-path utility functions */
 
 bl_as_storage_t bl_get_origin_as(bl_aspath_storage_t *aspath);
+
 
 
 /** khash utility functions */

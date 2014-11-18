@@ -32,8 +32,27 @@
 
 /** Print functions */
 
+char *bl_print_elemtype(bl_elem_type_t type)
+{
+  switch(type)
+    {
+    case BL_RIB_ELEM:
+      return strdup("R");
+    case BL_ANNOUNCEMENT_ELEM:
+      return strdup("A");
+    case BL_WITHDRAWAL_ELEM:
+      return strdup("W");
+    case BL_PEERSTATE_ELEM:
+      return strdup("S");
+    default:
+      // do nothing
+      break;
+    }
+  return strdup("");
+}
 
-char *print_ipv4_addr(bl_ipv4_addr_t* addr)
+
+char *bl_print_ipv4_addr(bl_ipv4_addr_t* addr)
 {
   char addr_str[INET_ADDRSTRLEN];
   addr_str[0] ='\0';
@@ -41,7 +60,7 @@ char *print_ipv4_addr(bl_ipv4_addr_t* addr)
   return strdup(addr_str);
 }
 
-char *print_ipv6_addr(bl_ipv6_addr_t* addr)
+char *bl_print_ipv6_addr(bl_ipv6_addr_t* addr)
 {
   char addr_str[INET6_ADDRSTRLEN];
   addr_str[0] ='\0';
@@ -49,25 +68,25 @@ char *print_ipv6_addr(bl_ipv6_addr_t* addr)
   return strdup(addr_str);
 }
 
-char *print_addr_storage(bl_addr_storage_t* addr)
+char *bl_print_addr_storage(bl_addr_storage_t* addr)
 {
   if(addr->version == BL_ADDR_IPV4)
     {
-      return print_ipv4_addr(&(addr->ipv4));
+      return bl_print_ipv4_addr((bl_ipv4_addr_t*)addr);
     }
   if(addr->version == BL_ADDR_IPV6)
     {
-      return print_ipv6_addr(&(addr->ipv6));
+      return bl_print_ipv6_addr((bl_ipv6_addr_t*)addr);
     }
   return NULL;
 }
 
 
-char *print_ipv4_pfx(bl_ipv4_pfx_t* pfx)
+char *bl_print_ipv4_pfx(bl_ipv4_pfx_t* pfx)
 {
   char pfx_str[24];
   pfx_str[0] ='\0';
-  char *addr_str = print_ipv4_addr(&(pfx->address));
+  char *addr_str = bl_print_ipv4_addr(&(pfx->address));
   sprintf(pfx_str, "%s/%"PRIu8, addr_str, pfx->mask_len);
   if(addr_str != NULL)
     {
@@ -76,11 +95,11 @@ char *print_ipv4_pfx(bl_ipv4_pfx_t* pfx)
   return strdup(pfx_str);
 }
 
-char *print_ipv6_pfx(bl_ipv6_pfx_t* pfx)
+char *bl_print_ipv6_pfx(bl_ipv6_pfx_t* pfx)
 {
   char pfx_str[64];
   pfx_str[0] ='\0';
-  char *addr_str = print_ipv6_addr(&(pfx->address));
+  char *addr_str = bl_print_ipv6_addr(&(pfx->address));
   sprintf(pfx_str, "%s/%"PRIu8, addr_str, pfx->mask_len);
   if(addr_str != NULL)
     {
@@ -89,11 +108,11 @@ char *print_ipv6_pfx(bl_ipv6_pfx_t* pfx)
   return strdup(pfx_str);
 }
 
-char *print_pfx_storage(bl_pfx_storage_t* pfx)
+char *bl_print_pfx_storage(bl_pfx_storage_t* pfx)
 {
   char pfx_str[64];
   pfx_str[0] ='\0';
-  char *addr_str = print_addr_storage(&(pfx->address));
+  char *addr_str = bl_print_addr_storage(&(pfx->address));
   sprintf(pfx_str, "%s/%"PRIu8, addr_str, pfx->mask_len);
   if(addr_str != NULL)
     {
@@ -101,76 +120,190 @@ char *print_pfx_storage(bl_pfx_storage_t* pfx)
     }       
   return strdup(pfx_str);
 }
+
+char *bl_print_as(bl_as_storage_t *as)
+{
+  if(as->type == BL_AS_NUMERIC)
+    {
+      char as_str[16];
+      sprintf(as_str, "%"PRIu32, as->as_number);
+      return strdup(as_str);
+    }
+  if(as->type == BL_AS_STRING)
+    {
+      return strdup(as->as_string);
+    }
+    return "";
+}
+
+
+char *bl_print_aspath(bl_aspath_storage_t *aspath)
+{
+    if(aspath->type == BL_AS_NUMERIC)
+      {
+	char *as_path_str = NULL;
+	char as[10];
+	int i;
+	// assuming 10 char per as number
+	as_path_str = (char *)malloc_zero(sizeof(char) * (aspath->hop_count * 10 + 1));
+	as_path_str[0] = '\0';
+	for(i = 0; i < aspath->hop_count; i++)
+	  {
+	    sprintf(as, "%"PRIu32, aspath->numeric_aspath[i]);
+	    strcat(as_path_str, as);
+	  }
+	return as_path_str;
+      }    
+    if(aspath->type == BL_AS_STRING)
+      {
+	return strdup(aspath->str_aspath);	      
+      }
+    return "";
+}
+
+
+char *bl_print_peerstate(bl_peerstate_type_t state)
+{
+  switch(state)
+    {
+    case BL_PEERSTATE_IDLE:
+      return strdup("IDLE");
+    case BL_PEERSTATE_CONNECT:
+      return strdup("CONNECT");
+    case BL_PEERSTATE_ACTIVE:
+      return strdup("ACTIVE");
+    case BL_PEERSTATE_OPENSENT:
+      return strdup("OPENSENT");
+    case BL_PEERSTATE_OPENCONFIRM:
+      return strdup("OPENCONFIRM");
+    case BL_PEERSTATE_ESTABLISHED:
+      return strdup("ESTABLISHED");
+    default:
+      // do nothing
+      break;
+    }
+  return strdup("");
+}
+
+
+char *bl_print_elem(bl_elem_t *elem)
+{
+  assert(elem);
+
+  char elem_str[4096];
+  elem_str[0] = '\0';
+
+  char partial[4096];
+  partial[0] = '\0';
+
+  char *pa = NULL;
+  char *et = NULL;
+  char *pr = NULL;
+  char *nh = NULL;
+  char *ap = NULL;
+  char *ao = NULL;
+  char *os = NULL;
+  char *ns = NULL;
+  bl_as_storage_t a;
+  
+  // timestamp|peer_ip|peer_asn|message_type|
+
+  sprintf(partial, "%"PRIu32"|%s|%"PRIu32"|%s|",
+	  elem->timestamp,
+	  (pa = bl_print_addr_storage(&elem->peer_address)),
+	  elem->peer_asnumber,
+	  (et = bl_print_elemtype(elem->type)) 
+	  );
+
+  strcat(elem_str, partial);
+  // reset partial string
+  partial[0] = '\0';
+
+  switch(elem->type)
+    {
+    case BL_RIB_ELEM:
+    case BL_ANNOUNCEMENT_ELEM:
+      a = bl_get_origin_as(&elem->aspath);
+      sprintf(partial, "%s|%s|%s|%s|",
+	      (pr = bl_print_pfx_storage(&elem->prefix)),
+	      (nh = bl_print_addr_storage(&elem->nexthop)),
+	      (ap = bl_print_aspath(&elem->aspath)),
+	      (ao = bl_print_as(&a)));
+      break;
+    case BL_WITHDRAWAL_ELEM:
+      sprintf(partial, "%s|", (pr = bl_print_pfx_storage(&elem->prefix)));
+      break;
+    case BL_PEERSTATE_ELEM:
+      sprintf(partial, "%s|%s|",
+	      (os = bl_print_peerstate(elem->old_state)),
+	      (ns = bl_print_peerstate(elem->new_state)));
+      break;
+    default:
+      fprintf(stderr, "Error during elem processing\n");
+    }
+
+  strcat(elem_str, partial);
+
+  // free all temporary strings  
+  if(pa == NULL) free(pa);
+  if(et == NULL) free(et);
+  if(pr == NULL) free(pr);
+  if(nh == NULL) free(nh);
+  if(ap == NULL) free(ap);
+  if(ao == NULL) free(ao);
+  if(os == NULL) free(os);
+  if(ns == NULL) free(ns);
+    
+  return strdup(elem_str);
+
+}
+
 
 
 /** Utility functions (conversion between address types) */
 
-bl_ipv4_addr_t bl_addr_storage2ipv4(bl_addr_storage_t *address)
+bl_ipv4_addr_t *bl_addr_storage2ipv4(bl_addr_storage_t *address)
 {
   assert(address->version == BL_ADDR_IPV4);
-  bl_ipv4_addr_t ipv4_addr;    
-  ipv4_addr = address->ipv4;
-  return ipv4_addr;
+  return (bl_ipv4_addr_t *) address;
 }
 
-bl_ipv6_addr_t bl_addr_storage2ipv6(bl_addr_storage_t *address)
+bl_ipv6_addr_t *bl_addr_storage2ipv6(bl_addr_storage_t *address)
 {
   assert(address->version == BL_ADDR_IPV6);
-  bl_ipv6_addr_t ipv6_addr;    
-  ipv6_addr = address->ipv6;
-  return ipv6_addr;
+  return (bl_ipv6_addr_t *) address;
 }
 
-bl_ipv4_pfx_t bl_pfx_storage2ipv4(bl_pfx_storage_t *prefix)
+bl_ipv4_pfx_t *bl_pfx_storage2ipv4(bl_pfx_storage_t *prefix)
 {
   assert(prefix->address.version == BL_ADDR_IPV4);
-  bl_ipv4_pfx_t ipv4_pfx;    
-  ipv4_pfx.mask_len = prefix->mask_len;
-  ipv4_pfx.address  = prefix->address.ipv4;
-  return ipv4_pfx;
+  return (bl_ipv4_pfx_t *) prefix;
 }
 
-bl_ipv6_pfx_t bl_pfx_storage2ipv6(bl_pfx_storage_t *prefix)
+bl_ipv6_pfx_t *bl_pfx_storage2ipv6(bl_pfx_storage_t *prefix)
 {
   assert(prefix->address.version == BL_ADDR_IPV6);
-  bl_ipv6_pfx_t ipv6_pfx;
-  ipv6_pfx.mask_len = prefix->mask_len;
-  ipv6_pfx.address  = prefix->address.ipv6; 
-  return ipv6_pfx;
+  return (bl_ipv6_pfx_t *) prefix;
 }
 
-bl_addr_storage_t bl_addr_ipv42storage(bl_ipv4_addr_t *address)
+bl_addr_storage_t *bl_addr_ipv42storage(bl_ipv4_addr_t *address)
 {
-  bl_addr_storage_t st_addr;
-  st_addr.version = BL_ADDR_IPV4;
-  st_addr.ipv4 = *address;
-  return st_addr;
+  return (bl_addr_storage_t *)address;
 }
 
-bl_addr_storage_t bl_addr_ipv62storage(bl_ipv6_addr_t *address)
+bl_addr_storage_t *bl_addr_ipv62storage(bl_ipv6_addr_t *address)
 {
-  bl_addr_storage_t st_addr;
-  st_addr.version = BL_ADDR_IPV6;
-  st_addr.ipv6 = *address;
-  return st_addr;
+  return (bl_addr_storage_t *)address;
 }
 
-bl_pfx_storage_t bl_pfx_ipv42storage(bl_ipv4_pfx_t *prefix)
+bl_pfx_storage_t *bl_pfx_ipv42storage(bl_ipv4_pfx_t *prefix)
 {
-  bl_pfx_storage_t st_pfx;
-  st_pfx.address.version = BL_ADDR_IPV4;
-  st_pfx.mask_len = prefix->mask_len;
-  st_pfx.address.ipv4 = prefix->address;
-  return st_pfx;
+  return (bl_pfx_storage_t *) prefix;
 }
 
-bl_pfx_storage_t bl_pfx_ipv62storage(bl_ipv6_pfx_t *prefix)
+bl_pfx_storage_t *bl_pfx_ipv62storage(bl_ipv6_pfx_t *prefix)
 {
-  bl_pfx_storage_t st_pfx;
-  st_pfx.address.version = BL_ADDR_IPV6;
-  st_pfx.mask_len = prefix->mask_len;
-  st_pfx.address.ipv6 = prefix->address;
-  return st_pfx;
+  return (bl_pfx_storage_t *) prefix;
 }
 
 
@@ -216,11 +349,11 @@ khint64_t bl_addr_storage_hash_func(bl_addr_storage_t ip)
   khint64_t h = 0;
   if(ip.version == BL_ADDR_IPV4)
     {
-      h = bl_ipv4_addr_hash_func(ip.ipv4);
+      h = bl_ipv4_addr_hash_func(*((bl_ipv4_addr_t *)&ip));
     }
   if(ip.version == BL_ADDR_IPV6)
     {
-      h = bl_ipv6_addr_hash_func(ip.ipv6);
+      h = bl_ipv6_addr_hash_func(*((bl_ipv6_addr_t *)&ip));
     }
   return h;
 }
@@ -229,37 +362,37 @@ int bl_addr_storage_hash_equal(bl_addr_storage_t ip1, bl_addr_storage_t ip2)
 {
   if(ip1.version == BL_ADDR_IPV4 && ip2.version == BL_ADDR_IPV4)
     {
-      return bl_ipv4_addr_hash_equal(ip1.ipv4,ip2.ipv4);
+      return bl_ipv4_addr_hash_equal(*((bl_ipv4_addr_t *)&ip1),*((bl_ipv4_addr_t *)&ip2));
     }
   if(ip1.version == BL_ADDR_IPV6 && ip2.version == BL_ADDR_IPV6)
     {
-      return bl_ipv6_addr_hash_equal(ip1.ipv6,ip2.ipv6);
+      return bl_ipv6_addr_hash_equal(*((bl_ipv6_addr_t *)&ip1),*((bl_ipv6_addr_t *)&ip2));
     }
   return 0;
 }
 
 khint32_t bl_ipv4_addr_hash_func(bl_ipv4_addr_t ip)
 {
-  khint32_t h = ip.s_addr;  
+  khint32_t h = ip.ipv4.s_addr;  
   return __ac_Wang_hash(h);
 }
 
 int bl_ipv4_addr_hash_equal(bl_ipv4_addr_t ip1, bl_ipv4_addr_t ip2)
 {
-  return (ip1.s_addr == ip2.s_addr);
+  return (ip1.ipv4.s_addr == ip2.ipv4.s_addr);
 }
 
 khint64_t bl_ipv6_addr_hash_func(bl_ipv6_addr_t ip)
 {
-  unsigned char *s6 =  &(ip.s6_addr[0]);
+  unsigned char *s6 =  &(ip.ipv6.s6_addr[0]);
   khint64_t h = *((khint64_t *) s6);
   return __ac_Wang_hash(h);
 }
 
 int bl_ipv6_addr_hash_equal(bl_ipv6_addr_t ip1, bl_ipv6_addr_t ip2)
 {
-  return ( (memcmp(&(ip1.s6_addr[0]), &(ip2.s6_addr[0]), sizeof(uint64_t)) == 0) &&
-	   (memcmp(&(ip1.s6_addr[8]), &(ip2.s6_addr[8]), sizeof(uint64_t)) == 0) );
+  return ( (memcmp(&(ip1.ipv6.s6_addr[0]), &(ip2.ipv6.s6_addr[0]), sizeof(uint64_t)) == 0) &&
+	   (memcmp(&(ip1.ipv6.s6_addr[8]), &(ip2.ipv6.s6_addr[8]), sizeof(uint64_t)) == 0) );
 }
 
 
@@ -297,7 +430,7 @@ khint32_t bl_ipv4_pfx_hash_func(bl_ipv4_pfx_t prefix)
 {
   // convert network byte order to host byte order
   // ipv4 32 bits number (in host order)
-  uint32_t address = ntohl(prefix.address.s_addr);  
+  uint32_t address = ntohl(prefix.address.ipv4.s_addr);  
   // embed the network mask length in the 32 bits
   khint32_t h = address | (uint32_t) prefix.mask_len;
   return __ac_Wang_hash(h);
@@ -305,14 +438,14 @@ khint32_t bl_ipv4_pfx_hash_func(bl_ipv4_pfx_t prefix)
 
 int bl_ipv4_pfx_hash_equal(bl_ipv4_pfx_t prefix1, bl_ipv4_pfx_t prefix2)
 {
-  return ( (prefix1.address.s_addr == prefix2.address.s_addr) &&
+  return ( (prefix1.address.ipv4.s_addr == prefix2.address.ipv4.s_addr) &&
 	   (prefix1.mask_len == prefix2.mask_len));
 }
 
 khint64_t bl_ipv6_pfx_hash_func(bl_ipv6_pfx_t prefix)
 {
   // ipv6 number - we take most significative 64 bits only (in host order)
-  unsigned char *s6 =  &(prefix.address.s6_addr[0]);
+  unsigned char *s6 =  &(prefix.address.ipv6.s6_addr[0]);
   uint64_t address = *((uint64_t *) s6);
   address = ntohll(address);
   // embed the network mask length in the 64 bits
@@ -323,8 +456,8 @@ khint64_t bl_ipv6_pfx_hash_func(bl_ipv6_pfx_t prefix)
 int bl_ipv6_pfx_hash_equal(bl_ipv6_pfx_t prefix1, bl_ipv6_pfx_t prefix2)
 {
 
-  return ( (memcmp(&(prefix1.address.s6_addr[0]), &(prefix2.address.s6_addr[0]), sizeof(uint64_t)) == 0) &&
-	   (memcmp(&(prefix1.address.s6_addr[8]), &(prefix2.address.s6_addr[8]), sizeof(uint64_t)) == 0) &&
+  return ( (memcmp(&(prefix1.address.ipv6.s6_addr[0]), &(prefix2.address.ipv6.s6_addr[0]), sizeof(uint64_t)) == 0) &&
+	   (memcmp(&(prefix1.address.ipv6.s6_addr[8]), &(prefix2.address.ipv6.s6_addr[8]), sizeof(uint64_t)) == 0) &&
 	   prefix1.mask_len == prefix2.mask_len );
 
 }
