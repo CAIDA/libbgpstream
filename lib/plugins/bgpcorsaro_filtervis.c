@@ -218,12 +218,12 @@ static void insert_into_ipv6(peer_ipv6prefix_map_t *vis_map, uint16_t peer_id, b
 static int filter_vis_update(filter_vis_t *fv, bgpstream_record_t *bs_record)
 {
   
-  bgpstream_elem_t *bs_elem_queue;
-  bgpstream_elem_t *bs_iterator;
-  bl_addr_storage_t peer_ip; // TODO conversion
+  bl_elem_t *bs_elem_queue;
+  bl_elem_t *bs_iterator;
+
   uint16_t peer_id;
-  bl_ipv4_pfx_t ipv4_prefix;
-  bl_ipv6_pfx_t ipv6_prefix;
+  bl_ipv4_pfx_t *ipv4_prefix;
+  bl_ipv6_pfx_t *ipv6_prefix;
 	  
   if(bs_record->status == VALID_RECORD) 
     {
@@ -231,45 +231,35 @@ static int filter_vis_update(filter_vis_t *fv, bgpstream_record_t *bs_record)
       bs_iterator = bs_elem_queue;
       while(bs_iterator != NULL)
 	{
-	  if(bs_iterator->type == BST_ANNOUNCEMENT || bs_iterator->type == BST_RIB)
+	  if(bs_iterator->type == BL_ANNOUNCEMENT_ELEM || bs_iterator->type == BL_RIB_ELEM)
 	    {
-	      // converting peer ip to storage
-	      if(bs_iterator->peer_address.type == BST_IPV4)
-		{
-		  peer_ip.version = BL_ADDR_IPV4;
-		  peer_ip.ipv4 = bs_iterator->peer_address.address.v4_addr;		  
-		}
-	      else
-		{
-		  peer_ip.version = BL_ADDR_IPV6;
-		  peer_ip.ipv6 = bs_iterator->peer_address.address.v6_addr;
-		}
 	      // getting peer_id	      
-	      peer_id = bl_peersign_map_set_and_get(fv->ps_map, bs_record->attributes.dump_collector, &peer_ip);
+	      peer_id = bl_peersign_map_set_and_get(fv->ps_map, bs_record->attributes.dump_collector,
+						    &(bs_iterator->peer_address));
 
-	      if(bs_iterator->prefix.number.type == BST_IPV4 && fv->show_ipv4 == 1)
+	      if(bs_iterator->prefix.address.version == BL_ADDR_IPV4 && fv->show_ipv4 == 1)
 		{
-		  if(bs_iterator->prefix.len < fv->min_ipv4_mask_len || bs_iterator->prefix.len > fv->max_ipv4_mask_len)
+		  if(bs_iterator->prefix.mask_len < fv->min_ipv4_mask_len ||
+		     bs_iterator->prefix.mask_len > fv->max_ipv4_mask_len)
 		    {
 		      bs_iterator = bs_iterator->next;
 		      continue;
 		    }
-		  
-		  ipv4_prefix.mask_len = bs_iterator->prefix.len;
-		  ipv4_prefix.address = bs_iterator->prefix.number.address.v4_addr;
-		  insert_into_ipv4(fv->ipv4_vis, peer_id, &ipv4_prefix);
+
+		  ipv4_prefix = bl_pfx_storage2ipv4(&(bs_iterator->prefix));
+		  insert_into_ipv4(fv->ipv4_vis, peer_id, ipv4_prefix);
 		}
 	      
-	      if(bs_iterator->prefix.number.type == BST_IPV6 && fv->show_ipv6 == 1)
+	      if(bs_iterator->prefix.address.version == BL_ADDR_IPV6 && fv->show_ipv6 == 1)
 		{
-		  if(bs_iterator->prefix.len > fv->max_ipv6_mask_len)
+		  if(bs_iterator->prefix.mask_len > fv->max_ipv6_mask_len)
 		    {
 		      bs_iterator = bs_iterator->next;
 		      continue;
 		    }
-		  ipv6_prefix.mask_len = bs_iterator->prefix.len;
-		  ipv6_prefix.address = bs_iterator->prefix.number.address.v6_addr;
-		  insert_into_ipv6(fv->ipv6_vis, peer_id, &ipv6_prefix);
+
+		  ipv6_prefix = bl_pfx_storage2ipv6(&(bs_iterator->prefix));
+		  insert_into_ipv6(fv->ipv6_vis, peer_id, ipv6_prefix);
 		}	     
 	    }
 	  bs_iterator = bs_iterator->next;
@@ -444,7 +434,7 @@ static void filter_vis_end(filter_vis_t *fv, int end_time)
 	    {
 	      ipv4_pfx = &kh_key(ipv4_pfx_visinfo, k);
 	      pbd = kh_value(ipv4_pfx_visinfo, k);
-	      ip_str = print_ipv4_addr(&ipv4_pfx->address);
+	      ip_str = bl_print_ipv4_addr(&ipv4_pfx->address);
 	      printf("%d\t%s/%d\t%u\t%u\n", fv->start_time, ip_str,
 		     ipv4_pfx->mask_len, pbd.full_feed_peers_cnt, pbd.all_peers_cnt);
 	      free(ip_str);
@@ -461,7 +451,7 @@ static void filter_vis_end(filter_vis_t *fv, int end_time)
 	    {
 	      ipv6_pfx = &kh_key(ipv6_pfx_visinfo, k);
 	      pbd = kh_value(ipv6_pfx_visinfo, k);
-	      ip_str = print_ipv6_addr(&ipv6_pfx->address);
+	      ip_str = bl_print_ipv6_addr(&ipv6_pfx->address);
 	      printf("%d\t%s/%d\t%u\t%u\n", fv->start_time, ip_str,
 		     ipv6_pfx->mask_len, pbd.full_feed_peers_cnt, pbd.all_peers_cnt);
 	      free(ip_str);
