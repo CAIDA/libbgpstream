@@ -139,7 +139,7 @@ char *bl_print_as(bl_as_storage_t *as)
 
 char *bl_print_aspath(bl_aspath_storage_t *aspath)
 {
-    if(aspath->type == BL_AS_NUMERIC)
+    if(aspath->type == BL_AS_NUMERIC && aspath->hop_count > 0)
       {
 	char *as_path_str = NULL;
 	char as[10];
@@ -147,9 +147,11 @@ char *bl_print_aspath(bl_aspath_storage_t *aspath)
 	// assuming 10 char per as number
 	as_path_str = (char *)malloc_zero(sizeof(char) * (aspath->hop_count * 10 + 1));
 	as_path_str[0] = '\0';
-	for(i = 0; i < aspath->hop_count; i++)
+	sprintf(as, "%"PRIu32, aspath->numeric_aspath[0]);
+	strcat(as_path_str, as);	
+	for(i = 1; i < aspath->hop_count; i++)
 	  {
-	    sprintf(as, "%"PRIu32, aspath->numeric_aspath[i]);
+	    sprintf(as, " %"PRIu32, aspath->numeric_aspath[i]);
 	    strcat(as_path_str, as);
 	  }
 	return as_path_str;
@@ -322,8 +324,8 @@ bl_as_storage_t bl_get_origin_as(bl_aspath_storage_t *aspath)
 	{
 	  origin_as.as_number = aspath->numeric_aspath[aspath->hop_count-1];	
 	}
-      else
-	{ // assert origin_as.type == BL_AS_STRING;
+      if(aspath->type == BL_AS_STRING)
+	{ 
 	  origin_as.type = BL_AS_STRING;
 	  origin_as.as_string = strdup(aspath->str_aspath);
 	  path_copy = strdup(aspath->str_aspath);
