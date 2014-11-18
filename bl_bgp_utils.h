@@ -56,7 +56,7 @@ typedef enum {BL_UNKNOWN_ELEM      = 0,
 	      BL_PEERSTATE_ELEM    = 4
 } bl_elem_type_t;
 
-#define BL_ELEM_TYPE_MAX 4
+#define BL_ELEM_TYPE_MAX 5
 
 
 typedef enum {BL_PEERSTATE_UNKNOWN     = 0,
