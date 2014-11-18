@@ -52,10 +52,11 @@ Original Author: Shufu Mao(msf98@mails.tsinghua.edu.cn)
 #include "bgpdump_lib.h"
 #include "bgpdump-config.h"
 
-#include "bgpstream_elem.h"
 #include "bgpstream_debug.h"
 #include "bgpstream_record.h"
 
+#include "utils.h"
+#include "bl_bgp_utils.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -64,28 +65,17 @@ Original Author: Shufu Mao(msf98@mails.tsinghua.edu.cn)
 
 /* route info create and destroy methods */
 
-static bgpstream_elem_t * bd2bi_create_route_info() {
+static bl_elem_t * bd2bi_create_route_info() {
   // allocate memory for new element
-  bgpstream_elem_t * ri = (bgpstream_elem_t *) malloc(sizeof(bgpstream_elem_t));
-  // initialize fields
-  ri->type = BST_RIB;
-  ri->timestamp = 0;
-  // ri->peer_address;
-  ri->peer_asnumber = 0;
-  // ri->prefix;
-  // ri->next_hop;  
-  ri->aspath.type = BST_UINT32_ASPATH;
-  ri->aspath.hop_count = 0;
-  ri->aspath.numeric_aspath = NULL;  
-  ri->old_state = BST_UNKNOWN;  
-  ri->new_state = BST_UNKNOWN;    
+  bl_elem_t * ri = (bl_elem_t *) malloc_zero(sizeof(bl_elem_t));
+  // all fields are initialized to zero
   ri->next = NULL;
   return ri;
 }
 
 
-static bgpstream_elem_t * bd2bi_add_new_route_info(bgpstream_elem_t ** lifo_queue) { 
-  bgpstream_elem_t * ri = bd2bi_create_route_info();
+static bl_elem_t * bd2bi_add_new_route_info(bl_elem_t ** lifo_queue) { 
+  bl_elem_t * ri = bd2bi_create_route_info();
   if(ri == NULL) {
     return NULL;
   }
@@ -95,29 +85,32 @@ static bgpstream_elem_t * bd2bi_add_new_route_info(bgpstream_elem_t ** lifo_queu
 }
 
 
-static void bd2bi_destroy_route_info(bgpstream_elem_t * ri) {
+static void bd2bi_destroy_route_info(bl_elem_t * ri) {
   if(ri != NULL) {
-    if(ri->aspath.type == BST_STRING_ASPATH) {
-      if(ri->aspath.str_aspath != NULL) {
-	free(ri->aspath.str_aspath);
+    if(ri->aspath.type == BL_AS_NUMERIC)
+      {
+	if(ri->aspath.numeric_aspath != NULL)
+	  {
+	    free(ri->aspath.numeric_aspath);
+	  }
       }
-    }
-    else{
-      // ri->aspath.type == BST_UINT32_ASPATH
-      if(ri->aspath.numeric_aspath != NULL) {
-	free(ri->aspath.numeric_aspath);
-      }
-    }
+    if(ri->aspath.type == BL_AS_STRING)
+      {
+	if(ri->aspath.str_aspath != NULL)
+	  {
+	    free(ri->aspath.str_aspath);
+	  }
+      }    
     free(ri);
   }
 }
 
 
-static void bd2bi_destroy_route_info_queue(bgpstream_elem_t * lifo_queue) {
+static void bd2bi_destroy_route_info_queue(bl_elem_t * lifo_queue) {
   if(lifo_queue == NULL) {
     return;
   }
-  bgpstream_elem_t * ri = lifo_queue;
+  bl_elem_t * ri = lifo_queue;
   while(lifo_queue != NULL) {
     ri = lifo_queue;
     lifo_queue = ri->next;
@@ -126,7 +119,7 @@ static void bd2bi_destroy_route_info_queue(bgpstream_elem_t * lifo_queue) {
 }
 
 
-static void get_aspath_struct(struct aspath * ap, bgpstream_aspath_t * ap_struct)
+static void get_aspath_struct(struct aspath *ap, bl_aspath_storage_t *ap_struct)
 {
   const char *invalid_characters = "([{}])";
   // char origin_copy[16];
@@ -135,8 +128,8 @@ static void get_aspath_struct(struct aspath * ap, bgpstream_aspath_t * ap_struct
   char *c = ap->str;
   char *next;
   ap_struct->hop_count = ap->count;
-  ap_struct->type = BST_UINT32_ASPATH; // default
-  ap_struct->numeric_aspath = NULL;
+  ap_struct->type = BL_AS_TYPE_UNKNOWN; 
+
   if(ap->str == NULL || ap_struct->hop_count == 0) {
     // aspath is empty, if it is an internal AS bgp info that is fine
     return;
@@ -144,76 +137,69 @@ static void get_aspath_struct(struct aspath * ap, bgpstream_aspath_t * ap_struct
   // check if there are sets or confederations
   while (*c) {
     if(strchr(invalid_characters, *c)) {
-      ap_struct->type = BST_STRING_ASPATH;
+      ap_struct->type = BL_AS_STRING;
       ap_struct->str_aspath = NULL;
       break;
     }
     c++;
-  }
+  }  
   /* if sets or confederations are present, then 
    * the AS_PATH is of type STRING */
-  if(ap_struct->type == BST_STRING_ASPATH) {
+  if(ap_struct->type == BL_AS_STRING) {
     /* if the type is STR then we allocate the memory
      * required for the path - we do not copy ap->str 
      * it is a fixed length array which is unreasonably
      long (8000)*/
     ap_struct->str_aspath = strdup(ap->str);
-    // free(ap->str); // consume data 
-    // ap->str = NULL;
   }
-  // otherwise the type is UINT32
-  else {
-    it = 0;
-    ap_struct->numeric_aspath = (uint32_t *)malloc(ap_struct->hop_count * sizeof(uint32_t));
-    if(ap_struct->numeric_aspath == NULL) {
-      bgpstream_log_err("get_aspath_struct: can't malloc aspath numeric array");
-      // see comments below about ap->str
-      // if(ap->str != NULL) {
-      // free(ap->str);
-      //  ap->str = NULL;
-      // }
-      return;
+
+  /* if type has not been changed, then it is  numeric, then  */
+  
+  if(ap_struct->type == BL_AS_TYPE_UNKNOWN)
+    {
+      ap_struct->type =  BL_AS_NUMERIC;
+      it = 0;
+      ap_struct->numeric_aspath = (uint32_t *)malloc(ap_struct->hop_count * sizeof(uint32_t));
+      if(ap_struct->numeric_aspath == NULL) {
+	bgpstream_log_err("get_aspath_struct: can't malloc aspath numeric array");
+	return;
+      }
+      
+      next = c = strdup(ap->str);
+      while((tok = strsep(&next, " ")) != NULL) {
+	// strcpy(origin_copy, tok);
+	ap_struct->numeric_aspath[it] = strtoul(tok, NULL, 10);
+	it++;
+      }
+      free(c);
     }
-    next = c = strdup(ap->str);
-    while((tok = strsep(&next, " ")) != NULL) {
-      // strcpy(origin_copy, tok);
-      ap_struct->numeric_aspath[it] = strtoul(tok, NULL, 10);
-      it++;
-    }
-    free(c);
-}
-  /* ap->str is now consumed and the memory that bgpdump
-   * allocated to extract the string can now be released */
-  /* if(ap->str != NULL) { */
-  /*   free(ap->str); */
-  /*   ap->str = NULL; */
-  /* } */
+  
 }
 
 
 
 /* ribs */
-static bgpstream_elem_t * table_line_mrtd_route(BGPDUMP_ENTRY *entry);
-static bgpstream_elem_t * table_line_dump_v2_prefix(BGPDUMP_ENTRY *entry);
+static bl_elem_t * table_line_mrtd_route(BGPDUMP_ENTRY *entry);
+static bl_elem_t * table_line_dump_v2_prefix(BGPDUMP_ENTRY *entry);
 
-static bgpstream_elem_t * table_line_update(BGPDUMP_ENTRY *entry);
+static bl_elem_t * table_line_update(BGPDUMP_ENTRY *entry);
 
-static bgpstream_elem_t * table_line_withdraw(struct prefix *prefix, int count, BGPDUMP_ENTRY *entry);
-static bgpstream_elem_t * table_line_announce(struct prefix *prefix, int count, BGPDUMP_ENTRY *entry);
-static bgpstream_elem_t * table_line_announce_1(struct mp_nlri *prefix, int count, BGPDUMP_ENTRY *entry);
+static bl_elem_t * table_line_withdraw(struct prefix *prefix, int count, BGPDUMP_ENTRY *entry);
+static bl_elem_t * table_line_announce(struct prefix *prefix, int count, BGPDUMP_ENTRY *entry);
+static bl_elem_t * table_line_announce_1(struct mp_nlri *prefix, int count, BGPDUMP_ENTRY *entry);
 
 
 #ifdef BGPDUMP_HAVE_IPV6
-static bgpstream_elem_t * table_line_withdraw6(struct prefix *prefix, int count, BGPDUMP_ENTRY *entry);
-static bgpstream_elem_t * table_line_announce6(struct mp_nlri *prefix,int count,BGPDUMP_ENTRY *entry);
+static bl_elem_t * table_line_withdraw6(struct prefix *prefix, int count, BGPDUMP_ENTRY *entry);
+static bl_elem_t * table_line_announce6(struct mp_nlri *prefix,int count,BGPDUMP_ENTRY *entry);
 #endif
 
-static bgpstream_elem_t * bgp_state_change(BGPDUMP_ENTRY *entry);
+static bl_elem_t * bgp_state_change(BGPDUMP_ENTRY *entry);
 
 
 /* get routing information from entry */
 
-bgpstream_elem_t * bgpstream_get_elem_queue(bgpstream_record_t * const bs_record) {
+bl_elem_t * bgpstream_get_elem_queue(bgpstream_record_t * const bs_record) {
 
   if(bs_record == NULL || bs_record->bd_entry == NULL || bs_record->status != VALID_RECORD){ 
     return NULL;
@@ -245,8 +231,8 @@ bgpstream_elem_t * bgpstream_get_elem_queue(bgpstream_record_t * const bs_record
 }
 
 
-void bgpstream_destroy_elem_queue(bgpstream_elem_t * ri_queue) {
-  bd2bi_destroy_route_info_queue(ri_queue);
+void bgpstream_destroy_elem_queue(bl_elem_t * elem_queue) {
+  bd2bi_destroy_route_info_queue(elem_queue);
 }
 
 
@@ -254,57 +240,60 @@ void bgpstream_destroy_elem_queue(bgpstream_elem_t * ri_queue) {
 
 /* ribs related functions */  
 
-bgpstream_elem_t * table_line_mrtd_route(BGPDUMP_ENTRY *entry) {
-  bgpstream_elem_t * ri  =  bd2bi_create_route_info();
+bl_elem_t * table_line_mrtd_route(BGPDUMP_ENTRY *entry) {
+  bl_elem_t * ri  =  bd2bi_create_route_info();
   if (ri == NULL) {
     return NULL;
   }
   // general
-  ri->type = BST_RIB;
+  ri->type = BL_RIB_ELEM;
   ri->timestamp = entry->time;
+
   // peer and prefix
 #ifdef BGPDUMP_HAVE_IPV6
   if (entry->subtype == AFI_IP6) {
-    ri->prefix.number.type = BST_IPV6;
-    ri->prefix.number.address.v6_addr = entry->body.mrtd_table_dump.prefix.v6_addr;
-    ri->peer_address.type = BST_IPV6;
-    ri->peer_address.address.v6_addr = entry->body.mrtd_table_dump.peer_ip.v6_addr;
+    ri->peer_address.version = BL_ADDR_IPV6;
+    ri->peer_address.ipv6 = entry->body.mrtd_table_dump.peer_ip.v6_addr;
+    ri->prefix.address.version = BL_ADDR_IPV6;
+    ri->prefix.address.ipv6 = entry->body.mrtd_table_dump.prefix.v6_addr;    
   }
   else 
 #endif
     {
-    ri->prefix.number.type = BST_IPV4;
-    ri->prefix.number.address.v4_addr = entry->body.mrtd_table_dump.prefix.v4_addr;
-    ri->peer_address.type = BST_IPV4;
-    ri->peer_address.address.v4_addr = entry->body.mrtd_table_dump.peer_ip.v4_addr;
+      ri->peer_address.version = BL_ADDR_IPV4;
+      ri->peer_address.ipv4 = entry->body.mrtd_table_dump.peer_ip.v4_addr;
+      ri->prefix.address.version = BL_ADDR_IPV4;
+      ri->prefix.address.ipv4 = entry->body.mrtd_table_dump.prefix.v4_addr;    
     }
-  ri->prefix.len = entry->body.mrtd_table_dump.mask;
+  ri->prefix.mask_len = entry->body.mrtd_table_dump.mask;
   ri->peer_asnumber = entry->body.mrtd_table_dump.peer_as;
+  
   // as path
   if(entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) && 
      entry->attr->aspath && entry->attr->aspath->str) {
     get_aspath_struct(entry->attr->aspath, &ri->aspath);
   }
+
   // nextop
 #ifdef BGPDUMP_HAVE_IPV6
     if ((entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_MP_REACH_NLRI)) &&
 	entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]) {
-    ri->nexthop.type = BST_IPV6;
-    ri->nexthop.address.v6_addr = entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop.v6_addr;
+      ri->nexthop.version = BL_ADDR_IPV6;
+      ri->nexthop.ipv6 = entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop.v6_addr;
     }
     else
 #endif
       {
-	ri->nexthop.type = BST_IPV4;
-	ri->nexthop.address.v4_addr = entry->attr->nexthop;
+	ri->nexthop.version = BL_ADDR_IPV4;
+	ri->nexthop.ipv4 = entry->attr->nexthop;
       }
   return ri;
 }
 
 
-bgpstream_elem_t * table_line_dump_v2_prefix(BGPDUMP_ENTRY *entry) {
-  bgpstream_elem_t * ri_queue = NULL;
-  bgpstream_elem_t * ri; 
+bl_elem_t * table_line_dump_v2_prefix(BGPDUMP_ENTRY *entry) {
+  bl_elem_t * ri_queue = NULL;
+  bl_elem_t * ri; 
   BGPDUMP_TABLE_DUMP_V2_PREFIX *e = &(entry->body.mrtd_table_dump_v2_prefix);
   int i;
 
@@ -320,39 +309,43 @@ bgpstream_elem_t * table_line_dump_v2_prefix(BGPDUMP_ENTRY *entry) {
     }
 
     // general info
-    ri->type = BST_RIB;
+    ri->type = BL_RIB_ELEM;
     ri->timestamp = entry->time;
+
     // peer
     if(e->entries[i].peer.afi == AFI_IP){
-      ri->peer_address.type = BST_IPV4;
-      ri->peer_address.address.v4_addr = e->entries[i].peer.peer_ip.v4_addr;
+      ri->peer_address.version = BL_ADDR_IPV4;
+      ri->peer_address.ipv4 = e->entries[i].peer.peer_ip.v4_addr;
     }
 #ifdef BGPDUMP_HAVE_IPV6
     else {
       if(e->entries[i].peer.afi == AFI_IP6){
-	ri->peer_address.type = BST_IPV6;
-	ri->peer_address.address.v6_addr = e->entries[i].peer.peer_ip.v6_addr;
+	ri->peer_address.version = BL_ADDR_IPV6;
+	ri->peer_address.ipv6 = e->entries[i].peer.peer_ip.v6_addr;
       }
       else {
 	printf("ERROR____bgpstream-elem__________\n");
       }
     }
 #endif
+
     ri->peer_asnumber = e->entries[i].peer.peer_as;
+
     // prefix
     if(e->afi == AFI_IP) {
-      ri->prefix.number.type = BST_IPV4;
-      ri->prefix.number.address.v4_addr = e->prefix.v4_addr;            
+      ri->prefix.address.version = BL_ADDR_IPV4;
+      ri->prefix.address.ipv4 = e->prefix.v4_addr;    
     }
+
 #ifdef BGPDUMP_HAVE_IPV6
     else{
       if(e->afi == AFI_IP6) {
-	ri->prefix.number.type = BST_IPV6;
-	ri->prefix.number.address.v6_addr = e->prefix.v6_addr;            
+	ri->prefix.address.version = BL_ADDR_IPV6;
+	ri->prefix.address.ipv6 = e->prefix.v6_addr;          
       }
     }
 #endif     
-    ri->prefix.len = e->prefix_length;
+    ri->prefix.mask_len = e->prefix_length;
     // as path
     if (attr->aspath) {
       get_aspath_struct(attr->aspath, &ri->aspath);
@@ -361,22 +354,22 @@ bgpstream_elem_t * table_line_dump_v2_prefix(BGPDUMP_ENTRY *entry) {
  #ifdef BGPDUMP_HAVE_IPV6
     if ((attr->flag & ATTR_FLAG_BIT(BGP_ATTR_MP_REACH_NLRI)) &&
 	attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]) {
-      ri->nexthop.type = BST_IPV6;
-      ri->nexthop.address.v6_addr = attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop.v6_addr;
+      ri->nexthop.version = BL_ADDR_IPV6;
+      ri->nexthop.ipv6 = attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop.v6_addr;
     }
     else
 #endif
       {
-      ri->nexthop.type = BST_IPV4;
-      ri->nexthop.address.v4_addr = attr->nexthop;
+      ri->nexthop.version = BL_ADDR_IPV4;
+      ri->nexthop.ipv4 = attr->nexthop;
       }
 
   }
   return ri_queue;
 }
 
-static void concatenate_queues(bgpstream_elem_t ** total, bgpstream_elem_t ** new) {
-  bgpstream_elem_t * r;
+static void concatenate_queues(bl_elem_t ** total, bl_elem_t ** new) {
+  bl_elem_t * r;
   r = *total;
   if(*total == NULL) {
     *total = *new;
@@ -389,12 +382,12 @@ static void concatenate_queues(bgpstream_elem_t ** total, bgpstream_elem_t ** ne
   }
 }
 
-bgpstream_elem_t * table_line_update(BGPDUMP_ENTRY *entry) {  
+bl_elem_t * table_line_update(BGPDUMP_ENTRY *entry) {  
   struct prefix *prefix;
   struct mp_nlri *prefix_mp;
   int count;
-  bgpstream_elem_t * update = NULL;
-  bgpstream_elem_t * current = NULL;
+  bl_elem_t * update = NULL;
+  bl_elem_t * current = NULL;
 
   // withdrawals (IPv4)
   if ((entry->body.zebra_message.withdraw_count) || 
@@ -511,9 +504,13 @@ bgpstream_elem_t * table_line_update(BGPDUMP_ENTRY *entry) {
 }
 
 
-bgpstream_elem_t * table_line_withdraw(struct prefix *prefix, int count, BGPDUMP_ENTRY *entry) {
-  bgpstream_elem_t * ri_queue = NULL;
-  bgpstream_elem_t * ri;
+// ####################### HERE ###################
+
+
+
+bl_elem_t * table_line_withdraw(struct prefix *prefix, int count, BGPDUMP_ENTRY *entry) {
+  bl_elem_t * ri_queue = NULL;
+  bl_elem_t * ri;
   int idx;
   for(idx=0;idx<count;idx++) {
     ri = bd2bi_add_new_route_info(&ri_queue);
@@ -522,33 +519,33 @@ bgpstream_elem_t * table_line_withdraw(struct prefix *prefix, int count, BGPDUMP
       return ri_queue;
     }
     // general info
-    ri->type = BST_WITHDRAWAL;
+    ri->type = BL_WITHDRAWAL_ELEM;
     ri->timestamp = entry->time;
     // peer
 #ifdef BGPDUMP_HAVE_IPV6
     if(entry->body.zebra_message.address_family == AFI_IP6) {
-      ri->peer_address.type = BST_IPV6;
-      ri->peer_address.address.v6_addr = entry->body.zebra_message.source_ip.v6_addr;
+      ri->peer_address.version = BL_ADDR_IPV6;
+      ri->peer_address.ipv6 = entry->body.zebra_message.source_ip.v6_addr;
     }
 #endif
     if(entry->body.zebra_message.address_family == AFI_IP) {
-      ri->peer_address.type = BST_IPV4;
-      ri->peer_address.address.v4_addr = entry->body.zebra_message.source_ip.v4_addr;
+      ri->peer_address.version = BL_ADDR_IPV4;
+      ri->peer_address.ipv4 = entry->body.zebra_message.source_ip.v4_addr;
     }
     ri->peer_asnumber = entry->body.zebra_message.source_as;    
     // prefix (ipv4)
-    ri->prefix.number.type = BST_IPV4;
-    ri->prefix.number.address.v4_addr = prefix[idx].address.v4_addr;            
-    ri->prefix.len = prefix[idx].len;
+    ri->prefix.address.version = BL_ADDR_IPV4;
+    ri->prefix.address.ipv4 = prefix[idx].address.v4_addr;            
+    ri->prefix.mask_len = prefix[idx].len;
   }
   return ri_queue;
 }
 
 
 #ifdef BGPDUMP_HAVE_IPV6
-bgpstream_elem_t * table_line_withdraw6(struct prefix *prefix, int count, BGPDUMP_ENTRY *entry) {
-  bgpstream_elem_t * ri_queue = NULL;
-  bgpstream_elem_t * ri;
+bl_elem_t * table_line_withdraw6(struct prefix *prefix, int count, BGPDUMP_ENTRY *entry) {
+  bl_elem_t * ri_queue = NULL;
+  bl_elem_t * ri;
   int idx;  
   for (idx=0;idx<count;idx++) {
     ri  =  bd2bi_add_new_route_info(&ri_queue);
@@ -557,22 +554,22 @@ bgpstream_elem_t * table_line_withdraw6(struct prefix *prefix, int count, BGPDUM
       return ri_queue;
     }
     // general info
-    ri->type = BST_WITHDRAWAL;
+    ri->type = BL_WITHDRAWAL_ELEM;
     ri->timestamp = entry->time;
     // peer
     if(entry->body.zebra_message.address_family == AFI_IP6) {
-      ri->peer_address.type = BST_IPV6;
-      ri->peer_address.address.v6_addr = entry->body.zebra_message.source_ip.v6_addr;
+      ri->peer_address.version = BL_ADDR_IPV6;
+      ri->peer_address.ipv6 = entry->body.zebra_message.source_ip.v6_addr;
     }
     if(entry->body.zebra_message.address_family == AFI_IP) {
-      ri->peer_address.type = BST_IPV4;
-      ri->peer_address.address.v4_addr = entry->body.zebra_message.source_ip.v4_addr;
+      ri->peer_address.version = BL_ADDR_IPV4;
+      ri->peer_address.ipv4 = entry->body.zebra_message.source_ip.v4_addr;
     }
     ri->peer_asnumber = entry->body.zebra_message.source_as;    
     // prefix (ipv6)
-    ri->prefix.number.type = BST_IPV6;
-    ri->prefix.number.address.v6_addr = prefix[idx].address.v6_addr;            
-    ri->prefix.len = prefix[idx].len;
+    ri->prefix.address.version = BL_ADDR_IPV6;
+    ri->prefix.address.ipv6 = prefix[idx].address.v6_addr;            
+    ri->prefix.mask_len = prefix[idx].len;
   }
   return ri_queue;
 }
@@ -580,9 +577,9 @@ bgpstream_elem_t * table_line_withdraw6(struct prefix *prefix, int count, BGPDUM
 
 
 
-bgpstream_elem_t * table_line_announce(struct prefix *prefix, int count, BGPDUMP_ENTRY *entry){
-  bgpstream_elem_t * ri_queue = NULL;
-  bgpstream_elem_t * ri;
+bl_elem_t * table_line_announce(struct prefix *prefix, int count, BGPDUMP_ENTRY *entry){
+  bl_elem_t * ri_queue = NULL;
+  bl_elem_t * ri;
   int idx;  
   for (idx=0;idx<count;idx++) {
     ri  =  bd2bi_add_new_route_info(&ri_queue);
@@ -591,27 +588,27 @@ bgpstream_elem_t * table_line_announce(struct prefix *prefix, int count, BGPDUMP
       return ri_queue;
     }
     // general info
-    ri->type = BST_ANNOUNCEMENT;
+    ri->type = BL_ANNOUNCEMENT_ELEM;
     ri->timestamp = entry->time;
     // peer
 #ifdef BGPDUMP_HAVE_IPV6
     if(entry->body.zebra_message.address_family == AFI_IP6) {
-      ri->peer_address.type = BST_IPV6;
-      ri->peer_address.address.v6_addr = entry->body.zebra_message.source_ip.v6_addr;
+      ri->peer_address.version = BL_ADDR_IPV6;
+      ri->peer_address.ipv6 = entry->body.zebra_message.source_ip.v6_addr;
     }
 #endif
     if(entry->body.zebra_message.address_family == AFI_IP) {
-      ri->peer_address.type = BST_IPV4;
-      ri->peer_address.address.v4_addr = entry->body.zebra_message.source_ip.v4_addr;
+      ri->peer_address.version = BL_ADDR_IPV4;
+      ri->peer_address.ipv4 = entry->body.zebra_message.source_ip.v4_addr;
     }
     ri->peer_asnumber = entry->body.zebra_message.source_as;
     // prefix (ipv4)
-    ri->prefix.number.type = BST_IPV4;
-    ri->prefix.number.address.v4_addr = prefix[idx].address.v4_addr;            
-    ri->prefix.len = prefix[idx].len;
+    ri->prefix.address.version = BL_ADDR_IPV4;
+    ri->prefix.address.ipv4 = prefix[idx].address.v4_addr;            
+    ri->prefix.mask_len = prefix[idx].len;
     // nexthop (ipv4)
-    ri->nexthop.type = BST_IPV4;
-    ri->nexthop.address.v4_addr = entry->attr->nexthop;
+    ri->nexthop.version = BL_ADDR_IPV4;
+    ri->nexthop.ipv4 = entry->attr->nexthop;
     // as path
     if(entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) && 
        entry->attr->aspath && entry->attr->aspath->str) {
@@ -623,9 +620,9 @@ bgpstream_elem_t * table_line_announce(struct prefix *prefix, int count, BGPDUMP
 
 
 
-bgpstream_elem_t * table_line_announce_1(struct mp_nlri *prefix, int count, BGPDUMP_ENTRY *entry) {
-  bgpstream_elem_t * ri_queue = NULL;
-  bgpstream_elem_t * ri;
+bl_elem_t * table_line_announce_1(struct mp_nlri *prefix, int count, BGPDUMP_ENTRY *entry) {
+  bl_elem_t * ri_queue = NULL;
+  bl_elem_t * ri;
   int idx;
   for (idx=0;idx<count;idx++) {
     ri  =  bd2bi_add_new_route_info(&ri_queue);
@@ -634,27 +631,27 @@ bgpstream_elem_t * table_line_announce_1(struct mp_nlri *prefix, int count, BGPD
       return ri_queue;
     }
     // general info
-    ri->type = BST_ANNOUNCEMENT;
+    ri->type = BL_ANNOUNCEMENT_ELEM;
     ri->timestamp = entry->time;      
     // peer
 #ifdef BGPDUMP_HAVE_IPV6
     if(entry->body.zebra_message.address_family == AFI_IP6) {
-      ri->peer_address.type = BST_IPV6;
-      ri->peer_address.address.v6_addr = entry->body.zebra_message.source_ip.v6_addr;
+      ri->peer_address.version = BL_ADDR_IPV6;
+      ri->peer_address.ipv6 = entry->body.zebra_message.source_ip.v6_addr;
     }
 #endif
     if(entry->body.zebra_message.address_family == AFI_IP) {
-      ri->peer_address.type = BST_IPV4;
-      ri->peer_address.address.v4_addr = entry->body.zebra_message.source_ip.v4_addr;
+      ri->peer_address.version = BL_ADDR_IPV4;
+      ri->peer_address.ipv4 = entry->body.zebra_message.source_ip.v4_addr;
     }
     ri->peer_asnumber = entry->body.zebra_message.source_as;    
       // prefix (ipv4)
-    ri->prefix.number.type = BST_IPV4;
-    ri->prefix.number.address.v4_addr = prefix->nlri[idx].address.v4_addr;            
-    ri->prefix.len = prefix->nlri[idx].len;    
+    ri->prefix.address.version = BL_ADDR_IPV4;
+    ri->prefix.address.ipv4 = prefix->nlri[idx].address.v4_addr;            
+    ri->prefix.mask_len = prefix->nlri[idx].len;    
       // nexthop (ipv4)
-    ri->nexthop.type = BST_IPV4;
-    ri->nexthop.address.v4_addr = entry->attr->nexthop;    
+    ri->nexthop.version = BL_ADDR_IPV4;
+    ri->nexthop.ipv4 = entry->attr->nexthop;    
     // as path
     if(entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) && 
        entry->attr->aspath && entry->attr->aspath->str) {
@@ -667,9 +664,9 @@ bgpstream_elem_t * table_line_announce_1(struct mp_nlri *prefix, int count, BGPD
 
 
 #ifdef BGPDUMP_HAVE_IPV6
-bgpstream_elem_t * table_line_announce6(struct mp_nlri *prefix,int count,BGPDUMP_ENTRY *entry) {
-  bgpstream_elem_t * ri_queue = NULL;
-  bgpstream_elem_t * ri;
+bl_elem_t * table_line_announce6(struct mp_nlri *prefix,int count,BGPDUMP_ENTRY *entry) {
+  bl_elem_t * ri_queue = NULL;
+  bl_elem_t * ri;
   int idx;  
   for (idx=0;idx<count;idx++) {
     ri = bd2bi_add_new_route_info(&ri_queue);
@@ -678,27 +675,27 @@ bgpstream_elem_t * table_line_announce6(struct mp_nlri *prefix,int count,BGPDUMP
       return ri_queue;
     }
     // general info
-    ri->type = BST_ANNOUNCEMENT;
+    ri->type = BL_ANNOUNCEMENT_ELEM;
     ri->timestamp = entry->time;    
     // peer
 #ifdef BGPDUMP_HAVE_IPV6
     if(entry->body.zebra_message.address_family == AFI_IP6) {
-      ri->peer_address.type = BST_IPV6;
-      ri->peer_address.address.v6_addr = entry->body.zebra_message.source_ip.v6_addr;
+      ri->peer_address.version = BL_ADDR_IPV6;
+      ri->peer_address.ipv6 = entry->body.zebra_message.source_ip.v6_addr;
     }
 #endif
     if(entry->body.zebra_message.address_family == AFI_IP) {
-      ri->peer_address.type = BST_IPV4;
-      ri->peer_address.address.v4_addr = entry->body.zebra_message.source_ip.v4_addr;
+      ri->peer_address.version = BL_ADDR_IPV4;
+      ri->peer_address.ipv4 = entry->body.zebra_message.source_ip.v4_addr;
     }
     ri->peer_asnumber = entry->body.zebra_message.source_as;
     // prefix (ipv6)
-    ri->prefix.number.type = BST_IPV6;
-    ri->prefix.number.address.v6_addr = prefix->nlri[idx].address.v6_addr;
-    ri->prefix.len = prefix->nlri[idx].len;
+    ri->prefix.address.version = BL_ADDR_IPV6;
+    ri->prefix.address.ipv6 = prefix->nlri[idx].address.v6_addr;
+    ri->prefix.mask_len = prefix->nlri[idx].len;
     //nexthop (ipv6)
-    ri->nexthop.type = BST_IPV6;
-    ri->nexthop.address.v6_addr = prefix->nexthop.v6_addr;
+    ri->nexthop.version = BL_ADDR_IPV6;
+    ri->nexthop.ipv6 = prefix->nexthop.v6_addr;
     // aspath
     if(entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) && 
        entry->attr->aspath && entry->attr->aspath->str) {
@@ -712,27 +709,27 @@ bgpstream_elem_t * table_line_announce6(struct mp_nlri *prefix,int count,BGPDUMP
 
 
 
-bgpstream_elem_t * bgp_state_change(BGPDUMP_ENTRY *entry) {
-  bgpstream_elem_t * ri_queue = NULL;
-  bgpstream_elem_t * ri;
+bl_elem_t * bgp_state_change(BGPDUMP_ENTRY *entry) {
+  bl_elem_t * ri_queue = NULL;
+  bl_elem_t * ri;
   ri  =  bd2bi_add_new_route_info(&ri_queue);
   if(ri == NULL) {
     // warning
     return ri_queue;
   }
   // general information
-  ri->type = BST_STATE;
+  ri->type = BL_PEERSTATE_ELEM;
   ri->timestamp = entry->time;      
   // peer
 #ifdef BGPDUMP_HAVE_IPV6
   if(entry->body.zebra_message.address_family == AFI_IP6) {
-    ri->peer_address.type = BST_IPV6;
-    ri->peer_address.address.v6_addr = entry->body.zebra_state_change.source_ip.v6_addr;
+    ri->peer_address.version = BL_ADDR_IPV6;
+    ri->peer_address.ipv6 = entry->body.zebra_state_change.source_ip.v6_addr;
   }
 #endif
   if(entry->body.zebra_message.address_family == AFI_IP) {
-    ri->peer_address.type = BST_IPV4;
-    ri->peer_address.address.v4_addr = entry->body.zebra_state_change.source_ip.v4_addr;
+    ri->peer_address.version = BL_ADDR_IPV4;
+    ri->peer_address.ipv4 = entry->body.zebra_state_change.source_ip.v4_addr;
   }  
   ri->peer_asnumber = entry->body.zebra_message.source_as;
   ri->old_state = entry->body.zebra_state_change.old_state;

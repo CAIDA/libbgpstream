@@ -24,7 +24,7 @@
  */
 
 #include "bgpstream_lib.h"
-#include "bgpstream_config.h"
+#include "config.h"
 
 #include <stdio.h>
 #include <time.h>
@@ -76,9 +76,10 @@ void usage() {
 	  );
 }
 
+// print functions
+
 static void print_bs_record(bgpstream_record_t * bs_record);
-static void print_bs_elem(bgpstream_elem_t * bs_elem);
-// print
+static void print_elem(bl_elem_t *elem);
 void print_bs_record_bgpdumpway(BGPDUMP_ENTRY *my_entry);
 
 
@@ -369,8 +370,8 @@ int main(int argc, char *argv[])
 
   // use the interface
   int get_next_ret = 0;
-  bgpstream_elem_t * bs_elem_head;
-  bgpstream_elem_t * bs_elem_iterator;
+  bl_elem_t * bs_elem_head;
+  bl_elem_t * bs_elem_iterator;
   do
     {
       get_next_ret = bgpstream_get_next_record(bs, bs_record);
@@ -391,7 +392,7 @@ int main(int argc, char *argv[])
 	      bs_elem_iterator = bs_elem_head;
 	      while(bs_elem_iterator) 
 		{
-		  print_bs_elem(bs_elem_iterator);
+		  print_elem(bs_elem_iterator);
 		  bs_elem_iterator = bs_elem_iterator->next;
 		}
 	      bgpstream_destroy_elem_queue(bs_elem_head);
@@ -496,119 +497,12 @@ static void print_bs_record(bgpstream_record_t * bs_record)
 }
 
 
-static char *get_ip_address_str(bgpstream_ip_address_t ip_address) {
-  char ip_address_str[INET6_ADDRSTRLEN];
-  ip_address_str[0] = '\0';
-  switch (ip_address.type){
-  case BST_IPV4:
-    inet_ntop(AF_INET, &(ip_address.address.v4_addr), ip_address_str, INET6_ADDRSTRLEN);
-    break;
-  case BST_IPV6:
-    inet_ntop(AF_INET6, &(ip_address.address.v6_addr), ip_address_str, INET6_ADDRSTRLEN);
-    break;
-  }
-  return strdup(ip_address_str);
-}
-
-static char *get_elem_type_str(bgpstream_elem_type_t elem_type) 
-{
-  switch(elem_type) 
-    {
-    case BST_RIB:
-      return "rib";
-    case BST_ANNOUNCEMENT:
-      return "announcement";
-    case BST_WITHDRAWAL:
-      return "withdrawal";
-    case BST_STATE:
-      return "state";
-    }
-  return "";
-}
-
-static char *get_prefix_str(bgpstream_prefix_t prefix) 
-{
-  char ip_prefix_str[INET6_ADDRSTRLEN+4];
-  sprintf(ip_prefix_str, "%s/%d",get_ip_address_str(prefix.number), prefix.len);
-  return strdup(ip_prefix_str);
-}
-
-
-static char *get_state_str(bgpstream_peer_state_t peer_state) 
-{
-  switch(peer_state) 
-    {
-    case BST_UNKNOWN:
-      return "unknown";
-    case BST_IDLE:
-      return "idle";
-    case BST_CONNECT:
-      return "connect";
-    case BST_ACTIVE:
-      return "active";
-    case BST_OPENSENT:
-      return "opensent";
-    case BST_OPENCONFIRM:
-      return "openconfirm";
-    case BST_ESTABLISHED:
-      return "established";
-    case BST_NULL:
-      return "null";
-    }
-  return "XXX";
-}
-
-static char *get_aspath_str(bgpstream_aspath_t aspath) 
-{
-  if(aspath.type == BST_STRING_ASPATH)
-    {
-      return aspath.str_aspath;
-    }
-  // else BST_UINT32_ASPATH
-  char aspath_str[8000]; // compatible with bgpdump
-  aspath_str[0] = '\0';
-  char as_str[16];
-  int i;
-  for(i=0; i < aspath.hop_count; i++) 
-    {
-      if(i == 0)
-	{
-	  sprintf(as_str,"%"PRIu32"", aspath.numeric_aspath[i]);
-	}
-      else 
-	{
-	  sprintf(as_str," %"PRIu32"", aspath.numeric_aspath[i]);
-	}
-      strcat(aspath_str,as_str);
-    }
-  return strdup(aspath_str);
-} 
-
-
-static void print_bs_elem(bgpstream_elem_t * bs_elem) 
+static void print_elem(bl_elem_t * elem) 
 {
   assert(bs_elem);
-  printf("%ld|", bs_elem->timestamp);
-  printf("%s|", get_ip_address_str(bs_elem->peer_address));
-  printf("%"PRIu32"|", bs_elem->peer_asnumber);
-  printf("%s|", get_elem_type_str(bs_elem->type));
-  switch(bs_elem->type)
-    {
-    case BST_RIB:
-    case BST_ANNOUNCEMENT:
-      printf("%s|", get_prefix_str(bs_elem->prefix));
-      printf("%s|", get_ip_address_str(bs_elem->nexthop));
-      printf("%s|", get_aspath_str(bs_elem->aspath));
-      break;
-    case BST_WITHDRAWAL:
-      printf("%s|", get_prefix_str(bs_elem->prefix));      
-      break;
-    case BST_STATE:
-      printf("%s|", get_state_str(bs_elem->old_state));      
-      printf("%s|", get_state_str(bs_elem->new_state));      
-      break;
-    }
-  printf("\n");
+  char *ptr = bl_print_elem(elem);
+  printf("%s\n", ptr);
+  if(ptr != NULL) free(ptr);    
 }
 
 

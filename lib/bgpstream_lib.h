@@ -27,8 +27,8 @@
 #define _BGPSTREAM_LIB_H
 
 #include "bgpstream_record.h"
-#include "bgpstream_elem.h"
 #include "bgpstream_options.h"
+#include "bl_bgp_utils.h"
 
 
 // Opaque Data Structures
@@ -74,10 +74,10 @@ bgpstream_record_t *bgpstream_create_record();
 int bgpstream_get_next_record(bgpstream_t * const bs, bgpstream_record_t * const bs_record);
 
 /* extract a list of elements from the bgpstream record  */
-bgpstream_elem_t * bgpstream_get_elem_queue(bgpstream_record_t * const bs_record);
+bl_elem_t *bgpstream_get_elem_queue(bgpstream_record_t * const bs_record);
 
 /* destroy the queue */
-void bgpstream_destroy_elem_queue(bgpstream_elem_t * bse_queue);
+void bgpstream_destroy_elem_queue(bl_elem_t * elem_queue);
 
 /* deallocate memory for the bs_record */
 void bgpstream_destroy_record(bgpstream_record_t * const bs_record);
