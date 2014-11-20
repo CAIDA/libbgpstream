@@ -339,6 +339,71 @@ bl_as_storage_t bl_get_origin_as(bl_aspath_storage_t *aspath)
 }
 
 
+bl_as_storage_t bl_copy_origin_as(bl_as_storage_t *as)
+{
+  bl_as_storage_t copy;
+  copy.type = as->type;
+  if(copy.type == BL_AS_NUMERIC)
+    {
+      copy.as_number = as->as_number;
+    }
+  if(copy.type == BL_AS_STRING)
+    {
+      copy.as_string = strdup(as->as_string);
+    }
+  return copy;
+}
+
+void bl_origin_as_freedynmem(bl_as_storage_t *as)
+{
+  if(as->type == BL_AS_STRING)
+    {
+      free(as->as_string);
+      as->as_string = NULL;
+      as->type = BL_AS_TYPE_UNKNOWN;
+    }
+}
+
+
+bl_aspath_storage_t bl_copy_aspath(bl_aspath_storage_t *aspath)
+{
+  bl_aspath_storage_t copy;
+  copy.type = aspath->type;
+  copy.hop_count = aspath->hop_count;
+  if(copy.type == BL_AS_NUMERIC && copy.hop_count > 0)
+    {
+      int i;
+      copy.numeric_aspath = (uint32_t *)malloc(copy.hop_count * sizeof(uint32_t));
+      for(i=0; i < copy.hop_count; i++)
+	{
+	  copy.numeric_aspath[i] = aspath->numeric_aspath[i];
+	}
+    }
+  if(copy.type == BL_AS_STRING && copy.hop_count > 0)
+    {
+      copy.str_aspath = strdup(aspath->str_aspath);
+    }  
+  return copy;
+}
+
+
+void bl_aspath_freedynmem(bl_aspath_storage_t *aspath)
+{
+  if(aspath->type == BL_AS_STRING)
+    {
+      free(aspath->str_aspath);
+      aspath->str_aspath = NULL;
+      aspath->type = BL_AS_TYPE_UNKNOWN;
+    }
+  if(aspath->type == BL_AS_NUMERIC)
+    {
+      free(aspath->numeric_aspath);
+      aspath->numeric_aspath = NULL;
+      aspath->type = BL_AS_TYPE_UNKNOWN;
+    }
+}
+
+
 /* khash utility functions 
  * Note:
  * __ac_Wang_hash(h) decreases the

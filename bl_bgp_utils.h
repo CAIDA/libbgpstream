@@ -252,7 +252,10 @@ bl_pfx_storage_t *bl_pfx_ipv62storage(bl_ipv6_pfx_t *prefix);
 /** as-path utility functions */
 
 bl_as_storage_t bl_get_origin_as(bl_aspath_storage_t *aspath);
-
+bl_as_storage_t bl_copy_origin_as(bl_as_storage_t *as);
+void bl_origin_as_freedynmem(bl_as_storage_t *as);
+bl_aspath_storage_t bl_copy_aspath(bl_aspath_storage_t *aspath);
+void bl_aspath_freedynmem(bl_aspath_storage_t *aspath);
 
 
 /** khash utility functions */
