@@ -34,7 +34,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <mysql/errmsg.h>
+#include <errmsg.h>
 
 /* datasource specific functions declarations */
 
@@ -969,14 +969,15 @@ static char *build_filename(bgpstream_mysql_datasource_t *ds) {
 
 static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasource_t* mysql_ds,
 							 bgpstream_input_mgr_t *input_mgr) {
+  // printf("--> %d\n",  mysql_ds->current_timestamp);
+  bgpstream_debug("\t\tBSDS_MYSQL: mysql_ds update input queue start ");
+
   char *filename = NULL;
   int num_results = 0;
   struct timeval tv;
   gettimeofday(&tv, NULL);
   // update current_timestamp - we always ask for data 1 second old at least
   mysql_ds->current_timestamp = tv.tv_sec - 1; // now() - 1 second
-  // printf("--> %d\n",  mysql_ds->current_timestamp);
-  bgpstream_debug("\t\tBSDS_MYSQL: mysql_ds update input queue start ");
 
   /* just to be safe, we clear all the strings */
   mysql_ds->proj_path_res[0] = '\0';
@@ -985,41 +986,60 @@ static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasou
   mysql_ds->proj_name_res[0] = '\0';
   mysql_ds->coll_name_res[0] = '\0';
   mysql_ds->type_name_res[0] = '\0';
-  mysql_ds->file_ext_res[0] = '\0';
+  mysql_ds->file_ext_res[0]  = '\0';
 
   // mysql_ds->last_timestamp is the only parameter for the query
   /* Try to execute the statement */
   int stmt_ret = mysql_stmt_execute(mysql_ds->stmt);
-
-  if(stmt_ret == CR_SERVER_LOST)
+  int attempts = 0;
+  int max_attempts = 30; // 30 ~ number of collectors
+  while(stmt_ret != 0 && attempts < max_attempts)
     {
+      attempts++;
+
+      // closing all structures and restarting
+      if(mysql_ds->stmt != NULL)
+	{
+	  mysql_stmt_close(mysql_ds->stmt);
+	}
+      mysql_ds->stmt = NULL;     
+      mysql_close(mysql_ds->mysql_con);
+      mysql_ds->mysql_con = NULL;
+      
       // reconnect and retry one more time
       // http://bugs.mysql.com/bug.php?id=35937
       // note that mysql prepared statement have to be reconfigured again
-      if (mysql_real_connect(mysql_ds->mysql_con, mysql_ds->mysql_host, mysql_ds->mysql_user, NULL, 
-			     mysql_ds->mysql_dbname, 0, NULL, 0) == NULL)	
+
+      if( (mysql_ds->mysql_con = mysql_init(NULL)) != NULL)
 	{
-	  if(mysql_query(mysql_ds->mysql_con, "set time_zone='+0:0'") == 0)
+	  if (mysql_real_connect(mysql_ds->mysql_con, mysql_ds->mysql_host, mysql_ds->mysql_user, NULL, 
+				 mysql_ds->mysql_dbname, 0, NULL, 0) != NULL)	
 	    {
-	      mysql_stmt_close(mysql_ds->stmt);
-	      mysql_ds->stmt = NULL;
-	      if((mysql_ds->stmt = mysql_stmt_init(mysql_ds->mysql_con)) != NULL)
+	      if(mysql_query(mysql_ds->mysql_con, "set time_zone='+0:0'") == 0)
 		{
-		  if (mysql_stmt_prepare(mysql_ds->stmt, mysql_ds->sql_query, strlen(mysql_ds->sql_query)) == 0)
+		  if((mysql_ds->stmt = mysql_stmt_init(mysql_ds->mysql_con)) != NULL)
 		    {
-		      if(mysql_stmt_bind_param(mysql_ds->stmt, mysql_ds->parameters) == 0)
+		      if (mysql_stmt_prepare(mysql_ds->stmt, mysql_ds->sql_query, strlen(mysql_ds->sql_query)) == 0)
 			{
-			  if(mysql_stmt_bind_result(mysql_ds->stmt, mysql_ds->results) == 0) 
+			  if(mysql_stmt_bind_param(mysql_ds->stmt, mysql_ds->parameters) == 0)
 			    {
-			      stmt_ret = mysql_stmt_execute(mysql_ds->stmt);
+			      if(mysql_stmt_bind_result(mysql_ds->stmt, mysql_ds->results) == 0) 
+				{
+				  if((stmt_ret = mysql_stmt_execute(mysql_ds->stmt)) == 0)
+				    {
+				      break;
+				    }
+				}
 			    }
 			}
 		    }
 		}
 	    }
+	  // if here something went wrong
+	  fprintf(stderr, "%s\n", mysql_error(mysql_ds->mysql_con));
 	}
     }
-
+  
   // if stmt ret is still wrong  
   if (stmt_ret != 0) {
     // something wrong happened

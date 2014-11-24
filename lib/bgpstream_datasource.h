@@ -33,7 +33,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <mysql/mysql.h>
+#include <mysql.h>
 
 
 typedef enum {DS_ON,    /* current data source is on */
