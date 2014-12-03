@@ -259,6 +259,7 @@ static int send_reply(bgpwatcher_server_t *server,
       bgpwatcher_err_set_err(ERR, errno,
 			     "Failed to send reply client id for %s",
 			     client->id);
+      fprintf(stderr, "Failed to send reply client id for %s - %d\n", client->id, errno);
       goto err;
     }
 
@@ -874,9 +875,10 @@ int bgpwatcher_server_start(bgpwatcher_server_t *server)
       return -1;
     }
 
-  //zsocket_set_router_mandatory(server->client_socket, 1);
+  zsocket_set_router_mandatory(server->client_socket, 1);
 
   zsocket_set_rcvtimeo(server->client_socket, server->heartbeat_interval);
+  zsocket_set_sndhwm(server->client_socket, 0);
 
   if(zsocket_bind(server->client_socket, "%s", server->client_uri) < 0)
     {
