@@ -81,7 +81,7 @@ static void client_free_wrap(bgpwatcher_server_client_t *client)
   client_free(&client);
 }
 
-char *msg_strhex(zmq_msg_t *msg)
+static char *msg_strhex(zmq_msg_t *msg)
 {
     assert(msg != NULL);
 

@@ -45,7 +45,7 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg);
       }									\
   } while(0)
 
-#define ISERR                                  \
+#define ISERR                                   \
   if(errno == EINTR || errno == ETERM)          \
     {                                           \
       goto interrupt;                           \
