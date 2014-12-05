@@ -73,7 +73,7 @@ static void create_test_data()
   /* FIRST PREFIX */
   test_prefix_first_addr = test_prefix.address.ipv4.s_addr = 0x000000C0;
   test_prefix.address.version = BL_ADDR_IPV4;
-  test_prefix.mask_len = 24;
+  test_prefix.mask_len = 12;
 
   /* ORIG ASN */
   test_orig_asn = 1;
@@ -83,6 +83,7 @@ static void usage(const char *name)
 {
   fprintf(stderr,
 	  "usage: %s [<options>]\n"
+          "       -c                    Randomly decide if peers are up or down\n"
 	  "       -i <interval-ms>      Time in ms between heartbeats to server\n"
 	  "                               (default: %d)\n"
 	  "       -l <beats>            Number of heartbeats that can go by before the\n"
@@ -129,6 +130,8 @@ int main(int argc, char **argv)
   const char *server_uri = NULL;
   const char *identity = NULL;
 
+  int use_random = 0;
+
   uint64_t heartbeat_interval = BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT;
   int heartbeat_liveness      = BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT;
   uint64_t reconnect_interval_min = BGPWATCHER_RECONNECT_INTERVAL_MIN;
@@ -149,7 +152,7 @@ int main(int argc, char **argv)
   uint32_t test_peer_num = TEST_PEER_NUM_DEFAULT;
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":i:l:m:M:n:N:P:r:R:s:t:T:v?")) >= 0)
+	(opt = getopt(argc, argv, ":ci:l:m:M:n:N:P:r:R:s:t:T:v?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
@@ -162,6 +165,10 @@ int main(int argc, char **argv)
 	  usage(argv[0]);
 	  return -1;
 	  break;
+
+        case 'c':
+          use_random = 1;
+          break;
 
 	case 'i':
 	  heartbeat_interval = atoi(optarg);
@@ -303,7 +310,8 @@ int main(int argc, char **argv)
       for(peer = 0; peer < test_peer_num; peer++)
         {
           test_peer_ip.ipv4.s_addr += htonl(1);
-	  test_peer_status = rand() % 3; // returns number from 0 to 2
+          // returns number from 0 to 2
+	  test_peer_status = (use_random) ? rand() % 3 : 2;
           if((peer_id =
               bgpwatcher_client_pfx_table_add_peer(client,
                                                    &test_peer_ip,
