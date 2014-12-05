@@ -543,15 +543,6 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
       return -1;
     }
 
-  /* check if we have too many outstanding requests */
-  /* -1 because we have to send THIS request */
-  if(broker->req_count == MAX_OUTSTANDING_REQ-1)
-    {
-      fprintf(stderr, "INFO: Rate limiting\n");
-      zloop_reader_end(broker->loop, broker->master_pipe);
-      broker->master_removed = 1;
-    }
-
   /* peek at the first frame (msg type) */
   if((msg_type = bgpwatcher_recv_type(broker->master_zocket, 0))
      != BGPWATCHER_MSG_TYPE_UNKNOWN)
@@ -657,6 +648,7 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
         {
           goto err;
         }
+
       req = NULL;
     }
   else
@@ -678,6 +670,14 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
   if(handle_timeouts(broker, clock) != 0)
     {
       return -1;
+    }
+
+  /* check if we have too many outstanding requests */
+  if(broker->req_count == MAX_OUTSTANDING_REQ)
+    {
+      fprintf(stderr, "INFO: Rate limiting\n");
+      zloop_reader_end(broker->loop, broker->master_pipe);
+      broker->master_removed = 1;
     }
 
   return 0;
