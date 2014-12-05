@@ -50,7 +50,7 @@
 
 /** The maximum number of messages that we receive from the server before
     yielding back to the reactor */
-#define BGPWATCHER_CLIENT_BROKER_GREEDY_MAX_MSG 10
+#define BGPWATCHER_CLIENT_BROKER_GREEDY_MAX_MSG 2
 
 /**
  * @name Public Enums
