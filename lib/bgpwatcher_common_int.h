@@ -145,6 +145,7 @@ typedef enum {
 
 #define bgpwatcher_msg_type_size_t sizeof(uint8_t)
 
+#if 0
 /** Enumeration of request message types
  *
  * @note these will be cast to a uint8_t, so be sure that there are fewer than
@@ -168,6 +169,7 @@ typedef enum {
 } bgpwatcher_data_msg_type_t;
 
 #define bgpwatcher_data_msg_type_size_t sizeof(uint8_t)
+#endif
 
 
 /** @} */
@@ -180,10 +182,12 @@ typedef enum {
 /** Receives one message from the given socket and decodes as a message type
  *
  * @param src          socket to receive on
+ * @param flags        flags passed directed to zmq_recv (e.g. ZMQ_DONTWAIT)
  * @return the type of the message, or BGPWATCHER_MSG_TYPE_UNKNOWN
  */
-bgpwatcher_msg_type_t bgpwatcher_recv_type(void *src);
+bgpwatcher_msg_type_t bgpwatcher_recv_type(void *src, int flags);
 
+#if 0
 /** Receives one message from the given socket and decodes as data message type
  *
  * @param src           socket to receive on
@@ -191,6 +195,7 @@ bgpwatcher_msg_type_t bgpwatcher_recv_type(void *src);
  *         error occurred
  */
 bgpwatcher_data_msg_type_t bgpwatcher_recv_data_type(void *src);
+#endif
 
 
 

@@ -52,6 +52,51 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg);
     }                                           \
   else
 
+static int req_list_find_empty(bgpwatcher_client_broker_t *broker)
+{
+  int i;
+
+  for(i=0; i<MAX_OUTSTANDING_REQ; i++)
+    {
+      if(broker->req_list[i].in_use == 0)
+        {
+          return i;
+        }
+    }
+
+  return -1;
+}
+
+static int req_list_find(bgpwatcher_client_broker_t *broker, seq_num_t seq_num)
+{
+  int i;
+
+  for(i=0; i<MAX_OUTSTANDING_REQ; i++)
+    {
+      if(broker->req_list[i].seq_num == seq_num)
+        {
+          return i;
+        }
+    }
+
+  return -1;
+}
+
+static void req_mark_unused(bgpwatcher_client_broker_t *broker,
+                            bgpwatcher_client_broker_req_t *req)
+{
+  int i;
+
+  req->in_use = 0;
+  broker->req_count--;
+
+  for(i=0; i<req->msg_frames_cnt; i++)
+    {
+      zmq_msg_close(&req->msg_frames[i]);
+    }
+  req->msg_frames_cnt = 0;
+}
+
 static void reset_heartbeat_timer(bgpwatcher_client_broker_t *broker,
 				  uint64_t clock)
 {
@@ -76,8 +121,10 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
     }
 
   /* up the hwm */
-  zsocket_set_sndhwm(broker->server_socket, MAX_OUTSTANDING_REQ*2);
+  /*
+  zsocket_set_sndhwm(broker->server_socket, 0);
   zsocket_set_rcvhwm(broker->server_socket, MAX_OUTSTANDING_REQ*2);
+  */
 
   if(CFG->identity != NULL && strlen(CFG->identity) > 0)
     {
@@ -156,6 +203,8 @@ static int handle_reply(bgpwatcher_client_broker_t *broker)
   seq_num_t seq_num;
   bgpwatcher_client_broker_req_t *req;
 
+  int idx;
+
   /* there must be more frames for us */
   if(zsocket_rcvmore(broker->server_socket) == 0)
     {
@@ -174,50 +223,23 @@ static int handle_reply(bgpwatcher_client_broker_t *broker)
         }
 
   /* find the corresponding record from the outstanding req set */
-
-  /* most likely, it will be at the head of the list */
-  /* so, first we just blindly pop the head, and if it happens not to match, we
-     reinsert and search */
-  req = zlist_pop(broker->req_list);
-  if(req == NULL)
+  if((idx = req_list_find(broker, seq_num)) == -1)
     {
       fprintf(stderr,
 	      "WARN: No outstanding request info for seq num %"PRIu32"\n",
 	      seq_num);
       return 0;
     }
-  /* slow path... */
-  if(req->seq_num != seq_num)
-    {
-      /* need to search */
-      fprintf(stderr, "WARN: Searching for request %d\n", seq_num);
-      if(zlist_push(broker->req_list, req) != 0)
-	{
-	  goto err;
-	}
-      req = zlist_first(broker->req_list);
-      while(req != NULL && req->seq_num != seq_num)
-	{
-	  req = zlist_next(broker->req_list);
-	}
-      if(req == NULL)
-	{
-	  fprintf(stderr,
-		  "WARN: No outstanding request info for seq num %"PRIu32"\n",
-		  seq_num);
-	  return 0;
-	}
-      /* remove from list */
-      zlist_remove(broker->req_list, req);
-    }
 
-  /*fprintf(stderr, "MATCH: req.seq: %"PRIu32", req.msg_type: %d\n",
-    req->seq_num, req->msg_type);*/
+  fprintf(stderr, "DEBUG: Got reply for seq num %"PRIu32" (%d)\n",
+          seq_num, idx);
+
+  req = &broker->req_list[idx];
+
+  /* mark this request as unused */
+  req_mark_unused(broker, req);
 
   /** @todo consider how/if we should tell the client about a reply */
-
-  /* destroy this req, we're done with it */
-  bgpwatcher_client_broker_req_free(&req);
 
   return 0;
 
@@ -277,7 +299,7 @@ static int send_request(bgpwatcher_client_broker_t *broker,
 static int is_shutdown_time(bgpwatcher_client_broker_t *broker, uint64_t clock)
 {
   if(broker->shutdown_time > 0 &&
-     ((zlist_size(broker->req_list) == 0) ||
+     ((broker->req_count == 0) ||
       (broker->shutdown_time <= clock)))
     {
       /* time to end */
@@ -288,23 +310,34 @@ static int is_shutdown_time(bgpwatcher_client_broker_t *broker, uint64_t clock)
 
 static int handle_timeouts(bgpwatcher_client_broker_t *broker, uint64_t clock)
 {
+  int idx;
   bgpwatcher_client_broker_req_t *req;
 
-  /* re-tx any requests that have timed out */
-  req = zlist_first(broker->req_list);
-  while(req != NULL)
+  /* nothing to time out */
+  if(broker->req_count == 0)
     {
+      return 0;
+    }
+
+  /* re-tx any requests that have timed out */
+
+  for(idx=0; idx<MAX_OUTSTANDING_REQ; idx++)
+    {
+      if(broker->req_list[idx].in_use == 0)
+        {
+          continue;
+        }
+
+      req = &broker->req_list[idx];
+
       if(clock < req->retry_at)
 	{
 	  /*fprintf(stderr, "DEBUG: at %"PRIu64", waiting for %"PRIu64"\n",
 	    zclock_time(), req->retry_at);*/
-	  /* the list is ordered, so we are done */
-	  break;
+          continue;
 	}
 
       /* we are either going to discard this request, or re-tx it */
-      zlist_remove(broker->req_list, req);
-
       if(--req->retries_remaining == 0)
 	{
 	  /* time to abandon this request */
@@ -314,8 +347,8 @@ static int handle_timeouts(bgpwatcher_client_broker_t *broker, uint64_t clock)
 		  "abandoning\n",
 		  req->seq_num);
 
-	  bgpwatcher_client_broker_req_free(&req);
-	  req = zlist_first(broker->req_list);
+          req->in_use = 0;
+          broker->req_count--;
 	  continue;
 	}
 
@@ -325,21 +358,11 @@ static int handle_timeouts(bgpwatcher_client_broker_t *broker, uint64_t clock)
 	{
 	  goto err;
 	}
-
-      /* add it to the end of the list (it is now the oldest time) */
-      if(zlist_append(broker->req_list, req) != 0)
-	{
-	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-				 "Could not add request to list");
-	}
-
-      req = zlist_first(broker->req_list);
     }
 
   return 0;
 
  err:
-  bgpwatcher_client_broker_req_free(&req);
   return -1;
 }
 
@@ -410,74 +433,89 @@ static int handle_server_msg(zloop_t *loop, zsock_t *reader, void *arg)
 {
   bgpwatcher_client_broker_t *broker = (bgpwatcher_client_broker_t*)arg;
   bgpwatcher_msg_type_t msg_type;
+  uint64_t clock;
+  int retries = 0;
 
-  uint64_t clock = zclock_time();
-
-  if(is_shutdown_time(broker, clock) != 0)
+  while(retries < BGPWATCHER_CLIENT_BROKER_GREEDY_MAX_MSG)
     {
-      return -1;
-    }
+      clock = zclock_time();
 
-  msg_type = bgpwatcher_recv_type(broker->server_socket);
-
-  if(zctx_interrupted != 0)
-    {
-      goto interrupt;
-    }
-
-  switch(msg_type)
-    {
-    case BGPWATCHER_MSG_TYPE_REPLY:
-      reset_heartbeat_liveness(broker);
-      if(handle_reply(broker) != 0)
+      if(is_shutdown_time(broker, clock) != 0)
         {
-          goto err;
+          return -1;
         }
+
+      msg_type = bgpwatcher_recv_type(broker->server_socket, ZMQ_DONTWAIT);
 
       if(zctx_interrupted != 0)
         {
           goto interrupt;
         }
-      break;
 
-    case BGPWATCHER_MSG_TYPE_HEARTBEAT:
-      reset_heartbeat_liveness(broker);
-      break;
-
-    default:
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-                             "Invalid message type received from "
-                             "server (%d)", msg_type);
-      goto err;
-    }
-
-  broker->reconnect_interval_next =
-    CFG->reconnect_interval_min;
-
-  /* have we just processed the last reply? */
-  if(is_shutdown_time(broker, clock) != 0)
-    {
-      return -1;
-    }
-  if(handle_timeouts(broker, clock) != 0)
-    {
-      return -1;
-    }
-
-  /* check if the number of outstanding requests has dropped enough to start
-     accepting more from our master */
-  if(broker->master_removed != 0 &&
-     zlist_size(broker->req_list) < MAX_OUTSTANDING_REQ*0.8)
-    {
-      fprintf(stderr, "INFO: Accepting requests\n");
-      if(zloop_reader(broker->loop, broker->master_pipe,
-                      handle_master_msg, broker) != 0)
+      switch(msg_type)
         {
-          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-                                 "Could not re-add master pipe to reactor");
+        case BGPWATCHER_MSG_TYPE_REPLY:
+          reset_heartbeat_liveness(broker);
+          if(handle_reply(broker) != 0)
+            {
+              goto err;
+            }
+
+          if(zctx_interrupted != 0)
+            {
+              goto interrupt;
+            }
+          break;
+
+        case BGPWATCHER_MSG_TYPE_HEARTBEAT:
+          reset_heartbeat_liveness(broker);
+          break;
+
+        case BGPWATCHER_MSG_TYPE_UNKNOWN:
+          /* nothing more to receive at the moment */
+          if(errno == EAGAIN)
+            {
+              return 0;
+            }
+          /* fall through */
+
+        default:
+          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+                                 "Invalid message type received from "
+                                 "server (%d)", msg_type);
+          goto err;
+        }
+
+      broker->reconnect_interval_next =
+        CFG->reconnect_interval_min;
+
+      /* have we just processed the last reply? */
+      if(is_shutdown_time(broker, clock) != 0)
+        {
           return -1;
         }
-      broker->master_removed = 0;
+      if(handle_timeouts(broker, clock) != 0)
+        {
+          return -1;
+        }
+
+      /* check if the number of outstanding requests has dropped enough to start
+         accepting more from our master */
+      if(broker->master_removed != 0 &&
+         broker->req_count < MAX_OUTSTANDING_REQ)
+        {
+          fprintf(stderr, "INFO: Accepting requests\n");
+          if(zloop_reader(broker->loop, broker->master_pipe,
+                          handle_master_msg, broker) != 0)
+            {
+              bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+                                     "Could not re-add master pipe to reactor");
+              return -1;
+            }
+          broker->master_removed = 0;
+        }
+
+      retries++;
     }
 
   return 0;
@@ -498,18 +536,16 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
 
   uint64_t clock = zclock_time();
 
+  int idx;
+
   if(is_shutdown_time(broker, clock) != 0)
     {
       return -1;
     }
 
-  /* there is a message waiting for us from our master, but if we already have
-     too many outstanding requests at the server, we risk filling the buffers
-     and entering deadlock (not to mention it is just plain rude) */
-  /* to avoid flapping, we remove ourselves at 100% of the max allowed, and the
-     handle_server_msg function will add us back when the queue drops to 80% of
-     allowed */
-  if(zlist_size(broker->req_list) >= MAX_OUTSTANDING_REQ)
+  /* check if we have too many outstanding requests */
+  /* -1 because we have to send THIS request */
+  if(broker->req_count == MAX_OUTSTANDING_REQ-1)
     {
       fprintf(stderr, "INFO: Rate limiting\n");
       zloop_reader_end(broker->loop, broker->master_pipe);
@@ -517,9 +553,15 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
     }
 
   /* peek at the first frame (msg type) */
-  if((msg_type = bgpwatcher_recv_type(broker->master_zocket))
+  if((msg_type = bgpwatcher_recv_type(broker->master_zocket, 0))
      != BGPWATCHER_MSG_TYPE_UNKNOWN)
     {
+      if(msg_type != BGPWATCHER_MSG_TYPE_DATA)
+        {
+          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+                                 "Invalid message type received from master");
+          goto err;
+        }
       /* there must be more frames for us */
       if(zsocket_rcvmore(broker->master_zocket) == 0)
         {
@@ -529,14 +571,17 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
           goto err;
         }
 
-      if((req = bgpwatcher_client_broker_req_init()) == NULL)
-        {
-          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-                                 "Could not create new request structure");
-          goto err;
-        }
+      /* there is guaranteed to be an empty request, find it */
+      idx = req_list_find_empty(broker);
+      fprintf(stderr, "DEBUG: Storing request at index %d\n", idx);
+      assert(idx != -1);
+      req = &broker->req_list[idx];
+
+      /* count this req */
+      broker->req_count++;
 
       req->msg_type = msg_type;
+      req->in_use = 1;
 
       /* now we need the seq number */
       if(zmq_recv(broker->master_zocket, &req->seq_num, sizeof(seq_num_t), 0)
@@ -563,8 +608,20 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
       /* recv messages into the req list until rcvmore is false */
       while(1)
         {
-	  assert(req->msg_frames_cnt <
-		 BGPWATCHER_CLIENT_BROKER_REQ_MSG_FRAMES_MAX);
+          /* expand the frames array if we need more */
+          if(req->msg_frames_alloc == req->msg_frames_cnt)
+            {
+              req->msg_frames_alloc +=
+                BGPWATCHER_CLIENT_BROKER_REQ_MSG_FRAME_CHUNK;
+              if((req->msg_frames =
+                  realloc(req->msg_frames,
+                          sizeof(zmq_msg_t) * req->msg_frames_alloc)) == NULL)
+                {
+                  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+                                         "Could not allocate message frames");
+                  goto err;
+                }
+            }
 
           if(zmq_msg_init(&req->msg_frames[req->msg_frames_cnt]) != 0)
             {
@@ -592,17 +649,8 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
       /*fprintf(stderr, "DEBUG: tx.seq: %"PRIu32", tx.msg_type: %d\n",
         req.seq_num, req.msg_type);*/
 
-      /* add to the end of the req list */
-      /* list will be ordered oldest (smallest time) to newest (largest
-         time) */
-      if(zlist_append(broker->req_list, req) != 0)
-        {
-          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-                                 "Could not add request to list");
-        }
-
       /* now send on to the server */
-      if(send_request(broker, req, clock) != 0)
+      if(send_request(broker, req, zclock_time()) != 0)
         {
           goto err;
         }
@@ -636,33 +684,29 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
   return -1;
 
  err:
-  bgpwatcher_client_broker_req_free(&req);
   return -1;
-}
-
-static void req_free_wrap(void **req)
-{
-  bgpwatcher_client_broker_req_free((bgpwatcher_client_broker_req_t**)req);
 }
 
 static void broker_free(bgpwatcher_client_broker_t **broker_p)
 {
   assert(broker_p != NULL);
   bgpwatcher_client_broker_t *broker = *broker_p;
+  int i;
 
   /* free our reactor */
   zloop_destroy(&broker->loop);
 
-  if(zlist_size(broker->req_list) > 0)
+  if(broker->req_count > 0)
     {
       fprintf(stderr,
-	      "WARNING: At shutdown there were %"PRIuPTR" outstanding requests\n",
-	      zlist_size(broker->req_list));
+	      "WARNING: At shutdown there were %d outstanding requests\n",
+	      broker->req_count);
     }
-  /* DO NOT set the destructor before this point otherwise zlist merrily free's
-     records on every _remove. sigh */
-  zlist_set_destructor(broker->req_list, req_free_wrap);
-  zlist_destroy(&broker->req_list);
+  for(i=0; i<MAX_OUTSTANDING_REQ; i++)
+    {
+      free(broker->req_list[i].msg_frames);
+      broker->req_list[i].msg_frames = NULL;
+    }
 
   /* free'd by zctx_destroy in master */
   broker->server_socket = NULL;
@@ -671,18 +715,6 @@ static void broker_free(bgpwatcher_client_broker_t **broker_p)
 
   *broker_p = NULL;
   return;
-}
-
-static int init_req_state(bgpwatcher_client_broker_t *broker)
-{
-  /* init the outstanding req set */
-  if((broker->req_list = zlist_new()) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Failed to create request list");
-      return -1;
-    }
-  return 0;
 }
 
 static int init_reactor(bgpwatcher_client_broker_t *broker)
@@ -735,11 +767,6 @@ static bgpwatcher_client_broker_t *broker_init(zsock_t *master_pipe,
   broker->master_zocket = zsock_resolve(master_pipe);
   assert(broker->master_zocket != NULL);
   broker->cfg = cfg;
-
-  if(init_req_state(broker) != 0)
-    {
-      goto err;
-    }
 
   /* init counters from options */
   reset_heartbeat_liveness(broker);
@@ -800,37 +827,4 @@ void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
 
   broker_free(&broker);
   return;
-}
-
-bgpwatcher_client_broker_req_t *bgpwatcher_client_broker_req_init()
-{
-  bgpwatcher_client_broker_req_t *req;
-
-  if((req = malloc(sizeof(bgpwatcher_client_broker_req_t))) == NULL)
-    {
-      return NULL;
-    }
-
-  req->msg_frames_cnt = 0;
-
-  return req;
-}
-
-void bgpwatcher_client_broker_req_free(bgpwatcher_client_broker_req_t **req_p)
-{
-  assert(req_p != NULL);
-  bgpwatcher_client_broker_req_t *req = *req_p;
-  int i;
-
-  if(req != NULL)
-    {
-      for(i=0; i<req->msg_frames_cnt; i++)
-	{
-	  zmq_msg_close(&req->msg_frames[i]);
-	}
-      req->msg_frames_cnt = 0;
-
-      free(req);
-      *req_p = NULL;
-    }
 }

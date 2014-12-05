@@ -129,6 +129,9 @@ typedef struct bgpwatcher_pfx_table {
   /** Collector that the table corresponds to */
   char *collector;
 
+  /** Number of prefixes in the table */
+  uint32_t prefix_cnt;
+
   /** Peers that the table contains information for */
   bgpwatcher_peer_t peers[BGPWATCHER_PEER_MAX_CNT];
 

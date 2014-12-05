@@ -36,13 +36,10 @@
 #define TBL (client->pfx_table)
 
 /* create and send headers for a data message */
-int send_data_hdrs(bgpwatcher_client_t *client,
-                   bgpwatcher_data_msg_type_t type)
+int send_data_hdrs(bgpwatcher_client_t *client)
 {
-  uint8_t type_b;
+  uint8_t   type_b = BGPWATCHER_MSG_TYPE_DATA;
   seq_num_t seq_num = client->seq_num++;
-
-  type_b = BGPWATCHER_MSG_TYPE_DATA;
 
   /* message type */
   if(zmq_send(client->broker_zocket, &type_b,
@@ -60,17 +57,6 @@ int send_data_hdrs(bgpwatcher_client_t *client,
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not add sequence number to message");
-      goto err;
-    }
-
-  /* request type */
-  type_b = type;
-  if(zmq_send(client->broker_zocket, &type_b,
-              bgpwatcher_data_msg_type_size_t, ZMQ_SNDMORE)
-     != bgpwatcher_data_msg_type_size_t)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Could not add request type to message");
       goto err;
     }
 
@@ -203,6 +189,7 @@ int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_t *client,
   /* reset the peer cnt */
   TBL.info.peers_cnt = peer_cnt;
   TBL.peers_added = 0;
+  TBL.info.prefix_cnt = 0;
 
   /* reset the pfx_peers hash */
   kh_clear(pfx_peers, TBL.pfx_peers);
@@ -287,18 +274,20 @@ int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client)
   bgpwatcher_pfx_row_t *row;
 
   assert(TBL.peers_added == TBL.info.peers_cnt);
-  
+
+  TBL.info.prefix_cnt = kh_size(TBL.pfx_peers);
+
   /* send table begin message */
-  if(send_data_hdrs(client, BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN) != 0)
+  if(send_data_hdrs(client) != 0)
     {
-      return -1;
+      goto err;
     }
   if(bgpwatcher_pfx_table_begin_send(client->broker_zocket,
                                      &TBL.info) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Failed to send prefix table");
-      return -1;
+			     "Failed to send prefix table begin");
+      goto err;
     }
 
   /* send all the prefixes */
@@ -308,36 +297,30 @@ int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client)
         {
           row = &kh_key(TBL.pfx_peers, k);
 
-          if(send_data_hdrs(client,
-                            BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD) != 0)
-            {
-              return -1;
-            }
           if(bgpwatcher_pfx_row_send(client->broker_zocket, row,
                                      TBL.info.peers_cnt) != 0)
             {
               bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
                                      "Failed to send prefix row");
-              return -1;
+              goto err;
             }
         }
     }
 
   /* send table end */
-  if(send_data_hdrs(client, BGPWATCHER_DATA_MSG_TYPE_TABLE_END) != 0)
-    {
-      return -1;
-    }
   if(bgpwatcher_pfx_table_end_send(client->broker_zocket, &TBL.info) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Failed to send prefix table");
-      return -1;
+			     "Failed to send prefix table end");
+      goto err;
     }
 
   TBL.started = 0;
 
   return 0;
+
+ err:
+  return -1;
 }
 
 void bgpwatcher_client_stop(bgpwatcher_client_t *client)

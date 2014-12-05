@@ -43,9 +43,14 @@
  */
 
 /** The maximum number of requests that we allow to be outstanding at any time */
-#define MAX_OUTSTANDING_REQ 100000
+#define MAX_OUTSTANDING_REQ 10
 
-#define BGPWATCHER_CLIENT_BROKER_REQ_MSG_FRAMES_MAX 512
+/** The number of frames that we allocate each time we need more messages */
+#define BGPWATCHER_CLIENT_BROKER_REQ_MSG_FRAME_CHUNK 512
+
+/** The maximum number of messages that we receive from the server before
+    yielding back to the reactor */
+#define BGPWATCHER_CLIENT_BROKER_GREEDY_MAX_MSG 10
 
 /**
  * @name Public Enums
@@ -80,11 +85,14 @@ typedef struct bgpwatcher_client_broker_callbacks {
 /** Holds information about a single outstanding request sent to the server */
 typedef struct bgpwatcher_client_broker_req {
 
-  /** The sequence number in the request (used to match replies) */
-  seq_num_t seq_num;
+  /** Is this request in use? */
+  int in_use;
 
   /** Message type in the request (and reply) */
   bgpwatcher_msg_type_t msg_type;
+
+  /** The sequence number in the request (used to match replies) */
+  seq_num_t seq_num;
 
   /** The time that this request should next be retried */
   uint64_t retry_at;
@@ -92,11 +100,14 @@ typedef struct bgpwatcher_client_broker_req {
   /** The number of retries that remain */
   uint8_t retries_remaining;
 
-  /** Message to send to the server */
-  zmq_msg_t msg_frames[BGPWATCHER_CLIENT_BROKER_REQ_MSG_FRAMES_MAX];
+  /** Messages to send to the server */
+  zmq_msg_t *msg_frames;
 
   /** Number of used msg frames */
-  uint16_t msg_frames_cnt;
+  int msg_frames_cnt;
+
+  /** Number of allocated msg frames */
+  int msg_frames_alloc;
 
 } bgpwatcher_client_broker_req_t;
 
@@ -176,7 +187,10 @@ typedef struct bgpwatcher_client_broker {
   void *server_socket;
 
   /** Ordered list of outstanding requests (used for re-transmits) */
-  zlist_t *req_list;
+  bgpwatcher_client_broker_req_t req_list[MAX_OUTSTANDING_REQ];
+
+  /** Number of currently outstanding requests (<= MAX_OUTSTANDING_REQ) */
+  int req_count;
 
   /** Time (in ms) to send the next heartbeat to server */
   uint64_t heartbeat_next;

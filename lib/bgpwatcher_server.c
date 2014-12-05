@@ -299,7 +299,7 @@ static int handle_table_prefix_begin(bgpwatcher_server_t *server,
                                      &client->pfx_table) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-                             "Failed to deserialized prefix table");
+                             "Failed to deserialize prefix table begin");
       goto err;
     }
 
@@ -337,7 +337,7 @@ static int handle_table_prefix_end(bgpwatcher_server_t *server,
                                    &client->pfx_table) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-                             "Failed to receive prefix table");
+                             "Failed to receive prefix table end");
       goto err;
     }
 
@@ -356,63 +356,6 @@ static int handle_table_prefix_end(bgpwatcher_server_t *server,
                  &client->pfx_table) != 0)
     {
       goto err;
-    }
-
-  return 0;
-
- err:
-  return -1;
-}
-
-static int handle_table(bgpwatcher_server_t *server,
-			bgpwatcher_server_client_t *client,
-			bgpwatcher_data_msg_type_t type)
-{
-  uint8_t table_type;
-
-  /* get the table type for this client (always prefix) */
-  if(zmq_recv(server->client_socket, &table_type,
-	      bgpwatcher_table_type_size_t, 0)
-     != bgpwatcher_table_type_size_t)
-    {
-      goto err;
-    }
-
-  if(zsocket_rcvmore(server->client_socket) == 0)
-    {
-      goto err;
-    }
-
-  switch(table_type)
-    {
-    case BGPWATCHER_TABLE_TYPE_PREFIX:
-      switch(type)
-        {
-        case BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN:
-          if(handle_table_prefix_begin(server, client) != 0)
-            {
-              goto err;
-            }
-          break;
-
-        case BGPWATCHER_DATA_MSG_TYPE_TABLE_END:
-          if(handle_table_prefix_end(server, client) != 0)
-            {
-              goto err;
-            }
-          break;
-        default:
-          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-                             "Invalid prefix table message");
-          goto err;
-        }
-      break;
-
-    default:
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-                             "Invalid table type");
-      goto err;
-      break;
     }
 
   return 0;
@@ -455,6 +398,57 @@ err:
   return -1;
 }
 
+static int handle_table(bgpwatcher_server_t *server,
+			bgpwatcher_server_client_t *client)
+{
+  int i;
+
+  if(zsocket_rcvmore(server->client_socket) == 0)
+    {
+      goto err;
+    }
+
+  uint64_t time = zclock_time();
+
+  if(handle_table_prefix_begin(server, client) != 0)
+    {
+      goto err;
+    }
+
+  fprintf(stderr, "DEBUG: Table Begin:\t%"PRIu64" ms\n",
+          zclock_time()-time);
+  time = zclock_time();
+
+  for(i=0; i<client->pfx_table.prefix_cnt; i++)
+    {
+      if(zsocket_rcvmore(server->client_socket) == 0)
+        {
+          goto err;
+        }
+      if(handle_pfx_record(server, client) != 0)
+        {
+          goto err;
+        }
+    }
+
+  fprintf(stderr, "DEBUG: Table Pfxs:\t%"PRIu64" ms\n",
+          zclock_time()-time);
+  time = zclock_time();
+
+  if(handle_table_prefix_end(server, client) != 0)
+    {
+      goto err;
+    }
+
+  fprintf(stderr, "DEBUG: Table End:\t%"PRIu64" ms\n",
+          zclock_time()-time);
+
+  return 0;
+
+ err:
+  return -1;
+}
+
 /*
  * | SEQ NUM       |
  * | DATA MSG TYPE |
@@ -464,11 +458,9 @@ static int handle_data_message(bgpwatcher_server_t *server,
 			       bgpwatcher_server_client_t *client)
 {
   zmq_msg_t seq_msg;
-  int rc = -1;
-  int hrc;
-  bgpwatcher_data_msg_type_t dmt;
 
-  assert(msg != NULL);
+  int rc;
+  uint64_t time = zclock_time();
 
   /* grab the seq num and save it for later */
   if(zmq_msg_init(&seq_msg) == -1)
@@ -497,43 +489,16 @@ static int handle_data_message(bgpwatcher_server_t *server,
       goto err;
     }
 
-  /* grab the msg type */
-  dmt = bgpwatcher_recv_data_type(server->client_socket);
-
   /* regardless of what they asked for, let them know that we got the request */
   if(send_reply(server, client, &seq_msg) != 0)
     {
       goto err;
     }
 
-  switch(dmt)
-    {
-    case BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN:
-    case BGPWATCHER_DATA_MSG_TYPE_TABLE_END:
-      hrc = handle_table(server, client,dmt);
-      if(bgpwatcher_err_is_err(ERR) != 0)
-	{
-	  goto err;
-	}
-      rc = hrc;
-      break;
+  rc = handle_table(server, client);
 
-    case BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD:
-      hrc = handle_pfx_record(server, client);
-      if(bgpwatcher_err_is_err(ERR) != 0)
-	{
-	  goto err;
-	}
-      rc = hrc;
-      break;
-
-    case BGPWATCHER_DATA_MSG_TYPE_UNKNOWN:
-    default:
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-			     "Invalid data msg type");
-      goto err;
-      break;
-    }
+  fprintf(stderr, "DEBUG: Table Total:\t%"PRIu64" ms\n\n",
+          zclock_time() - time);
 
   return rc;
 
@@ -722,7 +687,7 @@ static int run_server(bgpwatcher_server_t *server)
     }
 
   /* now grab the message type */
-  msg_type = bgpwatcher_recv_type(server->client_socket);
+  msg_type = bgpwatcher_recv_type(server->client_socket, 0);
 
   /* check if this client is already registered */
   if((client = client_get(server, &client_id)) == NULL)
@@ -875,10 +840,11 @@ int bgpwatcher_server_start(bgpwatcher_server_t *server)
       return -1;
     }
 
-  zsocket_set_router_mandatory(server->client_socket, 1);
+  /*zsocket_set_router_mandatory(server->client_socket, 1);*/
 
   zsocket_set_rcvtimeo(server->client_socket, server->heartbeat_interval);
   zsocket_set_sndhwm(server->client_socket, 0);
+  zsocket_set_rcvhwm(server->client_socket, 0);
 
   if(zsocket_bind(server->client_socket, "%s", server->client_uri) < 0)
     {

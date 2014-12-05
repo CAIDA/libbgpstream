@@ -139,12 +139,14 @@ static char *recv_str(void *src)
 static int send_table(void *dest, bgpwatcher_table_type_t type,
 		      uint32_t time, int sndmore)
 {
+#if 0
   /* table type */
   if(zmq_send(dest, &type, bgpwatcher_table_type_size_t, ZMQ_SNDMORE)
      != bgpwatcher_table_type_size_t)
     {
       goto err;
     }
+#endif
 
   /* time */
   time = htonl(time);
@@ -284,11 +286,11 @@ static int recv_pfx_peer_info(void *src, bgpwatcher_pfx_peer_info_t *info)
 
 /* ========== MESSAGE TYPES ========== */
 
-bgpwatcher_msg_type_t bgpwatcher_recv_type(void *src)
+bgpwatcher_msg_type_t bgpwatcher_recv_type(void *src, int flags)
 {
   bgpwatcher_msg_type_t type = BGPWATCHER_MSG_TYPE_UNKNOWN;
 
-  if((zmq_recv(src, &type, bgpwatcher_msg_type_size_t, 0)
+  if((zmq_recv(src, &type, bgpwatcher_msg_type_size_t, flags)
       != bgpwatcher_msg_type_size_t) ||
      (type > BGPWATCHER_MSG_TYPE_MAX))
     {
@@ -298,6 +300,7 @@ bgpwatcher_msg_type_t bgpwatcher_recv_type(void *src)
   return type;
 }
 
+#if 0
 bgpwatcher_data_msg_type_t bgpwatcher_recv_data_type(void *src)
 {
   bgpwatcher_data_msg_type_t type = BGPWATCHER_DATA_MSG_TYPE_UNKNOWN;
@@ -311,6 +314,7 @@ bgpwatcher_data_msg_type_t bgpwatcher_recv_data_type(void *src)
 
   return type;
 }
+#endif
 
 
 
@@ -320,6 +324,7 @@ int bgpwatcher_pfx_table_begin_send(void *dest, bgpwatcher_pfx_table_t *table)
 {
   size_t len;
   uint16_t cnt;
+  uint32_t cnt32;
   int i;
 
   /* send the common table headers (TYPE, TIME) */
@@ -336,19 +341,25 @@ int bgpwatcher_pfx_table_begin_send(void *dest, bgpwatcher_pfx_table_t *table)
       goto err;
     }
 
+  /* prefix count */
+  cnt32 = htonl(table->prefix_cnt);
+  if(zmq_send(dest, &cnt32, sizeof(cnt32), ZMQ_SNDMORE) != sizeof(cnt32))
+    {
+      goto err;
+    }
+
   /* peer cnt */
   assert(table->peers_cnt <= UINT16_MAX);
   cnt = htons(table->peers_cnt);
-  if(zmq_send(dest, &cnt, sizeof(cnt),
-              (table->peers_cnt) > 0 ? ZMQ_SNDMORE : 0) != sizeof(cnt))
+  if(zmq_send(dest, &cnt, sizeof(cnt), ZMQ_SNDMORE) != sizeof(cnt))
     {
       goto err;
     }
 
   for(i=0; i<table->peers_cnt; i++)
     {
-      if(send_peer(dest, &table->peers[i],
-                   (i < table->peers_cnt-1) ? ZMQ_SNDMORE : 0) != 0)
+      /* always SNDMORE as there must be at least table end message coming */
+      if(send_peer(dest, &table->peers[i], ZMQ_SNDMORE) != 0)
         {
           goto err;
         }
@@ -376,7 +387,7 @@ int bgpwatcher_pfx_table_end_send(void *dest, bgpwatcher_pfx_table_t *table)
 
 int bgpwatcher_pfx_table_begin_recv(void *src, bgpwatcher_pfx_table_t *table)
 {
-  int peers_rx = 0;
+  int i;
 
   /* time */
   if(zmq_recv(src, &table->time, sizeof(table->time), 0) != sizeof(table->time))
@@ -402,6 +413,18 @@ int bgpwatcher_pfx_table_begin_recv(void *src, bgpwatcher_pfx_table_t *table)
       goto err;
     }
 
+  /* prefix cnt */
+  if(zmq_recv(src, &table->prefix_cnt, sizeof(uint32_t), 0) != sizeof(uint32_t))
+    {
+      goto err;
+    }
+  table->prefix_cnt = ntohl(table->prefix_cnt);
+
+  if(zsocket_rcvmore(src) == 0)
+    {
+      goto err;
+    }
+
   /* peer cnt */
   if(zmq_recv(src, &table->peers_cnt, sizeof(uint16_t), 0) != sizeof(uint16_t))
     {
@@ -410,14 +433,13 @@ int bgpwatcher_pfx_table_begin_recv(void *src, bgpwatcher_pfx_table_t *table)
   table->peers_cnt = ntohs(table->peers_cnt);
 
   /* receive all the peers */
-  while(zsocket_rcvmore(src) != 0)
+  for(i=0; i<table->peers_cnt; i++)
     {
-      if(recv_peer(src, &(table->peers[peers_rx++])) != 0)
+      if(recv_peer(src, &(table->peers[i])) != 0)
         {
           goto err;
         }
     }
-  assert(peers_rx == table->peers_cnt);
 
   return 0;
 
@@ -470,9 +492,11 @@ void bgpwatcher_pfx_table_dump(bgpwatcher_pfx_table_t *table)
 	      "------------------------------\n"
 	      "Time:\t%"PRIu32"\n"
               "Collector:\t%s\n"
+              "Prefix Cnt:\t%d\n"
               "Peer Cnt:\t%d\n",
               table->time,
               table->collector,
+              table->prefix_cnt,
               table->peers_cnt);
 
       for(i=0; i<table->peers_cnt; i++)
@@ -517,8 +541,8 @@ int bgpwatcher_pfx_row_send(void *dest, bgpwatcher_pfx_row_t *row,
   /* foreach peer, dump the info */
   for(i=0; i<peer_cnt; i++)
     {
-      if(send_pfx_peer_info(dest, &row->info[i],
-                            (i < peer_cnt-1) ? ZMQ_SNDMORE : 0) != 0)
+      /* always SNDMORE as there must be a table end coming */
+      if(send_pfx_peer_info(dest, &row->info[i], ZMQ_SNDMORE) != 0)
         {
           goto err;
         }
@@ -533,7 +557,7 @@ int bgpwatcher_pfx_row_send(void *dest, bgpwatcher_pfx_row_t *row,
 int bgpwatcher_pfx_row_recv(void *src, bgpwatcher_pfx_row_t *row_out,
                             int peer_cnt)
 {
-  int peers_rx = 0;
+  int i;
 
   /* prefix */
   if(recv_ip(src, &(row_out->prefix.address)) != 0)
@@ -559,14 +583,17 @@ int bgpwatcher_pfx_row_recv(void *src, bgpwatcher_pfx_row_t *row_out,
       goto err;
     }
 
-  while(zsocket_rcvmore(src) != 0)
+  for(i=0; i<peer_cnt; i++)
     {
-      if(recv_pfx_peer_info(src, &(row_out->info[peers_rx++])) != 0)
+      if(zsocket_rcvmore(src) == 0)
+        {
+          goto err;
+        }
+      if(recv_pfx_peer_info(src, &(row_out->info[i])) != 0)
         {
           goto err;
         }
     }
-  assert(peers_rx == peer_cnt);
 
   return 0;
 
