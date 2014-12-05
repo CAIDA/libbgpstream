@@ -348,6 +348,8 @@ void bgpwatcher_client_free(bgpwatcher_client_t *client)
       bgpwatcher_client_stop(client);
     }
 
+  kh_destroy(pfx_peers, TBL.pfx_peers);
+
   free(BCFG.server_uri);
   BCFG.server_uri = NULL;
 
