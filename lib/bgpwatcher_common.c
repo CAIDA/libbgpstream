@@ -41,6 +41,68 @@ static void *get_in_addr(bl_addr_storage_t *ip) {
     : (void *) &(ip->ipv6);
 }
 
+static int serialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip)
+{
+  size_t written = 0;
+
+  /* serialize the version */
+  assert(len >= 1);
+  *buf = ip->version;
+  buf++;
+  written++;
+
+  /* now serialize the actual address */
+  switch(ip->version)
+    {
+    case BL_ADDR_IPV4:
+      assert((len-written) >= sizeof(uint32_t));
+      memcpy(buf, &ip->ipv4.s_addr, sizeof(uint32_t));
+      return written + sizeof(uint32_t);
+      break;
+
+    case BL_ADDR_IPV6:
+      assert((len-written) >= (sizeof(uint8_t)*16));
+      memcpy(buf, &ip->ipv6.s6_addr, sizeof(uint8_t)*16);
+      return written + sizeof(uint8_t)*16;
+      break;
+
+    case BL_ADDR_TYPE_UNKNOWN:
+      return -1;
+    }
+
+  return -1;
+}
+
+static int deserialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip)
+{
+  size_t read = 0;
+
+  assert(len >= 1);
+  ip->version = *buf;
+  buf++;
+  read++;
+
+  switch(ip->version)
+    {
+    case BL_ADDR_IPV4:
+      assert((len-read) >= sizeof(uint32_t));
+      memcpy(&ip->ipv4.s_addr, buf, sizeof(uint32_t));
+      return read + sizeof(uint32_t);
+      break;
+
+    case BL_ADDR_IPV6:
+      assert((len-read) >= (sizeof(uint8_t)*16));
+      memcpy(&ip->ipv6.s6_addr, buf, sizeof(uint8_t)*16);
+      return read + (sizeof(uint8_t) * 16);
+      break;
+
+    case BL_ADDR_TYPE_UNKNOWN:
+      return -1;
+    }
+
+  return -1;
+}
+
 static int send_ip(void *dest, bl_addr_storage_t *ip, int flags)
 {
   switch(ip->version)
@@ -209,6 +271,7 @@ static int recv_peer(void *src, bgpwatcher_peer_t *peer)
   return -1;
 }
 
+#if 0
 static int send_pfx_peer_info(void *dest, bgpwatcher_pfx_peer_info_t *info,
                               int sndmore)
 {
@@ -242,7 +305,67 @@ static int send_pfx_peer_info(void *dest, bgpwatcher_pfx_peer_info_t *info,
  err:
   return -1;
 }
+#endif
 
+static int serialize_pfx_peer_info(uint8_t *buf, size_t len,
+                                   bgpwatcher_pfx_peer_info_t *info)
+{
+  uint32_t n32;
+  size_t written = 0;
+  size_t s = 0;
+
+  assert(len >= sizeof(info->in_use));
+  memcpy(buf, &info->in_use, sizeof(info->in_use));
+  s = sizeof(info->in_use);
+  written += s;
+
+  if(info->in_use == 0)
+    {
+      return written;
+    }
+
+  buf += s;
+
+  assert((len-written) >= sizeof(uint32_t));
+  n32 = htonl(info->orig_asn);
+  memcpy(buf, &n32, sizeof(uint32_t));
+  s = sizeof(uint32_t);
+  written += s;
+
+  return written;
+}
+
+static int deserialize_pfx_peer_info(uint8_t *buf, size_t len,
+                                     bgpwatcher_pfx_peer_info_t *info)
+{
+  uint32_t n32;
+  size_t read = 0;
+  size_t s = 0;
+
+  assert(len >= sizeof(info->in_use));
+  memcpy(&info->in_use, buf, sizeof(info->in_use));
+  s = sizeof(info->in_use);
+  read += s;
+
+  if(info->in_use == 0)
+    {
+      return read;
+    }
+
+  buf += s;
+
+  /* orig asn */
+  assert(len >= sizeof(uint32_t));      /* enough remaining in buffer */
+  memcpy(&n32, buf, sizeof(uint32_t));  /* copy into struct */
+  n32 = ntohl(n32);                     /* convert to host order */
+  info->orig_asn = n32;                 /* save */
+  s = sizeof(uint32_t);
+  read += s;
+
+  return read;
+}
+
+#if 0
 static int recv_pfx_peer_info(void *src, bgpwatcher_pfx_peer_info_t *info)
 {
   /* in use */
@@ -275,6 +398,7 @@ static int recv_pfx_peer_info(void *src, bgpwatcher_pfx_peer_info_t *info)
  err:
   return -1;
 }
+#endif
 
 
 /* ========== PROTECTED FUNCTIONS BELOW HERE ========== */
@@ -517,6 +641,127 @@ void bgpwatcher_pfx_table_dump(bgpwatcher_pfx_table_t *table)
 
 /* ========== PREFIX ROWS ========== */
 
+/* how many bytes in a row?
+   max:
+   IP_VERSION [01]
+   IP_ADDRESS [16]
+   <PEER_INFO> * peer_cnt
+
+   PEER_INFO
+   IN_USE   [01]
+   ORIG_ASN [04]
+*/
+/* @todo consider moving the buffer into the client */
+#define PFX_ROW_BUFFER_LEN 17 + (BGPWATCHER_PEER_MAX_CNT*5)
+
+int bgpwatcher_pfx_row_send(void *dest, bgpwatcher_pfx_row_t *row,
+                            int peer_cnt)
+{
+  int i;
+
+  size_t len = PFX_ROW_BUFFER_LEN;
+  uint8_t buf[PFX_ROW_BUFFER_LEN];
+  uint8_t *ptr = buf;
+  size_t written = 0;
+  size_t s = 0;
+
+  assert(peer_cnt <= BGPWATCHER_PEER_MAX_CNT);
+
+  /* prefix */
+  if((s = serialize_ip(ptr, len, &row->prefix.address)) == -1)
+    {
+      goto err;
+    }
+  written += s;
+  ptr += s;
+
+  /* length */
+  assert((len-written) >= sizeof(row->prefix.mask_len)); /* duh */
+  memcpy(ptr, &row->prefix.mask_len, sizeof(row->prefix.mask_len));
+  s = sizeof(row->prefix.mask_len);
+  written += s;
+  ptr += s;
+
+  /* foreach peer, dump the info */
+  for(i=0; i<peer_cnt; i++)
+    {
+      /* always SNDMORE as there must be a table end coming */
+      if((s = serialize_pfx_peer_info(ptr, (len-written),
+                                      &row->info[i])) == -1)
+        {
+          goto err;
+        }
+      ptr += s;
+      written += s;
+    }
+
+  /* now send the buffer */
+  if(zmq_send(dest, buf, written, ZMQ_SNDMORE) != written)
+    {
+      goto err;
+    }
+
+  return 0;
+
+ err:
+  return -1;
+}
+
+int bgpwatcher_pfx_row_recv(void *src, bgpwatcher_pfx_row_t *row_out,
+                            int peer_cnt)
+{
+  int i;
+  zmq_msg_t msg;
+  uint8_t *buf;
+  size_t len;
+  size_t read = 0;
+  size_t s = 0;
+
+  /* first receive the message */
+  if(zmq_msg_init(&msg) == -1 || zmq_msg_recv(&msg, src, 0) == -1)
+    {
+      goto err;
+    }
+  buf = zmq_msg_data(&msg);
+  len = zmq_msg_size(&msg);
+
+  assert(len > 0);
+
+  /* prefix */
+  if((s = deserialize_ip(buf, (len-read), &(row_out->prefix.address))) == -1)
+    {
+      goto err;
+    }
+  read += s;
+  buf += s;
+
+  /* pfx len */
+  assert((len-read) >= sizeof(row_out->prefix.mask_len));
+  memcpy(&row_out->prefix.mask_len, buf, sizeof(row_out->prefix.mask_len));
+  s = sizeof(row_out->prefix.mask_len);
+  read += s;
+  buf += s;
+
+  for(i=0; i<peer_cnt; i++)
+    {
+      if((s = deserialize_pfx_peer_info(buf, (len-read),
+                                        &(row_out->info[i]))) == -1)
+        {
+          goto err;
+        }
+      read += s;
+      buf+= s;
+    }
+
+  assert(read == len);
+
+  return 0;
+
+ err:
+  return -1;
+}
+
+#if 0
 int bgpwatcher_pfx_row_send(void *dest, bgpwatcher_pfx_row_t *row,
                             int peer_cnt)
 {
@@ -600,6 +845,7 @@ int bgpwatcher_pfx_row_recv(void *src, bgpwatcher_pfx_row_t *row_out,
  err:
   return -1;
 }
+#endif
 
 void bgpwatcher_pfx_row_dump(bgpwatcher_pfx_table_t *table,
                              bgpwatcher_pfx_row_t *row)

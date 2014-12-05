@@ -46,7 +46,7 @@
 #define MAX_OUTSTANDING_REQ 2
 
 /** The number of frames that we allocate each time we need more messages */
-#define BGPWATCHER_CLIENT_BROKER_REQ_MSG_FRAME_CHUNK 20480
+#define BGPWATCHER_CLIENT_BROKER_REQ_MSG_FRAME_CHUNK 256000
 
 /** The maximum number of messages that we receive from the server before
     yielding back to the reactor */
