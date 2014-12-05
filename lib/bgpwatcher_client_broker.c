@@ -621,6 +621,9 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
                                          "Could not allocate message frames");
                   goto err;
                 }
+
+              fprintf(stderr, "DEBUG: %d frames allocated for req %d\n",
+                      req->msg_frames_alloc, idx);
             }
 
           if(zmq_msg_init(&req->msg_frames[req->msg_frames_cnt]) != 0)

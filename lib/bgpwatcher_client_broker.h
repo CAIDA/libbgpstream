@@ -43,14 +43,14 @@
  */
 
 /** The maximum number of requests that we allow to be outstanding at any time */
-#define MAX_OUTSTANDING_REQ 10
+#define MAX_OUTSTANDING_REQ 2
 
 /** The number of frames that we allocate each time we need more messages */
-#define BGPWATCHER_CLIENT_BROKER_REQ_MSG_FRAME_CHUNK 512
+#define BGPWATCHER_CLIENT_BROKER_REQ_MSG_FRAME_CHUNK 20480
 
 /** The maximum number of messages that we receive from the server before
     yielding back to the reactor */
-#define BGPWATCHER_CLIENT_BROKER_GREEDY_MAX_MSG 2
+#define BGPWATCHER_CLIENT_BROKER_GREEDY_MAX_MSG 10
 
 /**
  * @name Public Enums
