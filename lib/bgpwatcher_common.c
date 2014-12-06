@@ -755,9 +755,12 @@ int bgpwatcher_pfx_row_recv(void *src, bgpwatcher_pfx_row_t *row_out,
 
   assert(read == len);
 
+  zmq_msg_close(&msg);
+
   return 0;
 
  err:
+  zmq_msg_close(&msg);
   return -1;
 }
 
