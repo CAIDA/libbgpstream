@@ -59,7 +59,7 @@
 /** Default the client reconnect maximum interval to 32 seconds */
 #define BGPWATCHER_RECONNECT_INTERVAL_MAX 32000
 
-#define BGPWATCHER_PEER_MAX_CNT 256
+#define BGPWATCHER_PEER_MAX_CNT 64
 
 /** @} */
 
