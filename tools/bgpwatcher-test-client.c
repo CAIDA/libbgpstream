@@ -42,6 +42,8 @@
 #define TEST_TABLE_SIZE_DEFAULT 50
 #define TEST_PEER_NUM_DEFAULT 1
 
+#define ASN_MAX 50000
+
 /* pfx table */
 static char                   *test_collector_name;
 static uint32_t                test_time;
@@ -71,9 +73,9 @@ static void create_test_data()
   test_peer_status = 0x01;
 
   /* FIRST PREFIX */
-  test_prefix_first_addr = test_prefix.address.ipv4.s_addr = 0x000000C0;
+  test_prefix_first_addr = test_prefix.address.ipv4.s_addr = 0x00000000;
   test_prefix.address.version = BL_ADDR_IPV4;
-  test_prefix.mask_len = 12;
+  test_prefix.mask_len = 24;
 
   /* ORIG ASN */
   test_orig_asn = 1;
@@ -327,11 +329,13 @@ int main(int argc, char **argv)
           test_prefix.address.ipv4.s_addr = test_prefix_first_addr;
           for(i=0; i<test_table_size; i++)
             {
-              test_prefix.address.ipv4.s_addr+=htonl(256);
+              test_prefix.address.ipv4.s_addr =
+                htonl(ntohl(test_prefix.address.ipv4.s_addr) + 256);
+              test_orig_asn = (test_orig_asn+1) % ASN_MAX;
               if(bgpwatcher_client_pfx_table_add(client,
                                                  peer_id,
                                                  &test_prefix,
-                                                 test_orig_asn++) != 0)
+                                                 test_orig_asn) != 0)
                 {
                   fprintf(stderr, "Could not add pfx info to table\n");
                   goto err;
