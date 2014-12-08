@@ -195,8 +195,14 @@ struct bgpwatcher_server {
   /** URI to listen for clients on */
   char *client_uri;
 
+  /** URI to pub tables on */
+  char *client_pub_uri;
+
   /** Socket to bind to for client connections */
   void *client_socket;
+
+  /** Socket to pub tables on */
+  void *client_pub_socket;
 
   /** List of clients that are connected */
   khash_t(strclient) *clients;
@@ -281,6 +287,18 @@ void bgpwatcher_server_free(bgpwatcher_server_t *server);
  */
 int bgpwatcher_server_set_client_uri(bgpwatcher_server_t *server,
 				      const char *uri);
+
+/** Set the URI for the server to publish tables on
+ *  (subscribed to by consumer clients)
+ *
+ * @param server        pointer to a bgpwatcher server instance to update
+ * @param uri           pointer to a uri string
+ * @return 0 if the uri was set successfully, -1 otherwise
+ *
+ * @note defaults to BGPWATCHER_CLIENT_PUB_URI_DEFAULT
+ */
+int bgpwatcher_server_set_client_pub_uri(bgpwatcher_server_t *server,
+                                         const char *uri);
 
 /** Set the heartbeat interval
  *

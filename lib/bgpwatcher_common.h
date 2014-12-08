@@ -47,6 +47,10 @@
 /** Default URI for the server to listen for client requests on */
 #define BGPWATCHER_CLIENT_URI_DEFAULT "tcp://*:6300"
 
+/** Default URI for the server to publish tables on (subscribed to by consumer
+    clients) */
+#define BGPWATCHER_CLIENT_PUB_URI_DEFAULT "tcp://*:6301"
+
 /** Default the server/client heartbeat interval to 100 msec */
 #define BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT 1000
 

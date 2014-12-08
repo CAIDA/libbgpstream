@@ -786,7 +786,7 @@ bgpwatcher_server_t *bgpwatcher_server_init(
       free(*cb_p);
       return NULL;
     }
-  
+
   server->callbacks = *cb_p;
   *cb_p = NULL;
 
@@ -805,6 +805,14 @@ bgpwatcher_server_t *bgpwatcher_server_init(
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Failed to duplicate client uri string");
+      goto err;
+    }
+
+  if((server->client_pub_uri =
+      strdup(BGPWATCHER_CLIENT_PUB_URI_DEFAULT)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Failed to duplicate client pub uri string");
       goto err;
     }
 
@@ -839,21 +847,33 @@ int bgpwatcher_server_start(bgpwatcher_server_t *server)
 			     "Failed to create client socket");
       return -1;
     }
-
   /*zsocket_set_router_mandatory(server->client_socket, 1);*/
-
   zsocket_set_rcvtimeo(server->client_socket, server->heartbeat_interval);
   zsocket_set_sndhwm(server->client_socket, 0);
   zsocket_set_rcvhwm(server->client_socket, 0);
-
   if(zsocket_bind(server->client_socket, "%s", server->client_uri) < 0)
     {
       bgpwatcher_err_set_err(ERR, errno, "Could not bind to client socket");
       return -1;
     }
 
+  /* bind to the pub socket */
+  if((server->client_pub_socket = zsocket_new(server->ctx, ZMQ_PUB)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_START_FAILED,
+			     "Failed to create client PUB socket");
+      return -1;
+    }
+  if(zsocket_bind(server->client_pub_socket, "%s", server->client_pub_uri) < 0)
+    {
+      bgpwatcher_err_set_err(ERR, errno,
+                             "Could not bind to client PUB socket (%s)",
+                             server->client_pub_uri);
+      return -1;
+    }
+
   /* seed the time for the next heartbeat sent to servers */
-  server->heartbeat_next = zclock_time() + server->heartbeat_interval;  
+  server->heartbeat_next = zclock_time() + server->heartbeat_interval;
 
   /* start processing requests */
   while((server->shutdown == 0) && (run_server(server) == 0))
@@ -886,6 +906,9 @@ void bgpwatcher_server_free(bgpwatcher_server_t *server)
   free(server->client_uri);
   server->client_uri = NULL;
 
+  free(server->client_pub_uri);
+  server->client_pub_uri = NULL;
+
   clients_free(server);
   server->clients = NULL;
 
@@ -912,6 +935,25 @@ int bgpwatcher_server_set_client_uri(bgpwatcher_server_t *server,
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not malloc client uri string");
+      return -1;
+    }
+
+  return 0;
+}
+
+int bgpwatcher_server_set_client_pub_uri(bgpwatcher_server_t *server,
+                                         const char *uri)
+{
+  assert(server != NULL);
+
+  /* remember, we set one by default */
+  assert(server->client_pub_uri != NULL);
+  free(server->client_pub_uri);
+
+  if((server->client_pub_uri = strdup(uri)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not malloc client pub uri string");
       return -1;
     }
 

@@ -104,6 +104,8 @@ static void usage(const char *name)
 	  "                               (default: %d)\n"
 	  "       -s <server-uri>       0MQ-style URI to connect to server on\n"
 	  "                               (default: %s)\n"
+          "       -s <server-sub-uri>   0MQ-style URI to subscribe to tables on\n"
+          "                               (default: %s)\n"
 	  "       -t <shutdown-timeout> Time to wait for requests on shutdown\n"
 	  "                               (default: %d)\n"
 	  "       -T <table-size>       Size of prefix tables (default: %d)\n",
@@ -117,6 +119,7 @@ static void usage(const char *name)
 	  BGPWATCHER_RECONNECT_INTERVAL_MIN,
 	  BGPWATCHER_RECONNECT_INTERVAL_MAX,
 	  BGPWATCHER_CLIENT_SERVER_URI_DEFAULT,
+	  BGPWATCHER_CLIENT_SERVER_SUB_URI_DEFAULT,
 	  BGPWATCHER_CLIENT_SHUTDOWN_LINGER_DEFAULT,
 	  TEST_TABLE_SIZE_DEFAULT);
 }
@@ -130,6 +133,7 @@ int main(int argc, char **argv)
 
   /* to store command line argument values */
   const char *server_uri = NULL;
+  const char *server_sub_uri = NULL;
   const char *identity = NULL;
 
   int use_random = 0;
@@ -154,7 +158,7 @@ int main(int argc, char **argv)
   uint32_t test_peer_num = TEST_PEER_NUM_DEFAULT;
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":ci:l:m:M:n:N:P:r:R:s:t:T:v?")) >= 0)
+	(opt = getopt(argc, argv, ":ci:l:m:M:n:N:P:r:R:s:S:t:T:v?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
@@ -212,6 +216,10 @@ int main(int argc, char **argv)
 	  server_uri = optarg;
 	  break;
 
+	case 'S':
+	  server_sub_uri = optarg;
+	  break;
+
 	case 't':
 	  shutdown_linger = atoi(optarg);
 	  break;
@@ -253,6 +261,13 @@ int main(int argc, char **argv)
 
   if(server_uri != NULL &&
      bgpwatcher_client_set_server_uri(client, server_uri) != 0)
+    {
+      bgpwatcher_client_perr(client);
+      goto err;
+    }
+
+  if(server_sub_uri != NULL &&
+     bgpwatcher_client_set_server_sub_uri(client, server_sub_uri) != 0)
     {
       bgpwatcher_client_perr(client);
       goto err;

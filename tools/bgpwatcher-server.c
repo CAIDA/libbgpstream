@@ -71,12 +71,15 @@ static void usage(const char *name)
 	  "usage: %s [<options>]\n"
 	  "       -c <client-uri>    0MQ-style URI to listen for clients on\n"
 	  "                          (default: %s)\n"
+          "       -C <client-pub-uri> 0MQ-style URI to publish tables on\n"
+          "                          (default: %s)\n"
 	  "       -i <interval-ms>   Time in ms between heartbeats to clients\n"
 	  "                          (default: %d)\n"
 	  "       -l <beats>         Number of heartbeats that can go by before \n"
 	  "                          a client is declared dead (default: %d)\n",
 	  name,
 	  BGPWATCHER_CLIENT_URI_DEFAULT,
+	  BGPWATCHER_CLIENT_PUB_URI_DEFAULT,
 	  BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT,
 	  BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT);
 }
@@ -89,6 +92,7 @@ int main(int argc, char **argv)
 
   /* to store command line argument values */
   const char *client_uri = NULL;
+  const char *client_pub_uri = NULL;
 
   uint64_t heartbeat_interval = BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT;
   int heartbeat_liveness      = BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT;
@@ -96,7 +100,7 @@ int main(int argc, char **argv)
   signal(SIGINT, catch_sigint);
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":c:i:l:v?")) >= 0)
+	(opt = getopt(argc, argv, ":c:C:i:l:v?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
@@ -112,6 +116,10 @@ int main(int argc, char **argv)
 
 	case 'c':
 	  client_uri = optarg;
+	  break;
+
+	case 'C':
+	  client_pub_uri = optarg;
 	  break;
 
 	case 'i':
@@ -151,6 +159,11 @@ int main(int argc, char **argv)
   if(client_uri != NULL)
     {
       bgpwatcher_set_client_uri(watcher, client_uri);
+    }
+
+  if(client_pub_uri != NULL)
+    {
+      bgpwatcher_set_client_pub_uri(watcher, client_pub_uri);
     }
 
   bgpwatcher_set_heartbeat_interval(watcher, heartbeat_interval);

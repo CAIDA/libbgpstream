@@ -243,6 +243,14 @@ int bgpwatcher_set_client_uri(bgpwatcher_t *watcher,
   return bgpwatcher_server_set_client_uri(watcher->server, uri);
 }
 
+int bgpwatcher_set_client_pub_uri(bgpwatcher_t *watcher,
+                                  const char *uri)
+{
+  assert(watcher != NULL);
+
+  return bgpwatcher_server_set_client_pub_uri(watcher->server, uri);
+}
+
 void bgpwatcher_set_heartbeat_interval(bgpwatcher_t *watcher,
 				       uint64_t interval_ms)
 {

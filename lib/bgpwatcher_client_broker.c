@@ -31,6 +31,7 @@
 #include "utils.h"
 
 static int handle_server_msg(zloop_t *loop, zsock_t *reader, void *arg);
+static int handle_server_sub_msg(zloop_t *loop, zsock_t *reader, void *arg);
 static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg);
 
 #define ERR (&broker->cfg->err)
@@ -108,6 +109,42 @@ static void reset_heartbeat_liveness(bgpwatcher_client_broker_t *broker)
   broker->heartbeat_liveness_remaining = CFG->heartbeat_liveness;
 }
 
+static int server_subscribe(bgpwatcher_client_broker_t *broker)
+{
+  /* if we have no interests, don't bother connecting */
+  if(CFG->interests == 0)
+    {
+      return 0;
+    }
+
+  if((broker->server_sub_socket = zsocket_new(CFG->ctx, ZMQ_SUB)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_START_FAILED,
+			     "Failed to create server SUB connection");
+      return -1;
+    }
+
+  /** @todo subscribe to certain things based on interests */
+  zsocket_set_subscribe(broker->server_sub_socket, "");
+
+  if(zsocket_connect(broker->server_sub_socket, "%s", CFG->server_sub_uri) < 0)
+    {
+      bgpwatcher_err_set_err(ERR, errno, "Could not connect to server");
+      return -1;
+    }
+
+  /* create a new reader for this server sub socket */
+  if(zloop_reader(broker->loop, broker->server_sub_socket,
+                  handle_server_sub_msg, broker) != 0)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not add server sub socket to reactor");
+      return -1;
+    }
+
+  return 0;
+}
+
 static int server_connect(bgpwatcher_client_broker_t *broker)
 {
   uint8_t msg_type_p;
@@ -179,10 +216,24 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
 
   assert(broker->server_socket != NULL);
 
-  return 0;
+  /* subscribe for server table messages (if we are a consumer) */
+  return server_subscribe(broker);
 }
 
-static int server_disconnect(bgpwatcher_client_broker_t *broker)
+static void server_disconnect(bgpwatcher_client_broker_t *broker)
+{
+  /* remove the server reader from the reactor */
+  zloop_reader_end(broker->loop, broker->server_socket);
+  /* destroy the server socket */
+  zsocket_destroy(CFG->ctx, broker->server_socket);
+
+  /* remove the server sub reader from the reactor */
+  zloop_reader_end(broker->loop, broker->server_sub_socket);
+  /* destroy the server sub socket */
+  zsocket_destroy(CFG->ctx, broker->server_sub_socket);
+}
+
+static int server_send_term(bgpwatcher_client_broker_t *broker)
 {
   uint8_t msg_type_p = BGPWATCHER_MSG_TYPE_TERM;
 
@@ -393,10 +444,8 @@ static int handle_heartbeat_timer(zloop_t *loop, int timer_id, void *arg)
           broker->reconnect_interval_next *= 2;
         }
 
-      /* remove the server reader from the reactor */
-      zloop_reader_end(broker->loop, broker->server_socket);
-      /* destroy the server socket */
-      zsocket_destroy(CFG->ctx, broker->server_socket);
+      /* shut down our sockets */
+      server_disconnect(broker);
       /* reconnect */
       server_connect(broker);
       assert(broker->server_socket != NULL);
@@ -526,6 +575,15 @@ static int handle_server_msg(zloop_t *loop, zsock_t *reader, void *arg)
 
  err:
   return -1;
+}
+
+static int handle_server_sub_msg(zloop_t *loop, zsock_t *reader, void *arg)
+{
+  bgpwatcher_client_broker_t *broker = (bgpwatcher_client_broker_t*)arg;
+
+  zmsg_print(zmsg_recv(broker->server_sub_socket));
+
+  return 0;
 }
 
 static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
@@ -821,7 +879,7 @@ void bgpwatcher_client_broker_run(zsock_t *pipe, void *args)
   /* blocks until broker exits */
   zloop_start(broker->loop);
 
-  if(server_disconnect(broker) != 0)
+  if(server_send_term(broker) != 0)
     {
       // err will be set
       broker_free(&broker);

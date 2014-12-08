@@ -121,6 +121,18 @@ void bgpwatcher_perr(bgpwatcher_t *watcher);
 int bgpwatcher_set_client_uri(bgpwatcher_t *watcher,
 			      const char *uri);
 
+/** Set the URI for the server to publish tables on
+ *  (subscribed to by consumer clients)
+ *
+ * @param watcher       pointer to a bgpwatcher instance to update
+ * @param uri           pointer to a uri string
+ * @return 0 if the uri was set successfully, -1 otherwise
+ *
+ * @note defaults to BGPWATCHER_CLIENT_PUB_URI_DEFAULT
+ */
+int bgpwatcher_set_client_pub_uri(bgpwatcher_t *watcher,
+                                  const char *uri);
+
 /** Set the heartbeat interval
  *
  * @param watcher       pointer to a bgpwatcher instance to update

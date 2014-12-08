@@ -46,12 +46,15 @@
 /** Default URI for the server -> client connection */
 #define BGPWATCHER_CLIENT_SERVER_URI_DEFAULT "tcp://127.0.0.1:6300"
 
+/** Default URI for the server -> client pub/sub connection */
+#define BGPWATCHER_CLIENT_SERVER_SUB_URI_DEFAULT "tcp://127.0.0.1:6301"
+
 /** Default time that the client will wait for outstanding messages when
     shutting down (in milliseconds) */
-#define BGPWATCHER_CLIENT_SHUTDOWN_LINGER_DEFAULT 300000
+#define BGPWATCHER_CLIENT_SHUTDOWN_LINGER_DEFAULT 600000
 
 /** Default request timeout */
-#define BGPWATCHER_CLIENT_REQUEST_TIMEOUT_DEFAULT 60000
+#define BGPWATCHER_CLIENT_REQUEST_TIMEOUT_DEFAULT 300000
 
 /** Default request retry count  */
 #define BGPWATCHER_CLIENT_REQUEST_RETRIES_DEFAULT 3
@@ -187,6 +190,15 @@ void bgpwatcher_client_free(bgpwatcher_client_t *client);
  */
 int bgpwatcher_client_set_server_uri(bgpwatcher_client_t *client,
 				     const char *uri);
+
+/** Set the URI for the client to subscribe to server table messages on
+ *
+ * @param client        pointer to a bgpwatcher client instance to update
+ * @param uri           pointer to a uri string
+ * @return 0 if successful, -1 otherwise
+ */
+int bgpwatcher_client_set_server_sub_uri(bgpwatcher_client_t *client,
+                                         const char *uri);
 
 /** Set the heartbeat interval
  *

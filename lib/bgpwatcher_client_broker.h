@@ -132,6 +132,9 @@ typedef struct bgpwatcher_client_broker_config {
   /** URI to connect to the server on */
   char *server_uri;
 
+  /** URI to subscribe to server table messages on */
+  char *server_sub_uri;
+
   /** Time (in ms) between heartbeats sent to the server */
   uint64_t heartbeat_interval;
 
@@ -185,6 +188,9 @@ typedef struct bgpwatcher_client_broker {
 
   /** Socket used to connect to the server */
   void *server_socket;
+
+  /** Socket used to receive server table messages (for consumers) */
+  void *server_sub_socket;
 
   /** Ordered list of outstanding requests (used for re-transmits) */
   bgpwatcher_client_broker_req_t req_list[MAX_OUTSTANDING_REQ];

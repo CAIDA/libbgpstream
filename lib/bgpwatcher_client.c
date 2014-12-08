@@ -108,6 +108,14 @@ bgpwatcher_client_t *bgpwatcher_client_init(uint8_t interests, uint8_t intents)
       goto err;
     }
 
+  if((BCFG.server_sub_uri =
+      strdup(BGPWATCHER_CLIENT_SERVER_SUB_URI_DEFAULT)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Failed to duplicate server SUB uri string");
+      goto err;
+    }
+
   BCFG.heartbeat_interval = BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT;
 
   BCFG.heartbeat_liveness = BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT;
@@ -353,6 +361,9 @@ void bgpwatcher_client_free(bgpwatcher_client_t *client)
   free(BCFG.server_uri);
   BCFG.server_uri = NULL;
 
+  free(BCFG.server_sub_uri);
+  BCFG.server_sub_uri = NULL;
+
   free(BCFG.identity);
   BCFG.identity = NULL;
 
@@ -382,6 +393,30 @@ int bgpwatcher_client_set_server_uri(bgpwatcher_client_t *client,
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
 			     "Could not set server uri");
+      return -1;
+    }
+
+  return 0;
+}
+
+int bgpwatcher_client_set_server_sub_uri(bgpwatcher_client_t *client,
+                                         const char *uri)
+{
+  assert(client != NULL);
+
+  if(client->broker != NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Could not set server SUB uri (broker started)");
+      return -1;
+    }
+
+  free(BCFG.server_sub_uri);
+
+  if((BCFG.server_sub_uri = strdup(uri)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not set server SUB uri");
       return -1;
     }
 
