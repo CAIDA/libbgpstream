@@ -145,15 +145,6 @@ bgpwatcher_t *bgpwatcher_init()
 
   /* can set errors now */
 
-  /* create the bgp store */
-  if((watcher->bgp_store = bgpstore_create()) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
-			     "Failed to create bgpstore");
-      free(watcher);
-      return NULL;
-    }
-
   /* grab a copy of our callback pointers (owned by _server) */
   if((callbacks = malloc(sizeof(bgpwatcher_server_callbacks_t))) == NULL)
     {
@@ -176,6 +167,15 @@ bgpwatcher_t *bgpwatcher_init()
       return NULL;
     }
   /* the server now owns callbacks */
+
+  /* create the bgp store */
+  if((watcher->bgp_store = bgpstore_create(watcher->server)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Failed to create bgpstore");
+      free(watcher);
+      return NULL;
+    }
 
   return watcher;
 }

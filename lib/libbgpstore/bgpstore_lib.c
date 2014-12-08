@@ -28,7 +28,7 @@
 #include "bgpstore_interests_dispatcher.h"
 
 
-bgpstore_t *bgpstore_create()
+bgpstore_t *bgpstore_create(bgpwatcher_server_t *server)
 {
   bgpstore_t *bgp_store;
   // allocate memory for the structure
@@ -36,6 +36,8 @@ bgpstore_t *bgpstore_create()
     {
       return NULL;
     }
+
+  bgp_store->server = server;
   
   bgp_store->min_ts = 0;
   
@@ -369,6 +371,19 @@ int bgpstore_completion_check(bgpstore_t *bgp_store, bgpview_t *bgp_view, uint32
   
   // TODO: documentation
   ret = bgpstore_interests_dispatcher_run(bgp_store->active_clients, bgp_view, ts);
+
+  /** @todo Chiara put this in the correct place */
+  /* DEBUG added for testing */
+  bgpwatcher_view_t tmp_view;
+  tmp_view.time = ts;
+  tmp_view.prefix_cnt = 11;
+  int tmp_interests = BGPWATCHER_CONSUMER_INTEREST_FIRSTFULL;
+  if(bgpwatcher_server_publish_view(bgp_store->server,
+                                    &tmp_view, tmp_interests) != 0)
+    {
+      bgpwatcher_server_perr(bgp_store->server);
+      return -1;
+    }
 
   // TODO: documentation
   if(ret == 0 && remove_view == 1)

@@ -59,6 +59,9 @@ KHASH_INIT(timebgpview, uint32_t, bgpview_t*, 1,
 
 
 struct bgpstore {
+  /** BGP Watcher server handle */
+  bgpwatcher_server_t *server;
+
   /** aggregated view of bgpdata organized by time:
    *  for each timestamp we build a bgpview */
   khash_t(timebgpview) *bgp_timeseries;

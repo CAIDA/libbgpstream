@@ -29,7 +29,6 @@
 #include <czmq.h>
 #include <stdint.h>
 
-#include <bgpstore_lib.h>
 #include <bgpwatcher_common_int.h>
 
 #include "khash.h"
@@ -320,5 +319,23 @@ void bgpwatcher_server_set_heartbeat_interval(bgpwatcher_server_t *server,
  */
 void bgpwatcher_server_set_heartbeat_liveness(bgpwatcher_server_t *server,
 					      int beats);
+
+
+/**
+ * @name Server Publish Functions
+ *
+ * @{ */
+
+/** Publish the given BGP View to any interested consumers
+ *
+ * @param server        pointer to the bgpwatcher server instance
+ * @param table         pointer to a bgp view to publish
+ * @param interests     flags indicating which interests this table satisfies
+ */
+int bgpwatcher_server_publish_view(bgpwatcher_server_t *server,
+                                   bgpwatcher_view_t *view,
+                                   int interests);
+
+/** @} */
 
 #endif

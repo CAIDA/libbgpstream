@@ -144,6 +144,20 @@ typedef struct bgpwatcher_pfx_table {
 
 } bgpwatcher_pfx_table_t;
 
+
+/** Published information about a BGP View */
+typedef struct bgpwatcher_view {
+
+  /** Time that the view was taken */
+  uint32_t time;
+
+  /** @todo Chiara migrate public fields from bgpview_t here */
+
+  /* DEBUG TEMP */
+  uint32_t prefix_cnt;
+
+} bgpwatcher_view_t;
+
 /** bgpwatcher error information */
 typedef struct bgpwatcher_err {
   /** Error code */
@@ -166,7 +180,11 @@ typedef struct bgpwatcher_err {
  * something. E.g. a new prefix table being available.
  */
 typedef enum {
+  BGPWATCHER_CONSUMER_INTEREST_FIRSTFULL    = 0x001,
+  BGPWATCHER_CONSUMER_INTEREST_FIRST        = 0x010,
+  BGPWATCHER_CONSUMER_INTEREST_PARTIAL      = 0x100,
 
+  /** @todo Chiara move the following out of BGP Watcher */
   /** Current status of bgpview */
   BGPWATCHER_CONSUMER_INTEREST_BGPVIEWSTATUS = 0x01,
   BGPWATCHER_CONSUMER_INTEREST_ASVISIBILITY  = 0x02,

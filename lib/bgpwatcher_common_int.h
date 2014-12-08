@@ -88,8 +88,6 @@
  *
  * @{ */
 
-/** Type of a sequence number */
-typedef uint32_t seq_num_t;
 
 /** @} */
 

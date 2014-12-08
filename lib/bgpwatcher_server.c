@@ -975,3 +975,14 @@ void bgpwatcher_server_set_heartbeat_liveness(bgpwatcher_server_t *server,
 
   server->heartbeat_liveness = beats;
 }
+
+/* ========== PUBLISH FUNCTIONS ========== */
+
+int bgpwatcher_server_publish_view(bgpwatcher_server_t *server,
+                                   bgpwatcher_view_t *view,
+                                   int interests)
+{
+  fprintf(stderr, "Publishing view at %"PRIu32" with %"PRIu32" prefixes\n",
+          view->time, view->prefix_cnt);
+  return 0;
+}

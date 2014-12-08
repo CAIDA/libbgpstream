@@ -151,7 +151,7 @@ int bgpstore_interests_dispatcher_run(clientinfo_map_t *active_clients,
     {
       return 0;
     }
-  
+
 
   // 2. satisfy consumer interests (specific)
    

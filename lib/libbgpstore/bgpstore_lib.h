@@ -32,7 +32,7 @@
 #include "utils.h"
 #include <assert.h>
 
-#include "bgpwatcher_common.h"
+#include "bgpwatcher_server.h"
 #include "bl_bgp_utils.h"
 
 
@@ -44,10 +44,11 @@ typedef struct bgpstore bgpstore_t;
  *  peer and prefix tables received from bgpwatcher
  *  clients.
  *
+ * @param server        pointer to the bgpwatcher server instance
  * @return a pointer to the structure, or
  *  NULL if an error occurred
  */
-bgpstore_t *bgpstore_create();
+bgpstore_t *bgpstore_create(bgpwatcher_server_t *server);
 
 
 // TODO: documentation
