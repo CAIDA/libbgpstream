@@ -74,11 +74,13 @@ static bgpstore_interests_dispatcher_t *bgpstore_interests_dispatcher_create()
 }
 
 
+#if 0
 static int bgpstore_interests_dispatcher_send(bgpstore_interests_dispatcher_t *bid, char *client)
 {
   // TODO: send interests related to client
   return 0;
 }
+#endif
 
 
 static void bgpstore_interests_dispatcher_destroy(bgpstore_interests_dispatcher_t *bid)
@@ -100,7 +102,8 @@ static void bgpstore_interests_dispatcher_destroy(bgpstore_interests_dispatcher_
 }
 
 
-int bgpstore_interests_dispatcher_run(clientinfo_map_t *active_clients,
+int bgpstore_interests_dispatcher_run(bgpwatcher_server_t *server,
+                                      clientinfo_map_t *active_clients,
 				      bgpview_t *bgp_view, uint32_t ts) {
 
   
@@ -150,6 +153,19 @@ int bgpstore_interests_dispatcher_run(clientinfo_map_t *active_clients,
   if(! (bid->sendto_mask & DISPATCH_TO_FULL))
     {
       return 0;
+    }
+
+  /** @todo Chiara put this in the correct place */
+  /* DEBUG added for testing */
+  bgpwatcher_view_t tmp_view;
+  tmp_view.time = ts;
+  tmp_view.prefix_cnt = 11;
+  int tmp_interests = BGPWATCHER_CONSUMER_INTEREST_FIRSTFULL;
+  if(bgpwatcher_server_publish_view(server,
+                                    &tmp_view, tmp_interests) != 0)
+    {
+      bgpwatcher_server_perr(server);
+      return -1;
     }
 
 

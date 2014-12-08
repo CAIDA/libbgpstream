@@ -284,7 +284,7 @@ int bgpstore_prefix_table_end(bgpstore_t *bgp_store, char *client_name,
 }
 
 
-
+#if 0
 static void dump_bgpstore_cc_status(bgpstore_t *bgp_store, bgpview_t *bgp_view, uint32_t ts,
 				    bgpstore_completion_trigger_t trigger,
 				    uint8_t remove_view)
@@ -335,6 +335,7 @@ static void dump_bgpstore_cc_status(bgpstore_t *bgp_store, bgpview_t *bgp_view, 
 
   fprintf(stderr,"\n");
 }
+#endif
 
 
 int bgpstore_completion_check(bgpstore_t *bgp_store, bgpview_t *bgp_view, uint32_t ts, bgpstore_completion_trigger_t trigger)
@@ -370,20 +371,9 @@ int bgpstore_completion_check(bgpstore_t *bgp_store, bgpview_t *bgp_view, uint32
   // dump_bgpstore_cc_status(bgp_store, bgp_view, ts, trigger, remove_view);
   
   // TODO: documentation
-  ret = bgpstore_interests_dispatcher_run(bgp_store->active_clients, bgp_view, ts);
-
-  /** @todo Chiara put this in the correct place */
-  /* DEBUG added for testing */
-  bgpwatcher_view_t tmp_view;
-  tmp_view.time = ts;
-  tmp_view.prefix_cnt = 11;
-  int tmp_interests = BGPWATCHER_CONSUMER_INTEREST_FIRSTFULL;
-  if(bgpwatcher_server_publish_view(bgp_store->server,
-                                    &tmp_view, tmp_interests) != 0)
-    {
-      bgpwatcher_server_perr(bgp_store->server);
-      return -1;
-    }
+  ret = bgpstore_interests_dispatcher_run(bgp_store->server,
+                                          bgp_store->active_clients,
+                                          bgp_view, ts);
 
   // TODO: documentation
   if(ret == 0 && remove_view == 1)
