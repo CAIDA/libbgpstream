@@ -23,7 +23,7 @@ TAGS
 ChangeLog
 *.tar.gz
 tools/bgpwatcher-server
-tools/bgpwatcher-test-client
+tools/bgpwatcher-test-producer
 
 # Autotools files
 # http://www.gnu.org/software/automake
