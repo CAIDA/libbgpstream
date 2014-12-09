@@ -180,9 +180,9 @@ typedef struct bgpwatcher_err {
  * something. E.g. a new prefix table being available.
  */
 typedef enum {
-  BGPWATCHER_CONSUMER_INTEREST_FIRSTFULL    = 0x001,
-  BGPWATCHER_CONSUMER_INTEREST_FULL         = 0x010,
-  BGPWATCHER_CONSUMER_INTEREST_PARTIAL      = 0x100,
+  BGPWATCHER_CONSUMER_INTEREST_FIRSTFULL    = 0b001,
+  BGPWATCHER_CONSUMER_INTEREST_FULL         = 0b010,
+  BGPWATCHER_CONSUMER_INTEREST_PARTIAL      = 0b100,
 
   /** @todo Chiara move the following out of BGP Watcher */
   /** Current status of bgpview */
