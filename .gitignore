@@ -24,6 +24,7 @@ ChangeLog
 *.tar.gz
 tools/bgpwatcher-server
 tools/bgpwatcher-test-producer
+tools/bgpwatcher-test-consumer
 
 # Autotools files
 # http://www.gnu.org/software/automake

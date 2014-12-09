@@ -29,7 +29,9 @@ AM_CPPFLAGS = -I$(top_srcdir) \
 
 dist_bin_SCRIPTS =
 
-bin_PROGRAMS = bgpwatcher-server bgpwatcher-test-producer
+bin_PROGRAMS =	bgpwatcher-server \
+		bgpwatcher-test-producer \
+		bgpwatcher-test-consumer
 
 bgpwatcher_server_SOURCES = \
 	bgpwatcher-server.c
@@ -40,6 +42,11 @@ bgpwatcher_test_producer_SOURCES = \
 	bgpwatcher-test-producer.c
 bgpwatcher_test_producer_LDADD = -lbgpwatcher
 bgpwatcher_test_producer_LDFLAGS = -L$(top_builddir)/lib
+
+bgpwatcher_test_consumer_SOURCES = \
+	bgpwatcher-test-consumer.c
+bgpwatcher_test_consumer_LDADD = -lbgpwatcher
+bgpwatcher_test_consumer_LDFLAGS = -L$(top_builddir)/lib
 
 ACLOCAL_AMFLAGS = -I m4
 
