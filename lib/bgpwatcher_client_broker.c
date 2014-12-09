@@ -124,8 +124,8 @@ static int server_subscribe(bgpwatcher_client_broker_t *broker)
       return -1;
     }
 
-  /** @todo subscribe to certain things based on interests */
-  zsocket_set_subscribe(broker->server_sub_socket, "");
+  zsocket_set_subscribe(broker->server_sub_socket,
+			bgpwatcher_consumer_interest_sub(CFG->interests));
 
   if(zsocket_connect(broker->server_sub_socket, "%s", CFG->server_sub_uri) < 0)
     {

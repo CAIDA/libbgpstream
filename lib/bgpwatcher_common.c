@@ -893,6 +893,70 @@ void bgpwatcher_pfx_row_dump(bgpwatcher_pfx_table_t *table,
     }
 }
 
+/* ========== INTERESTS/VIEWS ========== */
+
+const char *bgpwatcher_consumer_interest_pub(int interests)
+{
+  /* start with the most specific and work backward */
+  /* NOTE: a view CANNOT satisfy FIRSTFULL and NOT satisfy FULL/PARTIAL */
+  if(interests & BGPWATCHER_CONSUMER_INTEREST_FIRSTFULL)
+    {
+      return BGPWATCHER_CONSUMER_INTEREST_SUB_FIRSTFULL;
+    }
+  else if(interests & BGPWATCHER_CONSUMER_INTEREST_FULL)
+    {
+      return BGPWATCHER_CONSUMER_INTEREST_SUB_FULL;
+    }
+  else if(interests & BGPWATCHER_CONSUMER_INTEREST_PARTIAL)
+    {
+      return BGPWATCHER_CONSUMER_INTEREST_SUB_PARTIAL;
+    }
+
+  return NULL;
+}
+
+const char *bgpwatcher_consumer_interest_sub(int interests)
+{
+  /* start with the least specific and work backward */
+  if(interests & BGPWATCHER_CONSUMER_INTEREST_PARTIAL)
+    {
+      return BGPWATCHER_CONSUMER_INTEREST_SUB_PARTIAL;
+    }
+  else if(interests & BGPWATCHER_CONSUMER_INTEREST_FULL)
+    {
+      return BGPWATCHER_CONSUMER_INTEREST_SUB_FULL;
+    }
+  else if(interests & BGPWATCHER_CONSUMER_INTEREST_FIRSTFULL)
+    {
+      return BGPWATCHER_CONSUMER_INTEREST_SUB_FIRSTFULL;
+    }
+
+  return NULL;
+}
+
+int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
+{
+  uint32_t u32;
+  /* send the time */
+  u32 = htonl(view->time);
+  if(zmq_send(dest, &u32, sizeof(u32), ZMQ_SNDMORE) != sizeof(u32))
+    {
+      goto err;
+    }
+
+  /* @todo replace with actual fields */
+  /* send the prefix count */
+  u32 = htonl(view->prefix_cnt);
+  if(zmq_send(dest, &u32, sizeof(u32), 0) != sizeof(u32))
+    {
+      goto err;
+    }
+
+  return 0;
+
+ err:
+  return -1;
+}
 
 /* ========== PUBLIC FUNCTIONS BELOW HERE ========== */
 /*      See bgpwatcher_common.h for declarations     */

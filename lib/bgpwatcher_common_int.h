@@ -271,4 +271,30 @@ int bgpwatcher_pfx_row_recv(void *src, bgpwatcher_pfx_row_t *row_out,
 void bgpwatcher_pfx_row_dump(bgpwatcher_pfx_table_t *table,
                              bgpwatcher_pfx_row_t *row);
 
+/* ========== INTERESTS/VIEWS ========== */
+
+/** Given a set of interests that are satisfied by a view, find the most
+ *  specific and return the publication string
+ *
+ * @param interests     set of interests
+ * @return most-specific publication string that satisfies the interests
+ */
+const char *bgpwatcher_consumer_interest_pub(int interests);
+
+/** Given a set of interests, find the least specific return the subscription
+ * string
+ *
+ * @param interests     set of interests
+ * @return least-specific subscription string that satisfies the interests
+ */
+const char *bgpwatcher_consumer_interest_sub(int interests);
+
+/** Send the given view to the given socket
+ *
+ * @param dest          socket to send the prefix to
+ * @param view          pointer to the view to send
+ * @return 0 if the view was sent successfully, -1 otherwise
+ */
+int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view);
+
 #endif

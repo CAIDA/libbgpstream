@@ -190,8 +190,20 @@ typedef enum {
   BGPWATCHER_CONSUMER_INTEREST_ASVISIBILITY  = 0x02,
 } bgpwatcher_consumer_interest_t;
 
-/** @todo add more generic consumer filters so that a consumer can filter
-    interests based on more than client ID */
+/* Consumer subscription strings.
+ *
+ * 0MQ subscriptions are simply a prefix match on the first message part. We can
+ * leverage this to get hierarchical subscriptions (i.e. the most general
+ * subscription should be the shortest, and all others should contain the
+ * subscription of their parent. Clear as mud?
+ */
+#define BGPWATCHER_CONSUMER_INTEREST_SUB_PARTIAL "P"
+
+#define BGPWATCHER_CONSUMER_INTEREST_SUB_FULL    \
+  BGPWATCHER_CONSUMER_INTEREST_SUB_PARTIAL"F"
+
+#define BGPWATCHER_CONSUMER_INTEREST_SUB_FIRSTFULL \
+  BGPWATCHER_CONSUMER_INTEREST_SUB_FULL"1"
 
 /** Producer Intents
  *
