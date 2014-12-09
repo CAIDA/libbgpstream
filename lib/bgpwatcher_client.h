@@ -179,16 +179,19 @@ int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client);
  *
  * @param client        pointer to the client instance to receive from
  * @param mode          receive mode (blocking/non-blocking)
- * @param[out] type     set to the type of the view received
+ * @param[out] interests  set to all the interests the view satisfies
  * @param view          pointer to a view instance to update
  * @return 0 if the message was received correctly, -1 otherwise.
  *
  * @note this function will only receive messages for which an interest was set
- * when initializing the client.
+ * when initializing the client, but a view may satisfy *more* interests than
+ * were explicitly asked for. For example, when subscribing to PARTIAL tables, a
+ * table that is marked as PARTIAL could also be marked as FIRSTFULL (if it also
+ * satisfies that interest).
  */
 int bgpwatcher_client_recv_view(bgpwatcher_client_t *client,
 				bgpwatcher_client_recv_mode_t blocking,
-				bgpwatcher_consumer_interest_t *type,
+			        uint8_t *interests,
 				bgpwatcher_view_t *view);
 
 /** Stop the given bgpwatcher client instance

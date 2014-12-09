@@ -87,7 +87,7 @@ int main(int argc, char **argv)
   uint8_t intents = 0;
   bgpwatcher_client_t *client = NULL;
 
-  bgpwatcher_consumer_interest_t rx_interest;
+  uint8_t rx_interests;
   bgpwatcher_view_t view;
 
   while(prevoptind = optind,
@@ -229,7 +229,7 @@ int main(int argc, char **argv)
   fprintf(stderr, "done\n");
 
   while(bgpwatcher_client_recv_view(client, BGPWATCHER_CLIENT_RECV_MODE_BLOCK,
-				    &rx_interest, &view) == 0)
+				    &rx_interests, &view) == 0)
     {
       bgpwatcher_view_dump(&view);
     }

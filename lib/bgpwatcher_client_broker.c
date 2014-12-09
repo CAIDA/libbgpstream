@@ -581,9 +581,77 @@ static int handle_server_sub_msg(zloop_t *loop, zsock_t *reader, void *arg)
 {
   bgpwatcher_client_broker_t *broker = (bgpwatcher_client_broker_t*)arg;
 
-  zmsg_print(zmsg_recv(broker->server_sub_socket));
+  uint8_t interests;
+
+  zmq_msg_t msg;
+  int flags;
+
+  /* convert the prefix to flags */
+  if((interests =
+      bgpwatcher_consumer_interest_recv(broker->server_sub_socket)) == 0)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+			     "Invalid interest specification received");
+      goto err;
+    }
+
+  /* send interests to master */
+  if(zmq_send(broker->master_zocket,
+	      &interests, sizeof(uint8_t), ZMQ_SNDMORE) == -1)
+    {
+      bgpwatcher_err_set_err(ERR, errno,
+			     "Could not send interests to master");
+      return -1;
+    }
+
+  /* now relay the rest of the message to master */
+  while(zsocket_rcvmore(broker->server_sub_socket) != 0)
+    {
+      /* suck the next message from the server */
+      if(zmq_msg_init(&msg) == -1)
+	{
+	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+                                 "Could not init proxy message");
+	  goto err;
+	}
+      if(zmq_msg_recv(&msg, broker->server_sub_socket, 0) == -1)
+	{
+	  switch(errno)
+	    {
+	    case EINTR:
+	      goto interrupt;
+	      break;
+
+	    default:
+	      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+				     "Failed to receive view");
+	      goto err;
+	      break;
+	    }
+	}
+
+      /* is this the last part of the message? */
+      flags = (zsocket_rcvmore(broker->server_sub_socket) != 0) ? ZMQ_SNDMORE : 0;
+      /* send this on to the master */
+      if(zmq_msg_send(&msg, broker->master_zocket, flags) == -1)
+	{
+          zmq_msg_close(&msg);
+	  bgpwatcher_err_set_err(ERR, errno,
+				 "Could not pass message to master");
+	  return -1;
+	}
+    }
 
   return 0;
+
+ interrupt:
+  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INTERRUPT, "Caught interrupt");
+  zmq_msg_close(&msg);
+  return -1;
+
+ err:
+  zmq_msg_close(&msg);
+  return -1;
 }
 
 static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)

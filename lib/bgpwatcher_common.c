@@ -934,6 +934,49 @@ const char *bgpwatcher_consumer_interest_sub(int interests)
   return NULL;
 }
 
+uint8_t bgpwatcher_consumer_interest_recv(void *src)
+{
+  char *pub_str = NULL;
+  uint8_t interests = 0;
+
+  /* grab the subscription frame and convert to interests */
+  if((pub_str = recv_str(src)) == NULL)
+    {
+      goto err;
+    }
+
+  /** @todo make all this stuff less hard-coded and extensible */
+  if(strcmp(pub_str, BGPWATCHER_CONSUMER_INTEREST_SUB_FIRSTFULL) == 0)
+    {
+      interests |= BGPWATCHER_CONSUMER_INTEREST_PARTIAL;
+      interests |= BGPWATCHER_CONSUMER_INTEREST_FULL;
+      interests |= BGPWATCHER_CONSUMER_INTEREST_FIRSTFULL;
+    }
+  else if(strcmp(pub_str, BGPWATCHER_CONSUMER_INTEREST_SUB_FULL) == 0)
+    {
+      interests |= BGPWATCHER_CONSUMER_INTEREST_PARTIAL;
+      interests |= BGPWATCHER_CONSUMER_INTEREST_FULL;
+    }
+  else if(strcmp(pub_str, BGPWATCHER_CONSUMER_INTEREST_SUB_PARTIAL) == 0)
+    {
+      interests |= BGPWATCHER_CONSUMER_INTEREST_PARTIAL;
+    }
+  else
+    {
+      goto err;
+    }
+
+  fprintf(stderr, "DEBUG: Publication string: %s, interests: %x\n",
+	  pub_str, interests);
+
+  free(pub_str);
+  return interests;
+
+ err:
+  free(pub_str);
+  return 0;
+}
+
 int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
 {
   uint32_t u32;
@@ -951,6 +994,30 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
     {
       goto err;
     }
+
+  return 0;
+
+ err:
+  return -1;
+}
+
+int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
+{
+  uint32_t u32;
+  /* recv the time */
+  if(zmq_recv(src, &u32, sizeof(u32), 0) != sizeof(u32))
+    {
+      goto err;
+    }
+  view->time = ntohl(u32);
+
+  /* @todo replace with actual fields */
+  /* recv the prefix cnt */
+  if(zmq_recv(src, &u32, sizeof(u32), 0) != sizeof(u32))
+    {
+      goto err;
+    }
+  view->prefix_cnt = ntohl(u32);
 
   return 0;
 
