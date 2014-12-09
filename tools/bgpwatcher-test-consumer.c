@@ -91,7 +91,7 @@ int main(int argc, char **argv)
   bgpwatcher_view_t view;
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":i:l:n:r:R:s:S:v?")) >= 0)
+	(opt = getopt(argc, argv, ":i:I:l:n:r:R:s:S:v?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
