@@ -181,7 +181,7 @@ typedef struct bgpwatcher_err {
  */
 typedef enum {
   BGPWATCHER_CONSUMER_INTEREST_FIRSTFULL    = 0x001,
-  BGPWATCHER_CONSUMER_INTEREST_FIRST        = 0x010,
+  BGPWATCHER_CONSUMER_INTEREST_FULL         = 0x010,
   BGPWATCHER_CONSUMER_INTEREST_PARTIAL      = 0x100,
 
   /** @todo Chiara move the following out of BGP Watcher */
