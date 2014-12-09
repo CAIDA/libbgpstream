@@ -260,4 +260,10 @@ int bgpwatcher_err_is_err(bgpwatcher_err_t *err);
  */
 void bgpwatcher_err_perr(bgpwatcher_err_t *err);
 
+/** Dump the given BGP View to stdout
+ *
+ * @param view        pointer to a view structure
+ */
+void bgpwatcher_view_dump(bgpwatcher_view_t *view);
+
 #endif

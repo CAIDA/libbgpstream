@@ -63,7 +63,7 @@ static int client_disconnect(bgpwatcher_server_t *server,
   fprintf(stderr, "HANDLE: Handling client DISCONNECT\n");
   fprintf(stderr, "Client ID:\t%s\n", client->name);
   fprintf(stderr, "++++++++++++++++++++++++++++++++++++++\n\n");
-#endif  
+#endif
   bgpwatcher_t *bw = WATCHER(user);
   int ret = bgpstore_client_disconnect(bw->bgp_store, client->name);
   return ret;

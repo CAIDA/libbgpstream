@@ -935,3 +935,13 @@ void bgpwatcher_err_perr(bgpwatcher_err_t *err)
   err->err_num = 0; /* "OK" */
   err->problem[0]='\0';
 }
+
+void bgpwatcher_view_dump(bgpwatcher_view_t *view)
+{
+      fprintf(stdout,
+	      "------------------------------\n"
+	      "Time:\t%"PRIu32"\n"
+              "Prefix Cnt:\t%"PRIu32"\n",
+              view->time,
+	      view->prefix_cnt);
+}

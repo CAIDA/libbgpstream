@@ -331,6 +331,23 @@ int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client)
   return -1;
 }
 
+static int x = 0;
+
+int bgpwatcher_client_recv_view(bgpwatcher_client_t *client,
+				bgpwatcher_client_recv_mode_t blocking,
+				bgpwatcher_consumer_interest_t *type,
+				bgpwatcher_view_t *view)
+{
+  if(x == 2)
+    {
+      return -1;
+    }
+  view->time++;
+  view->prefix_cnt--;
+  x++;
+  return 0;
+}
+
 void bgpwatcher_client_stop(bgpwatcher_client_t *client)
 {
   /* shuts the broker down */

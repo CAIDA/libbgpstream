@@ -84,6 +84,11 @@ typedef struct bgpwatcher_client_pfx_table bgpwatcher_client_pfx_table_t;
  *
  * @{ */
 
+typedef enum {
+  BGPWATCHER_CLIENT_RECV_MODE_NONBLOCK = 0,
+  BGPWATCHER_CLIENT_RECV_MODE_BLOCK    = 1,
+} bgpwatcher_client_recv_mode_t;
+
 /** @} */
 
 /** Initialize a new BGP Watcher client instance
@@ -169,6 +174,22 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
  * @return 0 if the table was flushed successfully, -1 otherwise
  */
 int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client);
+
+/** Attempt to receive an BGP View from the bgpwatcher server
+ *
+ * @param client        pointer to the client instance to receive from
+ * @param mode          receive mode (blocking/non-blocking)
+ * @param[out] type     set to the type of the view received
+ * @param view          pointer to a view instance to update
+ * @return 0 if the message was received correctly, -1 otherwise.
+ *
+ * @note this function will only receive messages for which an interest was set
+ * when initializing the client.
+ */
+int bgpwatcher_client_recv_view(bgpwatcher_client_t *client,
+				bgpwatcher_client_recv_mode_t blocking,
+				bgpwatcher_consumer_interest_t *type,
+				bgpwatcher_view_t *view);
 
 /** Stop the given bgpwatcher client instance
  *
