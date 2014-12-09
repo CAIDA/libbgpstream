@@ -231,6 +231,9 @@ int main(int argc, char **argv)
   while(bgpwatcher_client_recv_view(client, BGPWATCHER_CLIENT_RECV_MODE_BLOCK,
 				    &rx_interests, &view) == 0)
     {
+      fprintf(stdout, "Interests: ");
+      bgpwatcher_consumer_interest_dump(rx_interests);
+      fprintf(stdout, "\n");
       bgpwatcher_view_dump(&view);
     }
 

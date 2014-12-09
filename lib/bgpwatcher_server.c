@@ -985,7 +985,7 @@ int bgpwatcher_server_publish_view(bgpwatcher_server_t *server,
   const char *pub = NULL;
   size_t pub_len = 0;
 
-  fprintf(stderr, "Publishing view at %"PRIu32" with %"PRIu32" prefixes\n",
+  fprintf(stderr, "DEBUG: Publishing view at %"PRIu32" with %"PRIu32" prefixes\n",
           view->time, view->prefix_cnt);
 
   /* get the publication message prefix */
@@ -997,7 +997,6 @@ int bgpwatcher_server_publish_view(bgpwatcher_server_t *server,
     }
   pub_len = strlen(pub);
 
-  fprintf(stderr, "DEBUG: Setting publication prefix to %s\n", pub);
   if(zmq_send(server->client_pub_socket, pub, pub_len, ZMQ_SNDMORE) != pub_len)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,

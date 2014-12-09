@@ -966,15 +966,28 @@ uint8_t bgpwatcher_consumer_interest_recv(void *src)
       goto err;
     }
 
-  fprintf(stderr, "DEBUG: Publication string: %s, interests: %x\n",
-	  pub_str, interests);
-
   free(pub_str);
   return interests;
 
  err:
   free(pub_str);
   return 0;
+}
+
+void bgpwatcher_consumer_interest_dump(int interests)
+{
+  if(interests & BGPWATCHER_CONSUMER_INTEREST_FIRSTFULL)
+    {
+      fprintf(stdout, "first-full ");
+    }
+  if(interests & BGPWATCHER_CONSUMER_INTEREST_FULL)
+    {
+      fprintf(stdout, "full ");
+    }
+  if(interests & BGPWATCHER_CONSUMER_INTEREST_PARTIAL)
+    {
+      fprintf(stdout, "partial");
+    }
 }
 
 int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
@@ -1070,9 +1083,9 @@ void bgpwatcher_err_perr(bgpwatcher_err_t *err)
 void bgpwatcher_view_dump(bgpwatcher_view_t *view)
 {
       fprintf(stdout,
-	      "------------------------------\n"
 	      "Time:\t%"PRIu32"\n"
-              "Prefix Cnt:\t%"PRIu32"\n",
+              "Prefix Cnt:\t%"PRIu32"\n"
+	      "------------------------------\n",
               view->time,
 	      view->prefix_cnt);
 }
