@@ -51,7 +51,6 @@ int bl_id_set_insert(bl_id_set_t *id_set,  uint32_t id)
 
 int bl_id_set_exists(bl_id_set_t *id_set,  uint32_t id)
 {
-  int khret;
   khiter_t k;
   if((k = kh_get(bl_id_set, id_set,
 			       id)) == kh_end(id_set))
