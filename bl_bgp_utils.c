@@ -28,6 +28,7 @@
 #include "utils.h"
 #include <inttypes.h>
 #include <assert.h>
+#include "khash.h"
 
 
 /** Print functions */

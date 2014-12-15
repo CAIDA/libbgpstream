@@ -261,28 +261,50 @@ void bl_aspath_freedynmem(bl_aspath_storage_t *aspath);
 /** khash utility functions */
 
 /** addresses */
-khint64_t bl_addr_storage_hash_func(bl_addr_storage_t ip);
+
+
+#if UINT_MAX == 0xffffffffu
+unsigned int bl_ipv4_addr_hash_func(bl_ipv4_addr_t ip);
+unsigned int bl_ipv4_pfx_hash_func(bl_ipv4_pfx_t prefix);
+unsigned int bl_as_storage_hash_func(bl_as_storage_t as);
+#elif ULONG_MAX == 0xffffffffu
+unsigned long bl_ipv4_addr_hash_func(bl_ipv4_addr_t ip);
+unsigned long bl_ipv4_pfx_hash_func(bl_ipv4_pfx_t prefix);
+unsigned long bl_as_storage_hash_func(bl_as_storage_t as);
+#endif
+
+
+#if ULONG_MAX == ULLONG_MAX
+unsigned long bl_addr_storage_hash_func(bl_addr_storage_t ip);
+unsigned long bl_ipv6_addr_hash_func(bl_ipv6_addr_t ip);
+unsigned long bl_pfx_storage_hash_func(bl_pfx_storage_t prefix);
+unsigned long bl_ipv6_pfx_hash_func(bl_ipv6_pfx_t prefix);
+#else
+unsigned long long  bl_addr_storage_hash_func(bl_addr_storage_t ip);
+unsigned long long bl_ipv6_addr_hash_func(bl_ipv6_addr_t ip);
+unsigned long long bl_pfx_storage_hash_func(bl_pfx_storage_t prefix);
+unsigned long long bl_ipv6_pfx_hash_func(bl_ipv6_pfx_t prefix);
+#endif
+
+
+
+
 int bl_addr_storage_hash_equal(bl_addr_storage_t ip1, bl_addr_storage_t ip2);
 
-khint32_t bl_ipv4_addr_hash_func(bl_ipv4_addr_t ip);
 int bl_ipv4_addr_hash_equal(bl_ipv4_addr_t ip1, bl_ipv4_addr_t ip2);
 
-khint64_t bl_ipv6_addr_hash_func(bl_ipv6_addr_t ip);
 int bl_ipv6_addr_hash_equal(bl_ipv6_addr_t ip1, bl_ipv6_addr_t ip2);
 
+
 /** prefixes */
-khint64_t bl_pfx_storage_hash_func(bl_pfx_storage_t prefix);
 int bl_pfx_storage_hash_equal(bl_pfx_storage_t prefix1, bl_pfx_storage_t prefix2);
 
-khint32_t bl_ipv4_pfx_hash_func(bl_ipv4_pfx_t prefix);
 int bl_ipv4_pfx_hash_equal(bl_ipv4_pfx_t prefix1, bl_ipv4_pfx_t prefix2);
 
-khint64_t bl_ipv6_pfx_hash_func(bl_ipv6_pfx_t prefix);
 int bl_ipv6_pfx_hash_equal(bl_ipv6_pfx_t prefix1, bl_ipv6_pfx_t prefix2);
 
 
 /** as numbers */
-khint32_t bl_as_storage_hash_func(bl_as_storage_t as);
 int bl_as_storage_hash_equal(bl_as_storage_t as1, bl_as_storage_t as2);
 
 
