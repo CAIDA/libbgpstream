@@ -49,11 +49,11 @@ struct window {
 
 void usage() {
   fprintf(stderr,
-	  "usage: bgpstream -d <datasource> [<options>]\n"
+	  "usage: bgpreader -d <datasource> [<options>]\n"
 	  "Available datasources are:\n"
-	  "   mysql        TODO: describe\n"
-	  "   csvfile      TODO: describe\n"
-	  "   customlist   TODO: describe\n"
+	  "   mysql        load bgp dumps information from the bgparchive mysql database\n"
+	  "   csvfile      load bgp dumps information from a csv file\n"
+	  "   customlist   mock datasource used to test the library\n"
 	  "Available options are:\n"
 	  "   -P <project>   process records from only the given project (routeviews, ris)*\n"
 	  "   -C <collector> process records from only the given collector*\n"
@@ -218,7 +218,7 @@ int main(int argc, char *argv[])
 	  break;
 	case '?':
 	case 'v':
-	  fprintf(stderr, "bgpstream version %d.%d.%d\n",
+	  fprintf(stderr, "bgpreader version %d.%d.%d\n",
 		  BGPSTREAM_MAJOR_VERSION,
 		  BGPSTREAM_MID_VERSION,
 		  BGPSTREAM_MINOR_VERSION);

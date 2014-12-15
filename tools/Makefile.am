@@ -27,11 +27,11 @@ AM_CPPFLAGS = 	-I$(top_srcdir) \
 	 	-I$(top_srcdir)/common \
                 -I$(top_srcdir)/bgpcommon
 
-bin_PROGRAMS =  bgpstream
+bin_PROGRAMS =  bgpreader
 
-bgpstream_SOURCES = bgpstream.c process_bdump.c
-bgpstream_LDADD   = -lbgpstream 
-bgpstream_LDFLAGS = -L$(top_builddir)/lib
+bgpreader_SOURCES = bgpstream.c process_bdump.c
+bgpreader_LDADD   = -lbgpstream 
+bgpreader_LDFLAGS = -L$(top_builddir)/lib
 
 
 ACLOCAL_AMFLAGS = -I m4
