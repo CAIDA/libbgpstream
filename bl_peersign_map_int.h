@@ -36,10 +36,10 @@ khint64_t bl_peer_signature_hash_func(bl_peer_signature_t ps);
 int bl_peer_signature_hash_equal(bl_peer_signature_t ps1,bl_peer_signature_t ps2);
 
 
-KHASH_INIT(bl_peersign_bsid_map, bl_peer_signature_t, uint16_t, 1,
+KHASH_INIT(bl_peersign_bsid_map, bl_peer_signature_t, bl_peerid_t, 1,
 	   bl_peer_signature_hash_func, bl_peer_signature_hash_equal);
 
-KHASH_INIT(bl_bsid_peersign_map, uint16_t, bl_peer_signature_t, 1,
+KHASH_INIT(bl_bsid_peersign_map, bl_peerid_t, bl_peer_signature_t, 1,
 	   kh_int_hash_func, kh_int_hash_equal);
 
 

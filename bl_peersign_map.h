@@ -30,6 +30,8 @@
 #include "khash.h"
 #include "bl_bgp_utils.h"
 
+/** Type of a peer ID */
+typedef uint16_t bl_peerid_t;
 
 /** Each peer is uniquely identified by its 
  *  signature, i.e. the pair:

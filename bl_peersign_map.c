@@ -68,11 +68,11 @@ bl_peersign_map_t *bl_peersign_map_create()
   return NULL;
 }
 
-static uint16_t bl_peersign_map_set_and_get_ps(bl_peersign_map_t *map, bl_peer_signature_t ps)
+static bl_peerid_t bl_peersign_map_set_and_get_ps(bl_peersign_map_t *map, bl_peer_signature_t ps)
 {
   khiter_t k;
   int khret;
-  uint16_t next_id = kh_size(map->id_ps) + 1;
+  bl_peerid_t next_id = kh_size(map->id_ps) + 1;
   if((k = kh_get(bl_peersign_bsid_map, map->ps_id, ps)) == kh_end(map->ps_id))
     {
       k = kh_put(bl_peersign_bsid_map, map->ps_id, ps, &khret);      
@@ -88,7 +88,7 @@ static uint16_t bl_peersign_map_set_and_get_ps(bl_peersign_map_t *map, bl_peer_s
 }
 
 
-uint16_t bl_peersign_map_set_and_get(bl_peersign_map_t *map, char *collector_str, bl_addr_storage_t *peer_ip_addr)
+bl_peerid_t bl_peersign_map_set_and_get(bl_peersign_map_t *map, char *collector_str, bl_addr_storage_t *peer_ip_addr)
 {
   bl_peer_signature_t ps;
   ps.peer_ip_addr = *peer_ip_addr;
@@ -98,7 +98,7 @@ uint16_t bl_peersign_map_set_and_get(bl_peersign_map_t *map, char *collector_str
 
 
 bl_peer_signature_t* bl_peersign_map_get_peersign(bl_peersign_map_t *map,
-						  uint16_t id)
+						  bl_peerid_t id)
 {
   bl_peer_signature_t *ps = NULL;
   khiter_t k;
