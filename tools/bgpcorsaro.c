@@ -504,10 +504,17 @@ int main(int argc, char *argv[])
     }
 
   /* windows */
+  int minimum_time = 0;
+  int current_time = 0;
   for(i=0; i<windows_cnt; i++)
     {
       bgpstream_add_interval_filter(stream, BS_TIME_INTERVAL,
 				    windows[i].start, windows[i].end);
+      current_time =  atoi(windows[i].start);
+      if(minimum_time == 0 || current_time < minimum_time)
+	{
+	  minimum_time = current_time;
+	}
       free(windows[i].start);
       free(windows[i].end);
     }
@@ -530,7 +537,14 @@ int main(int argc, char *argv[])
 #ifdef WITH_BGPWATCHER
 	 zsys_interrupted == 0 && 
 #endif
-	 (rc = bgpstream_get_next_record(stream, record))>0) {
+	 (rc = bgpstream_get_next_record(stream, record)) > 0 ) {
+
+    /* remove records that preceed the beginning of the stream */
+    if(record->attributes.record_time < minimum_time)
+      {
+	continue;
+      }
+
     /*bgpcorsaro_log(__func__, bgpcorsaro, "got a record!");*/
     if(bgpcorsaro_per_record(bgpcorsaro, record) != 0)
       {
