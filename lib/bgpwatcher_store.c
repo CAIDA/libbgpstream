@@ -87,8 +87,6 @@ typedef struct dispatch_status {
 /** Wrapper around a bgpwatcher_view_t structure */
 typedef struct store_view {
 
-  /** @todo add store-specific fields here */
-
   /** State of this view (unused, partial, full) */
   store_view_state_t state;
 
@@ -183,7 +181,7 @@ static void store_view_destroy(store_view_t *sview)
   free(sview);
 }
 
-store_view_t *store_view_create(bgpwatcher_store_t *store)
+store_view_t *store_view_create(bgpwatcher_store_t *store, uint32_t time)
 {
   store_view_t *sview;
   if((sview = malloc_zero(sizeof(store_view_t))) == NULL)
@@ -214,6 +212,8 @@ store_view_t *store_view_create(bgpwatcher_store_t *store)
     {
       goto err;
     }
+
+  sview->view->time = time;
 
   return sview;
 
@@ -342,17 +342,17 @@ static int store_view_table_end(store_view_t *sview,
   return 0;
 }
 
-static int remove_view(bgpwatcher_store_t *store, uint32_t ts)
+static int remove_view(bgpwatcher_store_t *store, store_view_t *sview)
 {
   khiter_t k;
-  if((k = kh_get(time_sview, store->sviews, ts)) == kh_end(store->sviews))
+  if((k = kh_get(time_sview, store->sviews, sview->view->time))
+     == kh_end(store->sviews))
     {
       // view for this time must exist ? TODO: check policies!
-      fprintf(stderr, "A bgpview for time %"PRIu32" must exist!\n", ts);
+      fprintf(stderr, "A bgpview for time %"PRIu32" must exist!\n",
+              sview->view->time);
       return -1;
     }
-
-  store_view_t *sview = kh_value(store->sviews, k);
 
   // destroy view
   store_view_destroy(sview);
@@ -378,7 +378,7 @@ static int remove_view(bgpwatcher_store_t *store, uint32_t ts)
 }
 
 static int dispatcher_run(bgpwatcher_store_t *store,
-                          store_view_t *sview, uint32_t ts)
+                          store_view_t *sview)
 {
 #if 0
   bl_peerid_t valid_peers[BGPWATCHER_STORE_MAX_PEERS_CNT];
@@ -431,7 +431,7 @@ static int dispatcher_run(bgpwatcher_store_t *store,
 }
 
 static int completion_check(bgpwatcher_store_t *store, store_view_t *sview,
-                            uint32_t ts, completion_trigger_t trigger)
+                            completion_trigger_t trigger)
 {
   int ret;
   if((ret = store_view_completion_check(store, sview)) < 0)
@@ -470,12 +470,12 @@ static int completion_check(bgpwatcher_store_t *store, store_view_t *sview,
   // dump_bgpwatcher_store_cc_status(store, bgp_view, ts, trigger, remove_view);
 
   // TODO: documentation
-  ret = dispatcher_run(store, sview, ts);
+  ret = dispatcher_run(store, sview);
 
   // TODO: documentation
   if(ret == 0 && to_remove == 1)
     {
-      return remove_view(store, ts);
+      return remove_view(store, sview);
     }
 
   return ret;
@@ -484,7 +484,6 @@ static int completion_check(bgpwatcher_store_t *store, store_view_t *sview,
 int check_timeouts(bgpwatcher_store_t *store)
 {
   store_view_t *sview = NULL;
-  uint32_t ts;
   khiter_t k;
   struct timeval time_now;
   gettimeofday(&time_now, NULL);
@@ -493,12 +492,11 @@ int check_timeouts(bgpwatcher_store_t *store)
     {
       if (kh_exist(store->sviews, k))
 	{
-	  ts = kh_key(store->sviews, k);
 	  sview = kh_value(store->sviews, k);
 	  if((time_now.tv_sec - sview->view->time_created.tv_sec)
              > BGPWATCHER_STORE_BGPVIEW_TIMEOUT)
 	    {
-	      return completion_check(store, sview, ts,
+	      return completion_check(store, sview,
                                       COMPLETION_TRIGGER_TIMEOUT_EXPIRED);
 	    }
 	}
@@ -613,7 +611,6 @@ int bgpwatcher_store_client_disconnect(bgpwatcher_store_t *store,
 {
   khiter_t k;
   store_view_t *sview;
-  uint32_t ts;
 
   // check if it exists
   if((k = kh_get(strclientstatus, store->active_clients, client->name))
@@ -630,10 +627,8 @@ int bgpwatcher_store_client_disconnect(bgpwatcher_store_t *store,
     {
       if (kh_exist(store->sviews, k))
 	{
-	  ts = kh_key(store->sviews, k);
 	  sview = kh_value(store->sviews, k);
-	  completion_check(store, sview, ts,
-                           COMPLETION_TRIGGER_CLIENT_DISCONNECT);
+	  completion_check(store, sview, COMPLETION_TRIGGER_CLIENT_DISCONNECT);
 	}
     }
   return 0;
@@ -669,7 +664,7 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
               if(ts <= (table->time - BGPWATCHER_STORE_TS_WDW_SIZE))
                 {
                   // ts is out of the sliding window
-                  if(completion_check(store, sview, ts,
+                  if(completion_check(store, sview,
                                       COMPLETION_TRIGGER_WDW_EXCEEDED) < 0)
                     {
                       return -1;
@@ -703,7 +698,7 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
      == kh_end(store->sviews))
     {
       // first time we receive this table time -> create bgp_view
-      if((sview = store_view_create(store)) == NULL)
+      if((sview = store_view_create(store, table->time)) == NULL)
 	{
 	  fprintf(stderr,
                   "ERROR: could not create bgpview for time %"PRIu32"\n",
@@ -823,7 +818,7 @@ int bgpwatcher_store_prefix_table_end(bgpwatcher_store_t *store,
   store_view_t * sview = kh_value(store->sviews, k);
   if((ret = store_view_table_end(sview, client, table)) == 0)
     {
-      completion_check(store, sview, table->time, COMPLETION_TRIGGER_TABLE_END);
+      completion_check(store, sview, COMPLETION_TRIGGER_TABLE_END);
     }
   return ret;
 }
