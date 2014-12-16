@@ -238,6 +238,9 @@ int main(int argc, char **argv)
       bgpwatcher_consumer_interest_dump(rx_interests);
       fprintf(stdout, "\n");
       bgpwatcher_view_dump(view);
+
+      bgpwatcher_view_destroy(view);
+      view = NULL;
     }
 
   fprintf(stderr, "TEST: Shutting down...\n");
@@ -246,6 +249,7 @@ int main(int argc, char **argv)
   bgpwatcher_client_perr(client);
 
   /* cleanup */
+  bgpwatcher_view_destroy(view);
   bgpwatcher_client_free(client);
   fprintf(stderr, "TEST: Shutdown complete\n");
 
@@ -257,5 +261,6 @@ int main(int argc, char **argv)
   if(client != NULL) {
     bgpwatcher_client_free(client);
   }
+  bgpwatcher_view_destroy(view);
   return -1;
 }
