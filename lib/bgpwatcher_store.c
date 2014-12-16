@@ -391,7 +391,7 @@ static int dispatcher_run(bgpwatcher_store_t *store,
       else
         {
           /* send to FULL customers */
-          dispatch_interests = BGPWATCHER_CONSUMER_INTEREST_FIRSTFULL;
+          dispatch_interests = BGPWATCHER_CONSUMER_INTEREST_FULL;
         }
       sview->dis_status[STORE_VIEW_FULL].modified = 0;
       sview->dis_status[STORE_VIEW_FULL].sent = 1;
