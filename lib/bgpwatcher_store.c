@@ -67,7 +67,7 @@ typedef struct active_peer_status {
 } active_peer_status_t;
 
 /************ bl_peerid_t -> status ************/
-KHASH_INIT(peerid_peerstatus, bl_peerid_t, active_peer_status_t, 1,
+KHASH_INIT(peerid_peerstatus, bl_peerid_t, active_peer_status_t*, 1,
 	   kh_int_hash_func, kh_int_hash_equal)
 typedef khash_t(peerid_peerstatus) peerid_peerstatus_t;
 
@@ -150,6 +150,11 @@ struct bgpwatcher_store {
 
 /* ========== PRIVATE FUNCTIONS ========== */
 
+static void active_peers_destroy(active_peer_status_t *ap)
+{
+  free(ap);
+}
+
 static void store_view_destroy(store_view_t *sview)
 {
   if(sview == NULL)
@@ -171,6 +176,8 @@ static void store_view_destroy(store_view_t *sview)
 
   if(sview->active_peers_info != NULL)
     {
+      kh_free_vals(peerid_peerstatus, sview->active_peers_info,
+                   active_peers_destroy);
       kh_destroy(peerid_peerstatus, sview->active_peers_info);
       sview->active_peers_info = NULL;
     }
@@ -251,24 +258,8 @@ static int store_view_completion_check(bgpwatcher_store_t *store,
   return 1;
 }
 
-static active_peer_status_t *store_view_peer_status(store_view_t *sview,
-                                                    bl_peerid_t peerid)
-{
-  khiter_t k;
-
-  if((k = kh_get(peerid_peerstatus, sview->active_peers_info, peerid))
-     == kh_end(sview->active_peers_info))
-    {
-      fprintf(stderr,
-              "Processing a server id which has not been registered before!\n");
-      return NULL;
-    }
-
-  return &(kh_value(sview->active_peers_info, k));
-}
-
-static int store_view_add_peer(store_view_t *sview,
-                               bgpwatcher_peer_t* peer_info)
+static active_peer_status_t *store_view_add_peer(store_view_t *sview,
+                                                 bgpwatcher_peer_t* peer_info)
 {
   khiter_t k;
   int khret;
@@ -288,11 +279,17 @@ static int store_view_add_peer(store_view_t *sview,
 	{
 	  k = kh_put(peerid_peerstatus, sview->active_peers_info,
 		     peer_info->server_id, &khret);
-	  ap_status = &(kh_value(sview->active_peers_info, k));
-	  // initialize internal values (all zeros)
-	  memset(ap_status, 0, sizeof(active_peer_status_t));
+
+          if((ap_status = malloc_zero(sizeof(active_peer_status_t))) == NULL)
+            {
+              return NULL;
+            }
+          kh_value(sview->active_peers_info, k) = ap_status;
 	}
-      ap_status = &(kh_value(sview->active_peers_info, k));
+      else
+        {
+          ap_status = kh_value(sview->active_peers_info, k);
+        }
       // a new pfx table segment is expected from this peer
       ap_status->expected_pfx_tables_cnt++;
     }
@@ -301,7 +298,7 @@ static int store_view_add_peer(store_view_t *sview,
       // add a new inactive peer to the list
       bl_id_set_insert(sview->inactive_peers, peer_info->server_id);
     }
-  return 0;
+  return ap_status;
 }
 
 static int store_view_table_end(store_view_t *sview,
@@ -309,7 +306,6 @@ static int store_view_table_end(store_view_t *sview,
                                 bgpwatcher_pfx_table_t *table)
 {
   int remote_peer_id;
-  bl_peerid_t peerid;
   active_peer_status_t *ap_status;
   sview->state = STORE_VIEW_STATE_UNKNOWN;
 
@@ -318,13 +314,10 @@ static int store_view_table_end(store_view_t *sview,
       // ####### TODO: use bl_bgp_utils!!!!!!!!!!!!!!!! #######################
       if(table->peers[remote_peer_id].status == 2)
 	{
-	  peerid = table->peers[remote_peer_id].server_id;
 	  // get the active peer status ptr for the current id
-	  if((ap_status = store_view_peer_status(sview, peerid)) == NULL)
-	    {
-	      // TODO: documentation
-	      return -1;
-	    }
+          ap_status = table->peers[remote_peer_id].ap_status;
+          assert(ap_status != NULL);
+
 	  // update active peers counters (i.e. signal table received)
 	  ap_status->received_pfx_tables_cnt++;
 	}
@@ -736,10 +729,8 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
       // it shares our peersigns table.. right?
       assert(sview->view->peersigns_shared != 0);
 
-      if(store_view_add_peer(sview, peer_info) < 0)
-	{
-	  return -1;
-	}
+      // add and cache the ap status (NULL if peer is inactive)
+      peer_info->ap_status = store_view_add_peer(sview, peer_info);
     }
   return 0;
 }
@@ -787,10 +778,9 @@ int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
         }
 
       // get the active peer status ptr for the current id
-      if((ap_status = store_view_peer_status(sview, server_id)) == NULL)
-        {
-          return -1;
-        }
+      ap_status = (active_peer_status_t *)table->peers[i].ap_status;
+      assert(ap_status != NULL);
+
       // update counters
       if(row->prefix.address.version == BL_ADDR_IPV4)
         {

@@ -93,8 +93,11 @@ typedef struct bgpwatcher_peer {
   /** Peer status */
   uint8_t status;
 
-  /** User-specific peer id (set by server) */
+  /** Internal store info */
   uint16_t server_id;
+
+  /** Internal store info */
+  void *ap_status;
 
 } bgpwatcher_peer_t;
 
