@@ -1,10 +1,10 @@
 #
 # bgpwatcher
 #
-# Chiara Orsini, CAIDA, UC San Diego
+# Alistair King, CAIDA, UC San Diego
 # corsaro-info@caida.org
 #
-# Copyright (C) 2014 The Regents of the University of California.
+# Copyright (C) 2012 The Regents of the University of California.
 #
 # This file is part of bgpwatcher.
 #
@@ -22,27 +22,15 @@
 # along with bgpwatcher.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-AM_CPPFLAGS = -I$(top_srcdir)/common \
-              -I$(top_srcdir)/bgpcommon \
+AM_CPPFLAGS = -I$(top_srcdir) \
+	      -I$(top_srcdir)/common \
+	      -I$(top_srcdir)/bgpcommon \
 	      -I$(top_srcdir)/lib
 
-noinst_LTLIBRARIES = libbgpstore.la
+dist_bin_SCRIPTS =
 
-libbgpstore_la_SOURCES = bgpstore_lib.h       \
-			 bgpstore_int.h       \
-			 bgpstore_lib.c	      \
-			 bgpstore_common.h    \
-			 bgpstore_common.c    \
-			 bgpstore_bgpview.h   \
-			 bgpstore_bgpview.c   \
-			 bgpstore_interests_dispatcher.h   \
-			 bgpstore_interests_dispatcher.c   \
-			 bgpstore_interests.h   \
-			 bgpstore_perasvisibility_interest.c \
-			 bgpstore_bgpviewstatus_interest.c
-
+bin_PROGRAMS =
 
 ACLOCAL_AMFLAGS = -I m4
 
 CLEANFILES = *~
-

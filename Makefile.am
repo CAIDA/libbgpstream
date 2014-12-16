@@ -22,7 +22,7 @@
 # along with bgpwatcher.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-SUBDIRS = common bgpcommon lib tools
+SUBDIRS = common bgpcommon lib tools consumers
 AM_CPPFLAGS = -I$(top_srcdir) \
 	      -I$(top_srcdir)/common \
 	      -I$(top_srcdir)/bgpcommon \

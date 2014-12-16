@@ -29,20 +29,12 @@
 #include <stdio.h>
 
 #include <bgpwatcher_common_int.h>
-#include <bgpwatcher_server.h>
+#include <bgpwatcher_server_int.h>
 
 #include "khash.h"
 #include "utils.h"
 
 #define ERR (&server->err)
-
-#define VA_ARGS(...) , ##__VA_ARGS__
-
-/* evaluates to true IF there is a callback AND it fails */
-#define DO_CALLBACK(cbfunc, args...)					\
-  ((server->callbacks != NULL) && (server->callbacks->cbfunc != NULL) && \
-   (server->callbacks->cbfunc(server, (&client->info) VA_ARGS(args),    \
-			      server->callbacks->user) != 0))
 
 enum {
   POLL_ITEM_CLIENT = 0,
@@ -207,7 +199,8 @@ static int clients_purge(bgpwatcher_server_t *server)
 	  fprintf(stderr, "INFO: Removing dead client (%s)\n", client->id);
 	  fprintf(stderr, "INFO: Expiry: %"PRIu64" Time: %"PRIu64"\n",
 		  client->expiry, zclock_time());
-	  if(DO_CALLBACK(client_disconnect) != 0)
+	  if(bgpwatcher_store_client_disconnect(server->store,
+                                                &client->info) != 0)
 	    {
 	      return -1;
 	    }
@@ -317,8 +310,8 @@ static int handle_table_prefix_begin(bgpwatcher_server_t *server,
   /* now the table is started */
   client->pfx_table_started = 1;
 
-  if(DO_CALLBACK(table_begin_prefix,
-                 &client->pfx_table) != 0)
+  if(bgpwatcher_store_prefix_table_begin(server->store,
+                                         &client->pfx_table) != 0)
     {
       goto err;
     }
@@ -352,8 +345,9 @@ static int handle_table_prefix_end(bgpwatcher_server_t *server,
   /* now the table is not started */
   client->pfx_table_started = 0;
 
-  if(DO_CALLBACK(table_end_prefix,
-                 &client->pfx_table) != 0)
+  if(bgpwatcher_store_prefix_table_end(server->store,
+                                       &client->info,
+                                       &client->pfx_table) != 0)
     {
       goto err;
     }
@@ -385,9 +379,9 @@ static int handle_pfx_record(bgpwatcher_server_t *server,
       goto err;
     }
 
-  if(DO_CALLBACK(prefix_row,
-                 &client->pfx_table,
-                 &row) != 0)
+  if(bgpwatcher_store_prefix_table_row(server->store,
+                                       &client->pfx_table,
+                                       &row) != 0)
     {
       goto err;
     }
@@ -552,7 +546,7 @@ static int handle_ready_message(bgpwatcher_server_t *server,
     }
 
   /* call the "client connect" callback */
-  if(DO_CALLBACK(client_connect) != 0)
+  if(bgpwatcher_store_client_connect(server->store, &client->info) != 0)
     {
       goto err;
     }
@@ -611,10 +605,10 @@ static int handle_message(bgpwatcher_server_t *server,
 #endif
 
       /* call the "client disconnect" callback */
-      if(DO_CALLBACK(client_disconnect) != 0)
-	{
-	  goto err;
-	}
+      if(bgpwatcher_store_client_disconnect(server->store, &client->info) != 0)
+        {
+          goto err;
+        }
 
       clients_remove(server, client);
       client_free(&client);
@@ -774,21 +768,15 @@ static int run_server(bgpwatcher_server_t *server)
   return -1;
 }
 
-bgpwatcher_server_t *bgpwatcher_server_init(
-				       bgpwatcher_server_callbacks_t **cb_p)
+bgpwatcher_server_t *bgpwatcher_server_init()
 {
   bgpwatcher_server_t *server = NULL;
-  assert(cb_p != NULL);
 
   if((server = malloc_zero(sizeof(bgpwatcher_server_t))) == NULL)
     {
       fprintf(stderr, "ERROR: Could not allocate server structure\n");
-      free(*cb_p);
       return NULL;
     }
-
-  server->callbacks = *cb_p;
-  *cb_p = NULL;
 
   /* init czmq */
   if((server->ctx = zctx_new()) == NULL)
@@ -819,6 +807,13 @@ bgpwatcher_server_t *bgpwatcher_server_init(
   server->heartbeat_interval = BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT;
 
   server->heartbeat_liveness = BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT;
+
+  if((server->store = bgpwatcher_store_create(server)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Could not create store");
+      goto err;
+    }
 
   /* create an empty client list */
   if((server->clients = kh_init(strclient)) == NULL)
@@ -900,9 +895,6 @@ void bgpwatcher_server_free(bgpwatcher_server_t *server)
 {
   assert(server != NULL);
 
-  free(server->callbacks);
-  server->callbacks = NULL;
-
   free(server->client_uri);
   server->client_uri = NULL;
 
@@ -911,6 +903,9 @@ void bgpwatcher_server_free(bgpwatcher_server_t *server)
 
   clients_free(server);
   server->clients = NULL;
+
+  bgpwatcher_store_destroy(server->store);
+  server->store = NULL;
 
   /* free'd by zctx_destroy */
   server->client_socket = NULL;
@@ -985,8 +980,8 @@ int bgpwatcher_server_publish_view(bgpwatcher_server_t *server,
   const char *pub = NULL;
   size_t pub_len = 0;
 
-  fprintf(stderr, "DEBUG: Publishing view at %"PRIu32" with %"PRIu32" prefixes\n",
-          view->time, view->prefix_cnt);
+  fprintf(stderr, "DEBUG: Publishing view:\n");
+  bgpwatcher_view_dump(view);
 
   /* get the publication message prefix */
   if((pub = bgpwatcher_consumer_interest_pub(interests)) == NULL)

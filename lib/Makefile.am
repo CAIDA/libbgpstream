@@ -22,24 +22,21 @@
 # along with bgpwatcher.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-SUBDIRS = libbgpstore
+SUBDIRS =
 
 AM_CPPFLAGS = 	-I$(top_srcdir) \
 	 	-I$(top_srcdir)/common \
-                -I$(top_srcdir)/bgpcommon \
-		-I$(top_srcdir)/lib/libbgpstore
+                -I$(top_srcdir)/bgpcommon
 
 lib_LTLIBRARIES = libbgpwatcher.la
 
 include_HEADERS = 			\
-	bgpwatcher.h 			\
 	bgpwatcher_client.h 		\
-	bgpwatcher_common.h
+	bgpwatcher_common.h		\
+	bgpwatcher_server.h		\
+	bgpwatcher_view.h
 
 libbgpwatcher_la_SOURCES = 		\
-	bgpwatcher.c 			\
-	bgpwatcher.h			\
-	bgpwatcher_int.h		\
 	bgpwatcher_common.h		\
 	bgpwatcher_common_int.h		\
 	bgpwatcher_common.c		\
@@ -49,11 +46,15 @@ libbgpwatcher_la_SOURCES = 		\
 	bgpwatcher_client_broker.h	\
 	bgpwatcher_client_broker.c	\
 	bgpwatcher_server.h		\
-	bgpwatcher_server.c
+	bgpwatcher_server.c		\
+	bgpwatcher_store.h		\
+	bgpwatcher_store.c		\
+	bgpwatcher_view.h		\
+	bgpwatcher_view_int.h		\
+	bgpwatcher_view.c
 
 libbgpwatcher_la_LIBADD = $(top_builddir)/common/libcccommon.la \
-                          $(top_builddir)/bgpcommon/libbl.la \
-			  $(top_builddir)/lib/libbgpstore/libbgpstore.la
+                          $(top_builddir)/bgpcommon/libbl.la
 
 libbgpwatcher_la_LDFLAGS = -version-info @BGPWATCHER_MAJOR_VERSION@:@BGPWATCHER_MID_VERSION@:@BGPWATCHER_MINOR_VERSION@
 

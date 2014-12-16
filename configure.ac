@@ -127,5 +127,6 @@ AC_CONFIG_FILES([Makefile
 		lib/Makefile
 		lib/libbgpstore/Makefile
 		tools/Makefile
+		consumers/Makefile
 		])
 AC_OUTPUT

@@ -34,6 +34,7 @@
 
 /* this must be all we include from bgpwatcher */
 #include <bgpwatcher_client.h>
+#include <bgpwatcher_view.h>
 
 #include "config.h"
 #include "utils.h"
@@ -88,7 +89,7 @@ int main(int argc, char **argv)
   bgpwatcher_client_t *client = NULL;
 
   uint8_t rx_interests;
-  bgpwatcher_view_t view;
+  bgpwatcher_view_t *view = NULL;
 
   while(prevoptind = optind,
 	(opt = getopt(argc, argv, ":i:I:l:n:r:R:s:S:v?")) >= 0)
@@ -229,12 +230,12 @@ int main(int argc, char **argv)
   fprintf(stderr, "done\n");
 
   while(bgpwatcher_client_recv_view(client, BGPWATCHER_CLIENT_RECV_MODE_BLOCK,
-				    &rx_interests, &view) == 0)
+				    &rx_interests, view) == 0)
     {
       fprintf(stdout, "Interests: ");
       bgpwatcher_consumer_interest_dump(rx_interests);
       fprintf(stdout, "\n");
-      bgpwatcher_view_dump(&view);
+      bgpwatcher_view_dump(view);
     }
 
   fprintf(stderr, "TEST: Shutting down...\n");

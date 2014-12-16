@@ -30,6 +30,8 @@
 
 #include <bl_bgp_utils.h>
 
+#include "bgpwatcher_view.h"
+
 /** @file
  *
  * @brief Header file that exposes the public structures used by both
@@ -144,20 +146,6 @@ typedef struct bgpwatcher_pfx_table {
 
 } bgpwatcher_pfx_table_t;
 
-
-/** Published information about a BGP View */
-typedef struct bgpwatcher_view {
-
-  /** Time that the view was taken */
-  uint32_t time;
-
-  /** @todo Chiara migrate public fields from bgpview_t here */
-
-  /* DEBUG TEMP */
-  uint32_t prefix_cnt;
-
-} bgpwatcher_view_t;
-
 /** bgpwatcher error information */
 typedef struct bgpwatcher_err {
   /** Error code */
@@ -184,10 +172,12 @@ typedef enum {
   BGPWATCHER_CONSUMER_INTEREST_FULL         = 0b010,
   BGPWATCHER_CONSUMER_INTEREST_PARTIAL      = 0b100,
 
+#if 0
   /** @todo Chiara move the following out of BGP Watcher */
   /** Current status of bgpview */
   BGPWATCHER_CONSUMER_INTEREST_BGPVIEWSTATUS = 0x01,
   BGPWATCHER_CONSUMER_INTEREST_ASVISIBILITY  = 0x02,
+#endif
 } bgpwatcher_consumer_interest_t;
 
 /* Consumer subscription strings.
@@ -277,11 +267,5 @@ void bgpwatcher_err_perr(bgpwatcher_err_t *err);
  * @param interests     set of interests
  */
 void bgpwatcher_consumer_interest_dump(int interests);
-
-/** Dump the given BGP View to stdout
- *
- * @param view        pointer to a view structure
- */
-void bgpwatcher_view_dump(bgpwatcher_view_t *view);
 
 #endif

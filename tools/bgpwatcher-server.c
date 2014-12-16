@@ -32,9 +32,9 @@
 #include <string.h>
 #include <unistd.h>
 
-/* include bgpwatcher's public interface */
+/* include bgpwatcher server's public interface */
 /* @@ never include the _int.h file from tools. */
-#include "bgpwatcher.h"
+#include "bgpwatcher_server.h"
 
 /** Indicates that bgpwatcher is waiting to shutdown */
 volatile sig_atomic_t bgpwatcher_shutdown = 0;
@@ -42,7 +42,7 @@ volatile sig_atomic_t bgpwatcher_shutdown = 0;
 /** The number of SIGINTs to catch before aborting */
 #define HARD_SHUTDOWN 3
 
-static bgpwatcher_t *watcher = NULL;
+static bgpwatcher_server_t *watcher = NULL;
 
 /** Handles SIGINT gracefully and shuts down */
 static void catch_sigint(int sig)
@@ -59,7 +59,7 @@ static void catch_sigint(int sig)
 
   if(watcher != NULL)
     {
-      bgpwatcher_stop(watcher);
+      bgpwatcher_server_stop(watcher);
     }
 
   signal(sig, catch_sigint);
@@ -150,7 +150,7 @@ int main(int argc, char **argv)
   /* NB: once getopt completes, optind points to the first non-option
      argument */
 
-  if((watcher = bgpwatcher_init()) == NULL)
+  if((watcher = bgpwatcher_server_init()) == NULL)
     {
       fprintf(stderr, "ERROR: could not initialize bgpwatcher server\n");
       goto err;
@@ -158,34 +158,34 @@ int main(int argc, char **argv)
 
   if(client_uri != NULL)
     {
-      bgpwatcher_set_client_uri(watcher, client_uri);
+      bgpwatcher_server_set_client_uri(watcher, client_uri);
     }
 
   if(client_pub_uri != NULL)
     {
-      bgpwatcher_set_client_pub_uri(watcher, client_pub_uri);
+      bgpwatcher_server_set_client_pub_uri(watcher, client_pub_uri);
     }
 
-  bgpwatcher_set_heartbeat_interval(watcher, heartbeat_interval);
+  bgpwatcher_server_set_heartbeat_interval(watcher, heartbeat_interval);
 
-  bgpwatcher_set_heartbeat_liveness(watcher, heartbeat_liveness);
+  bgpwatcher_server_set_heartbeat_liveness(watcher, heartbeat_liveness);
 
   /* do work */
   /* this function will block until the server shuts down */
-  bgpwatcher_start(watcher);
+  bgpwatcher_server_start(watcher);
 
   /* this will always be set, normally to a SIGINT-caught message */
-  bgpwatcher_perr(watcher);
+  bgpwatcher_server_perr(watcher);
 
   /* cleanup */
-  bgpwatcher_free(watcher);
+  bgpwatcher_server_free(watcher);
 
   /* complete successfully */
   return 0;
 
  err:
   if(watcher != NULL) {
-    bgpwatcher_free(watcher);
+    bgpwatcher_server_free(watcher);
   }
   return -1;
 }

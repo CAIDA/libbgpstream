@@ -30,7 +30,9 @@
 #include <string.h>
 #include <sys/socket.h>
 
-#include <bgpwatcher_common_int.h>
+#include "bgpwatcher_common_int.h"
+#include "bgpwatcher_view_int.h"
+
 
 #include "utils.h"
 
@@ -1001,12 +1003,7 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
     }
 
   /* @todo replace with actual fields */
-  /* send the prefix count */
-  u32 = htonl(view->prefix_cnt);
-  if(zmq_send(dest, &u32, sizeof(u32), 0) != sizeof(u32))
-    {
-      goto err;
-    }
+  assert(0);
 
   return 0;
 
@@ -1025,12 +1022,7 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
   view->time = ntohl(u32);
 
   /* @todo replace with actual fields */
-  /* recv the prefix cnt */
-  if(zmq_recv(src, &u32, sizeof(u32), 0) != sizeof(u32))
-    {
-      goto err;
-    }
-  view->prefix_cnt = ntohl(u32);
+  assert(0);
 
   return 0;
 
@@ -1078,14 +1070,4 @@ void bgpwatcher_err_perr(bgpwatcher_err_t *err)
   }
   err->err_num = 0; /* "OK" */
   err->problem[0]='\0';
-}
-
-void bgpwatcher_view_dump(bgpwatcher_view_t *view)
-{
-      fprintf(stdout,
-	      "Time:\t%"PRIu32"\n"
-              "Prefix Cnt:\t%"PRIu32"\n"
-	      "------------------------------\n",
-              view->time,
-	      view->prefix_cnt);
 }
