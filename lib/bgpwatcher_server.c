@@ -311,6 +311,9 @@ static int handle_table_prefix_begin(bgpwatcher_server_t *server,
   /* now the table is started */
   client->pfx_table_started = 1;
 
+  /* zero out any leftover info from the store */
+  client->pfx_table.sview = NULL;
+
   if(bgpwatcher_store_prefix_table_begin(server->store,
                                          &client->pfx_table) != 0)
     {

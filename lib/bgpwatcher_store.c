@@ -685,6 +685,8 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
           fprintf(stderr,
                   "BGP Views for time %"PRIu32" have been already processed\n",
                   table->time);
+          // signal to pfx row func that this table should be ignored
+          table->sview = NULL;
           return check_timeouts(store);
         }
     }
@@ -713,6 +715,9 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
       // view exists, just retrieve pointer
       sview = kh_value(store->sviews, k);
     }
+
+  // cache a pointer to this view in the server's table
+  table->sview = sview;
 
   // get the list of peers associated with current pfx table
   int remote_peer_id; // id assigned to (collector,peer) by remote process
@@ -744,7 +749,6 @@ int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
                                       bgpwatcher_pfx_table_t *table,
                                       bgpwatcher_pfx_row_t *row)
 {
-  khiter_t k;
   store_view_t *sview;
 
   int i;
@@ -753,15 +757,16 @@ int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
 
   active_peer_status_t *ap_status;
 
-  if((k = kh_get(time_sview, store->sviews, table->time))
-     == kh_end(store->sviews))
+  if(table->sview == NULL)
     {
       // the view for this ts has been already removed
-      // ignore this message, and check timeouts
-      return check_timeouts(store);
+      // ignore this message
+      // AK removes call to check_timeouts as it is redundant
+      return 0;
     }
 
-  sview = kh_value(store->sviews, k);
+  // retrieve sview from the cache
+  sview = (store_view_t*)table->sview;
   assert(sview != NULL);
 
   sview->state = STORE_VIEW_STATE_UNKNOWN;
@@ -805,21 +810,21 @@ int bgpwatcher_store_prefix_table_end(bgpwatcher_store_t *store,
                                       bgpwatcher_server_client_info_t *client,
                                       bgpwatcher_pfx_table_t *table)
 {
-  khiter_t k;
   int ret;
-  if((k = kh_get(time_sview, store->sviews, table->time))
-     == kh_end(store->sviews))
+
+  if(table->sview == NULL)
     {
       // the view for this ts has been already removed
       // ignore this message, and check timeouts
       return check_timeouts(store);
     }
 
-  store_view_t * sview = kh_value(store->sviews, k);
+  store_view_t * sview = (store_view_t*)table->sview;
   if((ret = store_view_table_end(sview, client, table)) == 0)
     {
       completion_check(store, sview, COMPLETION_TRIGGER_TABLE_END);
     }
+  table->sview = NULL; // we are done with this
   return ret;
 }
 

@@ -144,6 +144,9 @@ typedef struct bgpwatcher_pfx_table {
   /** Number of peers referenced in this table */
   int peers_cnt;
 
+  /** Internal store state */
+  void *sview;
+
 } bgpwatcher_pfx_table_t;
 
 /** bgpwatcher error information */
