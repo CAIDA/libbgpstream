@@ -540,6 +540,11 @@ bgpwatcher_store_t *bgpwatcher_store_create(bgpwatcher_server_t *server)
   return NULL;
 }
 
+static void str_free(char *str)
+{
+  free(str);
+}
+
 void bgpwatcher_store_destroy(bgpwatcher_store_t *store)
 {
   if(store == NULL)
@@ -556,6 +561,7 @@ void bgpwatcher_store_destroy(bgpwatcher_store_t *store)
 
   if(store->active_clients != NULL)
     {
+      kh_free(strclientstatus, store->active_clients, str_free);
       kh_destroy(strclientstatus, store->active_clients);
       store->active_clients = NULL;
     }
