@@ -1003,7 +1003,7 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
     }
 
   /* @todo replace with actual fields */
-  assert(0);
+  fprintf(stderr, "DEBUG: Sending dummy view...\n");
 
   return 0;
 
@@ -1022,7 +1022,7 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
   view->time = ntohl(u32);
 
   /* @todo replace with actual fields */
-  assert(0);
+  fprintf(stderr, "DEBUG: Receiving dummy view...\n");
 
   return 0;
 

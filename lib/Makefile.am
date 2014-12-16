@@ -46,6 +46,7 @@ libbgpwatcher_la_SOURCES = 		\
 	bgpwatcher_client_broker.h	\
 	bgpwatcher_client_broker.c	\
 	bgpwatcher_server.h		\
+	bgpwatcher_server_int.h		\
 	bgpwatcher_server.c		\
 	bgpwatcher_store.h		\
 	bgpwatcher_store.c		\

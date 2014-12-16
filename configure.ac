@@ -52,7 +52,7 @@ AC_PROG_CC_C99
 AC_CONFIG_HEADERS([config.h])
 
 
-AC_CONFIG_SRCDIR([lib/bgpwatcher.c])
+AC_CONFIG_SRCDIR([lib/bgpwatcher_server.c])
 
 
 AC_SYS_LARGEFILE
@@ -125,7 +125,6 @@ AC_CONFIG_FILES([Makefile
 		common/libcsv/Makefile
                 bgpcommon/Makefile
 		lib/Makefile
-		lib/libbgpstore/Makefile
 		tools/Makefile
 		consumers/Makefile
 		])
