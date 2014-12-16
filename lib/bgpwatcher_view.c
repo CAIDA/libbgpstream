@@ -25,6 +25,8 @@
 
 #include <stdio.h>
 
+#include <czmq.h>
+
 #include "bgpwatcher_view_int.h"
 
 /* ========== PRIVATE FUNCTIONS ========== */
@@ -144,6 +146,53 @@ int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
     }
 
   return 0;
+}
+
+int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
+{
+  uint32_t u32;
+  /* send the time */
+  u32 = htonl(view->time);
+  if(zmq_send(dest, &u32, sizeof(u32), 0) != sizeof(u32))
+    {
+      goto err;
+    }
+
+  /* @todo replace with actual fields (FIX SNDMORE ABOVE) */
+  fprintf(stderr, "DEBUG: Sending dummy view...\n");
+
+  return 0;
+
+ err:
+  return -1;
+}
+
+bgpwatcher_view_t *bgpwatcher_view_recv(void *src)
+{
+  bgpwatcher_view_t *view;
+  uint32_t u32;
+
+  /* create a new independent view (no external peers table) */
+  if((view = bgpwatcher_view_create(NULL)) == NULL)
+    {
+      goto err;
+    }
+
+  /* recv the time */
+  if(zmq_recv(src, &u32, sizeof(u32), 0) != sizeof(u32))
+    {
+      goto err;
+    }
+  view->time = ntohl(u32);
+
+  /* @todo replace with actual fields */
+  fprintf(stderr, "DEBUG: Receiving dummy view...\n");
+
+  return view;
+
+ err:
+  bgpwatcher_view_destroy(view);
+  return NULL;
 }
 
 /* ========== PUBLIC FUNCTIONS ========== */

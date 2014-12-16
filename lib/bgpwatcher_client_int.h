@@ -59,7 +59,7 @@
 
 KHASH_INIT(pfx_peers, bgpwatcher_pfx_row_t, char, 0, hash_row, hash_eq_row)
 
-typedef struct bgpwatcher_client_pfx_table {
+struct bgpwatcher_client_pfx_table {
 
   /** Indicates that a table_start message should not be sent on the next
       pfx_add */
@@ -74,9 +74,9 @@ typedef struct bgpwatcher_client_pfx_table {
   /** Hash table of prefixes being added */
   kh_pfx_peers_t *pfx_peers;
 
-} bgpwatcher_client_pfx_table_t;
+};
 
-typedef struct bgpwatcher_client {
+struct bgpwatcher_client {
 
   /** shared config that we have prepared for our broker(s) */
   bgpwatcher_client_broker_config_t broker_config;
@@ -99,7 +99,7 @@ typedef struct bgpwatcher_client {
   /** Indicates that the client has been signaled to shutdown */
   int shutdown;
 
-} bgpwatcher_client_t;
+};
 
 /** @} */
 

@@ -100,4 +100,21 @@ int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
                                bl_peerid_t peerid,
                                bgpwatcher_pfx_peer_info_t *pfx_info);
 
+/** Send the given view to the given socket
+ *
+ * @param dest          socket to send the prefix to
+ * @param view          pointer to the view to send
+ * @return 0 if the view was sent successfully, -1 otherwise
+ */
+int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view);
+
+/** Receive a view from the given socket
+ *
+ * @param src           socket to receive on
+ * @return pointer to the view instance received, NULL if an error occurred.
+ *
+ * The view returned must be destroyed using bgpwatcher_view_destroy.
+ */
+bgpwatcher_view_t *bgpwatcher_view_recv(void *src);
+
 #endif /* __BGPWATCHER_VIEW_INT_H */

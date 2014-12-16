@@ -25,8 +25,10 @@
 
 #include <stdint.h>
 
-#include <bgpwatcher_client_int.h>
+#include "bgpwatcher_client_int.h"
+
 #include "bgpwatcher_client_broker.h"
+#include "bgpwatcher_view_int.h"
 
 #include "khash.h"
 #include "utils.h"
@@ -333,22 +335,33 @@ int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client)
 
 int bgpwatcher_client_recv_view(bgpwatcher_client_t *client,
 				bgpwatcher_client_recv_mode_t blocking,
-				uint8_t *interests,
-				bgpwatcher_view_t *view)
+				bgpwatcher_view_t **view_p)
 
 {
+  uint8_t interests = 0;
+  bgpwatcher_view_t *view;
+
+  assert(view_p != NULL);
+
   /* attempt to get the set of interests */
   if(zmq_recv(client->broker_zocket,
-	      interests, sizeof(*interests),
+	      &interests, sizeof(interests),
 	      (blocking == BGPWATCHER_CLIENT_RECV_MODE_NONBLOCK) ?
 	        ZMQ_DONTWAIT : 0
-	      ) != sizeof(*interests))
+	      ) != sizeof(interests))
         {
 	  /* likely this means that we have shut the broker down */
 	  return -1;
         }
 
-  return bgpwatcher_view_recv(client->broker_zocket, view);
+  if((view = bgpwatcher_view_recv(client->broker_zocket)) == NULL)
+    {
+      return -1;
+    }
+
+  *view_p = view;
+
+  return interests;
 }
 
 void bgpwatcher_client_stop(bgpwatcher_client_t *client)

@@ -180,8 +180,8 @@ int main(int argc, char **argv)
 
   if(interests == 0)
     {
-      fprintf(stderr, "WARN: Defaulting to FULL interest\n");
-      interests = BGPWATCHER_CONSUMER_INTEREST_FULL;
+      fprintf(stderr, "WARN: Defaulting to FIRST-FULL interest\n");
+      interests = BGPWATCHER_CONSUMER_INTEREST_FIRSTFULL;
     }
 
   if((client =
@@ -229,8 +229,10 @@ int main(int argc, char **argv)
     }
   fprintf(stderr, "done\n");
 
-  while(bgpwatcher_client_recv_view(client, BGPWATCHER_CLIENT_RECV_MODE_BLOCK,
-				    &rx_interests, view) == 0)
+  while((rx_interests =
+         bgpwatcher_client_recv_view(client,
+                                     BGPWATCHER_CLIENT_RECV_MODE_BLOCK,
+                                     &view)) > 0)
     {
       fprintf(stdout, "Interests: ");
       bgpwatcher_consumer_interest_dump(rx_interests);

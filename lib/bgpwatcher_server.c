@@ -28,8 +28,9 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include <bgpwatcher_common_int.h>
-#include <bgpwatcher_server_int.h>
+#include "bgpwatcher_common_int.h"
+#include "bgpwatcher_server_int.h"
+#include "bgpwatcher_view_int.h"
 
 #include "khash.h"
 #include "utils.h"

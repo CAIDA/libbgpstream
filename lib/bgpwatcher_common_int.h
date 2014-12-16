@@ -296,20 +296,4 @@ const char *bgpwatcher_consumer_interest_sub(int interests);
  */
 uint8_t bgpwatcher_consumer_interest_recv(void *src);
 
-/** Send the given view to the given socket
- *
- * @param dest          socket to send the prefix to
- * @param view          pointer to the view to send
- * @return 0 if the view was sent successfully, -1 otherwise
- */
-int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view);
-
-/** Receive a view from the given socket
- *
- * @param src           socket to receive on
- * @param view          pointer to the view to populate
- * @return 0 if the view was received successfully, -1 otherwise
- */
-int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view);
-
 #endif

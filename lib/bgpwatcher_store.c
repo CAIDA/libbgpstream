@@ -539,9 +539,6 @@ bgpwatcher_store_t *bgpwatcher_store_create(bgpwatcher_server_t *server)
       goto err;
     }
 
-#ifdef DEBUG
-  fprintf(stderr, "DEBUG: bgpwatcher_store created\n");
-#endif
   return store;
 
  err:
@@ -579,9 +576,6 @@ void bgpwatcher_store_destroy(bgpwatcher_store_t *store)
     }
 
   free(store);
-#ifdef DEBUG
-  fprintf(stderr, "DEBUG: bgpwatcher_store destroyed\n");
-#endif
 }
 
 int bgpwatcher_store_client_connect(bgpwatcher_store_t *store,
