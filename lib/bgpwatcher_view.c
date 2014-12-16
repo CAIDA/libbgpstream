@@ -271,8 +271,17 @@ void bgpwatcher_view_destroy(bgpwatcher_view_t *view)
 
 void bgpwatcher_view_dump(bgpwatcher_view_t *view)
 {
+  if(view == NULL)
+    {
+      fprintf(stdout,
+              "NULL\n"
+	      "------------------------------\n");
+    }
+  else
+    {
       fprintf(stdout,
 	      "Time:\t%"PRIu32"\n"
 	      "------------------------------\n",
               view->time);
+    }
 }

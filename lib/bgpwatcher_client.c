@@ -342,6 +342,7 @@ int bgpwatcher_client_recv_view(bgpwatcher_client_t *client,
   bgpwatcher_view_t *view;
 
   assert(view_p != NULL);
+  *view_p = NULL;
 
   /* attempt to get the set of interests */
   if(zmq_recv(client->broker_zocket,

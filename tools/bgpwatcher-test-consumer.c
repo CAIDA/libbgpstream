@@ -88,7 +88,7 @@ int main(int argc, char **argv)
   uint8_t intents = 0;
   bgpwatcher_client_t *client = NULL;
 
-  uint8_t rx_interests;
+  int rx_interests;
   bgpwatcher_view_t *view = NULL;
 
   while(prevoptind = optind,
