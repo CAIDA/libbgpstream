@@ -846,6 +846,7 @@ int peerdata_interval_end(char *project_str, char *collector_str,
   double avg_aspath_len_ipv4 = 0;
   double avg_aspath_len_ipv6 = 0;
 
+  bl_as_storage_t origin_hop;
   uint32_t origin_as = 0;
  
   for(k = kh_begin(peer_data->active_ribs_table->ipv4_rib);
@@ -853,7 +854,6 @@ int peerdata_interval_end(char *project_str, char *collector_str,
     {
       if (kh_exist(peer_data->active_ribs_table->ipv4_rib, k))
 	{
-
 	  // get prefix
 	  ipv4_prefix = &(kh_key(peer_data->active_ribs_table->ipv4_rib, k));
 	  // get prefix_data
@@ -861,13 +861,18 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  if(pd.is_active == 1) 
 	    {
 	      origin_as = 0;
-	      bl_ipv4_pfx_set_insert(collector_aggr_stats->unique_ipv4_prefixes, *ipv4_prefix);
-	      if(pd.origin_as.type == BL_AS_NUMERIC && pd.origin_as.as_number != 0)
+	      // get the origin as number 
+	      origin_hop = bl_get_origin_as(&(pd.aspath));
+	      if (origin_hop.type == BL_AS_NUMERIC)
 		{
-		  origin_as = pd.origin_as.as_number;
+		  origin_as = origin_hop.as_number;
+		}
+	      bl_ipv4_pfx_set_insert(collector_aggr_stats->unique_ipv4_prefixes, *ipv4_prefix);
+	      if(origin_as != 0)
+		{
 		  bl_id_set_insert(peer_data->aggr_stats->unique_origin_ases, origin_as);
 		  bl_id_set_insert(collector_aggr_stats->unique_origin_ases, origin_as);		  
-		}
+		}	      
 	      avg_aspath_len_ipv4 += pd.aspath.hop_count;
 #ifdef WITH_BGPWATCHER
 	      if(send_ipv4)
@@ -899,10 +904,15 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  if(pd.is_active == 1) 
 	    {
 	      origin_as = 0;
-	      bl_ipv6_pfx_set_insert(collector_aggr_stats->unique_ipv6_prefixes, *ipv6_prefix);
-	      if(pd.origin_as.type == BL_AS_NUMERIC && pd.origin_as.as_number != 0)
+	      // get the origin as number 
+	      origin_hop = bl_get_origin_as(&(pd.aspath));
+	      if (origin_hop.type == BL_AS_NUMERIC)
 		{
-		  origin_as = pd.origin_as.as_number;
+		  origin_as = origin_hop.as_number;
+		}
+	      bl_ipv6_pfx_set_insert(collector_aggr_stats->unique_ipv6_prefixes, *ipv6_prefix);
+	      if(origin_as != 0)
+		{
 		  bl_id_set_insert(peer_data->aggr_stats->unique_origin_ases, origin_as);
 		  bl_id_set_insert(collector_aggr_stats->unique_origin_ases, origin_as);		  
 		}

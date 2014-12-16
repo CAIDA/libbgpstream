@@ -202,9 +202,12 @@ if test "x$with_bgpwatcher" == xyes; then
    	AC_SEARCH_LIBS([bgpwatcher_start], [bgpwatcher], ,[AC_MSG_ERROR(
 		 [libbgpwatcher required (https://github.com/CAIDA/bgpwatcher)]
 		 )])
+	AC_CHECK_LIB([czmq], [zctx_new], ,[AC_MSG_ERROR(
+		      [CZMQ is required])])
 fi
 
 AM_CONDITIONAL([WITH_BGPWATCHER], [test "x$with_bgpwatcher" == xyes])
+
 
 
 

@@ -58,11 +58,9 @@ typedef struct struct_prefixdata_t {
    *  0 if it is not active */
   uint8_t is_active;  
   /** last time (bgp time) this entry was updated */
-  long int ts;        
+  uint32_t ts;        
   /** AS path associated with the prefix */
   bl_aspath_storage_t aspath;
-  /** AS number that originated this prefix */
-  bl_as_storage_t origin_as;
 } prefixdata_t;
 
 
@@ -121,8 +119,10 @@ ribs_table_t *ribs_table_create();
  *
  * @param ribs_table a pointer to the RIBs table
  * @param bs_elem a BGP info to apply to the RIBs table
+ * @return 0 if everything was processed correctly, -1
+ *  otherwise
  */
-void ribs_table_apply_elem(ribs_table_t *ribs_table, bl_elem_t *bs_elem);
+int ribs_table_apply_elem(ribs_table_t *ribs_table, bl_elem_t *bs_elem);
 
 /** Empty the RIBs table.
  *

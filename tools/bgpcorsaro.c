@@ -38,6 +38,12 @@
 #include "bgpcorsaro.h"
 #include "bgpcorsaro_log.h"
 
+#ifdef WITH_BGPWATCHER
+#include "czmq.h"
+#endif
+
+
+
 /** @file
  *
  * @brief Code which uses libbgpcorsaro to process a trace file and generate output
@@ -521,6 +527,9 @@ int main(int argc, char *argv[])
   bgpcorsaro_set_stream(bgpcorsaro, stream);
 
   while (bgpcorsaro_shutdown == 0 &&
+#ifdef WITH_BGPWATCHER
+	 zsys_interrupted == 0 && 
+#endif
 	 (rc = bgpstream_get_next_record(stream, record))>0) {
     /*bgpcorsaro_log(__func__, bgpcorsaro, "got a record!");*/
     if(bgpcorsaro_per_record(bgpcorsaro, record) != 0)
