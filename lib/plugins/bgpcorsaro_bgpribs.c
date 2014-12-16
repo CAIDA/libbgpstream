@@ -112,8 +112,9 @@ static void usage(bgpcorsaro_plugin_t *plugin)
 {
 #ifdef WITH_BGPWATCHER
   fprintf(stderr,
-	  "plugin usage: %s [-w46][-m pfx] \n"
+	  "plugin usage: %s [-w46] [-u <uri] [-m pfx] \n"
 	  "       -w         enables bgpwatcher transmission (default: off)\n"
+	  "       -u         0MQ-style URI to connect to server (default: tcp://*:6300)\n"
 	  "       -4         when sending ipv4 table to the bgpwatcher, only send full feed (default: off)\n"
 	  "       -6         when sending ipv6 table to the bgpwatcher, only send full feed (default: off)\n"
 	  "       -f         set the ipv4 full routing table size  (default: %d)\n"
@@ -146,11 +147,13 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
   /* NB: remember to reset optind to 1 before using getopt! */
   optind = 1;
 #ifdef WITH_BGPWATCHER
+  uint8_t bgpwatcher_on = 0;
+  char *server_uri = NULL;
   uint8_t only_ipv4_full_on = 0;
   uint8_t only_ipv6_full_on = 0;
   uint32_t ipv4_full_size = BGPRIBS_IPV4_FULL_SIZE;
-  uint32_t ipv6_full_size = BGPRIBS_IPV6_FULL_SIZE;
-  while((opt = getopt(plugin->argc, plugin->argv, ":m:w46f:F:?")) >= 0)
+  uint32_t ipv6_full_size = BGPRIBS_IPV6_FULL_SIZE;  
+  while((opt = getopt(plugin->argc, plugin->argv, ":m:w46f:F:u:?")) >= 0)
 #else
     while((opt = getopt(plugin->argc, plugin->argv, ":m:?")) >= 0)
 #endif
@@ -162,10 +165,7 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
 	  break;
 #ifdef WITH_BGPWATCHER
 	case 'w':
-	  if(bgpribs_set_watcher(state->bgp_ribs) == -1)
-	    {
-	      return -1;
-	    }
+	  bgpwatcher_on = 1;
 	  break;
 	case '4':
 	  only_ipv4_full_on = 1; 
@@ -180,7 +180,10 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
 	case 'F':
 	  only_ipv6_full_on = 1; 
 	  ipv6_full_size = atoi(optarg); 
-	  break;	  
+	  break;
+	case 'u':
+	  server_uri = strdup(optarg);
+	  break;
 #endif
 	case '?':
 	case ':':
@@ -205,9 +208,20 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
     }
   
 #ifdef WITH_BGPWATCHER
-  bgpribs_set_fullfeed_filters(state->bgp_ribs,
-			       only_ipv4_full_on, only_ipv6_full_on,
-			       ipv4_full_size, ipv6_full_size);
+  if(bgpwatcher_on == 1)
+    {
+      if(bgpribs_set_watcher(state->bgp_ribs, server_uri) == -1)
+	{
+	  return -1;
+	}
+      bgpribs_set_fullfeed_filters(state->bgp_ribs,
+				   only_ipv4_full_on, only_ipv6_full_on,
+				   ipv4_full_size, ipv6_full_size);
+    }
+  if(server_uri != NULL)
+    {
+      free(server_uri);
+    }   
 #endif
   
   return 0;
