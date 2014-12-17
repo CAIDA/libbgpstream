@@ -49,11 +49,25 @@ typedef struct bl_peersign_map bl_peersign_map_t;
 bl_peersign_map_t *bl_peersign_map_create();
 
 
-uint16_t bl_peersign_map_set_and_get(bl_peersign_map_t *map,
-				     char *collector_str, bl_addr_storage_t *peer_ip_addr);
+bl_peerid_t bl_peersign_map_set_and_get(bl_peersign_map_t *map,
+					char *collector_str,
+					bl_addr_storage_t *peer_ip_addr);
+
+/** Set the peer ID for the given collector/peer
+ *
+ * @param map           peersign map to set peer ID for
+ * @param peerid        peer id to set
+ * @param collector_str name of the collector the peer is associated with
+ * @param peer_ip_addr  pointer to the peer IP address
+ * @return 0 if the ID was associated successfully, -1 otherwise
+ */
+int bl_peersign_map_set(bl_peersign_map_t *map,
+			bl_peerid_t peerid,
+			char *collector_str,
+			bl_addr_storage_t *peer_ip_addr);
 
 bl_peer_signature_t* bl_peersign_map_get_peersign(bl_peersign_map_t *map,
-						  uint16_t id);
+						  bl_peerid_t id);
 
 int bl_peersign_map_get_size(bl_peersign_map_t *map);
 

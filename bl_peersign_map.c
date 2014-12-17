@@ -68,16 +68,72 @@ bl_peersign_map_t *bl_peersign_map_create()
   return NULL;
 }
 
-static bl_peerid_t bl_peersign_map_set_and_get_ps(bl_peersign_map_t *map, bl_peer_signature_t ps)
+int bl_peersign_map_set(bl_peersign_map_t *map,
+			bl_peerid_t peerid,
+			char *collector_str,
+			bl_addr_storage_t *peer_ip_addr)
+{
+  khiter_t k;
+  int khret;
+  bl_peer_signature_t ps;
+  ps.peer_ip_addr = *peer_ip_addr;
+  strcpy(ps.collector_str, collector_str);
+
+  /* check if this peer id is in the map already */
+  if((k = kh_get(bl_bsid_peersign_map, map->id_ps, peerid)) != kh_end(map->id_ps))
+    {
+      /* peer id exists */
+      /* check that the signature is the same */
+      if(bl_peer_signature_hash_equal(ps, kh_val(map->id_ps, k)) != 0)
+	{
+	  /* it was already here... */
+	  return 0;
+	}
+      else
+	{
+	  /* another signature has this same id.. this is a problem */
+	  return -1;
+	}
+    }
+
+  /* check if this signature exists already */
+  if((k = kh_get(bl_peersign_bsid_map, map->ps_id, ps)) != kh_end(map->ps_id))
+    {
+      /* signature exists */
+
+      /* check that the peerid is the same */
+      if(peerid == kh_val(map->ps_id, k))
+	{
+	  /* it was already here.. */
+	  return 0;
+	}
+      else
+	{
+	  /* this signature exists, but it has a different id.. this is a problem */
+	  return -1;
+	}
+    }
+
+  /* finally, now we can add it to the map */
+  k = kh_put(bl_peersign_bsid_map, map->ps_id, ps, &khret);
+  kh_value(map->ps_id,k) = peerid;
+  k = kh_put(bl_bsid_peersign_map, map->id_ps, peerid, &khret);
+  kh_value(map->id_ps,k) = ps;
+
+  return 0;
+}
+
+static bl_peerid_t bl_peersign_map_set_and_get_ps(bl_peersign_map_t *map,
+						  bl_peer_signature_t ps)
 {
   khiter_t k;
   int khret;
   bl_peerid_t next_id = kh_size(map->id_ps) + 1;
   if((k = kh_get(bl_peersign_bsid_map, map->ps_id, ps)) == kh_end(map->ps_id))
     {
-      k = kh_put(bl_peersign_bsid_map, map->ps_id, ps, &khret);      
+      k = kh_put(bl_peersign_bsid_map, map->ps_id, ps, &khret);
       kh_value(map->ps_id,k) = next_id;
-      k = kh_put(bl_bsid_peersign_map, map->id_ps, next_id, &khret);      
+      k = kh_put(bl_bsid_peersign_map, map->id_ps, next_id, &khret);
       kh_value(map->id_ps,k) = ps;
       return next_id;
     }
@@ -86,7 +142,6 @@ static bl_peerid_t bl_peersign_map_set_and_get_ps(bl_peersign_map_t *map, bl_pee
   }
   return 0;
 }
-
 
 bl_peerid_t bl_peersign_map_set_and_get(bl_peersign_map_t *map, char *collector_str, bl_addr_storage_t *peer_ip_addr)
 {
