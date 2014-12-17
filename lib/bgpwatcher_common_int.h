@@ -174,6 +174,11 @@ typedef enum {
 
 /* ========== UTILITIES ========== */
 
+/** Send the given IP over the given socket */
+int bw_send_ip(void *dest, bl_addr_storage_t *ip, int flags);
+
+/** Receive an IP address on the given socket */
+int bw_recv_ip(void *src, bl_addr_storage_t *ip);
 
 /* ========== MESSAGE TYPES ========== */
 

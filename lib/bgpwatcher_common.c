@@ -105,75 +105,6 @@ static int deserialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip)
   return -1;
 }
 
-static int send_ip(void *dest, bl_addr_storage_t *ip, int flags)
-{
-  switch(ip->version)
-    {
-    case BL_ADDR_IPV4:
-      if(zmq_send(dest, &ip->ipv4.s_addr,
-                  sizeof(uint32_t), flags) == sizeof(uint32_t))
-        {
-          return 0;
-        }
-      break;
-
-    case BL_ADDR_IPV6:
-      if(zmq_send(dest, &ip->ipv6.s6_addr,
-                  (sizeof(uint8_t)*16), flags) == sizeof(uint8_t)*16)
-        {
-          return 0;
-        }
-      break;
-
-    case BL_ADDR_TYPE_UNKNOWN:
-      return -1;
-    }
-
-  return -1;
-}
-
-static int recv_ip(void *src, bl_addr_storage_t *ip)
-{
-  zmq_msg_t llm;
-  assert(ip != NULL);
-
-  if(zmq_msg_init(&llm) == -1 || zmq_msg_recv(&llm, src, 0) == -1)
-    {
-      goto err;
-    }
-
-  /* 4 bytes means ipv4, 16 means ipv6 */
-  if(zmq_msg_size(&llm) == sizeof(uint32_t))
-    {
-      /* v4 */
-      ip->version = BL_ADDR_IPV4;
-      memcpy(&ip->ipv4.s_addr,
-	     zmq_msg_data(&llm),
-	     sizeof(uint32_t));
-    }
-  else if(zmq_msg_size(&llm) == sizeof(uint8_t)*16)
-    {
-      /* v6 */
-      ip->version = BL_ADDR_IPV6;
-      memcpy(&ip->ipv6.s6_addr,
-	     zmq_msg_data(&llm),
-	     sizeof(uint8_t)*16);
-    }
-  else
-    {
-      /* invalid ip address */
-      fprintf(stderr, "Invalid IP address\n");
-      goto err;
-    }
-
-  zmq_msg_close(&llm);
-  return 0;
-
- err:
-  zmq_msg_close(&llm);
-  return -1;
-}
-
 static char *recv_str(void *src)
 {
   zmq_msg_t llm;
@@ -229,7 +160,7 @@ static int send_table(void *dest, bgpwatcher_table_type_t type,
 static int send_peer(void *dest, bgpwatcher_peer_t *peer, int sndmore)
 {
   /* peer ip */
-  if(send_ip(dest, &peer->ip, ZMQ_SNDMORE) != 0)
+  if(bw_send_ip(dest, &peer->ip, ZMQ_SNDMORE) != 0)
     {
       goto err;
     }
@@ -250,7 +181,7 @@ static int send_peer(void *dest, bgpwatcher_peer_t *peer, int sndmore)
 static int recv_peer(void *src, bgpwatcher_peer_t *peer)
 {
   /* peer ip */
-  if(recv_ip(src, &peer->ip) != 0)
+  if(bw_recv_ip(src, &peer->ip) != 0)
     {
       goto err;
     }
@@ -408,7 +339,74 @@ static int recv_pfx_peer_info(void *src, bgpwatcher_pfx_peer_info_t *info)
 
 /* ========== UTILITIES ========== */
 
+int bw_send_ip(void *dest, bl_addr_storage_t *ip, int flags)
+{
+  switch(ip->version)
+    {
+    case BL_ADDR_IPV4:
+      if(zmq_send(dest, &ip->ipv4.s_addr,
+                  sizeof(uint32_t), flags) == sizeof(uint32_t))
+        {
+          return 0;
+        }
+      break;
 
+    case BL_ADDR_IPV6:
+      if(zmq_send(dest, &ip->ipv6.s6_addr,
+                  (sizeof(uint8_t)*16), flags) == sizeof(uint8_t)*16)
+        {
+          return 0;
+        }
+      break;
+
+    case BL_ADDR_TYPE_UNKNOWN:
+      return -1;
+    }
+
+  return -1;
+}
+
+int bw_recv_ip(void *src, bl_addr_storage_t *ip)
+{
+  zmq_msg_t llm;
+  assert(ip != NULL);
+
+  if(zmq_msg_init(&llm) == -1 || zmq_msg_recv(&llm, src, 0) == -1)
+    {
+      goto err;
+    }
+
+  /* 4 bytes means ipv4, 16 means ipv6 */
+  if(zmq_msg_size(&llm) == sizeof(uint32_t))
+    {
+      /* v4 */
+      ip->version = BL_ADDR_IPV4;
+      memcpy(&ip->ipv4.s_addr,
+	     zmq_msg_data(&llm),
+	     sizeof(uint32_t));
+    }
+  else if(zmq_msg_size(&llm) == sizeof(uint8_t)*16)
+    {
+      /* v6 */
+      ip->version = BL_ADDR_IPV6;
+      memcpy(&ip->ipv6.s6_addr,
+	     zmq_msg_data(&llm),
+	     sizeof(uint8_t)*16);
+    }
+  else
+    {
+      /* invalid ip address */
+      fprintf(stderr, "Invalid IP address\n");
+      goto err;
+    }
+
+  zmq_msg_close(&llm);
+  return 0;
+
+ err:
+  zmq_msg_close(&llm);
+  return -1;
+}
 
 /* ========== MESSAGE TYPES ========== */
 
@@ -775,7 +773,7 @@ int bgpwatcher_pfx_row_send(void *dest, bgpwatcher_pfx_row_t *row,
   assert(peer_cnt <= BGPWATCHER_PEER_MAX_CNT);
 
   /* prefix */
-  if(send_ip(dest, &row->prefix.address, ZMQ_SNDMORE) != 0)
+  if(bw_send_ip(dest, &row->prefix.address, ZMQ_SNDMORE) != 0)
     {
       goto err;
     }
@@ -810,7 +808,7 @@ int bgpwatcher_pfx_row_recv(void *src, bgpwatcher_pfx_row_t *row_out,
   int i;
 
   /* prefix */
-  if(recv_ip(src, &(row_out->prefix.address)) != 0)
+  if(bw_recv_ip(src, &(row_out->prefix.address)) != 0)
     {
       goto err;
     }

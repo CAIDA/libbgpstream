@@ -27,7 +27,17 @@
 
 #include <czmq.h>
 
+#include "bgpwatcher_common_int.h"
 #include "bgpwatcher_view_int.h"
+
+/* we need to poke our fingers into the peersign map */
+#include "bl_peersign_map_int.h"
+
+#define ASSERT_MORE				\
+  if(zsocket_rcvmore(src) == 0)			\
+    {						\
+      goto err;					\
+    }
 
 /* ========== PRIVATE FUNCTIONS ========== */
 
@@ -178,6 +188,34 @@ static bwv_peerid_pfxinfo_t *get_pfx_peerids(bgpwatcher_view_t *view,
   return NULL;
 }
 
+static void peers_dump(bgpwatcher_view_t *view)
+{
+  khiter_t k;
+  bl_peerid_t peerid;
+  bl_peer_signature_t *ps;
+  char peer_str[INET6_ADDRSTRLEN] = "";
+
+  fprintf(stdout, "Peers (%d):\n", bl_peersign_map_get_size(view->peersigns));
+
+  for(k = kh_begin(view->peersigns); k != kh_end(view->peersigns->id_ps); ++k)
+    {
+      if(kh_exist(view->peersigns->id_ps, k))
+	{
+	  peerid = kh_key(view->peersigns->id_ps, k);
+	  ps = &(kh_val(view->peersigns->id_ps, k));
+
+          inet_ntop(ps->peer_ip_addr.version,
+                    &(ps->peer_ip_addr.ipv4),
+                    peer_str, INET6_ADDRSTRLEN);
+
+	  fprintf(stdout, "  %"PRIu16":\t%s, %s\n",
+		  peerid,
+		  ps->collector_str,
+		  peer_str);
+	}
+    }
+}
+
 static void peerids_dump(bwv_peerid_pfxinfo_t *v)
 {
   khiter_t k;
@@ -198,7 +236,7 @@ static void peerids_dump(bwv_peerid_pfxinfo_t *v)
 	  continue;
 	}
 
-      fprintf(stdout, "    %"PRIu16": %"PRIu32"\n",
+      fprintf(stdout, "    %"PRIu16":\t%"PRIu32"\n",
 	      key, val->orig_asn);
     }
 }
@@ -234,6 +272,115 @@ static void v4pfxs_dump(bgpwatcher_view_t *view)
 	  peerids_dump(v);
 	}
     }
+}
+
+static int send_peers(void *dest, bgpwatcher_view_t *view)
+{
+  uint16_t u16;
+  khiter_t k;
+
+  bl_peer_signature_t *ps;
+  size_t len;
+
+  uint16_t peers_cnt;
+
+  /* peer cnt */
+  peers_cnt = (uint16_t)bl_peersign_map_get_size(view->peersigns);
+  u16 = htons(peers_cnt);
+  if(zmq_send(dest, &u16, sizeof(u16), ZMQ_SNDMORE) != sizeof(u16))
+    {
+      goto err;
+    }
+
+  /* foreach peer, send peerid, collector string, peer ip (version, address) */
+  for(k = kh_begin(view->peersigns); k != kh_end(view->peersigns->id_ps); ++k)
+    {
+      if(kh_exist(view->peersigns->id_ps, k))
+	{
+	  /* peer id */
+	  u16 = kh_key(view->peersigns->id_ps, k);
+	  u16 = htons(u16);
+	  if(zmq_send(dest, &u16, sizeof(u16), ZMQ_SNDMORE) != sizeof(u16))
+	    {
+	      goto err;
+	    }
+
+	  ps = &(kh_value(view->peersigns->id_ps, k));
+	  len = strlen(ps->collector_str);
+	  if(zmq_send(dest, &ps->collector_str, len, ZMQ_SNDMORE) != len)
+	    {
+	      goto err;
+	    }
+
+	  if(bw_send_ip(dest, &ps->peer_ip_addr, ZMQ_SNDMORE) != 0)
+	    {
+	      goto err;
+	    }
+	}
+    }
+
+  return 0;
+
+ err:
+  return -1;
+}
+
+static int recv_peers(void *src, bgpwatcher_view_t *view)
+{
+  uint16_t pc;
+  int i;
+
+  bl_peerid_t peerid;
+
+  bl_peer_signature_t ps;
+  int len;
+
+  ASSERT_MORE;
+
+  /* peer cnt */
+  if(zmq_recv(src, &pc, sizeof(pc), 0) != sizeof(pc))
+    {
+      goto err;
+    }
+  pc = ntohs(pc);
+  ASSERT_MORE;
+
+  /* foreach peer, recv peerid, collector string, peer ip (version, address) */
+  for(i=0; i<pc; i++)
+    {
+      /* peerid */
+      if(zmq_recv(src, &peerid, sizeof(peerid), 0) != sizeof(peerid))
+	{
+	  goto err;
+	}
+      peerid = ntohs(peerid);
+      ASSERT_MORE;
+
+      /* collector name */
+      if((len = zmq_recv(src, ps.collector_str, BGPCOMMON_COLLECTOR_NAME_LEN, 0)) <= 0)
+	{
+	  goto err;
+	}
+      ps.collector_str[len] = '\0';
+      ASSERT_MORE;
+
+      /* peer ip */
+      if(bw_recv_ip(src, &ps.peer_ip_addr) != 0)
+	{
+	  goto err;
+	}
+
+      if(bl_peersign_map_set(view->peersigns, peerid, ps.collector_str,
+			     &ps.peer_ip_addr) != 0)
+	{
+	  goto err;
+	}
+    }
+
+  return 0;
+
+ err:
+  return -1;
 }
 
 /* ========== PROTECTED FUNCTIONS ========== */
@@ -313,10 +460,17 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
       goto err;
     }
   u32 = htonl(view->time_created.tv_usec);
-  if(zmq_send(dest, &u32, sizeof(u32), 0) != sizeof(u32))
+  if(zmq_send(dest, &u32, sizeof(u32), ZMQ_SNDMORE) != sizeof(u32))
     {
       goto err;
     }
+
+  if(send_peers(dest, view) != 0)
+    {
+      goto err;
+    }
+
+  zmq_send(dest, "", 0, 0); /* DEBUG */
 
   /* @todo replace with actual fields (FIX SNDMORE ABOVE) */
   fprintf(stderr, "DEBUG: Sending dummy view...\n");
@@ -326,12 +480,6 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
  err:
   return -1;
 }
-
-#define ASSERT_MORE				\
-  if(zsocket_rcvmore(src) == 0)			\
-    {						\
-      goto err;					\
-    }
 
 bgpwatcher_view_t *bgpwatcher_view_recv(void *src)
 {
@@ -365,7 +513,15 @@ bgpwatcher_view_t *bgpwatcher_view_recv(void *src)
       goto err;
     }
   view->time_created.tv_usec = ntohl(u32);
-  /*ASSERT_MORE;*/
+  ASSERT_MORE;
+
+  if(recv_peers(src, view) != 0)
+    {
+      goto err;
+    }
+  ASSERT_MORE;
+
+  zmq_recv(src, NULL, 0, 0); /* DEBUG */
 
   /* @todo replace with actual fields */
   fprintf(stderr, "DEBUG: Receiving dummy view...\n");
@@ -469,6 +625,8 @@ void bgpwatcher_view_dump(bgpwatcher_view_t *view)
 	      view->time,
 	      (long)view->time_created.tv_sec,
 	      (long)view->time_created.tv_usec);
+
+      peers_dump(view);
 
       v4pfxs_dump(view);
 
