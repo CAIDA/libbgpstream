@@ -47,6 +47,7 @@
 /* pfx table */
 static char                   *test_collector_name;
 static uint32_t                test_time;
+static uint32_t                test_peer_first_ip;
 static bl_addr_storage_t       test_peer_ip;
 static uint8_t                 test_peer_status;
 
@@ -66,7 +67,7 @@ static void create_test_data()
   test_collector_name = "TEST-COLLECTOR";
 
   /* FIRST PEER IP */
-  test_peer_ip.ipv4.s_addr = 0x00FAD982; /* add one each time */
+  test_peer_ip.ipv4.s_addr = test_peer_first_ip = 0x00FAD982; /* add one each time */
   test_peer_ip.version = BL_ADDR_IPV4;
 
   /* FIRST PEER STATUS */
@@ -328,6 +329,9 @@ int main(int argc, char **argv)
           fprintf(stderr, "Could not begin pfx table\n");
           goto err;
         }
+
+      /* reset peer ip */
+      test_peer_ip.ipv4.s_addr = test_peer_first_ip;
 
       fprintf(stderr, "TEST: Simulating %d peer(s)\n", test_peer_num);
       for(peer = 0; peer < test_peer_num; peer++)
