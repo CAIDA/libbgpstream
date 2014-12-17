@@ -86,6 +86,7 @@ static void usage(const char *name)
   fprintf(stderr,
 	  "usage: %s [<options>]\n"
           "       -c                    Randomly decide if peers are up or down\n"
+          "       -C                    Initial test time (default: %d)\n"
 	  "       -i <interval-ms>      Time in ms between heartbeats to server\n"
 	  "                               (default: %d)\n"
 	  "       -l <beats>            Number of heartbeats that can go by before the\n"
@@ -110,6 +111,7 @@ static void usage(const char *name)
 	  "                               (default: %d)\n"
 	  "       -T <table-size>       Size of prefix tables (default: %d)\n",
 	  name,
+          test_time,
 	  BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT,
 	  BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT,
 	  BGPWATCHER_CLIENT_REQUEST_TIMEOUT_DEFAULT,
@@ -158,7 +160,7 @@ int main(int argc, char **argv)
   uint32_t test_peer_num = TEST_PEER_NUM_DEFAULT;
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":ci:l:m:M:n:N:P:r:R:s:S:t:T:v?")) >= 0)
+	(opt = getopt(argc, argv, ":cC:i:l:m:M:n:N:P:r:R:s:S:t:T:v?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
@@ -174,6 +176,10 @@ int main(int argc, char **argv)
 
         case 'c':
           use_random = 1;
+          break;
+
+        case 'C':
+          test_time = atoi(optarg);
           break;
 
 	case 'i':
