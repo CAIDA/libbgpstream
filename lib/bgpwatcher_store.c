@@ -81,6 +81,8 @@ typedef enum {
   STORE_VIEW_STATE_MAX      = STORE_VIEW_FULL,
 } store_view_state_t;
 
+#define STORE_VIEW_REUSE_MAX 1024
+
 /* dispatcher status */
 typedef struct dispatch_status {
   uint8_t sent;
@@ -92,6 +94,9 @@ typedef struct store_view {
 
   /** State of this view (unused, partial, full) */
   store_view_state_t state;
+
+  /** Number of times that this store has been reused */
+  int reuse_cnt;
 
   dispatch_status_t dis_status[STORE_VIEW_STATE_MAX+1];
 
@@ -190,28 +195,6 @@ static void store_view_destroy(store_view_t *sview)
   free(sview);
 }
 
-static void store_view_clear(bgpwatcher_store_t *store, store_view_t *sview)
-{
-  assert(sview != NULL);
-
-  fprintf(stderr, "DEBUG: Clearing store (%d)\n", sview->view->time);
-
-  sview->state = STORE_VIEW_UNUSED;
-
-  bl_string_set_reset(sview->done_clients);
-
-  bl_id_set_reset(sview->inactive_peers);
-
-  kh_free_vals(peerid_peerstatus, sview->active_peers_info,
-               active_peers_destroy);
-  kh_clear(peerid_peerstatus, sview->active_peers_info);
-
-  /* now clear the child view */
-  /** @todo do this properly */
-  bgpwatcher_view_destroy(sview->view);
-  sview->view = bgpwatcher_view_create(store->peersigns);
-}
-
 store_view_t *store_view_create(bgpwatcher_store_t *store)
 {
   store_view_t *sview;
@@ -251,6 +234,50 @@ store_view_t *store_view_create(bgpwatcher_store_t *store)
   return NULL;
 }
 
+static int store_view_clear(bgpwatcher_store_t *store,
+			    store_view_t *sview)
+{
+  int idx;
+
+  assert(sview != NULL);
+
+  /* after many soft-clears we force a hard-clear of the view to prevent the
+     accumulation of prefix info for prefixes that are no longer in use */
+  if(sview->reuse_cnt == STORE_VIEW_REUSE_MAX)
+    {
+      fprintf(stderr, "DEBUG: Forcing hard-clear of sview\n");
+      /* we need the index of this view */
+      idx = (store->sviews_first_idx +
+	     ((sview->view->time - store->sviews_first_time) / WDW_ITEM_TIME))
+	% WDW_LEN;
+
+      store_view_destroy(sview);
+      if((store->sviews[idx] = store_view_create(store)) == NULL)
+	{
+	  return -1;
+	}
+    }
+
+  fprintf(stderr, "DEBUG: Clearing store (%d)\n", sview->view->time);
+
+  sview->state = STORE_VIEW_UNUSED;
+
+  bl_string_set_reset(sview->done_clients);
+
+  bl_id_set_reset(sview->inactive_peers);
+
+  kh_free_vals(peerid_peerstatus, sview->active_peers_info,
+               active_peers_destroy);
+  kh_clear(peerid_peerstatus, sview->active_peers_info);
+
+  /* now clear the child view */
+  bgpwatcher_view_clear(sview->view);
+
+  sview->reuse_cnt++;
+
+  return 0;
+}
+
 static int store_view_completion_check(bgpwatcher_store_t *store,
                                        store_view_t *sview)
 {
@@ -260,17 +287,19 @@ static int store_view_completion_check(bgpwatcher_store_t *store,
   for (k = kh_begin(store->active_clients);
        k != kh_end(store->active_clients); ++k)
     {
-      if (kh_exist(store->active_clients, k))
+      if (!kh_exist(store->active_clients, k))
 	{
-	  client = &(kh_value(store->active_clients, k));
-	  if(client->intents & BGPWATCHER_PRODUCER_INTENT_PREFIX)
+	  continue;
+	}
+
+      client = &(kh_value(store->active_clients, k));
+      if(client->intents & BGPWATCHER_PRODUCER_INTENT_PREFIX)
+	{
+	  // check if all the producers are done with sending pfx tables
+	  if(bl_string_set_exists(sview->done_clients, client->name) == 0)
 	    {
-	      // check if all the producers are done with sending pfx tables
-	      if(bl_string_set_exists(sview->done_clients, client->name) == 0)
-		{
-		  sview->state = STORE_VIEW_PARTIAL;
-		  return 0;
-		}
+	      sview->state = STORE_VIEW_PARTIAL;
+	      return 0;
 	    }
 	}
     }
@@ -349,7 +378,7 @@ static int store_view_table_end(store_view_t *sview,
   bl_string_set_insert(sview->done_clients, client->name);
 
   int i;
-  for(i = 0; i < STORE_VIEW_STATE_MAX; i++)
+  for(i = 0; i <= STORE_VIEW_STATE_MAX; i++)
     {
       sview->dis_status[i].modified = 1;
     }
@@ -360,7 +389,10 @@ static int store_view_table_end(store_view_t *sview,
 static int store_view_remove(bgpwatcher_store_t *store, store_view_t *sview)
 {
   /* clear out stuff */
-  store_view_clear(store, sview);
+  if(store_view_clear(store, sview) != 0)
+    {
+      return -1;
+    }
 
   /* slide the window? */
   /* only if sview->view->time == first_time */
@@ -598,7 +630,7 @@ static int store_view_get(bgpwatcher_store_t *store, uint32_t new_time,
   return WINDOW_TIME_VALID;
 }
 
-#ifdef DEBUG
+#if 0
 static void store_views_dump(bgpwatcher_store_t *store)
 {
   int i, idx;
@@ -778,7 +810,7 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
       return -1;
     }
 
-#ifdef DEBUG
+#if 0
   store_views_dump(store);
 #endif
 
@@ -831,6 +863,9 @@ int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
 
   active_peer_status_t *ap_status;
 
+  /* sneaky trick to cache the prefix info */
+  void *view_cache = NULL;
+
   if(table->sview == NULL)
     {
       // the view for this ts has been already removed
@@ -855,7 +890,7 @@ int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
       pfx_info = &(row->info[i]);
 
       if(bgpwatcher_view_add_prefix(sview->view, &row->prefix,
-                                    server_id, pfx_info) != 0)
+                                    server_id, pfx_info, &view_cache) != 0)
         {
           return -1;
         }

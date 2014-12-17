@@ -47,7 +47,17 @@
 
 KHASH_INIT(bwv_peerid_pfxinfo, bl_peerid_t, bgpwatcher_pfx_peer_info_t, 1,
 	   kh_int_hash_func, kh_int_hash_equal)
-typedef khash_t(bwv_peerid_pfxinfo) bwv_peerid_pfxinfo_t;
+
+/** Value for a prefix in the v4pfxs and v6pfxs tables */
+typedef struct bwv_peerid_pfxinfo {
+
+  /** hash {peerid} -> pfx_peer_info */
+  khash_t(bwv_peerid_pfxinfo) *peers;
+
+  /** The number of peers in the peers hash that are actually valid */
+  uint16_t peers_cnt;
+
+} bwv_peerid_pfxinfo_t;
 // TODO: add documentation
 
 
@@ -77,8 +87,14 @@ struct bgpwatcher_view {
   /** Table of prefix info for v4 prefixes */
   bwv_v4pfx_peerid_pfxinfo_t *v4pfxs;
 
+  /** The number of in-use v4pfxs */
+  uint32_t v4pfxs_cnt;
+
   /** Table of prefix info for v6 prefixes */
   bwv_v6pfx_peerid_pfxinfo_t *v6pfxs;
+
+  /** The number of in-use v6pfxs */
+  uint32_t v6pfxs_cnt;
 
   /** Table of peerid -> peersign (could be shared) */
   bl_peersign_map_t *peersigns;
@@ -87,18 +103,32 @@ struct bgpwatcher_view {
   int peersigns_shared;
 };
 
+/** Empty a view
+ *
+ * @param view          view to clear
+ *
+ * This does not actually free any memory, it just marks prefix and peers as
+ * dirty so that future inserts can re-use the memory allocation. It does *not*
+ * clear the peersigns table.
+ */
+void bgpwatcher_view_clear(bgpwatcher_view_t *view);
+
 /** Add a prefix to a view
  *
  * @param view          view to add prefix to
  * @param prefix        borrowed pointer to prefix to add
  * @param peerid        id of peer to add info for
  * @param pfx_info      prefix info to add for given peer/prefix
+ * @param cache         pass a pointer to NULL on the first call, and then
+ *                      re-use the pointer to successive calls that use the
+ *                      same prefix to improve performance
  * @return 0 if successful, -1 otherwise
  */
 int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
                                bl_pfx_storage_t *prefix,
                                bl_peerid_t peerid,
-                               bgpwatcher_pfx_peer_info_t *pfx_info);
+                               bgpwatcher_pfx_peer_info_t *pfx_info,
+			       void **cache);
 
 /** Send the given view to the given socket
  *

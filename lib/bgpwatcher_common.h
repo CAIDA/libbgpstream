@@ -109,7 +109,11 @@ typedef struct bgpwatcher_pfx_peer_info {
 
   /** @todo add other pfx info fields here (AS path, etc) */
 
-  /** If set, this prefix is seen by this peer */
+  /** If set, this prefix is seen by this peer.
+   *
+   * @note this is also used by the store to track which peers are active for a
+   * prefix
+   */
   uint8_t in_use;
 
 } bgpwatcher_pfx_peer_info_t;

@@ -984,8 +984,10 @@ int bgpwatcher_server_publish_view(bgpwatcher_server_t *server,
   const char *pub = NULL;
   size_t pub_len = 0;
 
+#if 0
   fprintf(stderr, "DEBUG: Publishing view:\n");
   bgpwatcher_view_dump(view);
+#endif
 
   /* get the publication message prefix */
   if((pub = bgpwatcher_consumer_interest_pub(interests)) == NULL)
