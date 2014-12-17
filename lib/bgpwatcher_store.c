@@ -194,6 +194,8 @@ static void store_view_clear(bgpwatcher_store_t *store, store_view_t *sview)
 {
   assert(sview != NULL);
 
+  fprintf(stderr, "DEBUG: Clearing store (%d)\n", sview->view->time);
+
   sview->state = STORE_VIEW_UNUSED;
 
   bl_string_set_reset(sview->done_clients);
@@ -504,7 +506,7 @@ static int store_view_get(bgpwatcher_store_t *store, uint32_t new_time,
                           store_view_t **sview_p)
 {
   int i, idx, idx_offset;
-  uint32_t min_first_time;
+  uint32_t min_first_time, slot_time, time_offset;
   store_view_t *sview;
 
   assert(sview_p != NULL);
@@ -545,38 +547,40 @@ static int store_view_get(bgpwatcher_store_t *store, uint32_t new_time,
     (new_time - WDW_DURATION) + WDW_ITEM_TIME;
 
   idx_offset = store->sviews_first_idx;
+  time_offset = store->sviews_first_time;
   for(i=0; i<WDW_LEN; i++)
     {
       idx = (i + idx_offset) % WDW_LEN;
+      slot_time = (i * WDW_ITEM_TIME) + time_offset;
 
       sview = store->sviews[idx];
       assert(sview != NULL);
+
+      /* update the head of window */
+      store->sviews_first_idx = idx;
+      store->sviews_first_time = slot_time;
+
+      /* check if we have slid enough */
+      if(slot_time >= min_first_time)
+        {
+          break;
+        }
 
       if(sview->state == STORE_VIEW_UNUSED)
         {
           continue;
         }
 
-      /* we have two tasks: */
       /* expire tables with time < new_first_time */
-      if(sview->view->time < min_first_time)
-        {
-          /* expire it */
-          if(completion_check(store, sview,
-                              COMPLETION_TRIGGER_WDW_EXCEEDED) < 0)
-            {
-              return -1;
-            }
-        }
-      store->sviews_first_idx = idx;
-      store->sviews_first_time = sview->view->time;
-
-      if(sview->view->time >= min_first_time)
-        {
-          break;
-        }
+      if(completion_check(store, sview,
+			  COMPLETION_TRIGGER_WDW_EXCEEDED) < 0)
+	{
+	  return -1;
+	}
     }
 
+  /* special case when the new time causes the whole window to be cleared */
+  /* without this, the new time would be inserted somewhere in the window */
   if(store->sviews_first_time < min_first_time)
     {
       store->sviews_first_time = min_first_time;
