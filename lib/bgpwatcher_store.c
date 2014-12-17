@@ -36,8 +36,10 @@
 #include "bl_peersign_map.h"
 #include "utils.h"
 
-#define BGPWATCHER_STORE_TS_WDW_LEN      60
-#define BGPWATCHER_STORE_TS_WDW_SIZE     30 * BGPWATCHER_STORE_TS_WDW_LEN
+#define WDW_LEN         30
+#define WDW_ITEM_TIME   60
+#define WDW_DURATION    WDW_LEN * WDW_ITEM_TIME
+
 #define BGPWATCHER_STORE_BGPVIEW_TIMEOUT 1800
 #define BGPWATCHER_STORE_MAX_PEERS_CNT   1024
 
@@ -72,11 +74,12 @@ KHASH_INIT(peerid_peerstatus, bl_peerid_t, active_peer_status_t*, 1,
 typedef khash_t(peerid_peerstatus) peerid_peerstatus_t;
 
 typedef enum {
-  STORE_VIEW_STATE_UNKNOWN  = 0,
-  STORE_VIEW_PARTIAL        = 1,
-  STORE_VIEW_FULL           = 2
+  STORE_VIEW_UNUSED         = 0,
+  STORE_VIEW_UNKNOWN        = 1,
+  STORE_VIEW_PARTIAL        = 2,
+  STORE_VIEW_FULL           = 3,
+  STORE_VIEW_STATE_MAX      = STORE_VIEW_FULL,
 } store_view_state_t;
-#define STORE_VIEW_STATE_MAX 3
 
 /* dispatcher status */
 typedef struct dispatch_status {
@@ -90,7 +93,7 @@ typedef struct store_view {
   /** State of this view (unused, partial, full) */
   store_view_state_t state;
 
-  dispatch_status_t dis_status[STORE_VIEW_STATE_MAX];
+  dispatch_status_t dis_status[STORE_VIEW_STATE_MAX+1];
 
   /** whether the bgpview has been modified
    *  since the last dump */
@@ -110,9 +113,6 @@ typedef struct store_view {
 
 } store_view_t;
 
-KHASH_INIT(time_sview, uint32_t, store_view_t*, 1,
-	   kh_int_hash_func, kh_int_hash_equal);
-
 KHASH_INIT(strclientstatus, char*, bgpwatcher_server_client_info_t , 1,
 	   kh_str_hash_func, kh_str_hash_equal)
 typedef khash_t(strclientstatus) clientinfo_map_t;
@@ -121,10 +121,14 @@ struct bgpwatcher_store {
   /** BGP Watcher server handle */
   bgpwatcher_server_t *server;
 
-  /** aggregated view of bgpdata organized by time: for each timestamp we build
-   *  a bgpview */
-  /** @todo consider changing to a circular buffer of views */
-  khash_t(time_sview) *sviews;
+  /** Circular buffer of views */
+  store_view_t *sviews[WDW_LEN];
+
+  /** The index of the first (oldest) view */
+  uint32_t sviews_first_idx;
+
+  /** The time of the first (oldest) view */
+  uint32_t sviews_first_time;
 
   /** active_clients contains, for each registered/active client (i.e. those
    *  that are currently connected) its status.*/
@@ -138,13 +142,11 @@ struct bgpwatcher_store {
    * faster lookup in the bgpview prefix tables.
    */
   bl_peersign_map_t *peersigns;
+};
 
-  /** sliding window interval:
-   *
-   *  we process a maximum of 30 timestamps at a given time, when a new ts
-   *  arrive TODO: finish documentation
-   */
-  uint32_t min_ts;
+enum {
+  WINDOW_TIME_EXCEEDED,
+  WINDOW_TIME_VALID,
 };
 
 
@@ -188,7 +190,27 @@ static void store_view_destroy(store_view_t *sview)
   free(sview);
 }
 
-store_view_t *store_view_create(bgpwatcher_store_t *store, uint32_t time)
+static void store_view_clear(bgpwatcher_store_t *store, store_view_t *sview)
+{
+  assert(sview != NULL);
+
+  sview->state = STORE_VIEW_UNUSED;
+
+  bl_string_set_reset(sview->done_clients);
+
+  bl_id_set_reset(sview->inactive_peers);
+
+  kh_free_vals(peerid_peerstatus, sview->active_peers_info,
+               active_peers_destroy);
+  kh_clear(peerid_peerstatus, sview->active_peers_info);
+
+  /* now clear the child view */
+  /** @todo do this properly */
+  bgpwatcher_view_destroy(sview->view);
+  sview->view = bgpwatcher_view_create(store->peersigns);
+}
+
+store_view_t *store_view_create(bgpwatcher_store_t *store)
 {
   store_view_t *sview;
   if((sview = malloc_zero(sizeof(store_view_t))) == NULL)
@@ -211,7 +233,7 @@ store_view_t *store_view_create(bgpwatcher_store_t *store, uint32_t time)
       goto err;
     }
 
-  sview->state = STORE_VIEW_STATE_UNKNOWN;
+  sview->state = STORE_VIEW_UNUSED;
 
   // dis_status -> everything is set to zero
 
@@ -219,8 +241,6 @@ store_view_t *store_view_create(bgpwatcher_store_t *store, uint32_t time)
     {
       goto err;
     }
-
-  sview->view->time = time;
 
   return sview;
 
@@ -264,7 +284,7 @@ static active_peer_status_t *store_view_add_peer(store_view_t *sview,
   khiter_t k;
   int khret;
 
-  sview->state = STORE_VIEW_STATE_UNKNOWN;
+  sview->state = STORE_VIEW_UNKNOWN;
 
   active_peer_status_t *ap_status = NULL;
 
@@ -307,7 +327,7 @@ static int store_view_table_end(store_view_t *sview,
 {
   int remote_peer_id;
   active_peer_status_t *ap_status;
-  sview->state = STORE_VIEW_STATE_UNKNOWN;
+  sview->state = STORE_VIEW_UNKNOWN;
 
   for(remote_peer_id = 0; remote_peer_id < table->peers_cnt; remote_peer_id++)
     {
@@ -335,38 +355,19 @@ static int store_view_table_end(store_view_t *sview,
   return 0;
 }
 
-static int remove_view(bgpwatcher_store_t *store, store_view_t *sview)
+static int store_view_remove(bgpwatcher_store_t *store, store_view_t *sview)
 {
-  khiter_t k;
-  if((k = kh_get(time_sview, store->sviews, sview->view->time))
-     == kh_end(store->sviews))
+  /* clear out stuff */
+  store_view_clear(store, sview);
+
+  /* slide the window? */
+  /* only if sview->view->time == first_time */
+  if(sview->view->time == store->sviews_first_time)
     {
-      // view for this time must exist ? TODO: check policies!
-      fprintf(stderr, "A bgpview for time %"PRIu32" must exist!\n",
-              sview->view->time);
-      return -1;
+      store->sviews_first_time += WDW_ITEM_TIME;
+      store->sviews_first_idx = (store->sviews_first_idx+1) % WDW_LEN;
     }
 
-  // destroy view
-  store_view_destroy(sview);
-
-  // destroy time entry
-  kh_del(time_sview, store->sviews, k);
-
-  // update min_ts
-  uint32_t time;
-  store->min_ts = 0;
-  for (k = kh_begin(store->sviews); k != kh_end(store->sviews); ++k)
-    {
-      if (kh_exist(store->sviews, k))
-	{
-	  time = kh_key(store->sviews, k);
-	  if(store->min_ts == 0 || store->min_ts > time)
-	    {
-	      store->min_ts = time;
-	    }
-	}
-    }
   return 0;
 }
 
@@ -468,7 +469,7 @@ static int completion_check(bgpwatcher_store_t *store, store_view_t *sview,
   // TODO: documentation
   if(ret == 0 && to_remove == 1)
     {
-      return remove_view(store, sview);
+      return store_view_remove(store, sview);
     }
 
   return ret;
@@ -477,31 +478,155 @@ static int completion_check(bgpwatcher_store_t *store, store_view_t *sview,
 int check_timeouts(bgpwatcher_store_t *store)
 {
   store_view_t *sview = NULL;
-  khiter_t k;
+  int i;
   struct timeval time_now;
   gettimeofday(&time_now, NULL);
 
-  for (k = kh_begin(store->sviews); k != kh_end(store->sviews); ++k)
+  for(i=0; i<WDW_LEN; i++)
     {
-      if (kh_exist(store->sviews, k))
-	{
-	  sview = kh_value(store->sviews, k);
-	  if((time_now.tv_sec - sview->view->time_created.tv_sec)
-             > BGPWATCHER_STORE_BGPVIEW_TIMEOUT)
-	    {
-	      return completion_check(store, sview,
-                                      COMPLETION_TRIGGER_TIMEOUT_EXPIRED);
-	    }
-	}
+      sview = store->sviews[i];
+      if(sview->state == STORE_VIEW_UNUSED)
+        {
+          continue;
+        }
+
+      if((time_now.tv_sec - sview->view->time_created.tv_sec)
+         > BGPWATCHER_STORE_BGPVIEW_TIMEOUT)
+        {
+          return completion_check(store, sview,
+                                  COMPLETION_TRIGGER_TIMEOUT_EXPIRED);
+        }
     }
   return 0;
 }
+
+static int store_view_get(bgpwatcher_store_t *store, uint32_t new_time,
+                          store_view_t **sview_p)
+{
+  int i, idx, idx_offset;
+  uint32_t min_first_time;
+  store_view_t *sview;
+
+  assert(sview_p != NULL);
+  *sview_p = NULL;
+
+  /* new_time MUST be a multiple of the window size */
+  assert(((new_time / WDW_ITEM_TIME) * WDW_ITEM_TIME) == new_time);
+
+  /* is this the first insertion? */
+  if(store->sviews_first_time == 0)
+    {
+      store->sviews_first_time = (new_time - WDW_DURATION + WDW_ITEM_TIME);
+      sview = store->sviews[WDW_LEN-1];
+      goto valid;
+    }
+
+  if(new_time < store->sviews_first_time)
+    {
+      /* before the window */
+      return WINDOW_TIME_EXCEEDED;
+    }
+
+  if(new_time < (store->sviews_first_time + WDW_DURATION))
+    {
+      /* inside window */
+      idx = (( (new_time - store->sviews_first_time) / WDW_ITEM_TIME )
+             + store->sviews_first_idx) % WDW_LEN;
+
+      assert(idx >= 0 && idx < WDW_LEN);
+      sview = store->sviews[idx];
+      goto valid;
+    }
+
+  /* if we reach here, we must slide the window */
+
+  /* this will be the first valid view in the window */
+  min_first_time =
+    (new_time - WDW_DURATION) + WDW_ITEM_TIME;
+
+  idx_offset = store->sviews_first_idx;
+  for(i=0; i<WDW_LEN; i++)
+    {
+      idx = (i + idx_offset) % WDW_LEN;
+
+      sview = store->sviews[idx];
+      assert(sview != NULL);
+
+      if(sview->state == STORE_VIEW_UNUSED)
+        {
+          continue;
+        }
+
+      /* we have two tasks: */
+      /* expire tables with time < new_first_time */
+      if(sview->view->time < min_first_time)
+        {
+          /* expire it */
+          if(completion_check(store, sview,
+                              COMPLETION_TRIGGER_WDW_EXCEEDED) < 0)
+            {
+              return -1;
+            }
+        }
+      store->sviews_first_idx = idx;
+      store->sviews_first_time = sview->view->time;
+
+      if(sview->view->time >= min_first_time)
+        {
+          break;
+        }
+    }
+
+  if(store->sviews_first_time < min_first_time)
+    {
+      store->sviews_first_time = min_first_time;
+    }
+
+  idx = (store->sviews_first_idx +
+         ((new_time - store->sviews_first_time) / WDW_ITEM_TIME)) % WDW_LEN;
+  sview = store->sviews[idx];
+  goto valid;
+
+ valid:
+  sview->state = STORE_VIEW_UNKNOWN;
+  sview->view->time = new_time;
+  *sview_p = sview;
+  return WINDOW_TIME_VALID;
+}
+
+#ifdef DEBUG
+static void store_views_dump(bgpwatcher_store_t *store)
+{
+  int i, idx;
+
+  fprintf(stdout, "--------------------\n");
+
+  for(i=0; i<WDW_LEN; i++)
+    {
+      idx = (i + store->sviews_first_idx) % WDW_LEN;
+
+      fprintf(stdout, "%d (%d): ", i, idx);
+
+      if(store->sviews[idx]->state == STORE_VIEW_UNUSED)
+        {
+          fprintf(stdout, "unused\n");
+        }
+      else
+        {
+          fprintf(stdout, "%d\n", store->sviews[idx]->view->time);
+        }
+    }
+
+  fprintf(stdout, "--------------------\n\n");
+}
+#endif
 
 /* ========== PROTECTED FUNCTIONS ========== */
 
 bgpwatcher_store_t *bgpwatcher_store_create(bgpwatcher_server_t *server)
 {
   bgpwatcher_store_t *store;
+  int i;
 
   // allocate memory for the structure
   if((store = malloc_zero(sizeof(bgpwatcher_store_t))) == NULL)
@@ -510,13 +635,6 @@ bgpwatcher_store_t *bgpwatcher_store_create(bgpwatcher_server_t *server)
     }
 
   store->server = server;
-  store->min_ts = 0;
-
-  if((store->sviews = kh_init(time_sview)) == NULL)
-    {
-      fprintf(stderr, "Failed to create bgp_timeseries\n");
-      goto err;
-    }
 
   if((store->active_clients = kh_init(strclientstatus)) == NULL)
     {
@@ -528,6 +646,15 @@ bgpwatcher_store_t *bgpwatcher_store_create(bgpwatcher_server_t *server)
     {
       fprintf(stderr, "Failed to create peersigns table\n");
       goto err;
+    }
+
+  /* must be created after peersigns */
+  for(i=0; i<WDW_LEN; i++)
+    {
+      if((store->sviews[i] = store_view_create(store)) == NULL)
+        {
+          goto err;
+        }
     }
 
   return store;
@@ -547,16 +674,17 @@ static void str_free(char *str)
 
 void bgpwatcher_store_destroy(bgpwatcher_store_t *store)
 {
+  int i;
+
   if(store == NULL)
     {
       return;
     }
 
-  if(store->sviews != NULL)
+  for(i=0; i<WDW_LEN; i++)
     {
-      kh_free_vals(time_sview, store->sviews, store_view_destroy);
-      kh_destroy(time_sview, store->sviews);
-      store->sviews = NULL;
+      store_view_destroy(store->sviews[i]);
+      store->sviews[i] = NULL;
     }
 
   if(store->active_clients != NULL)
@@ -608,6 +736,7 @@ int bgpwatcher_store_client_connect(bgpwatcher_store_t *store,
 int bgpwatcher_store_client_disconnect(bgpwatcher_store_t *store,
                                        bgpwatcher_server_client_info_t *client)
 {
+  int i;
   khiter_t k;
   store_view_t *sview;
 
@@ -622,11 +751,11 @@ int bgpwatcher_store_client_disconnect(bgpwatcher_store_t *store,
     }
 
   /* notify each view that a client has disconnected */
-  for (k = kh_begin(store->sviews); k != kh_end(store->sviews); ++k)
+  for(i=0; i<WDW_LEN; i++)
     {
-      if (kh_exist(store->sviews, k))
-	{
-	  sview = kh_value(store->sviews, k);
+      sview = store->sviews[i];
+      if(sview->state != STORE_VIEW_UNUSED)
+        {
 	  completion_check(store, sview, COMPLETION_TRIGGER_CLIENT_DISCONNECT);
 	}
     }
@@ -638,81 +767,25 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
 {
 
   store_view_t *sview = NULL;
-  uint32_t ts;
-  khiter_t k;
-  int khret;
+  int ret;
 
-  // sliding window checks
-  if(store->min_ts > 0)
+  if((ret = store_view_get(store, table->time, &sview)) < 0)
     {
-      if(table->time >= (store->min_ts + BGPWATCHER_STORE_TS_WDW_SIZE) )
-	{
-	  store->min_ts = 0;
-	  /** trigger expiration of window on bgpviews whose ts
-	   *  is older than  table->time - BGPWATCHER_STORE_TS_WDW_SIZE:
-	   *  expire ts if ts <= (table->time- BGPWATCHER_STORE_TS_WDW_SIZE) */
-	  for (k = kh_begin(store->sviews); k != kh_end(store->sviews); ++k)
-	    {
-	      if (kh_exist(store->sviews, k) == 0)
-		{
-                  continue;
-                }
-              ts = kh_key(store->sviews, k);
-              sview = kh_value(store->sviews, k);
-
-              if(ts <= (table->time - BGPWATCHER_STORE_TS_WDW_SIZE))
-                {
-                  // ts is out of the sliding window
-                  if(completion_check(store, sview,
-                                      COMPLETION_TRIGGER_WDW_EXCEEDED) < 0)
-                    {
-                      return -1;
-                    }
-                }
-              else
-                {
-                  // get the next min_ts
-                  if(store->min_ts == 0 || ts < store->min_ts)
-                    {
-                      store->min_ts = ts;
-                    }
-                }
-	    }
-	}
-      else if(table->time < store->min_ts)
-        {
-          fprintf(stderr,
-                  "BGP Views for time %"PRIu32" have been already processed\n",
-                  table->time);
-          // signal to pfx row func that this table should be ignored
-          table->sview = NULL;
-          return check_timeouts(store);
-        }
-    }
-  else
-    {  // first insertion
-      store->min_ts = table->time;
+      return -1;
     }
 
-  // insert new bgp_view if time does not exist yet
-  if((k = kh_get(time_sview, store->sviews, table->time))
-     == kh_end(store->sviews))
+#ifdef DEBUG
+  store_views_dump(store);
+#endif
+
+  if(ret == WINDOW_TIME_EXCEEDED)
     {
-      // first time we receive this table time -> create bgp_view
-      if((sview = store_view_create(store, table->time)) == NULL)
-	{
-	  fprintf(stderr,
-                  "ERROR: could not create bgpview for time %"PRIu32"\n",
-                  table->time);
-	  return -1;
-	}
-      k = kh_put(time_sview, store->sviews, table->time, &khret);
-      kh_value(store->sviews, k) = sview;
-    }
-  else
-    {
-      // view exists, just retrieve pointer
-      sview = kh_value(store->sviews, k);
+      fprintf(stderr,
+              "BGP Views for time %"PRIu32" have been already processed\n",
+              table->time);
+      // signal to pfx row func that this table should be ignored
+      table->sview = NULL;
+      return check_timeouts(store);
     }
 
   // cache a pointer to this view in the server's table
@@ -766,7 +839,7 @@ int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
   sview = (store_view_t*)table->sview;
   assert(sview != NULL);
 
-  sview->state = STORE_VIEW_STATE_UNKNOWN;
+  sview->state = STORE_VIEW_UNKNOWN;
 
   for(i=0; i<table->peers_cnt; i++)
     {
