@@ -298,8 +298,21 @@ int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
 int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
 {
   uint32_t u32;
-  /* send the time */
+
+  /* time */
   u32 = htonl(view->time);
+  if(zmq_send(dest, &u32, sizeof(u32), ZMQ_SNDMORE) != sizeof(u32))
+    {
+      goto err;
+    }
+
+  /* time_created */
+  u32 = htonl(view->time_created.tv_sec);
+  if(zmq_send(dest, &u32, sizeof(u32), ZMQ_SNDMORE) != sizeof(u32))
+    {
+      goto err;
+    }
+  u32 = htonl(view->time_created.tv_usec);
   if(zmq_send(dest, &u32, sizeof(u32), 0) != sizeof(u32))
     {
       goto err;
@@ -314,6 +327,12 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
   return -1;
 }
 
+#define ASSERT_MORE				\
+  if(zsocket_rcvmore(src) == 0)			\
+    {						\
+      goto err;					\
+    }
+
 bgpwatcher_view_t *bgpwatcher_view_recv(void *src)
 {
   bgpwatcher_view_t *view;
@@ -325,12 +344,28 @@ bgpwatcher_view_t *bgpwatcher_view_recv(void *src)
       goto err;
     }
 
-  /* recv the time */
+  /* time */
   if(zmq_recv(src, &u32, sizeof(u32), 0) != sizeof(u32))
     {
       goto err;
     }
   view->time = ntohl(u32);
+  ASSERT_MORE;
+
+  /* time_created */
+  if(zmq_recv(src, &u32, sizeof(u32), 0) != sizeof(u32))
+    {
+      goto err;
+    }
+  view->time_created.tv_sec = ntohl(u32);
+  ASSERT_MORE;
+
+  if(zmq_recv(src, &u32, sizeof(u32), 0) != sizeof(u32))
+    {
+      goto err;
+    }
+  view->time_created.tv_usec = ntohl(u32);
+  /*ASSERT_MORE;*/
 
   /* @todo replace with actual fields */
   fprintf(stderr, "DEBUG: Receiving dummy view...\n");
@@ -429,8 +464,11 @@ void bgpwatcher_view_dump(bgpwatcher_view_t *view)
     {
       fprintf(stdout,
 	      "------------------------------\n"
-	      "Time:\t%"PRIu32"\n",
-	      view->time);
+	      "Time:\t%"PRIu32"\n"
+	      "Created:\t%ld.%ld\n",
+	      view->time,
+	      (long)view->time_created.tv_sec,
+	      (long)view->time_created.tv_usec);
 
       v4pfxs_dump(view);
 
