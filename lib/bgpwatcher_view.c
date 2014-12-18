@@ -668,14 +668,17 @@ int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
 {
   bwv_peerid_pfxinfo_t *peerids_pfxinfo;
 
-  if(*cache == NULL)
+  if(cache == NULL || *cache == NULL)
     {
       if((peerids_pfxinfo = get_pfx_peerids(view, prefix)) == NULL)
 	{
 	  fprintf(stderr, "Unknown prefix provided!\n");
 	  return -1;
 	}
-      *cache = peerids_pfxinfo;
+      if(cache != NULL)
+	{
+	  *cache = peerids_pfxinfo;
+	}
     }
   else
     {
