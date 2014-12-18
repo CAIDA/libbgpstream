@@ -335,14 +335,12 @@ int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client)
 
 int bgpwatcher_client_recv_view(bgpwatcher_client_t *client,
 				bgpwatcher_client_recv_mode_t blocking,
-				bgpwatcher_view_t **view_p)
+				bgpwatcher_view_t *view)
 
 {
   uint8_t interests = 0;
-  bgpwatcher_view_t *view;
 
-  assert(view_p != NULL);
-  *view_p = NULL;
+  assert(view != NULL);
 
   /* attempt to get the set of interests */
   if(zmq_recv(client->broker_zocket,
@@ -355,12 +353,10 @@ int bgpwatcher_client_recv_view(bgpwatcher_client_t *client,
 	  return -1;
         }
 
-  if((view = bgpwatcher_view_recv(client->broker_zocket)) == NULL)
+  if(bgpwatcher_view_recv(client->broker_zocket, view) != 0)
     {
       return -1;
     }
-
-  *view_p = view;
 
   return interests;
 }

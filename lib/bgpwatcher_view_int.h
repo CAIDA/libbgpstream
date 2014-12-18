@@ -103,16 +103,6 @@ struct bgpwatcher_view {
   int peersigns_shared;
 };
 
-/** Empty a view
- *
- * @param view          view to clear
- *
- * This does not actually free any memory, it just marks prefix and peers as
- * dirty so that future inserts can re-use the memory allocation. It does *not*
- * clear the peersigns table.
- */
-void bgpwatcher_view_clear(bgpwatcher_view_t *view);
-
 /** Add a prefix to a view
  *
  * @param view          view to add prefix to
@@ -141,10 +131,9 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view);
 /** Receive a view from the given socket
  *
  * @param src           socket to receive on
+ * @param view          pointer to the clear/new view to receive into
  * @return pointer to the view instance received, NULL if an error occurred.
- *
- * The view returned must be destroyed using bgpwatcher_view_destroy.
  */
-bgpwatcher_view_t *bgpwatcher_view_recv(void *src);
+int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view);
 
 #endif /* __BGPWATCHER_VIEW_INT_H */

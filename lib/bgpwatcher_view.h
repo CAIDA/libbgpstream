@@ -65,6 +65,16 @@ bgpwatcher_view_t *bgpwatcher_view_create(bl_peersign_map_t *peer_table);
  */
 void bgpwatcher_view_destroy(bgpwatcher_view_t *view);
 
+/** Empty a view
+ *
+ * @param view          view to clear
+ *
+ * This does not actually free any memory, it just marks prefix and peers as
+ * dirty so that future inserts can re-use the memory allocation. It does *not*
+ * clear the peersigns table.
+ */
+void bgpwatcher_view_clear(bgpwatcher_view_t *view);
+
 /** Dump the given BGP View to stdout
  *
  * @param view        pointer to a view structure

@@ -180,7 +180,7 @@ int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client);
  * @param client        pointer to the client instance to receive from
  * @param mode          receive mode (blocking/non-blocking)
  * @param[out] interests  set to all the interests the view satisfies
- * @param[out] view     set to a pointer to the view instance received
+ * @param view          pointer to the view to fill
  * @return all the interests the view satisfies, -1 if an error occurred.
  *
  * @note this function will only receive messages for which an interest was set
@@ -189,11 +189,13 @@ int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client);
  * table that is marked as PARTIAL could also be marked as FIRSTFULL (if it also
  * satisfies that interest).
  *
- * The view instance received must be destroyed using bgpwatcher_view_destroy.
+ * The view provided to this function must have been created using
+ * bgpwatcher_view_create, and if it is being re-used, it *must* have been
+ * cleared using bgpwatcher_view_clear.
  */
 int bgpwatcher_client_recv_view(bgpwatcher_client_t *client,
 				bgpwatcher_client_recv_mode_t blocking,
-				bgpwatcher_view_t **view_p);
+				bgpwatcher_view_t *view);
 
 /** Stop the given bgpwatcher client instance
  *

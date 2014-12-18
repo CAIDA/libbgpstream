@@ -798,16 +798,11 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
   return -1;
 }
 
-bgpwatcher_view_t *bgpwatcher_view_recv(void *src)
+int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
 {
-  bgpwatcher_view_t *view;
   uint32_t u32;
 
-  /* create a new independent view (no external peers table) */
-  if((view = bgpwatcher_view_create(NULL)) == NULL)
-    {
-      goto err;
-    }
+  assert(view != NULL);
 
   /* time */
   if(zmq_recv(src, &u32, sizeof(u32), 0) != sizeof(u32))
@@ -859,11 +854,10 @@ bgpwatcher_view_t *bgpwatcher_view_recv(void *src)
 
   assert(zsocket_rcvmore(src) == 0);
 
-  return view;
+  return 0;
 
  err:
-  bgpwatcher_view_destroy(view);
-  return NULL;
+  return -1;
 }
 
 /* ========== PUBLIC FUNCTIONS ========== */

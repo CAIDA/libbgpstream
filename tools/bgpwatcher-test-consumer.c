@@ -229,10 +229,16 @@ int main(int argc, char **argv)
     }
   fprintf(stderr, "done\n");
 
+  if((view = bgpwatcher_view_create(NULL)) == NULL)
+    {
+      fprintf(stderr, "ERROR: Could not create view\n");
+      goto err;
+    }
+
   while((rx_interests =
          bgpwatcher_client_recv_view(client,
                                      BGPWATCHER_CLIENT_RECV_MODE_BLOCK,
-                                     &view)) > 0)
+                                     view)) > 0)
     {
       fprintf(stdout, "Interests: ");
       bgpwatcher_consumer_interest_dump(rx_interests);
@@ -252,8 +258,7 @@ int main(int argc, char **argv)
 
       fprintf(stdout, "--------------------\n");
 
-      bgpwatcher_view_destroy(view);
-      view = NULL;
+      bgpwatcher_view_clear(view);
     }
 
   fprintf(stderr, "TEST: Shutting down...\n");
