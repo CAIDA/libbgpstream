@@ -900,3 +900,18 @@ void bgpwatcher_view_dump(bgpwatcher_view_t *view)
 	      "------------------------------\n\n");
     }
 }
+
+uint32_t bgpwatcher_view_v4size(bgpwatcher_view_t *view)
+{
+  return kh_size(view->v4pfxs);
+}
+
+uint32_t bgpwatcher_view_v6size(bgpwatcher_view_t *view)
+{
+  return kh_size(view->v6pfxs);
+}
+
+uint32_t bgpwatcher_view_size(bgpwatcher_view_t *view)
+{
+  return bgpwatcher_view_v4size(view) + bgpwatcher_view_v6size(view);
+}
