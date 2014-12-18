@@ -43,68 +43,6 @@ static void *get_in_addr(bl_addr_storage_t *ip) {
     : (void *) &(ip->ipv6);
 }
 
-static int serialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip)
-{
-  size_t written = 0;
-
-  /* serialize the version */
-  assert(len >= 1);
-  *buf = ip->version;
-  buf++;
-  written++;
-
-  /* now serialize the actual address */
-  switch(ip->version)
-    {
-    case BL_ADDR_IPV4:
-      assert((len-written) >= sizeof(uint32_t));
-      memcpy(buf, &ip->ipv4.s_addr, sizeof(uint32_t));
-      return written + sizeof(uint32_t);
-      break;
-
-    case BL_ADDR_IPV6:
-      assert((len-written) >= (sizeof(uint8_t)*16));
-      memcpy(buf, &ip->ipv6.s6_addr, sizeof(uint8_t)*16);
-      return written + sizeof(uint8_t)*16;
-      break;
-
-    case BL_ADDR_TYPE_UNKNOWN:
-      return -1;
-    }
-
-  return -1;
-}
-
-static int deserialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip)
-{
-  size_t read = 0;
-
-  assert(len >= 1);
-  ip->version = *buf;
-  buf++;
-  read++;
-
-  switch(ip->version)
-    {
-    case BL_ADDR_IPV4:
-      assert((len-read) >= sizeof(uint32_t));
-      memcpy(&ip->ipv4.s_addr, buf, sizeof(uint32_t));
-      return read + sizeof(uint32_t);
-      break;
-
-    case BL_ADDR_IPV6:
-      assert((len-read) >= (sizeof(uint8_t)*16));
-      memcpy(&ip->ipv6.s6_addr, buf, sizeof(uint8_t)*16);
-      return read + (sizeof(uint8_t) * 16);
-      break;
-
-    case BL_ADDR_TYPE_UNKNOWN:
-      return -1;
-    }
-
-  return -1;
-}
-
 static char *recv_str(void *src)
 {
   zmq_msg_t llm;
@@ -408,6 +346,68 @@ int bw_recv_ip(void *src, bl_addr_storage_t *ip)
   return -1;
 }
 
+int bw_serialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip)
+{
+  size_t written = 0;
+
+  /* serialize the version */
+  assert(len >= 1);
+  *buf = ip->version;
+  buf++;
+  written++;
+
+  /* now serialize the actual address */
+  switch(ip->version)
+    {
+    case BL_ADDR_IPV4:
+      assert((len-written) >= sizeof(uint32_t));
+      memcpy(buf, &ip->ipv4.s_addr, sizeof(uint32_t));
+      return written + sizeof(uint32_t);
+      break;
+
+    case BL_ADDR_IPV6:
+      assert((len-written) >= (sizeof(uint8_t)*16));
+      memcpy(buf, &ip->ipv6.s6_addr, sizeof(uint8_t)*16);
+      return written + sizeof(uint8_t)*16;
+      break;
+
+    case BL_ADDR_TYPE_UNKNOWN:
+      return -1;
+    }
+
+  return -1;
+}
+
+int bw_deserialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip)
+{
+  size_t read = 0;
+
+  assert(len >= 1);
+  ip->version = *buf;
+  buf++;
+  read++;
+
+  switch(ip->version)
+    {
+    case BL_ADDR_IPV4:
+      assert((len-read) >= sizeof(uint32_t));
+      memcpy(&ip->ipv4.s_addr, buf, sizeof(uint32_t));
+      return read + sizeof(uint32_t);
+      break;
+
+    case BL_ADDR_IPV6:
+      assert((len-read) >= (sizeof(uint8_t)*16));
+      memcpy(&ip->ipv6.s6_addr, buf, sizeof(uint8_t)*16);
+      return read + (sizeof(uint8_t) * 16);
+      break;
+
+    case BL_ADDR_TYPE_UNKNOWN:
+      return -1;
+    }
+
+  return -1;
+}
+
 /* ========== MESSAGE TYPES ========== */
 
 bgpwatcher_msg_type_t bgpwatcher_recv_type(void *src, int flags)
@@ -652,15 +652,13 @@ void bgpwatcher_pfx_table_dump(bgpwatcher_pfx_table_t *table)
    ORIG_ASN [04]
 */
 /* @todo consider moving the buffer into the client */
-#define PFX_ROW_BUFFER_LEN 17 + (BGPWATCHER_PEER_MAX_CNT*5)
-
 int bgpwatcher_pfx_row_send(void *dest, bgpwatcher_pfx_row_t *row,
                             int peer_cnt)
 {
   int i;
 
-  size_t len = PFX_ROW_BUFFER_LEN;
-  uint8_t buf[PFX_ROW_BUFFER_LEN];
+  size_t len = BW_PFX_ROW_BUFFER_LEN;
+  uint8_t buf[BW_PFX_ROW_BUFFER_LEN];
   uint8_t *ptr = buf;
   size_t written = 0;
   size_t s = 0;
@@ -668,7 +666,7 @@ int bgpwatcher_pfx_row_send(void *dest, bgpwatcher_pfx_row_t *row,
   assert(peer_cnt <= BGPWATCHER_PEER_MAX_CNT);
 
   /* prefix */
-  if((s = serialize_ip(ptr, len, &row->prefix.address)) == -1)
+  if((s = bw_serialize_ip(ptr, len, &row->prefix.address)) == -1)
     {
       goto err;
     }
@@ -728,7 +726,7 @@ int bgpwatcher_pfx_row_recv(void *src, bgpwatcher_pfx_row_t *row_out,
   assert(len > 0);
 
   /* prefix */
-  if((s = deserialize_ip(buf, (len-read), &(row_out->prefix.address))) == -1)
+  if((s = bw_deserialize_ip(buf, (len-read), &(row_out->prefix.address))) == -1)
     {
       goto err;
     }

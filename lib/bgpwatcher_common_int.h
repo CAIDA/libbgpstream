@@ -72,6 +72,8 @@
 
 #endif
 
+#define BW_PFX_ROW_BUFFER_LEN 17 + (BGPWATCHER_PEER_MAX_CNT*5)
+
 /* shared constants are in bgpwatcher_common.h */
 
 /** @} */
@@ -179,6 +181,12 @@ int bw_send_ip(void *dest, bl_addr_storage_t *ip, int flags);
 
 /** Receive an IP address on the given socket */
 int bw_recv_ip(void *src, bl_addr_storage_t *ip);
+
+/** Serialize the given IP into the given byte array */
+int bw_serialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip);
+
+/** Deerialize an IP from given byte array */
+int bw_deserialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip);
 
 /* ========== MESSAGE TYPES ========== */
 
