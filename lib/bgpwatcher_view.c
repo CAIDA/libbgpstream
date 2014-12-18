@@ -982,3 +982,8 @@ uint32_t bgpwatcher_view_size(bgpwatcher_view_t *view)
 {
   return bgpwatcher_view_v4size(view) + bgpwatcher_view_v6size(view);
 }
+
+uint32_t bgpwatcher_view_time(bgpwatcher_view_t *view)
+{
+  return view->time;
+}

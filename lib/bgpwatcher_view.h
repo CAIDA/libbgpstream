@@ -92,4 +92,11 @@ uint32_t bgpwatcher_view_v6size(bgpwatcher_view_t *view);
  */
 uint32_t bgpwatcher_view_size(bgpwatcher_view_t *view);
 
+/** Get the BGP time that the view represents
+ *
+ * @param view          pointer to a view structure
+ * @return the time that the view represents
+ */
+uint32_t bgpwatcher_view_time(bgpwatcher_view_t *view);
+
 #endif /* __BGPWATCHER_VIEW_H */

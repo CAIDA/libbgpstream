@@ -238,6 +238,7 @@ int main(int argc, char **argv)
       bgpwatcher_consumer_interest_dump(rx_interests);
       fprintf(stdout, "\n");
 
+      fprintf(stdout, "Time:      %"PRIu32"\n", bgpwatcher_view_time(view));
       fprintf(stdout, "IPv4-Pfxs: %"PRIu32"\n", bgpwatcher_view_v4size(view));
       fprintf(stdout, "IPv6-Pfxs: %"PRIu32"\n", bgpwatcher_view_v6size(view));
 
