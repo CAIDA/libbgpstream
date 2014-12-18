@@ -22,11 +22,12 @@
 # along with bgpwatcher.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-SUBDIRS =
+SUBDIRS = consumers
 
 AM_CPPFLAGS = 	-I$(top_srcdir) \
 	 	-I$(top_srcdir)/common \
-                -I$(top_srcdir)/bgpcommon
+                -I$(top_srcdir)/bgpcommon \
+                -I$(top_srcdir)/lib/consumers
 
 lib_LTLIBRARIES = libbgpwatcher.la
 
@@ -37,6 +38,9 @@ include_HEADERS = 			\
 	bgpwatcher_view.h
 
 libbgpwatcher_la_SOURCES = 		\
+	bgpwatcher_consumer_manager.h	\
+	bgpwatcher_consumer_interface.h	\
+	bgpwatcher_consumer_manager.c	\
 	bgpwatcher_common.h		\
 	bgpwatcher_common_int.h		\
 	bgpwatcher_common.c		\
@@ -55,7 +59,8 @@ libbgpwatcher_la_SOURCES = 		\
 	bgpwatcher_view.c
 
 libbgpwatcher_la_LIBADD = $(top_builddir)/common/libcccommon.la \
-                          $(top_builddir)/bgpcommon/libbl.la
+                          $(top_builddir)/bgpcommon/libbl.la    \
+		          $(top_builddir)/lib/consumers/libbgpwatcher_consumers.la
 
 libbgpwatcher_la_LDFLAGS = -version-info @BGPWATCHER_MAJOR_VERSION@:@BGPWATCHER_MID_VERSION@:@BGPWATCHER_MINOR_VERSION@
 

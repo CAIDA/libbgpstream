@@ -22,14 +22,43 @@
 # along with bgpwatcher.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-AM_CPPFLAGS = -I$(top_srcdir) \
-	      -I$(top_srcdir)/common \
-	      -I$(top_srcdir)/bgpcommon \
-	      -I$(top_srcdir)/lib
+SUBDIRS =
 
-dist_bin_SCRIPTS =
+AM_CPPFLAGS = 	-I$(top_srcdir)			\
+		-I$(top_srcdir)/bgpcommon 	\
+		-I$(top_srcdir)/common 		\
+		-I$(top_srcdir)/lib
 
-bin_PROGRAMS =
+noinst_LTLIBRARIES = libbgpwatcher_consumers.la
+
+include_HEADERS =
+
+CONSUMER_SRCS=
+CONSUMER_LIBS=
+
+# Test Consumer
+CONSUMER_SRCS += \
+	bwc_test.c \
+	bwc_test.h
+
+# Per-AS Visibility Consumer
+#CONSUMER_SRCS += \
+#	bwc_perasvisibility.c \
+#	bwc_perasvisibility.h
+
+# -- sample how to add conditional consumer
+#if WITH_<NAME>
+#SUBDIRS += lib<name>
+#AM_CPPFLAGS += -I$(top_srcdir)/lib/consumers/lib<name>
+#CONSUMER_SRCS += \
+#	bwc_<name>.c \
+#	bwc_<name>.h
+#CONSUMER_LIBS += $(top_builddir)/lib/consumers/lib<name>/lib<name>.la
+#endif
+
+libbgpwatcher_consumers_la_SOURCES = $(CONSUMER_SRCS)
+
+libbgpwatcher_consumers_la_LIBADD = $(CONSUMER_LIBS)
 
 ACLOCAL_AMFLAGS = -I m4
 

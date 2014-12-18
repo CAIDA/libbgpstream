@@ -125,7 +125,7 @@ AC_CONFIG_FILES([Makefile
 		common/libcsv/Makefile
                 bgpcommon/Makefile
 		lib/Makefile
+		lib/consumers/Makefile
 		tools/Makefile
-		consumers/Makefile
 		])
 AC_OUTPUT
