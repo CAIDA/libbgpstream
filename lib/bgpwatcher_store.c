@@ -237,7 +237,7 @@ store_view_t *store_view_create(bgpwatcher_store_t *store)
 static int store_view_clear(bgpwatcher_store_t *store,
 			    store_view_t *sview)
 {
-  int idx;
+  int i, idx;
 
   assert(sview != NULL);
 
@@ -262,6 +262,16 @@ static int store_view_clear(bgpwatcher_store_t *store,
 
   sview->state = STORE_VIEW_UNUSED;
 
+  sview->reuse_cnt++;
+
+  for(i=0; i<=STORE_VIEW_STATE_MAX; i++)
+    {
+      sview->dis_status[i].modified = 0;
+      sview->dis_status[i].sent = 0;
+    }
+
+  sview->modified = 0;
+
   bl_string_set_reset(sview->done_clients);
 
   bl_id_set_reset(sview->inactive_peers);
@@ -272,8 +282,6 @@ static int store_view_clear(bgpwatcher_store_t *store,
 
   /* now clear the child view */
   bgpwatcher_view_clear(sview->view);
-
-  sview->reuse_cnt++;
 
   return 0;
 }
