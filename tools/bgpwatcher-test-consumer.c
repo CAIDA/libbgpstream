@@ -237,7 +237,19 @@ int main(int argc, char **argv)
       fprintf(stdout, "Interests: ");
       bgpwatcher_consumer_interest_dump(rx_interests);
       fprintf(stdout, "\n");
-      bgpwatcher_view_dump(view);
+
+      fprintf(stdout, "IPv4-Pfxs: %"PRIu32"\n", bgpwatcher_view_v4size(view));
+      fprintf(stdout, "IPv6-Pfxs: %"PRIu32"\n", bgpwatcher_view_v6size(view));
+
+#ifdef DEBUG
+      /* only dump 'small' views, otherwise it is just obnoxious */
+      if(bgpwatcher_view_size(view) < 100)
+	{
+	  bgpwatcher_view_dump(view);
+	}
+#endif
+
+      fprintf(stdout, "--------------------\n");
 
       bgpwatcher_view_destroy(view);
       view = NULL;
