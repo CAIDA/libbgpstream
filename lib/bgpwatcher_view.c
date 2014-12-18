@@ -274,6 +274,254 @@ static void v4pfxs_dump(bgpwatcher_view_t *view)
     }
 }
 
+static int send_pfx_peers(void *dest, bwv_peerid_pfxinfo_t *pfxpeers)
+{
+  khiter_t k;
+  uint16_t u16;
+  uint32_t u32;
+
+  for(k = kh_begin(pfxpeers->peers); k != kh_end(pfxpeers->peers); ++k)
+    {
+      if(kh_exist(pfxpeers->peers, k))
+	{
+	  /* peer id */
+	  u16 = kh_key(pfxpeers->peers, k);
+	  u16 = htons(u16);
+	  if(zmq_send(dest, &u16, sizeof(u16), ZMQ_SNDMORE) != sizeof(u16))
+	    {
+	      goto err;
+	    }
+
+	  /* orig_asn */
+	  u32 = kh_val(pfxpeers->peers, k).orig_asn;
+	  u32 = htonl(u32);
+	  if(zmq_send(dest, &u32, sizeof(u32), ZMQ_SNDMORE) != sizeof(u32))
+	    {
+	      goto err;
+	    }
+	}
+    }
+
+  return 0;
+
+ err:
+  return -1;
+}
+
+/** @todo serialize each prefix to a byte array and send that */
+static int send_v4pfxs(void *dest, bgpwatcher_view_t *view)
+{
+  uint16_t u16;
+  uint32_t u32;
+
+  khiter_t k;
+
+  bl_ipv4_pfx_t *key;
+  bwv_peerid_pfxinfo_t *v;
+
+  /* pfx cnt */
+  u32 = htonl(kh_size(view->v4pfxs));
+  if(zmq_send(dest, &u32, sizeof(u32), ZMQ_SNDMORE) != sizeof(u32))
+    {
+      goto err;
+    }
+
+  /* foreach pfx, send pfx-ip, pfx-len, [peer-info] */
+  for(k = kh_begin(view->v4pfxs); k != kh_end(view->v4pfxs); ++k)
+    {
+      if(kh_exist(view->v4pfxs, k))
+	{
+	  key = &kh_key(view->v4pfxs, k);
+	  v = kh_val(view->v4pfxs, k);
+
+	  if(v->peers_cnt == 0)
+	    {
+	      continue;
+	    }
+
+	  /* pfx address */
+	  if(bw_send_ip(dest, bl_addr_ipv42storage(&key->address), ZMQ_SNDMORE) != 0)
+	    {
+	      goto err;
+	    }
+
+	  /* pfx len */
+	  if(zmq_send(dest, &key->mask_len, sizeof(key->mask_len), ZMQ_SNDMORE)
+	     != sizeof(key->mask_len))
+	    {
+	      goto err;
+	    }
+
+	  /* peer cnt */
+	  u16 = htons(v->peers_cnt);
+	  if(zmq_send(dest, &u16, sizeof(u16), ZMQ_SNDMORE) != sizeof(u16))
+	    {
+	      goto err;
+	    }
+
+	  /* send the peers */
+	  if(send_pfx_peers(dest, v) != 0)
+	    {
+	      goto err;
+	    }
+	}
+    }
+
+  return 0;
+
+ err:
+  return -1;
+}
+
+static int send_v6pfxs(void *dest, bgpwatcher_view_t *view)
+{
+  uint16_t u16;
+  uint32_t u32;
+
+  khiter_t k;
+
+  bl_ipv6_pfx_t *key;
+  bwv_peerid_pfxinfo_t *v;
+
+  /* pfx cnt */
+  u32 = htonl(kh_size(view->v6pfxs));
+  if(zmq_send(dest, &u32, sizeof(u32), ZMQ_SNDMORE) != sizeof(u32))
+    {
+      goto err;
+    }
+
+  /* foreach pfx, send pfx-ip, pfx-len, [peer-info] */
+  for(k = kh_begin(view->v6pfxs); k != kh_end(view->v6pfxs); ++k)
+    {
+      if(kh_exist(view->v6pfxs, k))
+	{
+	  key = &kh_key(view->v6pfxs, k);
+	  v = kh_val(view->v6pfxs, k);
+
+	  if(v->peers_cnt == 0)
+	    {
+	      continue;
+	    }
+
+	  /* pfx address */
+	  if(bw_send_ip(dest, bl_addr_ipv62storage(&key->address), ZMQ_SNDMORE) != 0)
+	    {
+	      goto err;
+	    }
+
+	  /* pfx len */
+	  if(zmq_send(dest, &key->mask_len, sizeof(key->mask_len), ZMQ_SNDMORE)
+	     != sizeof(key->mask_len))
+	    {
+	      goto err;
+	    }
+
+	  /* peer cnt */
+	  u16 = htons(v->peers_cnt);
+	  if(zmq_send(dest, &u16, sizeof(u16), ZMQ_SNDMORE) != sizeof(u16))
+	    {
+	      goto err;
+	    }
+
+	  /* send the peers */
+	  if(send_pfx_peers(dest, v) != 0)
+	    {
+	      goto err;
+	    }
+	}
+    }
+
+  return 0;
+
+ err:
+  return -1;
+}
+
+static int recv_pfxs(void *src, bgpwatcher_view_t *view)
+{
+  uint32_t pfx_cnt;
+  uint16_t peer_cnt;
+  int i, j;
+
+  bl_pfx_storage_t pfx;
+  bl_peerid_t peerid;
+  bgpwatcher_pfx_peer_info_t pfx_info;
+  void *cache = NULL;
+
+  pfx_info.in_use = 1;
+
+  ASSERT_MORE;
+
+  /* pfx cnt */
+  if(zmq_recv(src, &pfx_cnt, sizeof(pfx_cnt), 0) != sizeof(pfx_cnt))
+    {
+      goto err;
+    }
+  pfx_cnt = ntohl(pfx_cnt);
+  ASSERT_MORE;
+
+  /* foreach pfx, recv pfx.ip, pfx.len, [peers_cnt, peer_info] */
+  for(i=0; i<pfx_cnt; i++)
+    {
+      /* this is a new pfx, reset the cache */
+      cache = NULL;
+
+      /* pfx_ip */
+      if(bw_recv_ip(src, &pfx.address) != 0)
+	{
+	  goto err;
+	}
+      ASSERT_MORE;
+
+      /* pfx len */
+      if(zmq_recv(src, &pfx.mask_len, sizeof(pfx.mask_len), 0)
+	 != sizeof(pfx.mask_len))
+	{
+	  goto err;
+	}
+      ASSERT_MORE;
+
+      /* peer cnt */
+      if(zmq_recv(src, &peer_cnt, sizeof(peer_cnt), 0) != sizeof(peer_cnt))
+	{
+	  goto err;
+	}
+      peer_cnt = ntohs(peer_cnt);
+      ASSERT_MORE;
+
+      for(j=0; j<peer_cnt; j++)
+	{
+	  /* peer id */
+	  if(zmq_recv(src, &peerid, sizeof(peerid), 0) != sizeof(peerid))
+	    {
+	      goto err;
+	    }
+	  peerid = ntohs(peerid);
+	  ASSERT_MORE;
+
+	  /* orig asn */
+	  if(zmq_recv(src, &pfx_info.orig_asn, sizeof(pfx_info.orig_asn), 0)
+	     != sizeof(pfx_info.orig_asn))
+	    {
+	      goto err;
+	    }
+	  pfx_info.orig_asn = ntohl(pfx_info.orig_asn);
+	  ASSERT_MORE;
+
+	  if(bgpwatcher_view_add_prefix(view, &pfx, peerid,
+					&pfx_info, &cache) != 0)
+	    {
+	      goto err;
+	    }
+	}
+    }
+
+  return 0;
+
+ err:
+  return -1;
+}
+
 static int send_peers(void *dest, bgpwatcher_view_t *view)
 {
   uint16_t u16;
@@ -470,10 +718,19 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
       goto err;
     }
 
+  if(send_v4pfxs(dest, view) != 0)
+    {
+      goto err;
+    }
+
+  if(send_v6pfxs(dest, view) != 0)
+    {
+      goto err;
+    }
+
   zmq_send(dest, "", 0, 0); /* DEBUG */
 
-  /* @todo replace with actual fields (FIX SNDMORE ABOVE) */
-  fprintf(stderr, "DEBUG: Sending dummy view...\n");
+  fprintf(stderr, "DEBUG: Sending view...\n");
 
   return 0;
 
@@ -516,6 +773,12 @@ bgpwatcher_view_t *bgpwatcher_view_recv(void *src)
   ASSERT_MORE;
 
   if(recv_peers(src, view) != 0)
+    {
+      goto err;
+    }
+  ASSERT_MORE;
+
+  if(recv_pfxs(src, view) != 0)
     {
       goto err;
     }
