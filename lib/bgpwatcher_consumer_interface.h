@@ -30,6 +30,7 @@
 #include <inttypes.h>
 
 #include "bgpwatcher_view.h"
+#include "bgpwatcher_common.h"
 #include "bgpwatcher_consumer_manager.h" /* for bwc_t */
 
 /** @file
@@ -60,7 +61,8 @@
   bwc_t * bwc_##consname##_alloc();					\
   int bwc_##consname##_init(bwc_t *ds, int argc, char **argv);		\
   void bwc_##consname##_destroy(bwc_t *ds);				\
-  int bwc_##consname##_process_view(bwc_t *ds, bgpwatcher_view_t *view);
+  int bwc_##consname##_process_view(bwc_t *ds, uint8_t interests,	\
+				    bgpwatcher_view_t *view);
 
 /** Convenience macro that defines all the function pointers for the timeseries
  * consumer API
@@ -129,7 +131,8 @@ struct bwc
    *
    * This is the core of the consumer API
    */
-  int (*process_view)(struct bwc *consumer, bgpwatcher_view_t *view);
+  int (*process_view)(struct bwc *consumer, uint8_t interests,
+		      bgpwatcher_view_t *view);
 
   /** }@ */
 

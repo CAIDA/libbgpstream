@@ -305,6 +305,30 @@ bwc_t **bw_consumer_manager_get_all_backends(bw_consumer_manager_t *mgr)
   return mgr->consumers;
 }
 
+int bw_consumer_manager_process_view(bw_consumer_manager_t *mgr,
+				     uint8_t interests,
+				     bgpwatcher_view_t *view)
+{
+  int id;
+  bwc_t *consumer;
+  assert(mgr != NULL);
+
+  for(id = BWC_ID_FIRST; id <= BWC_ID_LAST; id++)
+  {
+    if((consumer = bw_consumer_manager_get_consumer_by_id(mgr, id)) == NULL ||
+       bwc_is_enabled(consumer) == 0)
+      {
+	continue;
+      }
+    if(consumer->process_view(consumer, interests, view) != 0)
+      {
+	return -1;
+      }
+  }
+
+  return 0;
+}
+
 
 /* ==================== CONSUMER ACCESSOR FUNCTIONS ==================== */
 

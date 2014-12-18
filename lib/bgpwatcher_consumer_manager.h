@@ -30,6 +30,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include "bgpwatcher_view.h"
+
 
 /** @file
  *
@@ -168,6 +170,18 @@ bwc_t *bw_consumer_manager_get_consumer_by_name(bw_consumer_manager_t *mgr,
  * pointers), or some may not be enabled. use bwc_is_enabled to check.
  */
 bwc_t **bw_consumer_manager_get_all_backends(bw_consumer_manager_t *mgr);
+
+/** Process the given view using each enabled consumer
+ *
+ * @param mgr           The manager object
+ * @param interests     Bit-array of bgpwatcher_consumer_interest_t flags
+ *                        indicating which interests the given view satisfies
+ * @param view          Borrowed reference to the BGP Watcher View to process
+ * @param return 0 if the view was processed successfully, -1 otherwise
+ */
+int bw_consumer_manager_process_view(bw_consumer_manager_t *mgr,
+				     uint8_t interests,
+				     bgpwatcher_view_t *view);
 
 /** Check if the given consumer is enabled already
  *
