@@ -35,14 +35,47 @@
 /* this must be all we include from bgpwatcher */
 #include <bgpwatcher_client.h>
 #include <bgpwatcher_view.h>
+#include <bgpwatcher_consumer_manager.h>
 
 #include "config.h"
 #include "utils.h"
+
+static bw_consumer_manager_t *manager = NULL;
+
+static void consumer_usage()
+{
+  assert(manager != NULL);
+  bwc_t **avail_consumers = NULL;
+  int i;
+
+  /* get the available consumers from the manager */
+  avail_consumers = bw_consumer_manager_get_all_consumers(manager);
+
+  fprintf(stderr,
+	  "                               available consumers:\n");
+  for(i = 0; i < BWC_ID_LAST; i++)
+    {
+      /* skip unavailable consumers */
+      if(avail_consumers[i] == NULL)
+	{
+	  continue;
+	}
+
+      assert(bwc_get_name(avail_consumers[i]));
+      fprintf(stderr,
+	      "                                - %s\n",
+	      bwc_get_name(avail_consumers[i]));
+    }
+}
 
 static void usage(const char *name)
 {
   fprintf(stderr,
 	  "usage: %s [<options>]\n"
+	  "       -c <consumer>         Consumer to active (can be used multiple times)\n",
+	  name);
+  consumer_usage();
+  fprintf(stderr,
 	  "       -i <interval-ms>      Time in ms between heartbeats to server\n"
 	  "                               (default: %d)\n"
           "       -I <interest>         Advertise the given interest. May be used multiple times\n"
@@ -59,7 +92,6 @@ static void usage(const char *name)
 	  "                               (default: %s)\n"
           "       -s <server-sub-uri>   0MQ-style URI to subscribe to tables on\n"
           "                               (default: %s)\n",
-	  name,
 	  BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT,
 	  BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT,
 	  BGPWATCHER_RECONNECT_INTERVAL_MIN,
@@ -75,6 +107,10 @@ int main(int argc, char **argv)
   int prevoptind;
 
   /* to store command line argument values */
+  char *consumer_cmds[BWC_ID_LAST];
+  int consumer_cmds_cnt = 0;
+  int i;
+
   const char *server_uri = NULL;
   const char *server_sub_uri = NULL;
   const char *identity = NULL;
@@ -91,8 +127,16 @@ int main(int argc, char **argv)
   int rx_interests;
   bgpwatcher_view_t *view = NULL;
 
+  /* better just grab a pointer to the manager before anybody goes crazy and
+     starts dumping usage strings */
+  if((manager = bw_consumer_manager_create()) == NULL)
+    {
+      fprintf(stderr, "ERROR: Could not initialize consumer manager\n");
+      return -1;
+    }
+
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":i:I:l:n:r:R:s:S:v?")) >= 0)
+	(opt = getopt(argc, argv, ":c:i:I:l:n:r:R:s:S:v?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
@@ -104,6 +148,17 @@ int main(int argc, char **argv)
 	  fprintf(stderr, "ERROR: Missing option argument for -%c\n", optopt);
 	  usage(argv[0]);
 	  return -1;
+	  break;
+
+	case 'c':
+	  if(consumer_cmds_cnt >= BWC_ID_LAST-1)
+	    {
+	      fprintf(stderr, "ERROR: At most %d consumers can be enabled\n",
+		      BWC_ID_LAST);
+	      usage(argv[0]);
+	      return -1;
+	    }
+	  consumer_cmds[consumer_cmds_cnt++] = optarg;
 	  break;
 
 	case 'i':
@@ -178,9 +233,29 @@ int main(int argc, char **argv)
   /* NB: once getopt completes, optind points to the first non-option
      argument */
 
+  if(consumer_cmds_cnt == 0)
+    {
+      fprintf(stderr,
+	      "ERROR: Consumer(s) must be specified using -c\n");
+      usage(argv[0]);
+      return -1;
+    }
+
+  for(i=0; i<consumer_cmds_cnt; i++)
+    {
+      assert(consumer_cmds[i] != NULL);
+      if(bw_consumer_manager_enable_consumer_from_str(manager,
+						      consumer_cmds[i]) == NULL)
+        {
+          usage(argv[0]);
+          goto err;
+        }
+    }
+
   if(interests == 0)
     {
       fprintf(stderr, "WARN: Defaulting to FIRST-FULL interest\n");
+      fprintf(stderr, "WARN: Specify interests using -p <interest>\n");
       interests = BGPWATCHER_CONSUMER_INTEREST_FIRSTFULL;
     }
 
@@ -221,7 +296,7 @@ int main(int argc, char **argv)
 
   bgpwatcher_client_set_reconnect_interval_max(client, reconnect_interval_max);
 
-  fprintf(stderr, "TEST: Starting client... ");
+  fprintf(stderr, "INFO: Starting client... ");
   if(bgpwatcher_client_start(client) != 0)
     {
       bgpwatcher_client_perr(client);
@@ -240,36 +315,26 @@ int main(int argc, char **argv)
                                      BGPWATCHER_CLIENT_RECV_MODE_BLOCK,
                                      view)) > 0)
     {
-      fprintf(stdout, "Interests: ");
-      bgpwatcher_consumer_interest_dump(rx_interests);
-      fprintf(stdout, "\n");
-
-      fprintf(stdout, "Time:      %"PRIu32"\n", bgpwatcher_view_time(view));
-      fprintf(stdout, "IPv4-Pfxs: %"PRIu32"\n", bgpwatcher_view_v4size(view));
-      fprintf(stdout, "IPv6-Pfxs: %"PRIu32"\n", bgpwatcher_view_v6size(view));
-
-#ifdef DEBUG
-      /* only dump 'small' views, otherwise it is just obnoxious */
-      if(bgpwatcher_view_size(view) < 100)
+      if(bw_consumer_manager_process_view(manager, rx_interests, view) != 0)
 	{
-	  bgpwatcher_view_dump(view);
+	  fprintf(stderr, "ERROR: Failed to process view at %d\n",
+		  bgpwatcher_view_time(view));
+	  goto err;
 	}
-#endif
-
-      fprintf(stdout, "--------------------\n");
 
       bgpwatcher_view_clear(view);
     }
 
-  fprintf(stderr, "TEST: Shutting down...\n");
+  fprintf(stderr, "INFO: Shutting down...\n");
 
   bgpwatcher_client_stop(client);
   bgpwatcher_client_perr(client);
 
   /* cleanup */
-  bgpwatcher_view_destroy(view);
   bgpwatcher_client_free(client);
-  fprintf(stderr, "TEST: Shutdown complete\n");
+  bgpwatcher_view_destroy(view);
+  bw_consumer_manager_destroy(&manager);
+  fprintf(stderr, "INFO: Shutdown complete\n");
 
   /* complete successfully */
   return 0;
@@ -280,5 +345,6 @@ int main(int argc, char **argv)
     bgpwatcher_client_free(client);
   }
   bgpwatcher_view_destroy(view);
+  bw_consumer_manager_destroy(&manager);
   return -1;
 }

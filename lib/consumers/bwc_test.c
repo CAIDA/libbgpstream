@@ -34,6 +34,8 @@
 
 #define NAME "test"
 
+#define MAX_DUMP_SIZE 100
+
 #define STATE					\
   (BWC_GET_STATE(consumer, test))
 
@@ -140,8 +142,28 @@ void bwc_test_destroy(bwc_t *consumer)
   BWC_SET_STATE(consumer, NULL);
 }
 
-int bwc_test_process_view(bwc_t *consumer, bgpwatcher_view_t *view)
+int bwc_test_process_view(bwc_t *consumer, uint8_t interests,
+			  bgpwatcher_view_t *view)
 {
-  fprintf(stderr, "BWC-TEST: Got view!\n");
+  fprintf(stdout, "BWC-TEST: Interests: ");
+  bgpwatcher_consumer_interest_dump(interests);
+  fprintf(stdout, "\n");
+
+  /* only dump 'small' views, otherwise it is just obnoxious */
+  if(bgpwatcher_view_size(view) < MAX_DUMP_SIZE)
+    {
+      bgpwatcher_view_dump(view);
+    }
+  else
+    {
+      fprintf(stdout, "BWC-TEST: Time:      %"PRIu32"\n",
+	      bgpwatcher_view_time(view));
+      fprintf(stdout, "BWC-TEST: IPv4-Pfxs: %"PRIu32"\n",
+	      bgpwatcher_view_v4size(view));
+      fprintf(stdout, "BWC-TEST: IPv6-Pfxs: %"PRIu32"\n",
+	      bgpwatcher_view_v6size(view));
+    }
+
+  fprintf(stdout, "--------------------\n");
   return 0;
 }

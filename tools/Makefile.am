@@ -30,23 +30,27 @@ AM_CPPFLAGS = -I$(top_srcdir) \
 dist_bin_SCRIPTS =
 
 bin_PROGRAMS =	bgpwatcher-server \
-		bgpwatcher-test-producer \
-		bgpwatcher-test-consumer
+		bgpwatcher-consumer \
+		bgpwatcher-test-producer
 
+# runs the bgpwatcher server
 bgpwatcher_server_SOURCES = \
 	bgpwatcher-server.c
 bgpwatcher_server_LDADD = -lbgpwatcher
 bgpwatcher_server_LDFLAGS = -L$(top_builddir)/lib
 
+
+# connects to the bgpwatcher server and drives consumer plugins
+bgpwatcher_consumer_SOURCES = \
+	bgpwatcher-consumer.c
+bgpwatcher_consumer_LDADD = -lbgpwatcher
+bgpwatcher_consumer_LDFLAGS = -L$(top_builddir)/lib
+
+# acts as a dummy producer for the bgpwatcher server
 bgpwatcher_test_producer_SOURCES = \
 	bgpwatcher-test-producer.c
 bgpwatcher_test_producer_LDADD = -lbgpwatcher
 bgpwatcher_test_producer_LDFLAGS = -L$(top_builddir)/lib
-
-bgpwatcher_test_consumer_SOURCES = \
-	bgpwatcher-test-consumer.c
-bgpwatcher_test_consumer_LDADD = -lbgpwatcher
-bgpwatcher_test_consumer_LDFLAGS = -L$(top_builddir)/lib
 
 ACLOCAL_AMFLAGS = -I m4
 
