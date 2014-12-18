@@ -47,7 +47,8 @@ static bwc_t bwc_test = {
 
 typedef struct bwc_test_state {
 
-  /* add state here */
+  /** The number of views we have processed */
+  int view_cnt;
 
 } bwc_test_state_t;
 
@@ -130,6 +131,9 @@ void bwc_test_destroy(bwc_t *consumer)
 {
   bwc_test_state_t *state = STATE;
 
+  fprintf(stdout, "BWC-TEST: %d views processed\n",
+	  STATE->view_cnt);
+
   if(state == NULL)
     {
       return;
@@ -165,5 +169,8 @@ int bwc_test_process_view(bwc_t *consumer, uint8_t interests,
     }
 
   fprintf(stdout, "--------------------\n");
+
+  STATE->view_cnt++;
+
   return 0;
 }
