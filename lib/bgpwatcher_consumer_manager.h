@@ -169,7 +169,7 @@ bwc_t *bw_consumer_manager_get_consumer_by_name(bw_consumer_manager_t *mgr,
  * @note not all consumers in the list may be present (i.e. there may be NULL
  * pointers), or some may not be enabled. use bwc_is_enabled to check.
  */
-bwc_t **bw_consumer_manager_get_all_backends(bw_consumer_manager_t *mgr);
+bwc_t **bw_consumer_manager_get_all_consumers(bw_consumer_manager_t *mgr);
 
 /** Process the given view using each enabled consumer
  *

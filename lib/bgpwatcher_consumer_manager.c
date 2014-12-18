@@ -199,7 +199,7 @@ int bw_consumer_manager_enable_consumer(bwc_t *consumer, const char *options)
   int process_argc = 0;
   int rc;
 
-  fprintf(stderr, "enabling consumer (%s)", consumer->name);
+  fprintf(stderr, "INFO: Enabling consumer '%s'\n", consumer->name);
 
   /* first we need to parse the options */
   if(options != NULL && (len = strlen(options)) > 0)
@@ -300,7 +300,7 @@ bwc_t *bw_consumer_manager_get_consumer_by_name(bw_consumer_manager_t *mgr,
   return NULL;
 }
 
-bwc_t **bw_consumer_manager_get_all_backends(bw_consumer_manager_t *mgr)
+bwc_t **bw_consumer_manager_get_all_consumers(bw_consumer_manager_t *mgr)
 {
   return mgr->consumers;
 }
