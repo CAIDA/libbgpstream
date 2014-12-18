@@ -749,6 +749,10 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
 {
   uint32_t u32;
 
+#ifdef DEBUG
+  fprintf(stderr, "DEBUG: Sending view...\n");
+#endif
+
   /* time */
   u32 = htonl(view->time);
   if(zmq_send(dest, &u32, sizeof(u32), ZMQ_SNDMORE) != sizeof(u32))
@@ -783,9 +787,10 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
       goto err;
     }
 
-  zmq_send(dest, "", 0, 0); /* DEBUG */
-
-  fprintf(stderr, "DEBUG: Sending view...\n");
+  if(zmq_send(dest, "", 0, 0) != 0)
+    {
+      goto err;
+    }
 
   return 0;
 
@@ -833,16 +838,26 @@ bgpwatcher_view_t *bgpwatcher_view_recv(void *src)
     }
   ASSERT_MORE;
 
+  /* v4 pfxs */
   if(recv_pfxs(src, view) != 0)
     {
       goto err;
     }
   ASSERT_MORE;
 
-  zmq_recv(src, NULL, 0, 0); /* DEBUG */
+  /* v6 pfxs */
+  if(recv_pfxs(src, view) != 0)
+    {
+      goto err;
+    }
+  ASSERT_MORE;
 
-  /* @todo replace with actual fields */
-  fprintf(stderr, "DEBUG: Receiving dummy view...\n");
+  if(zmq_recv(src, NULL, 0, 0) != 0)
+    {
+      goto err;
+    }
+
+  assert(zsocket_rcvmore(src) == 0);
 
   return view;
 
