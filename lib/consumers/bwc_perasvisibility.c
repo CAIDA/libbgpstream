@@ -38,7 +38,10 @@
 
 #define NAME "per-as-visibility"
 
-#define METRIC_PREFIX "bgp.visibility"
+#define METRIC_PREFIX               "bgp.visibility."
+#define METRIC_FULL_FEED_PEERS_CNT  METRIC_PREFIX"full_feed_peers_cnt"
+#define METRIC_ASN_V4PFX_FORMAT     METRIC_PREFIX".asn.%"PRIu32".ipv4_pfx_cnt"
+#define METRIC_ASN_V6PFX_FORMAT     METRIC_PREFIX".asn.%"PRIu32".ipv6_pfx_cnt"
 
 #define ROUTED_PFX_PEERCNT 10
 
@@ -76,9 +79,6 @@ typedef struct bwc_perasvisibility_state {
 
   /** Map from ASN => v6PFX-SET */
   khash_t(as_v6pfxs) *as_v6pfxs;
-
-  /** Timeseries Key Package */
-  timeseries_kp_t *kp;
 
   /** Prefix visibility threshold */
   int pfx_vis_threshold;
@@ -232,16 +232,20 @@ static void flip_v6table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 static void dump_table(bwc_t *consumer, uint32_t time)
 {
   khiter_t k;
+  char buffer[11];
+
   for (k = kh_begin(STATE->as_v4pfxs); k != kh_end(STATE->as_v4pfxs); ++k)
     {
       if (kh_exist(STATE->as_v4pfxs, k))
 	{
 	  // OUTPUT: number of ipv4 prefixes seen by each AS
-	  fprintf(stdout,
-		  METRIC_PREFIX".asn.%"PRIu32".ipv4_cnt %"PRIu32" %"PRIu32"\n",
-		  kh_key(STATE->as_v4pfxs, k),
-		  kh_size(kh_value(STATE->as_v4pfxs, k)),
-		  time);
+	  snprintf(buffer, 11,
+		   METRIC_ASN_V4PFX_FORMAT,
+		   kh_key(STATE->as_v4pfxs, k));
+	  timeseries_set_single(BWC_GET_TIMESERIES(consumer),
+				buffer,
+				kh_size(kh_value(STATE->as_v4pfxs, k)),
+				time);
 	}
     }
 
@@ -250,11 +254,13 @@ static void dump_table(bwc_t *consumer, uint32_t time)
       if (kh_exist(STATE->as_v6pfxs, k))
 	{
 	  // OUTPUT: number of ipv6 prefixes seen by each AS
-	  fprintf(stdout,
-		  METRIC_PREFIX".asn.%"PRIu32".ipv6_cnt %"PRIu32" %"PRIu32"\n",
-		  kh_key(STATE->as_v6pfxs, k),
-		  kh_size(kh_value(STATE->as_v6pfxs, k)),
-		  time);
+	  snprintf(buffer, 11,
+		   METRIC_ASN_V6PFX_FORMAT,
+		   kh_key(STATE->as_v6pfxs, k));
+	  timeseries_set_single(BWC_GET_TIMESERIES(consumer),
+				buffer,
+				kh_size(kh_value(STATE->as_v6pfxs, k)),
+				time);
 	}
     }
 
@@ -296,11 +302,6 @@ int bwc_perasvisibility_init(bwc_t *consumer, int argc, char **argv)
       fprintf(stderr, "Error: unable to create as visibility map (v6)\n");
       goto err;
     }
-  if((state->kp = timeseries_kp_init(BWC_GET_TIMESERIES(consumer), 1)) == NULL)
-    {
-      fprintf(stderr, "Error: Unable to create timeseries key package\n");
-      goto err;
-    }
 
   /* parse the command line args */
   if(parse_args(consumer, argc, argv) != 0)
@@ -338,7 +339,6 @@ void bwc_perasvisibility_destroy(bwc_t *consumer)
       kh_destroy(as_v6pfxs, state->as_v6pfxs);
       state->as_v6pfxs = NULL;
     }
-  timeseries_kp_free(&state->kp);
 
   free(state);
 
@@ -370,10 +370,10 @@ int bwc_perasvisibility_process_view(bwc_t *consumer, uint8_t interests,
 
   /* how many peers? */
   peers_cnt = bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
-  fprintf(stdout,
-	  METRIC_PREFIX".full_feed_peers_cnt  %"PRIu64" %"PRIu32"\n",
-	  peers_cnt,
-	  time);
+
+  timeseries_set_single(BWC_GET_TIMESERIES(consumer),
+			METRIC_FULL_FEED_PEERS_CNT,
+			peers_cnt, time);
 
   /* now dump the per-as table */
   dump_table(consumer, time);
