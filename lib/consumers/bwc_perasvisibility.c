@@ -77,6 +77,9 @@ typedef struct bwc_perasvisibility_state {
   /** Map from ASN => v6PFX-SET */
   khash_t(as_v6pfxs) *as_v6pfxs;
 
+  /** Timeseries Key Package */
+  timeseries_kp_t *kp;
+
   /** Prefix visibility threshold */
   int pfx_vis_threshold;
 
@@ -164,6 +167,104 @@ static void as_v6pfxs_insert(bwc_perasvisibility_state_t *state,
   bl_ipv6_pfx_set_insert(pfx_set, *pfx);
 }
 
+static void flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
+{
+  bl_ipv4_pfx_t *v4pfx;
+  bgpwatcher_pfx_peer_info_t *pfxinfo;
+
+  /* IPv4 */
+  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
+      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
+      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX))
+    {
+      /* get the current v4 prefix */
+      v4pfx = bgpwatcher_view_iter_get_v4pfx(it);
+
+      /* only consider pfxs with peers_cnt >= pfx_vis_threshold */
+      if(bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER)
+	 < STATE->pfx_vis_threshold)
+	{
+	  continue;
+	}
+
+      /* iterate over the peers for the current v4pfx */
+      for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER);
+	  !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER);
+	  bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER))
+	{
+	  pfxinfo = bgpwatcher_view_iter_get_v4pfx_pfxinfo(it);
+	  as_v4pfxs_insert(STATE, pfxinfo->orig_asn, v4pfx);
+	}
+    }
+}
+
+static void flip_v6table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
+{
+  bl_ipv6_pfx_t *v6pfx;
+  bgpwatcher_pfx_peer_info_t *pfxinfo;
+
+  /* IPv6 */
+  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX);
+      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX);
+      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX))
+    {
+      /* get the current v6 prefix */
+      v6pfx = bgpwatcher_view_iter_get_v6pfx(it);
+
+      /* only consider pfxs with peers_cnt >= pfx_vis_threshold */
+      if(bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER)
+	 < STATE->pfx_vis_threshold)
+	{
+	  continue;
+	}
+
+      /* iterate over the peers for the current v6pfx */
+      for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER);
+	  !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER);
+	  bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER))
+	{
+	  pfxinfo = bgpwatcher_view_iter_get_v6pfx_pfxinfo(it);
+	  as_v6pfxs_insert(STATE, pfxinfo->orig_asn, v6pfx);
+	}
+    }
+}
+
+static void dump_table(bwc_t *consumer, uint32_t time)
+{
+  khiter_t k;
+  for (k = kh_begin(STATE->as_v4pfxs); k != kh_end(STATE->as_v4pfxs); ++k)
+    {
+      if (kh_exist(STATE->as_v4pfxs, k))
+	{
+	  // OUTPUT: number of ipv4 prefixes seen by each AS
+	  fprintf(stdout,
+		  METRIC_PREFIX".asn.%"PRIu32".ipv4_cnt %"PRIu32" %"PRIu32"\n",
+		  kh_key(STATE->as_v4pfxs, k),
+		  kh_size(kh_value(STATE->as_v4pfxs, k)),
+		  time);
+	}
+    }
+
+  for (k = kh_begin(STATE->as_v6pfxs); k != kh_end(STATE->as_v6pfxs); ++k)
+    {
+      if (kh_exist(STATE->as_v6pfxs, k))
+	{
+	  // OUTPUT: number of ipv6 prefixes seen by each AS
+	  fprintf(stdout,
+		  METRIC_PREFIX".asn.%"PRIu32".ipv6_cnt %"PRIu32" %"PRIu32"\n",
+		  kh_key(STATE->as_v6pfxs, k),
+		  kh_size(kh_value(STATE->as_v6pfxs, k)),
+		  time);
+	}
+    }
+
+  /* now clear the tables */
+  kh_free_vals(as_v4pfxs, STATE->as_v4pfxs, bl_ipv4_pfx_set_destroy);
+  kh_clear(as_v4pfxs, STATE->as_v4pfxs);
+  kh_free_vals(as_v6pfxs, STATE->as_v6pfxs, bl_ipv6_pfx_set_destroy);
+  kh_clear(as_v6pfxs, STATE->as_v6pfxs);
+}
+
 /* ==================== CONSUMER INTERFACE FUNCTIONS ==================== */
 
 bwc_t *bwc_perasvisibility_alloc()
@@ -193,6 +294,11 @@ int bwc_perasvisibility_init(bwc_t *consumer, int argc, char **argv)
   if((state->as_v6pfxs = kh_init(as_v6pfxs)) == NULL)
     {
       fprintf(stderr, "Error: unable to create as visibility map (v6)\n");
+      goto err;
+    }
+  if((state->kp = timeseries_kp_init(BWC_GET_TIMESERIES(consumer), 1)) == NULL)
+    {
+      fprintf(stderr, "Error: Unable to create timeseries key package\n");
       goto err;
     }
 
@@ -232,6 +338,7 @@ void bwc_perasvisibility_destroy(bwc_t *consumer)
       kh_destroy(as_v6pfxs, state->as_v6pfxs);
       state->as_v6pfxs = NULL;
     }
+  timeseries_kp_free(&state->kp);
 
   free(state);
 
@@ -243,17 +350,10 @@ void bwc_perasvisibility_destroy(bwc_t *consumer)
 int bwc_perasvisibility_process_view(bwc_t *consumer, uint8_t interests,
 				     bgpwatcher_view_t *view)
 {
-  khiter_t k;
   bgpwatcher_view_iter_t *it;
 
-  bl_ipv4_pfx_t *v4pfx;
-  bl_ipv6_pfx_t *v6pfx;
-  bgpwatcher_pfx_peer_info_t *pfxinfo;
-
   uint64_t peers_cnt;
-
-  /* foreach v4pfx, if(peers_cnt > ROUTED_PFX_PEERCNT) foreach peer, add
-     origas->pfx */
+  uint32_t time = bgpwatcher_view_time(view);
 
   /* create a new iterator */
   if((it = bgpwatcher_view_iter_create(view)) == NULL)
@@ -261,100 +361,22 @@ int bwc_perasvisibility_process_view(bwc_t *consumer, uint8_t interests,
       return -1;
     }
 
-  /* IPv4 */
-  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX))
-    {
-      /* get the current v4 prefix */
-      v4pfx = bgpwatcher_view_iter_get_v4pfx(it);
+  /* flip the view into a per-AS table */
+  flip_v4table(consumer, it);
+  flip_v6table(consumer, it);
 
-      /* only consider pfxs with peers_cnt >= pfx_vis_threshold */
-      if(bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER)
-	 < STATE->pfx_vis_threshold)
-	{
-	  continue;
-	}
-
-      /* iterate over the peers for the current v4pfx */
-      for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER);
-	  !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER);
-	  bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER))
-	{
-	  pfxinfo = bgpwatcher_view_iter_get_v4pfx_pfxinfo(it);
-	  as_v4pfxs_insert(STATE, pfxinfo->orig_asn, v4pfx);
-	}
-    }
-
-  /* IPv6 */
- for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX))
-    {
-      /* get the current v6 prefix */
-      v6pfx = bgpwatcher_view_iter_get_v6pfx(it);
-
-      /* only consider pfxs with peers_cnt >= pfx_vis_threshold */
-      if(bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER)
-	 < STATE->pfx_vis_threshold)
-	{
-	  continue;
-	}
-
-      /* iterate over the peers for the current v6pfx */
-      for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER);
-	  !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER);
-	  bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER))
-	{
-	  pfxinfo = bgpwatcher_view_iter_get_v6pfx_pfxinfo(it);
-	  as_v6pfxs_insert(STATE, pfxinfo->orig_asn, v6pfx);
-	}
-    }
+  /* destroy the view iterator */
+  bgpwatcher_view_iter_destroy(it);
 
   /* how many peers? */
   peers_cnt = bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
-
-  /* now dump the stats */
   fprintf(stdout,
 	  METRIC_PREFIX".full_feed_peers_cnt  %"PRIu64" %"PRIu32"\n",
 	  peers_cnt,
-	  bgpwatcher_view_time(view));
+	  time);
 
-  for (k = kh_begin(STATE->as_v4pfxs); k != kh_end(STATE->as_v4pfxs); ++k)
-    {
-      if (kh_exist(STATE->as_v4pfxs, k))
-	{
-	  // OUTPUT: number of ipv4 prefixes seen by each AS
-	  fprintf(stdout,
-		  METRIC_PREFIX".asn.%"PRIu32".ipv4_cnt %"PRIu32" %"PRIu32"\n",
-		  kh_key(STATE->as_v4pfxs, k),
-		  kh_size(kh_value(STATE->as_v4pfxs, k)),
-		  bgpwatcher_view_time(view));
-	}
-    }
-
-  for (k = kh_begin(STATE->as_v6pfxs); k != kh_end(STATE->as_v6pfxs); ++k)
-    {
-      if (kh_exist(STATE->as_v6pfxs, k))
-	{
-	  // OUTPUT: number of ipv6 prefixes seen by each AS
-	  fprintf(stdout,
-		  METRIC_PREFIX".asn.%"PRIu32".ipv6_cnt %"PRIu32" %"PRIu32"\n",
-		  kh_key(STATE->as_v6pfxs, k),
-		  kh_size(kh_value(STATE->as_v6pfxs, k)),
-		  bgpwatcher_view_time(view));
-	}
-    }
-
-  /* now clear the tables */
-  kh_free_vals(as_v4pfxs, STATE->as_v4pfxs, bl_ipv4_pfx_set_destroy);
-  kh_clear(as_v4pfxs, STATE->as_v4pfxs);
-  kh_free_vals(as_v6pfxs, STATE->as_v6pfxs, bl_ipv6_pfx_set_destroy);
-  kh_clear(as_v6pfxs, STATE->as_v6pfxs);
-
-  /* destroy the view iterator */
-  /** @todo reuse this iterator */
-  bgpwatcher_view_iter_destroy(it);
+  /* now dump the per-as table */
+  dump_table(consumer, time);
 
   return 0;
 }
