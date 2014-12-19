@@ -633,12 +633,20 @@ uint64_t bgpwatcher_view_iter_size(bgpwatcher_view_iter_t *iter,
       break;
 
     case BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER:
+      if(!iter->v4pfx_peer_it_valid)
+	{
+	  bgpwatcher_view_iter_first(iter, field);
+	}
       assert(iter->v4pfx_it != kh_end(iter->view->v4pfxs));
       assert(iter->v4pfx_peer_it_valid);
       return kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_cnt;
       break;
 
     case BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER:
+      if(!iter->v6pfx_peer_it_valid)
+	{
+	  bgpwatcher_view_iter_first(iter, field);
+	}
       assert(iter->v6pfx_it != kh_end(iter->view->v6pfxs));
       assert(iter->v6pfx_peer_it_valid);
       return kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_cnt;
