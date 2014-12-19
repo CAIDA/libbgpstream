@@ -284,7 +284,7 @@ int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
 
 /* ========== PUBLIC FUNCTIONS ========== */
 
-bgpwatcher_view_t *bgpwatcher_view_create(bl_peersign_map_t *peersigns)
+bgpwatcher_view_t *bgpwatcher_view_create()
 {
   bgpwatcher_view_t *view;
 
@@ -303,12 +303,7 @@ bgpwatcher_view_t *bgpwatcher_view_create(bl_peersign_map_t *peersigns)
       goto err;
     }
 
-  if(peersigns != NULL)
-    {
-      view->peersigns = peersigns;
-      view->peersigns_shared = 1;
-    }
-  else if((view->peersigns = bl_peersign_map_create()) == NULL)
+  if((view->peersigns = bl_peersign_map_create()) == NULL)
     {
       fprintf(stderr, "Failed to create peersigns table\n");
       goto err;
@@ -347,7 +342,7 @@ void bgpwatcher_view_destroy(bgpwatcher_view_t *view)
       view->v6pfxs = NULL;
     }
 
-  if(view->peersigns_shared == 0 && view->peersigns != NULL)
+  if(view->peersigns != NULL)
     {
       bl_peersign_map_destroy(view->peersigns);
       view->peersigns = NULL;
@@ -641,7 +636,7 @@ uint64_t bgpwatcher_view_iter_size(bgpwatcher_view_iter_t *iter,
       assert(iter->v4pfx_peer_it_valid);
       return kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_cnt;
       break;
-
+      
     case BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER:
       if(!iter->v6pfx_peer_it_valid)
 	{

@@ -138,15 +138,6 @@ struct bgpwatcher_store {
   /** active_clients contains, for each registered/active client (i.e. those
    *  that are currently connected) its status.*/
   clientinfo_map_t *active_clients;
-
-  /**  id <-> (collector,peer) caches
-   *
-   * These structures associate a numeric id (a bpgstore id, aka bs_id,
-   * represented by a uint16) to each (collector,peer) pair. This identifier is
-   * shared by all the bgpviews and it is constant over time.  Also, it enables
-   * faster lookup in the bgpview prefix tables.
-   */
-  bl_peersign_map_t *peersigns;
 };
 
 enum {
@@ -195,7 +186,7 @@ static void store_view_destroy(store_view_t *sview)
   free(sview);
 }
 
-store_view_t *store_view_create(bgpwatcher_store_t *store)
+store_view_t *store_view_create()
 {
   store_view_t *sview;
   if((sview = malloc_zero(sizeof(store_view_t))) == NULL)
@@ -222,7 +213,7 @@ store_view_t *store_view_create(bgpwatcher_store_t *store)
 
   // dis_status -> everything is set to zero
 
-  if((sview->view = bgpwatcher_view_create(store->peersigns)) == NULL)
+  if((sview->view = bgpwatcher_view_create()) == NULL)
     {
       goto err;
     }
@@ -252,7 +243,7 @@ static int store_view_clear(bgpwatcher_store_t *store,
 	% WDW_LEN;
 
       store_view_destroy(sview);
-      if((store->sviews[idx] = store_view_create(store)) == NULL)
+      if((store->sviews[idx] = store_view_create()) == NULL)
 	{
 	  return -1;
 	}
@@ -686,16 +677,9 @@ bgpwatcher_store_t *bgpwatcher_store_create(bgpwatcher_server_t *server)
       goto err;
     }
 
-  if((store->peersigns = bl_peersign_map_create()) == NULL)
-    {
-      fprintf(stderr, "Failed to create peersigns table\n");
-      goto err;
-    }
-
-  /* must be created after peersigns */
   for(i=0; i<WDW_LEN; i++)
     {
-      if((store->sviews[i] = store_view_create(store)) == NULL)
+      if((store->sviews[i] = store_view_create()) == NULL)
         {
           goto err;
         }
@@ -736,12 +720,6 @@ void bgpwatcher_store_destroy(bgpwatcher_store_t *store)
       kh_free(strclientstatus, store->active_clients, str_free);
       kh_destroy(strclientstatus, store->active_clients);
       store->active_clients = NULL;
-    }
-
-  if(store->peersigns != NULL)
-    {
-      bl_peersign_map_destroy(store->peersigns);
-      store->peersigns = NULL;
     }
 
   free(store);
@@ -845,12 +823,9 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
       peer_info = &(table->peers[remote_peer_id]);
       // set "static" (server) id assigned to (collector,peer) by current process
       peer_info->server_id =
-        bl_peersign_map_set_and_get(store->peersigns,
+        bl_peersign_map_set_and_get(sview->view->peersigns,
                                     table->collector, &(peer_info->ip));
       // send peer info to the appropriate bgp view
-
-      // it shares our peersigns table.. right?
-      assert(sview->view->peersigns_shared != 0);
 
       // add and cache the ap status (NULL if peer is inactive)
       peer_info->ap_status = store_view_add_peer(sview, peer_info);

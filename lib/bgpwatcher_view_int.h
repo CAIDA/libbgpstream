@@ -96,11 +96,9 @@ struct bgpwatcher_view {
   /** The number of in-use v6pfxs */
   uint32_t v6pfxs_cnt;
 
-  /** Table of peerid -> peersign (could be shared) */
+  /** Table of peerid -> peersign */
   bl_peersign_map_t *peersigns;
 
-  /** Is the peersigns table shared? */
-  int peersigns_shared;
 };
 
 /** Add a prefix to a view

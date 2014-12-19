@@ -93,11 +93,9 @@ typedef enum {
  * A BGP View holds a snapshot of the aggregated prefix information.
  * Basically, it maps from prefix -> peers -> prefix info
  *
- * @param peer_table    pointer to an external peer table, NULL to create an
- *                      internal table
  * @return a pointer to the view if successful, NULL otherwise
  */
-bgpwatcher_view_t *bgpwatcher_view_create(bl_peersign_map_t *peer_table);
+bgpwatcher_view_t *bgpwatcher_view_create();
 
 /** @todo create a nice high-level api for accessing information in the view */
 
