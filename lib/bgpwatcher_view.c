@@ -217,7 +217,7 @@ static bl_peer_signature_t *iter_get_peersig_from_id(bgpwatcher_view_iter_t *ite
     }
   k = kh_get(bl_bsid_peersign_map, iter->view->peersigns->id_ps, peerid);
   assert(k != kh_end(iter->view->peersigns->id_ps));
-  return &kh_val(iter->view->peersigns->id_ps, k);
+  return kh_val(iter->view->peersigns->id_ps, k);
 }
 
 /* ========== PROTECTED FUNCTIONS ========== */
@@ -247,6 +247,9 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
 	}
     }
   view->v4pfxs_cnt = 0;
+
+  /* mark all peers as unused */
+  bl_peersign_map_clear(view->peersigns);
 }
 
 int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
@@ -370,8 +373,7 @@ uint32_t bgpwatcher_view_pfx_size(bgpwatcher_view_t *view)
 
 uint32_t bgpwatcher_view_peer_size(bgpwatcher_view_t *view)
 {
-  /** @todo fixme */
-  return bl_peersign_map_get_size(view->peersigns);
+  return bl_peersign_map_get_inuse_size(view->peersigns);
 }
 
 uint32_t bgpwatcher_view_time(bgpwatcher_view_t *view)
@@ -441,7 +443,8 @@ void bgpwatcher_view_iter_first(bgpwatcher_view_iter_t *iter,
 
       /* keep searching if this does not exist */
       while(iter->peer_it != kh_end(iter->view->peersigns->id_ps) &&
-	      !kh_exist(iter->view->peersigns->id_ps, iter->peer_it))
+	    (!kh_exist(iter->view->peersigns->id_ps, iter->peer_it) ||
+	     !kh_val(iter->view->peersigns->id_ps, iter->peer_it)->in_use))
 	{
 	  iter->peer_it++;
 	}
@@ -565,11 +568,11 @@ void bgpwatcher_view_iter_next(bgpwatcher_view_iter_t *iter,
       break;
 
     case BGPWATCHER_VIEW_ITER_FIELD_PEER:
-      /** @todo FIXME! */
       do {
 	iter->peer_it++;
       } while(iter->peer_it != kh_end(iter->view->peersigns->id_ps) &&
-	      !kh_exist(iter->view->peersigns->id_ps, iter->peer_it));
+	      (!kh_exist(iter->view->peersigns->id_ps, iter->peer_it) ||
+	       !kh_val(iter->view->peersigns->id_ps, iter->peer_it)->in_use));
       break;
 
     case BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER:
@@ -636,7 +639,7 @@ uint64_t bgpwatcher_view_iter_size(bgpwatcher_view_iter_t *iter,
       assert(iter->v4pfx_peer_it_valid);
       return kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_cnt;
       break;
-      
+
     case BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER:
       if(!iter->v6pfx_peer_it_valid)
 	{
@@ -688,7 +691,7 @@ bgpwatcher_view_iter_get_peersig(bgpwatcher_view_iter_t *iter)
     {
       return NULL;
     }
-  return &kh_val(iter->view->peersigns->id_ps, iter->peer_it);
+  return kh_val(iter->view->peersigns->id_ps, iter->peer_it);
 }
 
 bl_peerid_t

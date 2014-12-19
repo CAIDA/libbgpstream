@@ -463,7 +463,8 @@ static int send_peers(void *dest, bgpwatcher_view_t *view)
   /* foreach peer, send peerid, collector string, peer ip (version, address) */
   for(k = kh_begin(view->peersigns); k != kh_end(view->peersigns->id_ps); ++k)
     {
-      if(kh_exist(view->peersigns->id_ps, k))
+      if(kh_exist(view->peersigns->id_ps, k) &&
+	 kh_val(view->peersigns->id_ps, k)->in_use)
 	{
 	  /* peer id */
 	  u16 = kh_key(view->peersigns->id_ps, k);
@@ -473,7 +474,7 @@ static int send_peers(void *dest, bgpwatcher_view_t *view)
 	      goto err;
 	    }
 
-	  ps = &(kh_value(view->peersigns->id_ps, k));
+	  ps = kh_value(view->peersigns->id_ps, k);
 	  len = strlen(ps->collector_str);
 	  if(zmq_send(dest, &ps->collector_str, len, ZMQ_SNDMORE) != len)
 	    {
