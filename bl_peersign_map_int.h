@@ -32,20 +32,21 @@
 #include "bl_bgp_utils.h"
 
 
-khint64_t bl_peer_signature_hash_func(bl_peer_signature_t ps);
-int bl_peer_signature_hash_equal(bl_peer_signature_t ps1,bl_peer_signature_t ps2);
+khint64_t bl_peer_signature_hash_func(bl_peer_signature_t *ps);
+int bl_peer_signature_hash_equal(bl_peer_signature_t *ps1,bl_peer_signature_t *ps2);
 
 
-KHASH_INIT(bl_peersign_bsid_map, bl_peer_signature_t, bl_peerid_t, 1,
+KHASH_INIT(bl_peersign_bsid_map, bl_peer_signature_t*, bl_peerid_t, 1,
 	   bl_peer_signature_hash_func, bl_peer_signature_hash_equal);
 
-KHASH_INIT(bl_bsid_peersign_map, bl_peerid_t, bl_peer_signature_t, 1,
+KHASH_INIT(bl_bsid_peersign_map, bl_peerid_t, bl_peer_signature_t*, 1,
 	   kh_int_hash_func, kh_int_hash_equal);
 
 
 struct bl_peersign_map {
   khash_t(bl_peersign_bsid_map) * ps_id;
   khash_t(bl_bsid_peersign_map) * id_ps;
+  int peers_inuse_cnt;
 };
 
 

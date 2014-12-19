@@ -40,6 +40,7 @@ typedef uint16_t bl_peerid_t;
 typedef struct struct_peer_signature_t {
   char collector_str[BGPCOMMON_COLLECTOR_NAME_LEN];
   bl_addr_storage_t peer_ip_addr;
+  uint8_t in_use;
 } bl_peer_signature_t;
 
 
@@ -71,7 +72,20 @@ bl_peer_signature_t* bl_peersign_map_get_peersign(bl_peersign_map_t *map,
 
 int bl_peersign_map_get_size(bl_peersign_map_t *map);
 
+/** Get the number of in-use peers
+ *
+ * @param map           peersign map
+ * @return the number of peers that are marked as in-use
+ */
+int bl_peersign_map_get_inuse_size(bl_peersign_map_t *map);
+
 void bl_peersign_map_destroy(bl_peersign_map_t *map);
+
+/** Set all peers to unused status without freeing any memory
+ *
+ * @param map           peersign map
+ */
+void bl_peersign_map_clear(bl_peersign_map_t *map);
 
 
 
