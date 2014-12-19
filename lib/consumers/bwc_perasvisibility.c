@@ -36,6 +36,8 @@
 
 #include "bwc_perasvisibility.h"
 
+#define BUFFER_LEN 1024
+
 #define NAME "per-as-visibility"
 
 #define METRIC_PREFIX               "bgp.visibility."
@@ -232,14 +234,14 @@ static void flip_v6table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 static void dump_table(bwc_t *consumer, uint32_t time)
 {
   khiter_t k;
-  char buffer[11];
+  char buffer[BUFFER_LEN];
 
   for (k = kh_begin(STATE->as_v4pfxs); k != kh_end(STATE->as_v4pfxs); ++k)
     {
       if (kh_exist(STATE->as_v4pfxs, k))
 	{
 	  // OUTPUT: number of ipv4 prefixes seen by each AS
-	  snprintf(buffer, 11,
+	  snprintf(buffer, BUFFER_LEN,
 		   METRIC_ASN_V4PFX_FORMAT,
 		   kh_key(STATE->as_v4pfxs, k));
 	  timeseries_set_single(BWC_GET_TIMESERIES(consumer),
@@ -254,7 +256,7 @@ static void dump_table(bwc_t *consumer, uint32_t time)
       if (kh_exist(STATE->as_v6pfxs, k))
 	{
 	  // OUTPUT: number of ipv6 prefixes seen by each AS
-	  snprintf(buffer, 11,
+	  snprintf(buffer, BUFFER_LEN,
 		   METRIC_ASN_V6PFX_FORMAT,
 		   kh_key(STATE->as_v6pfxs, k));
 	  timeseries_set_single(BWC_GET_TIMESERIES(consumer),
