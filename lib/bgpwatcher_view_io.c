@@ -27,11 +27,11 @@
 
 #include <czmq.h>
 
-#include "bgpwatcher_common_int.h"
-#include "bgpwatcher_view_int.h"
-
 /* we need to poke our fingers into the peersign map */
 #include "bl_peersign_map_int.h"
+
+#include "bgpwatcher_common_int.h"
+#include "bgpwatcher_view_int.h"
 
 #define ASSERT_MORE				\
   if(zsocket_rcvmore(src) == 0)			\

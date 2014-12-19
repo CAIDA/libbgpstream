@@ -314,19 +314,27 @@ void bgpwatcher_view_destroy(bgpwatcher_view_t *view)
   free(view);
 }
 
-uint32_t bgpwatcher_view_v4size(bgpwatcher_view_t *view)
+/* ==================== SIMPLE ACCESSOR FUNCTIONS ==================== */
+
+uint32_t bgpwatcher_view_v4pfx_size(bgpwatcher_view_t *view)
 {
-  return kh_size(view->v4pfxs);
+  return view->v4pfxs_cnt;
 }
 
-uint32_t bgpwatcher_view_v6size(bgpwatcher_view_t *view)
+uint32_t bgpwatcher_view_v6pfx_size(bgpwatcher_view_t *view)
 {
-  return kh_size(view->v6pfxs);
+  return view->v6pfxs_cnt;
 }
 
-uint32_t bgpwatcher_view_size(bgpwatcher_view_t *view)
+uint32_t bgpwatcher_view_pfx_size(bgpwatcher_view_t *view)
 {
-  return bgpwatcher_view_v4size(view) + bgpwatcher_view_v6size(view);
+  return bgpwatcher_view_v4pfx_size(view) + bgpwatcher_view_v6pfx_size(view);
+}
+
+uint32_t bgpwatcher_view_peer_size(bgpwatcher_view_t *view)
+{
+  /** @todo fixme */
+  return bl_peersign_map_get_size(view->peersigns);
 }
 
 uint32_t bgpwatcher_view_time(bgpwatcher_view_t *view)

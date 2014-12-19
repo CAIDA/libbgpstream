@@ -83,26 +83,38 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view);
  */
 void bgpwatcher_view_dump(bgpwatcher_view_t *view);
 
+/**
+ * @name Simple Accessor Functions
+ *
+ * @{ */
+
 /** Get the total number of IPv4 prefixes in the view
  *
  * @param view          pointer to a view structure
  * @return the number of IPv4 prefixes in the view
  */
-uint32_t bgpwatcher_view_v4size(bgpwatcher_view_t *view);
+uint32_t bgpwatcher_view_v4pfx_size(bgpwatcher_view_t *view);
 
 /** Get the total number of IPv6 prefixes in the view
  *
  * @param view          pointer to a view structure
  * @return the number of IPv6 prefixes in the view
  */
-uint32_t bgpwatcher_view_v6size(bgpwatcher_view_t *view);
+uint32_t bgpwatcher_view_v6pfx_size(bgpwatcher_view_t *view);
 
 /** Get the total number of prefixes (v4+v6) in the view
  *
  * @param view          pointer to a view structure
  * @return the number of prefixes in the view
  */
-uint32_t bgpwatcher_view_size(bgpwatcher_view_t *view);
+uint32_t bgpwatcher_view_pfx_size(bgpwatcher_view_t *view);
+
+/** Get the number of peers in the view
+ *
+ * @param view          pointer to a view structure
+ * @return the number of peers in the view
+ */
+uint32_t bgpwatcher_view_peer_size(bgpwatcher_view_t *view);
 
 /** Get the BGP time that the view represents
  *
