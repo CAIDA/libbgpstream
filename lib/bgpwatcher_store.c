@@ -370,7 +370,7 @@ static int store_view_table_end(store_view_t *sview,
 
   for(remote_peer_id = 0; remote_peer_id < table->peers_cnt; remote_peer_id++)
     {
-      // ####### TODO: use bl_bgp_utils!!!!!!!!!!!!!!!! #######################
+      /** @todo Chiara use bl_bgp_utils!!!!!!!!!!!!!!!! ######################*/
       if(table->peers[remote_peer_id].status == 2)
 	{
 	  // get the active peer status ptr for the current id
@@ -454,7 +454,7 @@ static int dispatcher_run(bgpwatcher_store_t *store,
       return 0;
     }
 
-  /** @todo we need to build the list of valid peers! */
+  /** @todo Chiara we need to build the list of valid peers! */
 
   /* now publish the view */
   if(bgpwatcher_server_publish_view(store->server, sview->view,

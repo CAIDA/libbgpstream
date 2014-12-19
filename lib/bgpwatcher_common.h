@@ -30,8 +30,6 @@
 
 #include <bl_bgp_utils.h>
 
-#include "bgpwatcher_view.h"
-
 /** @file
  *
  * @brief Header file that exposes the public structures used by both

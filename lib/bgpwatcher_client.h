@@ -28,7 +28,8 @@
 
 #include <stdint.h>
 
-#include <bgpwatcher_common.h>
+#include "bgpwatcher_view.h"
+#include "bgpwatcher_common.h"
 
 /** @file
  *

@@ -64,7 +64,7 @@ static void usage(bwc_t *consumer)
 #endif
 
 /** Parse the arguments given to the consumer */
-static int parse_args(bwc_t *backend, int argc, char **argv)
+static int parse_args(bwc_t *consumer, int argc, char **argv)
 {
   /*int opt;*/
 
@@ -90,7 +90,7 @@ static int parse_args(bwc_t *backend, int argc, char **argv)
 	case '?':
 	case ':':
 	default:
-	  usage(backend);
+	  usage(consumer);
 	  return -1;
 	}
     }

@@ -28,6 +28,8 @@
 
 #include "bl_peersign_map.h"
 
+#include "bgpwatcher_common.h" /* < pfx_peer_info_t */
+
 /** @file
  *
  * @brief Header file that exposes the public interface of bgpwatcher view.

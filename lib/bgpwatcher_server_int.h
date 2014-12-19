@@ -30,6 +30,7 @@
 #include <stdint.h>
 
 #include "bgpwatcher_server.h"
+#include "bgpwatcher_view.h"
 #include "bgpwatcher_common_int.h"
 #include "bgpwatcher_store.h"
 
