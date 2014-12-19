@@ -38,7 +38,7 @@
 #include "bwc_test.h"
 
 /* Per-AS Visibility consumer */
-/*#include "bwc_perasvisibility.h"*/
+#include "bwc_perasvisibility.h"
 
 /* ==================== PRIVATE DATA STRUCTURES ==================== */
 

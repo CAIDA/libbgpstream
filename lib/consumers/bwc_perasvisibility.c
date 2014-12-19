@@ -23,238 +23,338 @@
  *
  */
 
-
-#include "bgpstore_interests.h"
-#include "bgpstore_common.h"
-
-#include "bgpwatcher_common.h" // interests masks
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "utils.h"
+#include "khash.h"
 
-#include "bl_bgp_utils.h"
-#include "bl_str_set.h"
-#include "bl_id_set.h"
 #include "bl_pfx_set.h"
 
-#include "khash.h"
-#include <assert.h>
+#include "bgpwatcher_consumer_interface.h"
 
+#include "bwc_perasvisibility.h"
 
-#define METRIC_PREFIX "bgp.test.visibility"
+#define NAME "per-as-visibility"
 
+#define METRIC_PREFIX "bgp.visibility"
 
-// AS -> prefix set
+#define ROUTED_PFX_PEERCNT 10
 
-KHASH_INIT(as_visibility /* name */, 
-	   uint32_t /* khkey_t */, 
-	   bl_ipv4_pfx_set_t* /* khval_t */, 
-	   1  /* kh_is_set */,
-	   kh_int_hash_func /*__hash_func */,  
-	   kh_int_hash_equal /* __hash_equal */);
+#define STATE					\
+  (BWC_GET_STATE(consumer, perasvisibility))
 
-typedef khash_t(as_visibility) as_visibility_t;
-
-
-struct perasvisibility_interest {
-
-  /** timestamp */
-  uint32_t ts;
-  
-  /** Set of peers that are complete (i.e. no more
-   *  pfx tables expected) and satisfy the full feed
-   *  requirements (i.e. #ipv4 prefixes > 500K, 
-   *  #ipv6 prefixes > 10K ~ TODO check! )
-   */
-  bl_id_set_t *eligible_peers;
-  /** for each AS we store the unique set of prefixes
-   *  that are originated by this AS */
-  as_visibility_t *as_vis_map;
-  
-    // TODO: add other structures??
+/* our 'class' */
+static bwc_t bwc_perasvisibility = {
+  BWC_ID_PERASVISIBILITY,
+  NAME,
+  BWC_GENERATE_PTRS(perasvisibility)
 };
 
+/** Map from ASN => v4PFX-SET */
+KHASH_INIT(as_v4pfxs /* name */,
+	   uint32_t /* khkey_t */,
+	   bl_ipv4_pfx_set_t* /* khval_t */,
+	   1  /* kh_is_set */,
+	   kh_int_hash_func /*__hash_func */,
+	   kh_int_hash_equal /* __hash_equal */);
 
+/** Map from ASN => v6PFX-SET */
+KHASH_INIT(as_v6pfxs /* name */,
+	   uint32_t /* khkey_t */,
+	   bl_ipv6_pfx_set_t* /* khval_t */,
+	   1  /* kh_is_set */,
+	   kh_int_hash_func /*__hash_func */,
+	   kh_int_hash_equal /* __hash_equal */);
 
-static void as_visibility_insert(as_visibility_t *as_vis_map, uint32_t asn, bl_ipv4_pfx_t *pfx)
+/* our 'instance' */
+typedef struct bwc_perasvisibility_state {
+
+  /** Map from ASN => v4PFX-SET */
+  khash_t(as_v4pfxs) *as_v4pfxs;
+
+  /** Map from ASN => v6PFX-SET */
+  khash_t(as_v6pfxs) *as_v6pfxs;
+
+  /** Prefix visibility threshold */
+  int pfx_vis_threshold;
+
+} bwc_perasvisibility_state_t;
+
+/** Print usage information to stderr */
+static void usage(bwc_t *consumer)
+{
+  fprintf(stderr,
+	  "consumer usage: %s\n"
+	  "       -p <peer-cnt> # peers that must observe a pfx (default: %d)\n",
+	  consumer->name,
+	  ROUTED_PFX_PEERCNT);
+}
+
+/** Parse the arguments given to the consumer */
+static int parse_args(bwc_t *consumer, int argc, char **argv)
+{
+  int opt;
+
+  assert(argc > 0 && argv != NULL);
+
+  /* NB: remember to reset optind to 1 before using getopt! */
+  optind = 1;
+
+  /* remember the argv strings DO NOT belong to us */
+  while((opt = getopt(argc, argv, ":p:?")) >= 0)
+    {
+      switch(opt)
+	{
+	case 'p':
+	  STATE->pfx_vis_threshold = atoi(optarg);
+	  break;
+
+	case '?':
+	case ':':
+	default:
+	  usage(consumer);
+	  return -1;
+	}
+    }
+
+  return 0;
+}
+
+static void as_v4pfxs_insert(bwc_perasvisibility_state_t *state,
+			     uint32_t asn, bl_ipv4_pfx_t *pfx)
 {
   int khret;
   khiter_t k;
   bl_ipv4_pfx_set_t* pfx_set;
-  if((k = kh_get(as_visibility, as_vis_map, asn)) == kh_end(as_vis_map))
+
+  if((k = kh_get(as_v4pfxs, state->as_v4pfxs, asn)) == kh_end(state->as_v4pfxs))
     {
-      k = kh_put(as_visibility, as_vis_map, asn, &khret);
-      kh_value(as_vis_map,k) = bl_ipv4_pfx_set_create();
+      k = kh_put(as_v4pfxs, state->as_v4pfxs, asn, &khret);
+      pfx_set = kh_value(state->as_v4pfxs, k) = bl_ipv4_pfx_set_create();
     }
-  pfx_set = kh_value(as_vis_map,k);
-  if(pfx_set == NULL){
-    // TODO: error
-  }
+  else
+    {
+      pfx_set = kh_value(state->as_v4pfxs, k);
+    }
+
+  assert(pfx_set != NULL);
   bl_ipv4_pfx_set_insert(pfx_set, *pfx);
 }
 
-
-
-
-perasvisibility_interest_t* perasvisibility_interest_create(bgpview_t *bgp_view,
-							    uint32_t ts)
+static void as_v6pfxs_insert(bwc_perasvisibility_state_t *state,
+			       uint32_t asn, bl_ipv6_pfx_t *pfx)
 {
-  perasvisibility_interest_t *peras_vis = (perasvisibility_interest_t *) malloc_zero(sizeof(perasvisibility_interest_t));
-
-  // create internal structures
-  if((peras_vis->eligible_peers = bl_id_set_create()) == NULL)
-    {
-      fprintf(stderr, "Error: unable to create the eligible_peers set\n");
-      goto err;
-    }
-  
-  if((peras_vis->as_vis_map = kh_init(as_visibility)) == NULL)
-    {
-      fprintf(stderr, "Error: unable to create the as visibility map\n");
-      goto err;
-    }
-
-  peras_vis->ts = ts;
-  
+  int khret;
   khiter_t k;
-  uint16_t i;
-  active_peer_status_t *aps;
-  
-  // 1. we select full feed peers that are complete (i.e. no more pfx table expected)
-  for (k = kh_begin(bgp_view->active_peers_info);
-       k != kh_end(bgp_view->active_peers_info); ++k)
+  bl_ipv6_pfx_set_t* pfx_set;
+
+  if((k = kh_get(as_v6pfxs, state->as_v6pfxs, asn)) == kh_end(state->as_v6pfxs))
     {
-      if (kh_exist(bgp_view->active_peers_info, k))	
-	{
-	  i = kh_key(bgp_view->active_peers_info, k);
-	  aps = &(kh_value(bgp_view->active_peers_info, k));
-	  // check completeness
-	  if(aps->expected_pfx_tables_cnt == aps->received_pfx_tables_cnt)
-	    {
-	      // check full feed
-	      if(aps->recived_ipv4_pfx_cnt > IPV4_FULLFEED ||
-		 aps->recived_ipv6_pfx_cnt > IPV6_FULLFEED )
-		{
-		  bl_id_set_insert(peras_vis->eligible_peers, i);
-		}
-	    }	  
-	}
+      k = kh_put(as_v6pfxs, state->as_v6pfxs, asn, &khret);
+      pfx_set = kh_value(state->as_v6pfxs, k) = bl_ipv6_pfx_set_create();
+    }
+  else
+    {
+      pfx_set = kh_value(state->as_v6pfxs, k);
     }
 
-  
-  // 2. go through all ipv4 prefixes, get their origin ASes
-  //    and populate the as visibility map
-  
-  bl_ipv4_pfx_t *pfx;
-  peerview_t *pv;
-  pfxinfo_t *pi;
-  khiter_t k_inn;
-  int num_peers;
+  assert(pfx_set != NULL);
+  bl_ipv6_pfx_set_insert(pfx_set, *pfx);
+}
 
-  for (k = kh_begin(bgp_view->aggregated_pfxview_ipv4);
-       k != kh_end(bgp_view->aggregated_pfxview_ipv4); ++k)
+/* ==================== CONSUMER INTERFACE FUNCTIONS ==================== */
+
+bwc_t *bwc_perasvisibility_alloc()
+{
+  return &bwc_perasvisibility;
+}
+
+int bwc_perasvisibility_init(bwc_t *consumer, int argc, char **argv)
+{
+  bwc_perasvisibility_state_t *state = NULL;
+
+  if((state = malloc_zero(sizeof(bwc_perasvisibility_state_t))) == NULL)
     {
-      if (kh_exist(bgp_view->aggregated_pfxview_ipv4, k))	
-	{
-	  pfx = &(kh_key(bgp_view->aggregated_pfxview_ipv4,k));
-	  pv = kh_value(bgp_view->aggregated_pfxview_ipv4,k);
-	  // check if prefix is routed
-	  num_peers = 0;
-	  // for each id check if it is eligible
-	  for (k_inn = kh_begin(pv); k_inn != kh_end(pv); ++k_inn)
-	    {
-	      if (kh_exist(pv, k_inn))	
-		{
-		  i = kh_key(pv, k_inn);
-		  if(bl_id_set_exists(peras_vis->eligible_peers,i) == 1)
-		    {
-		      num_peers++;
-		    }
-		}
-	    }
-	  // insert in as visibility if routed
-	  if(num_peers > ROUTED_PFX_PEERCOUNT)
-	    {
-	      for (k_inn = kh_begin(pv); k_inn != kh_end(pv); ++k_inn)
-		{
-		  if (kh_exist(pv, k_inn))	
-		    {
-		      i = kh_key(pv, k_inn);
-		      if(bl_id_set_exists(peras_vis->eligible_peers,i) == 1)
-			{
-			  pi = &(kh_value(pv,k_inn));
-			  // get origin AS
-			  if(pi->orig_asn != 0) // not a special case
-			    {
-			      // insert (AS, ipv4_pfx)
-			      as_visibility_insert(peras_vis->as_vis_map, pi->orig_asn, pfx);
-			    }
-			}
-		    }
-		}
-	    }
-	}
+      return -1;
+    }
+  BWC_SET_STATE(consumer, state);
+
+  /* set defaults here */
+
+  state->pfx_vis_threshold = ROUTED_PFX_PEERCNT;
+
+  if((state->as_v4pfxs = kh_init(as_v4pfxs)) == NULL)
+    {
+      fprintf(stderr, "Error: Unable to create as visibility map (v4)\n");
+      goto err;
+    }
+  if((state->as_v6pfxs = kh_init(as_v6pfxs)) == NULL)
+    {
+      fprintf(stderr, "Error: unable to create as visibility map (v6)\n");
+      goto err;
     }
 
-  return peras_vis;
+  /* parse the command line args */
+  if(parse_args(consumer, argc, argv) != 0)
+    {
+      goto err;
+    }
+
+  /* react to args here */
+
+  return 0;
 
  err:
-  perasvisibility_interest_destroy(peras_vis);
-  return NULL;
+  return -1;
 }
 
-
-
-int perasvisibility_interest_send(perasvisibility_interest_t* peras_vis, char *client)
+void bwc_perasvisibility_destroy(bwc_t *consumer)
 {
+  bwc_perasvisibility_state_t *state = STATE;
 
-  // OUTPUT: number of ipv4 prefixes seen by each AS
-  fprintf(stdout,
-	  METRIC_PREFIX".full_feed_peers_cnt  %d %"PRIu32"\n",
-	  kh_size(peras_vis->eligible_peers),
-	  peras_vis->ts);
-
-  // print per AS visibility
-  uint32_t asn;
-  uint64_t ipv4_pfx_cnt;
-  khiter_t k;
-
-  for (k = kh_begin(peras_vis->as_vis_map);
-       k != kh_end(peras_vis->as_vis_map); ++k)
+  if(state == NULL)
     {
-      if (kh_exist(peras_vis->as_vis_map, k))	
+      return;
+    }
+
+  /* destroy things here */
+  if(state->as_v4pfxs != NULL)
+    {
+      kh_free_vals(as_v4pfxs, state->as_v4pfxs, bl_ipv4_pfx_set_destroy);
+      kh_destroy(as_v4pfxs, state->as_v4pfxs);
+      state->as_v4pfxs = NULL;
+    }
+  if(state->as_v6pfxs != NULL)
+    {
+      kh_free_vals(as_v6pfxs, state->as_v6pfxs, bl_ipv6_pfx_set_destroy);
+      kh_destroy(as_v6pfxs, state->as_v6pfxs);
+      state->as_v6pfxs = NULL;
+    }
+
+  free(state);
+
+  BWC_SET_STATE(consumer, NULL);
+}
+
+/** @note this code ASSUMES that BGP Watcher is only publishing tables from
+    FULL-FEED peers.  If this ever changes, then this code MUST be updated */
+int bwc_perasvisibility_process_view(bwc_t *consumer, uint8_t interests,
+				     bgpwatcher_view_t *view)
+{
+  khiter_t k;
+  bgpwatcher_view_iter_t *it;
+
+  bl_ipv4_pfx_t *v4pfx;
+  bl_ipv6_pfx_t *v6pfx;
+  bgpwatcher_pfx_peer_info_t *pfxinfo;
+
+  uint64_t peers_cnt;
+
+  /* foreach v4pfx, if(peers_cnt > ROUTED_PFX_PEERCNT) foreach peer, add
+     origas->pfx */
+
+  /* create a new iterator */
+  if((it = bgpwatcher_view_iter_create(view)) == NULL)
+    {
+      return -1;
+    }
+
+  /* IPv4 */
+  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
+      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
+      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX))
+    {
+      /* get the current v4 prefix */
+      v4pfx = bgpwatcher_view_iter_get_v4pfx(it);
+
+      /* only consider pfxs with peers_cnt >= pfx_vis_threshold */
+      if(bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER)
+	 < STATE->pfx_vis_threshold)
 	{
-	  asn = kh_key(peras_vis->as_vis_map,k);
-	  ipv4_pfx_cnt = kh_size(kh_value(peras_vis->as_vis_map,k));
+	  continue;
+	}
+
+      /* iterate over the peers for the current v4pfx */
+      for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER);
+	  !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER);
+	  bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER))
+	{
+	  pfxinfo = bgpwatcher_view_iter_get_v4pfx_pfxinfo(it);
+	  as_v4pfxs_insert(STATE, pfxinfo->orig_asn, v4pfx);
+	}
+    }
+
+  /* IPv6 */
+ for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX);
+      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX);
+      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX))
+    {
+      /* get the current v6 prefix */
+      v6pfx = bgpwatcher_view_iter_get_v6pfx(it);
+
+      /* only consider pfxs with peers_cnt >= pfx_vis_threshold */
+      if(bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER)
+	 < STATE->pfx_vis_threshold)
+	{
+	  continue;
+	}
+
+      /* iterate over the peers for the current v6pfx */
+      for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER);
+	  !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER);
+	  bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER))
+	{
+	  pfxinfo = bgpwatcher_view_iter_get_v6pfx_pfxinfo(it);
+	  as_v6pfxs_insert(STATE, pfxinfo->orig_asn, v6pfx);
+	}
+    }
+
+  /* how many peers? */
+  peers_cnt = bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
+
+  /* now dump the stats */
+  fprintf(stdout,
+	  METRIC_PREFIX".full_feed_peers_cnt  %"PRIu64" %"PRIu32"\n",
+	  peers_cnt,
+	  bgpwatcher_view_time(view));
+
+  for (k = kh_begin(STATE->as_v4pfxs); k != kh_end(STATE->as_v4pfxs); ++k)
+    {
+      if (kh_exist(STATE->as_v4pfxs, k))
+	{
 	  // OUTPUT: number of ipv4 prefixes seen by each AS
 	  fprintf(stdout,
-		  METRIC_PREFIX".%"PRIu32".ipv4_cnt %"PRIu64" %"PRIu32"\n",
-		  asn,
-		  ipv4_pfx_cnt,
-		  peras_vis->ts);
+		  METRIC_PREFIX".asn.%"PRIu32".ipv4_cnt %"PRIu32" %"PRIu32"\n",
+		  kh_key(STATE->as_v4pfxs, k),
+		  kh_size(kh_value(STATE->as_v4pfxs, k)),
+		  bgpwatcher_view_time(view));
 	}
     }
-  
+
+  for (k = kh_begin(STATE->as_v6pfxs); k != kh_end(STATE->as_v6pfxs); ++k)
+    {
+      if (kh_exist(STATE->as_v6pfxs, k))
+	{
+	  // OUTPUT: number of ipv6 prefixes seen by each AS
+	  fprintf(stdout,
+		  METRIC_PREFIX".asn.%"PRIu32".ipv6_cnt %"PRIu32" %"PRIu32"\n",
+		  kh_key(STATE->as_v6pfxs, k),
+		  kh_size(kh_value(STATE->as_v6pfxs, k)),
+		  bgpwatcher_view_time(view));
+	}
+    }
+
+  /* now clear the tables */
+  kh_free_vals(as_v4pfxs, STATE->as_v4pfxs, bl_ipv4_pfx_set_destroy);
+  kh_clear(as_v4pfxs, STATE->as_v4pfxs);
+  kh_free_vals(as_v6pfxs, STATE->as_v6pfxs, bl_ipv6_pfx_set_destroy);
+  kh_clear(as_v6pfxs, STATE->as_v6pfxs);
+
+  /* destroy the view iterator */
+  /** @todo reuse this iterator */
+  bgpwatcher_view_iter_destroy(it);
+
   return 0;
 }
-
-
-void perasvisibility_interest_destroy(perasvisibility_interest_t* peras_vis)
-{
-  if(peras_vis !=NULL)
-    {
-      if(peras_vis->eligible_peers != NULL)
-	{
-	  bl_id_set_destroy(peras_vis->eligible_peers);
-	  peras_vis->eligible_peers = NULL;
-	}
-      if(peras_vis->as_vis_map != NULL)
-	{
-	  kh_free_vals(as_visibility, peras_vis->as_vis_map, bl_ipv4_pfx_set_destroy);
-	  kh_destroy(as_visibility, peras_vis->as_vis_map);
-	  peras_vis->as_vis_map = NULL;
-	}      
-      free(peras_vis);
-    }
-}
-
-

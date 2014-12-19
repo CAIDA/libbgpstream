@@ -42,9 +42,9 @@ CONSUMER_SRCS += \
 	bwc_test.h
 
 # Per-AS Visibility Consumer
-#CONSUMER_SRCS += \
-#	bwc_perasvisibility.c \
-#	bwc_perasvisibility.h
+CONSUMER_SRCS += \
+	bwc_perasvisibility.c \
+	bwc_perasvisibility.h
 
 # -- sample how to add conditional consumer
 #if WITH_<NAME>
