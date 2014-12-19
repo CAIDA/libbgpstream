@@ -99,6 +99,10 @@ AC_SEARCH_LIBS([wandio_create], [wandio trace], ,[AC_MSG_ERROR(
 AC_CHECK_LIB([czmq], [zctx_new], ,[AC_MSG_ERROR(
 		      [CZMQ is required])])
 
+AC_CHECK_LIB([timeseries], [timeseries_init], , [
+    AC_MSG_ERROR([libtimeseries is required for the Per-AS Visibility plugin])
+])
+
 # @@todo add libbgpstream here
 
 ## @note AC_CHECK_LIB is for when you know the name of the library,

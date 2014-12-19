@@ -29,6 +29,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <timeseries.h>
 
 #include "bgpwatcher_view.h"
 
@@ -91,9 +92,11 @@ typedef enum bwc_id
 
 /** Create a new consumer manager instance
  *
+ * @param timeseries    pointer to an initialized timeseries instance
+ *
  * @return the consumer manager instance created, NULL if an error occurs
  */
-bw_consumer_manager_t *bw_consumer_manager_create();
+bw_consumer_manager_t *bw_consumer_manager_create(timeseries_t *timeseries);
 
 /** Free a consumer manager instance
  *

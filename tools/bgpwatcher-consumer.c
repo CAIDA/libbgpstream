@@ -41,6 +41,31 @@
 #include "utils.h"
 
 static bw_consumer_manager_t *manager = NULL;
+static timeseries_t *timeseries = NULL;
+
+static void timeseries_usage()
+{
+  assert(timeseries != NULL);
+  timeseries_backend_t **backends = NULL;
+  int i;
+
+  backends = timeseries_get_all_backends(timeseries);
+
+  fprintf(stderr,
+	  "                               available backends:\n");
+  for(i = 0; i < TIMESERIES_BACKEND_ID_LAST; i++)
+    {
+      /* skip unavailable backends */
+      if(backends[i] == NULL)
+	{
+	  continue;
+	}
+
+      assert(timeseries_backend_get_name(backends[i]));
+      fprintf(stderr, "                                - %s\n",
+	      timeseries_backend_get_name(backends[i]));
+    }
+}
 
 static void consumer_usage()
 {
@@ -72,8 +97,12 @@ static void usage(const char *name)
 {
   fprintf(stderr,
 	  "usage: %s [<options>]\n"
-	  "       -c <consumer>         Consumer to active (can be used multiple times)\n",
+	  "       -b <backend>          Enable the given timeseries backend,\n"
+	  "                               -b can be used multiple times\n",
 	  name);
+  timeseries_usage();
+  fprintf(stderr,
+	  "       -c <consumer>         Consumer to active (can be used multiple times)\n");
   consumer_usage();
   fprintf(stderr,
 	  "       -i <interval-ms>      Time in ms between heartbeats to server\n"
@@ -111,6 +140,11 @@ int main(int argc, char **argv)
   int consumer_cmds_cnt = 0;
   int i;
 
+  char *backends[TIMESERIES_BACKEND_ID_LAST];
+  int backends_cnt = 0;
+  char *backend_arg_ptr = NULL;
+  timeseries_backend_t *backend = NULL;
+
   const char *server_uri = NULL;
   const char *server_sub_uri = NULL;
   const char *identity = NULL;
@@ -127,16 +161,22 @@ int main(int argc, char **argv)
   int rx_interests;
   bgpwatcher_view_t *view = NULL;
 
+  if((timeseries = timeseries_init()) == NULL)
+    {
+      fprintf(stderr, "ERROR: Could not initialize libtimeseries\n");
+      return -1;
+    }
+
   /* better just grab a pointer to the manager before anybody goes crazy and
      starts dumping usage strings */
-  if((manager = bw_consumer_manager_create()) == NULL)
+  if((manager = bw_consumer_manager_create(timeseries)) == NULL)
     {
       fprintf(stderr, "ERROR: Could not initialize consumer manager\n");
       return -1;
     }
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":c:i:I:l:n:r:R:s:S:v?")) >= 0)
+	(opt = getopt(argc, argv, ":b:c:i:I:l:n:r:R:s:S:v?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
@@ -148,6 +188,10 @@ int main(int argc, char **argv)
 	  fprintf(stderr, "ERROR: Missing option argument for -%c\n", optopt);
 	  usage(argv[0]);
 	  return -1;
+	  break;
+
+	case 'b':
+	  backends[backends_cnt++] = strdup(optarg);
 	  break;
 
 	case 'c':
@@ -239,6 +283,53 @@ int main(int argc, char **argv)
 	      "ERROR: Consumer(s) must be specified using -c\n");
       usage(argv[0]);
       return -1;
+    }
+
+  if(backends_cnt == 0)
+    {
+      fprintf(stderr,
+	      "ERROR: At least one backend must be specified using -b\n");
+      usage(argv[0]);
+      goto err;
+    }
+
+  /* enable the backends that were requested */
+  for(i=0; i<backends_cnt; i++)
+    {
+      /* the string at backends[i] will contain the name of the plugin,
+	 optionally followed by a space and then the arguments to pass
+	 to the plugin */
+      if((backend_arg_ptr = strchr(backends[i], ' ')) != NULL)
+	{
+	  /* set the space to a nul, which allows backends[i] to be used
+	     for the backend name, and then increment plugin_arg_ptr to
+	     point to the next character, which will be the start of the
+	     arg string (or at worst case, the terminating \0 */
+	  *backend_arg_ptr = '\0';
+	  backend_arg_ptr++;
+	}
+
+      /* lookup the backend using the name given */
+      if((backend = timeseries_get_backend_by_name(timeseries,
+						   backends[i])) == NULL)
+	{
+	  fprintf(stderr, "ERROR: Invalid backend name (%s)\n",
+		  backends[i]);
+	  usage(argv[0]);
+	  goto err;
+	}
+
+      if(timeseries_enable_backend(backend, backend_arg_ptr) != 0)
+	{
+	  fprintf(stderr, "ERROR: Failed to initialized backend (%s)",
+		  backends[i]);
+	  usage(argv[0]);
+	  goto err;
+	}
+
+      /* free the string we dup'd */
+      free(backends[i]);
+      backends[i] = NULL;
     }
 
   for(i=0; i<consumer_cmds_cnt; i++)
@@ -334,17 +425,19 @@ int main(int argc, char **argv)
   bgpwatcher_client_free(client);
   bgpwatcher_view_destroy(view);
   bw_consumer_manager_destroy(&manager);
+  timeseries_free(&timeseries);
   fprintf(stderr, "INFO: Shutdown complete\n");
 
   /* complete successfully */
   return 0;
 
  err:
-  bgpwatcher_client_perr(client);
   if(client != NULL) {
+    bgpwatcher_client_perr(client);
     bgpwatcher_client_free(client);
   }
   bgpwatcher_view_destroy(view);
   bw_consumer_manager_destroy(&manager);
+  timeseries_free(&timeseries);
   return -1;
 }

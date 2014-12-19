@@ -54,6 +54,9 @@
     (consumer)->state = ptr;			\
   } while(0)
 
+#define BWC_GET_TIMESERIES(consumer)		\
+  ((consumer)->timeseries)
+
 /** Convenience macro that defines all the function prototypes for the timeseries
  * consumer API
  */
@@ -150,6 +153,9 @@ struct bwc
 
   /** An opaque pointer to consumer-specific state if needed by the consumer */
   void *state;
+
+  /** A borrowed pointer to a configured and operational timeseries instance */
+  timeseries_t *timeseries;
 
   /** }@ */
 };

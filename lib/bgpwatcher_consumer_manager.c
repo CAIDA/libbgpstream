@@ -51,6 +51,9 @@ struct bw_consumer_manager {
    */
   bwc_t *consumers[BWC_ID_LAST];
 
+  /** Borrowed pointer to a libtimeseries instance */
+  timeseries_t *timeseries;
+
 };
 
 /** Convenience typedef for the backend alloc function type */
@@ -66,8 +69,8 @@ static const consumer_alloc_func_t consumer_alloc_functions[] = {
   /** Pointer to test backend alloc function */
   bwc_test_alloc,
 
-  /** Pointer to (disabled) per-as vis function */
-  NULL,
+  /** Pointer to per-as vis function */
+  bwc_perasvisibility_alloc,
 
   /** Sample conditional consumer. If enabled, point to the alloc function,
       otherwise a NULL pointer to indicate the consumer is unavailable */
@@ -83,7 +86,7 @@ static const consumer_alloc_func_t consumer_alloc_functions[] = {
 
 /* ==================== PRIVATE FUNCTIONS ==================== */
 
-static bwc_t *consumer_alloc(bwc_id_t id)
+static bwc_t *consumer_alloc(timeseries_t *timeseries, bwc_id_t id)
 {
   bwc_t *consumer;
   assert(ARR_CNT(consumer_alloc_functions) == BWC_ID_LAST);
@@ -101,6 +104,8 @@ static bwc_t *consumer_alloc(bwc_id_t id)
 
   /* get the core consumer details (id, name, func ptrs) from the plugin */
   memcpy(consumer, consumer_alloc_functions[id-1](), sizeof(bwc_t));
+
+  consumer->timeseries = timeseries;
 
   return consumer;
 }
@@ -154,7 +159,7 @@ static void consumer_destroy(bwc_t **consumer_p)
 
 /* ==================== PUBLIC MANAGER FUNCTIONS ==================== */
 
-bw_consumer_manager_t *bw_consumer_manager_create()
+bw_consumer_manager_t *bw_consumer_manager_create(timeseries_t *timeseries)
 {
   bw_consumer_manager_t *mgr;
   int id;
@@ -165,10 +170,12 @@ bw_consumer_manager_t *bw_consumer_manager_create()
       return NULL;
     }
 
+  mgr->timeseries = timeseries;
+
   /* allocate the consumers (some may/will be NULL) */
   for(id = BWC_ID_FIRST; id <= BWC_ID_LAST; id++)
     {
-      mgr->consumers[id-1] = consumer_alloc(id);
+      mgr->consumers[id-1] = consumer_alloc(timeseries, id);
     }
 
   return mgr;
