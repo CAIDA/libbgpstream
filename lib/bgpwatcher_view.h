@@ -248,6 +248,16 @@ bl_ipv4_pfx_t *bgpwatcher_view_iter_get_v4pfx(bgpwatcher_view_iter_t *iter);
  */
 bl_ipv6_pfx_t *bgpwatcher_view_iter_get_v6pfx(bgpwatcher_view_iter_t *iter);
 
+/** Get the current peer ID for the given iterator
+ *
+ * @param iter          Pointer to an iterator structure
+ * @return the peer ID that the iterator's peer field is currently pointed at,
+ *         NULL if the iterator is not initialized, or has reached the end of
+ *         the peers
+ */
+bl_peerid_t
+bgpwatcher_view_iter_get_peerid(bgpwatcher_view_iter_t *iter);
+
 /** Get the current peer signature for the given iterator
  *
  * @param iter          Pointer to an iterator structure
@@ -255,7 +265,38 @@ bl_ipv6_pfx_t *bgpwatcher_view_iter_get_v6pfx(bgpwatcher_view_iter_t *iter);
  *         pointed at, NULL if the iterator is not initialized, or has reached
  *         the end of the peers
  */
-bl_peer_signature_t *bgpwatcher_view_iter_get_peer(bgpwatcher_view_iter_t *iter);
+bl_peer_signature_t *
+bgpwatcher_view_iter_get_peersig(bgpwatcher_view_iter_t *iter);
+
+/** Get the current peer ID (key) for the current v4pfx.
+ *
+ * @param iter          Pointer to a valid iterator structure
+ * @return the peer ID that the iterator's v4pfx_peer field is currently pointed
+ *         at, NULL if the iterator is not initialized, or has reached the end
+ *         of the peers for the current v4 prefix
+ *
+ * @note this returns the current peer (BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER)
+ * for the current prefix (BGPWATCHER_VIEW_ITER_FIELD_V4PFX).
+ *
+ * @note the peer ID is only meaningful *within* a view.
+ */
+bl_peerid_t
+bgpwatcher_view_iter_get_v4pfx_peerid(bgpwatcher_view_iter_t *iter);
+
+/** Get the current peer ID (key) for the current v6pfx.
+ *
+ * @param iter          Pointer to a valid iterator structure
+ * @return the peer ID that the iterator's v6pfx_peer field is currently pointed
+ *         at, NULL if the iterator is not initialized, or has reached the end
+ *         of the peers for the current v6 prefix
+ *
+ * @note this returns the current peer (BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER)
+ * for the current prefix (BGPWATCHER_VIEW_ITER_FIELD_V6PFX).
+ *
+ * @note the peer ID is only meaningful *within* a view.
+ */
+bl_peerid_t
+bgpwatcher_view_iter_get_v6pfx_peerid(bgpwatcher_view_iter_t *iter);
 
 /** Get the current peer signature (key) for the current v4pfx.
  *

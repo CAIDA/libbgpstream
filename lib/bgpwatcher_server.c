@@ -986,7 +986,7 @@ int bgpwatcher_server_publish_view(bgpwatcher_server_t *server,
 
 #ifdef DEBUG
   fprintf(stderr, "DEBUG: Publishing view:\n");
-  if(bgpwatcher_view_size(view) < 100)
+  if(bgpwatcher_view_pfx_size(view) < 100)
     {
       bgpwatcher_view_dump(view);
     }

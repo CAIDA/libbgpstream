@@ -179,13 +179,6 @@ typedef enum {
   BGPWATCHER_CONSUMER_INTEREST_FIRSTFULL    = 0b001,
   BGPWATCHER_CONSUMER_INTEREST_FULL         = 0b010,
   BGPWATCHER_CONSUMER_INTEREST_PARTIAL      = 0b100,
-
-#if 0
-  /** @todo Chiara move the following out of BGP Watcher */
-  /** Current status of bgpview */
-  BGPWATCHER_CONSUMER_INTEREST_BGPVIEWSTATUS = 0x01,
-  BGPWATCHER_CONSUMER_INTEREST_ASVISIBILITY  = 0x02,
-#endif
 } bgpwatcher_consumer_interest_t;
 
 /* Consumer subscription strings.

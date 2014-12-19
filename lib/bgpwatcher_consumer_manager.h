@@ -74,17 +74,17 @@ typedef struct bwc bwc_t;
 typedef enum bwc_id
   {
     /** Dumps debugging information about the views to stdout */
-    BWC_ID_TEST          = 1,
+    BWC_ID_TEST               = 1,
 
     /** Writes information about per-AS visibility information to Charthouse */
-    BWC_ID_PERASVIS      = 2,
+    BWC_ID_PERASVISIBILITY    = 2,
 
     /** @todo add more consumers here */
 
     /** Lowest numbered bgpwatcher consumer ID */
     BWC_ID_FIRST      = BWC_ID_TEST,
     /** Highest numbered bgpwatcher consumer ID */
-    BWC_ID_LAST       = BWC_ID_PERASVIS,
+    BWC_ID_LAST       = BWC_ID_PERASVISIBILITY,
 
   } bwc_id_t;
 
