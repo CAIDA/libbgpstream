@@ -195,7 +195,7 @@ int main(int argc, char **argv)
 	  break;
 
 	case 'c':
-	  if(consumer_cmds_cnt >= BWC_ID_LAST-1)
+	  if(consumer_cmds_cnt >= BWC_ID_LAST)
 	    {
 	      fprintf(stderr, "ERROR: At most %d consumers can be enabled\n",
 		      BWC_ID_LAST);
@@ -288,7 +288,7 @@ int main(int argc, char **argv)
   if(backends_cnt == 0)
     {
       fprintf(stderr,
-	      "ERROR: At least one backend must be specified using -b\n");
+	      "ERROR: At least one timeseries backend must be specified using -b\n");
       usage(argv[0]);
       goto err;
     }
