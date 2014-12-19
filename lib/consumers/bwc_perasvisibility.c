@@ -40,8 +40,8 @@
 
 #define NAME "per-as-visibility"
 
-#define METRIC_PREFIX               "bgp.visibility."
-#define METRIC_FULL_FEED_PEERS_CNT  METRIC_PREFIX"full_feed_peers_cnt"
+#define METRIC_PREFIX               "bgp.visibility"
+#define METRIC_FULL_FEED_PEERS_CNT  METRIC_PREFIX".full_feed_peers_cnt"
 #define METRIC_ASN_V4PFX_FORMAT     METRIC_PREFIX".asn.%"PRIu32".ipv4_pfx_cnt"
 #define METRIC_ASN_V6PFX_FORMAT     METRIC_PREFIX".asn.%"PRIu32".ipv6_pfx_cnt"
 
