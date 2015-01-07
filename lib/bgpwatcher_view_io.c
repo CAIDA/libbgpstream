@@ -138,7 +138,7 @@ static void v6pfxs_dump(bgpwatcher_view_t *view,
       fprintf(stdout, "  %s/%d (%"PRIu64" peers)\n",
 	      pfx_str, pfx->mask_len,
 	      bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER));
-      peerids_dump(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER, 4);
+      peerids_dump(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER, 6);
     }
 }
 

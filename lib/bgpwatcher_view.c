@@ -246,7 +246,7 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
 	  kh_value(view->v6pfxs, k)->peers_cnt = 0;
 	}
     }
-  view->v4pfxs_cnt = 0;
+  view->v6pfxs_cnt = 0;
 
   /* mark all peers as unused */
   bl_peersign_map_clear(view->peersigns);
