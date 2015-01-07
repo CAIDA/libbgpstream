@@ -391,6 +391,7 @@ static int recv_pfxs(void *src, bgpwatcher_view_t *view)
       /* first receive the message */
       if(zmq_msg_init(&msg) == -1 || zmq_msg_recv(&msg, src, 0) == -1)
 	{
+          fprintf(stderr, "Could not receive pfx message\n");
 	  goto err;
 	}
       buf = zmq_msg_data(&msg);
@@ -402,6 +403,7 @@ static int recv_pfxs(void *src, bgpwatcher_view_t *view)
       /* pfx_ip */
       if((s = bw_deserialize_ip(buf, (len-read), &pfx.address)) == -1)
 	{
+          fprintf(stderr, "Could not deserialize pfx ip\n");
 	  goto err;
 	}
       read += s;
@@ -428,6 +430,7 @@ static int recv_pfxs(void *src, bgpwatcher_view_t *view)
 	  if(bgpwatcher_view_add_prefix(view, &pfx, peerid,
 					&pfx_info, &cache) != 0)
 	    {
+              fprintf(stderr, "Could not add prefix\n");
 	      goto err;
 	    }
 	}
@@ -616,6 +619,7 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
   /* time */
   if(zmq_recv(src, &u32, sizeof(u32), 0) != sizeof(u32))
     {
+      fprintf(stderr, "Could not receive 'time'\n");
       goto err;
     }
   view->time = ntohl(u32);
@@ -624,6 +628,7 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
   /* time_created */
   if(zmq_recv(src, &u32, sizeof(u32), 0) != sizeof(u32))
     {
+      fprintf(stderr, "Could not receive 'time created sec'\n");
       goto err;
     }
   view->time_created.tv_sec = ntohl(u32);
@@ -631,6 +636,7 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
 
   if(zmq_recv(src, &u32, sizeof(u32), 0) != sizeof(u32))
     {
+      fprintf(stderr, "Could not receive 'time created usec'\n");
       goto err;
     }
   view->time_created.tv_usec = ntohl(u32);
@@ -638,6 +644,7 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
 
   if(recv_peers(src, view) != 0)
     {
+      fprintf(stderr, "Could not receive peers\n");
       goto err;
     }
   ASSERT_MORE;
@@ -645,6 +652,7 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
   /* v4 pfxs */
   if(recv_pfxs(src, view) != 0)
     {
+      fprintf(stderr, "Could not receive v4 prefixes\n");
       goto err;
     }
   ASSERT_MORE;
@@ -652,12 +660,14 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
   /* v6 pfxs */
   if(recv_pfxs(src, view) != 0)
     {
+      fprintf(stderr, "Could not receive v6 prefixes\n");
       goto err;
     }
   ASSERT_MORE;
 
   if(zmq_recv(src, NULL, 0, 0) != 0)
     {
+      fprintf(stderr, "Could not receive empty frame\n");
       goto err;
     }
 

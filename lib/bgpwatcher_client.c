@@ -355,6 +355,8 @@ int bgpwatcher_client_recv_view(bgpwatcher_client_t *client,
 
   if(bgpwatcher_view_recv(client->broker_zocket, view) != 0)
     {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+			     "Failed to receive view");
       return -1;
     }
 
