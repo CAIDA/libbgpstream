@@ -98,6 +98,7 @@ static void usage(const char *name)
 	  "                               (default: %d)\n"
 	  "       -n <identity>         Globally unique client name (default: random)\n"
           "       -N <table-cnt>        Number of tables (default: %d)\n"
+          "       -p                    Randomly decide if a peer observes each prefix\n"
           "       -P <peer-cnt>         Number of peers (default: %d)\n"
 	  "       -r <retry-min>        Min wait time (in msec) before reconnecting server\n"
 
@@ -139,7 +140,8 @@ int main(int argc, char **argv)
   const char *server_sub_uri = NULL;
   const char *identity = NULL;
 
-  int use_random = 0;
+  int use_random_peers = 0;
+  int use_random_pfxs = 0;
 
   uint64_t heartbeat_interval = BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT;
   int heartbeat_liveness      = BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT;
@@ -160,8 +162,10 @@ int main(int argc, char **argv)
   uint32_t test_table_num = TEST_TABLE_NUM_DEFAULT;
   uint32_t test_peer_num = TEST_PEER_NUM_DEFAULT;
 
+  uint32_t pfx_cnt;
+
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":cC:i:l:m:M:n:N:P:r:R:s:S:t:T:v?")) >= 0)
+	(opt = getopt(argc, argv, ":cC:i:l:m:M:n:N:pP:r:R:s:S:t:T:v?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
@@ -176,7 +180,7 @@ int main(int argc, char **argv)
 	  break;
 
         case 'c':
-          use_random = 1;
+          use_random_peers = 1;
           break;
 
         case 'C':
@@ -206,6 +210,10 @@ int main(int argc, char **argv)
 	case 'N':
 	  test_table_num = atoi(optarg);
 	  break;
+
+        case 'p':
+          use_random_pfxs = 1;
+          break;
 
 	case 'P':
 	  test_peer_num = atoi(optarg);
@@ -338,7 +346,7 @@ int main(int argc, char **argv)
         {
           test_peer_ip.ipv4.s_addr += htonl(1);
           // returns number from 0 to 2
-	  test_peer_status = (use_random) ? rand() % 3 : 2;
+	  test_peer_status = (use_random_peers) ? rand() % 3 : 2;
           if((peer_id =
               bgpwatcher_client_pfx_table_add_peer(client,
                                                    &test_peer_ip,
@@ -347,16 +355,32 @@ int main(int argc, char **argv)
               fprintf(stderr, "Could not add peer to table\n");
               goto err;
             }
-          fprintf(stderr, "TEST: Added peer %d\n", peer_id);
+          fprintf(stderr, "TEST: Added peer %d ", peer_id);
 
-	  if (test_peer_status == 2) {
-          fprintf(stderr, "TEST: Adding %d prefixes...\n", test_table_size);
+	  if(test_peer_status != 2)
+            {
+              fprintf(stderr, "(down)\n");
+              continue;
+            }
+          else
+            {
+              fprintf(stderr, "(up)\n");
+            }
+
           test_prefix.address.ipv4.s_addr = test_prefix_first_addr;
+          pfx_cnt = 0;
           for(i=0; i<test_table_size; i++)
             {
               test_prefix.address.ipv4.s_addr =
                 htonl(ntohl(test_prefix.address.ipv4.s_addr) + 256);
               test_orig_asn = (test_orig_asn+1) % ASN_MAX;
+
+             /* there is a 1/10 chance that we don't observe this prefix */
+              if(use_random_pfxs && (rand() % 10) == 0)
+                {
+                  /* randomly we don't see this prefix */
+                  continue;
+                }
               if(bgpwatcher_client_pfx_table_add(client,
                                                  peer_id,
                                                  &test_prefix,
@@ -365,8 +389,9 @@ int main(int argc, char **argv)
                   fprintf(stderr, "Could not add pfx info to table\n");
                   goto err;
                 }
+              pfx_cnt++;
             }
-	  }
+          fprintf(stderr, "TEST: Added %d prefixes...\n", pfx_cnt);
         }
 
       if(bgpwatcher_client_pfx_table_end(client) != 0)
