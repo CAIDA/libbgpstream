@@ -163,7 +163,7 @@ static int send_pfx_peers(uint8_t *buf, size_t len, bwv_peerid_pfxinfo_t *pfxpee
 
   for(k = kh_begin(pfxpeers->peers); k != kh_end(pfxpeers->peers); ++k)
     {
-      if(kh_exist(pfxpeers->peers, k))
+      if(kh_exist(pfxpeers->peers, k) && kh_val(pfxpeers->peers, k).in_use)
 	{
 	  /* peer id */
 	  u16 = kh_key(pfxpeers->peers, k);
@@ -197,7 +197,7 @@ static int send_v4pfxs(void *dest, bgpwatcher_view_t *view)
   size_t s = 0;
 
   /* pfx cnt */
-  u32 = htonl(kh_size(view->v4pfxs));
+  u32 = htonl(bgpwatcher_view_v4pfx_size(view));
   if(zmq_send(dest, &u32, sizeof(u32), ZMQ_SNDMORE) != sizeof(u32))
     {
       goto err;
@@ -279,7 +279,7 @@ static int send_v6pfxs(void *dest, bgpwatcher_view_t *view)
   size_t s = 0;
 
   /* pfx cnt */
-  u32 = htonl(kh_size(view->v6pfxs));
+  u32 = htonl(bgpwatcher_view_v6pfx_size(view));
   if(zmq_send(dest, &u32, sizeof(u32), ZMQ_SNDMORE) != sizeof(u32))
     {
       goto err;
@@ -453,7 +453,7 @@ static int send_peers(void *dest, bgpwatcher_view_t *view)
   uint16_t peers_cnt;
 
   /* peer cnt */
-  peers_cnt = (uint16_t)bl_peersign_map_get_size(view->peersigns);
+  peers_cnt = (uint16_t)bl_peersign_map_get_inuse_size(view->peersigns);
   u16 = htons(peers_cnt);
   if(zmq_send(dest, &u16, sizeof(u16), ZMQ_SNDMORE) != sizeof(u16))
     {
