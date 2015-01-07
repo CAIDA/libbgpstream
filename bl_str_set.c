@@ -28,12 +28,25 @@
 #include "utils.h"
 #include <assert.h>
 
+#include "khash.h"
+
+/** set of unique strings
+ *  this structure maintains a set of strings
+ */
+
+KHASH_INIT(bl_string_set, char*, char, 0,
+	   kh_str_hash_func, kh_str_hash_equal);
 
 
+struct bl_string_set_t {
+  khash_t(bl_string_set) *hash;
+};
+
+			       
 bl_string_set_t *bl_string_set_create()
 {
-  bl_string_set_t *string_set = NULL;
-  string_set = kh_init(bl_string_set);
+  bl_string_set_t *string_set = (bl_string_set_t *) malloc(sizeof(bl_string_set_t));
+  string_set->hash = kh_init(bl_string_set);
   return string_set;
 }
 
@@ -42,9 +55,9 @@ int bl_string_set_insert(bl_string_set_t *string_set, char * string_val)
 {
   int khret;
   khiter_t k;
-  if((k = kh_get(bl_string_set, string_set, string_val)) == kh_end(string_set))
+  if((k = kh_get(bl_string_set, string_set->hash, string_val)) == kh_end(string_set->hash))
     {
-      k = kh_put(bl_string_set, string_set, strdup(string_val), &khret);
+      k = kh_put(bl_string_set, string_set->hash, strdup(string_val), &khret);
       return 1;
     }
   return 0;
@@ -54,12 +67,12 @@ int bl_string_set_insert(bl_string_set_t *string_set, char * string_val)
 int bl_string_set_remove(bl_string_set_t *string_set, char * string_val)
 {
   khiter_t k;
-  if((k = kh_get(bl_string_set, string_set, string_val)) != kh_end(string_set))
+  if((k = kh_get(bl_string_set, string_set->hash, string_val)) != kh_end(string_set->hash))
     {
       // free memory allocated for the key (string)
-      free(kh_key(string_set,k));
+      free(kh_key(string_set->hash,k));
       // delete entry
-      kh_del(bl_string_set, string_set, k);
+      kh_del(bl_string_set, string_set->hash, k);
       return 1;
     }
   return 0;
@@ -69,7 +82,7 @@ int bl_string_set_remove(bl_string_set_t *string_set, char * string_val)
 int bl_string_set_exists(bl_string_set_t *string_set, char * string_val)
 {
   khiter_t k;
-  if((k = kh_get(bl_string_set, string_set, string_val)) == kh_end(string_set))
+  if((k = kh_get(bl_string_set, string_set->hash, string_val)) == kh_end(string_set->hash))
     {
       return 0;
     }
@@ -79,34 +92,35 @@ int bl_string_set_exists(bl_string_set_t *string_set, char * string_val)
 
 int bl_string_set_size(bl_string_set_t *string_set)
 {
-  return kh_size(string_set);
+  return kh_size(string_set->hash);
 }
 
 
 void bl_string_set_reset(bl_string_set_t *string_set)
 {
   khiter_t k;
-  for (k = kh_begin(string_set); k != kh_end(string_set); ++k)
+  for (k = kh_begin(string_set->hash); k != kh_end(string_set->hash); ++k)
     {
-      if (kh_exist(string_set, k))
+      if (kh_exist(string_set->hash, k))
 	{
-	  free(kh_key(string_set,k));
+	  free(kh_key(string_set->hash,k));
 	}
     }
-  kh_clear(bl_string_set, string_set);
+  kh_clear(bl_string_set, string_set->hash);
 }
 
 
 void bl_string_set_destroy(bl_string_set_t *string_set)
 {
   khiter_t k;
-  for (k = kh_begin(string_set); k != kh_end(string_set); ++k)
+  for (k = kh_begin(string_set->hash); k != kh_end(string_set->hash); ++k)
     {
-      if (kh_exist(string_set, k))
+      if (kh_exist(string_set->hash, k))
 	{
-	  free(kh_key(string_set,k));
+	  free(kh_key(string_set->hash,k));
 	}
     }
-  kh_destroy(bl_string_set, string_set);
+  kh_destroy(bl_string_set, string_set->hash);
+  free(string_set);
 }
 

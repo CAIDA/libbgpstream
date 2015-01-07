@@ -27,17 +27,10 @@
 #ifndef _BL_STR_SET_H
 #define _BL_STR_SET_H
 
-#include "khash.h"
-
-/** set of unique strings
- *  this structure maintains a set of strings
- */
-
-KHASH_INIT(bl_string_set, char*, char, 0,
-	   kh_str_hash_func, kh_str_hash_equal);
 
 
-typedef khash_t(bl_string_set) bl_string_set_t;
+typedef struct bl_string_set_t bl_string_set_t;
+			       
 	    	    
 /** Allocate memory for a strucure that maintains
  *  unique set of strings.
