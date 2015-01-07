@@ -417,7 +417,7 @@ khint64_t bl_addr_storage_hash_func(bl_addr_storage_t ip)
   khint64_t h = 0;
   if(ip.version == BL_ADDR_IPV4)
     {
-      h = bl_ipv4_addr_hash_func(*((bl_ipv4_addr_t *)&ip));
+      h = (khint64_t) bl_ipv4_addr_hash_func(*((bl_ipv4_addr_t *)&ip));
     }
   if(ip.version == BL_ADDR_IPV6)
     {

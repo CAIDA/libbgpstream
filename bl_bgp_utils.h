@@ -35,8 +35,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <stdbool.h>
-#include "khash.h"
-
+#include <string.h>
+#include <limits.h>
 
 #define BGPCOMMON_COLLECTOR_NAME_LEN 128
 

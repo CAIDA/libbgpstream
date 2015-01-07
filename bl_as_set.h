@@ -28,6 +28,7 @@
 #define _BL_AS_SET_H
 
 #include "bl_bgp_utils.h"
+#include "khash.h"
 
 /** set of unique ASes
  *  this structure maintains a set of unique

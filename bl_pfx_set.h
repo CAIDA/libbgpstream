@@ -28,6 +28,8 @@
 #define _BL_PFX_SET_H
 
 #include "bl_bgp_utils.h"
+#include "khash.h"
+
 
 /** set of unique IP prefixes
  *  this structure maintains a set of unique

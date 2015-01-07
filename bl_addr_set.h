@@ -28,6 +28,7 @@
 #define _BL_ADDR_SET_H
 
 #include "bl_bgp_utils.h"
+#include "khash.h"
 
 /** set of unique IP addresses
  *  this structure maintains a set of unique
