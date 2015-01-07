@@ -164,7 +164,7 @@ static bl_peerid_t bl_peersign_map_set_and_get_ps(bl_peersign_map_t *map,
     }
   else {
     /* already exists... */
-    if(kh_key(map->ps_id, k)->in_use && ps->in_use)
+    if(!kh_key(map->ps_id, k)->in_use && ps->in_use)
       {
 	/* now is used */
 	map->peers_inuse_cnt++;
