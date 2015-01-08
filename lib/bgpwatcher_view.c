@@ -248,8 +248,13 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
     }
   view->v6pfxs_cnt = 0;
 
+#if 0
   /* mark all peers as unused */
   bl_peersign_map_clear(view->peersigns);
+#endif
+  bl_peersign_map_destroy(view->peersigns);
+  view->peersigns = bl_peersign_map_create();
+  assert(view->peersigns);
 }
 
 int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
