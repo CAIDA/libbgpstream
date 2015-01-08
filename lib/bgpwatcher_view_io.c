@@ -513,6 +513,7 @@ static int recv_peers(void *src, bgpwatcher_view_t *view)
   /* peer cnt */
   if(zmq_recv(src, &pc, sizeof(pc), 0) != sizeof(pc))
     {
+      fprintf(stderr, "Could not receive peer cnt\n");
       goto err;
     }
   pc = ntohs(pc);
@@ -524,6 +525,7 @@ static int recv_peers(void *src, bgpwatcher_view_t *view)
       /* peerid */
       if(zmq_recv(src, &peerid, sizeof(peerid), 0) != sizeof(peerid))
 	{
+          fprintf(stderr, "Could not receive peer id\n");
 	  goto err;
 	}
       peerid = ntohs(peerid);
@@ -532,6 +534,7 @@ static int recv_peers(void *src, bgpwatcher_view_t *view)
       /* collector name */
       if((len = zmq_recv(src, ps.collector_str, BGPCOMMON_COLLECTOR_NAME_LEN, 0)) <= 0)
 	{
+          fprintf(stderr, "Could not receive collector name\n");
 	  goto err;
 	}
       ps.collector_str[len] = '\0';
@@ -540,12 +543,14 @@ static int recv_peers(void *src, bgpwatcher_view_t *view)
       /* peer ip */
       if(bw_recv_ip(src, &ps.peer_ip_addr) != 0)
 	{
+          fprintf(stderr, "Could not receive peer ip\n");
 	  goto err;
 	}
 
       if(bl_peersign_map_set(view->peersigns, peerid, ps.collector_str,
 			     &ps.peer_ip_addr) != 0)
 	{
+          fprintf(stderr, "Could not add peer to peersigns\n");
 	  goto err;
 	}
     }
