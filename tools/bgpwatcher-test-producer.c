@@ -107,7 +107,7 @@ static void usage(const char *name)
 	  "                               (default: %d)\n"
 	  "       -s <server-uri>       0MQ-style URI to connect to server on\n"
 	  "                               (default: %s)\n"
-          "       -s <server-sub-uri>   0MQ-style URI to subscribe to tables on\n"
+          "       -S <server-sub-uri>   0MQ-style URI to subscribe to tables on\n"
           "                               (default: %s)\n"
 	  "       -t <shutdown-timeout> Time to wait for requests on shutdown\n"
 	  "                               (default: %d)\n"

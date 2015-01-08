@@ -119,7 +119,7 @@ static void usage(const char *name)
 	  "                               (default: %d)\n"
 	  "       -s <server-uri>       0MQ-style URI to connect to server on\n"
 	  "                               (default: %s)\n"
-          "       -s <server-sub-uri>   0MQ-style URI to subscribe to tables on\n"
+          "       -S <server-sub-uri>   0MQ-style URI to subscribe to tables on\n"
           "                               (default: %s)\n",
 	  BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT,
 	  BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT,
