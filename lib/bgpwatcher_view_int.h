@@ -73,6 +73,24 @@ KHASH_INIT(bwv_v6pfx_peerid_pfxinfo, bl_ipv6_pfx_t, bwv_peerid_pfxinfo_t *, 1,
 typedef khash_t(bwv_v6pfx_peerid_pfxinfo) bwv_v6pfx_peerid_pfxinfo_t;
 
 
+
+/***** map from peerid to peerinfo *****/
+
+/** Additional per-peer info */
+typedef struct bwv_peerinfo {
+
+  /** The ID of this peer */
+  bl_peerid_t id;
+
+  /** The number of prefixes that this peer observed */
+  uint64_t pfx_cnt;
+
+} bwv_peerinfo_t;
+
+KHASH_INIT(bwv_peerid_peerinfo, bl_peerid_t, bwv_peerinfo_t, 1,
+           kh_int_hash_func, kh_int_hash_equal)
+
+
 /************ bgpview ************/
 
 // TODO: documentation
@@ -98,6 +116,9 @@ struct bgpwatcher_view {
 
   /** Table of peerid -> peersign */
   bl_peersign_map_t *peersigns;
+
+  /** Table of peerid -> peerinfo */
+  kh_bwv_peerid_peerinfo_t *peerinfo;
 
 };
 
