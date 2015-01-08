@@ -791,7 +791,9 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
   store_view_t *sview = NULL;
   int ret;
 
-  if((ret = store_view_get(store, table->time, &sview)) < 0)
+  uint32_t truncated_time = (table->time / WDW_ITEM_TIME) * WDW_ITEM_TIME;
+  
+  if((ret = store_view_get(store, truncated_time, &sview)) < 0)
     {
       return -1;
     }
@@ -804,7 +806,7 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
     {
       fprintf(stderr,
               "BGP Views for time %"PRIu32" have been already processed\n",
-              table->time);
+              truncated_time);
       // signal to pfx row func that this table should be ignored
       table->sview = NULL;
       return check_timeouts(store);
