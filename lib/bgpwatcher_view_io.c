@@ -36,6 +36,7 @@
 #define ASSERT_MORE				\
   if(zsocket_rcvmore(src) == 0)			\
     {						\
+      fprintf(stderr, "ERROR: Malformed view message at line %d\n", __LINE__); \
       goto err;					\
     }
 
