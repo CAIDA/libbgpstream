@@ -532,8 +532,6 @@ void bwc_perasvisibility_destroy(bwc_t *consumer)
   BWC_SET_STATE(consumer, NULL);
 }
 
-/** @note this code ASSUMES that BGP Watcher is only publishing tables from
-    FULL-FEED peers.  If this ever changes, then this code MUST be updated */
 int bwc_perasvisibility_process_view(bwc_t *consumer, uint8_t interests,
 				     bgpwatcher_view_t *view)
 {
