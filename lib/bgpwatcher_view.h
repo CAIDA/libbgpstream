@@ -266,7 +266,7 @@ bgpwatcher_view_iter_get_peerid(bgpwatcher_view_iter_t *iter);
 bl_peer_signature_t *
 bgpwatcher_view_iter_get_peersig(bgpwatcher_view_iter_t *iter);
 
-/** Get the current peer's prefix count for the given iterator
+/** Get the current peer's IPv4 prefix count for the given iterator
  *
  * @param iter          Pointer to an iterator structure
  * @return the number of prefixes observed by the peer currently pointed at by
@@ -274,7 +274,17 @@ bgpwatcher_view_iter_get_peersig(bgpwatcher_view_iter_t *iter);
  *         as reached the end of the peers.
  */
 int
-bgpwatcher_view_iter_get_peer_pfx_cnt(bgpwatcher_view_iter_t *iter);
+bgpwatcher_view_iter_get_peer_v4pfx_cnt(bgpwatcher_view_iter_t *iter);
+
+/** Get the current peer's IPv6 prefix count for the given iterator
+ *
+ * @param iter          Pointer to an iterator structure
+ * @return the number of prefixes observed by the peer currently pointed at by
+ *         the iterator's peer field. -1 if the iterator is not initialized, or
+ *         as reached the end of the peers.
+ */
+int
+bgpwatcher_view_iter_get_peer_v6pfx_cnt(bgpwatcher_view_iter_t *iter);
 
 /** Get the current peer ID (key) for the current v4pfx.
  *

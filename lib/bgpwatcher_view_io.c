@@ -47,7 +47,8 @@ static void peers_dump(bgpwatcher_view_t *view,
 {
   bl_peerid_t peerid;
   bl_peer_signature_t *ps;
-  int pfx_cnt = -1;
+  int v4pfx_cnt = -1;
+  int v6pfx_cnt = -1;
   char peer_str[INET6_ADDRSTRLEN] = "";
 
   fprintf(stdout, "Peers (%d):\n", bgpwatcher_view_peer_size(view));
@@ -59,14 +60,16 @@ static void peers_dump(bgpwatcher_view_t *view,
       peerid = bgpwatcher_view_iter_get_peerid(it);
       ps = bgpwatcher_view_iter_get_peersig(it);
       assert(ps);
-      pfx_cnt = bgpwatcher_view_iter_get_peer_pfx_cnt(it);
-      assert(pfx_cnt >= 0);
+      v4pfx_cnt = bgpwatcher_view_iter_get_peer_v4pfx_cnt(it);
+      assert(v4pfx_cnt >= 0);
+      v6pfx_cnt = bgpwatcher_view_iter_get_peer_v6pfx_cnt(it);
+      assert(v6pfx_cnt >= 0);
 
       inet_ntop(ps->peer_ip_addr.version, &(ps->peer_ip_addr.ipv4),
 		peer_str, INET6_ADDRSTRLEN);
 
-      fprintf(stdout, "  %"PRIu16":\t%s, %s (%d pfxs)\n",
-	      peerid, ps->collector_str, peer_str, pfx_cnt);
+      fprintf(stdout, "  %"PRIu16":\t%s, %s (%d v4 pfxs, %d v6 pfxs)\n",
+	      peerid, ps->collector_str, peer_str, v4pfx_cnt, v6pfx_cnt);
     }
 }
 

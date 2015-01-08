@@ -60,7 +60,8 @@ struct bgpwatcher_view_iter {
 
 /* ========== PRIVATE FUNCTIONS ========== */
 
-static int peerinfo_add_pfx(bgpwatcher_view_t *view, bl_peerid_t peerid)
+static int peerinfo_add_pfx(bgpwatcher_view_t *view, bl_peerid_t peerid,
+                            bl_pfx_storage_t *prefix)
 {
   khiter_t k;
   int khret;
@@ -75,11 +76,23 @@ static int peerinfo_add_pfx(bgpwatcher_view_t *view, bl_peerid_t peerid)
       /* first prefix for this peer */
       k = kh_put(bwv_peerid_peerinfo, view->peerinfo, peerid, &khret);
       kh_val(view->peerinfo, k).id = peerid;
-      kh_val(view->peerinfo, k).pfx_cnt = 1;
+      kh_val(view->peerinfo, k).v4_pfx_cnt = 0;
+      kh_val(view->peerinfo, k).v6_pfx_cnt = 0;
     }
-  else
+
+  switch(prefix->address.version)
     {
-      kh_val(view->peerinfo, k).pfx_cnt++;
+    case BL_ADDR_IPV4:
+      kh_val(view->peerinfo, k).v4_pfx_cnt++;
+      break;
+
+    case BL_ADDR_IPV6:
+      kh_val(view->peerinfo, k).v6_pfx_cnt++;
+      break;
+
+    default:
+      return -1;
+      break;
     }
 
   return 0;
@@ -106,6 +119,7 @@ static bwv_peerid_pfxinfo_t* peerid_pfxinfo_create()
 }
 
 static int peerid_pfxinfo_insert(bgpwatcher_view_t *view,
+                                 bl_pfx_storage_t *prefix,
                                  bwv_peerid_pfxinfo_t *v,
                                  bl_peerid_t peerid,
                                  bgpwatcher_pfx_peer_info_t *pfx_info)
@@ -140,7 +154,7 @@ static int peerid_pfxinfo_insert(bgpwatcher_view_t *view,
       v->peers_cnt++;
 
       /* and we need to add this prefix to the peerinfo counter */
-      peerinfo_add_pfx(view, peerid);
+      peerinfo_add_pfx(view, peerid, prefix);
     }
 
   kh_value(v->peers, k) = *pfx_info;
@@ -309,7 +323,7 @@ int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
       peerids_pfxinfo = *cache;
     }
 
-  if(peerid_pfxinfo_insert(view, peerids_pfxinfo, peerid, pfx_info) < 0)
+  if(peerid_pfxinfo_insert(view, prefix, peerids_pfxinfo, peerid, pfx_info) < 0)
     {
       return -1;
     }
@@ -738,7 +752,7 @@ bgpwatcher_view_iter_get_peersig(bgpwatcher_view_iter_t *iter)
   return kh_val(iter->view->peersigns->id_ps, iter->peer_it);
 }
 
-int bgpwatcher_view_iter_get_peer_pfx_cnt(bgpwatcher_view_iter_t *iter)
+int bgpwatcher_view_iter_get_peer_v4pfx_cnt(bgpwatcher_view_iter_t *iter)
 {
   khiter_t k;
 
@@ -757,7 +771,30 @@ int bgpwatcher_view_iter_get_peer_pfx_cnt(bgpwatcher_view_iter_t *iter)
     }
   else
     {
-      return kh_val(iter->view->peerinfo, k).pfx_cnt;
+      return kh_val(iter->view->peerinfo, k).v4_pfx_cnt;
+    }
+}
+
+int bgpwatcher_view_iter_get_peer_v6pfx_cnt(bgpwatcher_view_iter_t *iter)
+{
+  khiter_t k;
+
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_PEER))
+    {
+      return -1;
+    }
+
+  k = kh_get(bwv_peerid_peerinfo, iter->view->peerinfo,
+             bgpwatcher_view_iter_get_peerid(iter));
+
+  if(k == kh_end(iter->view->peerinfo))
+    {
+      /* no prefix was ever added for this peer */
+      return 0;
+    }
+  else
+    {
+      return kh_val(iter->view->peerinfo, k).v6_pfx_cnt;
     }
 }
 

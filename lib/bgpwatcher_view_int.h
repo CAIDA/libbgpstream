@@ -82,8 +82,11 @@ typedef struct bwv_peerinfo {
   /** The ID of this peer */
   bl_peerid_t id;
 
-  /** The number of prefixes that this peer observed */
-  uint64_t pfx_cnt;
+  /** The number of v4 prefixes that this peer observed */
+  uint32_t v4_pfx_cnt;
+
+  /** The number of v6 prefixes that this peer observed */
+  uint32_t v6_pfx_cnt;
 
 } bwv_peerinfo_t;
 
