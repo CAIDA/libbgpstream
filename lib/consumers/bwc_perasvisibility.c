@@ -62,28 +62,47 @@ static bwc_t bwc_perasvisibility = {
   BWC_GENERATE_PTRS(perasvisibility)
 };
 
-/** Map from ASN => v4PFX-SET */
-KHASH_INIT(as_v4pfxs /* name */,
-	   uint32_t /* khkey_t */,
-	   bl_ipv4_pfx_set_t* /* khval_t */,
-	   1  /* kh_is_set */,
-	   kh_int_hash_func /*__hash_func */,
-	   kh_int_hash_equal /* __hash_equal */);
+typedef struct peras_info {
 
-/** Map from ASN => v6PFX-SET */
-KHASH_INIT(as_v6pfxs /* name */,
-	   uint32_t /* khkey_t */,
-	   bl_ipv6_pfx_set_t* /* khval_t */,
-	   1  /* kh_is_set */,
-	   kh_int_hash_func /*__hash_func */,
-	   kh_int_hash_equal /* __hash_equal */);
+  /** Index of the v4 metric for this ASN in the KP */
+  uint32_t v4_idx;
+
+  /** Index of the v6 metric for this ASN in the KP */
+  uint32_t v6_idx;
+
+  /** The v4 prefixes that this AS observed */
+  bl_ipv4_pfx_set_t *v4pfxs;
+
+  /** The v4 prefixes that this AS observed */
+  bl_ipv6_pfx_set_t *v6pfxs;
+} peras_info_t;
+
+/** Map from ASN => v4PFX-SET */
+KHASH_INIT(as_pfxs,
+	   uint32_t,
+	   peras_info_t,
+	   1,
+	   kh_int_hash_func,
+	   kh_int_hash_equal);
 
 KHASH_INIT(peerid_set,
-          bl_peerid_t,
-          char,
-          0,
-          kh_int_hash_func,
-          kh_int_hash_equal);
+           bl_peerid_t,
+           char,
+           0,
+           kh_int_hash_func,
+           kh_int_hash_equal);
+
+typedef struct gen_metrics {
+
+  int v4_peers_idx;
+
+  int v6_peers_idx;
+
+  int v4_ff_peers_idx;
+
+  int v6_ff_peers_idx;
+
+} gen_metrics_t;
 
 /* our 'instance' */
 typedef struct bwc_perasvisibility_state {
@@ -99,13 +118,16 @@ typedef struct bwc_perasvisibility_state {
   int v6_peer_cnt;
 
   /** Map from ASN => v4PFX-SET */
-  khash_t(as_v4pfxs) *as_v4pfxs;
-
-  /** Map from ASN => v6PFX-SET */
-  khash_t(as_v6pfxs) *as_v6pfxs;
+  khash_t(as_pfxs) *as_pfxs;
 
   /** Prefix visibility threshold */
   int pfx_vis_threshold;
+
+  /** Timeseries Key Package */
+  timeseries_kp_t *kp;
+
+  /** General metric indexes */
+  gen_metrics_t gen_metrics;
 
 } bwc_perasvisibility_state_t;
 
@@ -147,6 +169,41 @@ static int parse_args(bwc_t *consumer, int argc, char **argv)
     }
 
   return 0;
+}
+
+static int create_gen_metrics(bwc_t *consumer)
+{
+  if((STATE->gen_metrics.v4_peers_idx =
+      timeseries_kp_add_key(STATE->kp, METRIC_V4_PEERS_CNT)) == -1)
+    {
+      return -1;
+    }
+
+  if((STATE->gen_metrics.v6_peers_idx =
+      timeseries_kp_add_key(STATE->kp, METRIC_V6_PEERS_CNT)) == -1)
+    {
+      return -1;
+    }
+
+  if((STATE->gen_metrics.v4_ff_peers_idx =
+      timeseries_kp_add_key(STATE->kp, METRIC_V4_FF_PEERS_CNT)) == -1)
+    {
+      return -1;
+    }
+
+  if((STATE->gen_metrics.v6_ff_peers_idx =
+      timeseries_kp_add_key(STATE->kp, METRIC_V6_FF_PEERS_CNT)) == -1)
+    {
+      return -1;
+    }
+
+  return 0;
+}
+
+static void peras_info_destroy(peras_info_t info)
+{
+  bl_ipv4_pfx_set_destroy(info.v4pfxs);
+  bl_ipv6_pfx_set_destroy(info.v6pfxs);
 }
 
 static void find_ff_peers(bwc_t *consumer, bgpwatcher_view_iter_t *it)
@@ -191,54 +248,61 @@ static void find_ff_peers(bwc_t *consumer, bgpwatcher_view_iter_t *it)
     }
 }
 
-static void as_v4pfxs_insert(bwc_perasvisibility_state_t *state,
-			     uint32_t asn, bl_ipv4_pfx_t *pfx)
+static peras_info_t *as_pfxs_get_info(bwc_perasvisibility_state_t *state,
+                                      uint32_t asn)
 {
-  int khret;
+  peras_info_t *info = NULL;
+  char buffer[BUFFER_LEN];
   khiter_t k;
-  bl_ipv4_pfx_set_t* pfx_set;
+  int khret;
 
-  if((k = kh_get(as_v4pfxs, state->as_v4pfxs, asn)) == kh_end(state->as_v4pfxs))
+  if((k = kh_get(as_pfxs, state->as_pfxs, asn)) == kh_end(state->as_pfxs))
     {
-      k = kh_put(as_v4pfxs, state->as_v4pfxs, asn, &khret);
-      pfx_set = kh_value(state->as_v4pfxs, k) = bl_ipv4_pfx_set_create();
+      k = kh_put(as_pfxs, state->as_pfxs, asn, &khret);
+
+      info = &kh_value(state->as_pfxs, k);
+
+      snprintf(buffer, BUFFER_LEN,
+               METRIC_ASN_V4PFX_FORMAT,
+               asn);
+      if((info->v4_idx = timeseries_kp_add_key(state->kp, buffer)) == -1)
+        {
+          return NULL;
+        }
+
+      snprintf(buffer, BUFFER_LEN,
+               METRIC_ASN_V6PFX_FORMAT,
+               asn);
+      if((info->v6_idx = timeseries_kp_add_key(state->kp, buffer)) == -1)
+        {
+          return NULL;
+        }
+
+      if((info->v4pfxs = bl_ipv4_pfx_set_create()) == NULL)
+        {
+          return NULL;
+        }
+      if((info->v6pfxs = bl_ipv6_pfx_set_create()) == NULL)
+        {
+          return NULL;
+        }
     }
   else
     {
-      pfx_set = kh_value(state->as_v4pfxs, k);
+      info = &kh_value(state->as_pfxs, k);
     }
 
-  assert(pfx_set != NULL);
-  bl_ipv4_pfx_set_insert(pfx_set, *pfx);
+  return info;
 }
 
-static void as_v6pfxs_insert(bwc_perasvisibility_state_t *state,
-			       uint32_t asn, bl_ipv6_pfx_t *pfx)
-{
-  int khret;
-  khiter_t k;
-  bl_ipv6_pfx_set_t* pfx_set;
-
-  if((k = kh_get(as_v6pfxs, state->as_v6pfxs, asn)) == kh_end(state->as_v6pfxs))
-    {
-      k = kh_put(as_v6pfxs, state->as_v6pfxs, asn, &khret);
-      pfx_set = kh_value(state->as_v6pfxs, k) = bl_ipv6_pfx_set_create();
-    }
-  else
-    {
-      pfx_set = kh_value(state->as_v6pfxs, k);
-    }
-
-  assert(pfx_set != NULL);
-  bl_ipv6_pfx_set_insert(pfx_set, *pfx);
-}
-
-static void flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
+static int flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 {
   bl_ipv4_pfx_t *v4pfx;
 
   bl_peerid_t peerid;
   bgpwatcher_pfx_peer_info_t *pfxinfo;
+
+  peras_info_t *info;
 
   /* IPv4 */
   for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
@@ -270,17 +334,26 @@ static void flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
             }
 
 	  pfxinfo = bgpwatcher_view_iter_get_v4pfx_pfxinfo(it);
-	  as_v4pfxs_insert(STATE, pfxinfo->orig_asn, v4pfx);
+
+          if((info = as_pfxs_get_info(STATE, pfxinfo->orig_asn)) == NULL)
+            {
+              return -1;
+            }
+          bl_ipv4_pfx_set_insert(info->v4pfxs, *v4pfx);
 	}
     }
+
+  return 0;
 }
 
-static void flip_v6table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
+static int flip_v6table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 {
   bl_ipv6_pfx_t *v6pfx;
 
   bl_peerid_t peerid;
   bgpwatcher_pfx_peer_info_t *pfxinfo;
+
+  peras_info_t *info;
 
   /* IPv6 */
   for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX);
@@ -312,51 +385,55 @@ static void flip_v6table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
             }
 
 	  pfxinfo = bgpwatcher_view_iter_get_v6pfx_pfxinfo(it);
-	  as_v6pfxs_insert(STATE, pfxinfo->orig_asn, v6pfx);
+
+          if((info = as_pfxs_get_info(STATE, pfxinfo->orig_asn)) == NULL)
+            {
+              return -1;
+            }
+          bl_ipv6_pfx_set_insert(info->v6pfxs, *v6pfx);
 	}
     }
+
+  return 0;
 }
 
-static void dump_table(bwc_t *consumer, uint32_t time)
+static void dump_gen_metrics(bwc_t *consumer)
+{
+  timeseries_kp_set(STATE->kp, STATE->gen_metrics.v4_peers_idx,
+                    STATE->v4_peer_cnt);
+
+  timeseries_kp_set(STATE->kp, STATE->gen_metrics.v6_peers_idx,
+                    STATE->v6_peer_cnt);
+
+  timeseries_kp_set(STATE->kp, STATE->gen_metrics.v4_ff_peers_idx,
+                    kh_size(STATE->v4ff_peerids));
+
+  timeseries_kp_set(STATE->kp, STATE->gen_metrics.v6_ff_peers_idx,
+                    kh_size(STATE->v6ff_peerids));
+
+  kh_clear(peerid_set, STATE->v4ff_peerids);
+  kh_clear(peerid_set, STATE->v6ff_peerids);
+  STATE->v4_peer_cnt = 0;
+  STATE->v6_peer_cnt = 0;
+}
+
+static void dump_table(bwc_t *consumer)
 {
   khiter_t k;
-  char buffer[BUFFER_LEN];
+  peras_info_t *info;
 
-  for (k = kh_begin(STATE->as_v4pfxs); k != kh_end(STATE->as_v4pfxs); ++k)
+  for (k = kh_begin(STATE->as_pfxs); k != kh_end(STATE->as_pfxs); ++k)
     {
-      if (kh_exist(STATE->as_v4pfxs, k))
+      if (kh_exist(STATE->as_pfxs, k))
 	{
-	  // OUTPUT: number of ipv4 prefixes seen by each AS
-	  snprintf(buffer, BUFFER_LEN,
-		   METRIC_ASN_V4PFX_FORMAT,
-		   kh_key(STATE->as_v4pfxs, k));
-	  timeseries_set_single(BWC_GET_TIMESERIES(consumer),
-				buffer,
-				kh_size(kh_value(STATE->as_v4pfxs, k)),
-				time);
+          info = &kh_val(STATE->as_pfxs, k);
+          timeseries_kp_set(STATE->kp, info->v4_idx, kh_size(info->v4pfxs));
+          timeseries_kp_set(STATE->kp, info->v6_idx, kh_size(info->v6pfxs));
+
+          bl_ipv4_pfx_set_reset(info->v4pfxs);
+          bl_ipv6_pfx_set_reset(info->v6pfxs);
 	}
     }
-
-  for (k = kh_begin(STATE->as_v6pfxs); k != kh_end(STATE->as_v6pfxs); ++k)
-    {
-      if (kh_exist(STATE->as_v6pfxs, k))
-	{
-	  // OUTPUT: number of ipv6 prefixes seen by each AS
-	  snprintf(buffer, BUFFER_LEN,
-		   METRIC_ASN_V6PFX_FORMAT,
-		   kh_key(STATE->as_v6pfxs, k));
-	  timeseries_set_single(BWC_GET_TIMESERIES(consumer),
-				buffer,
-				kh_size(kh_value(STATE->as_v6pfxs, k)),
-				time);
-	}
-    }
-
-  /* now clear the tables */
-  kh_free_vals(as_v4pfxs, STATE->as_v4pfxs, bl_ipv4_pfx_set_destroy);
-  kh_clear(as_v4pfxs, STATE->as_v4pfxs);
-  kh_free_vals(as_v6pfxs, STATE->as_v6pfxs, bl_ipv6_pfx_set_destroy);
-  kh_clear(as_v6pfxs, STATE->as_v6pfxs);
 }
 
 /* ==================== CONSUMER INTERFACE FUNCTIONS ==================== */
@@ -380,14 +457,9 @@ int bwc_perasvisibility_init(bwc_t *consumer, int argc, char **argv)
 
   state->pfx_vis_threshold = ROUTED_PFX_PEERCNT;
 
-  if((state->as_v4pfxs = kh_init(as_v4pfxs)) == NULL)
+  if((state->as_pfxs = kh_init(as_pfxs)) == NULL)
     {
-      fprintf(stderr, "Error: Unable to create as visibility map (v4)\n");
-      goto err;
-    }
-  if((state->as_v6pfxs = kh_init(as_v6pfxs)) == NULL)
-    {
-      fprintf(stderr, "Error: unable to create as visibility map (v6)\n");
+      fprintf(stderr, "Error: Unable to create as visibility map\n");
       goto err;
     }
   if((state->v4ff_peerids = kh_init(peerid_set)) == NULL)
@@ -401,6 +473,12 @@ int bwc_perasvisibility_init(bwc_t *consumer, int argc, char **argv)
       goto err;
     }
 
+  if((state->kp = timeseries_kp_init(BWC_GET_TIMESERIES(consumer), 1)) == NULL)
+    {
+      fprintf(stderr, "Error: Could not create timeseries key package\n");
+      goto err;
+    }
+
   /* parse the command line args */
   if(parse_args(consumer, argc, argv) != 0)
     {
@@ -408,6 +486,11 @@ int bwc_perasvisibility_init(bwc_t *consumer, int argc, char **argv)
     }
 
   /* react to args here */
+
+  if(create_gen_metrics(consumer) != 0)
+    {
+      goto err;
+    }
 
   return 0;
 
@@ -425,17 +508,11 @@ void bwc_perasvisibility_destroy(bwc_t *consumer)
     }
 
   /* destroy things here */
-  if(state->as_v4pfxs != NULL)
+  if(state->as_pfxs != NULL)
     {
-      kh_free_vals(as_v4pfxs, state->as_v4pfxs, bl_ipv4_pfx_set_destroy);
-      kh_destroy(as_v4pfxs, state->as_v4pfxs);
-      state->as_v4pfxs = NULL;
-    }
-  if(state->as_v6pfxs != NULL)
-    {
-      kh_free_vals(as_v6pfxs, state->as_v6pfxs, bl_ipv6_pfx_set_destroy);
-      kh_destroy(as_v6pfxs, state->as_v6pfxs);
-      state->as_v6pfxs = NULL;
+      kh_free_vals(as_pfxs, state->as_pfxs, peras_info_destroy);
+      kh_destroy(as_pfxs, state->as_pfxs);
+      state->as_pfxs = NULL;
     }
   if(state->v4ff_peerids != NULL)
     {
@@ -448,6 +525,8 @@ void bwc_perasvisibility_destroy(bwc_t *consumer)
       state->v6ff_peerids = NULL;
     }
 
+  timeseries_kp_free(&state->kp);
+
   free(state);
 
   BWC_SET_STATE(consumer, NULL);
@@ -459,8 +538,6 @@ int bwc_perasvisibility_process_view(bwc_t *consumer, uint8_t interests,
 				     bgpwatcher_view_t *view)
 {
   bgpwatcher_view_iter_t *it;
-
-  uint32_t time = bgpwatcher_view_time(view);
 
   /* create a new iterator */
   if((it = bgpwatcher_view_iter_create(view)) == NULL)
@@ -478,37 +555,17 @@ int bwc_perasvisibility_process_view(bwc_t *consumer, uint8_t interests,
   /* destroy the view iterator */
   bgpwatcher_view_iter_destroy(it);
 
-  /* how many v4 peers? */
-  timeseries_set_single(BWC_GET_TIMESERIES(consumer),
-                        METRIC_V4_PEERS_CNT,
-                        STATE->v4_peer_cnt,
-                        time);
-
-  /* how many v6 peers? */
-  timeseries_set_single(BWC_GET_TIMESERIES(consumer),
-                        METRIC_V6_PEERS_CNT,
-                        STATE->v6_peer_cnt,
-                        time);
-
-  /* how many ff v4 peers? */
-  timeseries_set_single(BWC_GET_TIMESERIES(consumer),
-                        METRIC_V4_FF_PEERS_CNT,
-                        kh_size(STATE->v4ff_peerids),
-                        time);
-
-  /* how many ff v6 peers? */
-  timeseries_set_single(BWC_GET_TIMESERIES(consumer),
-                        METRIC_V6_FF_PEERS_CNT,
-                        kh_size(STATE->v6ff_peerids),
-                        time);
-
-  kh_clear(peerid_set, STATE->v4ff_peerids);
-  kh_clear(peerid_set, STATE->v6ff_peerids);
-  STATE->v4_peer_cnt = 0;
-  STATE->v6_peer_cnt = 0;
+  /* dump the general metrics */
+  dump_gen_metrics(consumer);
 
   /* now dump the per-as table */
-  dump_table(consumer, time);
+  dump_table(consumer);
+
+  /* now flush the kp */
+  if(timeseries_kp_flush(STATE->kp, bgpwatcher_view_time(view)) != 0)
+    {
+      return -1;
+    }
 
   return 0;
 }
