@@ -50,7 +50,7 @@ struct bl_id_set_t {
 bl_id_set_t *bl_id_set_create()
 {
   bl_id_set_t *id_set =  (bl_id_set_t *) malloc(sizeof(bl_id_set_t));
-  id_set = kh_init(bl_id_set);
+  id_set->hash = kh_init(bl_id_set);
   return id_set;
 }
 
@@ -58,10 +58,10 @@ int bl_id_set_insert(bl_id_set_t *id_set,  uint32_t id)
 {
   int khret;
   khiter_t k;
-  if((k = kh_get(bl_id_set, id_set,
-			       id)) == kh_end(id_set))
+  if((k = kh_get(bl_id_set, id_set->hash,
+			       id)) == kh_end(id_set->hash))
     { 
-      k = kh_put(bl_id_set, id_set, id, &khret);
+      k = kh_put(bl_id_set, id_set->hash, id, &khret);
       return 1;
     }
   return 0;
@@ -70,8 +70,8 @@ int bl_id_set_insert(bl_id_set_t *id_set,  uint32_t id)
 int bl_id_set_exists(bl_id_set_t *id_set,  uint32_t id)
 {
   khiter_t k;
-  if((k = kh_get(bl_id_set, id_set,
-			       id)) == kh_end(id_set))
+  if((k = kh_get(bl_id_set, id_set->hash,
+			       id)) == kh_end(id_set->hash))
     { 
       return 0;
     }
@@ -80,12 +80,13 @@ int bl_id_set_exists(bl_id_set_t *id_set,  uint32_t id)
 
 void bl_id_set_reset(bl_id_set_t *id_set)
 {
-  kh_clear(bl_id_set, id_set);
+  kh_clear(bl_id_set, id_set->hash);
 }
 
 void bl_id_set_destroy(bl_id_set_t *id_set) 
 {
-  kh_destroy(bl_id_set, id_set);
+  kh_destroy(bl_id_set, id_set->hash);
+  free(id_set);
 }
 
 
