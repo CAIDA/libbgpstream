@@ -455,6 +455,7 @@ static int send_peers(void *dest, bgpwatcher_view_t *view)
   size_t len;
 
   uint16_t peers_cnt;
+  int peers_tx = 0;
 
   /* peer cnt */
   peers_cnt = (uint16_t)bl_peersign_map_get_inuse_size(view->peersigns);
@@ -489,8 +490,11 @@ static int send_peers(void *dest, bgpwatcher_view_t *view)
 	    {
 	      goto err;
 	    }
+          peers_tx++;
 	}
     }
+
+  assert(peers_cnt == peers_tx);
 
   return 0;
 
