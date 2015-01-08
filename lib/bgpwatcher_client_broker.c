@@ -227,10 +227,14 @@ static void server_disconnect(bgpwatcher_client_broker_t *broker)
   /* destroy the server socket */
   zsocket_destroy(CFG->ctx, broker->server_socket);
 
-  /* remove the server sub reader from the reactor */
-  zloop_reader_end(broker->loop, broker->server_sub_socket);
-  /* destroy the server sub socket */
-  zsocket_destroy(CFG->ctx, broker->server_sub_socket);
+  /* if we are a consumer, then remove the sub socket too */
+  if(CFG->interests != 0)
+    {
+      /* remove the server sub reader from the reactor */
+      zloop_reader_end(broker->loop, broker->server_sub_socket);
+      /* destroy the server sub socket */
+      zsocket_destroy(CFG->ctx, broker->server_sub_socket);
+    }
 }
 
 static int server_send_term(bgpwatcher_client_broker_t *broker)
