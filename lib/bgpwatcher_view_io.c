@@ -33,6 +33,10 @@
 #include "bgpwatcher_common_int.h"
 #include "bgpwatcher_view_int.h"
 
+
+#define BUFFER_LEN 16384
+
+
 #define ASSERT_MORE				\
   if(zsocket_rcvmore(src) == 0)			\
     {						\
@@ -197,8 +201,8 @@ static int send_v4pfxs(void *dest, bgpwatcher_view_t *view)
   bl_ipv4_pfx_t *key;
   bwv_peerid_pfxinfo_t *v;
 
-  size_t len = BW_PFX_ROW_BUFFER_LEN;
-  uint8_t buf[BW_PFX_ROW_BUFFER_LEN];
+  size_t len = BUFFER_LEN;
+  uint8_t buf[BUFFER_LEN];
   uint8_t *ptr = buf;
   size_t written = 0;
   size_t s = 0;
@@ -219,7 +223,7 @@ static int send_v4pfxs(void *dest, bgpwatcher_view_t *view)
 	}
 
       /* reset the buffer */
-      len = BW_PFX_ROW_BUFFER_LEN;
+      len = BUFFER_LEN;
       ptr = buf;
       written = 0;
       s = 0;
@@ -279,8 +283,8 @@ static int send_v6pfxs(void *dest, bgpwatcher_view_t *view)
   bl_ipv6_pfx_t *key;
   bwv_peerid_pfxinfo_t *v;
 
-  size_t len = BW_PFX_ROW_BUFFER_LEN;
-  uint8_t buf[BW_PFX_ROW_BUFFER_LEN];
+  size_t len = BUFFER_LEN;
+  uint8_t buf[BUFFER_LEN];
   uint8_t *ptr = buf;
   size_t written = 0;
   size_t s = 0;
@@ -301,7 +305,7 @@ static int send_v6pfxs(void *dest, bgpwatcher_view_t *view)
 	}
 
       /* reset the buffer */
-      len = BW_PFX_ROW_BUFFER_LEN;
+      len = BUFFER_LEN;
       ptr = buf;
       written = 0;
       s = 0;
