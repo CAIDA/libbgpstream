@@ -41,11 +41,16 @@
 #define NAME "per-as-visibility"
 
 #define METRIC_PREFIX               "bgp.visibility"
-#define METRIC_FULL_FEED_PEERS_CNT  METRIC_PREFIX".full_feed_peers_cnt"
+#define METRIC_V4_PEERS_CNT      METRIC_PREFIX".v4_peers_cnt"
+#define METRIC_V6_PEERS_CNT      METRIC_PREFIX".v6_peers_cnt"
+#define METRIC_V4_FF_PEERS_CNT      METRIC_PREFIX".v4_full_feed_peers_cnt"
+#define METRIC_V6_FF_PEERS_CNT      METRIC_PREFIX".v6_full_feed_peers_cnt"
 #define METRIC_ASN_V4PFX_FORMAT     METRIC_PREFIX".asn.%"PRIu32".ipv4_pfx_cnt"
 #define METRIC_ASN_V6PFX_FORMAT     METRIC_PREFIX".asn.%"PRIu32".ipv6_pfx_cnt"
 
 #define ROUTED_PFX_PEERCNT 10
+#define IPV4_FULLFEED_SIZE 400000
+#define IPV6_FULLFEED_SIZE 10000
 
 #define STATE					\
   (BWC_GET_STATE(consumer, perasvisibility))
@@ -73,8 +78,25 @@ KHASH_INIT(as_v6pfxs /* name */,
 	   kh_int_hash_func /*__hash_func */,
 	   kh_int_hash_equal /* __hash_equal */);
 
+KHASH_INIT(peerid_set,
+          bl_peerid_t,
+          char,
+          0,
+          kh_int_hash_func,
+          kh_int_hash_equal);
+
 /* our 'instance' */
 typedef struct bwc_perasvisibility_state {
+
+  /** Set of v4 full-feed peers */
+  khash_t(peerid_set) *v4ff_peerids;
+
+  /** Set of v6 full-feed peers */
+  khash_t(peerid_set) *v6ff_peerids;
+
+  int v4_peer_cnt;
+
+  int v6_peer_cnt;
 
   /** Map from ASN => v4PFX-SET */
   khash_t(as_v4pfxs) *as_v4pfxs;
@@ -127,6 +149,48 @@ static int parse_args(bwc_t *consumer, int argc, char **argv)
   return 0;
 }
 
+static void find_ff_peers(bwc_t *consumer, bgpwatcher_view_iter_t *it)
+{
+  int khret;
+
+  bl_peerid_t peerid;
+  int pfx_cnt;
+
+  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
+      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
+      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_PEER))
+    {
+      /* grab the peer id */
+      peerid = bgpwatcher_view_iter_get_peerid(it);
+
+      pfx_cnt = bgpwatcher_view_iter_get_peer_v4pfx_cnt(it);
+      /* does this peer have any v4 table? */
+      if(pfx_cnt > 0)
+        {
+          STATE->v4_peer_cnt++;
+        }
+      /* does this peer have a full-feed v4 table? */
+      if(pfx_cnt >= IPV4_FULLFEED_SIZE)
+        {
+          /* add to the v4 fullfeed table */
+          kh_put(peerid_set, STATE->v4ff_peerids, peerid, &khret);
+        }
+
+      pfx_cnt = bgpwatcher_view_iter_get_peer_v6pfx_cnt(it);
+      /* does this peer have any v6 table? */
+      if(pfx_cnt > 0)
+        {
+          STATE->v6_peer_cnt++;
+        }
+      /* does this peer have a full-feed v6 table? */
+      if(pfx_cnt >= IPV6_FULLFEED_SIZE)
+        {
+          /* add to the v6 fullfeed table */
+          kh_put(peerid_set, STATE->v6ff_peerids, peerid, &khret);
+        }
+    }
+}
+
 static void as_v4pfxs_insert(bwc_perasvisibility_state_t *state,
 			     uint32_t asn, bl_ipv4_pfx_t *pfx)
 {
@@ -172,6 +236,8 @@ static void as_v6pfxs_insert(bwc_perasvisibility_state_t *state,
 static void flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 {
   bl_ipv4_pfx_t *v4pfx;
+
+  bl_peerid_t peerid;
   bgpwatcher_pfx_peer_info_t *pfxinfo;
 
   /* IPv4 */
@@ -194,6 +260,15 @@ static void flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 	  !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER);
 	  bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER))
 	{
+          /* only consider peers that are full-feed */
+          peerid = bgpwatcher_view_iter_get_v4pfx_peerid(it);
+
+          if(kh_get(peerid_set, STATE->v4ff_peerids, peerid)
+             == kh_end(STATE->v4ff_peerids))
+            {
+              continue;
+            }
+
 	  pfxinfo = bgpwatcher_view_iter_get_v4pfx_pfxinfo(it);
 	  as_v4pfxs_insert(STATE, pfxinfo->orig_asn, v4pfx);
 	}
@@ -203,6 +278,8 @@ static void flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 static void flip_v6table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 {
   bl_ipv6_pfx_t *v6pfx;
+
+  bl_peerid_t peerid;
   bgpwatcher_pfx_peer_info_t *pfxinfo;
 
   /* IPv6 */
@@ -225,6 +302,15 @@ static void flip_v6table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 	  !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER);
 	  bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER))
 	{
+          /* only consider peers that are full-feed */
+          peerid = bgpwatcher_view_iter_get_v6pfx_peerid(it);
+
+          if(kh_get(peerid_set, STATE->v6ff_peerids, peerid)
+             == kh_end(STATE->v6ff_peerids))
+            {
+              continue;
+            }
+
 	  pfxinfo = bgpwatcher_view_iter_get_v6pfx_pfxinfo(it);
 	  as_v6pfxs_insert(STATE, pfxinfo->orig_asn, v6pfx);
 	}
@@ -304,6 +390,16 @@ int bwc_perasvisibility_init(bwc_t *consumer, int argc, char **argv)
       fprintf(stderr, "Error: unable to create as visibility map (v6)\n");
       goto err;
     }
+  if((state->v4ff_peerids = kh_init(peerid_set)) == NULL)
+    {
+      fprintf(stderr, "Error: unable to create full-feed peers (v4)\n");
+      goto err;
+    }
+  if((state->v6ff_peerids = kh_init(peerid_set)) == NULL)
+    {
+      fprintf(stderr, "Error: unable to create full-feed peers (v6)\n");
+      goto err;
+    }
 
   /* parse the command line args */
   if(parse_args(consumer, argc, argv) != 0)
@@ -341,6 +437,16 @@ void bwc_perasvisibility_destroy(bwc_t *consumer)
       kh_destroy(as_v6pfxs, state->as_v6pfxs);
       state->as_v6pfxs = NULL;
     }
+  if(state->v4ff_peerids != NULL)
+    {
+      kh_destroy(peerid_set, state->v4ff_peerids);
+      state->v4ff_peerids = NULL;
+    }
+  if(state->v6ff_peerids != NULL)
+    {
+      kh_destroy(peerid_set, state->v6ff_peerids);
+      state->v6ff_peerids = NULL;
+    }
 
   free(state);
 
@@ -354,7 +460,6 @@ int bwc_perasvisibility_process_view(bwc_t *consumer, uint8_t interests,
 {
   bgpwatcher_view_iter_t *it;
 
-  uint64_t peers_cnt;
   uint32_t time = bgpwatcher_view_time(view);
 
   /* create a new iterator */
@@ -363,6 +468,9 @@ int bwc_perasvisibility_process_view(bwc_t *consumer, uint8_t interests,
       return -1;
     }
 
+  /* find the full-feed peers */
+  find_ff_peers(consumer, it);
+
   /* flip the view into a per-AS table */
   flip_v4table(consumer, it);
   flip_v6table(consumer, it);
@@ -370,12 +478,34 @@ int bwc_perasvisibility_process_view(bwc_t *consumer, uint8_t interests,
   /* destroy the view iterator */
   bgpwatcher_view_iter_destroy(it);
 
-  /* how many peers? */
-  peers_cnt = bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
-
+  /* how many v4 peers? */
   timeseries_set_single(BWC_GET_TIMESERIES(consumer),
-			METRIC_FULL_FEED_PEERS_CNT,
-			peers_cnt, time);
+                        METRIC_V4_PEERS_CNT,
+                        STATE->v4_peer_cnt,
+                        time);
+
+  /* how many v6 peers? */
+  timeseries_set_single(BWC_GET_TIMESERIES(consumer),
+                        METRIC_V6_PEERS_CNT,
+                        STATE->v6_peer_cnt,
+                        time);
+
+  /* how many ff v4 peers? */
+  timeseries_set_single(BWC_GET_TIMESERIES(consumer),
+                        METRIC_V4_FF_PEERS_CNT,
+                        kh_size(STATE->v4ff_peerids),
+                        time);
+
+  /* how many ff v6 peers? */
+  timeseries_set_single(BWC_GET_TIMESERIES(consumer),
+                        METRIC_V6_FF_PEERS_CNT,
+                        kh_size(STATE->v6ff_peerids),
+                        time);
+
+  kh_clear(peerid_set, STATE->v4ff_peerids);
+  kh_clear(peerid_set, STATE->v6ff_peerids);
+  STATE->v4_peer_cnt = 0;
+  STATE->v6_peer_cnt = 0;
 
   /* now dump the per-as table */
   dump_table(consumer, time);
