@@ -27,11 +27,29 @@
 #include <stdio.h>
 #include "utils.h"
 #include <assert.h>
+#include "khash.h"
 
 
+/** set of unique ids
+ *  this structure maintains a set of unique
+ *  ids (using a uint32 type)
+ */
+KHASH_INIT(bl_id_set /* name */, 
+	   uint32_t  /* khkey_t */, 
+	   char /* khval_t */, 
+	   0  /* kh_is_set */, 
+	   kh_int_hash_func /*__hash_func */,  
+	   kh_int_hash_equal /* __hash_equal */);
+
+
+struct bl_id_set_t {
+  khash_t(bl_id_set) *hash;
+};
+
+			   
 bl_id_set_t *bl_id_set_create()
 {
-  bl_id_set_t *id_set = NULL;
+  bl_id_set_t *id_set =  (bl_id_set_t *) malloc(sizeof(bl_id_set_t));
   id_set = kh_init(bl_id_set);
   return id_set;
 }

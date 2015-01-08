@@ -28,23 +28,11 @@
 #define _BL_AS_SET_H
 
 #include "bl_bgp_utils.h"
-#include "khash.h"
 
-/** set of unique ASes
- *  this structure maintains a set of unique
- *  AS numbers (16/32 bits AS numbers are hashed
- *  using a uint32 type) - ASes could be represented
- *  as an as set or an as confederation.
- */
-KHASH_INIT(bl_as_storage_set /* name */, 
-	   bl_as_storage_t  /* khkey_t */, 
-	   char /* khval_t */, 
-	   0  /* kh_is_set */, 
-	   bl_as_storage_hash_func /*__hash_func */,  
-	   bl_as_storage_hash_equal /* __hash_equal */);
 
-typedef khash_t(bl_as_storage_set) bl_as_storage_set_t;
- 
+typedef struct bl_as_storage_set_t bl_as_storage_set_t;
+
+				   
 /** Allocate memory for a strucure that maintains
  *  unique set of AS numbers.
  *

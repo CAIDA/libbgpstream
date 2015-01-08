@@ -27,7 +27,6 @@
 #ifndef _BL_PEERSIGN_MAP_H
 #define _BL_PEERSIGN_MAP_H
 
-#include "khash.h"
 #include "bl_bgp_utils.h"
 
 /** Type of a peer ID */

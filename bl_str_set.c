@@ -27,7 +27,6 @@
 #include <stdio.h>
 #include "utils.h"
 #include <assert.h>
-
 #include "khash.h"
 
 /** set of unique strings

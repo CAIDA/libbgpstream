@@ -28,22 +28,9 @@
 #define _BL_ADDR_SET_H
 
 #include "bl_bgp_utils.h"
-#include "khash.h"
-
-/** set of unique IP addresses
- *  this structure maintains a set of unique
- *  addresses (ipv4 and ipv6 addresses, both hashed
- *  using a int64 type)
- */
-KHASH_INIT(bl_addr_storage_set /* name */, 
-	   bl_addr_storage_t /* khkey_t */, 
-	   char /* khval_t */, 
-	   0  /* kh_is_set */, 
-	   bl_addr_storage_hash_func /*__hash_func */,  
-	   bl_addr_storage_hash_equal /* __hash_equal */);
 
 
-typedef khash_t(bl_addr_storage_set) bl_addr_storage_set_t;
+typedef struct bl_addr_storage_set_t bl_addr_storage_set_t;
 
 
 /** Allocate memory for a strucure that maintains
@@ -75,16 +62,9 @@ void bl_addr_storage_set_reset(bl_addr_storage_set_t *ip_address_set);
 void bl_addr_storage_set_destroy(bl_addr_storage_set_t *ip_address_set);
 
 
+
 // same functions, ipv4 specific
-
-KHASH_INIT(bl_ipv4_addr_set /* name */, 
-	   bl_ipv4_addr_t /* khkey_t */, 
-	   char /* khval_t */, 
-	   0  /* kh_is_set */, 
-	   bl_ipv4_addr_hash_func /*__hash_func */,  
-	   bl_ipv4_addr_hash_equal /* __hash_equal */);
-
-typedef khash_t(bl_ipv4_addr_set) bl_ipv4_addr_set_t;
+typedef struct bl_ipv4_addr_set_t bl_ipv4_addr_set_t;
 
 
 bl_ipv4_addr_set_t *bl_ipv4_addr_set_create();
@@ -92,16 +72,9 @@ int bl_ipv4_addr_set_insert(bl_ipv4_addr_set_t *ip_address_set, bl_ipv4_addr_t i
 void bl_ipv4_addr_set_reset(bl_ipv4_addr_set_t *ip_address_set);
 void bl_ipv4_addr_set_destroy(bl_ipv4_addr_set_t *ip_address_set);
 
+
 // same functions, ipv6 specific
-
-KHASH_INIT(bl_ipv6_addr_set /* name */, 
-	   bl_ipv6_addr_t /* khkey_t */, 
-	   char /* khval_t */, 
-	   0  /* kh_is_set */, 
-	   bl_ipv6_addr_hash_func /*__hash_func */,  
-	   bl_ipv6_addr_hash_equal /* __hash_equal */);
-
-typedef khash_t(bl_ipv6_addr_set) bl_ipv6_addr_set_t;
+typedef struct bl_ipv6_addr_set_t bl_ipv6_addr_set_t;
 
 
 bl_ipv6_addr_set_t *bl_ipv6_addr_set_create();

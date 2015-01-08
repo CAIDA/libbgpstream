@@ -27,11 +27,31 @@
 #include <stdio.h>
 #include "utils.h"
 #include <assert.h>
+#include "khash.h"
+
+
+/** set of unique IP addresses
+ *  this structure maintains a set of unique
+ *  addresses (ipv4 and ipv6 addresses, both hashed
+ *  using a int64 type)
+ */
+KHASH_INIT(bl_addr_storage_set /* name */, 
+	   bl_addr_storage_t /* khkey_t */, 
+	   char /* khval_t */, 
+	   0  /* kh_is_set */, 
+	   bl_addr_storage_hash_func /*__hash_func */,  
+	   bl_addr_storage_hash_equal /* __hash_equal */);
+
+
+struct bl_addr_storage_set_t {
+  khash_t(bl_addr_storage_set) *hash;
+};
+
 
 bl_addr_storage_set_t *bl_addr_storage_set_create() 
 {
-  bl_addr_storage_set_t *ip_address_set = NULL;
-  ip_address_set = kh_init(bl_addr_storage_set);
+  bl_addr_storage_set_t *ip_address_set = (bl_addr_storage_set_t *) malloc(sizeof(bl_addr_storage_set_t));
+  ip_address_set->hash = kh_init(bl_addr_storage_set);
   return ip_address_set;
 }
 
@@ -39,10 +59,10 @@ int bl_addr_storage_set_insert(bl_addr_storage_set_t *ip_address_set, bl_addr_st
 {
   int khret;
   khiter_t k;
-  if((k = kh_get(bl_addr_storage_set, ip_address_set,
-		 ip_address)) == kh_end(ip_address_set))
+  if((k = kh_get(bl_addr_storage_set, ip_address_set->hash,
+		 ip_address)) == kh_end(ip_address_set->hash))
     {
-      k = kh_put(bl_addr_storage_set, ip_address_set, 
+      k = kh_put(bl_addr_storage_set, ip_address_set->hash, 
 		 ip_address, &khret);
       return 1;
     }
@@ -51,21 +71,38 @@ int bl_addr_storage_set_insert(bl_addr_storage_set_t *ip_address_set, bl_addr_st
 
 void bl_addr_storage_set_reset(bl_addr_storage_set_t *ip_address_set) 
 {
-  kh_clear(bl_addr_storage_set, ip_address_set);
+  kh_clear(bl_addr_storage_set, ip_address_set->hash);
 }
 
 void bl_addr_storage_set_destroy(bl_addr_storage_set_t *ip_address_set) 
 {
-  kh_destroy(bl_addr_storage_set, ip_address_set);
+  kh_destroy(bl_addr_storage_set, ip_address_set->hash);
+  free(ip_address_set);
 }
+
 
 
 // ipv4 specific functions
 
+
+// same functions, ipv4 specific
+
+KHASH_INIT(bl_ipv4_addr_set /* name */, 
+	   bl_ipv4_addr_t /* khkey_t */, 
+	   char /* khval_t */, 
+	   0  /* kh_is_set */, 
+	   bl_ipv4_addr_hash_func /*__hash_func */,  
+	   bl_ipv4_addr_hash_equal /* __hash_equal */);
+
+struct bl_ipv4_addr_set_t {
+  khash_t(bl_ipv4_addr_set) *hash;
+};
+
+
 bl_ipv4_addr_set_t *bl_ipv4_addr_set_create() 
 {
-  bl_ipv4_addr_set_t *ip_address_set = NULL;
-  ip_address_set = kh_init(bl_ipv4_addr_set);
+  bl_ipv4_addr_set_t *ip_address_set = (bl_ipv4_addr_set_t *) malloc(sizeof(bl_ipv4_addr_set_t));
+  ip_address_set->hash = kh_init(bl_ipv4_addr_set);
   return ip_address_set;
 }
 
@@ -73,10 +110,10 @@ int bl_ipv4_addr_set_insert(bl_ipv4_addr_set_t *ip_address_set, bl_ipv4_addr_t i
 {
   int khret;
   khiter_t k;
-  if((k = kh_get(bl_ipv4_addr_set, ip_address_set,
-		 ip_address)) == kh_end(ip_address_set))
+  if((k = kh_get(bl_ipv4_addr_set, ip_address_set->hash,
+		 ip_address)) == kh_end(ip_address_set->hash))
     {
-      k = kh_put(bl_ipv4_addr_set, ip_address_set, 
+      k = kh_put(bl_ipv4_addr_set, ip_address_set->hash, 
 		 ip_address, &khret);
       return 1;
     }
@@ -85,21 +122,34 @@ int bl_ipv4_addr_set_insert(bl_ipv4_addr_set_t *ip_address_set, bl_ipv4_addr_t i
 
 void bl_ipv4_addr_set_reset(bl_ipv4_addr_set_t *ip_address_set) 
 {
-  kh_clear(bl_ipv4_addr_set, ip_address_set);
+  kh_clear(bl_ipv4_addr_set, ip_address_set->hash);
 }
 
 void bl_ipv4_addr_set_destroy(bl_ipv4_addr_set_t *ip_address_set) 
 {
-  kh_destroy(bl_ipv4_addr_set, ip_address_set);
+  kh_destroy(bl_ipv4_addr_set, ip_address_set->hash);
+  free(ip_address_set);
 }
 
 
 // ipv6 specific functions
 
+KHASH_INIT(bl_ipv6_addr_set /* name */, 
+	   bl_ipv6_addr_t /* khkey_t */, 
+	   char /* khval_t */, 
+	   0  /* kh_is_set */, 
+	   bl_ipv6_addr_hash_func /*__hash_func */,  
+	   bl_ipv6_addr_hash_equal /* __hash_equal */);
+
+struct bl_ipv6_addr_set_t {
+  khash_t(bl_ipv6_addr_set) *hash;
+};
+
+
 bl_ipv6_addr_set_t *bl_ipv6_addr_set_create() 
 {
-  bl_ipv6_addr_set_t *ip_address_set = NULL;
-  ip_address_set = kh_init(bl_ipv6_addr_set);
+  bl_ipv6_addr_set_t *ip_address_set = (bl_ipv6_addr_set_t *) malloc(sizeof(bl_ipv6_addr_set_t));
+  ip_address_set->hash = kh_init(bl_ipv6_addr_set);
   return ip_address_set;
 }
 
@@ -107,10 +157,10 @@ int bl_ipv6_addr_set_insert(bl_ipv6_addr_set_t *ip_address_set, bl_ipv6_addr_t i
 {
   int khret;
   khiter_t k;
-  if((k = kh_get(bl_ipv6_addr_set, ip_address_set,
-		 ip_address)) == kh_end(ip_address_set))
+  if((k = kh_get(bl_ipv6_addr_set, ip_address_set->hash,
+		 ip_address)) == kh_end(ip_address_set->hash))
     {
-      k = kh_put(bl_ipv6_addr_set, ip_address_set, 
+      k = kh_put(bl_ipv6_addr_set, ip_address_set->hash, 
 		 ip_address, &khret);
       return 1;
     }
@@ -119,12 +169,13 @@ int bl_ipv6_addr_set_insert(bl_ipv6_addr_set_t *ip_address_set, bl_ipv6_addr_t i
 
 void bl_ipv6_addr_set_reset(bl_ipv6_addr_set_t *ip_address_set) 
 {
-  kh_clear(bl_ipv6_addr_set, ip_address_set);
+  kh_clear(bl_ipv6_addr_set, ip_address_set->hash);
 }
 
 void bl_ipv6_addr_set_destroy(bl_ipv6_addr_set_t *ip_address_set) 
 {
-  kh_destroy(bl_ipv6_addr_set, ip_address_set);
+  kh_destroy(bl_ipv6_addr_set, ip_address_set->hash);
+  free(ip_address_set);
 }
 
 

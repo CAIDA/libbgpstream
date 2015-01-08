@@ -29,19 +29,9 @@
 
 #include "bl_bgp_utils.h"
 
-/** set of unique ids
- *  this structure maintains a set of unique
- *  ids (using a uint32 type)
- */
-KHASH_INIT(bl_id_set /* name */, 
-	   uint32_t  /* khkey_t */, 
-	   char /* khval_t */, 
-	   0  /* kh_is_set */, 
-	   kh_int_hash_func /*__hash_func */,  
-	   kh_int_hash_equal /* __hash_equal */);
 
+typedef struct bl_id_set_t bl_id_set_t;
 
-typedef khash_t(bl_id_set) bl_id_set_t;
  
 /** Allocate memory for a strucure that maintains
  *  unique set of ids.

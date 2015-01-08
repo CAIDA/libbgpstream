@@ -27,12 +27,30 @@
 #include <stdio.h>
 #include "utils.h"
 #include <assert.h>
+#include "khash.h"
+
+/** set of unique ASes
+ *  this structure maintains a set of unique
+ *  AS numbers (16/32 bits AS numbers are hashed
+ *  using a uint32 type) - ASes could be represented
+ *  as an as set or an as confederation.
+ */
+KHASH_INIT(bl_as_storage_set /* name */, 
+	   bl_as_storage_t  /* khkey_t */, 
+	   char /* khval_t */, 
+	   0  /* kh_is_set */, 
+	   bl_as_storage_hash_func /*__hash_func */,  
+	   bl_as_storage_hash_equal /* __hash_equal */);
+
+struct bl_as_storage_set_t {
+  khash_t(bl_as_storage_set) *hash;
+};
 
 
 bl_as_storage_set_t *bl_as_storage_set_create()
 {
-  bl_as_storage_set_t *as_set = NULL;
-  as_set = kh_init(bl_as_storage_set);
+  bl_as_storage_set_t *as_set = (bl_as_storage_set_t *) malloc(sizeof(bl_as_storage_set_t));
+  as_set->hash = kh_init(bl_as_storage_set);
   return as_set;
 }
 
@@ -40,10 +58,10 @@ int bl_as_storage_set_insert(bl_as_storage_set_t *as_set, bl_as_storage_t as)
 {
   int khret;
   khiter_t k;
-  if((k = kh_get(bl_as_storage_set, as_set,
-			       as)) == kh_end(as_set))
+  if((k = kh_get(bl_as_storage_set, as_set->hash,
+			       as)) == kh_end(as_set->hash))
     { 
-      k = kh_put(bl_as_storage_set, as_set, as, &khret);
+      k = kh_put(bl_as_storage_set, as_set->hash, as, &khret);
       return 1;
     }
   return 0;
@@ -51,12 +69,13 @@ int bl_as_storage_set_insert(bl_as_storage_set_t *as_set, bl_as_storage_t as)
 
 void bl_as_storage_set_reset(bl_as_storage_set_t *as_set)
 {
-  kh_clear(bl_as_storage_set, as_set);
+  kh_clear(bl_as_storage_set, as_set->hash);
 }
 
 void as_set_destroy(bl_as_storage_set_t *as_set) 
 {
-  kh_destroy(bl_as_storage_set, as_set);
+  kh_destroy(bl_as_storage_set, as_set->hash);
+  free(as_set);
 }
 
 

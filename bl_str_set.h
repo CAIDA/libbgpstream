@@ -28,7 +28,6 @@
 #define _BL_STR_SET_H
 
 
-
 typedef struct bl_string_set_t bl_string_set_t;
 			       
 	    	    
