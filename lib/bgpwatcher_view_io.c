@@ -626,6 +626,15 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
 
   assert(view != NULL);
 
+  /* to ensure that we never try to set peer ids for existing peer signatures,
+     we destroy the peersign table manually and recreate it */
+  bl_peersign_map_destroy(view->peersigns);
+  if((view->peersigns = bl_peersign_map_create()) == NULL)
+    {
+      fprintf(stderr, "Could not create new peersign table\n");
+      goto err;
+    }
+
   /* time */
   if(zmq_recv(src, &u32, sizeof(u32), 0) != sizeof(u32))
     {
