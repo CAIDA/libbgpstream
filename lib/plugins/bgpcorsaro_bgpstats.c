@@ -608,54 +608,15 @@ static void ribs_table_parser(prefixes_table_t *global_prefixes,
 
 static void prefixes_table_union(prefixes_table_t * to_update, prefixes_table_t * to_read)
 {
-  khiter_t k;
-  khiter_t k_check;
-  int khret;
-  bl_ipv4_pfx_t ipv4_pfx;
-  bl_ipv6_pfx_t ipv6_pfx;
 
-  // update ipv4 prefixes table
-  for(k = kh_begin(to_read->ipv4_prefixes_table);
-      k != kh_end(to_read->ipv4_prefixes_table); ++k)
-    {
-      if (kh_exist(to_read->ipv4_prefixes_table, k))
-	{
-	  // get prefix from "to_read" table
-	  ipv4_pfx = kh_key(to_read->ipv4_prefixes_table, k);
-	  bl_ipv4_pfx_set_insert(to_update->ipv4_prefixes_table, ipv4_pfx);
-	}
-    }
-  // update ipv6 prefixes table
-  for(k = kh_begin(to_read->ipv6_prefixes_table);
-      k != kh_end(to_read->ipv6_prefixes_table); ++k)
-    {
-      if (kh_exist(to_read->ipv6_prefixes_table, k))
-	{
-	  // get prefix from "to_read" table
-	  ipv6_pfx = kh_key(to_read->ipv6_prefixes_table, k);
-	  bl_ipv6_pfx_set_insert(to_update->ipv6_prefixes_table, ipv6_pfx);
-	}
-    }
+  bl_ipv4_pfx_set_merge(to_update->ipv4_prefixes_table, to_read->ipv4_prefixes_table);
+  bl_ipv6_pfx_set_merge(to_update->ipv6_prefixes_table, to_read->ipv6_prefixes_table);
 }
 
 
 static void ases_table_union(bl_id_set_t * to_update, bl_id_set_t * to_read)
 {
-  khiter_t k;
-  khiter_t k_check;
-  int khret;
-  uint32_t origin_as;
-  // update ases table
-  for(k = kh_begin(to_read);
-      k != kh_end(to_read); ++k)
-    {
-      if (kh_exist(to_read, k))
-	{
-	  // get prefix from "to_read" table
-	  origin_as = kh_key(to_read, k);
-	  bl_id_set_insert(to_update, origin_as);
-	}
-    }
+  bl_id_set_merge(to_update, to_read);
 }
 
 
@@ -1119,12 +1080,12 @@ static void peerdata_dump(char *dump_project, char *dump_collector, char *peer_a
   fprintf(stdout,
 	  METRIC_PREFIX".%s.%s.%s.ipv4_affected_prefixes %d %d\n",
 	  dump_project, dump_collector, peer_address,
-	  kh_size(peer_data->affected_prefixes_table->ipv4_prefixes_table),
+	  bl_ipv4_pfx_set_size(peer_data->affected_prefixes_table->ipv4_prefixes_table),
 	  int_start_time);
   fprintf(stdout,
 	  METRIC_PREFIX".%s.%s.%s.ipv6_affected_prefixes %d %d\n",
 	  dump_project, dump_collector, peer_address,
-	  kh_size(peer_data->affected_prefixes_table->ipv6_prefixes_table),
+	  bl_ipv6_pfx_set_size(peer_data->affected_prefixes_table->ipv6_prefixes_table),
 	  int_start_time);
 
   /* number of unique ASes (no sets/confeds) announcing at least
@@ -1132,7 +1093,7 @@ static void peerdata_dump(char *dump_project, char *dump_collector, char *peer_a
   fprintf(stdout,
 	  METRIC_PREFIX".%s.%s.%s.announcing_ases %d %d\n",
 	  dump_project, dump_collector, peer_address,
-	  kh_size(peer_data->announcing_ases_table),
+	  bl_id_set_size(peer_data->announcing_ases_table),
 	  int_start_time);
 
   /* number non_std_origin_as occurrencies (updates only) */
@@ -1161,7 +1122,7 @@ static void peerdata_dump(char *dump_project, char *dump_collector, char *peer_a
   fprintf(stdout,
 	  METRIC_PREFIX".%s.%s.%s.origin_ases_in_ribs_cnt %d %d\n",
 	  dump_project, dump_collector, peer_address,
-	  kh_size(peer_data->ases_table),
+	  bl_id_set_size(peer_data->ases_table),
 	  int_start_time);
 
 }
@@ -1292,14 +1253,14 @@ static void collectordata_dump(collectordata_t *collector_data, int int_start_ti
 	  METRIC_PREFIX".%s.%s.ipv4_rib_size %d %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
-	  kh_size(collector_data->prefixes_table->ipv4_prefixes_table),
+	  bl_ipv4_pfx_set_size(collector_data->prefixes_table->ipv4_prefixes_table),
 	  int_start_time);	  
 
   fprintf(stdout,
 	  METRIC_PREFIX".%s.%s.ipv6_rib_size %d %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
-	  kh_size(collector_data->prefixes_table->ipv6_prefixes_table),
+	  bl_ipv6_pfx_set_size(collector_data->prefixes_table->ipv6_prefixes_table),
 	  int_start_time);	  
 
   /* number of ipv4/ipv6 prefixes affected by a change during the current interval */
@@ -1307,14 +1268,14 @@ static void collectordata_dump(collectordata_t *collector_data, int int_start_ti
 	  METRIC_PREFIX".%s.%s.ipv4_affected_prefixes %d %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
-	  kh_size(collector_data->affected_prefixes_table->ipv4_prefixes_table),
+	  bl_ipv4_pfx_set_size(collector_data->affected_prefixes_table->ipv4_prefixes_table),
 	  int_start_time);	  
 
   fprintf(stdout,
 	  METRIC_PREFIX".%s.%s.ipv6_affected_prefixes %d %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
-	  kh_size(collector_data->affected_prefixes_table->ipv6_prefixes_table),
+	  bl_ipv6_pfx_set_size(collector_data->affected_prefixes_table->ipv6_prefixes_table),
 	  int_start_time);
 
   /* number of unique origin ases in ribs per collector */
@@ -1322,7 +1283,7 @@ static void collectordata_dump(collectordata_t *collector_data, int int_start_ti
 	  METRIC_PREFIX".%s.%s.origin_ases_in_ribs_cnt %d %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
-	  kh_size(collector_data->ases_table),
+	  bl_id_set_size(collector_data->ases_table),
 	  int_start_time);
   
   /* number of announcing ases per collector */
@@ -1330,7 +1291,7 @@ static void collectordata_dump(collectordata_t *collector_data, int int_start_ti
 	  METRIC_PREFIX".%s.%s.announcing_ases %d %d\n",
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
-	  kh_size(collector_data->announcing_ases_table),
+	  bl_id_set_size(collector_data->announcing_ases_table),
 	  int_start_time);
   
 }

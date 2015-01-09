@@ -752,7 +752,7 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
-	  kh_size(peer_data->aggr_stats->affected_ipv4_prefixes),
+	  bl_ipv4_pfx_set_size(peer_data->aggr_stats->affected_ipv4_prefixes),
 	  interval_start);
 
   // OUTPUT METRIC: peer_affected_ipv6_prefixes_cnt
@@ -761,7 +761,7 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
-	  kh_size(peer_data->aggr_stats->affected_ipv6_prefixes),
+	  bl_ipv6_pfx_set_size(peer_data->aggr_stats->affected_ipv6_prefixes),
 	  interval_start);
 
   // OUTPUT METRIC: peer_announcing_origin_ases_cnt
@@ -770,52 +770,18 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
-	  kh_size(peer_data->aggr_stats->announcing_origin_ases),
+	  bl_id_set_size(peer_data->aggr_stats->announcing_origin_ases),
 	  interval_start);
 
   // "Aggregation" of affected resources per collector
 
-  bl_ipv4_pfx_t *ipv4_prefix;
-  bl_ipv6_pfx_t *ipv6_prefix;
-
-  
-  for(k = kh_begin(peer_data->aggr_stats->affected_ipv4_prefixes);
-      k != kh_end(peer_data->aggr_stats->affected_ipv4_prefixes); ++k)
-    {
-      if (kh_exist(peer_data->aggr_stats->affected_ipv4_prefixes, k))
-	{
-	  ipv4_prefix = &(kh_key(peer_data->aggr_stats->affected_ipv4_prefixes, k));
-	  bl_ipv4_pfx_set_insert(collector_aggr_stats->affected_ipv4_prefixes, *ipv4_prefix);
-	}
-    }
-  // then clear data
+  bl_ipv4_pfx_set_merge(collector_aggr_stats->affected_ipv4_prefixes, peer_data->aggr_stats->affected_ipv4_prefixes);
   bl_ipv4_pfx_set_reset(peer_data->aggr_stats->affected_ipv4_prefixes);
-
   
-  for(k = kh_begin(peer_data->aggr_stats->affected_ipv6_prefixes);
-      k != kh_end(peer_data->aggr_stats->affected_ipv6_prefixes); ++k)
-    {
-      if (kh_exist(peer_data->aggr_stats->affected_ipv6_prefixes, k))
-	{
-	  ipv6_prefix = &(kh_key(peer_data->aggr_stats->affected_ipv6_prefixes, k));
-	  bl_ipv6_pfx_set_insert(collector_aggr_stats->affected_ipv6_prefixes, *ipv6_prefix);
-	}
-    }
-
-  // then clear data
+  bl_ipv6_pfx_set_merge(collector_aggr_stats->affected_ipv6_prefixes, peer_data->aggr_stats->affected_ipv6_prefixes);
   bl_ipv6_pfx_set_reset(peer_data->aggr_stats->affected_ipv6_prefixes);
 
-  for(k = kh_begin(peer_data->aggr_stats->announcing_origin_ases);
-      k != kh_end(peer_data->aggr_stats->announcing_origin_ases); ++k)
-    {
-      if (kh_exist(peer_data->aggr_stats->announcing_origin_ases, k))
-	{
-	  as = kh_key(peer_data->aggr_stats->announcing_origin_ases, k);
-	  bl_id_set_insert(collector_aggr_stats->announcing_origin_ases, as);
-	}
-    }
-
-  // then clear data
+  bl_id_set_merge(collector_aggr_stats->announcing_origin_ases, peer_data->aggr_stats->announcing_origin_ases);
   bl_id_set_reset(peer_data->aggr_stats->announcing_origin_ases);
 
   if(peer_data->status != PEER_UP)
@@ -840,6 +806,9 @@ int peerdata_interval_end(char *project_str, char *collector_str,
     }     		
 #endif
 
+
+  bl_ipv4_pfx_t *ipv4_prefix;
+  bl_ipv6_pfx_t *ipv6_prefix;
   
   // go through ipv4 an ipv6 ribs and get the standard origin
   // ases, plus integrate the data into collector_data structs
@@ -959,7 +928,7 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  project_str,
 	  collector_str,
 	  peer_data->peer_address_str,
-	  kh_size(peer_data->aggr_stats->unique_origin_ases),
+	  bl_id_set_size(peer_data->aggr_stats->unique_origin_ases),
 	  interval_start);
 
   

@@ -249,7 +249,7 @@ int collectordata_interval_end(collectordata_t *collector_data,
 	  metric_pfx,
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
-	  kh_size(collector_data->aggr_stats->affected_ipv4_prefixes),
+	  bl_ipv4_pfx_set_size(collector_data->aggr_stats->affected_ipv4_prefixes),
 	  interval_start);
   bl_ipv4_pfx_set_reset(collector_data->aggr_stats->affected_ipv4_prefixes);
 
@@ -258,7 +258,7 @@ int collectordata_interval_end(collectordata_t *collector_data,
 	  metric_pfx,
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
-	  kh_size(collector_data->aggr_stats->affected_ipv6_prefixes),
+	  bl_ipv6_pfx_set_size(collector_data->aggr_stats->affected_ipv6_prefixes),
 	  interval_start);
   bl_ipv6_pfx_set_reset(collector_data->aggr_stats->affected_ipv6_prefixes);
 
@@ -267,7 +267,7 @@ int collectordata_interval_end(collectordata_t *collector_data,
 	  metric_pfx,
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
-	  kh_size(collector_data->aggr_stats->announcing_origin_ases),
+	  bl_id_set_size(collector_data->aggr_stats->announcing_origin_ases),
 	  interval_start);
   bl_id_set_reset(collector_data->aggr_stats->announcing_origin_ases);
 
@@ -277,7 +277,7 @@ int collectordata_interval_end(collectordata_t *collector_data,
 	  metric_pfx,
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
-	  kh_size(collector_data->aggr_stats->unique_ipv4_prefixes),
+	  bl_ipv4_pfx_set_size(collector_data->aggr_stats->unique_ipv4_prefixes),
 	  interval_start);
   bl_ipv4_pfx_set_reset(collector_data->aggr_stats->unique_ipv4_prefixes);
 
@@ -286,7 +286,7 @@ int collectordata_interval_end(collectordata_t *collector_data,
 	  metric_pfx,
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
-	  kh_size(collector_data->aggr_stats->unique_ipv6_prefixes),
+	  bl_ipv6_pfx_set_size(collector_data->aggr_stats->unique_ipv6_prefixes),
 	  interval_start);
   bl_ipv6_pfx_set_reset(collector_data->aggr_stats->unique_ipv6_prefixes);
 
@@ -296,7 +296,7 @@ int collectordata_interval_end(collectordata_t *collector_data,
 	  metric_pfx,
 	  collector_data->dump_project,
 	  collector_data->dump_collector,
-	  kh_size(collector_data->aggr_stats->unique_origin_ases),
+	  bl_id_set_size(collector_data->aggr_stats->unique_origin_ases),
 	  interval_start);
   
   bl_id_set_reset(collector_data->aggr_stats->unique_origin_ases);

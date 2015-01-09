@@ -48,6 +48,7 @@
 #include "bl_bgp_utils.h"
 #include "bl_peersign_map.h"
 #include "bl_pfx_set.h"
+#include "bl_pfx_set_int.h"
 #include "bl_id_set.h"
 
 
@@ -349,7 +350,7 @@ static void filter_vis_end(filter_vis_t *fv, int end_time)
 	    {
 	      peer_id = kh_key(fv->ipv4_vis, k);
 	      ipv4_set = kh_value(fv->ipv4_vis, k);
-	      if(kh_size(ipv4_set) > fv->ipv4_full_feed_th)
+	      if(bl_ipv4_pfx_set_size(ipv4_set) > fv->ipv4_full_feed_th)
 		{
 		  bl_id_set_insert(ipv4_full_feed, peer_id);
 		}
@@ -365,7 +366,7 @@ static void filter_vis_end(filter_vis_t *fv, int end_time)
 	    {
 	      peer_id = kh_key(fv->ipv6_vis, k);
 	      ipv6_set = kh_value(fv->ipv6_vis, k);
-	      if(kh_size(ipv6_set) > fv->ipv6_full_feed_th)
+	      if(bl_ipv6_pfx_set_size(ipv6_set) > fv->ipv6_full_feed_th)
 		{
 		  bl_id_set_insert(ipv6_full_feed, peer_id);
 		}
@@ -388,11 +389,11 @@ static void filter_vis_end(filter_vis_t *fv, int end_time)
 	    {
 	      peer_id = kh_key(fv->ipv4_vis, k);
 	      ipv4_set = kh_value(fv->ipv4_vis, k);
-	      for (inn_k = kh_begin(ipv4_set); inn_k != kh_end(ipv4_set); ++inn_k)
+	      for (inn_k = kh_begin(ipv4_set->hash); inn_k != kh_end(ipv4_set->hash); ++inn_k)
 		{
-		  if (kh_exist(ipv4_set, inn_k))
+		  if (kh_exist(ipv4_set->hash, inn_k))
 		    {
-		      ipv4_pfx = &kh_key(ipv4_set, inn_k);
+		      ipv4_pfx = &kh_key(ipv4_set->hash, inn_k);
 		      insert_ipv4_pfxpeer_pair(ipv4_pfx_visinfo, ipv4_pfx, peer_id, ipv4_full_feed);
 		    }
 		}
@@ -408,11 +409,11 @@ static void filter_vis_end(filter_vis_t *fv, int end_time)
 	    {
 	      peer_id = kh_key(fv->ipv6_vis, k);
 	      ipv6_set = kh_value(fv->ipv6_vis, k);
-	      for (inn_k = kh_begin(ipv6_set); inn_k != kh_end(ipv6_set); ++inn_k)
+	      for (inn_k = kh_begin(ipv6_set->hash); inn_k != kh_end(ipv6_set->hash); ++inn_k)
 		{
-		  if (kh_exist(ipv6_set, inn_k))
+		  if (kh_exist(ipv6_set->hash, inn_k))
 		    {
-		      ipv6_pfx = &kh_key(ipv6_set, inn_k);
+		      ipv6_pfx = &kh_key(ipv6_set->hash, inn_k);
 		      insert_ipv6_pfxpeer_pair(ipv6_pfx_visinfo, ipv6_pfx, peer_id, ipv6_full_feed);
 		    }
 		}

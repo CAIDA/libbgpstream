@@ -82,7 +82,10 @@ void bgpribs_set_metric_pfx(bgpribs_t *bgp_ribs, char* met_pfx)
 #ifdef WITH_BGPWATCHER
 int bgpribs_set_watcher(bgpribs_t *bgp_ribs, char *server_uri)
 {
-  bgpwatcher_client_set_server_uri(bgp_ribs->bw_client->client, server_uri);
+  if(server_uri != NULL)
+    {
+      bgpwatcher_client_set_server_uri(bgp_ribs->bw_client->client, server_uri);
+    }
   return bw_client_start(bgp_ribs->bw_client);
 }
 
