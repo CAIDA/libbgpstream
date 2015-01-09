@@ -94,6 +94,21 @@ int bl_string_set_size(bl_string_set_t *string_set)
   return kh_size(string_set->hash);
 }
 
+void bl_string_set_merge(bl_string_set_t *union_set, bl_string_set_t *part_set)
+{
+  char *id;
+  khiter_t k;
+  for(k = kh_begin(part_set->hash);
+      k != kh_end(part_set->hash); ++k)
+    {
+      if (kh_exist(part_set->hash, k))
+	{
+	  id = kh_key(part_set->hash, k);
+	  bl_string_set_insert(union_set, id);
+	}
+    }
+}
+
 
 void bl_string_set_reset(bl_string_set_t *string_set)
 {

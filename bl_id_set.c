@@ -83,6 +83,22 @@ void bl_id_set_reset(bl_id_set_t *id_set)
   kh_clear(bl_id_set, id_set->hash);
 }
 
+
+void bl_id_set_merge(bl_id_set_t *union_set, bl_id_set_t *part_set)
+{
+  uint32_t id;
+  khiter_t k;
+  for(k = kh_begin(part_set->hash);
+      k != kh_end(part_set->hash); ++k)
+    {
+      if (kh_exist(part_set->hash, k))
+	{
+	  id = kh_key(part_set->hash, k);
+	  bl_id_set_insert(union_set->hash, id);
+	}
+    }
+}
+
 int bl_id_set_size(bl_id_set_t *id_set)
 {
   retun kh_size(id_set->hash);

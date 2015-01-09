@@ -62,8 +62,15 @@ int bl_string_set_exists(bl_string_set_t *string_set, char * string_val);
 /** Returns the number of unique strings in the set
  *
  * @param string_val pointer to the string set
+ * @return the size of the string set
  */
 int bl_string_set_size(bl_string_set_t *string_set);
+
+/** Get the merge of the set.
+ *  @param union_set pointer to the string set that will include the merge
+ *  @param part_set pointer to the string set that will be merged with the union_set
+ */
+void bl_string_set_merge(bl_string_set_t *union_set, bl_string_set_t *part_set);
 
 /** Empty the string set.
  *

@@ -55,6 +55,19 @@ int bl_addr_storage_set_insert(bl_addr_storage_set_t *ip_address_set, bl_addr_st
  */
 void bl_addr_storage_set_reset(bl_addr_storage_set_t *ip_address_set);
 
+/** Get the size of the set.
+ *
+ * @param as_set pointer to the address set
+ * @return the size of the address set
+ */
+int bl_addr_storage_set_size(bl_addr_storage_set_t *ip_address_set);
+
+/** Get the merge of the set.
+ *  @param union_set pointer to the address set that will include the merge
+ *  @param part_set pointer to the address set that will be merged with the union_set
+ */
+void bl_addr_storage_set_merge(bl_addr_storage_set_t *union_set, bl_addr_storage_set_t *part_set);
+
 /** Deallocate memory for the IP address set
  *
  * @param as_set a pointer to the AS set
@@ -70,6 +83,8 @@ typedef struct bl_ipv4_addr_set_t bl_ipv4_addr_set_t;
 bl_ipv4_addr_set_t *bl_ipv4_addr_set_create();
 int bl_ipv4_addr_set_insert(bl_ipv4_addr_set_t *ip_address_set, bl_ipv4_addr_t ip_address);
 void bl_ipv4_addr_set_reset(bl_ipv4_addr_set_t *ip_address_set);
+int bl_ipv4_addr_set_size(bl_ipv4_addr_set_t *ip_address_set);
+void bl_ipv4_addr_set_merge(bl_ipv4_addr_set_t *union_set, bl_ipv4_addr_set_t *part_set);
 void bl_ipv4_addr_set_destroy(bl_ipv4_addr_set_t *ip_address_set);
 
 
@@ -80,6 +95,8 @@ typedef struct bl_ipv6_addr_set_t bl_ipv6_addr_set_t;
 bl_ipv6_addr_set_t *bl_ipv6_addr_set_create();
 int bl_ipv6_addr_set_insert(bl_ipv6_addr_set_t *ip_address_set, bl_ipv6_addr_t ip_address);
 void bl_ipv6_addr_set_reset(bl_ipv6_addr_set_t *ip_address_set);
+int bl_ipv6_addr_set_size(bl_ipv6_addr_set_t *ip_address_set);
+void bl_ipv6_addr_set_merge(bl_ipv6_addr_set_t *union_set, bl_ipv6_addr_set_t *part_set);
 void bl_ipv6_addr_set_destroy(bl_ipv6_addr_set_t *ip_address_set);
 
 

@@ -79,6 +79,21 @@ int bl_pfx_storage_set_size(bl_pfx_storage_set_t *ip_prefix_set)
   return kh_size(ip_prefix_set->hash);
 }
 
+void bl_pfx_storage_set_merge(bl_pfx_storage_set_t *union_set, bl_pfx_storage_set_t *part_set)
+{
+  bl_pfx_storage_t *id;
+  khiter_t k;
+  for(k = kh_begin(part_set->hash);
+      k != kh_end(part_set->hash); ++k)
+    {
+      if (kh_exist(part_set->hash, k))
+	{
+	  id = &(kh_key(part_set->hash, k));
+	  bl_pfx_storage_set_insert(union_set, *id);
+	}
+    }
+}
+
 void bl_pfx_storage_set_destroy(bl_pfx_storage_set_t *ip_prefix_set)
 {
   kh_destroy(bl_pfx_storage_set, ip_prefix_set->hash);
@@ -133,6 +148,22 @@ int bl_ipv4_pfx_set_size(bl_ipv4_pfx_set_t *ip_prefix_set)
   return kh_size(ip_prefix_set->hash);
 }
 
+void bl_ipv4_pfx_set_merge(bl_ipv4_pfx_set_t *union_set, bl_ipv4_pfx_set_t *part_set)
+{
+  bl_ipv4_pfx_t *id;
+  khiter_t k;
+  for(k = kh_begin(part_set->hash);
+      k != kh_end(part_set->hash); ++k)
+    {
+      if (kh_exist(part_set->hash, k))
+	{
+	  id = &(kh_key(part_set->hash, k));
+	  bl_ipv4_pfx_set_insert(union_set, *id);
+	}
+    }
+}
+
+
 void bl_ipv4_pfx_set_destroy(bl_ipv4_pfx_set_t *ip_prefix_set)
 {
   kh_destroy(bl_ipv4_pfx_set, ip_prefix_set->hash);
@@ -184,6 +215,21 @@ void bl_ipv6_pfx_set_reset(bl_ipv6_pfx_set_t *ip_prefix_set)
 int bl_ipv6_pfx_set_size(bl_ipv6_pfx_set_t *ip_prefix_set)
 {
   return kh_size(ip_prefix_set->hash);
+}
+
+void bl_ipv6_pfx_set_merge(bl_ipv6_pfx_set_t *union_set, bl_ipv6_pfx_set_t *part_set)
+{
+  bl_ipv6_pfx_t *id;
+  khiter_t k;
+  for(k = kh_begin(part_set->hash);
+      k != kh_end(part_set->hash); ++k)
+    {
+      if (kh_exist(part_set->hash, k))
+	{
+	  id = &(kh_key(part_set->hash, k));
+	  bl_ipv6_pfx_set_insert(union_set, *id);
+	}
+    }
 }
 
 void bl_ipv6_pfx_set_destroy(bl_ipv6_pfx_set_t *ip_prefix_set)

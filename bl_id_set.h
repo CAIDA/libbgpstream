@@ -58,8 +58,19 @@ int bl_id_set_exists(bl_id_set_t *id_set, uint32_t id);
  */
 void bl_id_set_reset(bl_id_set_t *id_set);
 
+/** Get the size of the set.
+ *
+ * @param as_set pointer to the id set
+ * @return the size of the id set
+ */
 int bl_id_set_size(bl_id_set_t *id_set);
-  
+
+/** Get the merge of the set.
+ *  @param union_set pointer to the id set that will include the merge
+ *  @param part_set pointer to the id set that will be merged with the union_set
+ */
+void bl_id_set_merge(bl_id_set_t *union_set, bl_id_set_t *part_set);
+
 /** Deallocate memory for the AS table.
  *
  * @param id_set a pointer to the AS set

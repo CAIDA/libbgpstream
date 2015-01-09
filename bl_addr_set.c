@@ -74,6 +74,26 @@ void bl_addr_storage_set_reset(bl_addr_storage_set_t *ip_address_set)
   kh_clear(bl_addr_storage_set, ip_address_set->hash);
 }
 
+int bl_addr_storage_set_size(bl_addr_storage_set_t *ip_address_set)
+{
+  return kh_size(ip_address_set->hash);
+}
+
+void bl_addr_storage_set_merge(bl_addr_storage_set_t *union_set, bl_addr_storage_set_t *part_set)
+{
+  bl_addr_storage_t *id;
+  khiter_t k;
+  for(k = kh_begin(part_set->hash);
+      k != kh_end(part_set->hash); ++k)
+    {
+      if (kh_exist(part_set->hash, k))
+	{
+	  id = &(kh_key(part_set->hash, k));
+	  bl_addr_storage_set_insert(union_set, *id);
+	}
+    }
+}
+
 void bl_addr_storage_set_destroy(bl_addr_storage_set_t *ip_address_set) 
 {
   kh_destroy(bl_addr_storage_set, ip_address_set->hash);
@@ -125,6 +145,26 @@ void bl_ipv4_addr_set_reset(bl_ipv4_addr_set_t *ip_address_set)
   kh_clear(bl_ipv4_addr_set, ip_address_set->hash);
 }
 
+int bl_ipv4_addr_set_size(bl_ipv4_addr_set_t *ip_address_set)
+{
+  return kh_size(ip_address_set->hash);
+}
+
+void bl_ipv4_addr_set_merge(bl_ipv4_addr_set_t *union_set, bl_ipv4_addr_set_t *part_set)
+{
+  bl_ipv4_addr_t *id;
+  khiter_t k;
+  for(k = kh_begin(part_set->hash);
+      k != kh_end(part_set->hash); ++k)
+    {
+      if (kh_exist(part_set->hash, k))
+	{
+	  id = &(kh_key(part_set->hash, k));
+	  bl_ipv4_addr_set_insert(union_set, *id);
+	}
+    }
+}
+
 void bl_ipv4_addr_set_destroy(bl_ipv4_addr_set_t *ip_address_set) 
 {
   kh_destroy(bl_ipv4_addr_set, ip_address_set->hash);
@@ -170,6 +210,26 @@ int bl_ipv6_addr_set_insert(bl_ipv6_addr_set_t *ip_address_set, bl_ipv6_addr_t i
 void bl_ipv6_addr_set_reset(bl_ipv6_addr_set_t *ip_address_set) 
 {
   kh_clear(bl_ipv6_addr_set, ip_address_set->hash);
+}
+
+int bl_ipv6_addr_set_size(bl_ipv6_addr_set_t *ip_address_set)
+{
+  return kh_size(ip_address_set->hash);
+}
+
+void bl_ipv6_addr_set_merge(bl_ipv6_addr_set_t *union_set, bl_ipv6_addr_set_t *part_set)
+{
+  bl_ipv6_addr_t *id;
+  khiter_t k;
+  for(k = kh_begin(part_set->hash);
+      k != kh_end(part_set->hash); ++k)
+    {
+      if (kh_exist(part_set->hash, k))
+	{
+	  id = &(kh_key(part_set->hash, k));
+	  bl_ipv6_addr_set_insert(union_set, *id);
+	}
+    }
 }
 
 void bl_ipv6_addr_set_destroy(bl_ipv6_addr_set_t *ip_address_set) 

@@ -56,6 +56,8 @@ int bl_as_storage_set_insert(bl_as_storage_set_t *as_set, bl_as_storage_t as);
 void bl_as_storage_set_reset(bl_as_storage_set_t *as_set);
 
 int bl_as_storage_set_size(bl_as_storage_set_t *as_set);
+void bl_as_storage_set_merge(bl_as_storage_set_t *union_set, bl_as_storage_set_t *part_set);
+
 
 /** Deallocate memory for the AS table.
  *
