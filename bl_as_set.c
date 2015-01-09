@@ -72,6 +72,11 @@ void bl_as_storage_set_reset(bl_as_storage_set_t *as_set)
   kh_clear(bl_as_storage_set, as_set->hash);
 }
 
+int bl_as_storage_set_size(bl_as_storage_set_t *as_set)
+{
+  return kh_size(as_set->hash);
+}
+
 void as_set_destroy(bl_as_storage_set_t *as_set) 
 {
   kh_destroy(bl_as_storage_set, as_set->hash);

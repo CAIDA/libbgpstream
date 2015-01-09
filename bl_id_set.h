@@ -58,6 +58,8 @@ int bl_id_set_exists(bl_id_set_t *id_set, uint32_t id);
  */
 void bl_id_set_reset(bl_id_set_t *id_set);
 
+int bl_id_set_size(bl_id_set_t *id_set);
+  
 /** Deallocate memory for the AS table.
  *
  * @param id_set a pointer to the AS set

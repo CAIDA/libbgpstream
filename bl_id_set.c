@@ -83,6 +83,11 @@ void bl_id_set_reset(bl_id_set_t *id_set)
   kh_clear(bl_id_set, id_set->hash);
 }
 
+int bl_id_set_size(bl_id_set_t *id_set)
+{
+  retun kh_size(id_set->hash);
+}
+
 void bl_id_set_destroy(bl_id_set_t *id_set) 
 {
   kh_destroy(bl_id_set, id_set->hash);
