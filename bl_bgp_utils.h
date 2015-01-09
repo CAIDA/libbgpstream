@@ -105,24 +105,6 @@ typedef struct struct_bl_addr_storage_t {
 } bl_addr_storage_t;
 
 
-
-// old
-
-/* typedef struct in_addr  bl_ipv4_addr_t; */
-/* typedef struct in6_addr bl_ipv6_addr_t; */
-
-
-/* typedef struct struct_bl_addr_storage_t { */
-/*   /\** ip version (v4 o v6) *\/ */
-/*   bl_addr_type_t version; */
-/*   /\** ip address *\/ */
-/*   union { */
-/*     bl_ipv4_addr_t ipv4; */
-/*     bl_ipv6_addr_t ipv6; */
-/*   }; */
-/* } bl_addr_storage_t; */
-
-
 typedef struct struct_bl_ipv4_pfx_t {
   /** length of the prefix mask */
   uint8_t mask_len;

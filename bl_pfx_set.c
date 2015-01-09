@@ -24,28 +24,11 @@
  */
 
 #include "bl_pfx_set.h"
+#include "bl_pfx_set_int.h"
 #include <stdio.h>
 #include "utils.h"
 #include <assert.h>
 #include <khash.h>
-
-
-/** set of unique IP prefixes
- *  this structure maintains a set of unique
- *  prefixes (ipv4 and ipv6 prefixes, both hashed
- *  using a int64 type)
- */
-KHASH_INIT(bl_pfx_storage_set /* name */, 
-	   bl_pfx_storage_t /* khkey_t */, 
-	   char /* khval_t */, 
-	   0  /* kh_is_set */, 
-	   bl_pfx_storage_hash_func /*__hash_func */,  
-	   bl_pfx_storage_hash_equal /* __hash_equal */);
-
-
-struct bl_pfx_storage_set_t {
-  khash_t(bl_pfx_storage_set) *hash;
-};
 
 
 bl_pfx_storage_set_t *bl_pfx_storage_set_create() 

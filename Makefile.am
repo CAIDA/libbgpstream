@@ -45,6 +45,7 @@ libbl_la_SOURCES =   \
 	bl_as_set.c     \
 	bl_as_set.h     \
 	bl_pfx_set.c  \
+	bl_pfx_set_int.h  \
 	bl_pfx_set.h  \
 	bl_addr_set.c \
 	bl_addr_set.h 
