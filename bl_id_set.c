@@ -94,14 +94,14 @@ void bl_id_set_merge(bl_id_set_t *union_set, bl_id_set_t *part_set)
       if (kh_exist(part_set->hash, k))
 	{
 	  id = kh_key(part_set->hash, k);
-	  bl_id_set_insert(union_set->hash, id);
+	  bl_id_set_insert(union_set, id);
 	}
     }
 }
 
 int bl_id_set_size(bl_id_set_t *id_set)
 {
-  retun kh_size(id_set->hash);
+  return kh_size(id_set->hash);
 }
 
 void bl_id_set_destroy(bl_id_set_t *id_set) 
