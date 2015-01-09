@@ -49,5 +49,34 @@ struct bl_pfx_storage_set_t {
   khash_t(bl_pfx_storage_set) *hash;
 };
 
+/* ipv4 specific set */
+
+KHASH_INIT(bl_ipv4_pfx_set /* name */, 
+	   bl_ipv4_pfx_t /* khkey_t */, 
+	   char /* khval_t */, 
+	   0  /* kh_is_set */, 
+	   bl_ipv4_pfx_hash_func /*__hash_func */,  
+	   bl_ipv4_pfx_hash_equal /* __hash_equal */);
+
+
+struct bl_ipv4_pfx_set_t {
+  khash_t(bl_ipv4_pfx_set) *hash;
+};
+
+/* ipv6 specific set */
+
+KHASH_INIT(bl_ipv6_pfx_set /* name */, 
+	   bl_ipv6_pfx_t /* khkey_t */, 
+	   char /* khval_t */, 
+	   0  /* kh_is_set */, 
+	   bl_ipv6_pfx_hash_func /*__hash_func */,  
+	   bl_ipv6_pfx_hash_equal /* __hash_equal */);
+
+
+struct bl_ipv6_pfx_set_t {
+  khash_t(bl_ipv6_pfx_set) *hash;
+};
+
+
 #endif /* _BL_PFX_SET_INT_H */
 
