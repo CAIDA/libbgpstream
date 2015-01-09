@@ -42,6 +42,14 @@ enum {
   POLL_ITEM_CNT    = 1,
 };
 
+#define METRIC_PREFIX "bgp.meta.bgpwatcher.server"
+
+#define DUMP_METRIC(value, time, fmt, ...)                      \
+do {                                                            \
+  fprintf(stdout, METRIC_PREFIX"."fmt" %"PRIu64" %"PRIu32"\n",  \
+          __VA_ARGS__, value, time);                            \
+ } while(0)                                                     \
+
 static void client_free(bgpwatcher_server_client_t **client_p)
 {
   bgpwatcher_server_client_t *client = *client_p;
@@ -406,16 +414,14 @@ static int handle_table(bgpwatcher_server_t *server,
       goto err;
     }
 
-  uint64_t time = zclock_time();
-
   if(handle_table_prefix_begin(server, client) != 0)
     {
       goto err;
     }
 
-  fprintf(stderr, "DEBUG: Table Begin:\t%"PRIu64" ms\n",
-          zclock_time()-time);
-  time = zclock_time();
+  DUMP_METRIC(zclock_time()/1000-client->pfx_table.time,
+              client->pfx_table.time,
+              "%s.table_processing.begin_delay", client->pfx_table.collector);
 
   for(i=0; i<client->pfx_table.prefix_cnt; i++)
     {
@@ -429,17 +435,18 @@ static int handle_table(bgpwatcher_server_t *server,
         }
     }
 
-  fprintf(stderr, "DEBUG: Table Pfxs:\t%"PRIu64" ms\n",
-          zclock_time()-time);
-  time = zclock_time();
+  DUMP_METRIC(zclock_time()/1000-client->pfx_table.time,
+              client->pfx_table.time,
+              "%s.table_processing.prefix_delay", client->pfx_table.collector);
 
   if(handle_table_prefix_end(server, client) != 0)
     {
       goto err;
     }
 
-  fprintf(stderr, "DEBUG: Table End:\t%"PRIu64" ms\n",
-          zclock_time()-time);
+  DUMP_METRIC(zclock_time()/1000-client->pfx_table.time,
+              client->pfx_table.time,
+              "%s.table_processing.end_delay", client->pfx_table.collector);
 
   return 0;
 
@@ -458,7 +465,6 @@ static int handle_data_message(bgpwatcher_server_t *server,
   zmq_msg_t seq_msg;
 
   int rc;
-  uint64_t time = zclock_time();
 
   /* grab the seq num and save it for later */
   if(zmq_msg_init(&seq_msg) == -1)
@@ -494,9 +500,6 @@ static int handle_data_message(bgpwatcher_server_t *server,
     }
 
   rc = handle_table(server, client);
-
-  fprintf(stderr, "DEBUG: Table Total:\t%"PRIu64" ms\n\n",
-          zclock_time() - time);
 
   return rc;
 
@@ -992,6 +995,10 @@ int bgpwatcher_server_publish_view(bgpwatcher_server_t *server,
     }
 #endif
 
+  DUMP_METRIC(zclock_time()/1000-view->time,
+              view->time,
+              "%s", "publication.delay");
+
   /* get the publication message prefix */
   if((pub = bgpwatcher_consumer_interest_pub(interests)) == NULL)
     {
@@ -1000,6 +1007,10 @@ int bgpwatcher_server_publish_view(bgpwatcher_server_t *server,
       goto err;
     }
   pub_len = strlen(pub);
+
+  DUMP_METRIC((uint64_t)interests,
+              view->time,
+              "%s", "publication.interests");
 
   if(zmq_send(server->client_pub_socket, pub, pub_len, ZMQ_SNDMORE) != pub_len)
     {
