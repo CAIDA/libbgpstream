@@ -332,7 +332,7 @@ static void dump_table(bwc_t *consumer, uint32_t time)
 		   kh_key(STATE->as_v4pfxs, k));
 	  timeseries_set_single(BWC_GET_TIMESERIES(consumer),
 				buffer,
-				kh_size(kh_value(STATE->as_v4pfxs, k)),
+				bl_ipv4_pfx_set_size(kh_value(STATE->as_v4pfxs, k)),
 				time);
 	}
     }
@@ -347,7 +347,7 @@ static void dump_table(bwc_t *consumer, uint32_t time)
 		   kh_key(STATE->as_v6pfxs, k));
 	  timeseries_set_single(BWC_GET_TIMESERIES(consumer),
 				buffer,
-				kh_size(kh_value(STATE->as_v6pfxs, k)),
+				bl_ipv6_pfx_set_size(kh_value(STATE->as_v6pfxs, k)),
 				time);
 	}
     }
