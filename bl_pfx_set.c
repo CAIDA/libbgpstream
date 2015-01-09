@@ -74,6 +74,11 @@ void bl_pfx_storage_set_reset(bl_pfx_storage_set_t *ip_prefix_set)
   kh_clear(bl_pfx_storage_set, ip_prefix_set->hash);
 }
 
+int bl_pfx_storage_set_size(bl_pfx_storage_set_t *ip_prefix_set)
+{
+  return kh_size(ip_prefix_set->hash);
+}
+
 void bl_pfx_storage_set_destroy(bl_pfx_storage_set_t *ip_prefix_set)
 {
   kh_destroy(bl_pfx_storage_set, ip_prefix_set->hash);
@@ -123,6 +128,11 @@ void bl_ipv4_pfx_set_reset(bl_ipv4_pfx_set_t *ip_prefix_set)
   kh_clear(bl_ipv4_pfx_set, ip_prefix_set->hash);
 }
 
+int bl_ipv4_pfx_set_size(bl_ipv4_pfx_set_t *ip_prefix_set)
+{
+  return kh_size(ip_prefix_set->hash);
+}
+
 void bl_ipv4_pfx_set_destroy(bl_ipv4_pfx_set_t *ip_prefix_set)
 {
   kh_destroy(bl_ipv4_pfx_set, ip_prefix_set->hash);
@@ -169,6 +179,11 @@ int bl_ipv6_pfx_set_insert(bl_ipv6_pfx_set_t *ip_prefix_set, bl_ipv6_pfx_t prefi
 void bl_ipv6_pfx_set_reset(bl_ipv6_pfx_set_t *ip_prefix_set)
 {
   kh_clear(bl_ipv6_pfx_set, ip_prefix_set->hash);
+}
+
+int bl_ipv6_pfx_set_size(bl_ipv6_pfx_set_t *ip_prefix_set)
+{
+  return kh_size(ip_prefix_set->hash);
 }
 
 void bl_ipv6_pfx_set_destroy(bl_ipv6_pfx_set_t *ip_prefix_set)

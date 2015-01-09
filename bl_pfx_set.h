@@ -54,6 +54,15 @@ int bl_pfx_storage_set_insert(bl_pfx_storage_set_t *ip_prefix_set, bl_pfx_storag
  */
 void bl_pfx_storage_set_reset(bl_pfx_storage_set_t *ip_prefix_set);
 
+
+/** Get the size of the set.
+ *
+ * @param as_set pointer to the prefix set
+ * @return the size of the prefix set
+ */
+int bl_pfx_storage_set_size(bl_pfx_storage_set_t *ip_prefix_set);
+
+
 /** Deallocate memory for the IP prefix set
  *
  * @param as_set a pointer to the AS set
@@ -71,6 +80,7 @@ typedef struct bl_ipv4_pfx_set_t bl_ipv4_pfx_set_t;
 bl_ipv4_pfx_set_t *bl_ipv4_pfx_set_create(); 
 int bl_ipv4_pfx_set_insert(bl_ipv4_pfx_set_t *ip_prefix_set, bl_ipv4_pfx_t prefix);
 void bl_ipv4_pfx_set_reset(bl_ipv4_pfx_set_t *ip_prefix_set);
+int bl_ipv4_pfx_set_size(bl_ipv4_pfx_set_t *ip_prefix_set);
 void bl_ipv4_pfx_set_destroy(bl_ipv4_pfx_set_t *ip_prefix_set);
 
 
@@ -82,6 +92,7 @@ typedef struct bl_ipv6_pfx_set_t bl_ipv6_pfx_set_t;
 bl_ipv6_pfx_set_t *bl_ipv6_pfx_set_create(); 
 int bl_ipv6_pfx_set_insert(bl_ipv6_pfx_set_t *ip_prefix_set, bl_ipv6_pfx_t prefix);
 void bl_ipv6_pfx_set_reset(bl_ipv6_pfx_set_t *ip_prefix_set);
+int bl_ipv6_pfx_set_size(bl_ipv6_pfx_set_t *ip_prefix_set);
 void bl_ipv6_pfx_set_destroy(bl_ipv6_pfx_set_t *ip_prefix_set);
 
 
