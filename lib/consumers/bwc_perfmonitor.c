@@ -41,8 +41,8 @@
 #define DUMP_METRIC(value, time, fmt, ...)                      \
 do {                                                            \
  char buf[1024];                                                \
- snprintf(buf,1024, METRIC_PREFIX"."fmt, __VA_ARGS__);                           \
- timeseries_set_single(BWC_GET_TIMESERIES(consumer),            \
+ snprintf(buf,1024, METRIC_PREFIX"."fmt, __VA_ARGS__);		\
+ timeseries_set_single(BWC_GET_TIMESERIES(consumer),		\
                        buf, value, time);                       \
  } while(0)                                                     \
 
