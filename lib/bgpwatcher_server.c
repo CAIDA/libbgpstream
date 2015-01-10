@@ -421,7 +421,7 @@ static int handle_table(bgpwatcher_server_t *server,
 
   DUMP_METRIC(zclock_time()/1000-client->pfx_table.time,
               client->pfx_table.time,
-              "%s.table_processing.begin_delay", client->pfx_table.collector);
+              "table_processing.%s.begin_delay", client->pfx_table.collector);
 
   for(i=0; i<client->pfx_table.prefix_cnt; i++)
     {
@@ -437,7 +437,7 @@ static int handle_table(bgpwatcher_server_t *server,
 
   DUMP_METRIC(zclock_time()/1000-client->pfx_table.time,
               client->pfx_table.time,
-              "%s.table_processing.prefix_delay", client->pfx_table.collector);
+              "table_processing.%s.prefix_delay", client->pfx_table.collector);
 
   if(handle_table_prefix_end(server, client) != 0)
     {
@@ -446,7 +446,7 @@ static int handle_table(bgpwatcher_server_t *server,
 
   DUMP_METRIC(zclock_time()/1000-client->pfx_table.time,
               client->pfx_table.time,
-              "%s.table_processing.end_delay", client->pfx_table.collector);
+              "table_processing.%s.end_delay", client->pfx_table.collector);
 
   return 0;
 
