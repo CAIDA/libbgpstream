@@ -43,6 +43,14 @@
 #define BGPWATCHER_STORE_BGPVIEW_TIMEOUT 1800
 #define BGPWATCHER_STORE_MAX_PEERS_CNT   1024
 
+#define METRIC_PREFIX "bgp.meta.bgpwatcher.server.store"
+
+#define DUMP_METRIC(value, time, fmt, ...)                      \
+do {                                                            \
+  fprintf(stdout, METRIC_PREFIX"."fmt" %"PRIu64" %"PRIu32"\n",  \
+          __VA_ARGS__, value, time);                            \
+ } while(0)
+
 typedef enum {
   COMPLETION_TRIGGER_STATE_UNKNOWN        = 0,
   COMPLETION_TRIGGER_WDW_EXCEEDED         = 1,
@@ -446,6 +454,21 @@ static int dispatcher_run(bgpwatcher_store_t *store,
     }
 
   /** @todo Chiara we need to build the list of valid peers! */
+
+  DUMP_METRIC((uint64_t)bl_string_set_size(sview->done_clients),
+              sview->view->time,
+              "%s", "done_clients_cnt");
+  DUMP_METRIC((uint64_t)kh_size(store->active_clients),
+              sview->view->time,
+              "%s", "active_clients_cnt");
+
+  DUMP_METRIC((uint64_t)kh_size(sview->active_peers_info),
+              sview->view->time,
+              "%s", "active_peers_cnt");
+
+  DUMP_METRIC((uint64_t)bl_id_set_size(sview->inactive_peers),
+              sview->view->time,
+              "%s", "inactive_peers_cnt");
 
   /* now publish the view */
   if(bgpwatcher_server_publish_view(store->server, sview->view,
