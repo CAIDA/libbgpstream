@@ -76,8 +76,10 @@ typedef enum bwc_id
     /** Dumps debugging information about the views to stdout */
     BWC_ID_TEST               = 1,
 
+    BWC_ID_PERFMONITOR        = 2,
+    
     /** Writes information about per-AS visibility information to Charthouse */
-    BWC_ID_PERASVISIBILITY    = 2,
+    BWC_ID_PERASVISIBILITY    = 3,
 
     /** @todo add more consumers here */
 
