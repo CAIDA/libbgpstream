@@ -195,15 +195,15 @@ int bwc_perfmonitor_process_view(bwc_t *consumer, uint8_t interests,
 
       DUMP_METRIC(peer_on,
 		  bgpwatcher_view_time(view),
-		  "%s.%s.peer_on", sig->collector_str, bl_print_addr_storage(&(sig->peer_ip_addr)));
+		  "peers.%s.%s.peer_on", sig->collector_str, bl_print_addr_storage(&(sig->peer_ip_addr)));
 
       DUMP_METRIC(pfx4_cnt,
 		  bgpwatcher_view_time(view),
-		  "%s.%s.ipv4_cnt", sig->collector_str, bl_print_addr_storage(&(sig->peer_ip_addr)));
+		  "peers.%s.%s.ipv4_cnt", sig->collector_str, bl_print_addr_storage(&(sig->peer_ip_addr)));
       
       DUMP_METRIC(pfx6_cnt,
 		  bgpwatcher_view_time(view),
-		  "%s.%s.ipv6_cnt", sig->collector_str, bl_print_addr_storage(&(sig->peer_ip_addr)));
+		  "peers.%s.%s.ipv6_cnt", sig->collector_str, bl_print_addr_storage(&(sig->peer_ip_addr)));
       
     }
 
