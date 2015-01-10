@@ -37,6 +37,14 @@
 #define BCFG (client->broker_config)
 #define TBL (client->pfx_table)
 
+#define METRIC_PREFIX "bgp.meta.bgpwatcher.client"
+
+#define DUMP_METRIC(value, time, fmt, ...)                      \
+do {                                                            \
+  fprintf(stdout, METRIC_PREFIX"."fmt" %"PRIu64" %"PRIu32"\n",  \
+          __VA_ARGS__, value, time);                            \
+ } while(0)                                                     \
+
 /* create and send headers for a data message */
 int send_data_hdrs(bgpwatcher_client_t *client)
 {
@@ -208,6 +216,10 @@ int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_t *client,
 
   /* delay tx until table end */
 
+  DUMP_METRIC(zclock_time()/1000-time,
+              time,
+              "producer.%s.begin_delay", collector);
+
   return 0;
 }
 
@@ -287,6 +299,10 @@ int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client)
 
   TBL.info.prefix_cnt = kh_size(TBL.pfx_peers);
 
+  DUMP_METRIC(zclock_time()/1000-TBL.info.time,
+              TBL.info.time,
+              "producer.%s.prefix_delay", TBL.info.collector);
+
   /* send table begin message */
   if(send_data_hdrs(client) != 0)
     {
@@ -324,6 +340,10 @@ int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client)
 			     "Failed to send prefix table end");
       goto err;
     }
+
+  DUMP_METRIC(zclock_time()/1000-TBL.info.time,
+              TBL.info.time,
+              "producer.%s.end_delay", TBL.info.collector);
 
   TBL.started = 0;
 
