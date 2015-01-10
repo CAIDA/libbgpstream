@@ -37,6 +37,9 @@
 /* test consumer */
 #include "bwc_test.h"
 
+/* test consumer */
+#include "bwc_perfmonitor.h"
+
 /* Per-AS Visibility consumer */
 #include "bwc_perasvisibility.h"
 
@@ -68,6 +71,9 @@ static const consumer_alloc_func_t consumer_alloc_functions[] = {
 
   /** Pointer to test backend alloc function */
   bwc_test_alloc,
+
+  /** Pointer to performance monitor function */
+  bwc_perfmonitor_alloc,
 
   /** Pointer to per-as vis function */
   bwc_perasvisibility_alloc,

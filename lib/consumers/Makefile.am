@@ -41,6 +41,11 @@ CONSUMER_SRCS += \
 	bwc_test.c \
 	bwc_test.h
 
+# Performance Monitor Consumer
+CONSUMER_SRCS += \
+	bwc_perfmonitor.c \
+	bwc_perfmonitor.h
+
 # Per-AS Visibility Consumer
 CONSUMER_SRCS += \
 	bwc_perasvisibility.c \
