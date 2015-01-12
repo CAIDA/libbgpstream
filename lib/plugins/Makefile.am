@@ -51,6 +51,9 @@ endif
 if WITH_PLUGIN_DUMP
 PLUGIN_SRC+=bgpcorsaro_dump.c bgpcorsaro_dump.h
 endif
+if WITH_PLUGIN_PACIFIER
+PLUGIN_SRC+=bgpcorsaro_pacifier.c bgpcorsaro_pacifier.h
+endif
 if WITH_PLUGIN_IPMETA
 PLUGIN_SRC+=bgpcorsaro_ipmeta.c bgpcorsaro_ipmeta.h
 endif

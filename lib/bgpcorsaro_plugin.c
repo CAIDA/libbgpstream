@@ -71,6 +71,10 @@
 #include "bgpcorsaro_tagstats.h"
 #endif
 
+#ifdef WITH_PLUGIN_PACIFIER
+#include "bgpcorsaro_pacifier.h"
+#endif
+
 /*
  * add new plugin includes below using:
  *
@@ -567,3 +571,4 @@ int bgpcorsaro_plugin_enable_plugin(bgpcorsaro_plugin_manager_t *manager,
 
   return 0;
 }
+

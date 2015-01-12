@@ -124,6 +124,9 @@ typedef enum bgpcorsaro_plugin_id
   /** FilterVis plugin */
   BGPCORSARO_PLUGIN_ID_FILTERVIS        = 12,
 
+  /** FilterVis plugin */
+  BGPCORSARO_PLUGIN_ID_PACIFIER         = 13,
+
   /** Tag stats plugin */
   BGPCORSARO_PLUGIN_ID_TAGSTATS         = 90,
 
@@ -367,3 +370,4 @@ int bgpcorsaro_plugin_enable_plugin(bgpcorsaro_plugin_manager_t *manager,
 				    const char *plugin_args);
 
 #endif /* __BGPCORSARO_PLUGIN_H */
+

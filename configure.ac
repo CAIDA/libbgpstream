@@ -199,7 +199,7 @@ AS_IF([test "x$with_bgpwatcher" != xno],
 AC_MSG_RESULT([$with_bgpwatcher])
 
 if test "x$with_bgpwatcher" == xyes; then
-   	AC_SEARCH_LIBS([bgpwatcher_start], [bgpwatcher], ,[AC_MSG_ERROR(
+   	AC_SEARCH_LIBS([bgpwatcher_client_start], [bgpwatcher], ,[AC_MSG_ERROR(
 		 [libbgpwatcher required (https://github.com/CAIDA/bgpwatcher)]
 		 )])
 	AC_CHECK_LIB([czmq], [zctx_new], ,[AC_MSG_ERROR(
@@ -241,8 +241,7 @@ ED_WITH_PLUGIN([bgpcorsaro_dump],[dump],[DUMP],[yes])
 ED_WITH_PLUGIN([bgpcorsaro_bgpstats],[bgpstats],[BGPSTATS],[no])
 ED_WITH_PLUGIN([bgpcorsaro_bgpribs],[bgpribs],[BGPRIBS],[no])
 ED_WITH_PLUGIN([bgpcorsaro_filtervis],[filtervis],[FILTERVIS],[no])
-
-# optional plugins
+ED_WITH_PLUGIN([bgpcorsaro_pacifier],[pacifier],[PACIFIER],[no])
 ED_WITH_PLUGIN([bgpcorsaro_tagstats],[tagstats],[TAGSTATS],[no])
 
 # this MUST go after all the ED_WITH_PLUGIN macro calls
