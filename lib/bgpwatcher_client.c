@@ -209,7 +209,6 @@ int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_t *client,
                                       int peer_cnt)
 {
   assert(TBL.started == 0);
-  assert(peer_cnt <= BGPWATCHER_PEER_MAX_CNT);
 
   /* fill the table */
   TBL.info.time = time;
