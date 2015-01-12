@@ -861,7 +861,8 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
 
 int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
                                       bgpwatcher_pfx_table_t *table,
-                                      bgpwatcher_pfx_row_t *row)
+                                      bl_pfx_storage_t *pfx,
+                                      bgpwatcher_pfx_peer_info_t *peer_infos)
 {
   store_view_t *sview;
 
@@ -890,14 +891,14 @@ int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
 
   for(i=0; i<table->peers_cnt; i++)
     {
-      if(row->info[i].in_use == 0)
+      if(peer_infos[i].in_use == 0)
 	{
           continue;
         }
       server_id = table->peers[i].server_id;
-      pfx_info = &(row->info[i]);
+      pfx_info = &(peer_infos[i]);
 
-      if(bgpwatcher_view_add_prefix(sview->view, &row->prefix,
+      if(bgpwatcher_view_add_prefix(sview->view, pfx,
                                     server_id, pfx_info, &view_cache) != 0)
         {
           return -1;
@@ -908,7 +909,7 @@ int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
       assert(ap_status != NULL);
 
       // update counters
-      if(row->prefix.address.version == BL_ADDR_IPV4)
+      if(pfx->address.version == BL_ADDR_IPV4)
         {
           ap_status->recived_ipv4_pfx_cnt++;
         }

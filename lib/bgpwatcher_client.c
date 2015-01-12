@@ -76,6 +76,11 @@ int send_data_hdrs(bgpwatcher_client_t *client)
   return -1;
 }
 
+static void pfx_peer_info_free(bgpwatcher_pfx_peer_info_t *info)
+{
+  free(info);
+}
+
 /* ========== PUBLIC FUNCS BELOW HERE ========== */
 
 bgpwatcher_client_t *bgpwatcher_client_init(uint8_t interests, uint8_t intents)
@@ -88,10 +93,17 @@ bgpwatcher_client_t *bgpwatcher_client_init(uint8_t interests, uint8_t intents)
     }
   /* now we are ready to set errors... */
 
-  if((TBL.pfx_peers = kh_init(pfx_peers)) == NULL)
+  if((TBL.v4pfx_peers = kh_init(v4pfx_peers)) == NULL)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
-			     "Failed to init pfx peers set");
+			     "Failed to init v4 pfx peers set");
+      goto err;
+    }
+
+  if((TBL.v6pfx_peers = kh_init(v6pfx_peers)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Failed to init v6 pfx peers set");
       goto err;
     }
 
@@ -203,14 +215,27 @@ int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_t *client,
   TBL.info.time = time;
   TBL.info.collector = collector;
 
-  /* @todo optimize memory used by the hash by using this? */
   /* reset the peer cnt */
   TBL.info.peers_cnt = peer_cnt;
   TBL.peers_added = 0;
   TBL.info.prefix_cnt = 0;
 
+  /* ensure we have enough space to store all the peers */
+  if(TBL.info.peers_alloc_cnt < peer_cnt)
+    {
+      if((TBL.info.peers = realloc(TBL.info.peers,
+                                   sizeof(bgpwatcher_peer_t)*peer_cnt)) == NULL)
+        {
+          return -1;
+        }
+      TBL.info.peers_alloc_cnt = peer_cnt;
+    }
+
   /* reset the pfx_peers hash */
-  kh_clear(pfx_peers, TBL.pfx_peers);
+  kh_free_vals(v4pfx_peers, TBL.v4pfx_peers, pfx_peer_info_free);
+  kh_clear(v4pfx_peers, TBL.v4pfx_peers);
+  kh_free_vals(v6pfx_peers, TBL.v6pfx_peers, pfx_peer_info_free);
+  kh_clear(v6pfx_peers, TBL.v6pfx_peers);
 
   TBL.started = 1;
 
@@ -229,10 +254,10 @@ int bgpwatcher_client_pfx_table_add_peer(bgpwatcher_client_t *client,
 {
   int peer_id;
   assert(client != NULL);
-  /* make sure we aren't about to add to many peers */
-  assert(TBL.peers_added < BGPWATCHER_PEER_MAX_CNT);
   /* make sure they aren't trying to add more peers than they promised */
   assert(TBL.info.peers_cnt > TBL.peers_added);
+
+  assert(TBL.info.peers_cnt <= TBL.info.peers_alloc_cnt);
 
   peer_id = TBL.peers_added++;
   TBL.info.peers[peer_id].ip = *peer_ip;
@@ -247,8 +272,8 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
 {
   int khret;
   khiter_t k;
-  bgpwatcher_pfx_row_t findme;
-  bgpwatcher_pfx_row_t *row;
+
+  bgpwatcher_pfx_peer_info_t *peer_infos = NULL;
 
   assert(client != NULL);
   assert(peer_id >= 0 && peer_id < TBL.peers_added);
@@ -261,10 +286,47 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
   switch(prefix->address.version)
     {
     case BL_ADDR_IPV4:
-      memcpy(&findme, prefix, sizeof(bl_ipv4_pfx_t));
+      /* either get or insert this prefix */
+      if((k = kh_get(v4pfx_peers, TBL.v4pfx_peers,
+                     *bl_pfx_storage2ipv4(prefix)))
+         == kh_end(TBL.v4pfx_peers))
+        {
+          /* allocate a peer info array */
+          if((peer_infos =
+              malloc(sizeof(bgpwatcher_pfx_peer_info_t)
+                     *TBL.info.peers_cnt)) == NULL)
+            {
+              return -1;
+            }
+          k = kh_put(v4pfx_peers, TBL.v4pfx_peers,
+                     *bl_pfx_storage2ipv4(prefix), &khret);
+          kh_val(TBL.v4pfx_peers, k) = peer_infos;
+        }
+      else
+        {
+          peer_infos = kh_val(TBL.v4pfx_peers, k);
+        }
       break;
     case BL_ADDR_IPV6:
-      memcpy(&findme, prefix, sizeof(bl_ipv6_pfx_t));
+      if((k = kh_get(v6pfx_peers, TBL.v6pfx_peers,
+                     *bl_pfx_storage2ipv6(prefix)))
+         == kh_end(TBL.v6pfx_peers))
+        {
+          /* allocate a peer info array */
+          if((peer_infos =
+              malloc(sizeof(bgpwatcher_pfx_peer_info_t)
+                     *TBL.info.peers_cnt)) == NULL)
+            {
+              return -1;
+            }
+          k = kh_put(v6pfx_peers, TBL.v6pfx_peers,
+                     *bl_pfx_storage2ipv6(prefix), &khret);
+          kh_val(TBL.v6pfx_peers, k) = peer_infos;
+        }
+      else
+        {
+          peer_infos = kh_val(TBL.v6pfx_peers, k);
+        }
       break;
     default:
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
@@ -272,20 +334,11 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
       return -1;
     }
 
-  /* either get or insert this prefix */
-  if((k = kh_get(pfx_peers, TBL.pfx_peers, findme)) == kh_end(TBL.pfx_peers))
-    {
-      /* set the peer info to unused */
-      memset(&findme.info, 0,
-             sizeof(bgpwatcher_pfx_peer_info_t)*BGPWATCHER_PEER_MAX_CNT);
-      k = kh_put(pfx_peers, TBL.pfx_peers, findme, &khret);
-    }
+  assert(peer_infos != NULL);
 
   /* now update the peer info */
-  row = &kh_key(TBL.pfx_peers, k);
-  assert(row != NULL);
-  row->info[peer_id].orig_asn = orig_asn;
-  row->info[peer_id].in_use = 1;
+  peer_infos[peer_id].orig_asn = orig_asn;
+  peer_infos[peer_id].in_use = 1;
 
   return 0;
 }
@@ -293,11 +346,13 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
 int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client)
 {
   khiter_t k;
-  bgpwatcher_pfx_row_t *row;
+  bl_ipv4_pfx_t *v4pfx;
+  bl_ipv6_pfx_t *v6pfx;
+  bgpwatcher_pfx_peer_info_t *peer_infos;
 
   assert(TBL.peers_added == TBL.info.peers_cnt);
 
-  TBL.info.prefix_cnt = kh_size(TBL.pfx_peers);
+  TBL.info.prefix_cnt = kh_size(TBL.v4pfx_peers) + kh_size(TBL.v6pfx_peers);
 
   DUMP_METRIC(zclock_time()/1000-TBL.info.time,
               TBL.info.time,
@@ -317,13 +372,35 @@ int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client)
     }
 
   /* send all the prefixes */
-  for(k = kh_begin(TBL.pfx_peers); k != kh_end(TBL.pfx_peers); ++k)
+  for(k = kh_begin(TBL.v4pfx_peers); k != kh_end(TBL.v4pfx_peers); ++k)
     {
-      if(kh_exist(TBL.pfx_peers, k))
+      if(kh_exist(TBL.v4pfx_peers, k))
         {
-          row = &kh_key(TBL.pfx_peers, k);
+          v4pfx = &kh_key(TBL.v4pfx_peers, k);
+          peer_infos = kh_val(TBL.v4pfx_peers, k);
 
-          if(bgpwatcher_pfx_row_send(client->broker_zocket, row,
+          if(bgpwatcher_pfx_row_send(client->broker_zocket,
+                                     bl_pfx_ipv42storage(v4pfx),
+                                     peer_infos,
+                                     TBL.info.peers_cnt) != 0)
+            {
+              bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+                                     "Failed to send prefix row");
+              goto err;
+            }
+        }
+    }
+
+  for(k = kh_begin(TBL.v6pfx_peers); k != kh_end(TBL.v6pfx_peers); ++k)
+    {
+      if(kh_exist(TBL.v6pfx_peers, k))
+        {
+          v6pfx = &kh_key(TBL.v6pfx_peers, k);
+          peer_infos = kh_val(TBL.v6pfx_peers, k);
+
+          if(bgpwatcher_pfx_row_send(client->broker_zocket,
+                                     bl_pfx_ipv62storage(v6pfx),
+                                     peer_infos,
                                      TBL.info.peers_cnt) != 0)
             {
               bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
@@ -408,7 +485,13 @@ void bgpwatcher_client_free(bgpwatcher_client_t *client)
       bgpwatcher_client_stop(client);
     }
 
-  kh_destroy(pfx_peers, TBL.pfx_peers);
+  /* destroy the peers array */
+  free(TBL.info.peers);
+
+  kh_free_vals(v4pfx_peers, TBL.v4pfx_peers, pfx_peer_info_free);
+  kh_destroy(v4pfx_peers, TBL.v4pfx_peers);
+  kh_free_vals(v6pfx_peers, TBL.v6pfx_peers, pfx_peer_info_free);
+  kh_destroy(v6pfx_peers, TBL.v6pfx_peers);
 
   free(BCFG.server_uri);
   BCFG.server_uri = NULL;

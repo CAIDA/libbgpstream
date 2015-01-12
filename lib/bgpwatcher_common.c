@@ -36,6 +36,8 @@
 
 #include "utils.h"
 
+#define BUFFER_LEN 16384
+
 static void *get_in_addr(bl_addr_storage_t *ip) {
   assert(ip->version != BL_ADDR_TYPE_UNKNOWN);
   return ip->version == BL_ADDR_IPV4
@@ -556,6 +558,18 @@ int bgpwatcher_pfx_table_begin_recv(void *src, bgpwatcher_pfx_table_t *table)
     }
   table->peers_cnt = ntohs(table->peers_cnt);
 
+  /* ensure we have enough space to store all the peers */
+  if(table->peers_alloc_cnt < table->peers_cnt)
+    {
+      if((table->peers =
+          realloc(table->peers,
+                  sizeof(bgpwatcher_peer_t)*table->peers_cnt)) == NULL)
+        {
+          return -1;
+        }
+      table->peers_alloc_cnt = table->peers_cnt;
+    }
+
   /* receive all the peers */
   for(i=0; i<table->peers_cnt; i++)
     {
@@ -652,21 +666,21 @@ void bgpwatcher_pfx_table_dump(bgpwatcher_pfx_table_t *table)
    ORIG_ASN [04]
 */
 /* @todo consider moving the buffer into the client */
-int bgpwatcher_pfx_row_send(void *dest, bgpwatcher_pfx_row_t *row,
+int bgpwatcher_pfx_row_send(void *dest,
+                            bl_pfx_storage_t *pfx,
+                            bgpwatcher_pfx_peer_info_t *peer_infos,
                             int peer_cnt)
 {
   int i;
 
-  size_t len = BW_PFX_ROW_BUFFER_LEN;
-  uint8_t buf[BW_PFX_ROW_BUFFER_LEN];
+  size_t len = BUFFER_LEN;
+  uint8_t buf[BUFFER_LEN];
   uint8_t *ptr = buf;
   size_t written = 0;
   size_t s = 0;
 
-  assert(peer_cnt <= BGPWATCHER_PEER_MAX_CNT);
-
   /* prefix */
-  if((s = bw_serialize_ip(ptr, len, &row->prefix.address)) == -1)
+  if((s = bw_serialize_ip(ptr, len, &pfx->address)) == -1)
     {
       goto err;
     }
@@ -674,9 +688,9 @@ int bgpwatcher_pfx_row_send(void *dest, bgpwatcher_pfx_row_t *row,
   ptr += s;
 
   /* length */
-  assert((len-written) >= sizeof(row->prefix.mask_len)); /* duh */
-  memcpy(ptr, &row->prefix.mask_len, sizeof(row->prefix.mask_len));
-  s = sizeof(row->prefix.mask_len);
+  assert((len-written) >= sizeof(pfx->mask_len)); /* duh */
+  memcpy(ptr, &pfx->mask_len, sizeof(pfx->mask_len));
+  s = sizeof(pfx->mask_len);
   written += s;
   ptr += s;
 
@@ -685,7 +699,7 @@ int bgpwatcher_pfx_row_send(void *dest, bgpwatcher_pfx_row_t *row,
     {
       /* always SNDMORE as there must be a table end coming */
       if((s = serialize_pfx_peer_info(ptr, (len-written),
-                                      &row->info[i])) == -1)
+                                      &peer_infos[i])) == -1)
         {
           goto err;
         }
@@ -705,7 +719,9 @@ int bgpwatcher_pfx_row_send(void *dest, bgpwatcher_pfx_row_t *row,
   return -1;
 }
 
-int bgpwatcher_pfx_row_recv(void *src, bgpwatcher_pfx_row_t *row_out,
+int bgpwatcher_pfx_row_recv(void *src,
+                            bl_pfx_storage_t *pfx,
+                            bgpwatcher_pfx_peer_info_t *peer_infos,
                             int peer_cnt)
 {
   int i;
@@ -714,6 +730,9 @@ int bgpwatcher_pfx_row_recv(void *src, bgpwatcher_pfx_row_t *row_out,
   size_t len;
   size_t read = 0;
   size_t s = 0;
+
+  assert(pfx != NULL);
+  assert(peer_infos != NULL);
 
   /* first receive the message */
   if(zmq_msg_init(&msg) == -1 || zmq_msg_recv(&msg, src, 0) == -1)
@@ -726,7 +745,7 @@ int bgpwatcher_pfx_row_recv(void *src, bgpwatcher_pfx_row_t *row_out,
   assert(len > 0);
 
   /* prefix */
-  if((s = bw_deserialize_ip(buf, (len-read), &(row_out->prefix.address))) == -1)
+  if((s = bw_deserialize_ip(buf, (len-read), &(pfx->address))) == -1)
     {
       goto err;
     }
@@ -734,16 +753,16 @@ int bgpwatcher_pfx_row_recv(void *src, bgpwatcher_pfx_row_t *row_out,
   buf += s;
 
   /* pfx len */
-  assert((len-read) >= sizeof(row_out->prefix.mask_len));
-  memcpy(&row_out->prefix.mask_len, buf, sizeof(row_out->prefix.mask_len));
-  s = sizeof(row_out->prefix.mask_len);
+  assert((len-read) >= sizeof(pfx->mask_len));
+  memcpy(&pfx->mask_len, buf, sizeof(pfx->mask_len));
+  s = sizeof(pfx->mask_len);
   read += s;
   buf += s;
 
   for(i=0; i<peer_cnt; i++)
     {
       if((s = deserialize_pfx_peer_info(buf, (len-read),
-                                        &(row_out->info[i]))) == -1)
+                                        &(peer_infos[i]))) == -1)
         {
           goto err;
         }
@@ -849,13 +868,14 @@ int bgpwatcher_pfx_row_recv(void *src, bgpwatcher_pfx_row_t *row_out,
 #endif
 
 void bgpwatcher_pfx_row_dump(bgpwatcher_pfx_table_t *table,
-                             bgpwatcher_pfx_row_t *row)
+                             bl_pfx_storage_t *pfx,
+                             bgpwatcher_pfx_peer_info_t *peer_infos)
 {
   char pfx_str[INET6_ADDRSTRLEN] = "";
   int i;
   char peer_str[INET6_ADDRSTRLEN] = "";
 
-  if(row == NULL)
+  if(pfx == NULL)
     {
       fprintf(stdout,
 	      "------------------------------\n"
@@ -864,18 +884,18 @@ void bgpwatcher_pfx_row_dump(bgpwatcher_pfx_table_t *table,
     }
   else
     {
-      inet_ntop(row->prefix.address.version,
-                get_in_addr(&row->prefix.address),
+      inet_ntop(pfx->address.version,
+                get_in_addr(&pfx->address),
                 pfx_str, INET6_ADDRSTRLEN);
 
       fprintf(stdout,
 	      "------------------------------\n"
 	      "Prefix:\t%s/%"PRIu8"\n",
-              pfx_str, row->prefix.mask_len);
+              pfx_str, pfx->mask_len);
 
       for(i=0; i<table->peers_cnt; i++)
         {
-          if(row->info[i].in_use != 0)
+          if(peer_infos[i].in_use != 0)
             {
               inet_ntop(table->peers[i].ip.version,
                         get_in_addr(&table->peers[i].ip),
@@ -885,7 +905,7 @@ void bgpwatcher_pfx_row_dump(bgpwatcher_pfx_table_t *table,
                       "\tPeer:\t%s\n"
                       "\t\tOrig ASN:\t%"PRIu32"\n",
                       peer_str,
-                      row->info[i].orig_asn);
+                      peer_infos[i].orig_asn);
             }
         }
     }

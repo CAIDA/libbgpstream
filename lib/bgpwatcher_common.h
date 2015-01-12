@@ -116,18 +116,6 @@ typedef struct bgpwatcher_pfx_peer_info {
 
 } bgpwatcher_pfx_peer_info_t;
 
-/** Information about a prefix row */
-typedef struct bgpwatcher_pfx_row {
-
-  /** Prefix */
-  bl_pfx_storage_t prefix;
-
-  /** Per-Peer Information
-   * @note index in this array corresponds to index in table.peers array */
-  bgpwatcher_pfx_peer_info_t info[BGPWATCHER_PEER_MAX_CNT];
-
-} bgpwatcher_pfx_row_t;
-
 /** Information about the a prefix table */
 typedef struct bgpwatcher_pfx_table {
 
@@ -144,10 +132,13 @@ typedef struct bgpwatcher_pfx_table {
   uint32_t prefix_cnt;
 
   /** Peers that the table contains information for */
-  bgpwatcher_peer_t peers[BGPWATCHER_PEER_MAX_CNT];
+  bgpwatcher_peer_t *peers;
 
   /** Number of peers referenced in this table */
   int peers_cnt;
+
+  /** Number of peers allocated in this table */
+  int peers_alloc_cnt;
 
   /** Internal store state */
   void *sview;

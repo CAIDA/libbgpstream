@@ -53,11 +53,19 @@
  *
  * @{ */
 
-#define hash_row(row) (bl_pfx_storage_hash_func(row.prefix))
+KHASH_INIT(v4pfx_peers,
+           bl_ipv4_pfx_t,
+           bgpwatcher_pfx_peer_info_t*,
+           1,
+           bl_ipv4_pfx_hash_func,
+           bl_ipv4_pfx_hash_equal)
 
-#define hash_eq_row(a, b) (bl_pfx_storage_hash_equal(a.prefix, b.prefix))
-
-KHASH_INIT(pfx_peers, bgpwatcher_pfx_row_t, char, 0, hash_row, hash_eq_row)
+KHASH_INIT(v6pfx_peers,
+           bl_ipv6_pfx_t,
+           bgpwatcher_pfx_peer_info_t*,
+           1,
+           bl_ipv6_pfx_hash_func,
+           bl_ipv6_pfx_hash_equal)
 
 struct bgpwatcher_client_pfx_table {
 
@@ -72,7 +80,10 @@ struct bgpwatcher_client_pfx_table {
   int peers_added;
 
   /** Hash table of prefixes being added */
-  kh_pfx_peers_t *pfx_peers;
+  kh_v4pfx_peers_t *v4pfx_peers;
+
+  /** Hash table of prefixes being added */
+  kh_v6pfx_peers_t *v6pfx_peers;
 
 };
 

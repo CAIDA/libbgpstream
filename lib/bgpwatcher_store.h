@@ -98,7 +98,8 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
  */
 int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
                                       bgpwatcher_pfx_table_t *table,
-                                      bgpwatcher_pfx_row_t *row);
+                                      bl_pfx_storage_t *pfx,
+                                      bgpwatcher_pfx_peer_info_t *peer_infos);
 
 /** Complete the given table
  *

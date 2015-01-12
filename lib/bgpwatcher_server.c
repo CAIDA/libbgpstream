@@ -70,6 +70,9 @@ static void client_free(bgpwatcher_server_client_t **client_p)
   free(client->pfx_table.collector);
   client->pfx_table.collector = NULL;
 
+  free(client->peer_infos);
+  free(client->pfx_table.peers);
+
   free(client);
 
   *client_p = NULL;
@@ -322,6 +325,19 @@ static int handle_table_prefix_begin(bgpwatcher_server_t *server,
   /* zero out any leftover info from the store */
   client->pfx_table.sview = NULL;
 
+  /* ensure we have enough peer infos in our buffer */
+  if(client->peer_infos_alloc_cnt < client->pfx_table.peers_cnt)
+    {
+      if((client->peer_infos =
+          realloc(client->peer_infos,
+                  sizeof(bgpwatcher_pfx_peer_info_t)*
+                  client->pfx_table.peers_cnt)) == NULL)
+        {
+          return -1;
+        }
+      client->peer_infos_alloc_cnt = client->pfx_table.peers_cnt;
+    }
+
   if(bgpwatcher_store_prefix_table_begin(server->store,
                                          &client->pfx_table) != 0)
     {
@@ -373,8 +389,7 @@ static int handle_table_prefix_end(bgpwatcher_server_t *server,
 static int handle_pfx_record(bgpwatcher_server_t *server,
 			     bgpwatcher_server_client_t *client)
 {
-  /** @todo test moving into server structure */
-  bgpwatcher_pfx_row_t row;
+  bl_pfx_storage_t pfx;
 
   if(client->pfx_table_started == 0)
     {
@@ -383,7 +398,10 @@ static int handle_pfx_record(bgpwatcher_server_t *server,
       goto err;
     }
 
-  if(bgpwatcher_pfx_row_recv(server->client_socket, &row,
+  assert(client->peer_infos_alloc_cnt >= client->pfx_table.peers_cnt);
+
+  if(bgpwatcher_pfx_row_recv(server->client_socket, &pfx,
+                             client->peer_infos,
                              client->pfx_table.peers_cnt) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
@@ -393,7 +411,8 @@ static int handle_pfx_record(bgpwatcher_server_t *server,
 
   if(bgpwatcher_store_prefix_table_row(server->store,
                                        &client->pfx_table,
-                                       &row) != 0)
+                                       &pfx,
+                                       client->peer_infos) != 0)
     {
       goto err;
     }

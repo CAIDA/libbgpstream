@@ -91,6 +91,12 @@ typedef struct bgpwatcher_server_client {
   /** Current prefix table */
   bgpwatcher_pfx_table_t pfx_table;
 
+  /** Array of peer infos used by prefix rx */
+  bgpwatcher_pfx_peer_info_t *peer_infos;
+
+  /** Number of elements allocated in the peer infos array */
+  int peer_infos_alloc_cnt;
+
   /** Indicates if a table_begin message has been received for the pfx table */
   int pfx_table_started;
 

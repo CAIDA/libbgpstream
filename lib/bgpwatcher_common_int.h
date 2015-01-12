@@ -263,7 +263,9 @@ void bgpwatcher_pfx_table_dump(bgpwatcher_pfx_table_t *table);
  * @param peer_cnt        number of peers in the row info array
  * @return 0 if the record was sent successfully, -1 otherwise
  */
-int bgpwatcher_pfx_row_send(void *dest, bgpwatcher_pfx_row_t *row,
+int bgpwatcher_pfx_row_send(void *dest,
+                            bl_pfx_storage_t *pfx,
+                            bgpwatcher_pfx_peer_info_t *peer_infos,
                             int peer_cnt);
 
 /** Deserialize a prefix message into provided memory
@@ -273,7 +275,9 @@ int bgpwatcher_pfx_row_send(void *dest, bgpwatcher_pfx_row_t *row,
  * @param      peer_cnt      number of peer info records expected
  * @return 0 if the information was deserialized successfully, -1 otherwise
  */
-int bgpwatcher_pfx_row_recv(void *src, bgpwatcher_pfx_row_t *row_out,
+int bgpwatcher_pfx_row_recv(void *src,
+                            bl_pfx_storage_t *pfx,
+                            bgpwatcher_pfx_peer_info_t *peer_infos,
                             int peer_cnt);
 
 /** Dump the given prefix row information to stdout
@@ -282,7 +286,8 @@ int bgpwatcher_pfx_row_recv(void *src, bgpwatcher_pfx_row_t *row_out,
  * @param row        pointer to a prefix row
  */
 void bgpwatcher_pfx_row_dump(bgpwatcher_pfx_table_t *table,
-                             bgpwatcher_pfx_row_t *row);
+                             bl_pfx_storage_t *pfx,
+                             bgpwatcher_pfx_peer_info_t *peer_infos);
 
 /* ========== INTERESTS/VIEWS ========== */
 
