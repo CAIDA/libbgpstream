@@ -502,8 +502,6 @@ static void peerdata_update(bl_elem_t *elem,
 
   /* Updating affected_prefixes_table */
   if(elem->prefix.address.version == BL_ADDR_IPV4) { // ipv4 prefix
-    k = kh_get(bl_ipv4_pfx_set, peer_data->affected_prefixes_table->ipv4_prefixes_table,
-	       *ipv4_pfx);
     // update prefix into ipv4 affected prefixes table
     if(elem->type == BL_ANNOUNCEMENT_ELEM || elem->type == BL_WITHDRAWAL_ELEM)
       {
@@ -512,9 +510,6 @@ static void peerdata_update(bl_elem_t *elem,
   }
   else { // ipv6 prefix
     // update prefix into ipv6 affected prefixes table
-    k = kh_get(bl_ipv6_pfx_set, peer_data->affected_prefixes_table->ipv6_prefixes_table,
-	       *ipv6_pfx);
-    // update prefix into ipv4 prefixes table
     if(elem->type == BL_ANNOUNCEMENT_ELEM || elem->type == BL_WITHDRAWAL_ELEM)
       {
 	bl_ipv6_pfx_set_insert(peer_data->affected_prefixes_table->ipv6_prefixes_table, *ipv6_pfx);
