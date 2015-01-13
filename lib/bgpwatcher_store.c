@@ -451,8 +451,16 @@ static int dispatcher_run(bgpwatcher_store_t *store,
       sview->dis_status[STORE_VIEW_PARTIAL].sent = 1;
     }
 
+#if 0
   /* nothing to dispatch */
   if(dispatch_interests == 0)
+    {
+      return 0;
+    }
+#endif
+
+  /* hax: we can't handle publishing partial tables */
+  if(dispatch_interests != BGPWATCHER_CONSUMER_INTEREST_FIRSTFULL)
     {
       return 0;
     }
