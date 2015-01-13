@@ -46,7 +46,6 @@ KHASH_INIT(bl_bsid_peersign_map, bl_peerid_t, bl_peer_signature_t*, 1,
 struct bl_peersign_map {
   khash_t(bl_peersign_bsid_map) * ps_id;
   khash_t(bl_bsid_peersign_map) * id_ps;
-  int peers_inuse_cnt;
 };
 
 

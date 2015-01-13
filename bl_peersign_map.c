@@ -79,7 +79,6 @@ int bl_peersign_map_set(bl_peersign_map_t *map,
   bl_peer_signature_t *new_ps;
   ps.peer_ip_addr = *peer_ip_addr;
   strcpy(ps.collector_str, collector_str);
-  ps.in_use = 1;
 
   /* check if this peer id is in the map already */
   if((k = kh_get(bl_bsid_peersign_map, map->id_ps, peerid)) != kh_end(map->id_ps))
@@ -89,12 +88,6 @@ int bl_peersign_map_set(bl_peersign_map_t *map,
       if(bl_peer_signature_hash_equal(&ps, kh_val(map->id_ps, k)) != 0)
 	{
 	  /* it was already here... */
-	  /* but was it active? */
-	  if(!kh_val(map->id_ps, k)->in_use)
-	    {
-	      kh_val(map->id_ps, k)->in_use = 1;
-	      map->peers_inuse_cnt++;
-	    }
 	  return 0;
 	}
       else
@@ -113,12 +106,6 @@ int bl_peersign_map_set(bl_peersign_map_t *map,
       if(peerid == kh_val(map->ps_id, k))
 	{
 	  /* it was already here.. */
-	  /* but was it active? */
-	  if(!kh_key(map->ps_id, k)->in_use)
-	    {
-	      kh_key(map->ps_id, k)->in_use = 1;
-	      map->peers_inuse_cnt++;
-	    }
 	  return 0;
 	}
       else
@@ -138,7 +125,6 @@ int bl_peersign_map_set(bl_peersign_map_t *map,
   kh_value(map->ps_id,k) = peerid;
   k = kh_put(bl_bsid_peersign_map, map->id_ps, peerid, &khret);
   kh_value(map->id_ps,k) = new_ps;
-  map->peers_inuse_cnt++;
 
   return 0;
 }
@@ -156,25 +142,10 @@ static bl_peerid_t bl_peersign_map_set_and_get_ps(bl_peersign_map_t *map,
       k = kh_put(bl_bsid_peersign_map, map->id_ps, next_id, &khret);
       kh_value(map->id_ps,k) = ps;
 
-      if(ps->in_use)
-	{
-	  map->peers_inuse_cnt++;
-	}
       return next_id;
     }
   else {
     /* already exists... */
-    if(!kh_key(map->ps_id, k)->in_use && ps->in_use)
-      {
-	/* now is used */
-	map->peers_inuse_cnt++;
-      }
-    else if(kh_key(map->ps_id, k)->in_use && !ps->in_use)
-      {
-	/* now is unused */
-	map->peers_inuse_cnt--;
-      }
-    kh_key(map->ps_id, k)->in_use = ps->in_use;
     free(ps); /* it was mallocd for us...*/
     return kh_value(map->ps_id,k);
   }
@@ -193,7 +164,6 @@ bl_peerid_t bl_peersign_map_set_and_get(bl_peersign_map_t *map,
 
   new_ps->peer_ip_addr = *peer_ip_addr;
   strcpy(new_ps->collector_str, collector_str);
-  new_ps->in_use = 1;
 
   return bl_peersign_map_set_and_get_ps(map,new_ps);
 }
@@ -214,11 +184,6 @@ bl_peer_signature_t* bl_peersign_map_get_peersign(bl_peersign_map_t *map,
 int bl_peersign_map_get_size(bl_peersign_map_t *map)
 {
   return kh_size(map->id_ps);
-}
-
-int bl_peersign_map_get_inuse_size(bl_peersign_map_t *map)
-{
-  return map->peers_inuse_cnt;
 }
 
 static void sig_free(bl_peer_signature_t *s)
@@ -248,16 +213,8 @@ void bl_peersign_map_destroy(bl_peersign_map_t *map)
 
 void bl_peersign_map_clear(bl_peersign_map_t *map)
 {
-  khiter_t k;
-
-  /* set each sig in_use to 0 */
-  for(k = kh_begin(map); k != kh_end(map->id_ps); ++k)
-    {
-      if(kh_exist(map->id_ps, k))
-	{
-	  kh_val(map->id_ps, k)->in_use = 0;
-	}
-    }
-
-  map->peers_inuse_cnt = 0;
+  /* only call free vals on ONE map, they are shared */
+  kh_free_vals(bl_bsid_peersign_map, map->id_ps, sig_free);
+  kh_clear(bl_bsid_peersign_map, map->id_ps);
+  kh_clear(bl_peersign_bsid_map, map->ps_id);
 }
