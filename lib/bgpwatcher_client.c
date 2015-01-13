@@ -292,8 +292,8 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
         {
           /* allocate a peer info array */
           if((peer_infos =
-              malloc(sizeof(bgpwatcher_pfx_peer_info_t)
-                     *TBL.info.peers_cnt)) == NULL)
+              malloc_zero(sizeof(bgpwatcher_pfx_peer_info_t)
+			  *TBL.info.peers_cnt)) == NULL)
             {
               return -1;
             }
@@ -313,8 +313,8 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
         {
           /* allocate a peer info array */
           if((peer_infos =
-              malloc(sizeof(bgpwatcher_pfx_peer_info_t)
-                     *TBL.info.peers_cnt)) == NULL)
+              malloc_zero(sizeof(bgpwatcher_pfx_peer_info_t)
+			  *TBL.info.peers_cnt)) == NULL)
             {
               return -1;
             }
