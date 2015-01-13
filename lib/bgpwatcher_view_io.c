@@ -27,9 +27,6 @@
 
 #include <czmq.h>
 
-/* we need to poke our fingers into the peersign map */
-#include "bl_peersign_map_int.h"
-
 #include "bgpwatcher_common_int.h"
 #include "bgpwatcher_view_int.h"
 
@@ -456,10 +453,9 @@ static int recv_pfxs(void *src, bgpwatcher_view_t *view)
   return -1;
 }
 
-static int send_peers(void *dest, bgpwatcher_view_t *view)
+static int send_peers(void *dest, bgpwatcher_view_iter_t *it)
 {
   uint16_t u16;
-  khiter_t k;
 
   bl_peer_signature_t *ps;
   size_t len;
@@ -468,7 +464,8 @@ static int send_peers(void *dest, bgpwatcher_view_t *view)
   int peers_tx = 0;
 
   /* peer cnt */
-  peers_cnt = (uint16_t)bl_peersign_map_get_inuse_size(view->peersigns);
+  peers_cnt =
+    (uint16_t)bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
   u16 = htons(peers_cnt);
   if(zmq_send(dest, &u16, sizeof(u16), ZMQ_SNDMORE) != sizeof(u16))
     {
@@ -476,32 +473,31 @@ static int send_peers(void *dest, bgpwatcher_view_t *view)
     }
 
   /* foreach peer, send peerid, collector string, peer ip (version, address) */
-  for(k = kh_begin(view->peersigns); k != kh_end(view->peersigns->id_ps); ++k)
+  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
+      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
+      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_PEER))
     {
-      if(kh_exist(view->peersigns->id_ps, k) &&
-	 kh_val(view->peersigns->id_ps, k)->in_use)
+      /* peer id */
+      u16 = bgpwatcher_view_iter_get_peerid(it);
+      u16 = htons(u16);
+      if(zmq_send(dest, &u16, sizeof(u16), ZMQ_SNDMORE) != sizeof(u16))
 	{
-	  /* peer id */
-	  u16 = kh_key(view->peersigns->id_ps, k);
-	  u16 = htons(u16);
-	  if(zmq_send(dest, &u16, sizeof(u16), ZMQ_SNDMORE) != sizeof(u16))
-	    {
-	      goto err;
-	    }
-
-	  ps = kh_value(view->peersigns->id_ps, k);
-	  len = strlen(ps->collector_str);
-	  if(zmq_send(dest, &ps->collector_str, len, ZMQ_SNDMORE) != len)
-	    {
-	      goto err;
-	    }
-
-	  if(bw_send_ip(dest, &ps->peer_ip_addr, ZMQ_SNDMORE) != 0)
-	    {
-	      goto err;
-	    }
-          peers_tx++;
+	  goto err;
 	}
+
+      ps = bgpwatcher_view_iter_get_peersig(it);
+      assert(ps);
+      len = strlen(ps->collector_str);
+      if(zmq_send(dest, &ps->collector_str, len, ZMQ_SNDMORE) != len)
+	{
+	  goto err;
+	}
+
+      if(bw_send_ip(dest, &ps->peer_ip_addr, ZMQ_SNDMORE) != 0)
+	{
+	  goto err;
+	}
+      peers_tx++;
     }
 
   assert(peers_cnt == peers_tx);
@@ -565,6 +561,7 @@ static int recv_peers(void *src, bgpwatcher_view_t *view)
 			     &ps.peer_ip_addr) != 0)
 	{
           fprintf(stderr, "Could not add peer to peersigns\n");
+	  fprintf(stderr, "Consider making bl_peersign_map_set more robust\n");
 	  goto err;
 	}
     }
@@ -581,9 +578,16 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
 {
   uint32_t u32;
 
+  bgpwatcher_view_iter_t *it = NULL;
+
 #ifdef DEBUG
   fprintf(stderr, "DEBUG: Sending view...\n");
 #endif
+
+  if((it = bgpwatcher_view_iter_create(view)) == NULL)
+    {
+      goto err;
+    }
 
   /* time */
   u32 = htonl(view->time);
@@ -604,7 +608,7 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
       goto err;
     }
 
-  if(send_peers(dest, view) != 0)
+  if(send_peers(dest, it) != 0)
     {
       goto err;
     }
@@ -624,6 +628,8 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
       goto err;
     }
 
+  bgpwatcher_view_iter_destroy(it);
+
   return 0;
 
  err:
@@ -637,13 +643,11 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
   assert(view != NULL);
 
   /* to ensure that we never try to set peer ids for existing peer signatures,
-     we destroy the peersign table manually and recreate it */
-  bl_peersign_map_destroy(view->peersigns);
-  if((view->peersigns = bl_peersign_map_create()) == NULL)
-    {
-      fprintf(stderr, "Could not create new peersign table\n");
-      goto err;
-    }
+     we clear the peersign table manually */
+  /* this is not really needed, but if the server is ever restarted while the
+     consumer is running, this will prevent any issues. It shouldn't cause too
+     much performance problems (famous last words) */
+  bl_peersign_map_clear(view->peersigns);
 
   /* time */
   if(zmq_recv(src, &u32, sizeof(u32), 0) != sizeof(u32))

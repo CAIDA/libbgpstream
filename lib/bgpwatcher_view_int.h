@@ -120,6 +120,9 @@ struct bgpwatcher_view {
   /** Table of peerid -> peersign */
   bl_peersign_map_t *peersigns;
 
+  /** Is the peersigns table shared? */
+  int peersigns_shared;
+
   /** Table of peerid -> peerinfo */
   kh_bwv_peerid_peerinfo_t *peerinfo;
 

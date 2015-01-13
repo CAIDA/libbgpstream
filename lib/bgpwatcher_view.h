@@ -97,6 +97,17 @@ typedef enum {
  */
 bgpwatcher_view_t *bgpwatcher_view_create();
 
+/** Create a new BGP View, reusing an existing peersigns table
+ *
+ * @param peersigns     pointer to a peersigns map to share
+ *
+ * A BGP View holds a snapshot of the aggregated prefix information.
+ * Basically, it maps from prefix -> peers -> prefix info
+ *
+ * @return a pointer to the view if successful, NULL otherwise
+ */
+bgpwatcher_view_t *bgpwatcher_view_create_shared(bl_peersign_map_t *peersigns);
+
 /** @todo create a nice high-level api for accessing information in the view */
 
 /** Destroy the given BGP Watcher View
