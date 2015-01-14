@@ -618,6 +618,9 @@ static int store_view_get(bgpwatcher_store_t *store, uint32_t new_time,
   /* new_time MUST be a multiple of the window size */
   assert(((new_time / WDW_ITEM_TIME) * WDW_ITEM_TIME) == new_time);
 
+  /* no need to explicitly handle this case, just assume the first time is 0 at
+     start up and then let the window slide code handle everything */
+#if 0
   /* is this the first insertion? */
   if(store->sviews_first_time == 0)
     {
@@ -625,6 +628,7 @@ static int store_view_get(bgpwatcher_store_t *store, uint32_t new_time,
       sview = store->sviews[WDW_LEN-1];
       goto valid;
     }
+#endif
 
   if(new_time < store->sviews_first_time)
     {
