@@ -630,6 +630,8 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
 
   bgpwatcher_view_iter_destroy(it);
 
+  view->pub_cnt++;
+
   return 0;
 
  err:

@@ -126,6 +126,9 @@ struct bgpwatcher_view {
   /** Table of peerid -> peerinfo */
   kh_bwv_peerid_peerinfo_t *peerinfo;
 
+  /** The number of times this view has been published since it was cleared */
+  int pub_cnt;
+
 };
 
 /** Add a prefix to a view

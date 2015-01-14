@@ -328,6 +328,8 @@ static int handle_table_prefix_begin(bgpwatcher_server_t *server,
   /* ensure we have enough peer infos in our buffer */
   if(client->peer_infos_alloc_cnt < client->pfx_table.peers_cnt)
     {
+      fprintf(stderr, "DEBUG: Realloc'ing peer_infos to %d for %s\n",
+              client->pfx_table.peers_cnt, client->id);
       if((client->peer_infos =
           realloc(client->peer_infos,
                   sizeof(bgpwatcher_pfx_peer_info_t)*

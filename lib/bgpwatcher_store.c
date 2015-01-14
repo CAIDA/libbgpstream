@@ -530,6 +530,10 @@ static int dispatcher_run(bgpwatcher_store_t *store,
       return -1;
     }
 
+  DUMP_METRIC((uint64_t)sview->view->pub_cnt,
+              sview->view->time,
+              "views.%d.%s", sview->id, "publication_cnt");
+
   return 0;
 }
 

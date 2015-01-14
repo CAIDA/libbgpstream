@@ -280,6 +280,8 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
 
   /* clear out the peerinfo table */
   kh_clear(bwv_peerid_peerinfo, view->peerinfo);
+
+  view->pub_cnt = 0;
 }
 
 int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
