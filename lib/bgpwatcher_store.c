@@ -528,13 +528,14 @@ static int dispatcher_run(bgpwatcher_store_t *store,
 static int completion_check(bgpwatcher_store_t *store, store_view_t *sview,
                             completion_trigger_t trigger)
 {
-  int ret;
-  if((ret = store_view_completion_check(store, sview)) < 0)
-    { // something went wrong with the completion check
-      return ret;
-    }
+  int to_remove = 0;
 
-  uint8_t to_remove = 0;
+  /* returns 1 if full, 0 if partial, but the dispatcher handles partial tables
+     so we ignore the return code */
+  if(store_view_completion_check(store, sview) < 0)
+    {
+      return -1;
+    }
 
   /** The completion check can be triggered by different events:
    *  COMPLETION_TRIGGER_TABLE_END
@@ -565,15 +566,18 @@ static int completion_check(bgpwatcher_store_t *store, store_view_t *sview,
   // dump_bgpwatcher_store_cc_status(store, bgp_view, ts, trigger, remove_view);
 
   // TODO: documentation
-  ret = dispatcher_run(store, sview);
+  if(dispatcher_run(store, sview) != 0)
+    {
+      return -1;
+    }
 
   // TODO: documentation
-  if(ret == 0 && to_remove == 1)
+  if(to_remove == 1)
     {
       return store_view_remove(store, sview);
     }
 
-  return ret;
+  return 0;
 }
 
 int check_timeouts(bgpwatcher_store_t *store)
