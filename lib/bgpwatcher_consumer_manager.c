@@ -43,6 +43,9 @@
 /* Per-AS Visibility consumer */
 #include "bwc_perasvisibility.h"
 
+/* Per-Geo Visibility consumer */
+#include "bwc_pergeovisibility.h"
+
 /* ==================== PRIVATE DATA STRUCTURES ==================== */
 
 #define MAXOPTS 1024

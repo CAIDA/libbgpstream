@@ -81,12 +81,15 @@ typedef enum bwc_id
     /** Writes information about per-AS visibility information to Charthouse */
     BWC_ID_PERASVISIBILITY    = 3,
 
+    /** Writes information about per-Geo visibility information to Charthouse */
+    BWC_ID_PERGEOVISIBILITY    = 4,
+
     /** @todo add more consumers here */
 
     /** Lowest numbered bgpwatcher consumer ID */
     BWC_ID_FIRST      = BWC_ID_TEST,
     /** Highest numbered bgpwatcher consumer ID */
-    BWC_ID_LAST       = BWC_ID_PERASVISIBILITY,
+    BWC_ID_LAST       = BWC_ID_PERGEOVISIBILITY,
 
   } bwc_id_t;
 

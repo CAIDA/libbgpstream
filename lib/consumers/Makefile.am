@@ -51,6 +51,11 @@ CONSUMER_SRCS += \
 	bwc_perasvisibility.c \
 	bwc_perasvisibility.h
 
+# Per-Geo Visibility Consumer
+CONSUMER_SRCS += \
+	bwc_pergeovisibility.c \
+	bwc_pergeovisibility.h
+
 # -- sample how to add conditional consumer
 #if WITH_<NAME>
 #SUBDIRS += lib<name>
