@@ -705,7 +705,6 @@ static int store_view_get(bgpwatcher_store_t *store, uint32_t new_time,
   return WINDOW_TIME_VALID;
 }
 
-#if 0
 static void store_views_dump(bgpwatcher_store_t *store)
 {
   int i, idx;
@@ -730,7 +729,6 @@ static void store_views_dump(bgpwatcher_store_t *store)
 
   fprintf(stdout, "--------------------\n\n");
 }
-#endif
 
 /* ========== PROTECTED FUNCTIONS ========== */
 
@@ -881,15 +879,13 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
   int ret;
 
   uint32_t truncated_time = (table->time / WDW_ITEM_TIME) * WDW_ITEM_TIME;
-  
+
   if((ret = store_view_get(store, truncated_time, &sview)) < 0)
     {
       return -1;
     }
 
-#if 0
   store_views_dump(store);
-#endif
 
   if(ret == WINDOW_TIME_EXCEEDED)
     {
