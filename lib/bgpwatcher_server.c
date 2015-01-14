@@ -1029,10 +1029,6 @@ int bgpwatcher_server_publish_view(bgpwatcher_server_t *server,
     }
 #endif
 
-  DUMP_METRIC(zclock_time()/1000-view->time,
-              view->time,
-              "%s", "publication.delay");
-
   /* get the publication message prefix */
   if((pub = bgpwatcher_consumer_interest_pub(interests)) == NULL)
     {
@@ -1053,7 +1049,16 @@ int bgpwatcher_server_publish_view(bgpwatcher_server_t *server,
       goto err;
     }
 
-  return bgpwatcher_view_send(server->client_pub_socket, view);
+  if(bgpwatcher_view_send(server->client_pub_socket, view) != 0)
+    {
+      return -1;
+    }
+
+  DUMP_METRIC(zclock_time()/1000-view->time,
+              view->time,
+              "%s", "publication.delay");
+
+  return 0;
 
  err:
   return -1;
