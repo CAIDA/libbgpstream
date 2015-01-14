@@ -140,6 +140,9 @@ struct bgpwatcher_store {
   /** Circular buffer of views */
   store_view_t *sviews[WDW_LEN];
 
+  /** The number of views that are not STORE_VIEW_UNUSED */
+  int sviews_inuse_cnt;
+
   /** The index of the first (oldest) view */
   uint32_t sviews_first_idx;
 
@@ -269,6 +272,7 @@ static int store_view_clear(bgpwatcher_store_t *store,
   fprintf(stderr, "DEBUG: Clearing store (%d)\n", sview->view->time);
 
   sview->state = STORE_VIEW_UNUSED;
+  store->sviews_inuse_cnt--;
 
   sview->reuse_cnt++;
 
@@ -499,6 +503,10 @@ static int dispatcher_run(bgpwatcher_store_t *store,
               sview->view->time,
               "%s", "view_buffer_head_time");
 
+  DUMP_METRIC((uint64_t)store->sviews_inuse_cnt,
+              sview->view->time,
+              "%s", "views_inuse");
+
   DUMP_METRIC((uint64_t)kh_size(sview->view->v4pfxs),
               sview->view->time,
               "views.%d.%s", sview->id, "v4pfxs_hash_size");
@@ -701,6 +709,7 @@ static int store_view_get(bgpwatcher_store_t *store, uint32_t new_time,
  valid:
   sview->state = STORE_VIEW_UNKNOWN;
   sview->view->time = new_time;
+  store->sviews_inuse_cnt++;
   *sview_p = sview;
   return WINDOW_TIME_VALID;
 }
