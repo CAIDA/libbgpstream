@@ -511,9 +511,17 @@ static int dispatcher_run(bgpwatcher_store_t *store,
               sview->view->time,
               "views.%d.%s", sview->id, "v4pfxs_hash_size");
 
+  DUMP_METRIC((uint64_t)kh_n_buckets(sview->view->v4pfxs),
+              sview->view->time,
+              "views.%d.%s", sview->id, "v4pfxs_hash_bucket_cnt");
+
   DUMP_METRIC((uint64_t)kh_size(sview->view->v6pfxs),
               sview->view->time,
               "views.%d.%s", sview->id, "v6pfxs_hash_size");
+
+  DUMP_METRIC((uint64_t)kh_n_buckets(sview->view->v6pfxs),
+              sview->view->time,
+              "views.%d.%s", sview->id, "v6pfxs_hash_bucket_cnt");
 
   DUMP_METRIC((uint64_t)sview->reuse_cnt,
               sview->view->time,
