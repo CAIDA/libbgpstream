@@ -655,11 +655,11 @@ void bgpwatcher_view_iter_next(bgpwatcher_view_iter_t *iter,
 	 3.  we find a peer valid in the view)
       */
       do {
-	iter->v4pfx_peer_it++;
-      } while(iter->v4pfx_peer_it <
-	      kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_alloc_cnt &&
-	      (!kh_val(iter->view->v4pfxs, iter->v4pfx_it)
-               ->peers[iter->v4pfx_peer_it].in_use));
+	iter->v6pfx_peer_it++;
+      } while(iter->v6pfx_peer_it <
+	      kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_alloc_cnt &&
+	      (!kh_val(iter->view->v6pfxs, iter->v6pfx_it)
+               ->peers[iter->v6pfx_peer_it].in_use));
       break;
 
     default:
