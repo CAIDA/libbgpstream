@@ -100,6 +100,9 @@ typedef struct dispatch_status {
 /** Wrapper around a bgpwatcher_view_t structure */
 typedef struct store_view {
 
+  /* Index of this view within the circular buffer */
+  int id;
+
   /** State of this view (unused, partial, full) */
   store_view_state_t state;
 
@@ -197,13 +200,15 @@ static void store_view_destroy(store_view_t *sview)
   free(sview);
 }
 
-store_view_t *store_view_create(bgpwatcher_store_t *store)
+store_view_t *store_view_create(bgpwatcher_store_t *store, int id)
 {
   store_view_t *sview;
   if((sview = malloc_zero(sizeof(store_view_t))) == NULL)
     {
       return NULL;
     }
+
+  sview->id = id;
 
   if((sview->done_clients = bl_string_set_create()) == NULL)
     {
@@ -255,7 +260,7 @@ static int store_view_clear(bgpwatcher_store_t *store,
 	% WDW_LEN;
 
       store_view_destroy(sview);
-      if((store->sviews[idx] = store_view_create(store)) == NULL)
+      if((store->sviews[idx] = store_view_create(store, idx)) == NULL)
 	{
 	  return -1;
 	}
@@ -481,6 +486,34 @@ static int dispatcher_run(bgpwatcher_store_t *store,
   DUMP_METRIC((uint64_t)bl_id_set_size(sview->inactive_peers),
               sview->view->time,
               "%s", "inactive_peers_cnt");
+
+  DUMP_METRIC((uint64_t)bl_peersign_map_get_size(store->peersigns),
+              sview->view->time,
+              "%s", "peersigns_hash_size");
+
+  DUMP_METRIC((uint64_t)store->sviews_first_idx,
+              sview->view->time,
+              "%s", "view_buffer_head_idx");
+
+  DUMP_METRIC((uint64_t)store->sviews_first_time,
+              sview->view->time,
+              "%s", "view_buffer_head_time");
+
+  DUMP_METRIC((uint64_t)kh_size(sview->view->v4pfxs),
+              sview->view->time,
+              "views.%d.%s", sview->id, "v4pfxs_hash_size");
+
+  DUMP_METRIC((uint64_t)kh_size(sview->view->v6pfxs),
+              sview->view->time,
+              "views.%d.%s", sview->id, "v6pfxs_hash_size");
+
+  DUMP_METRIC((uint64_t)sview->reuse_cnt,
+              sview->view->time,
+              "views.%d.%s", sview->id, "reuse_cnt");
+
+  DUMP_METRIC((uint64_t)sview->view->time_created.tv_sec,
+              sview->view->time,
+              "views.%d.%s", sview->id, "time_created");
 
   /* now publish the view */
   if(bgpwatcher_server_publish_view(store->server, sview->view,
@@ -721,7 +754,7 @@ bgpwatcher_store_t *bgpwatcher_store_create(bgpwatcher_server_t *server)
   /* must be created after peersigns */
   for(i=0; i<WDW_LEN; i++)
     {
-      if((store->sviews[i] = store_view_create(store)) == NULL)
+      if((store->sviews[i] = store_view_create(store, i)) == NULL)
         {
           goto err;
         }
