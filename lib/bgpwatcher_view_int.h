@@ -43,16 +43,13 @@
 #include "bgpwatcher_view.h"
 #include "bgpwatcher_common.h"
 
-/************ map from peer -> prefix info ************/
-
-KHASH_INIT(bwv_peerid_pfxinfo, bl_peerid_t, bgpwatcher_pfx_peer_info_t, 1,
-	   kh_int_hash_func, kh_int_hash_equal)
-
 /** Value for a prefix in the v4pfxs and v6pfxs tables */
 typedef struct bwv_peerid_pfxinfo {
 
-  /** hash {peerid} -> pfx_peer_info */
-  khash_t(bwv_peerid_pfxinfo) *peers;
+  /** Sparse list of peers, where idx is peerid */
+  bgpwatcher_pfx_peer_info_t *peers;
+
+  uint16_t peers_alloc_cnt;
 
   /** The number of peers in the peers hash that are actually valid */
   uint16_t peers_cnt;

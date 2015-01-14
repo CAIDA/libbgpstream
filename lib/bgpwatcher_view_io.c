@@ -161,7 +161,7 @@ static void v6pfxs_dump(bgpwatcher_view_t *view,
 
 static int send_pfx_peers(uint8_t *buf, size_t len, bwv_peerid_pfxinfo_t *pfxpeers)
 {
-  khiter_t k;
+  int i;
   uint16_t u16;
   uint32_t u32;
 
@@ -169,17 +169,17 @@ static int send_pfx_peers(uint8_t *buf, size_t len, bwv_peerid_pfxinfo_t *pfxpee
   size_t written = 0;
   size_t s;
 
-  for(k = kh_begin(pfxpeers->peers); k != kh_end(pfxpeers->peers); ++k)
+  for(i=0; i<pfxpeers->peers_alloc_cnt; i++)
     {
-      if(kh_exist(pfxpeers->peers, k) && kh_val(pfxpeers->peers, k).in_use)
+      if(pfxpeers->peers[i].in_use)
 	{
 	  /* peer id */
-	  u16 = kh_key(pfxpeers->peers, k);
+	  u16 = i;
 	  u16 = htons(u16);
 	  SERIALIZE_VAL(u16);
 
 	  /* orig_asn */
-	  u32 = kh_val(pfxpeers->peers, k).orig_asn;
+	  u32 = pfxpeers->peers[i].orig_asn;
 	  u32 = htonl(u32);
 	  SERIALIZE_VAL(u32);
 	}

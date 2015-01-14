@@ -107,12 +107,8 @@ static bwv_peerid_pfxinfo_t* peerid_pfxinfo_create()
       return NULL;
     }
 
-  if((v->peers = kh_init(bwv_peerid_pfxinfo)) == NULL)
-    {
-      free(v);
-      return NULL;
-    }
-
+  v->peers = NULL;
+  v->peers_alloc_cnt = 0;
   v->peers_cnt = 0;
 
   return v;
@@ -124,32 +120,39 @@ static int peerid_pfxinfo_insert(bgpwatcher_view_t *view,
                                  bl_peerid_t peerid,
                                  bgpwatcher_pfx_peer_info_t *pfx_info)
 {
-  khiter_t k;
-  int khret;
+  int i;
 
   /* if we are the first to insert a peer for this prefix after it was cleared,
      we are also responsible for clearing all the peer info */
   if(v->peers_cnt == 0)
     {
-      for (k = kh_begin(v->peers); k != kh_end(v->peers); ++k)
+      for(i=0; i<v->peers_alloc_cnt; i++)
 	{
-	  if (kh_exist(v->peers, k))
-	    {
-	      kh_value(v->peers, k).in_use = 0;
-	    }
+          v->peers[i].in_use = 0;
 	}
     }
 
-  if((k = kh_get(bwv_peerid_pfxinfo, v->peers, peerid)) == kh_end(v->peers))
+  /* need to realloc the array? */
+  if((peerid+1) > v->peers_alloc_cnt)
     {
-      k = kh_put(bwv_peerid_pfxinfo,v->peers, peerid, &khret);
+      if((v->peers =
+          realloc(v->peers,
+                  sizeof(bgpwatcher_pfx_peer_info_t)*(peerid+1))) == NULL)
+        {
+          return -1;
+        }
 
-      /* we need to at least mark this info as unused */
-      kh_value(v->peers, k).in_use = 0;
+      /* now we have to zero everything between prev_last and the end */
+      for(i = v->peers_alloc_cnt; i <= peerid; i++)
+        {
+          v->peers[i].in_use = 0;
+        }
+
+      v->peers_alloc_cnt = peerid+1;
     }
 
   /* if this peer was not previously used, we need to count it */
-  if(kh_value(v->peers, k).in_use == 0)
+  if(v->peers[peerid].in_use == 0)
     {
       v->peers_cnt++;
 
@@ -157,8 +160,8 @@ static int peerid_pfxinfo_insert(bgpwatcher_view_t *view,
       peerinfo_add_pfx(view, peerid, prefix);
     }
 
-  kh_value(v->peers, k) = *pfx_info;
-  kh_value(v->peers, k).in_use = 1;
+  v->peers[peerid] = *pfx_info;
+  v->peers[peerid].in_use = 1;
   return 0;
 }
 
@@ -169,8 +172,9 @@ static void peerid_pfxinfo_destroy(bwv_peerid_pfxinfo_t *v)
       return;
     }
 
-  kh_destroy(bwv_peerid_pfxinfo, v->peers);
+  free(v->peers);
   v->peers_cnt = 0;
+  v->peers_alloc_cnt = 0;
   free(v);
 }
 
@@ -268,7 +272,7 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
     }
   view->v4pfxs_cnt = 0;
 
-  /* mark all ipv4 prefixes as unused */
+  /* mark all ipv6 prefixes as unused */
   for(k = kh_begin(view->v6pfxs); k != kh_end(view->v6pfxs); ++k)
     {
       if(kh_exist(view->v6pfxs, k))
@@ -512,15 +516,13 @@ void bgpwatcher_view_iter_first(bgpwatcher_view_iter_t *iter,
 
     case BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER:
       assert(iter->v4pfx_it != kh_end(iter->view->v4pfxs));
-      iter->v4pfx_peer_it = kh_begin(kh_val(iter->view->v4pfxs, iter->v4pfx_it));
+      iter->v4pfx_peer_it = 0;
       iter->v4pfx_peer_it_valid = 1;
 
-      while(iter->v4pfx_peer_it !=
-	    kh_end(kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers) &&
-	    (!kh_exist(kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers,
-		       iter->v4pfx_peer_it) ||
-	     !kh_val(kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers,
-		     iter->v4pfx_peer_it).in_use))
+      while((iter->v4pfx_peer_it <
+             kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_alloc_cnt) &&
+	    (!kh_val(iter->view->v4pfxs, iter->v4pfx_it)
+             ->peers[iter->v4pfx_peer_it].in_use))
 	{
 	  iter->v4pfx_peer_it++;
 	}
@@ -528,15 +530,13 @@ void bgpwatcher_view_iter_first(bgpwatcher_view_iter_t *iter,
 
     case BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER:
       assert(iter->v6pfx_it != kh_end(iter->view->v6pfxs));
-      iter->v6pfx_peer_it = kh_begin(kh_val(iter->view->v6pfxs, iter->v6pfx_it));
+      iter->v6pfx_peer_it = 0;
       iter->v6pfx_peer_it_valid = 1;
 
-      while(iter->v6pfx_peer_it !=
-	    kh_end(kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers) &&
-	    (!kh_exist(kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers,
-		       iter->v6pfx_peer_it) ||
-	     !kh_val(kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers,
-		     iter->v6pfx_peer_it).in_use))
+      while((iter->v6pfx_peer_it <
+             kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_alloc_cnt) &&
+	    (!kh_val(iter->view->v6pfxs, iter->v6pfx_it)
+             ->peers[iter->v6pfx_peer_it].in_use))
 	{
 	  iter->v6pfx_peer_it++;
 	}
@@ -569,7 +569,7 @@ int bgpwatcher_view_iter_is_end(bgpwatcher_view_iter_t *iter,
       assert(iter->v4pfx_it != kh_end(iter->view->v4pfxs));
       if(!iter->v4pfx_peer_it_valid ||
 	 iter->v4pfx_peer_it
-	 == kh_end(kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers))
+	 >= kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_alloc_cnt)
 	{
 	  iter->v4pfx_peer_it_valid = 0;
 	  return 1;
@@ -584,7 +584,7 @@ int bgpwatcher_view_iter_is_end(bgpwatcher_view_iter_t *iter,
       assert(iter->v6pfx_it != kh_end(iter->view->v6pfxs));
       if(!iter->v6pfx_peer_it_valid ||
 	 iter->v6pfx_peer_it
-	 == kh_end(kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers))
+	 >= kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_alloc_cnt)
 	{
 	  iter->v6pfx_peer_it_valid = 0;
 	  return 1;
@@ -642,12 +642,10 @@ void bgpwatcher_view_iter_next(bgpwatcher_view_iter_t *iter,
       */
       do {
 	iter->v4pfx_peer_it++;
-      } while(iter->v4pfx_peer_it !=
-	      kh_end(kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers) &&
-	      (!kh_exist(kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers,
-			iter->v4pfx_peer_it) ||
-	      !kh_val(kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers,
-		      iter->v4pfx_peer_it).in_use));
+      } while(iter->v4pfx_peer_it <
+	      kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_alloc_cnt &&
+	      (!kh_val(iter->view->v4pfxs, iter->v4pfx_it)
+               ->peers[iter->v4pfx_peer_it].in_use));
       break;
 
     case BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER:
@@ -657,13 +655,11 @@ void bgpwatcher_view_iter_next(bgpwatcher_view_iter_t *iter,
 	 3.  we find a peer valid in the view)
       */
       do {
-	iter->v6pfx_peer_it++;
-      } while(iter->v6pfx_peer_it !=
-	      kh_end(kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers) &&
-	      (!kh_exist(kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers,
-			iter->v6pfx_peer_it) ||
-	      !kh_val(kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers,
-		      iter->v6pfx_peer_it).in_use));
+	iter->v4pfx_peer_it++;
+      } while(iter->v4pfx_peer_it <
+	      kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_alloc_cnt &&
+	      (!kh_val(iter->view->v4pfxs, iter->v4pfx_it)
+               ->peers[iter->v4pfx_peer_it].in_use));
       break;
 
     default:
@@ -782,8 +778,7 @@ bgpwatcher_view_iter_get_v4pfx_peerid(bgpwatcher_view_iter_t *iter)
       return 0;
     }
 
-  return kh_key(kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers,
-		iter->v4pfx_peer_it);
+  return iter->v4pfx_peer_it;
 }
 
 bl_peerid_t
@@ -794,8 +789,7 @@ bgpwatcher_view_iter_get_v6pfx_peerid(bgpwatcher_view_iter_t *iter)
       return 0;
     }
 
-  return kh_key(kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers,
-		iter->v6pfx_peer_it);
+  return iter->v6pfx_peer_it;
 }
 
 bl_peer_signature_t *
@@ -830,8 +824,7 @@ bgpwatcher_view_iter_get_v4pfx_pfxinfo(bgpwatcher_view_iter_t *iter)
       return NULL;
     }
 
-  return &kh_val(kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers,
-		 iter->v4pfx_peer_it);
+  return &kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers[iter->v4pfx_peer_it];
 }
 
 bgpwatcher_pfx_peer_info_t *
@@ -842,6 +835,5 @@ bgpwatcher_view_iter_get_v6pfx_pfxinfo(bgpwatcher_view_iter_t *iter)
       return NULL;
     }
 
-  return &kh_val(kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers,
-		 iter->v6pfx_peer_it);
+  return &kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers[iter->v6pfx_peer_it];
 }
