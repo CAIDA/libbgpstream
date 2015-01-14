@@ -587,6 +587,7 @@ static int handle_message(bgpwatcher_server_t *server,
 			  bgpwatcher_server_client_t **client_p,
                           bgpwatcher_msg_type_t msg_type)
 {
+  uint64_t begin_time;
   assert(client_p != NULL);
   bgpwatcher_server_client_t *client = *client_p;
   assert(client != NULL);
@@ -601,12 +602,17 @@ static int handle_message(bgpwatcher_server_t *server,
       fprintf(stderr, "**************************************\n\n");
 #endif
 
+      begin_time = zclock_time();
+
       /* parse the request, and then call the appropriate callback */
       if(handle_data_message(server, client) != 0)
 	{
 	  /* err no will already be set */
 	  goto err;
 	}
+
+      fprintf(stderr, "DEBUG: handle_data_message from %s %"PRIu64"\n",
+              client->id, zclock_time()-begin_time);
 
       break;
 
@@ -666,6 +672,8 @@ static int run_server(bgpwatcher_server_t *server)
 
   zmq_msg_t client_id;
   zmq_msg_t id_cpy;
+
+  uint64_t begin_time = zclock_time();
 
   /* get the client id frame */
   if(zmq_msg_init(&client_id) == -1)
@@ -783,7 +791,14 @@ static int run_server(bgpwatcher_server_t *server)
       server->heartbeat_next = zclock_time() + server->heartbeat_interval;
     }
 
-  return clients_purge(server);
+  if(clients_purge(server) != 0)
+    {
+      goto err;
+    }
+
+  fprintf(stderr, "DEBUG: run_server in %"PRIu64"\n", zclock_time()-begin_time);
+
+  return 0;
 
  err:
   return -1;
