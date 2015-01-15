@@ -730,25 +730,25 @@ static void store_views_dump(bgpwatcher_store_t *store)
 {
   int i, idx;
 
-  fprintf(stdout, "--------------------\n");
+  fprintf(stderr, "--------------------\n");
 
   for(i=0; i<WDW_LEN; i++)
     {
       idx = (i + store->sviews_first_idx) % WDW_LEN;
 
-      fprintf(stdout, "%d (%d): ", i, idx);
+      fprintf(stderr, "%d (%d): ", i, idx);
 
       if(store->sviews[idx]->state == STORE_VIEW_UNUSED)
         {
-          fprintf(stdout, "unused\n");
+          fprintf(stderr, "unused\n");
         }
       else
         {
-          fprintf(stdout, "%d\n", store->sviews[idx]->view->time);
+          fprintf(stderr, "%d\n", store->sviews[idx]->view->time);
         }
     }
 
-  fprintf(stdout, "--------------------\n\n");
+  fprintf(stderr, "--------------------\n\n");
 }
 
 /* ========== PROTECTED FUNCTIONS ========== */
@@ -930,9 +930,9 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
       // get address to peer_info structure in current table
       peer_info = &(table->peers[remote_peer_id]);
       // set "static" (server) id assigned to (collector,peer) by current process
-      peer_info->server_id =
-        bl_peersign_map_set_and_get(store->peersigns,
-                                    table->collector, &(peer_info->ip));
+      /* peer_info->server_id = */
+      /*   bl_peersign_map_set_and_get(store->peersigns, */
+      /*                               table->collector, &(peer_info->ip)); */
       // send peer info to the appropriate bgp view
 
       assert(sview->view->peersigns_shared != 0);
