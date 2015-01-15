@@ -28,6 +28,7 @@
 #include <stdlib.h>
 
 #include "utils.h"
+#include "libipmeta.h"
 #include "khash.h"
 
 #include "bl_pfx_set.h"
@@ -75,12 +76,14 @@ typedef struct pergeo_info {
 
   /** The v4 prefixes that this CC observed */
   bl_ipv6_pfx_set_t *v6pfxs;
-} peras_info_t;
+  
+} pergeo_info_t;
+
 
 /** Map from COUNTRYCODE => v4PFX-SET */
 KHASH_INIT(cc_pfxs,
 	   char *,
-	   peras_info_t,
+	   pergeo_info_t,
 	   1,
 	   kh_str_hash_func,
 	   kh_str_hash_equal);
@@ -129,6 +132,11 @@ typedef struct bwc_pergeovisibility_state {
   /** General metric indexes */
   gen_metrics_t gen_metrics;
 
+  /** ipmeta structures */
+  ipmeta_t *ipmeta;
+  ipmeta_provider_t *provider;
+  ipmeta_record_set_t *records;
+  
 } bwc_pergeovisibility_state_t;
 
 /** Print usage information to stderr */
@@ -200,7 +208,7 @@ static int create_gen_metrics(bwc_t *consumer)
   return 0;
 }
 
-static void pergeo_info_destroy(peras_info_t info)
+static void pergeo_info_destroy(pergeo_info_t info)
 {
   bl_ipv4_pfx_set_destroy(info.v4pfxs);
   bl_ipv6_pfx_set_destroy(info.v6pfxs);
@@ -248,19 +256,20 @@ static void find_ff_peers(bwc_t *consumer, bgpwatcher_view_iter_t *it)
     }
 }
 
-static peras_info_t *as_pfxs_get_info(bwc_pergeovisibility_state_t *state,
+static pergeo_info_t *cc_pfxs_get_info(bwc_pergeovisibility_state_t *state,
                                       uint32_t asn)
 {
-  peras_info_t *info = NULL;
+  pergeo_info_t *info = NULL;
   char buffer[BUFFER_LEN];
+  char country_code[3];
   khiter_t k;
   int khret;
 
-  if((k = kh_get(as_pfxs, state->as_pfxs, asn)) == kh_end(state->as_pfxs))
+  if((k = kh_get(cc_pfxs, state->countrycode_pfxs, country_code)) == kh_end(state->countrycode_pfxs))
     {
-      k = kh_put(as_pfxs, state->as_pfxs, asn, &khret);
+      k = kh_put(cc_pfxs, state->countrycode_pfxs, country_code, &khret);
 
-      info = &kh_value(state->as_pfxs, k);
+      info = &kh_value(state->countrycode_pfxs, k);
 
       snprintf(buffer, BUFFER_LEN,
                METRIC_ASN_V4PFX_FORMAT,
@@ -289,7 +298,7 @@ static peras_info_t *as_pfxs_get_info(bwc_pergeovisibility_state_t *state,
     }
   else
     {
-      info = &kh_value(state->as_pfxs, k);
+      info = &kh_value(state->countrycode_pfxs, k);
     }
 
   return info;
@@ -302,7 +311,7 @@ static int flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   bl_peerid_t peerid;
   bgpwatcher_pfx_peer_info_t *pfxinfo;
 
-  peras_info_t *info;
+  pergeo_info_t *info;
 
   /* IPv4 */
   for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
@@ -335,7 +344,7 @@ static int flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 
 	  pfxinfo = bgpwatcher_view_iter_get_v4pfx_pfxinfo(it);
 
-          if((info = as_pfxs_get_info(STATE, pfxinfo->orig_asn)) == NULL)
+          if((info = geo_pfxs_get_info(STATE, pfxinfo->orig_asn)) == NULL)
             {
               return -1;
             }
@@ -353,7 +362,7 @@ static int flip_v6table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   bl_peerid_t peerid;
   bgpwatcher_pfx_peer_info_t *pfxinfo;
 
-  peras_info_t *info;
+  pergeo_info_t *info;
 
   /* IPv6 */
   for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX);
@@ -457,6 +466,7 @@ int bwc_pergeovisibility_init(bwc_t *consumer, int argc, char **argv)
 
   state->pfx_vis_threshold = ROUTED_PFX_PEERCNT;
 
+  // change it! (str -> set(pfxs)
   if((state->countrycode_pfxs = kh_init(cc_pfxs)) == NULL)
     {
       fprintf(stderr, "Error: Unable to create cc visibility map\n");
@@ -479,7 +489,14 @@ int bwc_pergeovisibility_init(bwc_t *consumer, int argc, char **argv)
       goto err;
     }
 
-  /* parse the command line args */
+  /* initialize ipmeta structure */
+  if((state->ipmeta = ipmeta_init()) == NULL)
+    {
+      fprintf(stderr, "Error: Could not initialize ipmeta \n");
+      goto err;
+    }
+
+/* parse the command line args */
   if(parse_args(consumer, argc, argv) != 0)
     {
       goto err;
@@ -487,6 +504,59 @@ int bwc_pergeovisibility_init(bwc_t *consumer, int argc, char **argv)
 
   /* react to args here */
 
+  
+  /* lookup the provider using the name  */
+  if((state->provider = ipmeta_get_provider_by_name(state->ipmeta, "netacqu-edge")) == NULL)
+    {
+      fprintf(stderr, "ERROR: Invalid provider name: netacqu-edge)\n");
+      goto err;
+    }
+
+  /* enable the provider  */
+  if(ipmeta_enable_provider(state->ipmeta, state->provider,
+			    " -b /data/external/netacuity-dumps/Edge-processed/2014-04-07.netacq-4-blocks.csv" 
+                            " -l /data/external/netacuity-dumps/Edge-processed/2014-04-07.netacq-4-locations.csv" 
+			    " -c /data/external/netacuity-dumps/country_codes.csv",
+			    IPMETA_PROVIDER_DEFAULT_YES) != 0)
+    {
+      fprintf(stderr, "ERROR: Could not enable provider netacqu-edge\n");
+      goto err;      
+    }
+
+  /* initialize a (reusable) record set structure  */
+  if((state->records = ipmeta_record_set_init()) == NULL)
+    {
+      fprintf(stderr, "ERROR: Could not init record set\n");
+      goto err;      
+    }
+
+  ipmeta_provider_netacq_edge_country_t **countries = NULL;  
+  int num_countries = ipmeta_provider_netacq_edge_get_countries(state->provider, &countries);
+  int i;
+  khiter_t k;
+  int khret;
+  pergeo_info_t *geo_info;
+
+  for(i=0; i < num_countries; i++)
+    {
+      // DEBUG
+      printf("%s\n", countries[i]->iso2);
+      // we assume netacq returns a set of unique countries
+      // then we don't need to check if these iso2 are already
+      // present in the countrycode map
+      k = kh_put(cc_pfxs, state->countrycode_pfxs, 
+		 strdup(countries[i]->iso2), &khret);
+      
+      geo_info = &kh_value(state->countrycode_pfxs, k);
+
+      // initialize properly geo_info
+      geo_info->v4pfxs = bl_ipv4_pfx_set_create();      
+      // TODO: create ipv4 metric id for kp
+      geo_info->v6pfxs = bl_ipv6_pfx_set_create();
+      // TODO: create ipv6 metric id for kp
+      
+    }
+     
   if(create_gen_metrics(consumer) != 0)
     {
       goto err;
@@ -495,6 +565,7 @@ int bwc_pergeovisibility_init(bwc_t *consumer, int argc, char **argv)
   return 0;
 
  err:
+  // call the destroy?!? @ask-alistair
   return -1;
 }
 
@@ -527,14 +598,31 @@ void bwc_pergeovisibility_destroy(bwc_t *consumer)
 
   timeseries_kp_free(&state->kp);
 
+  if(state->ipmeta != NULL)
+    {
+      ipmeta_free(state->ipmeta);
+      state->ipmeta = NULL;
+    }
+
+  if(state->records != NULL)
+    {
+      ipmeta_record_set_free(&state->records);
+      state->records = NULL;
+    }
+    
   free(state);
 
   BWC_SET_STATE(consumer, NULL);
 }
 
+
+
 int bwc_pergeovisibility_process_view(bwc_t *consumer, uint8_t interests,
 				     bgpwatcher_view_t *view)
 {
+
+  bwc_pergeovisibility_state_t *state = STATE;
+
   bgpwatcher_view_iter_t *it;
 
   /* create a new iterator */
@@ -546,7 +634,20 @@ int bwc_pergeovisibility_process_view(bwc_t *consumer, uint8_t interests,
   /* find the full-feed peers */
   find_ff_peers(consumer, it);
 
-  /* load geographical information in memory */
+  uint32_t addr; // network order
+  uint8_t mask;
+  ipmeta_record_t *rec;
+  uint32_t num_ips;
+
+  // -------------
+  // for each ipv4 prefix
+  ipmeta_lookup(state->provider, addr, mask, state->records);
+  ipmeta_record_set_rewind(state->records);
+  while ( (rec = ipmeta_record_set_next(state->records, &num_ips)) ) {
+    // USE rec->country_code 
+  }
+  
+
   
   
   /* flip the view into a per-geo table */
