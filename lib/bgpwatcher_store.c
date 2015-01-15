@@ -930,9 +930,9 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
       // get address to peer_info structure in current table
       peer_info = &(table->peers[remote_peer_id]);
       // set "static" (server) id assigned to (collector,peer) by current process
-      /* peer_info->server_id = */
-      /*   bl_peersign_map_set_and_get(store->peersigns, */
-      /*                               table->collector, &(peer_info->ip)); */
+      peer_info->server_id =
+        bl_peersign_map_set_and_get(store->peersigns,
+                                    table->collector, &(peer_info->ip));
       // send peer info to the appropriate bgp view
 
       assert(sview->view->peersigns_shared != 0);
