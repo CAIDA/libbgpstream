@@ -51,10 +51,10 @@ typedef struct bwv_peerid_pfxinfo {
 
   uint16_t peers_alloc_cnt;
 
-  /** The number of peers in the peers hash that are actually valid */
+  /** The number of peers in the peers list that are actually valid */
   uint16_t peers_cnt;
 
-} bwv_peerid_pfxinfo_t;
+} __attribute__((packed)) bwv_peerid_pfxinfo_t;
 // TODO: add documentation
 
 

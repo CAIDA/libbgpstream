@@ -112,7 +112,7 @@ typedef struct bgpwatcher_pfx_peer_info {
    */
   uint8_t in_use;
 
-} bgpwatcher_pfx_peer_info_t;
+} __attribute__((packed)) bgpwatcher_pfx_peer_info_t;
 
 /** Information about the a prefix table */
 typedef struct bgpwatcher_pfx_table {
