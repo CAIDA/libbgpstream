@@ -80,12 +80,21 @@ void bgpribs_set_metric_pfx(bgpribs_t *bgp_ribs, char* met_pfx)
 
 
 #ifdef WITH_BGPWATCHER
-int bgpribs_set_watcher(bgpribs_t *bgp_ribs, char *server_uri)
+int bgpribs_set_watcher(bgpribs_t *bgp_ribs, char *server_uri, char *client_name)
 {
   if(server_uri != NULL)
     {
       bgpwatcher_client_set_server_uri(bgp_ribs->bw_client->client, server_uri);
     }
+  
+  if(client_name != NULL)
+    {
+      if(bgpwatcher_client_set_identity(bgp_ribs->bw_client->client, client_name) != 0)
+	{
+	  fprintf(stderr, "WARNING: set identity %s failed!\n", client_name);
+	}
+    }
+
   return bw_client_start(bgp_ribs->bw_client);
 }
 
