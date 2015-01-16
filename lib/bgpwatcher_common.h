@@ -225,6 +225,9 @@ typedef enum {
   /** malloc error */
   BGPWATCHER_ERR_MALLOC       = -6,
 
+  /** store error */
+  BGPWATCHER_ERR_STORE        = -7,
+
 } bgpwatcher_err_code_t;
 
 /** @} */

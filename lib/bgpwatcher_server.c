@@ -214,6 +214,8 @@ static int clients_purge(bgpwatcher_server_t *server)
 	  if(bgpwatcher_store_client_disconnect(server->store,
                                                 &client->info) != 0)
 	    {
+              bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_STORE,
+                                     "Store failed to handle client disconnect");
 	      return -1;
 	    }
 	  /* the key string is actually owned by the client, dont free */
@@ -343,6 +345,8 @@ static int handle_table_prefix_begin(bgpwatcher_server_t *server,
   if(bgpwatcher_store_prefix_table_begin(server->store,
                                          &client->pfx_table) != 0)
     {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_STORE,
+                             "Store failed to handle table begin");
       goto err;
     }
 
@@ -379,6 +383,8 @@ static int handle_table_prefix_end(bgpwatcher_server_t *server,
                                        &client->info,
                                        &client->pfx_table) != 0)
     {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_STORE,
+                             "Store failed to handle table end");
       goto err;
     }
 
@@ -416,6 +422,8 @@ static int handle_pfx_record(bgpwatcher_server_t *server,
                                        &pfx,
                                        client->peer_infos) != 0)
     {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_STORE,
+                             "Store failed to handle pfx record");
       goto err;
     }
 
@@ -576,6 +584,8 @@ static int handle_ready_message(bgpwatcher_server_t *server,
   /* call the "client connect" callback */
   if(bgpwatcher_store_client_connect(server->store, &client->info) != 0)
     {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_STORE,
+                             "Store failed to handle client connect");
       goto err;
     }
 
@@ -641,6 +651,8 @@ static int handle_message(bgpwatcher_server_t *server,
       /* call the "client disconnect" callback */
       if(bgpwatcher_store_client_disconnect(server->store, &client->info) != 0)
         {
+          bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_STORE,
+                                 "Store failed to handle client disconnect");
           goto err;
         }
 
