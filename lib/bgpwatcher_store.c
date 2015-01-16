@@ -609,13 +609,15 @@ static int completion_check(bgpwatcher_store_t *store, store_view_t *sview,
 int check_timeouts(bgpwatcher_store_t *store)
 {
   store_view_t *sview = NULL;
-  int i;
+  int i, idx;
   struct timeval time_now;
   gettimeofday(&time_now, NULL);
 
   for(i=0; i<WDW_LEN; i++)
     {
-      sview = store->sviews[i];
+      idx = (i + store->sviews_first_idx) % WDW_LEN;
+
+      sview = store->sviews[idx];
       if(sview->state == STORE_VIEW_UNUSED)
         {
           continue;
@@ -624,8 +626,11 @@ int check_timeouts(bgpwatcher_store_t *store)
       if((time_now.tv_sec - sview->view->time_created.tv_sec)
          > BGPWATCHER_STORE_BGPVIEW_TIMEOUT)
         {
-          return completion_check(store, sview,
-                                  COMPLETION_TRIGGER_TIMEOUT_EXPIRED);
+          if(completion_check(store, sview,
+                              COMPLETION_TRIGGER_TIMEOUT_EXPIRED) != 0)
+            {
+              return -1;
+            }
         }
     }
   return 0;
