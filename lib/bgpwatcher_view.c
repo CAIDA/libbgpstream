@@ -262,6 +262,8 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
 
   view->time = 0;
 
+  gettimeofday(&view->time_created, NULL);
+
   /* mark all ipv4 prefixes as unused */
   for(k = kh_begin(view->v4pfxs); k != kh_end(view->v4pfxs); ++k)
     {
