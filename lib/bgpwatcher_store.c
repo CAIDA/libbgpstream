@@ -426,7 +426,8 @@ static int store_view_remove(bgpwatcher_store_t *store, store_view_t *sview)
 }
 
 static int dispatcher_run(bgpwatcher_store_t *store,
-                          store_view_t *sview)
+                          store_view_t *sview,
+                          completion_trigger_t trigger)
 {
 #if 0
   bl_peerid_t valid_peers[BGPWATCHER_STORE_MAX_PEERS_CNT];
@@ -475,6 +476,11 @@ static int dispatcher_run(bgpwatcher_store_t *store,
     }
 
   /** @todo Chiara we need to build the list of valid peers! */
+
+  /* this metric is the only reason we pass the trigger to this func */
+  DUMP_METRIC((uint64_t)trigger,
+              sview->view->time,
+              "%s", "completion_trigger");
 
   DUMP_METRIC((uint64_t)bl_string_set_size(sview->done_clients),
               sview->view->time,
@@ -586,7 +592,7 @@ static int completion_check(bgpwatcher_store_t *store, store_view_t *sview,
   // dump_bgpwatcher_store_cc_status(store, bgp_view, ts, trigger, remove_view);
 
   // TODO: documentation
-  if(dispatcher_run(store, sview) != 0)
+  if(dispatcher_run(store, sview, trigger) != 0)
     {
       return -1;
     }
