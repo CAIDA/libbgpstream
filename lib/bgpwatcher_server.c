@@ -50,6 +50,9 @@ do {                                                            \
           __VA_ARGS__, value, time);                            \
  } while(0)                                                     \
 
+/* after how many heartbeats should we ask the store to check timeouts */
+#define STORE_HEARTBEATS_PER_TIMEOUT 60
+
 static void client_free(bgpwatcher_server_client_t **client_p)
 {
   bgpwatcher_server_client_t *client = *client_p;
@@ -803,6 +806,23 @@ static int run_server(bgpwatcher_server_t *server)
 	    }
 	}
       server->heartbeat_next = zclock_time() + server->heartbeat_interval;
+
+      /* should we ask the store to check its timeouts? */
+      if(server->store_timeout_cnt == STORE_HEARTBEATS_PER_TIMEOUT)
+        {
+          fprintf(stderr, "DEBUG: Checking store timeouts\n");
+          if(bgpwatcher_store_check_timeouts(server->store) != 0)
+            {
+              bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_STORE,
+                                     "Failed to check store timeouts");
+              goto err;
+            }
+          server->store_timeout_cnt = 0;
+        }
+      else
+        {
+          server->store_timeout_cnt++;
+        }
     }
 
   if(clients_purge(server) != 0)

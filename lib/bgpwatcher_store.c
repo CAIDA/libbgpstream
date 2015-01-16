@@ -606,36 +606,6 @@ static int completion_check(bgpwatcher_store_t *store, store_view_t *sview,
   return 0;
 }
 
-int check_timeouts(bgpwatcher_store_t *store)
-{
-  store_view_t *sview = NULL;
-  int i, idx;
-  struct timeval time_now;
-  gettimeofday(&time_now, NULL);
-
-  for(i=0; i<WDW_LEN; i++)
-    {
-      idx = (i + store->sviews_first_idx) % WDW_LEN;
-
-      sview = store->sviews[idx];
-      if(sview->state == STORE_VIEW_UNUSED)
-        {
-          continue;
-        }
-
-      if((time_now.tv_sec - sview->view->time_created.tv_sec)
-         > BGPWATCHER_STORE_BGPVIEW_TIMEOUT)
-        {
-          if(completion_check(store, sview,
-                              COMPLETION_TRIGGER_TIMEOUT_EXPIRED) != 0)
-            {
-              return -1;
-            }
-        }
-    }
-  return 0;
-}
-
 static int store_view_get(bgpwatcher_store_t *store, uint32_t new_time,
                           store_view_t **sview_p)
 {
@@ -868,8 +838,7 @@ int bgpwatcher_store_client_connect(bgpwatcher_store_t *store,
   // update or insert new client info
   kh_value(store->active_clients, k) = *client;
 
-  // every time there is a new event we check the timeout
-  return check_timeouts(store);
+  return 0;
 }
 
 
@@ -926,7 +895,7 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
               truncated_time);
       // signal to pfx row func that this table should be ignored
       table->sview = NULL;
-      return check_timeouts(store);
+      return 0;
     }
 
   // cache a pointer to this view in the server's table
@@ -1028,8 +997,8 @@ int bgpwatcher_store_prefix_table_end(bgpwatcher_store_t *store,
   if(table->sview == NULL)
     {
       // the view for this ts has been already removed
-      // ignore this message, and check timeouts
-      return check_timeouts(store);
+      // ignore this message
+      return 0;
     }
 
   store_view_t * sview = (store_view_t*)table->sview;
@@ -1039,6 +1008,36 @@ int bgpwatcher_store_prefix_table_end(bgpwatcher_store_t *store,
     }
   table->sview = NULL; // we are done with this
   return ret;
+}
+
+int bgpwatcher_store_check_timeouts(bgpwatcher_store_t *store)
+{
+  store_view_t *sview = NULL;
+  int i, idx;
+  struct timeval time_now;
+  gettimeofday(&time_now, NULL);
+
+  for(i=0; i<WDW_LEN; i++)
+    {
+      idx = (i + store->sviews_first_idx) % WDW_LEN;
+
+      sview = store->sviews[idx];
+      if(sview->state == STORE_VIEW_UNUSED)
+        {
+          continue;
+        }
+
+      if((time_now.tv_sec - sview->view->time_created.tv_sec)
+         > BGPWATCHER_STORE_BGPVIEW_TIMEOUT)
+        {
+          if(completion_check(store, sview,
+                              COMPLETION_TRIGGER_TIMEOUT_EXPIRED) != 0)
+            {
+              return -1;
+            }
+        }
+    }
+  return 0;
 }
 
 /* ========== DISABLED FUNCTIONS ========== */

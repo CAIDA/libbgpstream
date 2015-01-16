@@ -147,6 +147,9 @@ struct bgpwatcher_server {
   /** BGP Watcher Store instance */
   bgpwatcher_store_t *store;
 
+  /** The number of heartbeats that have gone by since the last timeout check */
+  int store_timeout_cnt;
+
 };
 
 /** @} */

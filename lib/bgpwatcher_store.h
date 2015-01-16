@@ -115,4 +115,11 @@ int bgpwatcher_store_prefix_table_end(bgpwatcher_store_t *store,
                                       bgpwatcher_server_client_info_t *client,
                                       bgpwatcher_pfx_table_t *table);
 
+/** Force a timeout check on the views currently in the store
+ *
+ * @param store         pointer to a store instance
+ * @return 0 if successful, -1 otherwise
+ */
+int bgpwatcher_store_check_timeouts(bgpwatcher_store_t *store);
+
 #endif /* __BGPSTORE_LIB_H */
