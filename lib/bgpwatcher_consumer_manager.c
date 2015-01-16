@@ -81,6 +81,9 @@ static const consumer_alloc_func_t consumer_alloc_functions[] = {
   /** Pointer to per-as vis function */
   bwc_perasvisibility_alloc,
 
+  /** Pointer to per-geo vis function */
+  bwc_pergeovisibility_alloc,
+
   /** Sample conditional consumer. If enabled, point to the alloc function,
       otherwise a NULL pointer to indicate the consumer is unavailable */
   /*

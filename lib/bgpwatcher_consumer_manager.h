@@ -82,7 +82,7 @@ typedef enum bwc_id
     BWC_ID_PERASVISIBILITY    = 3,
 
     /** Writes information about per-Geo visibility information to Charthouse */
-    BWC_ID_PERGEOVISIBILITY    = 4,
+    BWC_ID_PERGEOVISIBILITY   = 4,
 
     /** @todo add more consumers here */
 
