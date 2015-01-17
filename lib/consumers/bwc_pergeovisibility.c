@@ -221,6 +221,118 @@ static int create_gen_metrics(bwc_t *consumer)
   return 0;
 }
 
+static void find_ff_peers(bwc_t *consumer, bgpwatcher_view_iter_t *it)
+{
+  int khret;
+
+  bl_peerid_t peerid;
+  int pfx_cnt;
+
+  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
+      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
+      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_PEER))
+    {
+      /* grab the peer id */
+      peerid = bgpwatcher_view_iter_get_peerid(it);
+
+      pfx_cnt = bgpwatcher_view_iter_get_peer_v4pfx_cnt(it);
+      /* does this peer have any v4 table? */
+      if(pfx_cnt > 0)
+        {
+          STATE->v4_peer_cnt++;
+        }
+      /* does this peer have a full-feed v4 table? */
+      if(pfx_cnt >= IPV4_FULLFEED_SIZE)
+        {
+          /* add to the v4 fullfeed table */
+          kh_put(peerid_set, STATE->v4ff_peerids, peerid, &khret);
+        }
+
+      pfx_cnt = bgpwatcher_view_iter_get_peer_v6pfx_cnt(it);
+      /* does this peer have any v6 table? */
+      if(pfx_cnt > 0)
+        {
+          STATE->v6_peer_cnt++;
+        }
+      /* does this peer have a full-feed v6 table? */
+      if(pfx_cnt >= IPV6_FULLFEED_SIZE)
+        {
+          /* add to the v6 fullfeed table */
+          kh_put(peerid_set, STATE->v6ff_peerids, peerid, &khret);
+        }
+    }
+}
+
+
+static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
+{
+
+  bwc_pergeovisibility_state_t *state = STATE;
+
+  bl_ipv4_pfx_t *v4pfx;
+  bl_peerid_t peerid;
+  bgpwatcher_pfx_peer_info_t *pfxinfo;
+  int fullfeed_cnt;
+  uint32_t addr; // network order
+  uint8_t mask;
+  ipmeta_record_t *rec;
+  uint32_t num_ips;
+
+  /* IPv4 */
+  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
+      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
+      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX))
+    {
+      /* get the current v4 prefix */
+      v4pfx = bgpwatcher_view_iter_get_v4pfx(it);
+
+      /* exclude prefixes that are not seen by at least threshold peers
+       * no matter if they are full feed or not */
+      if(bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER)
+	 < STATE->pfx_vis_threshold)
+	{
+	  continue;
+	}
+
+      fullfeed_cnt = 0;
+      /* iterate over the peers for the current v4pfx */
+      for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER);
+	  !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER);
+	  bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER))
+	{
+          /* only consider peers that are full-feed */
+          peerid = bgpwatcher_view_iter_get_v4pfx_peerid(it);
+          if(kh_get(peerid_set, STATE->v4ff_peerids, peerid)
+             == kh_end(STATE->v4ff_peerids))
+            {
+	      continue;
+	    }
+	  fullfeed_cnt++;
+	  if(fullfeed_cnt >= STATE->pfx_vis_threshold)
+	    {
+	      break;
+	    }      
+	}
+
+      // if the prefix is ROUTED, then it can be geotagged
+      if(fullfeed_cnt >= STATE->pfx_vis_threshold)
+	{
+	  printf("%s \n", bl_print_ipv4_pfx(v4pfx));
+
+	  // TODO: remove these copies later
+	  addr = v4pfx->address.ipv4.s_addr; 
+	  mask = v4pfx->mask_len;
+	  ipmeta_lookup(state->provider, addr, mask, state->records);
+	  ipmeta_record_set_rewind(state->records);
+	  while ( (rec = ipmeta_record_set_next(state->records, &num_ips)) )
+	    {
+	      // TODO: work here
+	      printf("%s -> %s\n", bl_print_ipv4_pfx(v4pfx),rec->country_code);
+	    }
+	}
+    }
+  
+}
 
 
 /* ==================== CONSUMER INTERFACE FUNCTIONS ==================== */
@@ -291,6 +403,9 @@ int bwc_pergeovisibility_init(bwc_t *consumer, int argc, char **argv)
     }
 
   /* enable the provider  */
+
+  // TODO: all the provider options should be command-line options
+  
   /* if(ipmeta_enable_provider(state->ipmeta, state->provider, */
   /* 			    " -b /data/external/netacuity-dumps/Edge-processed/2014-04-07.netacq-4-blocks.csv.gz"  */
   /*                           " -l /data/external/netacuity-dumps/Edge-processed/2014-04-07.netacq-4-locations.csv.gz"  */
@@ -324,7 +439,7 @@ int bwc_pergeovisibility_init(bwc_t *consumer, int argc, char **argv)
   for(i=0; i < num_countries; i++)
     {
       // DEBUG line
-      printf("%s\n", countries[i]->iso2);
+      // printf("%s\n", countries[i]->iso2);
 
       // Warning: we assume netacq returns a set of unique countries
       // then we don't need to check if these iso2 are already
@@ -427,10 +542,13 @@ int bwc_pergeovisibility_process_view(bwc_t *consumer, uint8_t interests,
       return -1;
     }
 
+  /* find the full-feed peers */
+  find_ff_peers(consumer, it);
   
-  /* /\* find the full-feed peers *\/ */
-  /* find_ff_peers(consumer, it); */
+  /* analyze v4 table */
+  geotag_v4table(consumer, it);
 
+  
   /* uint32_t addr; // network order */
   /* uint8_t mask; */
   /* ipmeta_record_t *rec; */
