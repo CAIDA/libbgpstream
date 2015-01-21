@@ -498,7 +498,8 @@ khint32_t bl_ipv4_pfx_hash_func(bl_ipv4_pfx_t prefix)
 {
   // convert network byte order to host byte order
   // ipv4 32 bits number (in host order)
-  uint32_t address = ntohl(prefix.address.ipv4.s_addr);  
+  // uint32_t address = ntohl(prefix.address.ipv4.s_addr);
+  uint32_t address = prefix.address.ipv4.s_addr;  
   // embed the network mask length in the 32 bits
   khint32_t h = address | (uint32_t) prefix.mask_len;
   return __ac_Wang_hash(h);
@@ -515,7 +516,7 @@ khint64_t bl_ipv6_pfx_hash_func(bl_ipv6_pfx_t prefix)
   // ipv6 number - we take most significative 64 bits only (in host order)
   unsigned char *s6 =  &(prefix.address.ipv6.s6_addr[0]);
   uint64_t address = *((uint64_t *) s6);
-  address = ntohll(address);
+  // address = ntohll(address);
   // embed the network mask length in the 64 bits
   khint64_t h = address | (uint64_t) prefix.mask_len;
   return __ac_Wang_hash(h);
@@ -524,9 +525,28 @@ khint64_t bl_ipv6_pfx_hash_func(bl_ipv6_pfx_t prefix)
 int bl_ipv6_pfx_hash_equal(bl_ipv6_pfx_t prefix1, bl_ipv6_pfx_t prefix2)
 {
 
-  return ( (memcmp(&(prefix1.address.ipv6.s6_addr[0]), &(prefix2.address.ipv6.s6_addr[0]), sizeof(uint64_t)) == 0) &&
-	   (memcmp(&(prefix1.address.ipv6.s6_addr[8]), &(prefix2.address.ipv6.s6_addr[8]), sizeof(uint64_t)) == 0) &&
-	   prefix1.mask_len == prefix2.mask_len );
+  // implementation 1: faster when inserting different prefixes
+
+#if 0
+  if(prefix1.mask_len != prefix2.mask_len)
+    {
+      return 0;
+    }
+  int i;
+  for(i=0; i< 16; i++)
+    {
+      if(prefix1.address.ipv6.s6_addr[i] != prefix2.address.ipv6.s6_addr[i])
+	return 0;
+    }
+  return 1;
+#endif  
+
+  // implementation 2: faster when inserting a lot of equal prefixes 
+  
+  return ( prefix1.mask_len == prefix2.mask_len &&
+	   (memcmp(&(prefix1.address.ipv6.s6_addr[0]), &(prefix2.address.ipv6.s6_addr[0]), sizeof(uint64_t)) == 0) &&
+	   (memcmp(&(prefix1.address.ipv6.s6_addr[8]), &(prefix2.address.ipv6.s6_addr[8]), sizeof(uint64_t)) == 0)
+	   );
 
 }
 
