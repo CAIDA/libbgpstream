@@ -23,6 +23,8 @@
  *
  */
 
+#include "bgpdump_lib.h"
+
 /** Print a BGPDUMP_ENTRY record to stdout in the same way that the RIPE bgpdump
  * tool does.
  *
