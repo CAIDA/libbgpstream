@@ -22,7 +22,7 @@ TAGS
 # Compiled programs
 ChangeLog
 *.tar.gz
-tools/bgpstream
+tools/bgpreader
 
 # Autotools files
 # http://www.gnu.org/software/automake
