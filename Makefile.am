@@ -22,16 +22,17 @@
 # along with bgpstream.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-SUBDIRS = common bgpcommon lib tools
+SUBDIRS = common bgpcommon bgpdump-caida lib tools
 
 AM_CPPFLAGS =   -I$(top_srcdir)     		\
 		-I$(top_srcdir)/lib 		\
 		-I$(top_srcdir)/common 		\
-	      	-I$(top_srcdir)/bgpcommon 
+	      	-I$(top_srcdir)/bgpcommon	\
+		-I$(top_srcdir)/bgpdump-caida
 
 EXTRA_DIST =
 
-include_HEADERS = bgpcommon/bl_bgp_utils.h   
+include_HEADERS = bgpcommon/bl_bgp_utils.h
 
 
 ACLOCAL_AMFLAGS = -I m4

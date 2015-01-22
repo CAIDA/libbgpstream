@@ -4,3 +4,6 @@
 [submodule "bgpcommon"]
 	path = bgpcommon
 	url = https://github.com/CAIDA/bgpcommon.git
+[submodule "bgpdump-caida"]
+	path = bgpdump-caida
+	url = https://github.com/CAIDA/bgpdump-caida.git

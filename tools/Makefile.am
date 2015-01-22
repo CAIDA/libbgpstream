@@ -29,8 +29,8 @@ AM_CPPFLAGS = 	-I$(top_srcdir) \
 
 bin_PROGRAMS =  bgpreader
 
-bgpreader_SOURCES = bgpstream.c process_bdump.c
-bgpreader_LDADD   = -lbgpstream 
+bgpreader_SOURCES = bgpstream.c
+bgpreader_LDADD   = -lbgpstream
 bgpreader_LDFLAGS = -L$(top_builddir)/lib
 
 

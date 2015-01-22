@@ -80,7 +80,6 @@ void usage() {
 
 static void print_bs_record(bgpstream_record_t * bs_record);
 static void print_elem(bl_elem_t *elem);
-void print_bs_record_bgpdumpway(BGPDUMP_ENTRY *my_entry);
 
 
 int main(int argc, char *argv[])
