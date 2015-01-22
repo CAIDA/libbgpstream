@@ -26,12 +26,14 @@
 #ifndef _BGPSTREAM_RECORD_H
 #define _BGPSTREAM_RECORD_H
 
-#include <bgpdump_lib.h>
 #include <stdbool.h>
 
 
 #define BGPSTREAM_PAR_LEN 512
 
+/** ak notes that this is a sketchy hack to allow us to make an opaque pointer
+    to a BGPDUMP_ENTRY structure. */
+typedef struct struct_BGPDUMP_ENTRY bgpdump_entry_t;
 
 typedef enum {BGPSTREAM_UPDATE = 0,
 	      BGPSTREAM_RIB    = 1
@@ -62,7 +64,7 @@ typedef struct struct_bgpstream_record_attributes_t {
 
 
 typedef struct struct_bgpstream_record_t {
-  BGPDUMP_ENTRY *bd_entry;
+  bgpdump_entry_t *bd_entry;
   bgpstream_record_attributes_t attributes;
   bgpstream_record_status_t status; 
   bgpstream_dump_position_t dump_pos; 
