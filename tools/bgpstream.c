@@ -23,7 +23,6 @@
  *
  */
 
-#include "bgpstream_lib.h"
 #include "config.h"
 
 #include <stdio.h>
@@ -34,6 +33,10 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <unistd.h>
+
+#include "bgpdump_process.h"
+
+#include "bgpstream_lib.h"
 
 
 #define PROJECT_CMD_CNT 10
@@ -382,7 +385,7 @@ int main(int argc, char *argv[])
 	{	  
 	  if(record_bgpdump_output_on)
 	    {
-	      print_bs_record_bgpdumpway(bs_record->bd_entry);
+	      bgpdump_print_entry(bs_record->bd_entry);
 	    }
 	  if(elem_output_on) 
 	    {
