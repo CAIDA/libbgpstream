@@ -79,7 +79,6 @@ else
 fi
 
 # Checks for typedefs, structures, and compiler characteristics.
-AC_C_INLINE
 AC_TYPE_SIZE_T
 AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
