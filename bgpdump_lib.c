@@ -386,6 +386,7 @@ int process_mrtd_table_dump(struct mstream *s,BGPDUMP_ENTRY *entry) {
     break;
   default:
     assert(0); // unreachable
+    return 0;
   }
 
   read_asn(s,&entry->body.mrtd_table_dump.peer_as, asn_len);
@@ -1073,6 +1074,7 @@ void process_attr_aspath_string(struct aspath *as) {
 	  break;
 	default:
 	  assert("invalid asn_len" && false);
+          return;
 	}
 
 	pos += bgpdump_int2str(asn, as->str + pos);
