@@ -22,16 +22,18 @@ else
 IO_SOURCE=bgpdump_cfile_tools.c
 endif
 
-libbgpdump_caida_la_SOURCES = bgpdump_attr.h    \
-			      bgpdump_formats.h \
-			      bgpdump_lib.h     \
-			      bgpdump_mstream.h \
+libbgpdump_caida_la_SOURCES = bgpdump_attr.h    	\
 			      bgpdump_cfile_tools.h     \
-			      bgpdump_util.h    \
-			      bgpdump_lib.c     \
-			      bgpdump_mstream.c \
-			      $(IO_SOURCE)	  \
-			      bgpdump_util.c
+			      $(IO_SOURCE)	  	\
+			      bgpdump_formats.h 	\
+			      bgpdump_lib.c     	\
+			      bgpdump_lib.h     	\
+			      bgpdump_mstream.c 	\
+			      bgpdump_mstream.h 	\
+			      bgpdump_process.c		\
+			      bgpdump_process.h		\
+			      bgpdump_util.c		\
+			      bgpdump_util.h
 
 ACLOCAL_AMFLAGS = -I m4
 
