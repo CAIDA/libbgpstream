@@ -39,11 +39,11 @@ include_HEADERS = bgpstream_lib.h   \
 
 
 libbgpstream_la_SOURCES = 	\
+	bgpstream_elem.c	\
 	bgpstream_lib.h		\
 	bgpstream_int.h		\
 	bgpstream_lib.c		\
 	bgpstream_options.h	\
-	bgpstream_elem.h	\
 	bgpstream_record.h	\
 	bgpstream_constants.h	\
 	bgpstream_reader.h	\
@@ -54,7 +54,6 @@ libbgpstream_la_SOURCES = 	\
 	bgpstream_filter.c	\
 	bgpstream_datasource.h	\
 	bgpstream_datasource.c	\
-	bgpstream_elem.c	\
 	bgpstream_debug.h
 
 

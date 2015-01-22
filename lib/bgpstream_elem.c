@@ -49,8 +49,9 @@ Original Author: Shufu Mao(msf98@mails.tsinghua.edu.cn)
  *
  */
 
+#include "config.h"
+
 #include "bgpdump_lib.h"
-#include "bgpdump-config.h"
 
 #include "bgpstream_debug.h"
 #include "bgpstream_record.h"
