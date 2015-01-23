@@ -23,6 +23,9 @@
  *
  */
 
+#ifndef _BGPDUMP_PROCESS_H
+#define _BGPDUMP_PROCESS_H
+
 #include "bgpdump_lib.h"
 
 /** Print a BGPDUMP_ENTRY record to stdout in the same way that the RIPE bgpdump
@@ -31,3 +34,5 @@
  * @param entry         pointer to a BGP Dump entry
  */
 void bgpdump_print_entry(BGPDUMP_ENTRY *entry);
+
+#endif
