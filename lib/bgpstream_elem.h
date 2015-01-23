@@ -26,13 +26,32 @@
 #ifndef __BGPSTREAM_ELEM_H
 #define __BGPSTREAM_ELEM_H
 
-#include "bgpstream_record.h"
-#include "bl_bgp_utils.h"
+#include <bgpstream_record.h>
+#include <bl_bgp_utils.h>
 
-/* extract a list of elements from the bgpstream record  */
-bl_elem_t *bgpstream_elem_queue_create(bgpstream_record_t *bs_record);
+/** @file
+ *
+ * @brief Header file that exposes the public interface of a bgpstream elem. For
+ * details about an elem structure, see bl_bgp_utils.h.
+ *
+ * @author Chiara Orsini
+ *
+ */
 
-/* destroy the queue */
+/** Extract a list of elements from the given BGP Stream Record
+ *
+ * @param record        pointer to a BGP Stream Record instance
+ * @return pointer to a linked-list of bl_elem_t objects
+ *
+ * @note the returned elem list must be destroyed using
+ * bgpstream_elem_queue_destroy
+ */
+bl_elem_t *bgpstream_elem_queue_create(bgpstream_record_t *record);
+
+/** Destroy the given linked-list of Elem instances
+ *
+ * @param elem_queue    pointer to a linked-list of elems
+ */
 void bgpstream_elem_queue_destroy(bl_elem_t *elem_queue);
 
 #endif /* __BGPSTREAM_ELEM_H */
