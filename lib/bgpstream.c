@@ -27,8 +27,6 @@
 #include <stdlib.h>
 #include <bgpdump_lib.h>
 
-#include "bgpstream_lib.h"
-
 #include "bgpstream_int.h"
 #include "bgpstream_debug.h"
 

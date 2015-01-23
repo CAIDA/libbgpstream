@@ -26,11 +26,12 @@
 #ifndef _BGPSTREAM_INT_H
 #define _BGPSTREAM_INT_H
 
+#include "bgpstream.h"
+
 #include "bgpstream_datasource.h"
 #include "bgpstream_input.h"
 #include "bgpstream_reader.h"
 #include "bgpstream_filter.h"
-#include "bgpstream_record.h"
 
 
 typedef enum {ALLOCATED, ON, OFF} bgpstream_status;

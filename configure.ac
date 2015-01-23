@@ -43,7 +43,7 @@ AM_INIT_AUTOMAKE
 
 AC_CONFIG_MACRO_DIR([m4])
 
-AC_CONFIG_SRCDIR([lib/bgpstream_lib.c])
+AC_CONFIG_SRCDIR([lib/bgpstream.c])
 AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.

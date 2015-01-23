@@ -26,12 +26,9 @@
 #ifndef _BGPSTREAM_FILTER_H
 #define _BGPSTREAM_FILTER_H
 
-#include "bgpstream_lib.h"
+#include "bgpstream.h"
 
 #include "bgpstream_constants.h"
-#include <stdlib.h>
-#include<stdio.h>
-
 
 
 typedef struct struct_bgpstream_string_filter_t {

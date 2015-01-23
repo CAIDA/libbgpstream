@@ -45,7 +45,7 @@
  *
  * @{ */
 
-/** Opaque handle that represents a BGP Stream instance */a
+/** Opaque handle that represents a BGP Stream instance */
 typedef struct struct_bgpstream_t bgpstream_t;
 
 /** @} */
