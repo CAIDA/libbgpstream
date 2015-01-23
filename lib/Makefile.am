@@ -52,7 +52,6 @@ libbgpstream_la_SOURCES = 	\
 	bgpstream_int.h		\
 	bgpstream_lib.h		\
 	bgpstream_lib.c		\
-	bgpstream_options.h	\
 	bgpstream_reader.c	\
 	bgpstream_reader.h	\
 	bgpstream_record.c	\

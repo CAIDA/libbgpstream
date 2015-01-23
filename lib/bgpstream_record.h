@@ -31,8 +31,12 @@
 
 #define BGPSTREAM_PAR_LEN 512
 
-/** ak notes that this is a sketchy hack to allow us to make an opaque pointer
-    to a BGPDUMP_ENTRY structure. */
+/** An opaque pointer to a BGPDUMP_ENTRY field.
+ *
+ * @note this is an *internal* datastructure, it is *not* guaranteed that it
+ * will continue to conform to the public BGPDUMP_ENTRY structure. This is NOT
+ * for use in user code
+ */
 typedef struct struct_BGPDUMP_ENTRY bgpstream_record_mrt_data_t;
 
 typedef enum {BGPSTREAM_UPDATE = 0,
@@ -47,8 +51,8 @@ typedef enum {DUMP_START  = 0,        /* first entry in dump */
 typedef enum {VALID_RECORD     = 0,    /* valid entry found in dump */
 	      FILTERED_SOURCE  = 1,    /* fltered source: source is not empty, but no valid record found */
 	      EMPTY_SOURCE     = 2,   /* empty source: source has no entries */
-	      CORRUPTED_SOURCE = 3,   /* corrupted source: error in opening dump */	      
-	      CORRUPTED_RECORD = 4    /* corrupted record: dump corrupted at some point */	      
+	      CORRUPTED_SOURCE = 3,   /* corrupted source: error in opening dump */
+	      CORRUPTED_RECORD = 4    /* corrupted record: dump corrupted at some point */
 } bgpstream_record_status_t;
 
 #define BGPSTREAM_RECORD_TYPE_MAX 5
@@ -59,15 +63,15 @@ typedef struct struct_bgpstream_record_attributes_t {
   char dump_collector[BGPSTREAM_PAR_LEN];  // collector name
   bgpstream_record_dump_type_t dump_type;  // dump type
   long dump_time;   // timestamp associated with the time the bgp data was "aggregated"
-  long record_time; // timestamp associated with the time the bgp data was last seen 
+  long record_time; // timestamp associated with the time the bgp data was last seen
 } bgpstream_record_attributes_t;
 
 
 typedef struct struct_bgpstream_record_t {
   bgpstream_record_mrt_data_t *bd_entry;
   bgpstream_record_attributes_t attributes;
-  bgpstream_record_status_t status; 
-  bgpstream_dump_position_t dump_pos; 
+  bgpstream_record_status_t status;
+  bgpstream_dump_position_t dump_pos;
 } bgpstream_record_t;
 
 /* allocate memory for a bs_record (the client can refer to this

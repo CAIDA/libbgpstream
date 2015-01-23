@@ -26,9 +26,9 @@
 #ifndef _BGPSTREAM_FILTER_H
 #define _BGPSTREAM_FILTER_H
 
+#include "bgpstream_lib.h"
 
 #include "bgpstream_constants.h"
-#include "bgpstream_options.h"
 #include <stdlib.h>
 #include<stdio.h>
 
