@@ -33,7 +33,7 @@
 #include "bgpstream_debug.h"
 
 
-/* allocate memory for a new bgpstream interface 
+/* allocate memory for a new bgpstream interface
  */
 bgpstream_t *bgpstream_create() {
   bgpstream_debug("BS: create start");
@@ -41,13 +41,13 @@ bgpstream_t *bgpstream_create() {
   if(bs == NULL) {
     return NULL; // can't allocate memory
   }
-  bs->filter_mgr = bgpstream_filter_mgr_create(); 
+  bs->filter_mgr = bgpstream_filter_mgr_create();
   if(bs->filter_mgr == NULL) {
     bgpstream_destroy(bs);
     bs = NULL;
     return NULL;
   }
-  bs->datasource_mgr = bgpstream_datasource_mgr_create(); 
+  bs->datasource_mgr = bgpstream_datasource_mgr_create();
   if(bs->datasource_mgr == NULL) {
     bgpstream_destroy(bs);
     return NULL;
@@ -61,7 +61,7 @@ bgpstream_t *bgpstream_create() {
     bs = NULL;
     return NULL;
   }
-  bs->reader_mgr = bgpstream_reader_mgr_create(bs->filter_mgr); 
+  bs->reader_mgr = bgpstream_reader_mgr_create(bs->filter_mgr);
   if(bs->reader_mgr == NULL) {
     bgpstream_destroy(bs);
     bs = NULL;
@@ -75,7 +75,7 @@ bgpstream_t *bgpstream_create() {
 }
 /* side note: filters are part of the bgpstream so they
  * can be accessed both from the input_mgr and the
- * reader_mgr (input_mgr use them to apply a coarse-grained 
+ * reader_mgr (input_mgr use them to apply a coarse-grained
  * filtering, the reader_mgr applies a fine-grained filtering
  * of the data provided by the input_mgr)
  */
@@ -120,7 +120,7 @@ void bgpstream_set_data_interface(bgpstream_t * const bs, const bgpstream_dataso
 
 /* configure the datasource interface options */
 
-void bgpstream_set_data_interface_options(bgpstream_t * const bs, 
+void bgpstream_set_data_interface_options(bgpstream_t * const bs,
 					  const bgpstream_datasource_option option_type,
 					  char *option) {
   bgpstream_debug("BS: set_data_interface_options start");
@@ -133,7 +133,7 @@ void bgpstream_set_data_interface_options(bgpstream_t * const bs,
 
 
 /* configure the interface so that it blocks
- * waiting for new data 
+ * waiting for new data
  */
 void bgpstream_set_blocking(bgpstream_t * const bs) {
   bgpstream_debug("BS: set_blocking start");
@@ -145,11 +145,11 @@ void bgpstream_set_blocking(bgpstream_t * const bs) {
 }
 
 
-/* turn on the bgpstream interface, i.e.: 
+/* turn on the bgpstream interface, i.e.:
  * it makes the interface ready
- * for a new get next call 
+ * for a new get next call
 */
-int bgpstream_init(bgpstream_t * const bs) {
+int bgpstream_start(bgpstream_t * const bs) {
   bgpstream_debug("BS: init start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return 0; // nothing to init
@@ -172,9 +172,9 @@ int bgpstream_init(bgpstream_t * const bs) {
 /* this function returns the next available record read
  * if the input_queue (i.e. list of files connected from
  * an external source) or the reader_cqueue (i.e. list
- * of bgpdump currently open) are empty then it 
+ * of bgpdump currently open) are empty then it
  * triggers a mechanism to populate the queues or
- * return 0 if nothing is available 
+ * return 0 if nothing is available
  */
 int bgpstream_get_next_record(bgpstream_t * const bs, bgpstream_record_t * const bs_record) {
   bgpstream_debug("BS: get next");
@@ -204,19 +204,19 @@ int bgpstream_get_next_record(bgpstream_t * const bs, bgpstream_record_t * const
       bgpstream_debug("BS: got results from datasource");
       //DEBUG fprintf(stderr, "Finished with loading mysql results in memory!\n");
     }
-    bgpstream_debug("BS: input mgr not empty");    
+    bgpstream_debug("BS: input mgr not empty");
     bs_in = bgpstream_input_mgr_get_queue_to_process(bs->input_mgr);
     bgpstream_reader_mgr_add(bs->reader_mgr, bs_in, bs->filter_mgr);
-    bgpstream_input_mgr_destroy_queue(bs_in);        
+    bgpstream_input_mgr_destroy_queue(bs_in);
     bs_in = NULL;
   }
-  bgpstream_debug("BS: reader mgr not empty");  
+  bgpstream_debug("BS: reader mgr not empty");
   return bgpstream_reader_mgr_get_next_record(bs->reader_mgr, bs_record, bs->filter_mgr);
 }
 
 
 /* turn off the bgpstream interface */
-void bgpstream_close(bgpstream_t * const bs) {
+void bgpstream_stop(bgpstream_t * const bs) {
   bgpstream_debug("BS: close start");
   if(bs == NULL || (bs != NULL && bs->status != ON)) {
     return; // nothing to close
@@ -246,5 +246,3 @@ void bgpstream_destroy(bgpstream_t * const bs){
   free(bs);
   bgpstream_debug("BS: destroy end");
 }
-
-

@@ -35,7 +35,6 @@
 // Opaque Data Structures
 typedef struct struct_bgpstream_t bgpstream_t;
 
-
 /* allocate memory for bgpstream interface */
 bgpstream_t *bgpstream_create();
 
@@ -63,7 +62,7 @@ void bgpstream_set_blocking(bgpstream_t *bs);
 
 /* turn on the bgpstream interface, i.e.: it makes the interface ready
  * for a new get next call */
-int bgpstream_init(bgpstream_t *bs);
+int bgpstream_start(bgpstream_t *bs);
 
 /* assign to bs_record the next record ordered by time among all those available
  * (data collected are first filtered using the filters if set)
@@ -76,7 +75,7 @@ int bgpstream_get_next_record(bgpstream_t *bs,
                               bgpstream_record_t *bs_record);
 
 /* turn off the bgpstream interface */
-void bgpstream_close(bgpstream_t *bs);
+void bgpstream_stop(bgpstream_t *bs);
 
 /* destroy the memory allocated for bgpstream interface */
 void bgpstream_destroy(bgpstream_t *bs);

@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
   char *mysql_user = NULL;
   char *mysql_host = NULL;
   char *csvfile_file = NULL;
-  
+
   while (prevoptind = optind,
 	 (opt = getopt (argc, argv, "P:C:T:W:d:brmeD:U:H:F:h?")) >= 0)
     {
@@ -232,31 +232,31 @@ int main(int argc, char *argv[])
     }
 
   // datasource is the only required argument
-  if(datasource_name == NULL) 
+  if(datasource_name == NULL)
     {
     fprintf(stderr, "ERROR: Missing mandatory argument -d <datasource>\n");
     usage();
     exit(-1);
   }
-  
+
   bgpstream_datasource_type datasource_type;
-  if(strcmp(datasource_name, "mysql") == 0) 
+  if(strcmp(datasource_name, "mysql") == 0)
     {
       datasource_type = BS_MYSQL;
     }
-  else 
+  else
     {
       if(strcmp(datasource_name, "csvfile") == 0)
 	{
 	  datasource_type = BS_CSVFILE;
 	}
-      else 
+      else
 	{
-	  if(strcmp(datasource_name, "customlist") == 0) 
+	  if(strcmp(datasource_name, "customlist") == 0)
 	    {
 	      datasource_type = BS_CUSTOMLIST;
 	    }
-	  else 
+	  else
 	    {
 	      fprintf(stderr, "ERROR: Datasource %s is not valid.\n", datasource_name);
 	      usage();
@@ -267,22 +267,22 @@ int main(int argc, char *argv[])
 
   // signal if there are incompatible arguments that will be ignored
   if(
-     (datasource_type != BS_MYSQL && 
+     (datasource_type != BS_MYSQL &&
      (mysql_dbname != NULL || mysql_user != NULL || mysql_host != NULL) ) ||
-     (datasource_type != BS_CSVFILE && csvfile_file != NULL) 
+     (datasource_type != BS_CSVFILE && csvfile_file != NULL)
      )
     {
       fprintf(stderr, "WARNING: some of the datasource options provided do not apply\n"
-	      "\t to the datasource choosen and they will be ignored.\n");	      
+	      "\t to the datasource choosen and they will be ignored.\n");
     }
 
-  
+
   // if the user did not specify any output format
   // then the default one is per record
   if(record_output_on == 0 && elem_output_on == 0 && record_bgpdump_output_on == 0) {
     record_output_on = 1;
   }
-  
+
   // the program can now start
 
   // allocate memory for interface
@@ -353,9 +353,9 @@ int main(int argc, char *argv[])
       bgpstream_set_blocking(bs);
     }
 
-   // allocate memory for bs_record  
+   // allocate memory for bs_record
   bgpstream_record_t *bs_record = bgpstream_record_create();
-  if(bs_record == NULL) 
+  if(bs_record == NULL)
     {
       fprintf(stderr, "ERROR: Could not create BGPStream record\n");
       bgpstream_destroy(bs);
@@ -363,7 +363,7 @@ int main(int argc, char *argv[])
     }
 
     // turn on interface
-  if(bgpstream_init(bs) < 0) {
+  if(bgpstream_start(bs) < 0) {
     fprintf(stderr, "ERROR: Could not init BGPStream\n");
     return -1;
   }
@@ -379,18 +379,18 @@ int main(int argc, char *argv[])
 	{
 	  print_bs_record(bs_record);
 	}
-      if(get_next_ret && bs_record->status == VALID_RECORD) 
-	{	  
+      if(get_next_ret && bs_record->status == VALID_RECORD)
+	{
 	  if(record_bgpdump_output_on)
 	    {
 	      bgpstream_record_print_mrt_data(bs_record);
 	    }
-	  if(elem_output_on) 
+	  if(elem_output_on)
 	    {
 	      // extract queue
 	      bs_elem_head = bgpstream_elem_queue_create(bs_record);
 	      bs_elem_iterator = bs_elem_head;
-	      while(bs_elem_iterator) 
+	      while(bs_elem_iterator)
 		{
 		  print_elem(bs_elem_iterator);
 		  bs_elem_iterator = bs_elem_iterator->next;
@@ -399,14 +399,14 @@ int main(int argc, char *argv[])
 	    }
 	}
   }
-  while(get_next_ret > 0);    
+  while(get_next_ret > 0);
 
   // de-allocate memory for bs_record
   bgpstream_record_destroy(bs_record);
 
   // turn off interface
-  bgpstream_close(bs);
-  
+  bgpstream_stop(bs);
+
   // deallocate memory for interface
   bgpstream_destroy(bs);
 
@@ -437,9 +437,9 @@ int main(int argc, char *argv[])
 
 // print utility functions
 
-static char* get_dump_type_str(bgpstream_record_dump_type_t dump_type) 
+static char* get_dump_type_str(bgpstream_record_dump_type_t dump_type)
 {
-  switch(dump_type) 
+  switch(dump_type)
     {
     case BGPSTREAM_UPDATE:
       return "update";
@@ -449,9 +449,9 @@ static char* get_dump_type_str(bgpstream_record_dump_type_t dump_type)
   return "";
 }
 
-static char* get_dump_pos_str(bgpstream_dump_position_t dump_pos) 
+static char* get_dump_pos_str(bgpstream_dump_position_t dump_pos)
 {
-  switch(dump_pos) 
+  switch(dump_pos)
     {
     case DUMP_START:
       return "start";
@@ -463,9 +463,9 @@ static char* get_dump_pos_str(bgpstream_dump_position_t dump_pos)
   return "";
 }
 
-static char *get_record_status_str(bgpstream_record_status_t status) 
+static char *get_record_status_str(bgpstream_record_status_t status)
 {
-  switch(status) 
+  switch(status)
     {
     case VALID_RECORD:
       return "valid_record";
@@ -482,9 +482,9 @@ static char *get_record_status_str(bgpstream_record_status_t status)
 }
 
 
-static void print_bs_record(bgpstream_record_t * bs_record) 
+static void print_bs_record(bgpstream_record_t * bs_record)
 {
-  assert(bs_record);  
+  assert(bs_record);
   printf("%ld|", bs_record->attributes.record_time);
   printf("%s|", bs_record->attributes.dump_project);
   printf("%s|", bs_record->attributes.dump_collector);
@@ -497,12 +497,10 @@ static void print_bs_record(bgpstream_record_t * bs_record)
 }
 
 
-static void print_elem(bl_elem_t * elem) 
+static void print_elem(bl_elem_t * elem)
 {
   assert(bs_elem);
   char *ptr = bl_print_elem(elem);
   printf("%s\n", ptr);
-  if(ptr != NULL) free(ptr);    
+  if(ptr != NULL) free(ptr);
 }
-
-
