@@ -169,46 +169,6 @@ int bgpstream_init(bgpstream_t * const bs) {
   }
 }
 
-
-/* allocate memory for a bs_record */
-bgpstream_record_t *bgpstream_create_record() {
-  bgpstream_debug("BS: create record start");
-  bgpstream_record_t *bs_record = (bgpstream_record_t*) malloc(sizeof(bgpstream_record_t));
-  if(bs_record == NULL) {
-    return NULL; // can't allocate memory
-  }
-  bs_record->bd_entry = NULL;
-  bs_record->status = EMPTY_SOURCE;
-  bs_record->dump_pos = DUMP_START;
-  strcpy(bs_record->attributes.dump_project, "");
-  strcpy(bs_record->attributes.dump_collector, "");
-  bs_record->attributes.dump_type = BGPSTREAM_UPDATE;
-  bs_record->attributes.dump_time = 0;
-  bs_record->attributes.record_time = 0;
-  bgpstream_debug("BS: create record end");
-  return bs_record;
-}
-
-
-/* free memory associated to a bs_record  */
-void bgpstream_destroy_record(bgpstream_record_t * const bs_record){
-  bgpstream_debug("BS: destroy record start");
-  if(bs_record == NULL) {
-    bgpstream_debug("BS: record destroy end");
-    return; // nothing to do
-  }
-  if(bs_record->bd_entry != NULL){
-    bgpstream_debug("BS - free bs_record->bgpdump_entry");
-    bgpdump_free_mem(bs_record->bd_entry);
-    bs_record->bd_entry = NULL;
-  }
-  bgpstream_debug("BS - free bs_record");
-  free(bs_record);
-  bgpstream_debug("BS: destroy record end");
-}
-
-
-
 /* this function returns the next available record read
  * if the input_queue (i.e. list of files connected from
  * an external source) or the reader_cqueue (i.e. list

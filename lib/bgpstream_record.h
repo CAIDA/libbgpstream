@@ -33,7 +33,7 @@
 
 /** ak notes that this is a sketchy hack to allow us to make an opaque pointer
     to a BGPDUMP_ENTRY structure. */
-typedef struct struct_BGPDUMP_ENTRY bgpdump_entry_t;
+typedef struct struct_BGPDUMP_ENTRY bgpstream_record_mrt_data_t;
 
 typedef enum {BGPSTREAM_UPDATE = 0,
 	      BGPSTREAM_RIB    = 1
@@ -64,10 +64,21 @@ typedef struct struct_bgpstream_record_attributes_t {
 
 
 typedef struct struct_bgpstream_record_t {
-  bgpdump_entry_t *bd_entry;
+  bgpstream_record_mrt_data_t *bd_entry;
   bgpstream_record_attributes_t attributes;
   bgpstream_record_status_t status; 
   bgpstream_dump_position_t dump_pos; 
 } bgpstream_record_t;
+
+/* allocate memory for a bs_record (the client can refer to this
+ * memory, however, if it has to save this object, it needs to
+ * copy the memory itself) */
+bgpstream_record_t *bgpstream_record_create();
+
+/* deallocate memory for the bs_record */
+void bgpstream_record_destroy(bgpstream_record_t * const bs_record);
+
+/* wrapper around bgpdump_print_entry */
+void bgpstream_record_print_mrt_data(bgpstream_record_t * const bs_record);
 
 #endif /* _BGPSTREAM_RECORD_H */

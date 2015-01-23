@@ -39,23 +39,23 @@ include_HEADERS = bgpstream_lib.h   \
 
 
 libbgpstream_la_SOURCES = 	\
-	bgpstream_elem.c	\
-	bgpstream_lib.h		\
-	bgpstream_int.h		\
-	bgpstream_lib.c		\
-	bgpstream_options.h	\
-	bgpstream_record.h	\
 	bgpstream_constants.h	\
-	bgpstream_reader.h	\
-	bgpstream_reader.c	\
-	bgpstream_input.h	\
-	bgpstream_input.c	\
+	bgpstream_datasource.c	\
+	bgpstream_datasource.h	\
+	bgpstream_debug.h	\
+	bgpstream_elem.c	\
 	bgpstream_filter.h	\
 	bgpstream_filter.c	\
-	bgpstream_datasource.h	\
-	bgpstream_datasource.c	\
-	bgpstream_debug.h
-
+	bgpstream_input.h	\
+	bgpstream_input.c	\
+	bgpstream_int.h		\
+	bgpstream_lib.h		\
+	bgpstream_lib.c		\
+	bgpstream_options.h	\
+	bgpstream_reader.c	\
+	bgpstream_reader.h	\
+	bgpstream_record.c	\
+	bgpstream_record.h
 
 
 libbgpstream_la_CFLAGS = -Wall

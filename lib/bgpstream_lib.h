@@ -59,11 +59,6 @@ void bgpstream_set_blocking(bgpstream_t * const bs);
  * for a new get next call */
 int bgpstream_init(bgpstream_t * const bs);
 
-/* allocate memory for a bs_record (the client can refer to this
- * memory, however, if it has to save this object, it needs to
- * copy the memory itself) */
-bgpstream_record_t *bgpstream_create_record();
-
 /* assign to bs_record the next record ordered by time among all those available
  * (data collected are first filtered using the filters if set) 
  * return:

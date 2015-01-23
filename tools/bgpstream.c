@@ -26,6 +26,7 @@
 #include "config.h"
 
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -34,10 +35,7 @@
 #include <inttypes.h>
 #include <unistd.h>
 
-#include "bgpdump_process.h"
-
-#include "bgpstream_lib.h"
-
+#include <bgpstream_lib.h>
 
 #define PROJECT_CMD_CNT 10
 #define TYPE_CMD_CNT    10
@@ -356,7 +354,7 @@ int main(int argc, char *argv[])
     }
 
    // allocate memory for bs_record  
-  bgpstream_record_t *bs_record = bgpstream_create_record();
+  bgpstream_record_t *bs_record = bgpstream_record_create();
   if(bs_record == NULL) 
     {
       fprintf(stderr, "ERROR: Could not create BGPStream record\n");
@@ -385,7 +383,7 @@ int main(int argc, char *argv[])
 	{	  
 	  if(record_bgpdump_output_on)
 	    {
-	      bgpdump_print_entry(bs_record->bd_entry);
+	      bgpstream_record_print_mrt_data(bs_record);
 	    }
 	  if(elem_output_on) 
 	    {
@@ -404,7 +402,7 @@ int main(int argc, char *argv[])
   while(get_next_ret > 0);    
 
   // de-allocate memory for bs_record
-  bgpstream_destroy_record(bs_record);
+  bgpstream_record_destroy(bs_record);
 
   // turn off interface
   bgpstream_close(bs);

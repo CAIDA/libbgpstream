@@ -25,8 +25,7 @@
 AM_CPPFLAGS = 	-I$(top_srcdir) \
 	 	-I$(top_srcdir)/lib \
 	 	-I$(top_srcdir)/common \
-                -I$(top_srcdir)/bgpcommon \
-                -I$(top_srcdir)/bgpdump-caida
+                -I$(top_srcdir)/bgpcommon
 
 bin_PROGRAMS =  bgpreader
 
