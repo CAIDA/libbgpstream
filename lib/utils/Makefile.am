@@ -22,17 +22,19 @@
 # along with bgp-common.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-SUBDIRS = 
+SUBDIRS =
 
 AM_CPPFLAGS = -I$(top_srcdir)  \
 	      -I$(top_srcdir)/common
 
 
-noinst_LTLIBRARIES = libbl.la
+noinst_LTLIBRARIES = libbgpstream-utils.la
 
 CONDITIONAL_LIBS=
 
-libbl_la_SOURCES =   \
+include_HEADERS= bl_bgp_utils.h
+
+libbgpstream_utils_la_SOURCES =   \
 	bl_bgp_utils.c  \
 	bl_bgp_utils.h  \
 	bl_peersign_map.c  \
@@ -48,10 +50,10 @@ libbl_la_SOURCES =   \
 	bl_pfx_set_int.h  \
 	bl_pfx_set.h  \
 	bl_addr_set.c \
-	bl_addr_set.h 
+	bl_addr_set.h
 
 
-libbl_la_LIBADD = $(CONDITIONAL_LIBS)
+libbgpstream_utils_la_LIBADD = $(CONDITIONAL_LIBS)
 
 ACLOCAL_AMFLAGS = -I m4
 

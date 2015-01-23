@@ -22,13 +22,14 @@
 # along with bgpstream.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+SUBDIRS= utils
 
 # AM_CPPFLAGS - The contents of this variable are passed to every compilation
 # that invokes the C preprocessor; it is a list of arguments to the
 # preprocessor. For instance, -I and -D options should be listed here.
 AM_CPPFLAGS = 	-I$(top_srcdir) \
+                -I$(top_srcdir)/lib/utils\
 	 	-I$(top_srcdir)/common \
-                -I$(top_srcdir)/bgpcommon \
 		-I$(top_srcdir)/bgpdump-caida
 
 # Each _LTLIBRARIES variable is a list of libtool libraries to build.
@@ -37,8 +38,7 @@ lib_LTLIBRARIES = libbgpstream.la
 # Public header files that need to be installed in order for people to use the
 # library.
 include_HEADERS = bgpstream.h   \
-		  bgpstream_record.h \
-		  $(top_srcdir)/bgpcommon/bl_bgp_utils.h
+		  bgpstream_record.h
 
 
 libbgpstream_la_SOURCES = 	\
@@ -63,8 +63,8 @@ libbgpstream_la_SOURCES = 	\
 
 libbgpstream_la_CFLAGS = -Wall
 
-libbgpstream_la_LIBADD = $(top_builddir)/common/libcccommon.la \
-			 $(top_builddir)/bgpcommon/libbl.la \
+libbgpstream_la_LIBADD = $(top_builddir)/lib/utils/libbgpstream-utils.la \
+			 $(top_builddir)/common/libcccommon.la \
 			 $(top_builddir)/bgpdump-caida/libbgpdump-caida.la
 
 libbgpstream_la_LDFLAGS = -version-info @BGPSTREAM_MAJOR_VERSION@:@BGPSTREAM_MINOR_VERSION@:@BGPSTREAM_MID_VERSION@
