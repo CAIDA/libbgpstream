@@ -51,6 +51,10 @@ Original Author: Shufu Mao(msf98@mails.tsinghua.edu.cn)
 
 #include "config.h"
 
+#include <stdio.h>
+#include <string.h>
+#include <inttypes.h>
+
 #include "bgpdump_lib.h"
 
 #include "bgpstream_debug.h"
@@ -59,10 +63,7 @@ Original Author: Shufu Mao(msf98@mails.tsinghua.edu.cn)
 #include "utils.h"
 #include "bl_bgp_utils.h"
 
-#include <stdio.h>
-#include <string.h>
-#include <inttypes.h>
-
+#include "bgpstream_elem.h"
 
 /* route info create and destroy methods */
 static bl_elem_t * bd2bi_create_route_info() {
@@ -663,7 +664,7 @@ static bl_elem_t * bgp_state_change(BGPDUMP_ENTRY *entry) {
 /* ==================== PUBLIC FUNCTIONS ==================== */
 
 /* get routing information from entry */
-bl_elem_t * bgpstream_get_elem_queue(bgpstream_record_t * const bs_record) {
+bl_elem_t * bgpstream_elem_queue_create(bgpstream_record_t * const bs_record) {
 
   if(bs_record == NULL || bs_record->bd_entry == NULL ||
      bs_record->status != VALID_RECORD) {
@@ -696,6 +697,6 @@ bl_elem_t * bgpstream_get_elem_queue(bgpstream_record_t * const bs_record) {
 }
 
 
-void bgpstream_destroy_elem_queue(bl_elem_t * elem_queue) {
+void bgpstream_elem_queue_destroy(bl_elem_t * elem_queue) {
   bd2bi_destroy_route_info_queue(elem_queue);
 }

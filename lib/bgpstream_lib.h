@@ -26,9 +26,10 @@
 #ifndef _BGPSTREAM_LIB_H
 #define _BGPSTREAM_LIB_H
 
-#include "bgpstream_record.h"
-#include "bgpstream_options.h"
-#include "bl_bgp_utils.h"
+#include <bgpstream_elem.h>
+#include <bgpstream_record.h>
+#include <bgpstream_options.h>
+#include <bl_bgp_utils.h>
 
 
 // Opaque Data Structures
@@ -39,49 +40,46 @@ typedef struct struct_bgpstream_t bgpstream_t;
 bgpstream_t *bgpstream_create();
 
 /* configure filters in order to select a subset of the bgp data available */
-void bgpstream_add_filter(bgpstream_t * const bs, bgpstream_filter_type filter_type,
+void bgpstream_add_filter(bgpstream_t *bs,
+                          bgpstream_filter_type filter_type,
 			  const char* filter_value);
-void bgpstream_add_interval_filter(bgpstream_t * const bs, bgpstream_filter_type filter_type,
-				   const char* filter_start, const char* filter_stop);
+
+void bgpstream_add_interval_filter(bgpstream_t *bs,
+                                   bgpstream_filter_type filter_type,
+				   const char *filter_start,
+                                   const char *filter_stop);
 
 /* configure the data interface */
-void bgpstream_set_data_interface(bgpstream_t * const bs, const bgpstream_datasource_type datasource);
+void bgpstream_set_data_interface(bgpstream_t *bs,
+                                  bgpstream_datasource_type datasource);
 
 /* set up options for the data interface */
-void bgpstream_set_data_interface_options(bgpstream_t * const bs, 
-					  const bgpstream_datasource_option option_type,
-					  char *option);
+void bgpstream_set_data_interface_options(bgpstream_t *bs,
+                                        bgpstream_datasource_option option_type,
+				        char *option);
 
 /* configure the interface so that it blocks waiting for new data */
-void bgpstream_set_blocking(bgpstream_t * const bs);
+void bgpstream_set_blocking(bgpstream_t *bs);
 
 /* turn on the bgpstream interface, i.e.: it makes the interface ready
  * for a new get next call */
-int bgpstream_init(bgpstream_t * const bs);
+int bgpstream_init(bgpstream_t *bs);
 
 /* assign to bs_record the next record ordered by time among all those available
- * (data collected are first filtered using the filters if set) 
+ * (data collected are first filtered using the filters if set)
  * return:
  * - > 0 if a new record has been read correctly
  * -   0 if no new data are available
  * - < 0 if an error occurred
  */
-int bgpstream_get_next_record(bgpstream_t * const bs, bgpstream_record_t * const bs_record);
-
-/* extract a list of elements from the bgpstream record  */
-bl_elem_t *bgpstream_get_elem_queue(bgpstream_record_t * const bs_record);
-
-/* destroy the queue */
-void bgpstream_destroy_elem_queue(bl_elem_t * elem_queue);
-
-/* deallocate memory for the bs_record */
-void bgpstream_destroy_record(bgpstream_record_t * const bs_record);
+int bgpstream_get_next_record(bgpstream_t *bs,
+                              bgpstream_record_t *bs_record);
 
 /* turn off the bgpstream interface */
-void bgpstream_close(bgpstream_t * const bs);
+void bgpstream_close(bgpstream_t *bs);
 
 /* destroy the memory allocated for bgpstream interface */
-void bgpstream_destroy(bgpstream_t * const bs);
+void bgpstream_destroy(bgpstream_t *bs);
 
 
 #endif /* _BGPSTREAM_LIB_H */

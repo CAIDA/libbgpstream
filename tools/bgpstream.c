@@ -388,14 +388,14 @@ int main(int argc, char *argv[])
 	  if(elem_output_on) 
 	    {
 	      // extract queue
-	      bs_elem_head = bgpstream_get_elem_queue(bs_record);
+	      bs_elem_head = bgpstream_elem_queue_create(bs_record);
 	      bs_elem_iterator = bs_elem_head;
 	      while(bs_elem_iterator) 
 		{
 		  print_elem(bs_elem_iterator);
 		  bs_elem_iterator = bs_elem_iterator->next;
 		}
-	      bgpstream_destroy_elem_queue(bs_elem_head);
+	      bgpstream_elem_queue_destroy(bs_elem_head);
 	    }
 	}
   }
