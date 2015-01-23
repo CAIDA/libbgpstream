@@ -81,8 +81,9 @@ bgpstream_t *bgpstream_create() {
 
 
 /* configure filters in order to select a subset of the bgp data available */
-void bgpstream_add_filter(bgpstream_t * const bs, bgpstream_filter_type filter_type,
-			  const char* filter_value){
+void bgpstream_add_filter(bgpstream_t *bs,
+                          bgpstream_filter_type filter_type,
+			  const char* filter_value) {
   bgpstream_debug("BS: set_filter start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return; // nothing to customize
@@ -92,13 +93,16 @@ void bgpstream_add_filter(bgpstream_t * const bs, bgpstream_filter_type filter_t
 }
 
 
-void bgpstream_add_interval_filter(bgpstream_t * const bs, bgpstream_filter_type filter_type,
-				   const char* filter_start, const char* filter_stop){
+void bgpstream_add_interval_filter(bgpstream_t *bs,
+                                   bgpstream_filter_type filter_type,
+				   const char* filter_start,
+                                   const char* filter_stop) {
   bgpstream_debug("BS: set_filter start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return; // nothing to customize
   }
-  bgpstream_filter_mgr_interval_filter_add(bs->filter_mgr, filter_type, filter_start, filter_stop);
+  bgpstream_filter_mgr_interval_filter_add(bs->filter_mgr, filter_type,
+                                           filter_start, filter_stop);
   bgpstream_debug("BS: set_filter end");
 }
 
@@ -106,7 +110,8 @@ void bgpstream_add_interval_filter(bgpstream_t * const bs, bgpstream_filter_type
 /* configure the interface so that it connects
  * to a specific datasource interface
  */
-void bgpstream_set_data_interface(bgpstream_t * const bs, const bgpstream_datasource_type datasource) {
+void bgpstream_set_data_interface(bgpstream_t *bs,
+                                  bgpstream_datasource_type datasource) {
   bgpstream_debug("BS: set_data_interface start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return; // nothing to customize
@@ -118,14 +123,15 @@ void bgpstream_set_data_interface(bgpstream_t * const bs, const bgpstream_dataso
 
 /* configure the datasource interface options */
 
-void bgpstream_set_data_interface_options(bgpstream_t * const bs,
-					  const bgpstream_datasource_option option_type,
-					  char *option) {
+void bgpstream_set_data_interface_options(bgpstream_t *bs,
+			                bgpstream_datasource_option option_type,
+					char *option) {
   bgpstream_debug("BS: set_data_interface_options start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return; // nothing to customize
   }
-  bgpstream_datasource_mgr_set_data_interface_option(bs->datasource_mgr, option_type, option);
+  bgpstream_datasource_mgr_set_data_interface_option(bs->datasource_mgr,
+                                                     option_type, option);
   bgpstream_debug("BS: set_data_interface_options stop");
 }
 
@@ -133,7 +139,7 @@ void bgpstream_set_data_interface_options(bgpstream_t * const bs,
 /* configure the interface so that it blocks
  * waiting for new data
  */
-void bgpstream_set_blocking(bgpstream_t * const bs) {
+void bgpstream_set_blocking(bgpstream_t *bs) {
   bgpstream_debug("BS: set_blocking start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return; // nothing to customize
@@ -147,7 +153,7 @@ void bgpstream_set_blocking(bgpstream_t * const bs) {
  * it makes the interface ready
  * for a new get next call
 */
-int bgpstream_start(bgpstream_t * const bs) {
+int bgpstream_start(bgpstream_t *bs) {
   bgpstream_debug("BS: init start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return 0; // nothing to init
@@ -160,7 +166,8 @@ int bgpstream_start(bgpstream_t * const bs) {
     return 1;
   }
   else{
-    bs->status = ALLOCATED; // interface is not on (something wrong with datasource)
+    // interface is not on (something wrong with datasource)
+    bs->status = ALLOCATED;
     bgpstream_debug("BS: init warning: check if the datasource provided is ok");
     bgpstream_debug("BS: init end: not ok");
     return -1;
@@ -174,12 +181,13 @@ int bgpstream_start(bgpstream_t * const bs) {
  * triggers a mechanism to populate the queues or
  * return 0 if nothing is available
  */
-int bgpstream_get_next_record(bgpstream_t * const bs, bgpstream_record_t * const bs_record) {
+int bgpstream_get_next_record(bgpstream_t *bs,
+                              bgpstream_record_t *record) {
   bgpstream_debug("BS: get next");
   if(bs == NULL || (bs != NULL && bs->status != ON)) {
-  return -1; // wrong status
+    return -1; // wrong status
   }
-  // bgpstream_record_t *bs_record = NULL;
+  // bgpstream_record_t *record = NULL;
   int num_query_results = 0;
   bgpstream_input_t *bs_in = NULL;
   while(bgpstream_reader_mgr_is_empty(bs->reader_mgr)) {
@@ -189,8 +197,9 @@ int bgpstream_get_next_record(bgpstream_t * const bs, bgpstream_record_t * const
       bgpstream_debug("BS: input mgr is empty");
       /* query the external source and append new
        * input objects to the input_mgr queue */
-      num_query_results = bgpstream_datasource_mgr_update_input_queue(bs->datasource_mgr,
-								      bs->input_mgr);
+      num_query_results =
+        bgpstream_datasource_mgr_update_input_queue(bs->datasource_mgr,
+                                                    bs->input_mgr);
       if(num_query_results == 0){
 	bgpstream_debug("BS: no (more) data are available");
 	return 0; // no (more) data are available
@@ -209,12 +218,13 @@ int bgpstream_get_next_record(bgpstream_t * const bs, bgpstream_record_t * const
     bs_in = NULL;
   }
   bgpstream_debug("BS: reader mgr not empty");
-  return bgpstream_reader_mgr_get_next_record(bs->reader_mgr, bs_record, bs->filter_mgr);
+  return bgpstream_reader_mgr_get_next_record(bs->reader_mgr, record,
+                                              bs->filter_mgr);
 }
 
 
 /* turn off the bgpstream interface */
-void bgpstream_stop(bgpstream_t * const bs) {
+void bgpstream_stop(bgpstream_t *bs) {
   bgpstream_debug("BS: close start");
   if(bs == NULL || (bs != NULL && bs->status != ON)) {
     return; // nothing to close
@@ -222,13 +232,12 @@ void bgpstream_stop(bgpstream_t * const bs) {
   bgpstream_datasource_mgr_close(bs->datasource_mgr);
   bs->status = OFF; // interface is off
   bgpstream_debug("BS: close end");
-
 }
 
 
 /* destroy a bgpstream interface istance
  */
-void bgpstream_destroy(bgpstream_t * const bs){
+void bgpstream_destroy(bgpstream_t *bs){
   bgpstream_debug("BS: destroy start");
   if(bs == NULL) {
     return; // nothing to destroy
