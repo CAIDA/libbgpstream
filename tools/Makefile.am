@@ -24,6 +24,7 @@
 
 AM_CPPFLAGS = 	-I$(top_srcdir) \
 	 	-I$(top_srcdir)/lib \
+	 	-I$(top_srcdir)/lib/utils \
 	 	-I$(top_srcdir)/common
 
 bin_PROGRAMS =  bgpreader

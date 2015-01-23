@@ -28,7 +28,7 @@ SUBDIRS= utils
 # that invokes the C preprocessor; it is a list of arguments to the
 # preprocessor. For instance, -I and -D options should be listed here.
 AM_CPPFLAGS = 	-I$(top_srcdir) \
-                -I$(top_srcdir)/lib/utils\
+                -I$(top_srcdir)/lib/utils \
 	 	-I$(top_srcdir)/common \
 		-I$(top_srcdir)/bgpdump-caida
 

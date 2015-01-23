@@ -48,29 +48,6 @@ typedef enum {BL_UNKNOWN_DUMP = 0,
 
 #define BL_DUMP_TYPE_MAX 3
 
-
-typedef enum {BL_UNKNOWN_ELEM      = 0,
-	      BL_RIB_ELEM          = 1,
-	      BL_ANNOUNCEMENT_ELEM = 2,
-	      BL_WITHDRAWAL_ELEM   = 3,
-	      BL_PEERSTATE_ELEM    = 4
-} bl_elem_type_t;
-
-#define BL_ELEM_TYPE_MAX 5
-
-
-typedef enum {BL_PEERSTATE_UNKNOWN     = 0,
-	      BL_PEERSTATE_IDLE        = 1,
-	      BL_PEERSTATE_CONNECT     = 2,
-	      BL_PEERSTATE_ACTIVE      = 3,
-	      BL_PEERSTATE_OPENSENT    = 4,
-	      BL_PEERSTATE_OPENCONFIRM = 5,
-	      BL_PEERSTATE_ESTABLISHED = 6, 
-	      BL_PEERSTATE_NULL        = 7 
-} bl_peerstate_type_t;
-
-#define BL_PEERSTATE_TYPE_MAX 8
-
 typedef enum {BL_ADDR_TYPE_UNKNOWN  = 0,
               BL_ADDR_IPV4          = AF_INET,
 	      BL_ADDR_IPV6          = AF_INET6
@@ -166,39 +143,10 @@ typedef struct struct_bl_as_storage_t {
 } bl_as_storage_t;
 
 
-typedef struct struct_bl_elem_t {
-  
-  /** type of bgp elem */
-  bl_elem_type_t type;
-  /** epoch time that refers to when this
-   *  elem was generated on the peer */
-  uint32_t timestamp;  
-  /** peer IP address */
-  bl_addr_storage_t peer_address;  
-  /** peer AS number */
-  uint32_t peer_asnumber;
-  
-  /** type-dependent fields */
-  /** IP prefix */
-  bl_pfx_storage_t prefix;
-  /** next hop */
-  bl_addr_storage_t nexthop;  
-  /** AS path */
-  bl_aspath_storage_t aspath;
-  /** old state of the peer */
-  bl_peerstate_type_t old_state;
-  /** new state of the peer */
-  bl_peerstate_type_t new_state;
-
-  /** a pointer in case we want to keep
-   *  elems in a queue*/
-  struct struct_bl_elem_t *next;
-} bl_elem_t;
-
 
 /** Print functions */
 
-char *bl_print_elemtype(bl_elem_type_t type);
+
 
 char *bl_print_ipv4_addr(bl_ipv4_addr_t* addr);
 char *bl_print_ipv6_addr(bl_ipv6_addr_t* addr);
@@ -210,10 +158,6 @@ char *bl_print_pfx_storage(bl_pfx_storage_t* pfx);
 
 char *bl_print_as(bl_as_storage_t *as);
 char *bl_print_aspath(bl_aspath_storage_t *aspath);
-
-char *bl_print_peerstate(bl_peerstate_type_t state);
-
-char *bl_print_elem(bl_elem_t *elem);
 
 
 /** Utility functions (conversion between address types) */

@@ -38,6 +38,56 @@
  *
  */
 
+typedef enum {BL_PEERSTATE_UNKNOWN     = 0,
+	      BL_PEERSTATE_IDLE        = 1,
+	      BL_PEERSTATE_CONNECT     = 2,
+	      BL_PEERSTATE_ACTIVE      = 3,
+	      BL_PEERSTATE_OPENSENT    = 4,
+	      BL_PEERSTATE_OPENCONFIRM = 5,
+	      BL_PEERSTATE_ESTABLISHED = 6, 
+	      BL_PEERSTATE_NULL        = 7 
+} bl_peerstate_type_t;
+
+#define BL_PEERSTATE_TYPE_MAX 8
+
+typedef enum {BL_UNKNOWN_ELEM      = 0,
+	      BL_RIB_ELEM          = 1,
+	      BL_ANNOUNCEMENT_ELEM = 2,
+	      BL_WITHDRAWAL_ELEM   = 3,
+	      BL_PEERSTATE_ELEM    = 4
+} bl_elem_type_t;
+
+#define BL_ELEM_TYPE_MAX 5
+
+typedef struct struct_bl_elem_t {
+
+  /** type of bgp elem */
+  bl_elem_type_t type;
+  /** epoch time that refers to when this
+   *  elem was generated on the peer */
+  uint32_t timestamp;
+  /** peer IP address */
+  bl_addr_storage_t peer_address;
+  /** peer AS number */
+  uint32_t peer_asnumber;
+
+  /** type-dependent fields */
+  /** IP prefix */
+  bl_pfx_storage_t prefix;
+  /** next hop */
+  bl_addr_storage_t nexthop;
+  /** AS path */
+  bl_aspath_storage_t aspath;
+  /** old state of the peer */
+  bl_peerstate_type_t old_state;
+  /** new state of the peer */
+  bl_peerstate_type_t new_state;
+
+  /** a pointer in case we want to keep
+   *  elems in a queue*/
+  struct struct_bl_elem_t *next;
+} bl_elem_t;
+
 /** Extract a list of elements from the given BGP Stream Record
  *
  * @param record        pointer to a BGP Stream Record instance
@@ -53,5 +103,11 @@ bl_elem_t *bgpstream_elem_queue_create(bgpstream_record_t *record);
  * @param elem_queue    pointer to a linked-list of elems
  */
 void bgpstream_elem_queue_destroy(bl_elem_t *elem_queue);
+
+char *bl_print_elemtype(bl_elem_type_t type);
+
+char *bl_print_peerstate(bl_peerstate_type_t state);
+
+char *bl_print_elem(bl_elem_t *elem);
 
 #endif /* __BGPSTREAM_ELEM_H */

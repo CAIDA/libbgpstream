@@ -33,25 +33,6 @@
 
 /** Print functions */
 
-char *bl_print_elemtype(bl_elem_type_t type)
-{
-  switch(type)
-    {
-    case BL_RIB_ELEM:
-      return strdup("R");
-    case BL_ANNOUNCEMENT_ELEM:
-      return strdup("A");
-    case BL_WITHDRAWAL_ELEM:
-      return strdup("W");
-    case BL_PEERSTATE_ELEM:
-      return strdup("S");
-    default:
-      // do nothing
-      break;
-    }
-  return strdup("");
-}
-
 
 char *bl_print_ipv4_addr(bl_ipv4_addr_t* addr)
 {
@@ -163,104 +144,6 @@ char *bl_print_aspath(bl_aspath_storage_t *aspath)
       }
     return "";
 }
-
-
-char *bl_print_peerstate(bl_peerstate_type_t state)
-{
-  switch(state)
-    {
-    case BL_PEERSTATE_IDLE:
-      return strdup("IDLE");
-    case BL_PEERSTATE_CONNECT:
-      return strdup("CONNECT");
-    case BL_PEERSTATE_ACTIVE:
-      return strdup("ACTIVE");
-    case BL_PEERSTATE_OPENSENT:
-      return strdup("OPENSENT");
-    case BL_PEERSTATE_OPENCONFIRM:
-      return strdup("OPENCONFIRM");
-    case BL_PEERSTATE_ESTABLISHED:
-      return strdup("ESTABLISHED");
-    default:
-      // do nothing
-      break;
-    }
-  return strdup("");
-}
-
-
-char *bl_print_elem(bl_elem_t *elem)
-{
-  assert(elem);
-
-  char elem_str[4096];
-  elem_str[0] = '\0';
-
-  char partial[4096];
-  partial[0] = '\0';
-
-  char *pa = NULL;
-  char *et = NULL;
-  char *pr = NULL;
-  char *nh = NULL;
-  char *ap = NULL;
-  char *ao = NULL;
-  char *os = NULL;
-  char *ns = NULL;
-  bl_as_storage_t a;
-  
-  // timestamp|peer_ip|peer_asn|message_type|
-
-  sprintf(partial, "%"PRIu32"|%s|%"PRIu32"|%s|",
-	  elem->timestamp,
-	  (pa = bl_print_addr_storage(&elem->peer_address)),
-	  elem->peer_asnumber,
-	  (et = bl_print_elemtype(elem->type)) 
-	  );
-
-  strcat(elem_str, partial);
-  // reset partial string
-  partial[0] = '\0';
-
-  switch(elem->type)
-    {
-    case BL_RIB_ELEM:
-    case BL_ANNOUNCEMENT_ELEM:
-      a = bl_get_origin_as(&elem->aspath);
-      sprintf(partial, "%s|%s|%s|%s|",
-	      (pr = bl_print_pfx_storage(&(elem->prefix))),
-	      (nh = bl_print_addr_storage(&(elem->nexthop))),
-	      (ap = bl_print_aspath(&(elem->aspath))),
-	      (ao = bl_print_as(&a)));
-      break;
-    case BL_WITHDRAWAL_ELEM:
-      sprintf(partial, "%s|", (pr = bl_print_pfx_storage(&(elem->prefix))));
-      break;
-    case BL_PEERSTATE_ELEM:
-      sprintf(partial, "%s|%s|",
-	      (os = bl_print_peerstate(elem->old_state)),
-	      (ns = bl_print_peerstate(elem->new_state)));
-      break;
-    default:
-      fprintf(stderr, "Error during elem processing\n");
-    }
-
-  strcat(elem_str, partial);
-
-  // free all temporary strings  
-  if(pa == NULL) free(pa);
-  if(et == NULL) free(et);
-  if(pr == NULL) free(pr);
-  if(nh == NULL) free(nh);
-  if(ap == NULL) free(ap);
-  if(ao == NULL) free(ao);
-  if(os == NULL) free(os);
-  if(ns == NULL) free(ns);
-    
-  return strdup(elem_str);
-
-}
-
 
 
 /** Utility functions (conversion between address types) */
