@@ -317,9 +317,24 @@ static void dump_v4table(bwc_t *consumer)
 }
 
 
+/* /\** DELETE ME: */
+/*  *Structure which holds a set of records, returned by a query  */
+/*  *\/ */
+/* struct ipmeta_record_set { */
+
+/*   ipmeta_record_t **records; */
+/*   uint32_t *ip_cnts; */
+/*   int n_recs; */
+
+/*   int _cursor; */
+/*   int _alloc_size; */
+/* }; */
+
 
 static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 {
+
+  /* fprintf(stderr, "geotag_v4table START: \n"); */
 
   bwc_pergeovisibility_state_t *state = STATE;
 
@@ -331,21 +346,53 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   uint32_t num_ips;
   khiter_t k;
   int khret;
-  
+
+  /* int old_pfx_num = 0; */
+  /* int pfx_num = 0; */
+  /* int set_size_num = 0; */
+  /* int per_bin_max_index = 0; */
+
+
   for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
       !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
       bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX))
     {
-      /* get the current v4 prefix */
-      v4pfx = bgpwatcher_view_iter_get_v4pfx(it);
+      
+      /* if(old_pfx_num % 10000 == 0) */
+      /* 	{	   */
+      /* 	  fprintf(stderr, "Prefix %d --- %d - %f - ac: %d - pbmi: %d \n", */
+      /* 	  	  old_pfx_num, pfx_num, (double) set_size_num / (double) pfx_num, */
+      /* 	  	  state->records->_alloc_size, */
+      /* 	  	  per_bin_max_index); */
+      /* 	  pfx_num = 0; */
+      /* 	  set_size_num = 0; */
+      /* 	  per_bin_max_index = 0; */
+      /* 	} */
+      /* old_pfx_num++; */
+      
+      /* if(old_pfx_num >= 210000 && old_pfx_num <= 220000){  */
+      /*  	continue;  */
+      /* }  */
 
+      
+      /* get the current v4 prefix */
+      v4pfx = bgpwatcher_view_iter_get_v4pfx(it);      
+
+
+      // TODO: documentation here
+      if(v4pfx->mask_len < 6)
+      	{
+      	  continue;
+      	}
+
+      
       /* exclude prefixes that are not seen by at least threshold peers
        * no matter if they are full feed or not */
       if(bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER)
 	 < state->pfx_vis_threshold)
 	{
 	  continue;
-	}
+	}      
 
       fullfeed_cnt = 0;
       /* iterate over the peers for the current v4pfx */
@@ -366,31 +413,36 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 	      // that contributed to the threshold
 	      break;
 	    }      
-	}
+	}      
 
       // if the prefix is ROUTED, then it can be geotagged
       if(fullfeed_cnt >= state->pfx_vis_threshold)
 	{
-	  // DEBUG
-	  // fprintf(stderr, "%s \n", bl_print_ipv4_pfx(v4pfx));
-
 	  ipmeta_lookup(state->provider, (uint32_t) v4pfx->address.ipv4.s_addr, v4pfx->mask_len, state->records);
 	  ipmeta_record_set_rewind(state->records);
-	  while ( (rec = ipmeta_record_set_next(state->records, &num_ips)) )
-	    {
-	      if((k = kh_get(cc_pfxs, state->countrycode_pfxs, rec->country_code)) == kh_end(state->countrycode_pfxs))
-		{
-		  fprintf(stderr, "Warning: country (%s) not found", rec->country_code);
-		}
-	      else
-		{
-		  geo_info = &kh_value(state->countrycode_pfxs, k);
-		  bl_ipv4_pfx_set_insert(geo_info->v4pfxs, *v4pfx);
-		  // DEBUG
-		  // fprintf(stderr, "%s -> %s : %d\n",  bl_print_ipv4_pfx(v4pfx),
-		  // rec->country_code, bl_ipv4_pfx_set_size(geo_info->v4pfxs));
 
-		}
+	  
+	  /* pfx_num++; */
+	  /* if(state->records->n_recs > per_bin_max_index) */
+	  /*   per_bin_max_index = state->records->n_recs; */
+	  
+	  while ( (rec = ipmeta_record_set_next(state->records, &num_ips)) )	  
+	    {
+	      /* set_size_num++; */
+
+	      if((k = kh_get(cc_pfxs, state->countrycode_pfxs, rec->country_code)) == kh_end(state->countrycode_pfxs))
+	  	{
+	  	  fprintf(stderr, "Warning: country (%s) not found", rec->country_code);
+	  	}
+	      else
+	  	{
+	  	  geo_info = &kh_value(state->countrycode_pfxs, k);
+	  	  bl_ipv4_pfx_set_insert(geo_info->v4pfxs, *v4pfx);
+	  	  // DEBUG
+	  	  // fprintf(stderr, "%s -> %s : %d\n",  bl_print_ipv4_pfx(v4pfx),
+	  	  // rec->country_code, bl_ipv4_pfx_set_size(geo_info->v4pfxs));
+
+	  	}
 	    }
 	}
     }
@@ -467,25 +519,27 @@ int bwc_pergeovisibility_init(bwc_t *consumer, int argc, char **argv)
     }
 
   /* enable the provider  */
+  
 
   // TODO: all the provider options should be command-line options
   
-  if(ipmeta_enable_provider(state->ipmeta, state->provider,
-  			    " -b /data/external/netacuity-dumps/Edge-processed/2015-01-16.netacq-4-blocks.csv.gz"
-                            " -l /data/external/netacuity-dumps/Edge-processed/2015-01-16.netacq-4-locations.csv.gz"
-  			    " -c /data/external/netacuity-dumps/country_codes.csv",
-  			    IPMETA_PROVIDER_DEFAULT_YES) != 0)
+  /* if(ipmeta_enable_provider(state->ipmeta, state->provider, */
+  /* 			    " -b /data/external/netacuity-dumps/Edge-processed/2015-01-16.netacq-4-blocks.csv.gz" */
+  /*                        " -l /data/external/netacuity-dumps/Edge-processed/2015-01-16.netacq-4-locations.csv.gz" */
+  /* 			    " -c /data/external/netacuity-dumps/country_codes.csv", */
+  /* 			    IPMETA_PROVIDER_DEFAULT_YES) != 0) */
     // LOCAL DEBUG
-    /* if(ipmeta_enable_provider(state->ipmeta, state->provider, */
-    /* 			    " -b /Users/chiara/Utilities/geo/2014-04-07.netacq-4-blocks.csv.gz"  */
-    /*                        " -l /Users/chiara/Utilities/geo/2014-04-07.netacq-4-locations.csv.gz"  */
-    /* 			    " -c /Users/chiara/Utilities/geo/country_codes.csv", */
-    /* 			    IPMETA_PROVIDER_DEFAULT_YES) != 0) */
+    if(ipmeta_enable_provider(state->ipmeta, state->provider,
+			      " -b /Users/chiara/Utilities/geo/2014-04-07.netacq-4-blocks.csv.gz"
+			      " -l /Users/chiara/Utilities/geo/2014-04-07.netacq-4-locations.csv.gz"
+			      " -c /Users/chiara/Utilities/geo/country_codes.csv"
+			      " -D intervaltree",
+    			    IPMETA_PROVIDER_DEFAULT_YES) != 0)
     {
       fprintf(stderr, "ERROR: Could not enable provider netacq-edge\n");
       goto err;      
     }
-
+    
   /* initialize a (reusable) record set structure  */
   if((state->records = ipmeta_record_set_init()) == NULL)
     {
@@ -547,6 +601,7 @@ int bwc_pergeovisibility_init(bwc_t *consumer, int argc, char **argv)
 
 void bwc_pergeovisibility_destroy(bwc_t *consumer)
 {
+
   bwc_pergeovisibility_state_t *state = STATE;
 
   if(state == NULL)
