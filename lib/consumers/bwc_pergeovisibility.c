@@ -34,6 +34,7 @@
 
 #include "bl_pfx_set.h"
 #include "bl_id_set.h"
+#include "bl_id_set_int.h"
 
 #include "bgpwatcher_consumer_interface.h"
 
@@ -78,11 +79,11 @@ typedef struct pergeo_info {
   /** Index of the v6 metric for this CC in the KP */
   // IPV6 --> uint32_t v6_idx;
 
-  /** The v4 prefixes that this CC observed */
-  bl_ipv4_pfx_set_t *v4pfxs;
+  /** The number of v4 prefixes that this CC observed */
+  int v4pfxs_cnt;
 
-  /** The v6 prefixes that this CC observed */
-  // IPV6 --> bl_ipv6_pfx_set_t *v6pfxs;
+  /** The number of v6 prefixes that this CC observed */
+  // IPV6 --> int v6pfxs_cnt;
 
   /* TODO: think about how to manage multiple geo
    * providers as well as multiple counters
@@ -91,9 +92,10 @@ typedef struct pergeo_info {
 } pergeo_info_t;
 
 
+// TODO: decide what to do
 static void pergeo_info_destroy(pergeo_info_t info)
 {
-  bl_ipv4_pfx_set_destroy(info.v4pfxs);
+  // IPV4 --> bl_ipv4_pfx_set_destroy(info.v4pfxs);
   // IPV6 -->  bl_ipv6_pfx_set_destroy(info.v6pfxs);
 }
 
@@ -138,7 +140,7 @@ typedef struct bwc_pergeovisibility_state {
 
   int v6_peer_cnt;
 
-  /** Map from CC => v4PFX-SET */
+  /** Map from CC => pfxs-generated info */
   khash_t(cc_pfxs) *countrycode_pfxs;
   
   /** Prefix visibility threshold */
@@ -285,6 +287,7 @@ static void dump_gen_metrics(bwc_t *consumer)
   timeseries_kp_set(STATE->kp, STATE->gen_metrics.v6_ff_peers_idx,
                     bl_id_set_size(STATE->v6ff_peerids));
 
+  // reset counters
   bl_id_set_reset(STATE->v4ff_peerids);
   bl_id_set_reset(STATE->v6ff_peerids);
 
@@ -303,32 +306,19 @@ static void dump_v4table(bwc_t *consumer)
       if (kh_exist(STATE->countrycode_pfxs, k))
 	{
           info = &kh_val(STATE->countrycode_pfxs, k);
-          timeseries_kp_set(STATE->kp, info->v4_idx, bl_ipv4_pfx_set_size(info->v4pfxs));
+          timeseries_kp_set(STATE->kp, info->v4_idx, info->v4pfxs_cnt);
 
           // No IPv6 supported at this moment
-	  // timeseries_kp_set(STATE->kp, info->v6_idx, bl_ipv6_pfx_set_size(info->v6pfxs));
+	  // timeseries_kp_set(STATE->kp, info->v6_idx, info->v6pfxs_cnt);
 
-          bl_ipv4_pfx_set_reset(info->v4pfxs);
-	  
+	  // Reset counters
+	  info->v4pfxs_cnt = 0;
 	  // No IPv6 supported at this moment
-          // bl_ipv6_pfx_set_reset(info->v6pfxs);
+          // info->v6pfxs_cnt = 0;
 	}
     }
 }
 
-
-/* /\** DELETE ME: */
-/*  *Structure which holds a set of records, returned by a query  */
-/*  *\/ */
-/* struct ipmeta_record_set { */
-
-/*   ipmeta_record_t **records; */
-/*   uint32_t *ip_cnts; */
-/*   int n_recs; */
-
-/*   int _cursor; */
-/*   int _alloc_size; */
-/* }; */
 
 
 static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
@@ -341,45 +331,28 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   bl_ipv4_pfx_t *v4pfx;
   bl_peerid_t peerid;
   int fullfeed_cnt;
+  bl_id_set_t *cck_set;
+  
   pergeo_info_t *geo_info;
   ipmeta_record_t *rec;
   uint32_t num_ips;
   khiter_t k;
   int khret;
 
-  /* int old_pfx_num = 0; */
-  /* int pfx_num = 0; */
-  /* int set_size_num = 0; */
-  /* int per_bin_max_index = 0; */
 
+  khiter_t idk;
+  uint32_t cck;
 
   for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
       !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
       bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX))
-    {
-      
-      /* if(old_pfx_num % 10000 == 0) */
-      /* 	{	   */
-      /* 	  fprintf(stderr, "Prefix %d --- %d - %f - ac: %d - pbmi: %d \n", */
-      /* 	  	  old_pfx_num, pfx_num, (double) set_size_num / (double) pfx_num, */
-      /* 	  	  state->records->_alloc_size, */
-      /* 	  	  per_bin_max_index); */
-      /* 	  pfx_num = 0; */
-      /* 	  set_size_num = 0; */
-      /* 	  per_bin_max_index = 0; */
-      /* 	} */
-      /* old_pfx_num++; */
-      
-      /* if(old_pfx_num >= 210000 && old_pfx_num <= 220000){  */
-      /*  	continue;  */
-      /* }  */
-
+    {      
       
       /* get the current v4 prefix */
       v4pfx = bgpwatcher_view_iter_get_v4pfx(it);      
 
-
-      // TODO: documentation here
+      /* we do not process prefixes whose mask is shorted than
+	 a /6 */
       if(v4pfx->mask_len < 6)
       	{
       	  continue;
@@ -418,32 +391,67 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
       // if the prefix is ROUTED, then it can be geotagged
       if(fullfeed_cnt >= state->pfx_vis_threshold)
 	{
-	  ipmeta_lookup(state->provider, (uint32_t) v4pfx->address.ipv4.s_addr, v4pfx->mask_len, state->records);
-	  ipmeta_record_set_rewind(state->records);
 
-	  
-	  /* pfx_num++; */
-	  /* if(state->records->n_recs > per_bin_max_index) */
-	  /*   per_bin_max_index = state->records->n_recs; */
-	  
-	  while ( (rec = ipmeta_record_set_next(state->records, &num_ips)) )	  
+	  // First we check if this prefix has been already
+	  // geotagged in previous iterations
+
+	  cck_set = (bl_id_set_t *) bgpwatcher_view_iter_get_v4pfx_user(it);
+
+	  // if the set is null, then we need to initialize the set
+	  // and proceed with the geolocation
+	  if(cck_set == NULL)
 	    {
-	      /* set_size_num++; */
+	      // a new set has to be created, with the geolocation
+	      // information
+	      if( (cck_set = bl_id_set_create()) == NULL)
+		{
+		  fprintf(stderr, "Error: cannot bl_id_set_create()\n");
+		  return;
+		}
 
-	      if((k = kh_get(cc_pfxs, state->countrycode_pfxs, rec->country_code)) == kh_end(state->countrycode_pfxs))
-	  	{
-	  	  fprintf(stderr, "Warning: country (%s) not found", rec->country_code);
-	  	}
-	      else
-	  	{
-	  	  geo_info = &kh_value(state->countrycode_pfxs, k);
-	  	  bl_ipv4_pfx_set_insert(geo_info->v4pfxs, *v4pfx);
-	  	  // DEBUG
-	  	  // fprintf(stderr, "%s -> %s : %d\n",  bl_print_ipv4_pfx(v4pfx),
-	  	  // rec->country_code, bl_ipv4_pfx_set_size(geo_info->v4pfxs));
+	      // then we link this set to the appropriate user ptr
+	      bgpwatcher_view_iter_set_v4pfx_user(it, (void *) cck_set);
 
-	  	}
+	      // geolocation
+	      ipmeta_lookup(state->provider, (uint32_t) v4pfx->address.ipv4.s_addr, v4pfx->mask_len, state->records);
+	      ipmeta_record_set_rewind(state->records);
+
+	      while ( (rec = ipmeta_record_set_next(state->records, &num_ips)) )	  
+		{
+		  // check that we already had this country in our dataset
+		  if((k = kh_get(cc_pfxs, state->countrycode_pfxs, rec->country_code)) == kh_end(state->countrycode_pfxs))
+		    {
+		      fprintf(stderr, "Warning: country (%s) not found", rec->country_code);
+		    }
+		  else
+		    {
+		      bl_id_set_insert(cck_set, k);		      
+		    }
+		}
+
 	    }
+
+	  
+	  // Whether the cck_set already existed, or it has just been created,
+	  // we update the geo counters  
+
+	  // geolocation already performed, then proceed and increment
+	  // the counters for each country
+	  // cc_k_set contains the k position of a country in the
+	  // countrycode_pfxs hash map
+	  
+	  for(idk = kh_begin(cck_set->hash);
+	      idk != kh_end(cck_set->hash); ++idk)
+	    {
+	      if (kh_exist(cck_set->hash, idk))
+		{
+		  cck = kh_key(cck_set->hash, idk);
+		  geo_info = &kh_value(state->countrycode_pfxs, cck);
+		  geo_info->v4pfxs_cnt++;
+		      
+		}
+	    }	     
+		  
 	}
     }
   
@@ -524,16 +532,16 @@ int bwc_pergeovisibility_init(bwc_t *consumer, int argc, char **argv)
   // TODO: all the provider options should be command-line options
   
   /* if(ipmeta_enable_provider(state->ipmeta, state->provider, */
-  /* 			    " -b /data/external/netacuity-dumps/Edge-processed/2015-01-16.netacq-4-blocks.csv.gz" */
-  /*                        " -l /data/external/netacuity-dumps/Edge-processed/2015-01-16.netacq-4-locations.csv.gz" */
+  /* 			    " -b /data/external/netacuity-dumps/Edge-processed/2015-01-22.netacq-4-blocks.csv.gz" */
+  /* 			    " -l /data/external/netacuity-dumps/Edge-processed/2015-01-22.netacq-4-locations.csv.gz" */
   /* 			    " -c /data/external/netacuity-dumps/country_codes.csv", */
   /* 			    IPMETA_PROVIDER_DEFAULT_YES) != 0) */
     // LOCAL DEBUG
     if(ipmeta_enable_provider(state->ipmeta, state->provider,
-			      " -b /Users/chiara/Utilities/geo/2014-04-07.netacq-4-blocks.csv.gz"
-			      " -l /Users/chiara/Utilities/geo/2014-04-07.netacq-4-locations.csv.gz"
-			      " -c /Users/chiara/Utilities/geo/country_codes.csv"
-			      " -D intervaltree",
+    			      " -b /Users/chiara/Utilities/geo/2014-04-07.netacq-4-blocks.csv.gz"
+    			      " -l /Users/chiara/Utilities/geo/2014-04-07.netacq-4-locations.csv.gz"
+    			      " -c /Users/chiara/Utilities/geo/country_codes.csv"
+    			      " -D intervaltree",
     			    IPMETA_PROVIDER_DEFAULT_YES) != 0)
     {
       fprintf(stderr, "ERROR: Could not enable provider netacq-edge\n");
@@ -569,7 +577,7 @@ int bwc_pergeovisibility_init(bwc_t *consumer, int argc, char **argv)
       geo_info = &kh_value(state->countrycode_pfxs, k);
 
       // initialize properly geo_info and create ipvX metrics id for kp
-      geo_info->v4pfxs = bl_ipv4_pfx_set_create();
+      geo_info->v4pfxs_cnt = 0;
       
       snprintf(buffer, BUFFER_LEN, METRIC_CC_V4PFX_FORMAT, countries[i]->iso2);
       if((geo_info->v4_idx = timeseries_kp_add_key(STATE->kp, buffer)) == -1)
@@ -577,7 +585,7 @@ int bwc_pergeovisibility_init(bwc_t *consumer, int argc, char **argv)
 	  fprintf(stderr, "ERROR: Could not create key metric\n");
 	}
 
-      // IPV6 --> geo_info->v6pfxs = bl_ipv6_pfx_set_create();
+      // IPV6 --> geo_info->v6pfxs_cnt = 0;
 
       // IPV6 -->  snprintf(buffer, BUFFER_LEN, METRIC_CC_V6PFX_FORMAT, countries[i]->iso2);
       // IPV6 -->  if((geo_info->v6_idx = timeseries_kp_add_key(STATE->kp, buffer)) == -1)
