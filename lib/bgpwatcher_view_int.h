@@ -57,6 +57,10 @@ typedef struct bwv_peerid_pfxinfo {
   /** The number of peers in the peers hash that are actually valid */
   uint16_t peers_cnt;
 
+
+  /**  generic pointer to store per-pfx information on consumers */
+  void *user;
+
 } bwv_peerid_pfxinfo_t;
 // TODO: add documentation
 

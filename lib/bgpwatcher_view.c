@@ -114,6 +114,7 @@ static bwv_peerid_pfxinfo_t* peerid_pfxinfo_create()
     }
 
   v->peers_cnt = 0;
+  v->user = NULL;
 
   return v;
 }
@@ -409,6 +410,31 @@ void bgpwatcher_view_destroy(bgpwatcher_view_t *view)
 
   free(view);
 }
+
+
+void bgpwatcher_view_destroy_user(bgpwatcher_view_t *view,
+				  bgpwatcher_view_destroy_user_cb *call_back)
+{
+  khiter_t k;
+  assert(call_back != NULL);
+  for(k = kh_begin(view->v4pfxs); k != kh_end(view->v4pfxs); k++)
+    {
+      if(kh_exist(view->v4pfxs,k))
+	{
+	  call_back(kh_val(view->v4pfxs,k)->user);
+	  kh_val(view->v4pfxs,k)->user = NULL;
+	}
+    }
+  for(k = kh_begin(view->v6pfxs); k != kh_end(view->v6pfxs); k++)
+    {
+      if(kh_exist(view->v6pfxs,k))
+	{
+	  call_back(kh_val(view->v6pfxs,k)->user);
+	  kh_val(view->v6pfxs,k)->user = NULL;
+	}
+    } 
+}
+
 
 /* ==================== SIMPLE ACCESSOR FUNCTIONS ==================== */
 
@@ -729,6 +755,44 @@ bl_ipv6_pfx_t *bgpwatcher_view_iter_get_v6pfx(bgpwatcher_view_iter_t *iter)
       return NULL;
     }
   return &kh_key(iter->view->v6pfxs, iter->v6pfx_it);
+}
+
+void *bgpwatcher_view_iter_get_v4pfx_user(bgpwatcher_view_iter_t *iter)
+{
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX))
+    {
+      return NULL;
+    }
+  return kh_val(iter->view->v4pfxs, iter->v4pfx_it)->user;
+}
+
+void *bgpwatcher_view_iter_get_v6pfx_user(bgpwatcher_view_iter_t *iter)
+{
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX))
+    {
+      return NULL;
+    }
+  return kh_val(iter->view->v6pfxs, iter->v6pfx_it)->user;
+}
+
+void bgpwatcher_view_iter_set_v4pfx_user(bgpwatcher_view_iter_t *iter, void *user)
+{
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX))
+    {
+      return;
+    }
+  kh_val(iter->view->v4pfxs, iter->v4pfx_it)->user = user;
+  return;
+}
+
+void bgpwatcher_view_iter_set_v6pfx_user(bgpwatcher_view_iter_t *iter, void *user)
+{
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX))
+    {
+      return;
+    }
+  kh_val(iter->view->v6pfxs, iter->v6pfx_it)->user = user;
+  return;
 }
 
 bl_peerid_t
