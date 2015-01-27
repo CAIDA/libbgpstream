@@ -147,6 +147,7 @@ void bwc_test_destroy(bwc_t *consumer)
 }
 
 int bwc_test_process_view(bwc_t *consumer, uint8_t interests,
+                          bwc_state_t *chain_state,
 			  bgpwatcher_view_t *view)
 {
   fprintf(stdout, "BWC-TEST: Interests: ");

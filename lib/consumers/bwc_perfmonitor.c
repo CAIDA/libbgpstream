@@ -184,6 +184,7 @@ void bwc_perfmonitor_destroy(bwc_t *consumer)
 }
 
 int bwc_perfmonitor_process_view(bwc_t *consumer, uint8_t interests,
+                                 bwc_state_t *chain_state,
 				 bgpwatcher_view_t *view)
 {
   // view arrival delay, i.e. now - table ts

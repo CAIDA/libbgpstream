@@ -533,6 +533,7 @@ void bwc_perasvisibility_destroy(bwc_t *consumer)
 }
 
 int bwc_perasvisibility_process_view(bwc_t *consumer, uint8_t interests,
+                                     bwc_state_t *chain_state,
 				     bgpwatcher_view_t *view)
 {
   bgpwatcher_view_iter_t *it;

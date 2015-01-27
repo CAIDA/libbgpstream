@@ -65,6 +65,7 @@
   int bwc_##consname##_init(bwc_t *ds, int argc, char **argv);		\
   void bwc_##consname##_destroy(bwc_t *ds);				\
   int bwc_##consname##_process_view(bwc_t *ds, uint8_t interests,	\
+                                    bwc_state_t *state,                 \
 				    bgpwatcher_view_t *view);
 
 /** Convenience macro that defines all the function pointers for the timeseries
@@ -135,6 +136,7 @@ struct bwc
    * This is the core of the consumer API
    */
   int (*process_view)(struct bwc *consumer, uint8_t interests,
+                      bwc_state_t *state,
 		      bgpwatcher_view_t *view);
 
   /** }@ */

@@ -61,6 +61,16 @@ typedef struct bwc bwc_t;
  *
  * @{ */
 
+/** Per-view state that allows consumers to make use of the results of
+ * processing carried out by previous consumers.
+ *
+ * When implementing a consumer that wants to share it's state with other
+ * consumers (e.g. a consumer that determines the list of full-feed peers), you
+ * should add a variable to this structure.
+ */
+typedef struct bwc_state {
+
+} bwc_state_t;
 
 /** @} */
 
@@ -77,7 +87,7 @@ typedef enum bwc_id
     BWC_ID_TEST               = 1,
 
     BWC_ID_PERFMONITOR        = 2,
-    
+
     /** Writes information about per-AS visibility information to Charthouse */
     BWC_ID_PERASVISIBILITY    = 3,
 

@@ -60,6 +60,8 @@ struct bw_consumer_manager {
   /** Borrowed pointer to a libtimeseries instance */
   timeseries_t *timeseries;
 
+  /** State structure that is passed along with each view */
+  bwc_state_t state;
 };
 
 /** Convenience typedef for the backend alloc function type */
@@ -339,7 +341,7 @@ int bw_consumer_manager_process_view(bw_consumer_manager_t *mgr,
       {
 	continue;
       }
-    if(consumer->process_view(consumer, interests, view) != 0)
+    if(consumer->process_view(consumer, interests, &mgr->state, view) != 0)
       {
 	return -1;
       }

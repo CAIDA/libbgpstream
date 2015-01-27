@@ -773,7 +773,8 @@ void bwc_pergeovisibility_destroy(bwc_t *consumer)
 
 
 int bwc_pergeovisibility_process_view(bwc_t *consumer, uint8_t interests,
-				     bgpwatcher_view_t *view)
+                                      bwc_state_t *chain_state,
+                                      bgpwatcher_view_t *view)
 {
 
   bwc_pergeovisibility_state_t *state = STATE;
