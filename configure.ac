@@ -91,10 +91,8 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 
 # Checks for libraries.
-# please use libwandio for threaded IO
-AC_SEARCH_LIBS([wandio_create], [wandio trace], ,[AC_MSG_ERROR(
-		 [libwandio required (included with libtrace since 3.0.15)]
-		 )])
+# we do not use wandio
+AM_CONDITIONAL([WITH_WANDIO], [no])
 
 AC_CHECK_LIB([czmq], [zctx_new], ,[AC_MSG_ERROR(
 		      [CZMQ is required])])
@@ -131,6 +129,8 @@ AC_SUBST([BGPWATCHER_MINOR_VERSION])
 
 AC_CONFIG_FILES([Makefile
 		common/Makefile
+                common/libinterval3/Makefile
+                common/libinterval3/rb_tree/Makefile
 		common/libpatricia/Makefile
 		common/libcsv/Makefile
                 bgpcommon/Makefile
