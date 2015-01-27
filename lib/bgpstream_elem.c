@@ -724,12 +724,20 @@ int bgpstream_elem_type_snprint(char * restrict buf, size_t len,
     {
     case BGPSTREAM_ELEM_TYPE_RIB:
       buf[0] = 'R';
+      break;
+
     case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT:
       buf[0] = 'A';
+      break;
+
     case BGPSTREAM_ELEM_TYPE_WITHDRAWAL:
       buf[0] = 'W';
+      break;
+
     case BGPSTREAM_ELEM_TYPE_PEERSTATE:
       buf[0] = 'S';
+      break;
+
     default:
       buf[0] = '\0';
       break;
