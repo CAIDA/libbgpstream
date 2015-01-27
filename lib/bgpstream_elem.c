@@ -67,16 +67,17 @@ Original Author: Shufu Mao(msf98@mails.tsinghua.edu.cn)
 #include "bgpstream_elem.h"
 
 /* route info create and destroy methods */
-static bl_elem_t * bd2bi_create_route_info() {
+static bgpstream_elem_t *bd2bi_create_route_info() {
   // allocate memory for new element
-  bl_elem_t * ri = (bl_elem_t *) malloc_zero(sizeof(bl_elem_t));
+  bgpstream_elem_t * ri =
+    (bgpstream_elem_t *) malloc_zero(sizeof(bgpstream_elem_t));
   // all fields are initialized to zero
   ri->next = NULL;
   return ri;
 }
 
-static bl_elem_t * bd2bi_add_new_route_info(bl_elem_t ** lifo_queue) {
-  bl_elem_t * ri = bd2bi_create_route_info();
+static bgpstream_elem_t *bd2bi_add_new_route_info(bgpstream_elem_t **lifo_queue) {
+  bgpstream_elem_t * ri = bd2bi_create_route_info();
   if(ri == NULL) {
     return NULL;
   }
@@ -85,7 +86,7 @@ static bl_elem_t * bd2bi_add_new_route_info(bl_elem_t ** lifo_queue) {
   return ri;
 }
 
-static void bd2bi_destroy_route_info(bl_elem_t * ri) {
+static void bd2bi_destroy_route_info(bgpstream_elem_t *ri) {
   if(ri != NULL) {
     if(ri->aspath.type == BL_AS_NUMERIC)
       {
@@ -105,11 +106,11 @@ static void bd2bi_destroy_route_info(bl_elem_t * ri) {
   }
 }
 
-static void bd2bi_destroy_route_info_queue(bl_elem_t * lifo_queue) {
+static void bd2bi_destroy_route_info_queue(bgpstream_elem_t * lifo_queue) {
   if(lifo_queue == NULL) {
     return;
   }
-  bl_elem_t * ri = lifo_queue;
+  bgpstream_elem_t * ri = lifo_queue;
   while(lifo_queue != NULL) {
     ri = lifo_queue;
     lifo_queue = ri->next;
@@ -117,7 +118,8 @@ static void bd2bi_destroy_route_info_queue(bl_elem_t * lifo_queue) {
   }
 }
 
-static void get_aspath_struct(struct aspath *ap, bl_aspath_storage_t *ap_struct)
+static void get_aspath_struct(struct aspath *ap,
+                              bl_aspath_storage_t *ap_struct)
 {
   const char *invalid_characters = "([{}])";
   // char origin_copy[16];
@@ -175,13 +177,13 @@ static void get_aspath_struct(struct aspath *ap, bl_aspath_storage_t *ap_struct)
 }
 
 /* ribs related functions */
-static bl_elem_t * table_line_mrtd_route(BGPDUMP_ENTRY *entry) {
-  bl_elem_t * ri  =  bd2bi_create_route_info();
+static bgpstream_elem_t *table_line_mrtd_route(BGPDUMP_ENTRY *entry) {
+  bgpstream_elem_t * ri  =  bd2bi_create_route_info();
   if (ri == NULL) {
     return NULL;
   }
   // general
-  ri->type = BL_RIB_ELEM;
+  ri->type = BGPSTREAM_ELEM_TYPE_RIB;
   ri->timestamp = entry->time;
 
   // peer and prefix
@@ -225,9 +227,9 @@ static bl_elem_t * table_line_mrtd_route(BGPDUMP_ENTRY *entry) {
   return ri;
 }
 
-static bl_elem_t * table_line_dump_v2_prefix(BGPDUMP_ENTRY *entry) {
-  bl_elem_t * ri_queue = NULL;
-  bl_elem_t * ri;
+static bgpstream_elem_t *table_line_dump_v2_prefix(BGPDUMP_ENTRY *entry) {
+  bgpstream_elem_t *ri_queue = NULL;
+  bgpstream_elem_t *ri;
   BGPDUMP_TABLE_DUMP_V2_PREFIX *e = &(entry->body.mrtd_table_dump_v2_prefix);
   int i;
 
@@ -243,7 +245,7 @@ static bl_elem_t * table_line_dump_v2_prefix(BGPDUMP_ENTRY *entry) {
     }
 
     // general info
-    ri->type = BL_RIB_ELEM;
+    ri->type = BGPSTREAM_ELEM_TYPE_RIB;
     ri->timestamp = entry->time;
 
     // peer
@@ -302,8 +304,9 @@ static bl_elem_t * table_line_dump_v2_prefix(BGPDUMP_ENTRY *entry) {
   return ri_queue;
 }
 
-static void concatenate_queues(bl_elem_t ** total, bl_elem_t ** new) {
-  bl_elem_t * r;
+static void concatenate_queues(bgpstream_elem_t **total,
+                               bgpstream_elem_t **new) {
+  bgpstream_elem_t * r;
   r = *total;
   if(*total == NULL) {
     *total = *new;
@@ -316,10 +319,10 @@ static void concatenate_queues(bl_elem_t ** total, bl_elem_t ** new) {
   }
 }
 
-static bl_elem_t * table_line_announce(struct prefix *prefix, int count,
-                                       BGPDUMP_ENTRY *entry){
-  bl_elem_t * ri_queue = NULL;
-  bl_elem_t * ri;
+static bgpstream_elem_t *table_line_announce(struct prefix *prefix, int count,
+                                             BGPDUMP_ENTRY *entry){
+  bgpstream_elem_t * ri_queue = NULL;
+  bgpstream_elem_t * ri;
   int idx;
   for (idx=0;idx<count;idx++) {
     ri  =  bd2bi_add_new_route_info(&ri_queue);
@@ -328,7 +331,7 @@ static bl_elem_t * table_line_announce(struct prefix *prefix, int count,
       return ri_queue;
     }
     // general info
-    ri->type = BL_ANNOUNCEMENT_ELEM;
+    ri->type = BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT;
     ri->timestamp = entry->time;
     // peer
 #ifdef BGPDUMP_HAVE_IPV6
@@ -358,10 +361,11 @@ static bl_elem_t * table_line_announce(struct prefix *prefix, int count,
   return ri_queue;
 }
 
-static bl_elem_t * table_line_announce_1(struct mp_nlri *prefix, int count,
-                                         BGPDUMP_ENTRY *entry) {
-  bl_elem_t * ri_queue = NULL;
-  bl_elem_t * ri;
+static bgpstream_elem_t *table_line_announce_1(struct mp_nlri *prefix,
+                                               int count,
+                                               BGPDUMP_ENTRY *entry) {
+  bgpstream_elem_t * ri_queue = NULL;
+  bgpstream_elem_t * ri;
   int idx;
   for (idx=0;idx<count;idx++) {
     ri  =  bd2bi_add_new_route_info(&ri_queue);
@@ -370,7 +374,7 @@ static bl_elem_t * table_line_announce_1(struct mp_nlri *prefix, int count,
       return ri_queue;
     }
     // general info
-    ri->type = BL_ANNOUNCEMENT_ELEM;
+    ri->type = BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT;
     ri->timestamp = entry->time;
     // peer
 #ifdef BGPDUMP_HAVE_IPV6
@@ -401,10 +405,11 @@ static bl_elem_t * table_line_announce_1(struct mp_nlri *prefix, int count,
 }
 
 #ifdef BGPDUMP_HAVE_IPV6
-static bl_elem_t * table_line_announce6(struct mp_nlri *prefix, int count,
-                                        BGPDUMP_ENTRY *entry) {
-  bl_elem_t * ri_queue = NULL;
-  bl_elem_t * ri;
+static bgpstream_elem_t *table_line_announce6(struct mp_nlri *prefix,
+                                              int count,
+                                              BGPDUMP_ENTRY *entry) {
+  bgpstream_elem_t * ri_queue = NULL;
+  bgpstream_elem_t * ri;
   int idx;
   for (idx=0;idx<count;idx++) {
     ri = bd2bi_add_new_route_info(&ri_queue);
@@ -413,7 +418,7 @@ static bl_elem_t * table_line_announce6(struct mp_nlri *prefix, int count,
       return ri_queue;
     }
     // general info
-    ri->type = BL_ANNOUNCEMENT_ELEM;
+    ri->type = BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT;
     ri->timestamp = entry->time;
     // peer
 #ifdef BGPDUMP_HAVE_IPV6
@@ -444,10 +449,11 @@ static bl_elem_t * table_line_announce6(struct mp_nlri *prefix, int count,
 }
 #endif
 
-static bl_elem_t * table_line_withdraw(struct prefix *prefix, int count,
-                                       BGPDUMP_ENTRY *entry) {
-  bl_elem_t * ri_queue = NULL;
-  bl_elem_t * ri;
+static bgpstream_elem_t *table_line_withdraw(struct prefix *prefix,
+                                             int count,
+                                             BGPDUMP_ENTRY *entry) {
+  bgpstream_elem_t * ri_queue = NULL;
+  bgpstream_elem_t * ri;
   int idx;
   for(idx=0;idx<count;idx++) {
     ri = bd2bi_add_new_route_info(&ri_queue);
@@ -456,7 +462,7 @@ static bl_elem_t * table_line_withdraw(struct prefix *prefix, int count,
       return ri_queue;
     }
     // general info
-    ri->type = BL_WITHDRAWAL_ELEM;
+    ri->type = BGPSTREAM_ELEM_TYPE_WITHDRAWAL;
     ri->timestamp = entry->time;
     // peer
 #ifdef BGPDUMP_HAVE_IPV6
@@ -479,10 +485,11 @@ static bl_elem_t * table_line_withdraw(struct prefix *prefix, int count,
 }
 
 #ifdef BGPDUMP_HAVE_IPV6
-static bl_elem_t * table_line_withdraw6(struct prefix *prefix, int count,
-                                        BGPDUMP_ENTRY *entry) {
-  bl_elem_t * ri_queue = NULL;
-  bl_elem_t * ri;
+static bgpstream_elem_t *table_line_withdraw6(struct prefix *prefix,
+                                               int count,
+                                               BGPDUMP_ENTRY *entry) {
+  bgpstream_elem_t * ri_queue = NULL;
+  bgpstream_elem_t * ri;
   int idx;
   for (idx=0;idx<count;idx++) {
     ri  =  bd2bi_add_new_route_info(&ri_queue);
@@ -491,7 +498,7 @@ static bl_elem_t * table_line_withdraw6(struct prefix *prefix, int count,
       return ri_queue;
     }
     // general info
-    ri->type = BL_WITHDRAWAL_ELEM;
+    ri->type = BGPSTREAM_ELEM_TYPE_WITHDRAWAL;
     ri->timestamp = entry->time;
     // peer
     if(entry->body.zebra_message.address_family == AFI_IP6) {
@@ -512,12 +519,12 @@ static bl_elem_t * table_line_withdraw6(struct prefix *prefix, int count,
 }
 #endif
 
-static bl_elem_t * table_line_update(BGPDUMP_ENTRY *entry) {
+static bgpstream_elem_t *table_line_update(BGPDUMP_ENTRY *entry) {
   struct prefix *prefix;
   struct mp_nlri *prefix_mp;
   int count;
-  bl_elem_t * update = NULL;
-  bl_elem_t * current = NULL;
+  bgpstream_elem_t * update = NULL;
+  bgpstream_elem_t * current = NULL;
 
   // withdrawals (IPv4)
   if ((entry->body.zebra_message.withdraw_count) ||
@@ -633,16 +640,16 @@ static bl_elem_t * table_line_update(BGPDUMP_ENTRY *entry) {
   return update;
 }
 
-static bl_elem_t * bgp_state_change(BGPDUMP_ENTRY *entry) {
-  bl_elem_t * ri_queue = NULL;
-  bl_elem_t * ri;
+static bgpstream_elem_t *bgp_state_change(BGPDUMP_ENTRY *entry) {
+  bgpstream_elem_t * ri_queue = NULL;
+  bgpstream_elem_t * ri;
   ri  =  bd2bi_add_new_route_info(&ri_queue);
   if(ri == NULL) {
     // warning
     return ri_queue;
   }
   // general information
-  ri->type = BL_PEERSTATE_ELEM;
+  ri->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
   ri->timestamp = entry->time;
   // peer
 #ifdef BGPDUMP_HAVE_IPV6
@@ -665,7 +672,7 @@ static bl_elem_t * bgp_state_change(BGPDUMP_ENTRY *entry) {
 /* ==================== PUBLIC FUNCTIONS ==================== */
 
 /* get routing information from entry */
-bl_elem_t * bgpstream_elem_queue_create(bgpstream_record_t * const bs_record) {
+bgpstream_elem_t *bgpstream_elem_queue_create(bgpstream_record_t *bs_record) {
 
   if(bs_record == NULL || bs_record->bd_entry == NULL ||
      bs_record->status != VALID_RECORD) {
@@ -698,122 +705,182 @@ bl_elem_t * bgpstream_elem_queue_create(bgpstream_record_t * const bs_record) {
 }
 
 
-void bgpstream_elem_queue_destroy(bl_elem_t * elem_queue) {
+void bgpstream_elem_queue_destroy(bgpstream_elem_t * elem_queue) {
   bd2bi_destroy_route_info_queue(elem_queue);
 }
 
-char *bl_print_elemtype(bl_elem_type_t type)
+int bgpstream_elem_type_snprint(char * restrict buf, size_t len,
+                                bgpstream_elem_type_t type)
 {
+  /* ensure we have enough bytes to write our single character */
+  if(len == 0) {
+    return 1;
+  } else if(len == 1) {
+    buf[0] = '\0';
+    return 1;
+  }
+
   switch(type)
     {
-    case BL_RIB_ELEM:
-      return strdup("R");
-    case BL_ANNOUNCEMENT_ELEM:
-      return strdup("A");
-    case BL_WITHDRAWAL_ELEM:
-      return strdup("W");
-    case BL_PEERSTATE_ELEM:
-      return strdup("S");
+    case BGPSTREAM_ELEM_TYPE_RIB:
+      buf[0] = 'R';
+    case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT:
+      buf[0] = 'A';
+    case BGPSTREAM_ELEM_TYPE_WITHDRAWAL:
+      buf[0] = 'W';
+    case BGPSTREAM_ELEM_TYPE_PEERSTATE:
+      buf[0] = 'S';
     default:
-      // do nothing
+      buf[0] = '\0';
       break;
     }
-  return strdup("");
+
+  buf[1] = '\0';
+  return 1;
 }
 
-char *bl_print_peerstate(bl_peerstate_type_t state)
+int bgpstream_elem_peerstate_snprint(char * restrict buf, size_t len,
+                                     bgpstream_elem_peerstate_t state)
 {
+  size_t written = 0;
+
   switch(state)
     {
-    case BL_PEERSTATE_IDLE:
-      return strdup("IDLE");
-    case BL_PEERSTATE_CONNECT:
-      return strdup("CONNECT");
-    case BL_PEERSTATE_ACTIVE:
-      return strdup("ACTIVE");
-    case BL_PEERSTATE_OPENSENT:
-      return strdup("OPENSENT");
-    case BL_PEERSTATE_OPENCONFIRM:
-      return strdup("OPENCONFIRM");
-    case BL_PEERSTATE_ESTABLISHED:
-      return strdup("ESTABLISHED");
+    case BGPSTREAM_ELEM_PEERSTATE_IDLE:
+      strncpy(buf, "IDLE", len);
+      written = strlen("IDLE");
+      break;
+
+    case BGPSTREAM_ELEM_PEERSTATE_CONNECT:
+      strncpy(buf, "CONNECT", len);
+      written = strlen("CONNECT");
+      break;
+
+    case BGPSTREAM_ELEM_PEERSTATE_ACTIVE:
+      strncpy(buf, "ACTIVE", len);
+      written = strlen("ACTIVE");
+      break;
+
+    case BGPSTREAM_ELEM_PEERSTATE_OPENSENT:
+      strncpy(buf, "OPENSENT", len);
+      written = strlen("OPENSENT");
+      break;
+
+    case BGPSTREAM_ELEM_PEERSTATE_OPENCONFIRM:
+      strncpy(buf, "OPENCONFIRM", len);
+      written = strlen("OPENCONFIRM");
+      break;
+
+    case BGPSTREAM_ELEM_PEERSTATE_ESTABLISHED:
+      strncpy(buf, "ESTABLISHED", len);
+      written = strlen("ESTABLISHED");
+      break;
+
     default:
-      // do nothing
+      if(len > 0) {
+        buf[0] = '\0';
+      }
       break;
     }
-  return strdup("");
+
+  /* we promise to always nul-terminate */
+  if(written > len) {
+    buf[len-1] = '\0';
+  }
+
+  return written;
 }
 
 
-char *bl_print_elem(bl_elem_t *elem)
+int bgpstream_elem_snprint(char * restrict buf, size_t len,
+                           bgpstream_elem_t *elem)
 {
   assert(elem);
 
-  char elem_str[4096];
-  elem_str[0] = '\0';
+  size_t written = 0;
+  size_t n = 0;
+  char *buf_p = buf;
 
-  char partial[4096];
-  partial[0] = '\0';
+  /** @todo remove all these things */
+  char *tmp1 = NULL;
+  char *tmp2 = NULL;
+  char *tmp3 = NULL;
+  char *tmp4 = NULL;
+  char tmp_buf[1024];
 
-  char *pa = NULL;
-  char *et = NULL;
-  char *pr = NULL;
-  char *nh = NULL;
-  char *ap = NULL;
-  char *ao = NULL;
-  char *os = NULL;
-  char *ns = NULL;
+
   bl_as_storage_t a;
-  
+
   // timestamp|peer_ip|peer_asn|message_type|
+  bgpstream_elem_type_snprint(tmp_buf, 1024, elem->type);
 
-  sprintf(partial, "%"PRIu32"|%s|%"PRIu32"|%s|",
-	  elem->timestamp,
-	  (pa = bl_print_addr_storage(&elem->peer_address)),
-	  elem->peer_asnumber,
-	  (et = bl_print_elemtype(elem->type)) 
-	  );
+  written = snprintf(buf_p, len, "%"PRIu32"|%s|%"PRIu32"|%s|",
+                     elem->timestamp,
+                     (tmp1 = bl_print_addr_storage(&elem->peer_address)),
+                     elem->peer_asnumber,
+                     tmp_buf
+                     );
 
-  strcat(elem_str, partial);
-  // reset partial string
-  partial[0] = '\0';
+  /** @todo remove these too */
+  free(tmp1);
+  tmp1 = NULL;
+
+  buf_p += written;
 
   switch(elem->type)
     {
-    case BL_RIB_ELEM:
-    case BL_ANNOUNCEMENT_ELEM:
+    case BGPSTREAM_ELEM_TYPE_RIB:
+    case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT:
       a = bl_get_origin_as(&elem->aspath);
-      sprintf(partial, "%s|%s|%s|%s|",
-	      (pr = bl_print_pfx_storage(&(elem->prefix))),
-	      (nh = bl_print_addr_storage(&(elem->nexthop))),
-	      (ap = bl_print_aspath(&(elem->aspath))),
-	      (ao = bl_print_as(&a)));
+      snprintf(buf_p, (len-written), "%s|%s|%s|%s|",
+               (tmp1 = bl_print_pfx_storage(&(elem->prefix))),
+               (tmp2 = bl_print_addr_storage(&(elem->nexthop))),
+               (tmp3 = bl_print_aspath(&(elem->aspath))),
+               (tmp4 = bl_print_as(&a)));
       break;
-    case BL_WITHDRAWAL_ELEM:
-      sprintf(partial, "%s|", (pr = bl_print_pfx_storage(&(elem->prefix))));
+
+    case BGPSTREAM_ELEM_TYPE_WITHDRAWAL:
+      snprintf(buf_p, (len-written), "%s|",
+               (tmp1 = bl_print_pfx_storage(&(elem->prefix))));
       break;
-    case BL_PEERSTATE_ELEM:
-      sprintf(partial, "%s|%s|",
-	      (os = bl_print_peerstate(elem->old_state)),
-	      (ns = bl_print_peerstate(elem->new_state)));
+
+    case BGPSTREAM_ELEM_TYPE_PEERSTATE:
+      n = bgpstream_elem_peerstate_snprint(buf_p, (len-written),
+                                           elem->old_state);
+      written += n;
+      buf_p += n;
+      if(len-written > 0)
+        {
+          *buf_p = '|';
+          buf_p++;
+        }
+      written++;
+
+      n = bgpstream_elem_peerstate_snprint(buf_p, (len-written),
+                                           elem->new_state);
+      written += n;
+      buf_p += n;
+      if(len-written > 0)
+        {
+          *buf_p = '|';
+          buf_p++;
+        }
+      written++;
       break;
     default:
       fprintf(stderr, "Error during elem processing\n");
     }
 
-  strcat(elem_str, partial);
+  free(tmp1);
+  tmp1 = NULL;
+  free(tmp2);
+  tmp2 = NULL;
+  free(tmp3);
+  tmp3 = NULL;
+  free(tmp4);
+  tmp4 = NULL;
 
-  // free all temporary strings  
-  if(pa == NULL) free(pa);
-  if(et == NULL) free(et);
-  if(pr == NULL) free(pr);
-  if(nh == NULL) free(nh);
-  if(ap == NULL) free(ap);
-  if(ao == NULL) free(ao);
-  if(os == NULL) free(os);
-  if(ns == NULL) free(ns);
-    
-  return strdup(elem_str);
+  return written;
 
 }
 

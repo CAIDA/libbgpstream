@@ -80,7 +80,7 @@ void usage() {
 // print functions
 
 static void print_bs_record(bgpstream_record_t * bs_record);
-static void print_elem(bl_elem_t *elem);
+static void print_elem(bgpstream_elem_t *elem);
 
 
 int main(int argc, char *argv[])
@@ -370,8 +370,8 @@ int main(int argc, char *argv[])
 
   // use the interface
   int get_next_ret = 0;
-  bl_elem_t * bs_elem_head;
-  bl_elem_t * bs_elem_iterator;
+  bgpstream_elem_t * bs_elem_head;
+  bgpstream_elem_t * bs_elem_iterator;
   do
     {
       get_next_ret = bgpstream_get_next_record(bs, bs_record);
@@ -497,10 +497,13 @@ static void print_bs_record(bgpstream_record_t * bs_record)
 }
 
 
-static void print_elem(bl_elem_t * elem)
+static void print_elem(bgpstream_elem_t * elem)
 {
   assert(bs_elem);
-  char *ptr = bl_print_elem(elem);
-  printf("%s\n", ptr);
-  if(ptr != NULL) free(ptr);
+  char buf[4096];
+  size_t written = 0;
+
+  written = bgpstream_elem_snprint(buf, 4096, elem);
+  assert(written < 4096);
+  printf("%s\n", buf);
 }
