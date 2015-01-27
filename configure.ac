@@ -126,9 +126,11 @@ else
 		     AC_DEFINE(DONT_HAVE_GZ, 1, Define if libz not present))
 	AC_CHECK_LIB(bz2, BZ2_bzReadOpen, [],
 	             AC_DEFINE(DONT_HAVE_BZ2, 1, Define if libbzip2 not present))
+        AC_DEFINE(WITHOUT_WANDIO, 1, Define if libwandio not present)
 fi
 
 AM_CONDITIONAL([WITH_WANDIO], [test "x$with_wandio" == xyes])
+AM_CONDITIONAL([WITHOUT_WANDIO], [test "x$with_wandio" == xno])
 
 
 # we may want to come back later and add compile-time configuration for things
@@ -147,6 +149,8 @@ AC_CONFIG_FILES([Makefile
 		tools/Makefile
 		common/Makefile
 		common/libpatricia/Makefile
+		common/libinterval3/Makefile
+		common/libinterval3/rb_tree/Makefile
 		common/libcsv/Makefile
                 bgpdump-caida/Makefile])
 AC_OUTPUT
