@@ -1,33 +1,35 @@
 /*
- * bgp-common
+ * bgpstream
  *
  * Chiara Orsini, CAIDA, UC San Diego
  * chiara@caida.org
  *
  * Copyright (C) 2014 The Regents of the University of California.
  *
- * This file is part of bgp-common.
+ * This file is part of bgpstream.
  *
- * bgp-common is free software: you can redistribute it and/or modify
+ * bgpstream is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * bgp-common is distributed in the hope that it will be useful,
+ * bgpstream is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with bgp-common.  If not, see <http://www.gnu.org/licenses/>.
+ * along with bgpstream.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
-#include "bl_str_set.h"
-#include <stdio.h>
-#include "utils.h"
 #include <assert.h>
+#include <stdio.h>
+
 #include "khash.h"
+#include "utils.h"
+
+#include "bgpstream_utils_str_set.h"
 
 /** set of unique strings
  *  this structure maintains a set of strings
@@ -41,7 +43,7 @@ struct bl_string_set_t {
   khash_t(bl_string_set) *hash;
 };
 
-			       
+
 bl_string_set_t *bl_string_set_create()
 {
   bl_string_set_t *string_set = (bl_string_set_t *) malloc(sizeof(bl_string_set_t));

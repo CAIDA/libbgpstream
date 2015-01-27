@@ -26,9 +26,9 @@
 #ifndef __BGPSTREAM_H
 #define __BGPSTREAM_H
 
+#include <bgpstream_utils.h>
 #include <bgpstream_elem.h>
 #include <bgpstream_record.h>
-#include <bl_bgp_utils.h>
 
 /** @file
  *

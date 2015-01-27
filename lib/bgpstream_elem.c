@@ -57,12 +57,12 @@ Original Author: Shufu Mao(msf98@mails.tsinghua.edu.cn)
 #include <inttypes.h>
 
 #include "bgpdump_lib.h"
+#include "utils.h"
+
+#include "bgpstream_utils.h"
 
 #include "bgpstream_debug.h"
 #include "bgpstream_record.h"
-
-#include "utils.h"
-#include "bl_bgp_utils.h"
 
 #include "bgpstream_elem.h"
 
