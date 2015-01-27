@@ -306,8 +306,6 @@ static int create_gen_metrics(bwc_t *consumer)
 
 static void find_ff_peers(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 {
-  int khret;
-
   bl_peerid_t peerid;
   int pfx_cnt;
 
@@ -439,7 +437,6 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   ipmeta_record_t *rec;
   uint32_t num_ips;
   khiter_t k;
-  int khret;
   int num_records;
 
   khiter_t idk;
