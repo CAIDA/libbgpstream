@@ -46,12 +46,17 @@ CONSUMER_SRCS += \
 	bwc_perfmonitor.c \
 	bwc_perfmonitor.h
 
-# Per-AS Visibility Consumer
+# Visibility Consumer
+CONSUMER_SRCS += \
+	bwc_visibility.c \
+	bwc_visibility.h
+
+# Per-AS Visibility Consumer (depends on Visibility)
 CONSUMER_SRCS += \
 	bwc_perasvisibility.c \
 	bwc_perasvisibility.h
 
-# Per-Geo Visibility Consumer
+# Per-Geo Visibility Consumer (depends on Visibility)
 CONSUMER_SRCS += \
 	bwc_pergeovisibility.c \
 	bwc_pergeovisibility.h
