@@ -40,6 +40,9 @@
 /* test consumer */
 #include "bwc_perfmonitor.h"
 
+/* Visibility consumer */
+#include "bwc_visibility.h"
+
 /* Per-AS Visibility consumer */
 #include "bwc_perasvisibility.h"
 
@@ -61,7 +64,7 @@ struct bw_consumer_manager {
   timeseries_t *timeseries;
 
   /** State structure that is passed along with each view */
-  bwc_state_t state;
+  bwc_chain_state_t chain_state;
 };
 
 /** Convenience typedef for the backend alloc function type */
@@ -69,8 +72,8 @@ typedef bwc_t* (*consumer_alloc_func_t)();
 
 /** Array of backend allocation functions.
  *
- * @note the indexes of these functions must exactly match the ID in
- * timeseries_backend_id_t. The element at index 0 MUST be NULL.
+ * @note the indexes of these functions must exactly match the ID-1 in
+ * timeseries_backend_id_t.
  */
 static const consumer_alloc_func_t consumer_alloc_functions[] = {
 
@@ -80,10 +83,13 @@ static const consumer_alloc_func_t consumer_alloc_functions[] = {
   /** Pointer to performance monitor function */
   bwc_perfmonitor_alloc,
 
-  /** Pointer to per-as vis function */
+  /** Pointer to visibility alloc function */
+  bwc_visibility_alloc,
+
+  /** Pointer to per-as vis alloc function */
   bwc_perasvisibility_alloc,
 
-  /** Pointer to per-geo vis function */
+  /** Pointer to per-geo vis alloc function */
   bwc_pergeovisibility_alloc,
 
   /** Sample conditional consumer. If enabled, point to the alloc function,
@@ -100,7 +106,9 @@ static const consumer_alloc_func_t consumer_alloc_functions[] = {
 
 /* ==================== PRIVATE FUNCTIONS ==================== */
 
-static bwc_t *consumer_alloc(timeseries_t *timeseries, bwc_id_t id)
+static bwc_t *consumer_alloc(timeseries_t *timeseries,
+                             bwc_chain_state_t *chain_state,
+                             bwc_id_t id)
 {
   bwc_t *consumer;
   assert(ARR_CNT(consumer_alloc_functions) == BWC_ID_LAST);
@@ -120,6 +128,8 @@ static bwc_t *consumer_alloc(timeseries_t *timeseries, bwc_id_t id)
   memcpy(consumer, consumer_alloc_functions[id-1](), sizeof(bwc_t));
 
   consumer->timeseries = timeseries;
+
+  consumer->chain_state = chain_state;
 
   return consumer;
 }
@@ -189,7 +199,7 @@ bw_consumer_manager_t *bw_consumer_manager_create(timeseries_t *timeseries)
   /* allocate the consumers (some may/will be NULL) */
   for(id = BWC_ID_FIRST; id <= BWC_ID_LAST; id++)
     {
-      mgr->consumers[id-1] = consumer_alloc(timeseries, id);
+      mgr->consumers[id-1] = consumer_alloc(timeseries, &mgr->chain_state, id);
     }
 
   return mgr;
@@ -341,7 +351,7 @@ int bw_consumer_manager_process_view(bw_consumer_manager_t *mgr,
       {
 	continue;
       }
-    if(consumer->process_view(consumer, interests, &mgr->state, view) != 0)
+    if(consumer->process_view(consumer, interests, view) != 0)
       {
 	return -1;
       }

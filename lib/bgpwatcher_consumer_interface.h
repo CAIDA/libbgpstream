@@ -57,6 +57,9 @@
 #define BWC_GET_TIMESERIES(consumer)		\
   ((consumer)->timeseries)
 
+#define BWC_GET_CHAIN_STATE(consumer)		\
+  ((consumer)->chain_state)
+
 /** Convenience macro that defines all the function prototypes for the timeseries
  * consumer API
  */
@@ -65,7 +68,6 @@
   int bwc_##consname##_init(bwc_t *ds, int argc, char **argv);		\
   void bwc_##consname##_destroy(bwc_t *ds);				\
   int bwc_##consname##_process_view(bwc_t *ds, uint8_t interests,	\
-                                    bwc_state_t *state,                 \
 				    bgpwatcher_view_t *view);
 
 /** Convenience macro that defines all the function pointers for the timeseries
@@ -136,7 +138,6 @@ struct bwc
    * This is the core of the consumer API
    */
   int (*process_view)(struct bwc *consumer, uint8_t interests,
-                      bwc_state_t *state,
 		      bgpwatcher_view_t *view);
 
   /** }@ */
@@ -158,6 +159,9 @@ struct bwc
 
   /** A borrowed pointer to a configured and operational timeseries instance */
   timeseries_t *timeseries;
+
+  /** A borrowed pointer to the shared consumer state object */
+  bwc_chain_state_t *chain_state;
 
   /** }@ */
 };

@@ -31,6 +31,8 @@
 #include <stdint.h>
 #include <timeseries.h>
 
+#include "bl_id_set.h"
+
 #include "bgpwatcher_view.h"
 
 
@@ -68,9 +70,38 @@ typedef struct bwc bwc_t;
  * consumers (e.g. a consumer that determines the list of full-feed peers), you
  * should add a variable to this structure.
  */
-typedef struct bwc_state {
+typedef struct bwc_chain_state {
 
-} bwc_state_t;
+  /* Visibility state */
+
+  /** Has the visibility consumer run? */
+  int visibility_computed;
+
+  /** Set of v4 full-feed peers */
+  bl_id_set_t *v4ff_peerids;
+
+  /** Total number of v4 peers in the view */
+  int v4_peer_cnt;
+
+  /** Is the v4 table usable? I.e. has enough v6 full-feed peers */
+  int v4_usable;
+
+  /** Set of v6 full-feed peers */
+  bl_id_set_t *v6ff_peerids;
+
+  /** Total number of v6 peers in the view */
+  int v6_peer_cnt;
+
+  /** Is the v6 table usable? I.e. has enough full-feed v6 peers */
+  int v6_usable;
+
+  /** What is the minimum number of peers before a pfx is considered visible */
+  int pfx_vis_peers_threshold;
+
+  /** What is the minimum mask length for a prefix to be considered visible */
+  int pfx_vis_mask_len_threshold;
+
+} bwc_chain_state_t;
 
 /** @} */
 
@@ -88,11 +119,15 @@ typedef enum bwc_id
 
     BWC_ID_PERFMONITOR        = 2,
 
+    /** Computes visibility information for each view (used by per-as and
+        per-geo consumers) */
+    BWC_ID_VISIBILITY         = 3,
+
     /** Writes information about per-AS visibility information to Charthouse */
-    BWC_ID_PERASVISIBILITY    = 3,
+    BWC_ID_PERASVISIBILITY    = 4,
 
     /** Writes information about per-Geo visibility information to Charthouse */
-    BWC_ID_PERGEOVISIBILITY   = 4,
+    BWC_ID_PERGEOVISIBILITY   = 5,
 
     /** @todo add more consumers here */
 
