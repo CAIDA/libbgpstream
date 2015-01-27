@@ -45,26 +45,27 @@
 
 #define NAME "per-geo-visibility"
 
-#define METRIC_PREFIX               "bgp.visibility.geo"
-#define METRIC_V4_PEERS_CNT         METRIC_PREFIX".v4_peers_cnt"
-#define METRIC_V6_PEERS_CNT         METRIC_PREFIX".v6_peers_cnt"
-#define METRIC_V4_FF_PEERS_CNT      METRIC_PREFIX".v4_full_feed_peers_cnt"
-#define METRIC_V6_FF_PEERS_CNT      METRIC_PREFIX".v6_full_feed_peers_cnt"
-#define METRIC_CC_V4PFX_FORMAT      METRIC_PREFIX".%s.ipv4_pfx_cnt"
-#define METRIC_CC_V6PFX_FORMAT      METRIC_PREFIX".%s.ipv6_pfx_cnt"
+#define METRIC_PREFIX               "bgp.visibility.geo.netacuity"
 
-#define METRIC_CACHE_MISS_CNT        "bgp.meta.bgpwatcher.consumer.geo.cache_miss_cnt"
-#define METRIC_CACHE_HITS_CNT        "bgp.meta.bgpwatcher.consumer.geo.cache_hit_cnt"
-#define METRIC_ARRIVAL_DELAY         "bgp.meta.bgpwatcher.consumer.geo.arrival_delay"
-#define METRIC_PROCESSED_DELAY       "bgp.meta.bgpwatcher.consumer.geo.processed_delay"
-#define METRIC_MAXCOUNTRIES_PERPFX   "bgp.meta.bgpwatcher.consumer.geo.max_numcountries_perpfx"
-#define METRIC_AVGCOUNTRIES_PERPFX   "bgp.meta.bgpwatcher.consumer.geo.avg_numcountries_perpfx"
-#define METRIC_VISIBLE_PFXS          "bgp.meta.bgpwatcher.consumer.geo.visible_pfxs_cnt"
-#define METRIC_MAXRECS_PERPFXS       "bgp.meta.bgpwatcher.consumer.geo.max_records_perpfx"
+#define METRIC_CC_V4PFX_FORMAT      METRIC_PREFIX".%s.%s.ipv4_pfx_cnt"
+#define METRIC_CC_V6PFX_FORMAT      METRIC_PREFIX".%s.%s.ipv6_pfx_cnt"
+
+#define META_METRIC_PREFIX           "bgp.meta.bgpwatcher.consumer.geo"
+#define METRIC_CACHE_MISS_CNT        META_METRIC_PREFIX".cache_miss_cnt"
+#define METRIC_CACHE_HITS_CNT        META_METRIC_PREFIX".cache_hit_cnt"
+#define METRIC_ARRIVAL_DELAY         META_METRIC_PREFIX".arrival_delay"
+#define METRIC_PROCESSED_DELAY       META_METRIC_PREFIX".processed_delay"
+#define METRIC_MAXCOUNTRIES_PERPFX   META_METRIC_PREFIX".max_numcountries_perpfx"
+#define METRIC_AVGCOUNTRIES_PERPFX   META_METRIC_PREFIX".avg_numcountries_perpfx"
+#define METRIC_VISIBLE_PFXS          META_METRIC_PREFIX".visible_pfxs_cnt"
+#define METRIC_MAXRECS_PERPFXS       META_METRIC_PREFIX".max_records_perpfx"
 
 #define ROUTED_PFX_PEERCNT 10
 #define IPV4_FULLFEED_SIZE 400000
 #define IPV6_FULLFEED_SIZE 10000
+
+#define GEO_PROVIDER_NAME  "netacq-edge"
+
 
 #define STATE					\
   (BWC_GET_STATE(consumer, pergeovisibility))
@@ -102,11 +103,13 @@ typedef struct pergeo_info {
 } pergeo_info_t;
 
 
-// TODO: decide what to do
+/** Destroy pergeo information
+ *  @param info structure to destroy
+ */
 static void pergeo_info_destroy(pergeo_info_t info)
 {
-  // IPV4 --> bl_ipv4_pfx_set_destroy(info.v4pfxs);
-  // IPV6 -->  bl_ipv6_pfx_set_destroy(info.v6pfxs);
+  // currently there are no dynamic allocated memory
+  // 
 }
 
 
@@ -125,14 +128,6 @@ KHASH_INIT(cc_pfxs,
  *  generic metrics
  */
 typedef struct gen_metrics {
-
-  int v4_peers_idx;
-
-  int v6_peers_idx;
-
-  int v4_ff_peers_idx;
-
-  int v6_ff_peers_idx;
 
   int cache_misses_cnt_idx;
   int cache_hits_cnt_idx;
@@ -173,6 +168,11 @@ typedef struct bwc_pergeovisibility_state {
   /** Prefix visibility threshold */
   int pfx_vis_threshold;
 
+  /** netacq-edge files */
+  char blocks_file[BUFFER_LEN];
+  char locations_file[BUFFER_LEN];
+  char countries_file[BUFFER_LEN];
+
   /** Timeseries Key Package */
   timeseries_kp_t *kp;
 
@@ -186,15 +186,20 @@ typedef struct bwc_pergeovisibility_state {
   
 } bwc_pergeovisibility_state_t;
 
+
 /** Print usage information to stderr */
 static void usage(bwc_t *consumer)
 {
   fprintf(stderr,
 	  "consumer usage: %s\n"
+	  "       -c <file>     country decode file (mandatory option)\n"
+	  "       -b <file>     blocks file (mandatory option)\n"
+	  "       -l <file>     locations file (mandatory option)\n"
 	  "       -p <peer-cnt> # peers that must observe a pfx (default: %d)\n",
 	  consumer->name,
 	  ROUTED_PFX_PEERCNT);
 }
+
 
 /** Parse the arguments given to the consumer */
 static int parse_args(bwc_t *consumer, int argc, char **argv)
@@ -207,14 +212,22 @@ static int parse_args(bwc_t *consumer, int argc, char **argv)
   optind = 1;
 
   /* remember the argv strings DO NOT belong to us */
-  while((opt = getopt(argc, argv, ":p:?")) >= 0)
+  while((opt = getopt(argc, argv, ":p:b:c:l:?")) >= 0)
     {
       switch(opt)
 	{
 	case 'p':
 	  STATE->pfx_vis_threshold = atoi(optarg);
 	  break;
-
+	case 'b':
+	  strcpy(STATE->blocks_file, optarg);
+	  break;
+	case 'c':
+	  strcpy(STATE->countries_file, optarg);
+	  break;
+	case 'l':
+	  strcpy(STATE->locations_file, optarg);
+	  break;
 	case '?':
 	case ':':
 	default:
@@ -223,36 +236,22 @@ static int parse_args(bwc_t *consumer, int argc, char **argv)
 	}
     }
 
+  // blocks countries and locations are mandatory options
+  if(STATE->blocks_file[0] == '\0' ||
+     STATE->countries_file[0] ==  '\0' ||
+     STATE->locations_file[0] == '\0')
+    {
+      usage(consumer);
+      return -1;
+    }
+  
+  
   return 0;
 }
 
 
 static int create_gen_metrics(bwc_t *consumer)
 {
-  if((STATE->gen_metrics.v4_peers_idx =
-      timeseries_kp_add_key(STATE->kp, METRIC_V4_PEERS_CNT)) == -1)
-    {
-      return -1;
-    }
-
-  if((STATE->gen_metrics.v6_peers_idx =
-      timeseries_kp_add_key(STATE->kp, METRIC_V6_PEERS_CNT)) == -1)
-    {
-      return -1;
-    }
-
-  if((STATE->gen_metrics.v4_ff_peers_idx =
-      timeseries_kp_add_key(STATE->kp, METRIC_V4_FF_PEERS_CNT)) == -1)
-    {
-      return -1;
-    }
-
-  if((STATE->gen_metrics.v6_ff_peers_idx =
-      timeseries_kp_add_key(STATE->kp, METRIC_V6_FF_PEERS_CNT)) == -1)
-    {
-      return -1;
-    }
-
   if((STATE->gen_metrics.cache_misses_cnt_idx =
       timeseries_kp_add_key(STATE->kp, METRIC_CACHE_MISS_CNT)) == -1)
     {
@@ -350,17 +349,6 @@ static void find_ff_peers(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 
 static void dump_gen_metrics(bwc_t *consumer)
 {
-  timeseries_kp_set(STATE->kp, STATE->gen_metrics.v4_peers_idx,
-                    STATE->v4_peer_cnt);
-
-  timeseries_kp_set(STATE->kp, STATE->gen_metrics.v6_peers_idx,
-                    STATE->v6_peer_cnt);
-
-  timeseries_kp_set(STATE->kp, STATE->gen_metrics.v4_ff_peers_idx,
-                    bl_id_set_size(STATE->v4ff_peerids));
-
-  timeseries_kp_set(STATE->kp, STATE->gen_metrics.v6_ff_peers_idx,
-                    bl_id_set_size(STATE->v6ff_peerids));
 
   timeseries_kp_set(STATE->kp, STATE->gen_metrics.cache_misses_cnt_idx,
                     STATE->cache_misses_cnt);
@@ -644,41 +632,41 @@ int bwc_pergeovisibility_init(bwc_t *consumer, int argc, char **argv)
       goto err;
     }
 
-/* parse the command line args */
+  /* initialize blocks,countries, locations files
+   * these files 
+   */
+  state->blocks_file[0] = '\0';
+  state->countries_file[0] = '\0';
+  state->locations_file[0] = '\0';
+  
+  /* parse the command line args */
   if(parse_args(consumer, argc, argv) != 0)
     {
       goto err;
     }
-
-  /* react to args here */
-
   
   /* lookup the provider using the name  */
-  if((state->provider = ipmeta_get_provider_by_name(state->ipmeta, "netacq-edge")) == NULL)
+  if((state->provider = ipmeta_get_provider_by_name(state->ipmeta, GEO_PROVIDER_NAME)) == NULL)
     {
-      fprintf(stderr, "ERROR: Invalid provider name: netacq-edge\n");
+      fprintf(stderr, "ERROR: Invalid provider name: %s\n", GEO_PROVIDER_NAME);
       goto err;
     }
 
   /* enable the provider  */
-  
+  char provider_options[BUFFER_LEN];
+  provider_options[0] = '\0';
 
-  // TODO: all the provider options should be command-line options
+  snprintf(provider_options, BUFFER_LEN, "-b %s -l %s -c %s -D intervaltree",
+	   state->blocks_file,
+	   state->locations_file,
+	   state->countries_file);	
   
-  /* if(ipmeta_enable_provider(state->ipmeta, state->provider, */
-  /* 			    " -b /data/external/netacuity-dumps/Edge-processed/2015-01-22.netacq-4-blocks.csv.gz" */
-  /* 			    " -l /data/external/netacuity-dumps/Edge-processed/2015-01-22.netacq-4-locations.csv.gz" */
-  /* 			    " -c /data/external/netacuity-dumps/country_codes.csv", */
-  /* 			    IPMETA_PROVIDER_DEFAULT_YES) != 0) */
-    // LOCAL DEBUG
-    if(ipmeta_enable_provider(state->ipmeta, state->provider,
-    			      " -b /Users/chiara/Utilities/geo/2014-04-07.netacq-4-blocks.csv.gz"
-    			      " -l /Users/chiara/Utilities/geo/2014-04-07.netacq-4-locations.csv.gz"
-    			      " -c /Users/chiara/Utilities/geo/country_codes.csv"
-    			      " -D intervaltree",
-    			    IPMETA_PROVIDER_DEFAULT_YES) != 0)
+  if(ipmeta_enable_provider(state->ipmeta,
+			    state->provider,
+			    provider_options,
+			    IPMETA_PROVIDER_DEFAULT_YES) != 0)
     {
-      fprintf(stderr, "ERROR: Could not enable provider netacq-edge\n");
+      fprintf(stderr, "ERROR: Could not enable provider %s\n", GEO_PROVIDER_NAME);
       goto err;      
     }
     
@@ -699,9 +687,6 @@ int bwc_pergeovisibility_init(bwc_t *consumer, int argc, char **argv)
 
   for(i=0; i < num_countries; i++)
     {
-      // DEBUG line
-      // printf("%s\n", countries[i]->iso2);
-
       // Warning: we assume netacq returns a set of unique countries
       // then we don't need to check if these iso2 are already
       // present in the countrycode map
@@ -713,7 +698,7 @@ int bwc_pergeovisibility_init(bwc_t *consumer, int argc, char **argv)
       // initialize properly geo_info and create ipvX metrics id for kp
       geo_info->v4pfxs_cnt = 0;
       
-      snprintf(buffer, BUFFER_LEN, METRIC_CC_V4PFX_FORMAT, countries[i]->iso2);
+      snprintf(buffer, BUFFER_LEN, METRIC_CC_V4PFX_FORMAT, countries[i]->continent, countries[i]->iso2);
       if((geo_info->v4_idx = timeseries_kp_add_key(STATE->kp, buffer)) == -1)
 	{
 	  fprintf(stderr, "ERROR: Could not create key metric\n");
@@ -721,11 +706,11 @@ int bwc_pergeovisibility_init(bwc_t *consumer, int argc, char **argv)
 
       // IPV6 --> geo_info->v6pfxs_cnt = 0;
 
-      // IPV6 -->  snprintf(buffer, BUFFER_LEN, METRIC_CC_V6PFX_FORMAT, countries[i]->iso2);
+      // IPV6 -->  snprintf(buffer, BUFFER_LEN, METRIC_CC_V6PFX_FORMAT, countries[i]->continent, countries[i]->iso2);
       // IPV6 -->  if((geo_info->v6_idx = timeseries_kp_add_key(STATE->kp, buffer)) == -1)
       // IPV6 --> {
       // IPV6 --> fprintf(stderr, "ERROR: Could not create key metric\n");
-      // IPV6 --> 	}
+      // IPV6 --> }
       
     }
      
@@ -809,6 +794,13 @@ int bwc_pergeovisibility_process_view(bwc_t *consumer, uint8_t interests,
   
   /* find the full-feed peers */
   find_ff_peers(consumer, it);
+
+  if(bl_id_set_size(state->v4ff_peerids) < ROUTED_PFX_PEERCNT)
+    {
+      return 0;
+    }
+
+  // IPV6: also if(bl_id_set_size(kh_state->v6ff_peerids) > ROUTED_PFX_PEERCNT)
   
   /* analyze v4 table */
   geotag_v4table(consumer, it);
