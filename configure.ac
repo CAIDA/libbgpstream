@@ -103,6 +103,12 @@ AC_CHECK_LIB([timeseries], [timeseries_init], , [
     AC_MSG_ERROR([libtimeseries is required for the Per-AS Visibility plugin])
 ])
 
+
+# @@todo add --with-ipmeta option
+AC_CHECK_LIB([ipmeta], [ipmeta_lookup], ,[AC_MSG_ERROR([ipmeta is required])])
+
+
+
 # @@todo add libbgpstream here
 
 ## @note AC_CHECK_LIB is for when you know the name of the library,

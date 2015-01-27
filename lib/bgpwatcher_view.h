@@ -60,6 +60,11 @@ typedef struct bgpwatcher_view_iter bgpwatcher_view_iter_t;
  *
  * @{ */
 
+/** Callback for destroying a custom user structure associated with a pfx
+ * @param user    user pointer to destroy
+ */
+typedef void (bgpwatcher_view_destroy_user_cb) (void* user);
+
 /** @} */
 
 /**
@@ -125,6 +130,15 @@ void bgpwatcher_view_destroy(bgpwatcher_view_t *view);
  * clear the peersigns table.
  */
 void bgpwatcher_view_clear(bgpwatcher_view_t *view);
+
+/** Destroy all the per-pfx user data
+ *
+ * @param view          view to destroy user data for
+ * @param call_back     function that actually destroy the specific user structure
+ *                      used in this view
+ */
+void bgpwatcher_view_destroy_user(bgpwatcher_view_t *view,
+				  bgpwatcher_view_destroy_user_cb *call_back);
 
 /** Dump the given BGP View to stdout
  *
@@ -256,6 +270,39 @@ bl_ipv4_pfx_t *bgpwatcher_view_iter_get_v4pfx(bgpwatcher_view_iter_t *iter);
  *         the v6 prefixes.
  */
 bl_ipv6_pfx_t *bgpwatcher_view_iter_get_v6pfx(bgpwatcher_view_iter_t *iter);
+
+/** Get the current v4 prefix user pointer for the given iterator
+ *
+ * @param iter      Pointer to an iterator structure
+ * @return the user pointer that the iterator's v4pfx field is currently pointed at,
+ *         NULL if the iterator is not initialized, or has reached the end of
+ *         the v4 prefixes.
+ */
+void *bgpwatcher_view_iter_get_v4pfx_user(bgpwatcher_view_iter_t *iter);
+
+/** Get the current v6 prefix user pointer for the given iterator
+ *
+ * @param iter      Pointer to an iterator structure
+ * @return the user pointer that the iterator's v4pfx field is currently pointed at,
+ *         NULL if the iterator is not initialized, or has reached the end of
+ *         the v6 prefixes.
+ */
+void *bgpwatcher_view_iter_get_v6pfx_user(bgpwatcher_view_iter_t *iter);
+
+/** Set the current v4 prefix user pointer for the given iterator
+ *
+ * @param iter      Pointer to an iterator structure
+ * @param user      Pointer to store per-pfx information on consumers
+ */
+void bgpwatcher_view_iter_set_v4pfx_user(bgpwatcher_view_iter_t *iter, void *user);
+
+/** Set the current v6 prefix user pointer for the given iterator
+ *
+ * @param iter      Pointer to an iterator structure
+ * @param user      Pointer to store per-pfx information on consumers
+ */
+void bgpwatcher_view_iter_set_v6pfx_user(bgpwatcher_view_iter_t *iter, void *user);
+
 
 /** Get the current peer ID for the given iterator
  *

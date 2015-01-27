@@ -43,6 +43,9 @@
 /* Per-AS Visibility consumer */
 #include "bwc_perasvisibility.h"
 
+/* Per-Geo Visibility consumer */
+#include "bwc_pergeovisibility.h"
+
 /* ==================== PRIVATE DATA STRUCTURES ==================== */
 
 #define MAXOPTS 1024
@@ -77,6 +80,9 @@ static const consumer_alloc_func_t consumer_alloc_functions[] = {
 
   /** Pointer to per-as vis function */
   bwc_perasvisibility_alloc,
+
+  /** Pointer to per-geo vis function */
+  bwc_pergeovisibility_alloc,
 
   /** Sample conditional consumer. If enabled, point to the alloc function,
       otherwise a NULL pointer to indicate the consumer is unavailable */
