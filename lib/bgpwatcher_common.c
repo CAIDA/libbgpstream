@@ -38,6 +38,11 @@
 
 #define BUFFER_LEN 16384
 
+/* because the values of AF_INET* vary from system to system we need to use
+   our own encoding for the version */
+#define BW_INTERNAL_AF_INET  4
+#define BW_INTERNAL_AF_INET6 6
+
 static void *get_in_addr(bl_addr_storage_t *ip) {
   assert(ip->version != BL_ADDR_TYPE_UNKNOWN);
   return ip->version == BL_ADDR_IPV4
@@ -352,22 +357,28 @@ int bw_serialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip)
 {
   size_t written = 0;
 
-  /* serialize the version */
-  assert(len >= 1);
-  *buf = ip->version;
-  buf++;
-  written++;
-
   /* now serialize the actual address */
   switch(ip->version)
     {
     case BL_ADDR_IPV4:
+      /* serialize the version */
+      assert(len >= 1);
+      *buf = BW_INTERNAL_AF_INET;
+      buf++;
+      written++;
+
       assert((len-written) >= sizeof(uint32_t));
       memcpy(buf, &ip->ipv4.s_addr, sizeof(uint32_t));
       return written + sizeof(uint32_t);
       break;
 
     case BL_ADDR_IPV6:
+      /* serialize the version */
+      assert(len >= 1);
+      *buf = BW_INTERNAL_AF_INET6;
+      buf++;
+      written++;
+
       assert((len-written) >= (sizeof(uint8_t)*16));
       memcpy(buf, &ip->ipv6.s6_addr, sizeof(uint8_t)*16);
       return written + sizeof(uint8_t)*16;
@@ -385,19 +396,25 @@ int bw_deserialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip)
   size_t read = 0;
 
   assert(len >= 1);
-  ip->version = *buf;
-  buf++;
-  read++;
 
-  switch(ip->version)
+  /* switch on the internal version */
+  switch(*buf)
     {
-    case BL_ADDR_IPV4:
+    case BW_INTERNAL_AF_INET:
+      ip->version = BL_ADDR_IPV4;
+      buf++;
+      read++;
+
       assert((len-read) >= sizeof(uint32_t));
       memcpy(&ip->ipv4.s_addr, buf, sizeof(uint32_t));
       return read + sizeof(uint32_t);
       break;
 
-    case BL_ADDR_IPV6:
+    case BW_INTERNAL_AF_INET6:
+      ip->version = BL_ADDR_IPV6;
+      buf++;
+      read++;
+
       assert((len-read) >= (sizeof(uint8_t)*16));
       memcpy(&ip->ipv6.s6_addr, buf, sizeof(uint8_t)*16);
       return read + (sizeof(uint8_t) * 16);
