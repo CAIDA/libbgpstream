@@ -414,6 +414,8 @@ int bwc_visibility_process_view(bwc_t *consumer, uint8_t interests,
       CHAIN_STATE->v6_usable = 1;
     }
 
+  // compute processed delay (must come prior to dump_gen_metrics)
+  STATE->processed_delay = zclock_time()/1000 - bgpwatcher_view_time(view);
   /* dump metrics and tables */
   dump_gen_metrics(consumer);
 
@@ -422,9 +424,6 @@ int bwc_visibility_process_view(bwc_t *consumer, uint8_t interests,
     {
       return -1;
     }
-
-  // compute processed delay
-  STATE->processed_delay = zclock_time()/1000 - bgpwatcher_view_time(view);
 
   return 0;
 }

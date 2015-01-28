@@ -748,6 +748,8 @@ int bwc_pergeovisibility_process_view(bwc_t *consumer, uint8_t interests,
 
   // IPV6: also if(bl_id_set_size(kh_STATE->v6ff_peerids) > ROUTED_PFX_PEERCNT)
 
+  // compute processed delay (must come prior to dump_gen_metrics)
+  STATE->processed_delay = zclock_time()/1000- bgpwatcher_view_time(view);
   /* dump metrics and tables */
   dump_gen_metrics(consumer);
 
@@ -756,10 +758,6 @@ int bwc_pergeovisibility_process_view(bwc_t *consumer, uint8_t interests,
     {
       return -1;
     }
-
-  // compute processed delay
-  STATE->processed_delay = zclock_time()/1000- bgpwatcher_view_time(view);
-
 
   return 0;
 }

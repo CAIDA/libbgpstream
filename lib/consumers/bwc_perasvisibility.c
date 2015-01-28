@@ -515,6 +515,8 @@ int bwc_perasvisibility_process_view(bwc_t *consumer, uint8_t interests,
       return -1;
     }
 
+  // compute processed delay
+  STATE->processed_delay = zclock_time()/1000 - bgpwatcher_view_time(view);
   /* dump the general metrics */
   dump_gen_metrics(consumer);
 
@@ -526,9 +528,6 @@ int bwc_perasvisibility_process_view(bwc_t *consumer, uint8_t interests,
 
   /* destroy the view iterator */
   bgpwatcher_view_iter_destroy(it);
-
-  // compute processed delay
-  STATE->processed_delay = zclock_time()/1000 - bgpwatcher_view_time(view);
 
   return 0;
 }
