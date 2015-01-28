@@ -246,7 +246,7 @@ int bgpcorsaro_pacifier_start_interval(bgpcorsaro_t *bgpcorsaro,
       state->tv_start = tv.tv_sec;
     }
 
-  printf("START INTERVAL TIME: %d \n", state->tv_start);
+  // fprintf(stderr, "START INTERVAL TIME: %d \n", state->tv_start);
 
   return 0;
 }
@@ -293,7 +293,7 @@ int bgpcorsaro_pacifier_end_interval(bgpcorsaro_t *bgpcorsaro,
     }  
   state->tv_start = tv.tv_sec;
 
-  printf("END INTERVAL TIME: %d \n", state->tv_start);
+  // fprintf(stderr, "END INTERVAL TIME: %d \n", state->tv_start);
   return 0;
 }
 
