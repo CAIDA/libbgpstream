@@ -92,7 +92,8 @@ AC_FUNC_REALLOC
 
 # Checks for libraries.
 # we do not use wandio
-AM_CONDITIONAL([WITH_WANDIO], [no])
+with_wandio=no
+AM_CONDITIONAL([WITH_WANDIO], [test x$with_wandio = xyes])
 
 AC_CHECK_LIB([czmq], [zctx_new], ,[AC_MSG_ERROR(
 		      [CZMQ is required])])
