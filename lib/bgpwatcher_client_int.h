@@ -85,6 +85,9 @@ struct bgpwatcher_client_pfx_table {
   /** Hash table of prefixes being added */
   kh_v6pfx_peers_t *v6pfx_peers;
 
+  /** The number of times this table has been reused */
+  int reuse_cnt;
+
 };
 
 struct bgpwatcher_client {

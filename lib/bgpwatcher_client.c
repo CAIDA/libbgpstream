@@ -37,6 +37,9 @@
 #define BCFG (client->broker_config)
 #define TBL (client->pfx_table)
 
+/* allow the table hash to be reused for 1 day */
+#define TABLE_MAX_REUSE_CNT 1440
+
 #define METRIC_PREFIX "bgp.meta.bgpwatcher.client"
 
 #define DUMP_METRIC(value, time, fmt, ...)                      \
@@ -81,6 +84,28 @@ static void pfx_peer_info_free(bgpwatcher_pfx_peer_info_t *info)
   free(info);
 }
 
+static int init_pfx_hashes(bgpwatcher_client_t *client)
+{
+  if((TBL.v4pfx_peers = kh_init(v4pfx_peers)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Failed to init v4 pfx peers set");
+      goto err;
+    }
+
+  if((TBL.v6pfx_peers = kh_init(v6pfx_peers)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Failed to init v6 pfx peers set");
+      goto err;
+    }
+
+  return 0;
+
+ err:
+  return -1;
+}
+
 /* ========== PUBLIC FUNCS BELOW HERE ========== */
 
 bgpwatcher_client_t *bgpwatcher_client_init(uint8_t interests, uint8_t intents)
@@ -93,17 +118,8 @@ bgpwatcher_client_t *bgpwatcher_client_init(uint8_t interests, uint8_t intents)
     }
   /* now we are ready to set errors... */
 
-  if((TBL.v4pfx_peers = kh_init(v4pfx_peers)) == NULL)
+  if(init_pfx_hashes(client) != 0)
     {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
-			     "Failed to init v4 pfx peers set");
-      goto err;
-    }
-
-  if((TBL.v6pfx_peers = kh_init(v6pfx_peers)) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
-			     "Failed to init v6 pfx peers set");
       goto err;
     }
 
@@ -230,11 +246,29 @@ int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_t *client,
       TBL.info.peers_alloc_cnt = peer_cnt;
     }
 
-  /* reset the pfx_peers hash */
+  /* free the peer info structures */
   kh_free_vals(v4pfx_peers, TBL.v4pfx_peers, pfx_peer_info_free);
-  kh_clear(v4pfx_peers, TBL.v4pfx_peers);
   kh_free_vals(v6pfx_peers, TBL.v6pfx_peers, pfx_peer_info_free);
-  kh_clear(v6pfx_peers, TBL.v6pfx_peers);
+
+  /* we allow the actual hash to be reused for a while */
+  if(TBL.reuse_cnt < TABLE_MAX_REUSE_CNT)
+    {
+      /* reset the pfx_peers hash */
+      kh_clear(v4pfx_peers, TBL.v4pfx_peers);
+      kh_clear(v6pfx_peers, TBL.v6pfx_peers);
+      TBL.reuse_cnt++;
+    }
+  else
+    {
+      fprintf(stderr, "DEBUG: Forcing hard-clear of pfx table\n");
+      kh_destroy(v4pfx_peers, TBL.v4pfx_peers);
+      kh_destroy(v6pfx_peers, TBL.v6pfx_peers);
+      if(init_pfx_hashes(client) != 0)
+	{
+	  return -1;
+	}
+      TBL.reuse_cnt = 0;
+    }
 
   TBL.started = 1;
 
