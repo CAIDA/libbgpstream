@@ -89,7 +89,8 @@ typedef enum {
   STORE_VIEW_STATE_MAX      = STORE_VIEW_FULL,
 } store_view_state_t;
 
-#define STORE_VIEW_REUSE_MAX 1024
+/* one view will be hard-cleared at each cycle through the window */
+#define STORE_VIEW_REUSE_MAX WDW_LEN
 
 /* dispatcher status */
 typedef struct dispatch_status {
@@ -108,6 +109,9 @@ typedef struct store_view {
 
   /** Number of times that this store has been reused */
   int reuse_cnt;
+
+  /** Number of uses remaining before this view must be hard-cleared */
+  int reuse_remaining;
 
   dispatch_status_t dis_status[STORE_VIEW_STATE_MAX+1];
 
@@ -213,6 +217,8 @@ store_view_t *store_view_create(bgpwatcher_store_t *store, int id)
 
   sview->id = id;
 
+  sview->reuse_remaining = STORE_VIEW_REUSE_MAX-1;
+
   if((sview->done_clients = bl_string_set_create()) == NULL)
     {
       goto err;
@@ -245,36 +251,38 @@ store_view_t *store_view_create(bgpwatcher_store_t *store, int id)
   return NULL;
 }
 
-static int store_view_clear(bgpwatcher_store_t *store,
-			    store_view_t *sview)
+static store_view_t *store_view_clear(bgpwatcher_store_t *store,
+				      store_view_t *sview)
 {
   int i, idx;
 
   assert(sview != NULL);
 
+  /* either way, this view is not inuse anymore */
+  store->sviews_inuse_cnt--;
+
   /* after many soft-clears we force a hard-clear of the view to prevent the
      accumulation of prefix info for prefixes that are no longer in use */
-  if(sview->reuse_cnt == STORE_VIEW_REUSE_MAX)
+  if(sview->reuse_remaining == 0)
     {
       fprintf(stderr, "DEBUG: Forcing hard-clear of sview\n");
       /* we need the index of this view */
-      idx = (store->sviews_first_idx +
-	     ((sview->view->time - store->sviews_first_time) / WDW_ITEM_TIME))
-	% WDW_LEN;
+      idx = sview->id;
 
       store_view_destroy(sview);
       if((store->sviews[idx] = store_view_create(store, idx)) == NULL)
 	{
-	  return -1;
+	  return NULL;
 	}
+      return store->sviews[idx];
     }
 
   fprintf(stderr, "DEBUG: Clearing store (%d)\n", sview->view->time);
 
   sview->state = STORE_VIEW_UNUSED;
-  store->sviews_inuse_cnt--;
 
   sview->reuse_cnt++;
+  sview->reuse_remaining--;
 
   for(i=0; i<=STORE_VIEW_STATE_MAX; i++)
     {
@@ -295,7 +303,7 @@ static int store_view_clear(bgpwatcher_store_t *store,
   /* now clear the child view */
   bgpwatcher_view_clear(sview->view);
 
-  return 0;
+  return sview;
 }
 
 static int store_view_completion_check(bgpwatcher_store_t *store,
@@ -408,18 +416,18 @@ static int store_view_table_end(store_view_t *sview,
 
 static int store_view_remove(bgpwatcher_store_t *store, store_view_t *sview)
 {
-  /* clear out stuff */
-  if(store_view_clear(store, sview) != 0)
-    {
-      return -1;
-    }
-
   /* slide the window? */
   /* only if sview->view->time == first_time */
   if(sview->view->time == store->sviews_first_time)
     {
       store->sviews_first_time += WDW_ITEM_TIME;
       store->sviews_first_idx = (store->sviews_first_idx+1) % WDW_LEN;
+    }
+
+  /* clear out stuff */
+  if((sview = store_view_clear(store, sview)) == NULL)
+    {
+      return -1;
     }
 
   return 0;
@@ -766,6 +774,8 @@ bgpwatcher_store_t *bgpwatcher_store_create(bgpwatcher_server_t *server)
         {
           goto err;
         }
+      /* tweak the reuse_remaining to stagger hard-clears */
+      store->sviews[i]->reuse_remaining += i;
     }
 
   return store;
