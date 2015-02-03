@@ -36,7 +36,7 @@
 #include "bl_peersign_map.h"
 #include "utils.h"
 
-#define WDW_LEN         30
+#define WDW_LEN         (store->sviews_cnt)
 #define WDW_ITEM_TIME   60
 #define WDW_DURATION    WDW_LEN * WDW_ITEM_TIME
 
@@ -142,7 +142,10 @@ struct bgpwatcher_store {
   bgpwatcher_server_t *server;
 
   /** Circular buffer of views */
-  store_view_t *sviews[WDW_LEN];
+  store_view_t **sviews;
+
+  /** Number of views in the circular buffer */
+  int sviews_cnt;
 
   /** The number of views that are not STORE_VIEW_UNUSED */
   int sviews_inuse_cnt;
@@ -742,7 +745,8 @@ static void store_views_dump(bgpwatcher_store_t *store)
 
 /* ========== PROTECTED FUNCTIONS ========== */
 
-bgpwatcher_store_t *bgpwatcher_store_create(bgpwatcher_server_t *server)
+bgpwatcher_store_t *bgpwatcher_store_create(bgpwatcher_server_t *server,
+					    int window_len)
 {
   bgpwatcher_store_t *store;
   int i;
@@ -766,6 +770,14 @@ bgpwatcher_store_t *bgpwatcher_store_create(bgpwatcher_server_t *server)
       fprintf(stderr, "Failed to create peersigns table\n");
       goto err;
     }
+
+  if((store->sviews = malloc(sizeof(store_view_t*) * window_len)) == NULL)
+    {
+      fprintf(stderr, "Failed to malloc the store view buffer\n");
+      goto err;
+    }
+
+  store->sviews_cnt = window_len;
 
   /* must be created after peersigns */
   for(i=0; i<WDW_LEN; i++)
@@ -807,6 +819,10 @@ void bgpwatcher_store_destroy(bgpwatcher_store_t *store)
       store_view_destroy(store->sviews[i]);
       store->sviews[i] = NULL;
     }
+
+  free(store->sviews);
+  store->sviews = NULL;
+  store->sviews_cnt = 0;
 
   if(store->active_clients != NULL)
     {

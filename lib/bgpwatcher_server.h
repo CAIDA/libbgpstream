@@ -47,6 +47,9 @@
 
 /* shared constants are in bgpwatcher_common.h */
 
+/** The default number of views in the window */
+#define BGPWATCHER_SERVER_WINDOW_LEN 30
+
 /** @} */
 
 /**
@@ -125,6 +128,14 @@ void bgpwatcher_server_stop(bgpwatcher_server_t *server);
  * @param server       pointer to the bgpwatcher server instance to free
  */
 void bgpwatcher_server_free(bgpwatcher_server_t *server);
+
+/** Set the size of the view window
+ *
+ * @param               pointer to a bgpwatcher server instance to configure
+ * @param               length of the view window (in number of views)
+ */
+void bgpwatcher_server_set_window_len(bgpwatcher_server_t *server,
+				      int window_len);
 
 /** Set the URI for the server to listen for client connections on
  *

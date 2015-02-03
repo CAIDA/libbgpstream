@@ -48,10 +48,12 @@ typedef struct bgpwatcher_store bgpwatcher_store_t;
 /** Create a new bgpwatcher store instance
  *
  * @param server        pointer to the bgpwatcher server instance
+ * @param window_len    number of consecutive views in the store's window
  * @return a pointer to a bgpwatcher store instance, or NULL if an error
  * occurred
  */
-bgpwatcher_store_t *bgpwatcher_store_create(bgpwatcher_server_t *server);
+bgpwatcher_store_t *bgpwatcher_store_create(bgpwatcher_server_t *server,
+					    int window_len);
 
 /** Destroy the given bgpwatcher store instance
  *

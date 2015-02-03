@@ -76,12 +76,14 @@ static void usage(const char *name)
 	  "       -i <interval-ms>   Time in ms between heartbeats to clients\n"
 	  "                          (default: %d)\n"
 	  "       -l <beats>         Number of heartbeats that can go by before \n"
-	  "                          a client is declared dead (default: %d)\n",
+	  "                          a client is declared dead (default: %d)\n"
+	  "       -w <window-len>    number of views in the window (default: %d)\n",
 	  name,
 	  BGPWATCHER_CLIENT_URI_DEFAULT,
 	  BGPWATCHER_CLIENT_PUB_URI_DEFAULT,
 	  BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT,
-	  BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT);
+	  BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT,
+	  BGPWATCHER_SERVER_WINDOW_LEN);
 }
 
 int main(int argc, char **argv)
@@ -97,10 +99,12 @@ int main(int argc, char **argv)
   uint64_t heartbeat_interval = BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT;
   int heartbeat_liveness      = BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT;
 
+  int window_len = BGPWATCHER_SERVER_WINDOW_LEN;
+
   signal(SIGINT, catch_sigint);
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":c:C:i:l:v?")) >= 0)
+	(opt = getopt(argc, argv, ":c:C:i:l:w:v?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
@@ -128,6 +132,10 @@ int main(int argc, char **argv)
 
 	case 'l':
 	  heartbeat_liveness = atoi(optarg);
+	  break;
+
+	case 'w':
+	  window_len = atoi(optarg);
 	  break;
 
 	case '?':
@@ -169,6 +177,8 @@ int main(int argc, char **argv)
   bgpwatcher_server_set_heartbeat_interval(watcher, heartbeat_interval);
 
   bgpwatcher_server_set_heartbeat_liveness(watcher, heartbeat_liveness);
+
+  bgpwatcher_server_set_window_len(watcher, window_len);
 
   /* do work */
   /* this function will block until the server shuts down */

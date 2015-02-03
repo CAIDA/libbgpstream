@@ -883,12 +883,7 @@ bgpwatcher_server_t *bgpwatcher_server_init()
 
   server->heartbeat_liveness = BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT;
 
-  if((server->store = bgpwatcher_store_create(server)) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
-			     "Could not create store");
-      goto err;
-    }
+  server->store_window_len = BGPWATCHER_SERVER_WINDOW_LEN;
 
   /* create an empty client list */
   if((server->clients = kh_init(strclient)) == NULL)
@@ -910,6 +905,14 @@ bgpwatcher_server_t *bgpwatcher_server_init()
 
 int bgpwatcher_server_start(bgpwatcher_server_t *server)
 {
+  if((server->store =
+      bgpwatcher_store_create(server, server->store_window_len)) == NULL)
+    {
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
+			     "Could not create store");
+      return -1;
+    }
+
   /* bind to client socket */
   if((server->client_socket = zsocket_new(server->ctx, ZMQ_ROUTER)) == NULL)
     {
@@ -990,6 +993,13 @@ void bgpwatcher_server_free(bgpwatcher_server_t *server)
   free(server);
 
   return;
+}
+
+void bgpwatcher_server_set_window_len(bgpwatcher_server_t *server,
+				      int window_len)
+{
+  assert(server != NULL);
+  server->store_window_len = window_len;
 }
 
 int bgpwatcher_server_set_client_uri(bgpwatcher_server_t *server,

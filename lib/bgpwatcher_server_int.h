@@ -150,6 +150,9 @@ struct bgpwatcher_server {
   /** The number of heartbeats that have gone by since the last timeout check */
   int store_timeout_cnt;
 
+  /** The number of views in the store */
+  int store_window_len;
+
 };
 
 /** @} */
