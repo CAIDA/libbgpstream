@@ -737,20 +737,9 @@ static int run_server(bgpwatcher_server_t *server)
   /* check if this client is already registered */
   if((client = client_get(server, &client_id)) == NULL)
     {
-      if(msg_type == BGPWATCHER_MSG_TYPE_READY)
+      /* create state for this client */
+      if((client = client_init(server, &client_id)) == NULL)
 	{
-	  /* create state for this client */
-	  if((client = client_init(server, &client_id)) == NULL)
-	    {
-	      goto err;
-	    }
-	}
-      else
-	{
-	  /* somehow the client state was lost but the client didn't
-	     reconnect */
-	  bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-				 "Unknown client found");
 	  goto err;
 	}
     }
