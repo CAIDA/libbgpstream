@@ -81,10 +81,18 @@ struct bgpcorsaro_pacifier_state_t {
   /** The current outfile */
   int outfile_n;
 
+  // first time
+  int tv_first_time;
+  // interval counter
+  int intervals;
+
   // start time
   int tv_start;
   // interval length
   uint8_t wait;
+
+  // adaptive behavior
+  uint8_t adaptive;
   
 };
 
@@ -99,8 +107,9 @@ struct bgpcorsaro_pacifier_state_t {
 static void usage(bgpcorsaro_plugin_t *plugin)
 {
   fprintf(stderr,
-	  "plugin usage: %s [-w interval-lenght]\n"
-	  "       -w interval-lenght  \n",
+	  "plugin usage: %s [-w interval-lenght] -a\n"
+	  "       -w interval-lenght  (default: 30s)\n"
+	  "       -a                  adaptive (default:off) \n",
 	  plugin->argv[0]);
 }
 
@@ -119,12 +128,15 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
   /* NB: remember to reset optind to 1 before using getopt! */
   optind = 1;
 
-  while((opt = getopt(plugin->argc, plugin->argv, ":w:?")) >= 0)
+  while((opt = getopt(plugin->argc, plugin->argv, ":w:a?")) >= 0)
     {
       switch(opt)
 	{
 	case 'w':
 	  state->wait = atoi(optarg);
+	  break;
+	case 'a':
+	  state->adaptive = 1;
 	  break;
 	case '?':
 	case ':':
@@ -173,9 +185,12 @@ int bgpcorsaro_pacifier_init_output(bgpcorsaro_t *bgpcorsaro)
 
   // initializing state
   state = STATE(bgpcorsaro);
-  state->tv_start = 0;  // 0 means it is the first interval, so the time has to be initialized at interval start
-  state->wait = 30;     // 30 seconds is the default wait time, between start and end
-
+  state->tv_start = 0;      // 0 means it is the first interval, so the time has to be initialized at interval start
+  state->wait = 30;         // 30 seconds is the default wait time, between start and end
+  state->tv_first_time = 0; // 0 means it is the first interval, so the time has to be initialized at interval start
+  state->intervals = 0;     // number of intervals processed
+  state->adaptive = 0;      // default behavior is not adaptive
+  
   /* parse the arguments */
   if(parse_args(bgpcorsaro) != 0)
     {
@@ -244,8 +259,12 @@ int bgpcorsaro_pacifier_start_interval(bgpcorsaro_t *bgpcorsaro,
     {
       gettimeofday_wrap(&tv);
       state->tv_start = tv.tv_sec;
+      state->tv_first_time = state->tv_start;
     }
 
+  // a new interval is starting
+  state->intervals++;
+  
   // fprintf(stderr, "START INTERVAL TIME: %d \n", state->tv_start);
 
   return 0;
@@ -282,12 +301,24 @@ int bgpcorsaro_pacifier_end_interval(bgpcorsaro_t *bgpcorsaro,
 
   struct timeval tv;
   gettimeofday_wrap(&tv);
-  int diff = state->wait - (tv.tv_sec - state->tv_start);
+  
+  int expected_time = 0;
+  int diff = 0;
 
+  if(state->adaptive == 0)
+    {
+      diff = state->wait - (tv.tv_sec - state->tv_start);
+    }
+  else
+    {
+      expected_time = state->tv_first_time + state->intervals *  state->wait;
+      diff = expected_time - tv.tv_sec ;
+    }
   // if the end interval is faster than "the wait" time
   // then we wait for the remaining seconds
   if(diff > 0)
     {
+      // fprintf(stderr, "\tWaiting: %d s\n", diff);
       sleep(diff);
       gettimeofday_wrap(&tv);
     }  
