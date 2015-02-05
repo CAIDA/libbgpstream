@@ -209,4 +209,6 @@ int bgpstream_elem_peerstate_snprint(char * restrict buf, size_t len,
 int bgpstream_elem_snprint(char * restrict buf, size_t len,
                            bgpstream_elem_t *elem);
 
+/** @} */
+
 #endif /* __BGPSTREAM_ELEM_H */
