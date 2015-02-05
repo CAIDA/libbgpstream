@@ -68,6 +68,7 @@ KHASH_INIT(ipv6_peers_table_t /* name */,
 typedef struct struct_peers_table_t {
   khash_t(ipv4_peers_table_t) *ipv4_peers_table;
   khash_t(ipv6_peers_table_t) *ipv6_peers_table;
+  int current_rib_start;
 } peers_table_t;
 
 
