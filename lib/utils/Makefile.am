@@ -32,11 +32,15 @@ noinst_LTLIBRARIES = libbgpstream-utils.la
 
 CONDITIONAL_LIBS=
 
-include_HEADERS= bgpstream_utils.h
+include_HEADERS= bgpstream_utils.h \
+		bgpstream_utils_addr.h
 
-libbgpstream_utils_la_SOURCES =   \
-	bgpstream_utils.c  \
-	bgpstream_utils.h  \
+libbgpstream_utils_la_SOURCES =             \
+	bgpstream_utils.c                   \
+	bgpstream_utils.h                   \
+	bgpstream_utils_addr.c              \
+	bgpstream_utils_addr.h              \
+	\
 	bgpstream_utils_peersign_map.c  \
 	bgpstream_utils_peersign_map_int.h  \
 	bgpstream_utils_peersign_map.h  \

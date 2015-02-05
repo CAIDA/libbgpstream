@@ -30,7 +30,7 @@
 #include "bgpstream_utils.h"
 
 
-typedef struct bl_addr_storage_set_t bl_addr_storage_set_t;
+typedef struct bgpstream_addr_storage_set_t bgpstream_addr_storage_set_t;
 
 
 /** Allocate memory for a strucure that maintains
@@ -39,7 +39,7 @@ typedef struct bl_addr_storage_set_t bl_addr_storage_set_t;
  * @return a pointer to the structure, or
  *  NULL if an error occurred
  */
-bl_addr_storage_set_t *bl_addr_storage_set_create();
+bgpstream_addr_storage_set_t *bgpstream_addr_storage_set_create();
 
 /** Insert a new address into the address set.
  *
@@ -47,57 +47,57 @@ bl_addr_storage_set_t *bl_addr_storage_set_create();
  * @param ip_address generic address
  * @return 1 if an address has been inserted, 0 if it already existed
  */
-int bl_addr_storage_set_insert(bl_addr_storage_set_t *ip_address_set, bl_addr_storage_t address);
+int bgpstream_addr_storage_set_insert(bgpstream_addr_storage_set_t *ip_address_set, bgpstream_addr_storage_t address);
 
 /** Empty the address set.
  *
  * @param as_set pointer to the address set
  */
-void bl_addr_storage_set_reset(bl_addr_storage_set_t *ip_address_set);
+void bgpstream_addr_storage_set_reset(bgpstream_addr_storage_set_t *ip_address_set);
 
 /** Get the size of the set.
  *
  * @param as_set pointer to the address set
  * @return the size of the address set
  */
-int bl_addr_storage_set_size(bl_addr_storage_set_t *ip_address_set);
+int bgpstream_addr_storage_set_size(bgpstream_addr_storage_set_t *ip_address_set);
 
 /** Get the merge of the set.
  *  @param union_set pointer to the address set that will include the merge
  *  @param part_set pointer to the address set that will be merged with the union_set
  */
-void bl_addr_storage_set_merge(bl_addr_storage_set_t *union_set, bl_addr_storage_set_t *part_set);
+void bgpstream_addr_storage_set_merge(bgpstream_addr_storage_set_t *union_set, bgpstream_addr_storage_set_t *part_set);
 
 /** Deallocate memory for the IP address set
  *
  * @param as_set a pointer to the AS set
  */
-void bl_addr_storage_set_destroy(bl_addr_storage_set_t *ip_address_set);
+void bgpstream_addr_storage_set_destroy(bgpstream_addr_storage_set_t *ip_address_set);
 
 
 
 // same functions, ipv4 specific
-typedef struct bl_ipv4_addr_set_t bl_ipv4_addr_set_t;
+typedef struct bgpstream_ipv4_addr_set_t bgpstream_ipv4_addr_set_t;
 
 
-bl_ipv4_addr_set_t *bl_ipv4_addr_set_create();
-int bl_ipv4_addr_set_insert(bl_ipv4_addr_set_t *ip_address_set, bl_ipv4_addr_t ip_address);
-void bl_ipv4_addr_set_reset(bl_ipv4_addr_set_t *ip_address_set);
-int bl_ipv4_addr_set_size(bl_ipv4_addr_set_t *ip_address_set);
-void bl_ipv4_addr_set_merge(bl_ipv4_addr_set_t *union_set, bl_ipv4_addr_set_t *part_set);
-void bl_ipv4_addr_set_destroy(bl_ipv4_addr_set_t *ip_address_set);
+bgpstream_ipv4_addr_set_t *bgpstream_ipv4_addr_set_create();
+int bgpstream_ipv4_addr_set_insert(bgpstream_ipv4_addr_set_t *ip_address_set, bgpstream_ipv4_addr_t ip_address);
+void bgpstream_ipv4_addr_set_reset(bgpstream_ipv4_addr_set_t *ip_address_set);
+int bgpstream_ipv4_addr_set_size(bgpstream_ipv4_addr_set_t *ip_address_set);
+void bgpstream_ipv4_addr_set_merge(bgpstream_ipv4_addr_set_t *union_set, bgpstream_ipv4_addr_set_t *part_set);
+void bgpstream_ipv4_addr_set_destroy(bgpstream_ipv4_addr_set_t *ip_address_set);
 
 
 // same functions, ipv6 specific
-typedef struct bl_ipv6_addr_set_t bl_ipv6_addr_set_t;
+typedef struct bgpstream_ipv6_addr_set_t bgpstream_ipv6_addr_set_t;
 
 
-bl_ipv6_addr_set_t *bl_ipv6_addr_set_create();
-int bl_ipv6_addr_set_insert(bl_ipv6_addr_set_t *ip_address_set, bl_ipv6_addr_t ip_address);
-void bl_ipv6_addr_set_reset(bl_ipv6_addr_set_t *ip_address_set);
-int bl_ipv6_addr_set_size(bl_ipv6_addr_set_t *ip_address_set);
-void bl_ipv6_addr_set_merge(bl_ipv6_addr_set_t *union_set, bl_ipv6_addr_set_t *part_set);
-void bl_ipv6_addr_set_destroy(bl_ipv6_addr_set_t *ip_address_set);
+bgpstream_ipv6_addr_set_t *bgpstream_ipv6_addr_set_create();
+int bgpstream_ipv6_addr_set_insert(bgpstream_ipv6_addr_set_t *ip_address_set, bgpstream_ipv6_addr_t ip_address);
+void bgpstream_ipv6_addr_set_reset(bgpstream_ipv6_addr_set_t *ip_address_set);
+int bgpstream_ipv6_addr_set_size(bgpstream_ipv6_addr_set_t *ip_address_set);
+void bgpstream_ipv6_addr_set_merge(bgpstream_ipv6_addr_set_t *union_set, bgpstream_ipv6_addr_set_t *part_set);
+void bgpstream_ipv6_addr_set_destroy(bgpstream_ipv6_addr_set_t *ip_address_set);
 
 
 #endif /* _BL_ADDR_SET_H */

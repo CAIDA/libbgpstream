@@ -31,59 +31,70 @@
 
 #include "bgpstream_utils_addr_set.h"
 
+#define STORAGE_HASH_VAL(arg) bgpstream_addr_storage_hash(&(arg))
+#define STORAGE_EQUAL_VAL(arg1, arg2) \
+  bgpstream_addr_storage_equal(&(arg1), &(arg2))
+
+#define V4_HASH_VAL(arg) bgpstream_ipv4_addr_hash(&(arg))
+#define V4_EQUAL_VAL(arg1, arg2) \
+  bgpstream_ipv4_addr_equal(&(arg1), &(arg2))
+
+#define V6_HASH_VAL(arg) bgpstream_ipv6_addr_hash(&(arg))
+#define V6_EQUAL_VAL(arg1, arg2) \
+  bgpstream_ipv6_addr_equal(&(arg1), &(arg2))
 
 /** set of unique IP addresses
  *  this structure maintains a set of unique
  *  addresses (ipv4 and ipv6 addresses, both hashed
  *  using a int64 type)
  */
-KHASH_INIT(bl_addr_storage_set /* name */, 
-	   bl_addr_storage_t /* khkey_t */, 
-	   char /* khval_t */, 
-	   0  /* kh_is_set */, 
-	   bl_addr_storage_hash_func /*__hash_func */,  
-	   bl_addr_storage_hash_equal /* __hash_equal */);
+KHASH_INIT(bgpstream_addr_storage_set /* name */,
+	   bgpstream_addr_storage_t /* khkey_t */,
+	   char /* khval_t */,
+	   0  /* kh_is_set */,
+	   STORAGE_HASH_VAL /*__hash_func */,
+	   STORAGE_EQUAL_VAL /* __hash_equal */);
 
 
-struct bl_addr_storage_set_t {
-  khash_t(bl_addr_storage_set) *hash;
+struct bgpstream_addr_storage_set_t {
+  khash_t(bgpstream_addr_storage_set) *hash;
 };
 
 
-bl_addr_storage_set_t *bl_addr_storage_set_create() 
+bgpstream_addr_storage_set_t *bgpstream_addr_storage_set_create()
 {
-  bl_addr_storage_set_t *ip_address_set = (bl_addr_storage_set_t *) malloc(sizeof(bl_addr_storage_set_t));
-  ip_address_set->hash = kh_init(bl_addr_storage_set);
+  bgpstream_addr_storage_set_t *ip_address_set = (bgpstream_addr_storage_set_t *) malloc(sizeof(bgpstream_addr_storage_set_t));
+  ip_address_set->hash = kh_init(bgpstream_addr_storage_set);
   return ip_address_set;
 }
 
-int bl_addr_storage_set_insert(bl_addr_storage_set_t *ip_address_set, bl_addr_storage_t ip_address) 
+int bgpstream_addr_storage_set_insert(bgpstream_addr_storage_set_t *ip_address_set, bgpstream_addr_storage_t ip_address)
 {
   int khret;
   khiter_t k;
-  if((k = kh_get(bl_addr_storage_set, ip_address_set->hash,
+  if((k = kh_get(bgpstream_addr_storage_set, ip_address_set->hash,
 		 ip_address)) == kh_end(ip_address_set->hash))
     {
-      k = kh_put(bl_addr_storage_set, ip_address_set->hash, 
+      k = kh_put(bgpstream_addr_storage_set, ip_address_set->hash,
 		 ip_address, &khret);
       return 1;
     }
   return 0;
 }
 
-void bl_addr_storage_set_reset(bl_addr_storage_set_t *ip_address_set) 
+void bgpstream_addr_storage_set_reset(bgpstream_addr_storage_set_t *ip_address_set)
 {
-  kh_clear(bl_addr_storage_set, ip_address_set->hash);
+  kh_clear(bgpstream_addr_storage_set, ip_address_set->hash);
 }
 
-int bl_addr_storage_set_size(bl_addr_storage_set_t *ip_address_set)
+int bgpstream_addr_storage_set_size(bgpstream_addr_storage_set_t *ip_address_set)
 {
   return kh_size(ip_address_set->hash);
 }
 
-void bl_addr_storage_set_merge(bl_addr_storage_set_t *union_set, bl_addr_storage_set_t *part_set)
+void bgpstream_addr_storage_set_merge(bgpstream_addr_storage_set_t *union_set, bgpstream_addr_storage_set_t *part_set)
 {
-  bl_addr_storage_t *id;
+  bgpstream_addr_storage_t *id;
   khiter_t k;
   for(k = kh_begin(part_set->hash);
       k != kh_end(part_set->hash); ++k)
@@ -91,14 +102,14 @@ void bl_addr_storage_set_merge(bl_addr_storage_set_t *union_set, bl_addr_storage
       if (kh_exist(part_set->hash, k))
 	{
 	  id = &(kh_key(part_set->hash, k));
-	  bl_addr_storage_set_insert(union_set, *id);
+	  bgpstream_addr_storage_set_insert(union_set, *id);
 	}
     }
 }
 
-void bl_addr_storage_set_destroy(bl_addr_storage_set_t *ip_address_set) 
+void bgpstream_addr_storage_set_destroy(bgpstream_addr_storage_set_t *ip_address_set)
 {
-  kh_destroy(bl_addr_storage_set, ip_address_set->hash);
+  kh_destroy(bgpstream_addr_storage_set, ip_address_set->hash);
   free(ip_address_set);
 }
 
@@ -109,52 +120,52 @@ void bl_addr_storage_set_destroy(bl_addr_storage_set_t *ip_address_set)
 
 // same functions, ipv4 specific
 
-KHASH_INIT(bl_ipv4_addr_set /* name */, 
-	   bl_ipv4_addr_t /* khkey_t */, 
-	   char /* khval_t */, 
-	   0  /* kh_is_set */, 
-	   bl_ipv4_addr_hash_func /*__hash_func */,  
-	   bl_ipv4_addr_hash_equal /* __hash_equal */);
+KHASH_INIT(bgpstream_ipv4_addr_set /* name */,
+	   bgpstream_ipv4_addr_t /* khkey_t */,
+	   char /* khval_t */,
+	   0  /* kh_is_set */,
+	   V4_HASH_VAL /*__hash_func */,
+	   V4_EQUAL_VAL /* __hash_equal */);
 
-struct bl_ipv4_addr_set_t {
-  khash_t(bl_ipv4_addr_set) *hash;
+struct bgpstream_ipv4_addr_set_t {
+  khash_t(bgpstream_ipv4_addr_set) *hash;
 };
 
 
-bl_ipv4_addr_set_t *bl_ipv4_addr_set_create() 
+bgpstream_ipv4_addr_set_t *bgpstream_ipv4_addr_set_create()
 {
-  bl_ipv4_addr_set_t *ip_address_set = (bl_ipv4_addr_set_t *) malloc(sizeof(bl_ipv4_addr_set_t));
-  ip_address_set->hash = kh_init(bl_ipv4_addr_set);
+  bgpstream_ipv4_addr_set_t *ip_address_set = (bgpstream_ipv4_addr_set_t *) malloc(sizeof(bgpstream_ipv4_addr_set_t));
+  ip_address_set->hash = kh_init(bgpstream_ipv4_addr_set);
   return ip_address_set;
 }
 
-int bl_ipv4_addr_set_insert(bl_ipv4_addr_set_t *ip_address_set, bl_ipv4_addr_t ip_address) 
+int bgpstream_ipv4_addr_set_insert(bgpstream_ipv4_addr_set_t *ip_address_set, bgpstream_ipv4_addr_t ip_address)
 {
   int khret;
   khiter_t k;
-  if((k = kh_get(bl_ipv4_addr_set, ip_address_set->hash,
+  if((k = kh_get(bgpstream_ipv4_addr_set, ip_address_set->hash,
 		 ip_address)) == kh_end(ip_address_set->hash))
     {
-      k = kh_put(bl_ipv4_addr_set, ip_address_set->hash, 
+      k = kh_put(bgpstream_ipv4_addr_set, ip_address_set->hash,
 		 ip_address, &khret);
       return 1;
     }
   return 0;
 }
 
-void bl_ipv4_addr_set_reset(bl_ipv4_addr_set_t *ip_address_set) 
+void bgpstream_ipv4_addr_set_reset(bgpstream_ipv4_addr_set_t *ip_address_set)
 {
-  kh_clear(bl_ipv4_addr_set, ip_address_set->hash);
+  kh_clear(bgpstream_ipv4_addr_set, ip_address_set->hash);
 }
 
-int bl_ipv4_addr_set_size(bl_ipv4_addr_set_t *ip_address_set)
+int bgpstream_ipv4_addr_set_size(bgpstream_ipv4_addr_set_t *ip_address_set)
 {
   return kh_size(ip_address_set->hash);
 }
 
-void bl_ipv4_addr_set_merge(bl_ipv4_addr_set_t *union_set, bl_ipv4_addr_set_t *part_set)
+void bgpstream_ipv4_addr_set_merge(bgpstream_ipv4_addr_set_t *union_set, bgpstream_ipv4_addr_set_t *part_set)
 {
-  bl_ipv4_addr_t *id;
+  bgpstream_ipv4_addr_t *id;
   khiter_t k;
   for(k = kh_begin(part_set->hash);
       k != kh_end(part_set->hash); ++k)
@@ -162,66 +173,66 @@ void bl_ipv4_addr_set_merge(bl_ipv4_addr_set_t *union_set, bl_ipv4_addr_set_t *p
       if (kh_exist(part_set->hash, k))
 	{
 	  id = &(kh_key(part_set->hash, k));
-	  bl_ipv4_addr_set_insert(union_set, *id);
+	  bgpstream_ipv4_addr_set_insert(union_set, *id);
 	}
     }
 }
 
-void bl_ipv4_addr_set_destroy(bl_ipv4_addr_set_t *ip_address_set) 
+void bgpstream_ipv4_addr_set_destroy(bgpstream_ipv4_addr_set_t *ip_address_set)
 {
-  kh_destroy(bl_ipv4_addr_set, ip_address_set->hash);
+  kh_destroy(bgpstream_ipv4_addr_set, ip_address_set->hash);
   free(ip_address_set);
 }
 
 
 // ipv6 specific functions
 
-KHASH_INIT(bl_ipv6_addr_set /* name */, 
-	   bl_ipv6_addr_t /* khkey_t */, 
-	   char /* khval_t */, 
-	   0  /* kh_is_set */, 
-	   bl_ipv6_addr_hash_func /*__hash_func */,  
-	   bl_ipv6_addr_hash_equal /* __hash_equal */);
+KHASH_INIT(bgpstream_ipv6_addr_set /* name */,
+	   bgpstream_ipv6_addr_t /* khkey_t */,
+	   char /* khval_t */,
+	   0  /* kh_is_set */,
+	   V6_HASH_VAL /*__hash_func */,
+	   V6_EQUAL_VAL /* __hash_equal */);
 
-struct bl_ipv6_addr_set_t {
-  khash_t(bl_ipv6_addr_set) *hash;
+struct bgpstream_ipv6_addr_set_t {
+  khash_t(bgpstream_ipv6_addr_set) *hash;
 };
 
 
-bl_ipv6_addr_set_t *bl_ipv6_addr_set_create() 
+bgpstream_ipv6_addr_set_t *bgpstream_ipv6_addr_set_create()
 {
-  bl_ipv6_addr_set_t *ip_address_set = (bl_ipv6_addr_set_t *) malloc(sizeof(bl_ipv6_addr_set_t));
-  ip_address_set->hash = kh_init(bl_ipv6_addr_set);
+  bgpstream_ipv6_addr_set_t *ip_address_set = (bgpstream_ipv6_addr_set_t *) malloc(sizeof(bgpstream_ipv6_addr_set_t));
+  ip_address_set->hash = kh_init(bgpstream_ipv6_addr_set);
   return ip_address_set;
 }
 
-int bl_ipv6_addr_set_insert(bl_ipv6_addr_set_t *ip_address_set, bl_ipv6_addr_t ip_address) 
+int bgpstream_ipv6_addr_set_insert(bgpstream_ipv6_addr_set_t *ip_address_set, bgpstream_ipv6_addr_t ip_address)
 {
   int khret;
   khiter_t k;
-  if((k = kh_get(bl_ipv6_addr_set, ip_address_set->hash,
+  if((k = kh_get(bgpstream_ipv6_addr_set, ip_address_set->hash,
 		 ip_address)) == kh_end(ip_address_set->hash))
     {
-      k = kh_put(bl_ipv6_addr_set, ip_address_set->hash, 
+      k = kh_put(bgpstream_ipv6_addr_set, ip_address_set->hash,
 		 ip_address, &khret);
       return 1;
     }
   return 0;
 }
 
-void bl_ipv6_addr_set_reset(bl_ipv6_addr_set_t *ip_address_set) 
+void bgpstream_ipv6_addr_set_reset(bgpstream_ipv6_addr_set_t *ip_address_set)
 {
-  kh_clear(bl_ipv6_addr_set, ip_address_set->hash);
+  kh_clear(bgpstream_ipv6_addr_set, ip_address_set->hash);
 }
 
-int bl_ipv6_addr_set_size(bl_ipv6_addr_set_t *ip_address_set)
+int bgpstream_ipv6_addr_set_size(bgpstream_ipv6_addr_set_t *ip_address_set)
 {
   return kh_size(ip_address_set->hash);
 }
 
-void bl_ipv6_addr_set_merge(bl_ipv6_addr_set_t *union_set, bl_ipv6_addr_set_t *part_set)
+void bgpstream_ipv6_addr_set_merge(bgpstream_ipv6_addr_set_t *union_set, bgpstream_ipv6_addr_set_t *part_set)
 {
-  bl_ipv6_addr_t *id;
+  bgpstream_ipv6_addr_t *id;
   khiter_t k;
   for(k = kh_begin(part_set->hash);
       k != kh_end(part_set->hash); ++k)
@@ -229,15 +240,13 @@ void bl_ipv6_addr_set_merge(bl_ipv6_addr_set_t *union_set, bl_ipv6_addr_set_t *p
       if (kh_exist(part_set->hash, k))
 	{
 	  id = &(kh_key(part_set->hash, k));
-	  bl_ipv6_addr_set_insert(union_set, *id);
+	  bgpstream_ipv6_addr_set_insert(union_set, *id);
 	}
     }
 }
 
-void bl_ipv6_addr_set_destroy(bl_ipv6_addr_set_t *ip_address_set) 
+void bgpstream_ipv6_addr_set_destroy(bgpstream_ipv6_addr_set_t *ip_address_set)
 {
-  kh_destroy(bl_ipv6_addr_set, ip_address_set->hash);
+  kh_destroy(bgpstream_ipv6_addr_set, ip_address_set->hash);
   free(ip_address_set);
 }
-
-

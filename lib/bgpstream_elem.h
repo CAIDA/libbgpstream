@@ -110,7 +110,7 @@ typedef struct struct_bgpstream_elem_t {
   uint32_t timestamp;
 
   /** Peer IP address */
-  bl_addr_storage_t peer_address;
+  bgpstream_addr_storage_t peer_address;
 
   /** Peer AS number */
   uint32_t peer_asnumber;
@@ -127,7 +127,7 @@ typedef struct struct_bgpstream_elem_t {
    *
    * Available only for RIB and Announcement elem types
    */
-  bl_addr_storage_t nexthop;
+  bgpstream_addr_storage_t nexthop;
 
   /** AS path
    *

@@ -28,15 +28,8 @@
 #define _BL_BGP_UTILS_H
 
 #include <time.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <stdbool.h>
-#include <string.h>
-#include <limits.h>
+
+#include <bgpstream_utils_addr.h>
 
 #define BGPCOMMON_COLLECTOR_NAME_LEN 128
 
@@ -48,59 +41,26 @@ typedef enum {BL_UNKNOWN_DUMP = 0,
 
 #define BL_DUMP_TYPE_MAX 3
 
-typedef enum {BL_ADDR_TYPE_UNKNOWN  = 0,
-              BL_ADDR_IPV4          = AF_INET,
-	      BL_ADDR_IPV6          = AF_INET6
-} bl_addr_type_t;
-
-#define BL_ADDR_TYPE_MAX 3
-
-
-typedef struct struct_bl_ip_addr_t {
-  bl_addr_type_t version;
-} bl_ip_addr_t;
-
-typedef struct struct_bl_ipv4_addr_t {
-  bl_addr_type_t version;
-  struct in_addr ipv4;
-} bl_ipv4_addr_t;
-
-typedef struct struct_bl_ipv6_addr_t {
-  bl_addr_type_t version;
-  struct in6_addr ipv6;
-} bl_ipv6_addr_t;
-
-
-typedef struct struct_bl_addr_storage_t {
-  /** ip version (v4 o v6) */
-  bl_addr_type_t version;
-  /** ip address */
-  union {
-    struct in_addr ipv4;
-    struct in6_addr ipv6;
-  };
-} bl_addr_storage_t;
-
 
 typedef struct struct_bl_ipv4_pfx_t {
   /** length of the prefix mask */
   uint8_t mask_len;
   /** the address */
-  bl_ipv4_addr_t address;
+  bgpstream_ipv4_addr_t address;
 } bl_ipv4_pfx_t;
 
 typedef struct struct_bl_ipv6_pfx_t {
   /** length of the prefix mask */
   uint8_t mask_len;
   /** the address */
-  bl_ipv6_addr_t address;
+  bgpstream_ipv6_addr_t address;
 } bl_ipv6_pfx_t;
 
 typedef struct struct_bl_pfx_storage_t {
   /** length of the prefix mask */
   uint8_t mask_len;
   /** the address */
-  bl_addr_storage_t address;
+  bgpstream_addr_storage_t address;
 } bl_pfx_storage_t;
 
 
@@ -146,12 +106,6 @@ typedef struct struct_bl_as_storage_t {
 
 /** Print functions */
 
-
-
-char *bl_print_ipv4_addr(bl_ipv4_addr_t* addr);
-char *bl_print_ipv6_addr(bl_ipv6_addr_t* addr);
-char *bl_print_addr_storage(bl_addr_storage_t* addr);
-
 char *bl_print_ipv4_pfx(bl_ipv4_pfx_t* pfx);
 char *bl_print_ipv6_pfx(bl_ipv6_pfx_t* pfx);
 char *bl_print_pfx_storage(bl_pfx_storage_t* pfx);
@@ -161,15 +115,8 @@ char *bl_print_aspath(bl_aspath_storage_t *aspath);
 
 
 /** Utility functions (conversion between address types) */
-
-bl_ipv4_addr_t *bl_addr_storage2ipv4(bl_addr_storage_t *address);
-bl_ipv6_addr_t *bl_addr_storage2ipv6(bl_addr_storage_t *address);
-
 bl_ipv4_pfx_t *bl_pfx_storage2ipv4(bl_pfx_storage_t *prefix);
 bl_ipv6_pfx_t *bl_pfx_storage2ipv6(bl_pfx_storage_t *prefix);
-
-bl_addr_storage_t *bl_addr_ipv42storage(bl_ipv4_addr_t *address);
-bl_addr_storage_t *bl_addr_ipv62storage(bl_ipv6_addr_t *address);
 
 bl_pfx_storage_t *bl_pfx_ipv42storage(bl_ipv4_pfx_t *prefix);
 bl_pfx_storage_t *bl_pfx_ipv62storage(bl_ipv6_pfx_t *prefix);
@@ -190,36 +137,21 @@ void bl_aspath_freedynmem(bl_aspath_storage_t *aspath);
 
 
 #if UINT_MAX == 0xffffffffu
-unsigned int bl_ipv4_addr_hash_func(bl_ipv4_addr_t ip);
 unsigned int bl_ipv4_pfx_hash_func(bl_ipv4_pfx_t prefix);
 unsigned int bl_as_storage_hash_func(bl_as_storage_t as);
 #elif ULONG_MAX == 0xffffffffu
-unsigned long bl_ipv4_addr_hash_func(bl_ipv4_addr_t ip);
 unsigned long bl_ipv4_pfx_hash_func(bl_ipv4_pfx_t prefix);
 unsigned long bl_as_storage_hash_func(bl_as_storage_t as);
 #endif
 
 
 #if ULONG_MAX == ULLONG_MAX
-unsigned long bl_addr_storage_hash_func(bl_addr_storage_t ip);
-unsigned long bl_ipv6_addr_hash_func(bl_ipv6_addr_t ip);
 unsigned long bl_pfx_storage_hash_func(bl_pfx_storage_t prefix);
 unsigned long bl_ipv6_pfx_hash_func(bl_ipv6_pfx_t prefix);
 #else
-unsigned long long  bl_addr_storage_hash_func(bl_addr_storage_t ip);
-unsigned long long bl_ipv6_addr_hash_func(bl_ipv6_addr_t ip);
 unsigned long long bl_pfx_storage_hash_func(bl_pfx_storage_t prefix);
 unsigned long long bl_ipv6_pfx_hash_func(bl_ipv6_pfx_t prefix);
 #endif
-
-
-
-
-int bl_addr_storage_hash_equal(bl_addr_storage_t ip1, bl_addr_storage_t ip2);
-
-int bl_ipv4_addr_hash_equal(bl_ipv4_addr_t ip1, bl_ipv4_addr_t ip2);
-
-int bl_ipv6_addr_hash_equal(bl_ipv6_addr_t ip1, bl_ipv6_addr_t ip2);
 
 
 /** prefixes */

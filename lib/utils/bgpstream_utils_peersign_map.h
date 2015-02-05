@@ -32,13 +32,13 @@
 /** Type of a peer ID */
 typedef uint16_t bl_peerid_t;
 
-/** Each peer is uniquely identified by its 
+/** Each peer is uniquely identified by its
  *  signature, i.e. the pair:
  *      <collector, peer ip address>
  */
 typedef struct struct_peer_signature_t {
   char collector_str[BGPCOMMON_COLLECTOR_NAME_LEN];
-  bl_addr_storage_t peer_ip_addr;
+  bgpstream_addr_storage_t peer_ip_addr;
 } bl_peer_signature_t;
 
 
@@ -50,7 +50,7 @@ bl_peersign_map_t *bl_peersign_map_create();
 
 bl_peerid_t bl_peersign_map_set_and_get(bl_peersign_map_t *map,
 					char *collector_str,
-					bl_addr_storage_t *peer_ip_addr);
+					bgpstream_addr_storage_t *peer_ip_addr);
 
 /** Set the peer ID for the given collector/peer
  *
@@ -63,7 +63,7 @@ bl_peerid_t bl_peersign_map_set_and_get(bl_peersign_map_t *map,
 int bl_peersign_map_set(bl_peersign_map_t *map,
 			bl_peerid_t peerid,
 			char *collector_str,
-			bl_addr_storage_t *peer_ip_addr);
+			bgpstream_addr_storage_t *peer_ip_addr);
 
 bl_peer_signature_t* bl_peersign_map_get_peersign(bl_peersign_map_t *map,
 						  bl_peerid_t id);

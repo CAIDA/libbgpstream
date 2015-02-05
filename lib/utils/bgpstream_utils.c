@@ -35,74 +35,68 @@
 
 /** Print functions */
 
-
-char *bl_print_ipv4_addr(bl_ipv4_addr_t* addr)
-{
-  char addr_str[INET_ADDRSTRLEN];
-  addr_str[0] ='\0';
-  inet_ntop(AF_INET, &(addr->ipv4), addr_str, INET_ADDRSTRLEN);
-  return strdup(addr_str);
-}
-
-char *bl_print_ipv6_addr(bl_ipv6_addr_t* addr)
-{
-  char addr_str[INET6_ADDRSTRLEN];
-  addr_str[0] ='\0';
-  inet_ntop(AF_INET6, &(addr->ipv6), addr_str, INET6_ADDRSTRLEN);
-  return strdup(addr_str);
-}
-
-char *bl_print_addr_storage(bl_addr_storage_t* addr)
-{
-  if(addr->version == BL_ADDR_IPV4)
-    {
-      return bl_print_ipv4_addr((bl_ipv4_addr_t*)addr);
-    }
-  if(addr->version == BL_ADDR_IPV6)
-    {
-      return bl_print_ipv6_addr((bl_ipv6_addr_t*)addr);
-    }
-  return NULL;
-}
-
-
 char *bl_print_ipv4_pfx(bl_ipv4_pfx_t* pfx)
 {
-  char pfx_str[24];
-  pfx_str[0] ='\0';
-  char *addr_str = bl_print_ipv4_addr(&(pfx->address));
-  sprintf(pfx_str, "%s/%"PRIu8, addr_str, pfx->mask_len);
-  if(addr_str != NULL)
+  char buf[INET6_ADDRSTRLEN+4];
+  char *p = buf;
+
+  /* print the address */
+  if(bgpstream_addr_ntop(buf, INET6_ADDRSTRLEN, &(pfx->address)) == NULL)
     {
-      free(addr_str);
-    }       
-  return strdup(pfx_str);
+      return NULL;
+    }
+
+  while(*p != '\0')
+    p++;
+
+  /* print the mask */
+  snprintf(p, 4, "/%"PRIu8, pfx->mask_len);
+
+  /* copy. blergh */
+  return strdup(buf);
 }
 
+/** @todo merge into a single print func */
 char *bl_print_ipv6_pfx(bl_ipv6_pfx_t* pfx)
 {
-  char pfx_str[64];
-  pfx_str[0] ='\0';
-  char *addr_str = bl_print_ipv6_addr(&(pfx->address));
-  sprintf(pfx_str, "%s/%"PRIu8, addr_str, pfx->mask_len);
-  if(addr_str != NULL)
+  char buf[INET6_ADDRSTRLEN+4];
+  char *p = buf;
+
+  /* print the address */
+  if(bgpstream_addr_ntop(buf, INET6_ADDRSTRLEN, &(pfx->address)) == NULL)
     {
-      free(addr_str);
-    }       
-  return strdup(pfx_str);
+      return NULL;
+    }
+
+  while(*p != '\0')
+    p++;
+
+  /* print the mask */
+  snprintf(p, 4, "/%"PRIu8, pfx->mask_len);
+
+  /* copy. blergh */
+  return strdup(buf);
 }
 
 char *bl_print_pfx_storage(bl_pfx_storage_t* pfx)
 {
-  char pfx_str[64];
-  pfx_str[0] ='\0';
-  char *addr_str = bl_print_addr_storage(&(pfx->address));
-  sprintf(pfx_str, "%s/%"PRIu8, addr_str, pfx->mask_len);
-  if(addr_str != NULL)
+  char buf[INET6_ADDRSTRLEN+4];
+  char *p = buf;
+
+  /* print the address */
+  if(bgpstream_addr_ntop(buf, INET6_ADDRSTRLEN, &(pfx->address)) == NULL)
     {
-      free(addr_str);
-    }       
-  return strdup(pfx_str);
+      return NULL;
+    }
+
+  while(*p != '\0')
+    p++;
+
+  /* print the mask */
+  snprintf(p, 4, "/%"PRIu8, pfx->mask_len);
+
+  /* copy. blergh */
+  return strdup(buf);
 }
 
 char *bl_print_as(bl_as_storage_t *as)
@@ -144,56 +138,8 @@ char *bl_print_aspath(bl_aspath_storage_t *aspath)
       {
 	return strdup(aspath->str_aspath);	      
       }
-    return "";
+    return strdup("");
 }
-
-
-/** Utility functions (conversion between address types) */
-
-bl_ipv4_addr_t *bl_addr_storage2ipv4(bl_addr_storage_t *address)
-{
-  assert(address->version == BL_ADDR_IPV4);
-  return (bl_ipv4_addr_t *) address;
-}
-
-bl_ipv6_addr_t *bl_addr_storage2ipv6(bl_addr_storage_t *address)
-{
-  assert(address->version == BL_ADDR_IPV6);
-  return (bl_ipv6_addr_t *) address;
-}
-
-bl_ipv4_pfx_t *bl_pfx_storage2ipv4(bl_pfx_storage_t *prefix)
-{
-  assert(prefix->address.version == BL_ADDR_IPV4);
-  return (bl_ipv4_pfx_t *) prefix;
-}
-
-bl_ipv6_pfx_t *bl_pfx_storage2ipv6(bl_pfx_storage_t *prefix)
-{
-  assert(prefix->address.version == BL_ADDR_IPV6);
-  return (bl_ipv6_pfx_t *) prefix;
-}
-
-bl_addr_storage_t *bl_addr_ipv42storage(bl_ipv4_addr_t *address)
-{
-  return (bl_addr_storage_t *)address;
-}
-
-bl_addr_storage_t *bl_addr_ipv62storage(bl_ipv6_addr_t *address)
-{
-  return (bl_addr_storage_t *)address;
-}
-
-bl_pfx_storage_t *bl_pfx_ipv42storage(bl_ipv4_pfx_t *prefix)
-{
-  return (bl_pfx_storage_t *) prefix;
-}
-
-bl_pfx_storage_t *bl_pfx_ipv62storage(bl_ipv6_pfx_t *prefix)
-{
-  return (bl_pfx_storage_t *) prefix;
-}
-
 
 /* as-path utility functions */
 
@@ -290,76 +236,17 @@ void bl_aspath_freedynmem(bl_aspath_storage_t *aspath)
 }
 
 
-/* khash utility functions 
- * Note:
- * __ac_Wang_hash(h) decreases the
- * chances of collisions
- */
-
-/* addresses */
-khint64_t bl_addr_storage_hash_func(bl_addr_storage_t ip)
-{
-  khint64_t h = 0;
-  if(ip.version == BL_ADDR_IPV4)
-    {
-      h = (khint64_t) bl_ipv4_addr_hash_func(*((bl_ipv4_addr_t *)&ip));
-    }
-  if(ip.version == BL_ADDR_IPV6)
-    {
-      h = bl_ipv6_addr_hash_func(*((bl_ipv6_addr_t *)&ip));
-    }
-  return h;
-}
-
-int bl_addr_storage_hash_equal(bl_addr_storage_t ip1, bl_addr_storage_t ip2)
-{
-  if(ip1.version == BL_ADDR_IPV4 && ip2.version == BL_ADDR_IPV4)
-    {
-      return bl_ipv4_addr_hash_equal(*((bl_ipv4_addr_t *)&ip1),*((bl_ipv4_addr_t *)&ip2));
-    }
-  if(ip1.version == BL_ADDR_IPV6 && ip2.version == BL_ADDR_IPV6)
-    {
-      return bl_ipv6_addr_hash_equal(*((bl_ipv6_addr_t *)&ip1),*((bl_ipv6_addr_t *)&ip2));
-    }
-  return 0;
-}
-
-khint32_t bl_ipv4_addr_hash_func(bl_ipv4_addr_t ip)
-{
-  khint32_t h = ip.ipv4.s_addr;  
-  return __ac_Wang_hash(h);
-}
-
-int bl_ipv4_addr_hash_equal(bl_ipv4_addr_t ip1, bl_ipv4_addr_t ip2)
-{
-  return (ip1.ipv4.s_addr == ip2.ipv4.s_addr);
-}
-
-khint64_t bl_ipv6_addr_hash_func(bl_ipv6_addr_t ip)
-{
-  unsigned char *s6 =  &(ip.ipv6.s6_addr[0]);
-  khint64_t h = *((khint64_t *) s6);
-  return __ac_Wang_hash(h);
-}
-
-int bl_ipv6_addr_hash_equal(bl_ipv6_addr_t ip1, bl_ipv6_addr_t ip2)
-{
-  return ( (memcmp(&(ip1.ipv6.s6_addr[0]), &(ip2.ipv6.s6_addr[0]), sizeof(uint64_t)) == 0) &&
-	   (memcmp(&(ip1.ipv6.s6_addr[8]), &(ip2.ipv6.s6_addr[8]), sizeof(uint64_t)) == 0) );
-}
-
-
 /** prefixes */
 khint64_t bl_pfx_storage_hash_func(bl_pfx_storage_t prefix)
 {
   khint64_t h;
   uint64_t address = 0;
   unsigned char *s6 = NULL;
-  if(prefix.address.version == BL_ADDR_IPV4)
+  if(prefix.address.version == BGPSTREAM_ADDR_VERSION_IPV4)
     {
       address = ntohl(prefix.address.ipv4.s_addr);
     }
-  if(prefix.address.version == BL_ADDR_IPV6)
+  if(prefix.address.version == BGPSTREAM_ADDR_VERSION_IPV6)
     {
       s6 =  &(prefix.address.ipv6.s6_addr[0]);
       address = *((uint64_t *) s6);
@@ -374,7 +261,7 @@ int bl_pfx_storage_hash_equal(bl_pfx_storage_t prefix1,
 {
   if(prefix1.mask_len == prefix2.mask_len)
     {
-      return bl_addr_storage_hash_equal(prefix1.address, prefix2.address);
+      return bgpstream_addr_storage_equal(&prefix1.address, &prefix2.address);
     }
   return 0;
 }
