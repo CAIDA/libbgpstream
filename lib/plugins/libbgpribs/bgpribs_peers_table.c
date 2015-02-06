@@ -36,6 +36,7 @@ peers_table_t *peers_table_create()
   // init ipv4 and ipv6 peers khashes
   peers_table->ipv4_peers_table = kh_init(ipv4_peers_table_t);
   peers_table->ipv6_peers_table = kh_init(ipv6_peers_table_t);
+  peers_table->current_rib_start = 0;
   return peers_table;
 }
 
@@ -57,6 +58,15 @@ int peers_table_process_record(peers_table_t *peers_table,
   bl_ipv6_addr_t ipv6_addr;
   peerdata_t * peer_data = NULL;
 
+  // if this collector observes a RIB start, then it
+  // makes sense to start to build new RIB tables (UC on)
+  if(bs_record->status == VALID_RECORD &&
+     bs_record->attributes.dump_type == BGPSTREAM_RIB &&
+     bs_record->dump_pos == DUMP_START)
+    {
+      peers_table->current_rib_start = bs_record->attributes.dump_time;
+    }
+  
   /* if we receive a VALID_RECORD we extract the 
    * bgpstream_elem_queue and we send each elem
    * to the corresponding peer in the peer table */
@@ -90,18 +100,21 @@ int peers_table_process_record(peers_table_t *peers_table,
 			     ipv4_addr, &khret);
 		  kh_value(peers_table->ipv4_peers_table, k) = peer_data;
 		  
-		  // if we have just created a peer_data and we are reading
-		  // a BGPSTREAM_RIB, we move the rt_status to UC_ON
-		  if(bs_record->attributes.dump_type == BGPSTREAM_RIB)
-		    {
-		      peer_data->rt_status = UC_ON;
-		      peer_data->uc_ribs_table->reference_dump_time = bs_record->attributes.dump_time;
-		      peer_data->uc_ribs_table->reference_rib_start = 0;
-		      peer_data->uc_ribs_table->reference_rib_end = 0;
-		    }
+		  /* // if we are reading */
+		  /* // a BGPSTREAM_RIB, we move the rt_status to UC_ON */
+		  /* // (if we have seen the bgpstream start) */
+		  /* if(bs_record->attributes.dump_type == BGPSTREAM_RIB && */
+		  /*    peers_table->current_rib_start == bs_record->attributes.dump_time) */
+		  /*   { */
+		  /*     peer_data->rt_status = UC_ON; */
+		  /*     peer_data->uc_ribs_table->reference_dump_time = bs_record->attributes.dump_time; */
+		  /*     peer_data->uc_ribs_table->reference_rib_start = 0; */
+		  /*     peer_data->uc_ribs_table->reference_rib_end = 0; */
+		  /*   } */
 		}
 	      else
-		{ /* already exists, just get it */	
+		{		 		  
+		  /* already exists, just get it */	
 		  peer_data = kh_value(peers_table->ipv4_peers_table, k);
 		}
 	    }
@@ -128,13 +141,15 @@ int peers_table_process_record(peers_table_t *peers_table,
 		      kh_value(peers_table->ipv6_peers_table, k) = peer_data;
 		      // if we have just created a peer_data and we are reading
 		      // a BGPSTREAM_RIB, we move the rt_status to UC_ON
-		      if(bs_record->attributes.dump_type == BGPSTREAM_RIB)
-			{
-			  peer_data->rt_status = UC_ON;
-			  peer_data->uc_ribs_table->reference_dump_time = bs_record->attributes.dump_time;
-			  peer_data->uc_ribs_table->reference_rib_start = 0;
-			  peer_data->uc_ribs_table->reference_rib_end = 0;
-			}
+		      // (if we have seen the bgpstream start)
+		      /* if(bs_record->attributes.dump_type == BGPSTREAM_RIB && */
+		      /* 	 peers_table->current_rib_start == bs_record->attributes.dump_time) */
+		      /* 	{ */
+		      /* 	  peer_data->rt_status = UC_ON; */
+		      /* 	  peer_data->uc_ribs_table->reference_dump_time = bs_record->attributes.dump_time; */
+		      /* 	  peer_data->uc_ribs_table->reference_rib_start = 0; */
+		      /* 	  peer_data->uc_ribs_table->reference_rib_end = 0; */
+		      /* } */
 		    }
 		  else
 		    { /* already exists, just get it */
@@ -151,6 +166,21 @@ int peers_table_process_record(peers_table_t *peers_table,
 	  // DEBUG:
 	  /* ribs_tables_status_t old_rt_status = peer_data->rt_status; */
 	  /* peer_status_t old_status = peer_data->status; */
+
+
+	  // if we are reading
+	  // a BGPSTREAM_RIB, we move the rt_status to UC_ON
+	  // if we have seen the bgpstream start for the same time
+	  if(bs_record->attributes.dump_type == BGPSTREAM_RIB &&
+	     peers_table->current_rib_start == bs_record->attributes.dump_time &&
+	     peer_data->rt_status != UC_ON)
+	    {
+	      peer_data->rt_status = UC_ON;
+	      peer_data->uc_ribs_table->reference_dump_time = bs_record->attributes.dump_time;
+	      peer_data->uc_ribs_table->reference_rib_start = 0;
+	      peer_data->uc_ribs_table->reference_rib_end = 0;
+	    }
+	  
 
 	  // apply each elem to the right peer_data
 	  if((peerdata_apply_elem(peer_data, bs_record, bs_iterator)) == -1) 
