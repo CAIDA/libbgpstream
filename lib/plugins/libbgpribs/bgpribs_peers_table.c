@@ -37,6 +37,7 @@ peers_table_t *peers_table_create()
   // init ipv4 and ipv6 peers khashes
   peers_table->ipv4_peers_table = kh_init(ipv4_peers_table_t);
   peers_table->ipv6_peers_table = kh_init(ipv6_peers_table_t);
+  peers_table->current_rib_start = 0;
   return peers_table;
 }
 
@@ -57,6 +58,7 @@ int peers_table_process_record(peers_table_t *peers_table,
   bl_ipv4_addr_t ipv4_addr;
   bl_ipv6_addr_t ipv6_addr;
   peerdata_t * peer_data = NULL;
+
 
   // if this collector observes a RIB start, then we save
   // this information to decide whether to turn on the
@@ -110,7 +112,8 @@ int peers_table_process_record(peers_table_t *peers_table,
 
 		}
 	      else
-		{ /* already exists, just get it */	
+		{		 		  
+		  /* already exists, just get it */	
 		  peer_data = kh_value(peers_table->ipv4_peers_table, k);
 		}
 	    }
@@ -135,10 +138,12 @@ int peers_table_process_record(peers_table_t *peers_table,
 		      k = kh_put(ipv6_peers_table_t, peers_table->ipv6_peers_table, 
 				 ipv6_addr, &khret);
 		      kh_value(peers_table->ipv6_peers_table, k) = peer_data;
+
 		      // DEBUG:
 		      /* fprintf(stderr, "New peer %s seen in %d\n", */
 		      /* 	  bl_print_addr_storage(&bs_iterator->peer_address), */
 		      /* 	  bs_record->attributes.dump_type); */
+
 		    }
 		  else
 		    { /* already exists, just get it */
@@ -168,6 +173,21 @@ int peers_table_process_record(peers_table_t *peers_table,
 	      peer_data->uc_ribs_table->reference_rib_start = 0;
 	      peer_data->uc_ribs_table->reference_rib_end = 0;
 	    }
+
+
+	  // if we are reading
+	  // a BGPSTREAM_RIB, we move the rt_status to UC_ON
+	  // if we have seen the bgpstream start for the same time
+	  if(bs_record->attributes.dump_type == BGPSTREAM_RIB &&
+	     peers_table->current_rib_start == bs_record->attributes.dump_time &&
+	     peer_data->rt_status != UC_ON)
+	    {
+	      peer_data->rt_status = UC_ON;
+	      peer_data->uc_ribs_table->reference_dump_time = bs_record->attributes.dump_time;
+	      peer_data->uc_ribs_table->reference_rib_start = 0;
+	      peer_data->uc_ribs_table->reference_rib_end = 0;
+	    }
+	  
 
 	  // apply each elem to the right peer_data
 	  if((peerdata_apply_elem(peer_data, bs_record, bs_iterator)) == -1) 
