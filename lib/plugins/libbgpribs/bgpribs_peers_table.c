@@ -33,6 +33,7 @@ peers_table_t *peers_table_create()
     {
       return NULL;
     }
+  peers_table->current_rib_start = 0;
   // init ipv4 and ipv6 peers khashes
   peers_table->ipv4_peers_table = kh_init(ipv4_peers_table_t);
   peers_table->ipv6_peers_table = kh_init(ipv6_peers_table_t);
@@ -58,13 +59,17 @@ int peers_table_process_record(peers_table_t *peers_table,
   bl_ipv6_addr_t ipv6_addr;
   peerdata_t * peer_data = NULL;
 
-  // if this collector observes a RIB start, then it
-  // makes sense to start to build new RIB tables (UC on)
+
+  // if this collector observes a RIB start, then we save
+  // this information to decide whether to turn on the
+  // peers' UC mode
   if(bs_record->status == VALID_RECORD &&
      bs_record->attributes.dump_type == BGPSTREAM_RIB &&
      bs_record->dump_pos == DUMP_START)
     {
       peers_table->current_rib_start = bs_record->attributes.dump_time;
+      // DEBUG:
+      // fprintf(stderr, "RIB START reference: %d\n", peers_table->current_rib_start); 
     }
   
   /* if we receive a VALID_RECORD we extract the 
@@ -100,17 +105,11 @@ int peers_table_process_record(peers_table_t *peers_table,
 			     ipv4_addr, &khret);
 		  kh_value(peers_table->ipv4_peers_table, k) = peer_data;
 		  
-		  /* // if we are reading */
-		  /* // a BGPSTREAM_RIB, we move the rt_status to UC_ON */
-		  /* // (if we have seen the bgpstream start) */
-		  /* if(bs_record->attributes.dump_type == BGPSTREAM_RIB && */
-		  /*    peers_table->current_rib_start == bs_record->attributes.dump_time) */
-		  /*   { */
-		  /*     peer_data->rt_status = UC_ON; */
-		  /*     peer_data->uc_ribs_table->reference_dump_time = bs_record->attributes.dump_time; */
-		  /*     peer_data->uc_ribs_table->reference_rib_start = 0; */
-		  /*     peer_data->uc_ribs_table->reference_rib_end = 0; */
-		  /*   } */
+		  // DEBUG:
+		  /* fprintf(stderr, "New peer %s seen in %d\n", */
+		  /* 	  bl_print_addr_storage(&bs_iterator->peer_address), */
+		  /* 	  bs_record->attributes.dump_type); */
+
 		}
 	      else
 		{		 		  
@@ -139,17 +138,12 @@ int peers_table_process_record(peers_table_t *peers_table,
 		      k = kh_put(ipv6_peers_table_t, peers_table->ipv6_peers_table, 
 				 ipv6_addr, &khret);
 		      kh_value(peers_table->ipv6_peers_table, k) = peer_data;
-		      // if we have just created a peer_data and we are reading
-		      // a BGPSTREAM_RIB, we move the rt_status to UC_ON
-		      // (if we have seen the bgpstream start)
-		      /* if(bs_record->attributes.dump_type == BGPSTREAM_RIB && */
-		      /* 	 peers_table->current_rib_start == bs_record->attributes.dump_time) */
-		      /* 	{ */
-		      /* 	  peer_data->rt_status = UC_ON; */
-		      /* 	  peer_data->uc_ribs_table->reference_dump_time = bs_record->attributes.dump_time; */
-		      /* 	  peer_data->uc_ribs_table->reference_rib_start = 0; */
-		      /* 	  peer_data->uc_ribs_table->reference_rib_end = 0; */
-		      /* } */
+
+		      // DEBUG:
+		      /* fprintf(stderr, "New peer %s seen in %d\n", */
+		      /* 	  bl_print_addr_storage(&bs_iterator->peer_address), */
+		      /* 	  bs_record->attributes.dump_type); */
+
 		    }
 		  else
 		    { /* already exists, just get it */
@@ -163,9 +157,22 @@ int peers_table_process_record(peers_table_t *peers_table,
 		  return -1;
 		}
 	    }
-	  // DEBUG:
-	  /* ribs_tables_status_t old_rt_status = peer_data->rt_status; */
-	  /* peer_status_t old_status = peer_data->status; */
+
+	  // if we are reading a rib and we have seen the rib start
+	  // then we can set the UC on state on this peer
+	  if(bs_record->attributes.dump_type == BGPSTREAM_RIB &&
+	     peers_table->current_rib_start == bs_record->attributes.dump_time &&
+	     peer_data->rt_status != UC_ON)
+	    {
+	      // DEBUG:
+	      /* fprintf(stderr, "\tNew peer %s seen in %d \n", */
+	      /* 	      bl_print_addr_storage(&bs_iterator->peer_address), */
+	      /* 	      bs_record->attributes.dump_time);  */
+	      peer_data->rt_status = UC_ON;
+	      peer_data->uc_ribs_table->reference_dump_time = bs_record->attributes.dump_time;
+	      peer_data->uc_ribs_table->reference_rib_start = 0;
+	      peer_data->uc_ribs_table->reference_rib_end = 0;
+	    }
 
 
 	  // if we are reading
@@ -190,17 +197,6 @@ int peers_table_process_record(peers_table_t *peers_table,
 	      return -1;
 	    }
 	  
-	  // DEBUG:
-	  /* if(strcmp(peer_data->peer_address_str, "202_79_197_122") == 0 && */
-	  /*    (old_status != peer_data->status || old_rt_status != peer_data->rt_status)) */
-	  /*   { */
-	  /*     printf("\t %ld E %s - (%d - %d) - to -> (%d - %d)\n", */
-	  /* 	     peer_data->most_recent_ts, */
-	  /* 	     peer_data->peer_address_str, */
-	  /* 	     old_status, old_rt_status, */
-	  /* 	     peer_data->status, peer_data->rt_status); */
-	  /*   } */
-	  
 	  // other information are computed at dump time
 	  bs_iterator = bs_iterator->next;
 	}
@@ -219,21 +215,8 @@ int peers_table_process_record(peers_table_t *peers_table,
       if (kh_exist(peers_table->ipv4_peers_table, k))
 	{	  
 	  peer_data = kh_value(peers_table->ipv4_peers_table, k);
-	  // DEBUG:
-	  /* ribs_tables_status_t old_rt_status = peer_data->rt_status; */
-	  /* peer_status_t old_status = peer_data->status; */
 	  // apply each record to each peer_data
 	  peer_status = peerdata_apply_record(peer_data, bs_record);
-	  // DEBUG:
-	  /* if(strcmp(peer_data->peer_address_str, "202_79_197_122") == 0 && */
-	  /*    (old_status != peer_data->status || old_rt_status != peer_data->rt_status)) */
-	  /*   { */
-	  /*     printf("\t %ld R %s - (%d - %d) - to -> (%d - %d)\n", */
-	  /* 	     peer_data->most_recent_ts, */
-	  /* 	     peer_data->peer_address_str, */
-	  /* 	     old_status, old_rt_status, */
-	  /* 	     peer_data->status, peer_data->rt_status); */
-	  /*   } */
 	  if(peer_status < 0)
 	    {
 	      // something went wrong during peerdata_apply_record function
