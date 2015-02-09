@@ -89,6 +89,13 @@ typedef enum {
   STORE_VIEW_STATE_MAX      = STORE_VIEW_FULL,
 } store_view_state_t;
 
+static char *store_view_state_names[] = {
+  "unused",
+  "unknown",
+  "partial",
+  "full",
+};
+
 /* one view will be hard-cleared at each cycle through the window */
 #define STORE_VIEW_REUSE_MAX WDW_LEN
 
@@ -146,9 +153,6 @@ struct bgpwatcher_store {
 
   /** Number of views in the circular buffer */
   int sviews_cnt;
-
-  /** The number of views that are not STORE_VIEW_UNUSED */
-  int sviews_inuse_cnt;
 
   /** The index of the first (oldest) view */
   uint32_t sviews_first_idx;
@@ -260,9 +264,6 @@ static store_view_t *store_view_clear(bgpwatcher_store_t *store,
   int i, idx;
 
   assert(sview != NULL);
-
-  /* either way, this view is not inuse anymore */
-  store->sviews_inuse_cnt--;
 
   /* after many soft-clears we force a hard-clear of the view to prevent the
      accumulation of prefix info for prefixes that are no longer in use */
@@ -445,6 +446,8 @@ static int dispatcher_run(bgpwatcher_store_t *store,
   int valid_peers_cnt;
 #endif
   int dispatch_interests = 0;
+  int i;
+  int states_cnt[STORE_VIEW_STATE_MAX+1];
 
   /* interests are hierarchical, so we check the most specific first */
   if(sview->state == STORE_VIEW_FULL &&
@@ -520,9 +523,21 @@ static int dispatcher_run(bgpwatcher_store_t *store,
               sview->view->time,
               "%s", "view_buffer_head_time");
 
-  DUMP_METRIC((uint64_t)store->sviews_inuse_cnt,
-              sview->view->time,
-              "%s", "views_inuse");
+  /* count the number of views in each state */
+  states_cnt[STORE_VIEW_UNUSED] = 0;
+  states_cnt[STORE_VIEW_UNKNOWN] = 0;
+  states_cnt[STORE_VIEW_PARTIAL] = 0;
+  states_cnt[STORE_VIEW_FULL] = 0;
+  for(i=0; i<store->sviews_cnt; i++)
+    {
+      states_cnt[store->sviews[i]->state]++;
+    }
+  for(i=0; i<=STORE_VIEW_STATE_MAX; i++)
+    {
+      DUMP_METRIC((uint64_t)states_cnt[i],
+                  sview->view->time,
+                  "view_state_%s_cnt", store_view_state_names[i]);
+    }
 
   DUMP_METRIC((uint64_t)kh_size(sview->view->v4pfxs),
               sview->view->time,
@@ -713,7 +728,6 @@ static int store_view_get(bgpwatcher_store_t *store, uint32_t new_time,
  valid:
   sview->state = STORE_VIEW_UNKNOWN;
   sview->view->time = new_time;
-  store->sviews_inuse_cnt++;
   *sview_p = sview;
   return WINDOW_TIME_VALID;
 }
