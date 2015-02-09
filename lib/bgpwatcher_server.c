@@ -547,21 +547,19 @@ static int handle_ready_message(bgpwatcher_server_t *server,
   fprintf(stderr, "DEBUG: Creating new client %s\n", client->id);
 #endif
 
-  if(client->info.interests != 0 || client->info.intents != 0)
-    {
-      fprintf(stderr, "WARN: Client is redefining their interests/intents\n");
-    }
+  uint8_t new_interests;
+  uint8_t new_intents;
 
   /* first frame is their interests */
   if(zsocket_rcvmore(server->client_socket) == 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-			     "Ready message missing interests");
+			     "Message missing interests");
       goto err;
     }
-  if(zmq_recv(server->client_socket, &client->info.interests,
-	      sizeof(client->info.interests), 0)
-     != sizeof(client->info.interests))
+  if(zmq_recv(server->client_socket, &new_interests,
+	      sizeof(new_interests), 0)
+     != sizeof(new_interests))
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 			     "Could not extract client interests");
@@ -572,17 +570,27 @@ static int handle_ready_message(bgpwatcher_server_t *server,
   if(zsocket_rcvmore(server->client_socket) == 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-			     "Ready message missing intents");
+			     "Message missing intents");
       goto err;
     }
-  if(zmq_recv(server->client_socket, &client->info.intents,
-	      sizeof(client->info.intents), 0)
-     != sizeof(client->info.intents))
+  if(zmq_recv(server->client_socket, &new_intents,
+	      sizeof(new_intents), 0)
+     != sizeof(new_intents))
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
 			     "Could not extract client intents");
       goto err;
     }
+
+  /* we already knew about this client, don't re-add */
+  if(client->info.interests == new_interests &&
+     client->info.intents == new_intents)
+    {
+      return 0;
+    }
+
+  client->info.interests = new_interests;
+  client->info.intents = new_intents;
 
   /* call the "client connect" callback */
   if(bgpwatcher_store_client_connect(server->store, &client->info) != 0)
@@ -618,6 +626,12 @@ static int handle_message(bgpwatcher_server_t *server,
 #endif
 
       begin_time = zclock_time();
+
+      /* every data now begins with interests and intents */
+      if(handle_ready_message(server, client) != 0)
+        {
+          goto err;
+        }
 
       /* parse the request, and then call the appropriate callback */
       if(handle_data_message(server, client) != 0)

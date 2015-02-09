@@ -145,6 +145,28 @@ static int server_subscribe(bgpwatcher_client_broker_t *broker)
   return 0;
 }
 
+static int server_send_interests_intents(bgpwatcher_client_broker_t *broker,
+                                         int sndmore)
+{
+  /* send our interests */
+  if(zmq_send(broker->server_socket, &CFG->interests, 1, ZMQ_SNDMORE) == -1)
+    {
+      bgpwatcher_err_set_err(ERR, errno,
+			     "Could not send ready msg to server");
+      return -1;
+    }
+
+  /* send our intents */
+  if(zmq_send(broker->server_socket, &CFG->intents, 1, sndmore) == -1)
+    {
+      bgpwatcher_err_set_err(ERR, errno,
+			     "Could not send ready msg to server");
+      return -1;
+    }
+
+  return 0;
+}
+
 static int server_connect(bgpwatcher_client_broker_t *broker)
 {
   uint8_t msg_type_p;
@@ -186,19 +208,8 @@ static int server_connect(bgpwatcher_client_broker_t *broker)
       return -1;
     }
 
-  /* send our interests */
-  if(zmq_send(broker->server_socket, &CFG->interests, 1, ZMQ_SNDMORE) == -1)
+  if(server_send_interests_intents(broker, 0) != 0)
     {
-      bgpwatcher_err_set_err(ERR, errno,
-			     "Could not send ready msg to server");
-      return -1;
-    }
-
-  /* send our intents */
-  if(zmq_send(broker->server_socket, &CFG->intents, 1, 0) == -1)
-    {
-      bgpwatcher_err_set_err(ERR, errno,
-			     "Could not send ready msg to server");
       return -1;
     }
 
@@ -316,6 +327,12 @@ static int send_request(bgpwatcher_client_broker_t *broker,
   if(zmq_send(broker->server_socket, &req->msg_type,
               bgpwatcher_msg_type_size_t, ZMQ_SNDMORE)
      != bgpwatcher_msg_type_size_t)
+    {
+      return -1;
+    }
+
+  /* send our interests/intents in case the server gave up on us */
+  if(server_send_interests_intents(broker, ZMQ_SNDMORE) != 0)
     {
       return -1;
     }
