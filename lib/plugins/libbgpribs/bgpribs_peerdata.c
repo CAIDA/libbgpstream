@@ -55,7 +55,7 @@ peerdata_t *peerdata_create(bl_addr_storage_t * peer_address)
     }
 
   // aggregatable data
-  if((peer_data->aggr_stats = malloc_zero(sizeof(aggregated_bgp_stats_t))) == NULL)
+  if((peer_data->aggr_stats = aggregated_bgp_stats_create()) == NULL)
     {
       ribs_table_destroy(peer_data->uc_ribs_table);
       peer_data->uc_ribs_table = NULL;
@@ -64,31 +64,10 @@ peerdata_t *peerdata_create(bl_addr_storage_t * peer_address)
       free(peer_data);
       return NULL;
     }
-
-  // TODO: fix this (it may cause leaks)
-  peer_data->aggr_stats->unique_ipv4_prefixes = NULL; // it is not used at peer level
-  peer_data->aggr_stats->unique_ipv6_prefixes = NULL;
-
-  if((peer_data->aggr_stats->affected_ipv4_prefixes = bl_ipv4_pfx_set_create()) == NULL ||
-     (peer_data->aggr_stats->affected_ipv6_prefixes = bl_ipv6_pfx_set_create()) == NULL ||
-     (peer_data->aggr_stats->unique_origin_ases = bl_id_set_create()) == NULL ||
-     (peer_data->aggr_stats->announcing_origin_ases = bl_id_set_create()) == NULL )
-    {
-      free(peer_data->aggr_stats);
-      peer_data->aggr_stats = NULL;
-      ribs_table_destroy(peer_data->uc_ribs_table);
-      peer_data->uc_ribs_table = NULL;
-      ribs_table_destroy(peer_data->active_ribs_table);
-      peer_data->active_ribs_table = NULL;
-      free(peer_data);
-      return NULL;
-    }
-
 
   if( (peer_data->peer_address_str = bl_print_addr_storage(peer_address)) == NULL ) 
     {
-      // TODO: add a proper destroy for aggregated stats
-      free(peer_data->aggr_stats);
+      aggregated_bgp_stats_destroy(peer_data->aggr_stats);
       peer_data->aggr_stats = NULL;
       ribs_table_destroy(peer_data->uc_ribs_table);
       peer_data->uc_ribs_table = NULL;
@@ -97,6 +76,7 @@ peerdata_t *peerdata_create(bl_addr_storage_t * peer_address)
       free(peer_data);
       return NULL;
     }
+  
   graphite_safe(peer_data->peer_address_str);
 
   return peer_data;
@@ -616,9 +596,9 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 #endif
 {
   khiter_t k;
-  int khret;
+  //int khret;
   prefixdata_t pd;
-  uint32_t as;
+  // uint32_t as;
 
  // OUTPUT METRIC: peer_status
   fprintf(stdout, "%s.%s.%s.%s.peer_status %d %d\n",
@@ -836,6 +816,7 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 		{
 		  origin_as = origin_hop.as_number;
 		}
+              bl_origin_as_freedynmem(&origin_hop);
 	      bl_ipv4_pfx_set_insert(collector_aggr_stats->unique_ipv4_prefixes, *ipv4_prefix);
 	      if(origin_as != 0)
 		{
@@ -879,6 +860,7 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 		{
 		  origin_as = origin_hop.as_number;
 		}
+              bl_origin_as_freedynmem(&origin_hop);
 	      bl_ipv6_pfx_set_insert(collector_aggr_stats->unique_ipv6_prefixes, *ipv6_prefix);
 	      if(origin_as != 0)
 		{
@@ -982,13 +964,7 @@ void peerdata_destroy(peerdata_t *peer_data)
 	}
       if(peer_data->aggr_stats != NULL)
 	{
-	  bl_ipv4_pfx_set_destroy(peer_data->aggr_stats->affected_ipv4_prefixes);
-	  bl_ipv6_pfx_set_destroy(peer_data->aggr_stats->affected_ipv6_prefixes);
-
-	  bl_id_set_destroy(peer_data->aggr_stats->unique_origin_ases);
-	  bl_id_set_destroy(peer_data->aggr_stats->announcing_origin_ases);
-
-	  free(peer_data->aggr_stats);
+	  aggregated_bgp_stats_destroy(peer_data->aggr_stats);
 	  peer_data->aggr_stats = NULL;
 	}
       if(peer_data->peer_address_str != NULL) 

@@ -286,8 +286,6 @@ int peers_table_interval_end(char *project_str, char *collector_str,
   assert(peers_table);
   khiter_t k;
   peerdata_t * peer_data;
-  bl_ipv4_addr_t ipv4_addr;
-  bl_ipv6_addr_t ipv6_addr;
 
 #ifdef WITH_BGPWATCHER
   int rc;
@@ -331,6 +329,9 @@ int peers_table_interval_end(char *project_str, char *collector_str,
 	}
     }  
 #endif
+
+  bl_ipv4_addr_t ipv4_addr;
+  bl_ipv6_addr_t ipv6_addr;
 
   // print stats for ipv4 peers (i.e. peers with an ipv4 address)
   for (k = kh_begin(peers_table->ipv4_peers_table);

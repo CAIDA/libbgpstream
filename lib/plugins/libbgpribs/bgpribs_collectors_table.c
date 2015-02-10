@@ -80,7 +80,7 @@ int collectors_table_process_record(collectors_table_wrapper_t *collectors_table
       k = kh_put(collectors_table_t, collectors_table->table,
 		 collector_name_cpy, &khret);
       /* add collectordata (value) to the hash */
-      kh_value(collectors_table->table, k) = collector_data;
+      kh_value(collectors_table->table, k) = collector_data;      
     }
   else
     {
@@ -93,26 +93,26 @@ int collectors_table_process_record(collectors_table_wrapper_t *collectors_table
 
 
 
-static int collectors_table_peers_cnt(collectors_table_wrapper_t *collectors_table)
-{
-  khiter_t k;
-  collectordata_t * collector_data;
-  int cnt = 0;
-  for (k = kh_begin(collectors_table->table);
-       k != kh_end(collectors_table->table); ++k)
-    {
-      if (kh_exist(collectors_table->table, k))
-	{
-	  collector_data = kh_value(collectors_table->table, k);
-	  if(collector_data->status != COLLECTOR_NULL)
-	    {
-	      cnt += kh_size(collector_data->peers_table->ipv4_peers_table);
-	      cnt += kh_size(collector_data->peers_table->ipv6_peers_table);
-	    }
-	}
-    }
-  return cnt;
-}
+/* static int collectors_table_peers_cnt(collectors_table_wrapper_t *collectors_table) */
+/* { */
+/*   khiter_t k; */
+/*   collectordata_t * collector_data; */
+/*   int cnt = 0; */
+/*   for (k = kh_begin(collectors_table->table); */
+/*        k != kh_end(collectors_table->table); ++k) */
+/*     { */
+/*       if (kh_exist(collectors_table->table, k)) */
+/* 	{ */
+/* 	  collector_data = kh_value(collectors_table->table, k); */
+/* 	  if(collector_data->status != COLLECTOR_NULL) */
+/* 	    { */
+/* 	      cnt += kh_size(collector_data->peers_table->ipv4_peers_table); */
+/* 	      cnt += kh_size(collector_data->peers_table->ipv6_peers_table); */
+/* 	    } */
+/* 	} */
+/*     } */
+/*   return cnt; */
+/* } */
 
 
 /* dump statistics for each collector */
@@ -232,10 +232,11 @@ void collectors_table_destroy(collectors_table_wrapper_t *collectors_table)
       /* free all values in the  collectors_table hash */
       for (k = kh_begin(collectors_table->table);
 	   k != kh_end(collectors_table->table); ++k)
-	{
+	{          
 	  if (kh_exist(collectors_table->table, k))
 	    {
-	      /* free the value */
+              free(kh_key(collectors_table->table, k));
+	      /* free the value */              
 	      collectordata_destroy(kh_value(collectors_table->table, k));
 	    }
 	}   

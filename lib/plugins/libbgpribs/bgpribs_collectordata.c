@@ -68,7 +68,7 @@ collectordata_t *collectordata_create(const char *project,
     }
 
   // aggregatable data
-  if((collector_data->aggr_stats = malloc_zero(sizeof(aggregated_bgp_stats_t))) == NULL)
+  if((collector_data->aggr_stats = aggregated_bgp_stats_create()) == NULL)
     {
       peers_table_destroy(collector_data->peers_table);
       collector_data->peers_table = NULL;
@@ -76,24 +76,6 @@ collectordata_t *collectordata_create(const char *project,
       collector_data->dump_collector = NULL;
       free(collector_data->dump_project);
       collector_data->dump_project = NULL;
-      free(collector_data);
-      return NULL;
-    }
-
-  // TODO: fix this (it may cause leaks)
-  if((collector_data->aggr_stats->unique_ipv4_prefixes = bl_ipv4_pfx_set_create()) == NULL ||
-     (collector_data->aggr_stats->unique_ipv6_prefixes = bl_ipv6_pfx_set_create()) == NULL ||
-     (collector_data->aggr_stats->affected_ipv4_prefixes = bl_ipv4_pfx_set_create()) == NULL ||
-     (collector_data->aggr_stats->affected_ipv6_prefixes = bl_ipv6_pfx_set_create()) == NULL ||
-     (collector_data->aggr_stats->unique_origin_ases = bl_id_set_create()) == NULL ||
-     (collector_data->aggr_stats->announcing_origin_ases = bl_id_set_create()) == NULL )
-    {
-      free(collector_data->aggr_stats);
-      collector_data->aggr_stats = NULL;
-      peers_table_destroy(collector_data->peers_table);
-      collector_data->peers_table = NULL;
-      free(collector_data->dump_collector);
-      free(collector_data->dump_project);
       free(collector_data);
       return NULL;
     }
@@ -341,17 +323,7 @@ void collectordata_destroy(collectordata_t *collector_data)
 	}
       if(collector_data->aggr_stats != NULL)
 	{
-	  // TODO fix this later
-	  bl_ipv4_pfx_set_destroy(collector_data->aggr_stats->unique_ipv4_prefixes);
-	  bl_ipv6_pfx_set_destroy(collector_data->aggr_stats->unique_ipv6_prefixes);
-	  
-	  bl_ipv4_pfx_set_destroy(collector_data->aggr_stats->affected_ipv4_prefixes);
-	  bl_ipv6_pfx_set_destroy(collector_data->aggr_stats->affected_ipv6_prefixes);
-
-	  bl_id_set_destroy(collector_data->aggr_stats->unique_origin_ases);
-	  bl_id_set_destroy(collector_data->aggr_stats->announcing_origin_ases);
-	  
-	  free(collector_data->aggr_stats);
+	  aggregated_bgp_stats_destroy(collector_data->aggr_stats);
 	  collector_data->aggr_stats = NULL;
 	}
       free(collector_data);
