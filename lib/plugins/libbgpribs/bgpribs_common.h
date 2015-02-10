@@ -31,6 +31,7 @@
 #include "bl_bgp_utils.h"
 #include "bl_pfx_set.h"
 #include "bl_id_set.h"
+#include "utils.h"
 #include "bgpstream_lib.h"
 
 
@@ -43,7 +44,7 @@
  *
  */
 
-#define METRIC_PREFIX "bgp.test.bgpribs"
+#define METRIC_PREFIX "bgp.routingtables"
 
 
 /** Modifies the string provided so that it
@@ -71,6 +72,11 @@ typedef struct aggregated_bgp_stats {
   /// set of unique origin ASes announcing at least one prefix during the interval
   bl_id_set_t *announcing_origin_ases; 
 } aggregated_bgp_stats_t;
+
+
+aggregated_bgp_stats_t *aggregated_bgp_stats_create();
+void aggregated_bgp_stats_destroy(aggregated_bgp_stats_t *aggr);
+
 
 
 #endif /* __BGPRIBS_COMMON_H */

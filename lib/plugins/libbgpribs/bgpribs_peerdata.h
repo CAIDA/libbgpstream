@@ -32,6 +32,7 @@
 #include "utils.h"
 #include "bgpribs_common.h"
 #include "bgpribs_ribs_table.h"
+
 #ifdef WITH_BGPWATCHER
 #include "bgpribs_bgpwatcher_client.h"
 #endif
@@ -44,7 +45,6 @@
  * @author Chiara Orsini
  *
  */
-
 
 /** status of the peer */
 typedef enum  {
@@ -120,7 +120,6 @@ int peerdata_apply_elem(peerdata_t *peer_data, bgpstream_record_t * bs_record, b
  *        -1 if something went wrong during the function execution
  */
 int peerdata_apply_record(peerdata_t *peer_data, bgpstream_record_t * bs_record);
-
 
 
 #ifdef WITH_BGPWATCHER
