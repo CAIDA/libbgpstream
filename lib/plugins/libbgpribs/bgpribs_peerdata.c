@@ -596,9 +596,9 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 #endif
 {
   khiter_t k;
-  int khret;
+  //int khret;
   prefixdata_t pd;
-  uint32_t as;
+  // uint32_t as;
 
  // OUTPUT METRIC: peer_status
   fprintf(stdout, "%s.%s.%s.%s.peer_status %d %d\n",
@@ -816,15 +816,7 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 		{
 		  origin_as = origin_hop.as_number;
 		}
-              else
-                {
-                  // deallocate memory for the hop string
-                  if(origin_hop.as_string != NULL)
-                    {
-                      free(origin_hop.as_string);
-                      origin_hop.as_string = NULL;
-                    }                    
-                }
+              bl_origin_as_freedynmem(&origin_hop);
 	      bl_ipv4_pfx_set_insert(collector_aggr_stats->unique_ipv4_prefixes, *ipv4_prefix);
 	      if(origin_as != 0)
 		{
@@ -868,15 +860,7 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 		{
 		  origin_as = origin_hop.as_number;
 		}
-              else
-                {
-                  // deallocate memory for the hop string
-                  if(origin_hop.as_string != NULL)
-                    {
-                      free(origin_hop.as_string);
-                      origin_hop.as_string = NULL;
-                    }                    
-                }
+              bl_origin_as_freedynmem(&origin_hop);
 	      bl_ipv6_pfx_set_insert(collector_aggr_stats->unique_ipv6_prefixes, *ipv6_prefix);
 	      if(origin_as != 0)
 		{
