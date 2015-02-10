@@ -501,9 +501,11 @@ static void print_elem(bgpstream_elem_t * elem)
 {
   assert(bs_elem);
   char buf[4096];
-  size_t written = 0;
 
-  written = bgpstream_elem_snprint(buf, 4096, elem);
-  assert(written < 4096);
+  if(bgpstream_elem_snprintf(buf, 4096, elem) == NULL)
+    {
+      fprintf(stderr, "Elem longer than 4096 bytes\n");
+      assert(0);
+    }
   printf("%s\n", buf);
 }

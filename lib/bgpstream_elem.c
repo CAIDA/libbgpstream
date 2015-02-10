@@ -72,6 +72,10 @@ static bgpstream_elem_t *bd2bi_create_route_info() {
   bgpstream_elem_t * ri =
     (bgpstream_elem_t *) malloc_zero(sizeof(bgpstream_elem_t));
   // all fields are initialized to zero
+
+  // need to init as path
+  bgpstream_as_path_init(&ri->aspath);
+
   ri->next = NULL;
   return ri;
 }
@@ -88,20 +92,10 @@ static bgpstream_elem_t *bd2bi_add_new_route_info(bgpstream_elem_t **lifo_queue)
 
 static void bd2bi_destroy_route_info(bgpstream_elem_t *ri) {
   if(ri != NULL) {
-    if(ri->aspath.type == BL_AS_NUMERIC)
-      {
-	if(ri->aspath.numeric_aspath != NULL)
-	  {
-	    free(ri->aspath.numeric_aspath);
-	  }
-      }
-    if(ri->aspath.type == BL_AS_STRING)
-      {
-	if(ri->aspath.str_aspath != NULL)
-	  {
-	    free(ri->aspath.str_aspath);
-	  }
-      }
+
+    // need to clear as path
+    bgpstream_as_path_clear(&ri->aspath);
+
     free(ri);
   }
 }
@@ -118,8 +112,9 @@ static void bd2bi_destroy_route_info_queue(bgpstream_elem_t * lifo_queue) {
   }
 }
 
+/** @todo consider moving this code into bgpstream_utils_as */
 static void get_aspath_struct(struct aspath *ap,
-                              bl_aspath_storage_t *ap_struct)
+                              bgpstream_as_path_t *bs_ap)
 {
   const char *invalid_characters = "([{}])";
   // char origin_copy[16];
@@ -127,48 +122,53 @@ static void get_aspath_struct(struct aspath *ap,
   char * tok = NULL;
   char *c = ap->str;
   char *next;
-  ap_struct->hop_count = ap->count;
-  ap_struct->type = BL_AS_TYPE_UNKNOWN;
+  bs_ap->hop_count = ap->count;
+  bs_ap->type = BGPSTREAM_AS_TYPE_UNKNOWN;
 
-  if(ap->str == NULL || ap_struct->hop_count == 0) {
+  if(ap->str == NULL || bs_ap->hop_count == 0) {
     // aspath is empty, if it is an internal AS bgp info that is fine
     return;
   }
   // check if there are sets or confederations
   while (*c) {
     if(strchr(invalid_characters, *c)) {
-      ap_struct->type = BL_AS_STRING;
-      ap_struct->str_aspath = NULL;
+      bs_ap->type = BGPSTREAM_AS_TYPE_STRING;
+      bs_ap->str_aspath = NULL;
       break;
     }
     c++;
   }
   /* if sets or confederations are present, then
    * the AS_PATH is of type STRING */
-  if(ap_struct->type == BL_AS_STRING) {
+  if(bs_ap->type == BGPSTREAM_AS_TYPE_STRING) {
     /* if the type is STR then we allocate the memory
      * required for the path - we do not copy ap->str
      * it is a fixed length array which is unreasonably
      long (8000)*/
-    ap_struct->str_aspath = strdup(ap->str);
+    bs_ap->str_aspath = strdup(ap->str);
+
+    /** @todo fix this function to return -1 on failure */
+    assert(bs_ap->str_aspath);
   }
 
   /* if type has not been changed, then it is  numeric, then  */
 
-  if(ap_struct->type == BL_AS_TYPE_UNKNOWN)
+  if(bs_ap->type == BGPSTREAM_AS_TYPE_UNKNOWN)
     {
-      ap_struct->type =  BL_AS_NUMERIC;
+      bs_ap->type =  BGPSTREAM_AS_TYPE_NUMERIC;
       it = 0;
-      ap_struct->numeric_aspath = (uint32_t *)malloc(ap_struct->hop_count * sizeof(uint32_t));
-      if(ap_struct->numeric_aspath == NULL) {
+      bs_ap->numeric_aspath = (uint32_t *)malloc(bs_ap->hop_count * sizeof(uint32_t));
+      /** @todo fix this function to return -1 on failure */
+      if(bs_ap->numeric_aspath == NULL) {
 	bgpstream_log_err("get_aspath_struct: can't malloc aspath numeric array");
+        assert(0);
 	return;
       }
 
       next = c = strdup(ap->str);
       while((tok = strsep(&next, " ")) != NULL) {
 	// strcpy(origin_copy, tok);
-	ap_struct->numeric_aspath[it] = strtoul(tok, NULL, 10);
+	bs_ap->numeric_aspath[it] = strtoul(tok, NULL, 10);
 	it++;
       }
       free(c);
@@ -709,8 +709,8 @@ void bgpstream_elem_queue_destroy(bgpstream_elem_t * elem_queue) {
   bd2bi_destroy_route_info_queue(elem_queue);
 }
 
-int bgpstream_elem_type_snprint(char * restrict buf, size_t len,
-                                bgpstream_elem_type_t type)
+int bgpstream_elem_type_snprintf(char * restrict buf, size_t len,
+                                 bgpstream_elem_type_t type)
 {
   /* ensure we have enough bytes to write our single character */
   if(len == 0) {
@@ -747,8 +747,8 @@ int bgpstream_elem_type_snprint(char * restrict buf, size_t len,
   return 1;
 }
 
-int bgpstream_elem_peerstate_snprint(char * restrict buf, size_t len,
-                                     bgpstream_elem_peerstate_t state)
+int bgpstream_elem_peerstate_snprintf(char * restrict buf, size_t len,
+                                      bgpstream_elem_peerstate_t state)
 {
   size_t written = 0;
 
@@ -799,44 +799,77 @@ int bgpstream_elem_peerstate_snprint(char * restrict buf, size_t len,
   return written;
 }
 
+#define B_REMAIN (len-written)
+#define B_FULL   (written >= len)
+#define ADD_PIPE                                \
+  do {                                          \
+  if(B_REMAIN > 1)                              \
+    {                                           \
+      *buf_p = '|';                             \
+      buf_p++;                                  \
+      written++;                                \
+    }                                           \
+  else                                          \
+    {                                           \
+      return NULL;                              \
+    }                                           \
+  } while(0)
 
-int bgpstream_elem_snprint(char * restrict buf, size_t len,
-                           bgpstream_elem_t *elem)
+#define SEEK_STR_END                            \
+  do {                                          \
+    while(*buf_p)                               \
+      {                                         \
+        written++;                              \
+        buf_p++;                                \
+      }                                         \
+ } while(0)
+
+char *bgpstream_elem_snprintf(char * restrict buf, size_t len,
+                              bgpstream_elem_t *elem)
 {
   assert(elem);
 
-  size_t written = 0;
-  size_t n = 0;
+  size_t written = 0; /* < how many bytes we wanted to write */
+  size_t c = 0; /* < how many chars were written */
   char *buf_p = buf;
 
-  /** @todo remove all these things */
-  /** @todo use a single buffer and write into it using each func */
-  char *tmp1 = NULL;
-  char *tmp2 = NULL;
-  char tmp_buf[1024];
-  char addr_buf[INET6_ADDRSTRLEN];
-  char pfx_buf[INET6_ADDRSTRLEN+3];
-
-  bl_as_storage_t a;
+  bgpstream_as_hop_t as_hop;
+  bgpstream_as_hop_init(&as_hop);
 
   /* common fields */
 
   // timestamp|peer_ip|peer_asn|message_type|
-  bgpstream_elem_type_snprint(tmp_buf, 1024, elem->type);
 
-  bgpstream_addr_ntop(addr_buf, INET6_ADDRSTRLEN, &elem->peer_address);
-  written = snprintf(buf_p, len, "%"PRIu32"|%s|%"PRIu32"|%s|",
-                     elem->timestamp,
-                     addr_buf,
-                     elem->peer_asnumber,
-                     tmp_buf
-                     );
+  /* TIMESTAMP */
+  c = snprintf(buf_p, B_REMAIN, "%"PRIu32"|", elem->timestamp);
+  written += c;
+  buf_p += c;
 
-  /** @todo remove these too */
-  free(tmp1);
-  tmp1 = NULL;
+  if(B_FULL)
+    return NULL;
 
-  buf_p += written;
+  /* PEER IP */
+  if(bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->peer_address) == NULL)
+    return NULL;
+  SEEK_STR_END;
+
+  /* PEER ASN */
+  c = snprintf(buf_p, B_REMAIN, "|%"PRIu32"|", elem->peer_asnumber);
+  written += c;
+  buf_p += c;
+
+  if(B_FULL)
+    return NULL;
+
+  /* MESSAGE TYPE */
+  c = bgpstream_elem_type_snprintf(buf_p, B_REMAIN, elem->type);
+  written += c;
+  buf_p += c;
+
+  if(B_FULL)
+    return NULL;
+
+  ADD_PIPE;
 
   /* conditional fields */
   switch(elem->type)
@@ -844,51 +877,80 @@ int bgpstream_elem_snprint(char * restrict buf, size_t len,
     case BGPSTREAM_ELEM_TYPE_RIB:
     case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT:
 
-      a = bl_get_origin_as(&elem->aspath);
-      bgpstream_addr_ntop(addr_buf, INET6_ADDRSTRLEN, &elem->nexthop);
-      bgpstream_pfx_snprint(pfx_buf, INET6_ADDRSTRLEN+3,
-                             (bgpstream_pfx_t*)&(elem->prefix));
+      /* PREFIX */
+      if(bgpstream_pfx_snprintf(buf_p, B_REMAIN,
+                                (bgpstream_pfx_t*)&(elem->prefix)) == NULL)
+        {
+          return NULL;
+        }
+      SEEK_STR_END;
+      ADD_PIPE;
 
-      snprintf(buf_p, (len-written), "%s|%s|%s|%s",
-               pfx_buf,
-               addr_buf,
-               (tmp1 = bl_print_aspath(&(elem->aspath))),
-               (tmp2 = bl_print_as(&a)));
+      /* NEXT HOP */
+      if(bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->nexthop) == NULL)
+        {
+          return NULL;
+        }
+      SEEK_STR_END;
+      ADD_PIPE;
+
+      /* AS PATH */
+      c = bgpstream_as_path_snprintf(buf_p, B_REMAIN, &elem->aspath);
+      written += c;
+      buf_p += c;
+
+      if(B_FULL)
+        return NULL;
+
+      ADD_PIPE;
+
+      /* AS HOP */
+      if(bgpstream_as_path_get_origin_as(&elem->aspath, &as_hop) != 0)
+        {
+          return NULL;
+        }
+      c = bgpstream_as_hop_snprintf(buf_p, B_REMAIN, &as_hop);
+      written += c;
+      buf_p += c;
+
+      if(B_FULL)
+        return NULL;
+
+      /* END OF LINE */
       break;
 
     case BGPSTREAM_ELEM_TYPE_WITHDRAWAL:
-      bgpstream_pfx_snprint(pfx_buf, INET6_ADDRSTRLEN+3,
-                            (bgpstream_pfx_t*)&(elem->prefix));
-      snprintf(buf_p, (len-written), "%s", pfx_buf);
+      if(bgpstream_pfx_snprintf(buf_p, B_REMAIN,
+                                (bgpstream_pfx_t*)&(elem->prefix)) == NULL)
+        {
+          return NULL;
+        }
       break;
 
     case BGPSTREAM_ELEM_TYPE_PEERSTATE:
-      n = bgpstream_elem_peerstate_snprint(buf_p, (len-written),
-                                           elem->old_state);
-      written += n;
-      buf_p += n;
-      if(len-written > 0)
-        {
-          *buf_p = '|';
-          buf_p++;
-        }
-      written++;
+      c = bgpstream_elem_peerstate_snprintf(buf_p, B_REMAIN,
+                                            elem->old_state);
+      written += c;
+      buf_p += c;
 
-      n = bgpstream_elem_peerstate_snprint(buf_p, (len-written),
-                                           elem->new_state);
-      written += n;
-      buf_p += n;
+      if(B_FULL)
+        return NULL;
+
+      ADD_PIPE;
+
+      c = bgpstream_elem_peerstate_snprintf(buf_p, B_REMAIN, elem->new_state);
+      written += c;
+      buf_p += c;
+
+      if(B_FULL)
+        return NULL;
       break;
+
     default:
       fprintf(stderr, "Error during elem processing\n");
+      return NULL;
     }
 
-  free(tmp1);
-  tmp1 = NULL;
-  free(tmp2);
-  tmp2 = NULL;
-
-  return written;
-
+  return buf;
 }
 

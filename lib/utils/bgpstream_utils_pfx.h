@@ -112,7 +112,7 @@ typedef struct struct_bgpstream_pfx_storage_t {
  * You will likely want to use INET_ADDRSTRLEN+3 or INET6_ADDRSTRLEN+3 to
  * dimension the buffer.
  */
-char *bgpstream_pfx_snprint(char *buf, size_t len, bgpstream_pfx_t *pfx);
+char *bgpstream_pfx_snprintf(char *buf, size_t len, bgpstream_pfx_t *pfx);
 
 
 /** Hash the given IPv4 Prefix into a 32bit number
@@ -182,6 +182,7 @@ int bgpstream_ipv6_pfx_equal(bgpstream_ipv6_pfx_t *pfx1,
 int bgpstream_pfx_storage_equal(bgpstream_pfx_storage_t *pfx1,
                                 bgpstream_pfx_storage_t *pfx2);
 
+/** @} */
 
 #endif /* __BGPSTREAM_UTILS_PFX_H */
 

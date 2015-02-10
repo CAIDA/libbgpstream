@@ -133,7 +133,7 @@ typedef struct struct_bgpstream_elem_t {
    *
    * Available only for RIB and Announcement elem types
    */
-  bl_aspath_storage_t aspath;
+  bgpstream_as_path_t aspath;
 
   /** Old peer state
    *
@@ -183,8 +183,8 @@ void bgpstream_elem_queue_destroy(bgpstream_elem_t *elem_queue);
  * @return the number of characters that would have been written if len was
  * unlimited
  */
-int bgpstream_elem_type_snprint(char * restrict buf, size_t len,
-                                bgpstream_elem_type_t type);
+int bgpstream_elem_type_snprintf(char * restrict buf, size_t len,
+                                 bgpstream_elem_type_t type);
 
 /** Write the string representation of the elem peerstate into the provided
  *  buffer
@@ -195,19 +195,18 @@ int bgpstream_elem_type_snprint(char * restrict buf, size_t len,
  * @return the number of characters that would have been written if len was
  * unlimited
  */
-int bgpstream_elem_peerstate_snprint(char * restrict buf, size_t len,
-                                     bgpstream_elem_peerstate_t state);
+int bgpstream_elem_peerstate_snprintf(char * restrict buf, size_t len,
+                                      bgpstream_elem_peerstate_t state);
 
 /** Write the string representation of the elem into the provided buffer
  *
  * @param buf           pointer to a char array
  * @param len           length of the char array
  * @param elem          pointer to a BGP Stream Elem to convert to string
- * @return the number of characters that would have been written if len was
- * unlimited
+ * @return pointer to the start of the buffer if successful, NULL otherwise
  */
-int bgpstream_elem_snprint(char * restrict buf, size_t len,
-                           bgpstream_elem_t *elem);
+char *bgpstream_elem_snprintf(char * restrict buf, size_t len,
+                              bgpstream_elem_t *elem);
 
 /** @} */
 

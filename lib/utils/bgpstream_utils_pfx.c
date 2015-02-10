@@ -30,7 +30,7 @@
 
 #include <bgpstream_utils_pfx.h>
 
-char *bgpstream_pfx_snprint(char *buf, size_t len, bgpstream_pfx_t *pfx)
+char *bgpstream_pfx_snprintf(char *buf, size_t len, bgpstream_pfx_t *pfx)
 {
   char *p = buf;
 

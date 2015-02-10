@@ -36,10 +36,11 @@ include_HEADERS= bgpstream_utils.h \
 		bgpstream_utils_addr.h
 
 libbgpstream_utils_la_SOURCES =             \
-	bgpstream_utils.c                   \
 	bgpstream_utils.h                   \
 	bgpstream_utils_addr.c              \
 	bgpstream_utils_addr.h              \
+	bgpstream_utils_as.c		    \
+	bgpstream_utils_as.h		    \
 	bgpstream_utils_pfx.c		    \
 	bgpstream_utils_pfx.h		    \
 	\
@@ -50,8 +51,6 @@ libbgpstream_utils_la_SOURCES =             \
 	bgpstream_utils_str_set.h  \
 	bgpstream_utils_id_set.c     \
 	bgpstream_utils_id_set.h     \
-	bgpstream_utils_as_set.c     \
-	bgpstream_utils_as_set.h     \
 	bgpstream_utils_pfx_set.c  \
 	bgpstream_utils_pfx_set_int.h  \
 	bgpstream_utils_pfx_set.h  \
