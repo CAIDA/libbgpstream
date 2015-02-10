@@ -810,14 +810,16 @@ int bgpstream_elem_snprint(char * restrict buf, size_t len,
   char *buf_p = buf;
 
   /** @todo remove all these things */
+  /** @todo use a single buffer and write into it using each func */
   char *tmp1 = NULL;
   char *tmp2 = NULL;
-  char *tmp3 = NULL;
   char tmp_buf[1024];
   char addr_buf[INET6_ADDRSTRLEN];
-
+  char pfx_buf[INET6_ADDRSTRLEN+3];
 
   bl_as_storage_t a;
+
+  /* common fields */
 
   // timestamp|peer_ip|peer_asn|message_type|
   bgpstream_elem_type_snprint(tmp_buf, 1024, elem->type);
@@ -836,22 +838,28 @@ int bgpstream_elem_snprint(char * restrict buf, size_t len,
 
   buf_p += written;
 
+  /* conditional fields */
   switch(elem->type)
     {
     case BGPSTREAM_ELEM_TYPE_RIB:
     case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT:
+
       a = bl_get_origin_as(&elem->aspath);
       bgpstream_addr_ntop(addr_buf, INET6_ADDRSTRLEN, &elem->nexthop);
-      snprintf(buf_p, (len-written), "%s|%s|%s|%s|",
-               (tmp1 = bl_print_pfx_storage(&(elem->prefix))),
+      bgpstream_pfx_snprint(pfx_buf, INET6_ADDRSTRLEN+3,
+                             (bgpstream_pfx_t*)&(elem->prefix));
+
+      snprintf(buf_p, (len-written), "%s|%s|%s|%s",
+               pfx_buf,
                addr_buf,
-               (tmp2 = bl_print_aspath(&(elem->aspath))),
-               (tmp3 = bl_print_as(&a)));
+               (tmp1 = bl_print_aspath(&(elem->aspath))),
+               (tmp2 = bl_print_as(&a)));
       break;
 
     case BGPSTREAM_ELEM_TYPE_WITHDRAWAL:
-      snprintf(buf_p, (len-written), "%s|",
-               (tmp1 = bl_print_pfx_storage(&(elem->prefix))));
+      bgpstream_pfx_snprint(pfx_buf, INET6_ADDRSTRLEN+3,
+                            (bgpstream_pfx_t*)&(elem->prefix));
+      snprintf(buf_p, (len-written), "%s", pfx_buf);
       break;
 
     case BGPSTREAM_ELEM_TYPE_PEERSTATE:
@@ -870,12 +878,6 @@ int bgpstream_elem_snprint(char * restrict buf, size_t len,
                                            elem->new_state);
       written += n;
       buf_p += n;
-      if(len-written > 0)
-        {
-          *buf_p = '|';
-          buf_p++;
-        }
-      written++;
       break;
     default:
       fprintf(stderr, "Error during elem processing\n");
@@ -885,8 +887,6 @@ int bgpstream_elem_snprint(char * restrict buf, size_t len,
   tmp1 = NULL;
   free(tmp2);
   tmp2 = NULL;
-  free(tmp3);
-  tmp3 = NULL;
 
   return written;
 

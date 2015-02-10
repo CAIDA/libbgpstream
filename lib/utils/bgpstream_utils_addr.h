@@ -187,19 +187,10 @@ unsigned long long
 #endif
 bgpstream_addr_storage_hash(bgpstream_addr_storage_t *addr);
 
-/** Compare two generic addresses for equality
- *
- * @param addr1         pointer to the first address to compare
- * @param addr1         pointer to the first address to compare
- * @return 0 if the addresses are not equal, non-zero if they are equal
- */
-int bgpstream_addr_storage_equal(bgpstream_addr_storage_t *addr1,
-                                 bgpstream_addr_storage_t *ip2);
-
 /** Compare two IPv4 addresses for equality
  *
  * @param addr1         pointer to the first address to compare
- * @param addr1         pointer to the first address to compare
+ * @param addr2         pointer to the second address to compare
  * @return 0 if the addresses are not equal, non-zero if they are equal
  */
 int bgpstream_ipv4_addr_equal(bgpstream_ipv4_addr_t *addr1,
@@ -208,11 +199,20 @@ int bgpstream_ipv4_addr_equal(bgpstream_ipv4_addr_t *addr1,
 /** Compare two IPv6 addresses for equality
  *
  * @param addr1         pointer to the first address to compare
- * @param addr1         pointer to the first address to compare
+ * @param addr2         pointer to the second address to compare
  * @return 0 if the addresses are not equal, non-zero if they are equal
  */
 int bgpstream_ipv6_addr_equal(bgpstream_ipv6_addr_t *addr1,
                               bgpstream_ipv6_addr_t *addr2);
+
+/** Compare two generic addresses for equality
+ *
+ * @param addr1         pointer to the first address to compare
+ * @param addr2         pointer to the second address to compare
+ * @return 0 if the addresses are not equal, non-zero if they are equal
+ */
+int bgpstream_addr_storage_equal(bgpstream_addr_storage_t *addr1,
+                                 bgpstream_addr_storage_t *ip2);
 
 /** @} */
 

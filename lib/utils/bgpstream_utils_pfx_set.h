@@ -27,18 +27,18 @@
 #ifndef _BL_PFX_SET_H
 #define _BL_PFX_SET_H
 
-#include "bgpstream_utils.h"
+#include <bgpstream_utils.h>
 
 
-typedef struct bl_pfx_storage_set_t bl_pfx_storage_set_t;
-	    	    
+typedef struct bgpstream_pfx_storage_set_t bgpstream_pfx_storage_set_t;
+
 /** Allocate memory for a strucure that maintains
  *  unique set of IP prefixes.
  *
  * @return a pointer to the structure, or
  *  NULL if an error occurred
  */
-bl_pfx_storage_set_t *bl_pfx_storage_set_create();
+bgpstream_pfx_storage_set_t *bgpstream_pfx_storage_set_create();
 
 /** Insert a new prefix into the prefix set.
  *
@@ -46,58 +46,58 @@ bl_pfx_storage_set_t *bl_pfx_storage_set_create();
  * @param ip_prefix generic prefix
  * @return 1 if a prefix has been inserted, 0 if it already existed
  */
-int bl_pfx_storage_set_insert(bl_pfx_storage_set_t *ip_prefix_set, bl_pfx_storage_t prefix);
+int bgpstream_pfx_storage_set_insert(bgpstream_pfx_storage_set_t *ip_prefix_set, bgpstream_pfx_storage_t prefix);
 
 /** Empty the prefix set.
  *
  * @param as_set pointer to the prefix set
  */
-void bl_pfx_storage_set_reset(bl_pfx_storage_set_t *ip_prefix_set);
+void bgpstream_pfx_storage_set_reset(bgpstream_pfx_storage_set_t *ip_prefix_set);
 
 /** Get the size of the set.
  *
  * @param as_set pointer to the prefix set
  * @return the size of the prefix set
  */
-int bl_pfx_storage_set_size(bl_pfx_storage_set_t *ip_prefix_set);
+int bgpstream_pfx_storage_set_size(bgpstream_pfx_storage_set_t *ip_prefix_set);
 
 /** Get the merge of the set.
  *  @param union_set pointer to the prefix set that will include the merge
  *  @param part_set pointer to the prefix set that will be merged with the union_set
  */
-void bl_pfx_storage_set_merge(bl_pfx_storage_set_t *union_set, bl_pfx_storage_set_t *part_set);
+void bgpstream_pfx_storage_set_merge(bgpstream_pfx_storage_set_t *union_set, bgpstream_pfx_storage_set_t *part_set);
 
 /** Deallocate memory for the IP prefix set
  *
  * @param as_set a pointer to the AS set
  */
-void bl_pfx_storage_set_destroy(bl_pfx_storage_set_t *ip_prefix_set);
+void bgpstream_pfx_storage_set_destroy(bgpstream_pfx_storage_set_t *ip_prefix_set);
 
 
 // same functions, ipv4 specific
 
-typedef struct bl_ipv4_pfx_set_t bl_ipv4_pfx_set_t;
+typedef struct bgpstream_ipv4_pfx_set_t bgpstream_ipv4_pfx_set_t;
 
 
-bl_ipv4_pfx_set_t *bl_ipv4_pfx_set_create(); 
-int bl_ipv4_pfx_set_insert(bl_ipv4_pfx_set_t *ip_prefix_set, bl_ipv4_pfx_t prefix);
-void bl_ipv4_pfx_set_reset(bl_ipv4_pfx_set_t *ip_prefix_set);
-int bl_ipv4_pfx_set_size(bl_ipv4_pfx_set_t *ip_prefix_set);
-void bl_ipv4_pfx_set_merge(bl_ipv4_pfx_set_t *union_set, bl_ipv4_pfx_set_t *part_set);
-void bl_ipv4_pfx_set_destroy(bl_ipv4_pfx_set_t *ip_prefix_set);
+bgpstream_ipv4_pfx_set_t *bgpstream_ipv4_pfx_set_create(); 
+int bgpstream_ipv4_pfx_set_insert(bgpstream_ipv4_pfx_set_t *ip_prefix_set, bgpstream_ipv4_pfx_t prefix);
+void bgpstream_ipv4_pfx_set_reset(bgpstream_ipv4_pfx_set_t *ip_prefix_set);
+int bgpstream_ipv4_pfx_set_size(bgpstream_ipv4_pfx_set_t *ip_prefix_set);
+void bgpstream_ipv4_pfx_set_merge(bgpstream_ipv4_pfx_set_t *union_set, bgpstream_ipv4_pfx_set_t *part_set);
+void bgpstream_ipv4_pfx_set_destroy(bgpstream_ipv4_pfx_set_t *ip_prefix_set);
 
 
 // same functions, ipv6 specific
 
-typedef struct bl_ipv6_pfx_set_t bl_ipv6_pfx_set_t;
+typedef struct bgpstream_ipv6_pfx_set_t bgpstream_ipv6_pfx_set_t;
 
 
-bl_ipv6_pfx_set_t *bl_ipv6_pfx_set_create(); 
-int bl_ipv6_pfx_set_insert(bl_ipv6_pfx_set_t *ip_prefix_set, bl_ipv6_pfx_t prefix);
-void bl_ipv6_pfx_set_reset(bl_ipv6_pfx_set_t *ip_prefix_set);
-int bl_ipv6_pfx_set_size(bl_ipv6_pfx_set_t *ip_prefix_set);
-void bl_ipv6_pfx_set_merge(bl_ipv6_pfx_set_t *union_set, bl_ipv6_pfx_set_t *part_set);
-void bl_ipv6_pfx_set_destroy(bl_ipv6_pfx_set_t *ip_prefix_set);
+bgpstream_ipv6_pfx_set_t *bgpstream_ipv6_pfx_set_create(); 
+int bgpstream_ipv6_pfx_set_insert(bgpstream_ipv6_pfx_set_t *ip_prefix_set, bgpstream_ipv6_pfx_t prefix);
+void bgpstream_ipv6_pfx_set_reset(bgpstream_ipv6_pfx_set_t *ip_prefix_set);
+int bgpstream_ipv6_pfx_set_size(bgpstream_ipv6_pfx_set_t *ip_prefix_set);
+void bgpstream_ipv6_pfx_set_merge(bgpstream_ipv6_pfx_set_t *union_set, bgpstream_ipv6_pfx_set_t *part_set);
+void bgpstream_ipv6_pfx_set_destroy(bgpstream_ipv6_pfx_set_t *ip_prefix_set);
 
 
 #endif /* _BL_PFX_SET_H */

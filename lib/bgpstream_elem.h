@@ -121,7 +121,7 @@ typedef struct struct_bgpstream_elem_t {
    *
    * Available only for RIB, Announcement and Withdrawal elem types
    */
-  bl_pfx_storage_t prefix;
+  bgpstream_pfx_storage_t prefix;
 
   /** Next hop
    *

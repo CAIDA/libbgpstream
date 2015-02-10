@@ -40,6 +40,8 @@ libbgpstream_utils_la_SOURCES =             \
 	bgpstream_utils.h                   \
 	bgpstream_utils_addr.c              \
 	bgpstream_utils_addr.h              \
+	bgpstream_utils_pfx.c		    \
+	bgpstream_utils_pfx.h		    \
 	\
 	bgpstream_utils_peersign_map.c  \
 	bgpstream_utils_peersign_map_int.h  \
