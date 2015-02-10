@@ -32,15 +32,8 @@
 #include <bgpstream_utils_addr.h>
 #include <bgpstream_utils_pfx.h>
 
-#define BGPCOMMON_COLLECTOR_NAME_LEN 128
-
-
-typedef enum {BL_UNKNOWN_DUMP = 0,
-              BL_RIB_DUMP     = 1,
-	      BL_UPDATE_DUMP  = 2
-} bl_dump_type_t;
-
-#define BL_DUMP_TYPE_MAX 3
+/** The maximum number of characters allowed in a collector name */
+#define BGPSTREAM_UTILS_COLLECTOR_NAME_LEN 128
 
 typedef enum {BL_AS_TYPE_UNKNOWN = 0,
 	      BL_AS_NUMERIC      = 1,

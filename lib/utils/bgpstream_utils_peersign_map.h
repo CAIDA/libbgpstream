@@ -37,7 +37,7 @@ typedef uint16_t bl_peerid_t;
  *      <collector, peer ip address>
  */
 typedef struct struct_peer_signature_t {
-  char collector_str[BGPCOMMON_COLLECTOR_NAME_LEN];
+  char collector_str[BGPSTREAM_UTILS_COLLECTOR_NAME_LEN];
   bgpstream_addr_storage_t peer_ip_addr;
 } bl_peer_signature_t;
 
