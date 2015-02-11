@@ -41,12 +41,12 @@ libbgpstream_utils_la_SOURCES =             \
 	bgpstream_utils_addr.h              \
 	bgpstream_utils_as.c		    \
 	bgpstream_utils_as.h		    \
+	bgpstream_utils_peer_sig_map.c      \
+	bgpstream_utils_peer_sig_map_int.h  \
+	bgpstream_utils_peer_sig_map.h      \
 	bgpstream_utils_pfx.c		    \
 	bgpstream_utils_pfx.h		    \
 	\
-	bgpstream_utils_peersign_map.c  \
-	bgpstream_utils_peersign_map_int.h  \
-	bgpstream_utils_peersign_map.h  \
 	bgpstream_utils_str_set.c  \
 	bgpstream_utils_str_set.h  \
 	bgpstream_utils_id_set.c     \
