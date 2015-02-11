@@ -125,11 +125,15 @@ void bgpstream_add_filter(bgpstream_t *bs,
                           bgpstream_filter_type filter_type,
 			  const char* filter_value);
 
-/** @todo fix this function */
+/** Add a filter to select a specific time range from the BGP data available
+ *
+ * @param bs            pointer to a BGP Stream instance to filter
+ * @param begin_time    the first time that will match the filter (inclusive)
+ * @param end_time      the last time that will match the filter (inclusive)
+ */
 void bgpstream_add_interval_filter(bgpstream_t *bs,
-                                   bgpstream_filter_type filter_type,
-				   const char *filter_start,
-                                   const char *filter_stop);
+				   uint32_t begin_time,
+                                   uint32_t end_time);
 
 /** Set the data interface that BGP Stream uses to find BGP data
  *

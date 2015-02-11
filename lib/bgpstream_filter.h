@@ -37,10 +37,8 @@ typedef struct struct_bgpstream_string_filter_t {
 } bgpstream_string_filter_t;
 
 typedef struct struct_bgpstream_interval_filter_t {
-  char start[BGPSTREAM_PAR_MAX_LEN];
-  int time_interval_start;
-  char stop[BGPSTREAM_PAR_MAX_LEN];
-  int time_interval_stop;
+  uint32_t begin_time;
+  uint32_t end_time;
   struct struct_bgpstream_interval_filter_t * next;
 } bgpstream_interval_filter_t;
 
@@ -63,9 +61,8 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
 				     const char* filter_value);
 
 void bgpstream_filter_mgr_interval_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
-					      bgpstream_filter_type filter_type,
-					      const char* filter_start,
-					      const char* filter_stop);
+					      uint32_t begin_time,
+					      uint32_t end_time);
 
 
 /* destroy the memory allocated for bgpstream filter */

@@ -43,8 +43,8 @@
 #define WINDOW_CMD_CNT 1024
 
 struct window {
-  char *start;
-  char *end;
+  uint32_t start;
+  uint32_t end;
 };
 
 
@@ -180,8 +180,8 @@ int main(int argc, char *argv[])
 	    }
 	  *endp = '\0';
 	  endp++;
-	  windows[windows_cnt].start = strdup(optarg);
-	  windows[windows_cnt].end =  strdup(endp);
+	  windows[windows_cnt].start = atoi(optarg);
+	  windows[windows_cnt].end =  atoi(endp);
 	  windows_cnt++;
 	  break;
 	case 'd':
@@ -318,10 +318,7 @@ int main(int argc, char *argv[])
   /* windows */
   for(i=0; i<windows_cnt; i++)
     {
-      bgpstream_add_interval_filter(bs, BS_TIME_INTERVAL,
-				    windows[i].start, windows[i].end);
-      free(windows[i].start);
-      free(windows[i].end);
+      bgpstream_add_interval_filter(bs, windows[i].start, windows[i].end);
     }
 
   /* datasource */

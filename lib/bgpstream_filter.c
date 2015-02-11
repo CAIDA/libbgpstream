@@ -89,9 +89,8 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
 
 
 void bgpstream_filter_mgr_interval_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
-					      bgpstream_filter_type filter_type,
-					      const char* filter_start,
-					      const char* filter_stop){  
+					      uint32_t begin_time,
+                                              uint32_t end_time){  
   bgpstream_debug("\tBSF_MGR:: add_filter start");
   if(bs_filter_mgr == NULL) {
     return; // nothing to customize
@@ -104,26 +103,11 @@ void bgpstream_filter_mgr_interval_filter_add(bgpstream_filter_mgr_t *bs_filter_
     return; 
   }
   // copying filter values
-  strcpy(f->start, filter_start);
-  strcpy(f->stop, filter_stop);
-  f->time_interval_start = atoi(filter_start);
-  f->time_interval_stop = atoi(filter_stop);
-  switch(filter_type) {   
-  case BS_TIME_INTERVAL:    
-    f->next = bs_filter_mgr->time_intervals;
-    bs_filter_mgr->time_intervals = f;
-    break;
-  case BS_PROJECT:
-  case BS_COLLECTOR:
-  case BS_BGP_TYPE:    
-    free(f);
-    bgpstream_log_warn("\tBSF_MGR: wrong filter request - ignoring");   
-    break;
-  default:
-    free(f);
-    bgpstream_log_warn("\tBSF_MGR: unknown filter - ignoring");   
-    return;
-  }
+  f->begin_time = begin_time;
+  f->end_time = end_time;
+  f->next = bs_filter_mgr->time_intervals;
+  bs_filter_mgr->time_intervals = f;
+
   bgpstream_debug("\tBSF_MGR:: add_filter stop");  
 }
 

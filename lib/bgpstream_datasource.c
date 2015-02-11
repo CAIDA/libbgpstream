@@ -26,6 +26,7 @@
 #include "bgpstream_datasource.h"
 #include "bgpstream_debug.h"
 
+#include <inttypes.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
@@ -372,8 +373,8 @@ static bool bgpstream_customlist_datasource_filter_ok(bgpstream_customlist_datas
     while(tif != NULL) {      
       // filetime (we consider 15 mins before to consider routeviews updates
       // and 120 seconds to have some margins)
-      if(customlist_ds->filetime >= (tif->time_interval_start - 15*60 - 120) &&
-	 customlist_ds->filetime <= tif->time_interval_stop) {
+      if(customlist_ds->filetime >= (tif->begin_time - 15*60 - 120) &&
+	 customlist_ds->filetime <= tif->end_time) {
 	all_false = false;
 	break;
       }
@@ -549,8 +550,8 @@ static bool bgpstream_csvfile_datasource_filter_ok(bgpstream_csvfile_datasource_
     while(tif != NULL) {      
       // filetime (we consider 15 mins before to consider routeviews updates
       // and 120 seconds to have some margins)
-      if(csvfile_ds->filetime >= (tif->time_interval_start - 15*60 - 120) &&
-	 csvfile_ds->filetime <= tif->time_interval_stop) {
+      if(csvfile_ds->filetime >= (tif->begin_time - 15*60 - 120) &&
+	 csvfile_ds->filetime <= tif->end_time) {
 	all_false = false;
 	break;
       }
@@ -791,23 +792,21 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
     strcat (mysql_ds->sql_query," AND ( ");
     while(tif != NULL) {
       strcat (mysql_ds->sql_query," ( ");
-      if(strcmp(tif->start,"-1") != 0) {  // no start, everything in the past is ok
-	strcat (mysql_ds->sql_query," (file_time >=  ");
-	strcat (mysql_ds->sql_query, tif->start);
-	strcat (mysql_ds->sql_query,"  - on_web_frequency.offset - 120 )");
-      }
-      else {
-	strcat (mysql_ds->sql_query," 1 ");
-      }
+
+      // BEGIN TIME
+      strcat (mysql_ds->sql_query," (file_time >=  ");
+      sprintf(mysql_ds->sql_query + strlen(mysql_ds->sql_query),
+              "%"PRIu32, tif->begin_time);
+      strcat (mysql_ds->sql_query,"  - on_web_frequency.offset - 120 )");
+
       strcat (mysql_ds->sql_query,"  AND  ");
-      if(strcmp(tif->stop,"-1") != 0) {  // no stop, everything in the future is ok
-	strcat (mysql_ds->sql_query," (file_time <=  ");
-	strcat (mysql_ds->sql_query, tif->stop);
-	strcat (mysql_ds->sql_query,") ");
-      }
-      else {
-	strcat (mysql_ds->sql_query," 1 ");
-      }
+
+      // END TIME
+      strcat (mysql_ds->sql_query," (file_time <=  ");
+      sprintf(mysql_ds->sql_query + strlen(mysql_ds->sql_query),
+              "%"PRIu32, tif->end_time);
+      strcat (mysql_ds->sql_query,") ");
+
       strcat (mysql_ds->sql_query," ) ");
       tif = tif->next;
       if(tif!= NULL) {

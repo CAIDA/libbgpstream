@@ -94,15 +94,13 @@ void bgpstream_add_filter(bgpstream_t *bs,
 
 
 void bgpstream_add_interval_filter(bgpstream_t *bs,
-                                   bgpstream_filter_type filter_type,
-				   const char* filter_start,
-                                   const char* filter_stop) {
+				   uint32_t begin_time,
+                                   uint32_t end_time) {
   bgpstream_debug("BS: set_filter start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return; // nothing to customize
   }
-  bgpstream_filter_mgr_interval_filter_add(bs->filter_mgr, filter_type,
-                                           filter_start, filter_stop);
+  bgpstream_filter_mgr_interval_filter_add(bs->filter_mgr, begin_time, end_time);
   bgpstream_debug("BS: set_filter end");
 }
 
