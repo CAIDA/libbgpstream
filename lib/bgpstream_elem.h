@@ -31,8 +31,7 @@
 
 /** @file
  *
- * @brief Header file that exposes the public interface of a bgpstream elem. For
- * details about an elem structure, see bl_bgp_utils.h.
+ * @brief Header file that exposes the public interface of a bgpstream elem.
  *
  * @author Chiara Orsini
  *
@@ -162,7 +161,7 @@ typedef struct struct_bgpstream_elem_t {
 /** Extract a list of elements from the given BGP Stream Record
  *
  * @param record        pointer to a BGP Stream Record instance
- * @return pointer to a linked-list of bl_elem_t objects
+ * @return pointer to a linked-list of bgpstream_elem_t objects
  *
  * @note the returned elem list must be destroyed using
  * bgpstream_elem_queue_destroy
