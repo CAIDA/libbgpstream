@@ -450,11 +450,11 @@ static char* get_dump_pos_str(bgpstream_dump_position_t dump_pos)
 {
   switch(dump_pos)
     {
-    case DUMP_START:
+    case BGPSTREAM_DUMP_START:
       return "start";
-    case DUMP_MIDDLE:
+    case BGPSTREAM_DUMP_MIDDLE:
       return "middle";
-    case DUMP_END:
+    case BGPSTREAM_DUMP_END:
       return "end";
     }
   return "";

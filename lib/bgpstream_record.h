@@ -75,9 +75,19 @@ typedef enum {
 
 } bgpstream_record_dump_type_t;
 
-typedef enum {DUMP_START  = 0,        /* first entry in dump */
-	      DUMP_MIDDLE = 1,       /* intermediate entry in dump */
-	      DUMP_END    = 2       /* last entry in dump */
+/** The position of this record in the dump */
+typedef enum {
+
+  /** This is the first record of the dump */
+  BGPSTREAM_DUMP_START  = 0,
+
+  /** This is a record in the middle of the dump. i.e. not the first or the last
+      record of the dump */
+  BGPSTREAM_DUMP_MIDDLE = 1,
+
+  /** This is the last record of the dump */
+  BGPSTREAM_DUMP_END    = 2,
+
 } bgpstream_dump_position_t;
 
 /** Status of the record */

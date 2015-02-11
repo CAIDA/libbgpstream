@@ -260,10 +260,10 @@ static void bgpstream_reader_export_record(bgpstream_reader_t * const bs_reader,
   // if this is the first significant record and no previous 
   // valid record has been discarded because of time
   if(bs_reader->valid_read == 1 && bs_reader->successful_read == 1) {
-    bs_record->dump_pos = DUMP_START;    
+    bs_record->dump_pos = BGPSTREAM_DUMP_START;
   }
   else {
-    bs_record->dump_pos = DUMP_MIDDLE;    
+    bs_record->dump_pos = BGPSTREAM_DUMP_MIDDLE;
   }
   bgpstream_debug("\t\tBSR: export record: copying status");    
   switch(bs_reader->status){
@@ -539,7 +539,7 @@ int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reade
     // we destroy the reader
     if(bs_reader->status == END_OF_DUMP) {
       if((bs_reader->successful_read - bs_reader->valid_read) == read_diff) {
-	bs_record->dump_pos = DUMP_END;
+	bs_record->dump_pos = BGPSTREAM_DUMP_END;
       }
       // otherwise we maintain the dump_pos already assigned
       bgpstream_reader_destroy(bs_reader);
@@ -551,7 +551,7 @@ int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reade
   }
   // otherwise we destroy the reader
   else {
-    bs_record->dump_pos = DUMP_END;
+    bs_record->dump_pos = BGPSTREAM_DUMP_END;
     bgpstream_reader_destroy(bs_reader);
   }
   bgpstream_debug("\tBSR_MGR: get_next_record: end");

@@ -40,7 +40,7 @@ bgpstream_record_t *bgpstream_record_create() {
   }
   bs_record->bd_entry = NULL;
   bs_record->status = EMPTY_SOURCE;
-  bs_record->dump_pos = DUMP_START;
+  bs_record->dump_pos = BGPSTREAM_DUMP_START;
   strcpy(bs_record->attributes.dump_project, "");
   strcpy(bs_record->attributes.dump_collector, "");
   bs_record->attributes.dump_type = BGPSTREAM_UPDATE;
