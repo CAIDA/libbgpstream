@@ -35,11 +35,6 @@
  *
  */
 
-#include <bgpstream_utils_addr.h> /** < IP Address utilities */
-#include <bgpstream_utils_pfx.h>  /** < Prefix utilities */
-#include <bgpstream_utils_as.h>   /** < AS/AS Path utilities */
-
-
 /**
  * @name Public Constants
  *
@@ -49,6 +44,13 @@
 #define BGPSTREAM_UTILS_COLLECTOR_NAME_LEN 128
 
 /** @} */
+
+/* Include all utility headers */
+#include <bgpstream_utils_addr.h>         /** < IP Address utilities */
+#include <bgpstream_utils_pfx.h>          /** < Prefix utilities */
+#include <bgpstream_utils_as.h>           /** < AS/AS Path utilities */
+#include <bgpstream_utils_peer_sig_map.h> /** < Peer Signature utilities */
+#include <bgpstream_utils_str_set.h>      /** < String Set utilities */
 
 #endif /* __BGPSTREAM_UTILS_H */
 

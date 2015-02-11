@@ -24,66 +24,95 @@
  */
 
 
-#ifndef _BL_STR_SET_H
-#define _BL_STR_SET_H
+#ifndef __BGPSTREAM_UTILS_STR_SET_H
+#define __BGPSTREAM_UTILS_STR_SET_H
 
-
-typedef struct bl_string_set_t bl_string_set_t;
-			       
-	    	    
-/** Allocate memory for a strucure that maintains
- *  unique set of strings.
+/** @file
  *
- * @return a pointer to the structure, or
- *  NULL if an error occurred
+ * @brief Header file that exposes the public interface of the BGP Stream String
+ * Set.
+ *
+ * @author Chiara Orsini
+ *
  */
-bl_string_set_t *bl_string_set_create();
+
+/**
+ * @name Opaque Data Structures
+ *
+ * @{ */
+
+/** Opaque structure containing a string set instance */
+typedef struct bgpstream_str_set_t bgpstream_str_set_t;
+
+/** @} */
+
+/**
+ * @name Public API Functions
+ *
+ * @{ */
+
+
+/** Create a new string set instance
+ *
+ * @return a pointer to the structure, or NULL if an error occurred
+ */
+bgpstream_str_set_t *bgpstream_str_set_create();
 
 /** Insert a new string into the string set.
  *
- * @param string_set pointer to the string set
- * @param string_val the string to insert
- * @return 1 if a string has been inserted, 0 if it already existed
+ * @param set           pointer to the string set
+ * @param val           the string to insert
+ * @return 1 if a string has been inserted, 0 if it already existed, -1 if an
+ * error occurred
+ *
+ * @note this function copies the provided string
  */
-int bl_string_set_insert(bl_string_set_t *string_set, char * string_val);
+int bgpstream_str_set_insert(bgpstream_str_set_t *set, char * val);
 
 /** Remove a string from the set
  *
- * @param string_val pointer to the string set
+ * @param set           pointer to the string set
+ * @param val           pointer to the string to remove
+ * @return 1 if the string was removed, 0 if the string was not in the set
  */
-int bl_string_set_remove(bl_string_set_t *string_set, char * string_val);
+int bgpstream_str_set_remove(bgpstream_str_set_t *set, char *val);
 
 /** Check whether a string exists in the set
  *
- * @param string_val pointer to the string set
+ * @param set           pointer to the string set
+ * @param val           the string to check
+ * @return 0 if the string is not in the set, 1 if it is in the set
  */
-int bl_string_set_exists(bl_string_set_t *string_set, char * string_val);
+int bgpstream_str_set_exists(bgpstream_str_set_t *set, char *val);
 
 /** Returns the number of unique strings in the set
  *
- * @param string_val pointer to the string set
+ * @param set           pointer to the string set
  * @return the size of the string set
  */
-int bl_string_set_size(bl_string_set_t *string_set);
+int bgpstream_str_set_size(bgpstream_str_set_t *set);
 
-/** Get the merge of the set.
- *  @param union_set pointer to the string set that will include the merge
- *  @param part_set pointer to the string set that will be merged with the union_set
+/** Merge two string sets
+ *
+ * @param dst_set      pointer to the set to merge src into
+ * @param src_set      pointer to the set to merge into dst
+ * @return 0 if the sets were merged succsessfully, -1 otherwise
  */
-void bl_string_set_merge(bl_string_set_t *union_set, bl_string_set_t *part_set);
+int bgpstream_str_set_merge(bgpstream_str_set_t *dst_set,
+                            bgpstream_str_set_t *src_set);
 
 /** Empty the string set.
  *
- * @param string_set pointer to the string set
+ * @param set           pointer to the string set to empty
  */
-void bl_string_set_reset(bl_string_set_t *string_set);
+void bgpstream_str_set_clear(bgpstream_str_set_t *set);
 
-/** Deallocate memory for the IP prefix set
+/** Destroy the given string set
  *
- * @param as_set a pointer to the AS set
+ * @param set           pointer to the string set to destroy
  */
-void bl_string_set_destroy(bl_string_set_t *string_set);
+void bgpstream_str_set_destroy(bgpstream_str_set_t *set);
 
+/** @} */
 
-#endif /* _BL_STR_SET_H */
-
+#endif /* __BGPSTREAM_UTILS_STR_SET_H */

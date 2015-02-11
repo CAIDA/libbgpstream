@@ -29,114 +29,135 @@
 #include "khash.h"
 #include "utils.h"
 
-#include "bgpstream_utils_str_set.h"
+#include <bgpstream_utils_str_set.h>
 
-/** set of unique strings
- *  this structure maintains a set of strings
- */
+/* PRIVATE */
 
-KHASH_INIT(bl_string_set, char*, char, 0,
+KHASH_INIT(bgpstream_str_set, char*, char, 0,
 	   kh_str_hash_func, kh_str_hash_equal);
 
 
-struct bl_string_set_t {
-  khash_t(bl_string_set) *hash;
+struct bgpstream_str_set_t {
+  khash_t(bgpstream_str_set) *hash;
 };
 
 
-bl_string_set_t *bl_string_set_create()
+/* PUBLIC FUNCTIONS */
+
+bgpstream_str_set_t *bgpstream_str_set_create()
 {
-  bl_string_set_t *string_set = (bl_string_set_t *) malloc(sizeof(bl_string_set_t));
-  string_set->hash = kh_init(bl_string_set);
-  return string_set;
+  bgpstream_str_set_t *set;
+
+  if((set = (bgpstream_str_set_t*)malloc(sizeof(bgpstream_str_set_t))) == NULL)
+    {
+      return NULL;
+    }
+
+  if((set->hash = kh_init(bgpstream_str_set)) == NULL)
+    {
+      bgpstream_str_set_destroy(set);
+      return NULL;
+    }
+
+  return set;
 }
 
 
-int bl_string_set_insert(bl_string_set_t *string_set, char * string_val)
+int bgpstream_str_set_insert(bgpstream_str_set_t *set,
+                             char *val)
 {
   int khret;
   khiter_t k;
-  if((k = kh_get(bl_string_set, string_set->hash, string_val)) == kh_end(string_set->hash))
+  char *cpy;
+
+  if((k = kh_get(bgpstream_str_set, set->hash, val)) == kh_end(set->hash))
     {
-      k = kh_put(bl_string_set, string_set->hash, strdup(string_val), &khret);
+      if((cpy = strdup(val)) == NULL)
+        {
+          return -1;
+        }
+      k = kh_put(bgpstream_str_set, set->hash, cpy, &khret);
       return 1;
     }
   return 0;
 }
 
 
-int bl_string_set_remove(bl_string_set_t *string_set, char * string_val)
+int bgpstream_str_set_remove(bgpstream_str_set_t *set, char *val)
 {
   khiter_t k;
-  if((k = kh_get(bl_string_set, string_set->hash, string_val)) != kh_end(string_set->hash))
+  if((k = kh_get(bgpstream_str_set, set->hash, val)) != kh_end(set->hash))
     {
       // free memory allocated for the key (string)
-      free(kh_key(string_set->hash,k));
+      free(kh_key(set->hash,k));
       // delete entry
-      kh_del(bl_string_set, string_set->hash, k);
+      kh_del(bgpstream_str_set, set->hash, k);
       return 1;
     }
   return 0;
 }
 
-
-int bl_string_set_exists(bl_string_set_t *string_set, char * string_val)
+int bgpstream_str_set_exists(bgpstream_str_set_t *set, char *val)
 {
   khiter_t k;
-  if((k = kh_get(bl_string_set, string_set->hash, string_val)) == kh_end(string_set->hash))
+  if((k = kh_get(bgpstream_str_set, set->hash, val)) == kh_end(set->hash))
     {
       return 0;
     }
   return 1;
 }
 
-
-int bl_string_set_size(bl_string_set_t *string_set)
+int bgpstream_str_set_size(bgpstream_str_set_t *set)
 {
-  return kh_size(string_set->hash);
+  return kh_size(set->hash);
 }
 
-void bl_string_set_merge(bl_string_set_t *union_set, bl_string_set_t *part_set)
+int bgpstream_str_set_merge(bgpstream_str_set_t *dst_set,
+                             bgpstream_str_set_t *src_set)
 {
-  char *id;
   khiter_t k;
-  for(k = kh_begin(part_set->hash);
-      k != kh_end(part_set->hash); ++k)
+
+  for(k = kh_begin(src_set->hash); k != kh_end(src_set->hash); ++k)
     {
-      if (kh_exist(part_set->hash, k))
+      if(kh_exist(src_set->hash, k))
 	{
-	  id = kh_key(part_set->hash, k);
-	  bl_string_set_insert(union_set, id);
+          if(bgpstream_str_set_insert(dst_set, kh_key(src_set->hash, k)) < 0)
+            {
+              return -1;
+            }
 	}
     }
+  return 0;
 }
 
-
-void bl_string_set_reset(bl_string_set_t *string_set)
+void bgpstream_str_set_clear(bgpstream_str_set_t *set)
 {
   khiter_t k;
-  for (k = kh_begin(string_set->hash); k != kh_end(string_set->hash); ++k)
+  for(k = kh_begin(set->hash); k != kh_end(set->hash); ++k)
     {
-      if (kh_exist(string_set->hash, k))
+      if(kh_exist(set->hash, k))
 	{
-	  free(kh_key(string_set->hash,k));
+	  free(kh_key(set->hash,k));
 	}
     }
-  kh_clear(bl_string_set, string_set->hash);
+  kh_clear(bgpstream_str_set, set->hash);
 }
 
-
-void bl_string_set_destroy(bl_string_set_t *string_set)
+void bgpstream_str_set_destroy(bgpstream_str_set_t *set)
 {
   khiter_t k;
-  for (k = kh_begin(string_set->hash); k != kh_end(string_set->hash); ++k)
+  if(set->hash != NULL)
     {
-      if (kh_exist(string_set->hash, k))
-	{
-	  free(kh_key(string_set->hash,k));
-	}
+      for(k = kh_begin(set->hash); k != kh_end(set->hash); ++k)
+        {
+          if(kh_exist(set->hash, k))
+            {
+              free(kh_key(set->hash,k));
+            }
+        }
+      kh_destroy(bgpstream_str_set, set->hash);
+      set->hash = NULL;
     }
-  kh_destroy(bl_string_set, string_set->hash);
-  free(string_set);
+  free(set);
 }
 
