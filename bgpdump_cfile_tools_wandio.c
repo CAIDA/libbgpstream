@@ -27,12 +27,20 @@ CFRFILE *cfr_open(const char *path) {
   memset(cfr, 0, sizeof(CFRFILE));
 
   /* sweet hax */
-  cfr->data2 = wandio_create(path);
+  if((cfr->data2 = wandio_create(path)) == NULL)
+    {
+      free(cfr);
+      return NULL;
+    }
 
   return cfr;
 }
 
 int cfr_close(CFRFILE *stream) {
+  if(stream == NULL) {
+    return 0;
+  }
+
   wandio_destroy(WFILE(stream));
   stream->closed = 1;
 

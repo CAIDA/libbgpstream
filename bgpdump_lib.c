@@ -118,16 +118,18 @@ BGPDUMP *bgpdump_open_dump(const char *filename) {
 
 void bgpdump_close_dump(BGPDUMP *dump) {
 
-  if(dump!=NULL) {
-    // destroy current index table, if any
-    if(dump->table_dump_v2_peer_index_table){
-      if(dump->table_dump_v2_peer_index_table->entries) {
-	free(dump->table_dump_v2_peer_index_table->entries);
-	dump->table_dump_v2_peer_index_table->entries = NULL;
-      }
-      free(dump->table_dump_v2_peer_index_table);
-      dump->table_dump_v2_peer_index_table = NULL;
+  if(dump == NULL) {
+    return;
+  }
+
+  // destroy current index table, if any
+  if(dump->table_dump_v2_peer_index_table){
+    if(dump->table_dump_v2_peer_index_table->entries) {
+      free(dump->table_dump_v2_peer_index_table->entries);
+      dump->table_dump_v2_peer_index_table->entries = NULL;
     }
+    free(dump->table_dump_v2_peer_index_table);
+    dump->table_dump_v2_peer_index_table = NULL;
   }
   cfr_close(dump->f);
   free(dump);
