@@ -47,31 +47,73 @@ struct window {
   uint32_t end;
 };
 
+bgpstream_t *bs;
+bgpstream_data_interface_id_t datasource_id = 0;
+const char *datasource_name = NULL;
+
+void data_if_usage() {
+  bgpstream_data_interface_id_t *ids = NULL;
+  int id_cnt = 0;
+  int i;
+
+  bgpstream_data_interface_info_t *info = NULL;
+
+  ids = bgpstream_get_data_interfaces(bs, &id_cnt);
+
+  for(i=0; i<id_cnt; i++)
+    {
+      info = bgpstream_get_data_interface_info(bs, ids[i]);
+
+      fprintf(stderr,
+              "       %-15s%s\n", info->name, info->description);
+    }
+}
+
+void dump_if_options() {
+  assert(datasource_id != 0);
+
+  bgpstream_data_interface_option_t *options;
+  int opt_cnt = 0;
+  int i;
+
+  options = bgpstream_get_data_interface_options(bs, datasource_id, &opt_cnt);
+
+  fprintf(stderr, "Data interface options for '%s':\n", datasource_name);
+  if(opt_cnt == 0)
+    {
+      fprintf(stderr, "   [NONE]\n");
+    }
+  else
+    {
+      for(i=0; i<opt_cnt; i++)
+        {
+          fprintf(stderr, "   %-15s%s\n",
+                  options[i].name, options[i].description);
+        }
+    }
+}
 
 void usage() {
   fprintf(stderr,
-	  "usage: bgpreader -d <datasource> [<options>]\n"
-	  "Available datasources are:\n"
-	  "   mysql        load bgp dumps information from the bgparchive mysql database\n"
-	  "   csvfile      load bgp dumps information from a csv file\n"
-	  "   customlist   mock datasource used to test the library\n"
-	  "Available options are:\n"
+	  "usage: bgpreader -d <interface> [<options>]\n"
+          "   -d <interface> use the given data interface to find available data\n"
+          "     available data interfaces are:\n");
+  data_if_usage();
+  fprintf(stderr,
+          "   -o <option-name,option-value>*\n"
+          "                  set an option for the current data interface.\n"
+          "                    use '-o ?' to get a list of available\n"
+          "                    options for the current data interface.\n"
+          "                    (data interface must be selected using -d)\n"
 	  "   -P <project>   process records from only the given project (routeviews, ris)*\n"
 	  "   -C <collector> process records from only the given collector*\n"
 	  "   -T <type>      process records with only the given type (ribs, updates)*\n"
 	  "   -W <start,end> process records only within the given time window*\n"
 	  "   -b             make blocking requests for BGP records\n"
 	  "                  allows bgpstream to be used to process data in real-time\n"
-	  "   -r             print information for each BGP record (in bgpstream format) [default]\n"
-	  "   -m             print information for each BGP valid record (in bgpdump -m format)\n"
-	  "   -e             print information for each element of a valid BGP record\n"
-	  "mysql specific options are:\n"
-	  "   -D <database_name>  the database name [default: bgparchive]\n"
-	  "   -U <user>           the user name to connect to the database [default: bgpstream]\n"
-	  "   -H <host>           the host that host the the database [default: localhost]\n"
-	  "csvfile specific options are:\n"
-	  "   -F <filename>  the csvfile to read\n"
-	  "\n"
+	  "   -r             print info for each BGP record (in bgpstream format) [default]\n"
+	  "   -m             print info for each BGP valid record (in bgpdump -m format)\n"
+	  "   -e             print info for each element of a valid BGP record\n"
 	  "   -h             print this help menu\n"
 	  "* denotes an option that can be given multiple times\n"
 	  );
@@ -105,18 +147,23 @@ int main(int argc, char *argv[])
   char *endp;
   int windows_cnt = 0;
 
-  char * datasource_name = NULL;
   int blocking = 0;
   int record_output_on = 0;
   int record_bgpdump_output_on = 0;
   int elem_output_on = 0;
-  char *mysql_dbname = NULL;
-  char *mysql_user = NULL;
-  char *mysql_host = NULL;
-  char *csvfile_file = NULL;
+
+  bgpstream_data_interface_option_t *option;
+
+
+  // required to be created before usage is called
+  bs = bgpstream_create();
+  if(!bs) {
+    fprintf(stderr, "ERROR: Could not create BGPStream instance\n");
+    return -1;
+  }
 
   while (prevoptind = optind,
-	 (opt = getopt (argc, argv, "P:C:T:W:d:brmeD:U:H:F:h?")) >= 0)
+	 (opt = getopt (argc, argv, "P:C:T:W:d:brmeD:U:H:F:o:h?")) >= 0)
     {
       if (optind == prevoptind + 2 && (optarg == NULL || *optarg == '-') ) {
         opt = ':';
@@ -185,20 +232,58 @@ int main(int argc, char *argv[])
 	  windows_cnt++;
 	  break;
 	case 'd':
-	  datasource_name = strdup(optarg);
+          if((datasource_id =
+              bgpstream_get_data_interface_id_by_name(bs, optarg)) == 0)
+            {
+              fprintf(stderr, "ERROR: Invalid data interface name '%s'\n",
+                      optarg);
+              usage();
+              exit(-1);
+            }
+          datasource_name = optarg;
 	  break;
-	case 'D':
-	  mysql_dbname = strdup(optarg);
-	  break;
-	case 'U':
-	  mysql_user = strdup(optarg);
-	  break;
-	case 'H':
-	  mysql_host = strdup(optarg);
-	  break;
-	case 'F':
-	  csvfile_file = strdup(optarg);
-	  break;
+        case 'o':
+          if(datasource_id == 0)
+            {
+              fprintf(stderr, "ERROR: Data interface must first be specified with -d\n");
+              usage();
+              exit(-1);
+            }
+          if(*optarg == '?')
+            {
+              dump_if_options();
+              usage();
+              exit(-1);
+            }
+          else
+            {
+              /* actually set this option */
+              if((endp = strchr(optarg, ',')) == NULL)
+                {
+                  fprintf(stderr,
+                          "ERROR: Malformed data interface option (%s)\n",
+                          optarg);
+                  fprintf(stderr,
+                          "ERROR: Expecting <option-name>,<option-value>\n");
+                  usage();
+                  exit(-1);
+                }
+              *endp = '\0';
+              endp++;
+              if((option =
+                  bgpstream_get_data_interface_option_by_name(bs, datasource_id,
+                                                              optarg)) == NULL)
+                {
+                  fprintf(stderr,
+                          "ERROR: Invalid option '%s' for data interface '%s'\n",
+                          optarg, datasource_name);
+                  usage();
+                  exit(-1);
+                }
+              bgpstream_set_data_interface_option(bs, option, endp);
+            }
+          break;
+
 	case 'b':
 	  blocking = 1;
 	  break;
@@ -231,51 +316,12 @@ int main(int argc, char *argv[])
 	}
     }
 
-  // datasource is the only required argument
-  if(datasource_name == NULL)
+  if(datasource_id == 0)
     {
-    fprintf(stderr, "ERROR: Missing mandatory argument -d <datasource>\n");
-    usage();
-    exit(-1);
-  }
-
-  bgpstream_datasource_type_t datasource_type;
-  if(strcmp(datasource_name, "mysql") == 0)
-    {
-      datasource_type = BGPSTREAM_DATASOURCE_MYSQL;
+      fprintf(stderr, "ERROR: Data interface must be specified with -d\n");
+      usage();
+      exit(-1);
     }
-  else
-    {
-      if(strcmp(datasource_name, "csvfile") == 0)
-	{
-	  datasource_type = BGPSTREAM_DATASOURCE_CSVFILE;
-	}
-      else
-	{
-	  if(strcmp(datasource_name, "customlist") == 0)
-	    {
-	      datasource_type = BGPSTREAM_DATASOURCE_CUSTOMLIST;
-	    }
-	  else
-	    {
-	      fprintf(stderr, "ERROR: Datasource %s is not valid.\n", datasource_name);
-	      usage();
-	      exit(-1);
-	    }
-	}
-    }
-
-  // signal if there are incompatible arguments that will be ignored
-  if(
-     (datasource_type != BGPSTREAM_DATASOURCE_MYSQL &&
-     (mysql_dbname != NULL || mysql_user != NULL || mysql_host != NULL) ) ||
-     (datasource_type != BGPSTREAM_DATASOURCE_CSVFILE && csvfile_file != NULL)
-     )
-    {
-      fprintf(stderr, "WARNING: some of the datasource options provided do not apply\n"
-	      "\t to the datasource choosen and they will be ignored.\n");
-    }
-
 
   // if the user did not specify any output format
   // then the default one is per record
@@ -286,11 +332,6 @@ int main(int argc, char *argv[])
   // the program can now start
 
   // allocate memory for interface
-  bgpstream_t * const bs = bgpstream_create();
-  if(!bs) {
-    fprintf(stderr, "ERROR: Could not create BGPStream instance\n");
-    return -1;
-  }
 
   int i = 0; // iterator
 
@@ -322,27 +363,7 @@ int main(int argc, char *argv[])
     }
 
   /* datasource */
-  bgpstream_set_data_interface(bs, datasource_type);
-
-
-  /* datasource options */
-  if(mysql_dbname != NULL)
-    {
-      bgpstream_set_data_interface_options(bs, BS_MYSQL_DB, mysql_dbname);
-    }
-  if(mysql_user != NULL)
-    {
-      bgpstream_set_data_interface_options(bs, BS_MYSQL_USER, mysql_user);
-    }
-  if(mysql_host != NULL)
-    {
-      bgpstream_set_data_interface_options(bs, BS_MYSQL_HOST, mysql_host);
-    }
-  if(csvfile_file != NULL)
-    {
-      bgpstream_set_data_interface_options(bs, BS_CSVFILE_FILE, csvfile_file);
-    }
-
+  bgpstream_set_data_interface(bs, datasource_id);
 
   /* blocking */
   if(blocking != 0)
@@ -406,28 +427,6 @@ int main(int argc, char *argv[])
 
   // deallocate memory for interface
   bgpstream_destroy(bs);
-
-  // deallocate memory for strings
-  if(datasource_name != NULL)
-    {
-      free(datasource_name);
-    }
-  if(mysql_dbname != NULL)
-    {
-      free(mysql_dbname);
-    }
-  if(mysql_user != NULL)
-    {
-      free(mysql_user);
-    }
-  if(mysql_host != NULL)
-    {
-      free(mysql_host);
-    }
-  if(csvfile_file != NULL)
-    {
-      free(csvfile_file);
-    }
 
   return 0;
 }

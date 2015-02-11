@@ -51,13 +51,6 @@ typedef struct struct_bgpstream_t bgpstream_t;
 /** @} */
 
 /**
- * @name Public Data Structures
- *
- * @{ */
-
-/** @} */
-
-/**
  * @name Public Enums
  *
  * @{ */
@@ -81,15 +74,15 @@ typedef enum {
 typedef enum {
 
   /** MySQL data interface */
-  BGPSTREAM_DATASOURCE_MYSQL      = 1,
+  BGPSTREAM_DATA_INTERFACE_MYSQL      = 1,
 
   /** Customlist interface */
-  BGPSTREAM_DATASOURCE_CUSTOMLIST = 2,
+  BGPSTREAM_DATA_INTERFACE_CUSTOMLIST = 2,
 
   /** CSV file interface */
-  BGPSTREAM_DATASOURCE_CSVFILE    = 3,
+  BGPSTREAM_DATA_INTERFACE_CSVFILE    = 3,
 
-} bgpstream_datasource_type_t;
+} bgpstream_data_interface_id_t;
 
 /** @todo REPLACE these with per-interface options */
 typedef enum {
@@ -98,6 +91,46 @@ typedef enum {
   BS_MYSQL_HOST,
   BS_CSVFILE_FILE
 } bgpstream_datasource_option;
+
+/** @} */
+
+/**
+ * @name Public Data Structures
+ *
+ * @{ */
+
+/** Structure that contains information about a BGP Stream Data Interface */
+typedef struct struct_bgpstream_data_interface_info
+{
+
+  /** The ID of this data interface */
+  bgpstream_data_interface_id_t id;
+
+  /** The name of this data interface */
+  char *name;
+
+  /** A human-readable description of this data interface */
+  char *description;
+
+} bgpstream_data_interface_info_t;
+
+/** Structure that represents BGP Stream Data Interface Option */
+typedef struct struct_bgpstream_data_interface_option
+{
+
+  /** The ID of the data interface that this option applies to */
+  bgpstream_data_interface_id_t if_id;
+
+  /** An internal, interface-specific ID for this option */
+  int id;
+
+  /** The human-readable name of the option */
+  char *name;
+
+  /** A human-readable description of the option */
+  char *description;
+
+} bgpstream_data_interface_option_t;
 
 /** @} */
 
@@ -132,24 +165,87 @@ void bgpstream_add_interval_filter(bgpstream_t *bs,
 				   uint32_t begin_time,
                                    uint32_t end_time);
 
+/** Get a list of data interfaces that are currently supported
+ *
+ * @param bs            pointer to the BGP Stream instance
+ * @param[out] if_cnt   pointer to a value to be set with the number of elements
+ *                      in the returned array
+ * @return borrowed pointer to an array of bgpstream_datasource_type_t values
+ *
+ * @note the returned array belongs to BGP Stream. It must not be freed by the
+ * user.
+ */
+bgpstream_data_interface_id_t *bgpstream_get_data_interfaces(bgpstream_t *bs,
+                                                             int *if_cnt);
+
+/** Get the ID of the data interface with the given name
+ *
+ * @param name          name of the data interface to retrieve the ID for
+ * @return the ID of the data interface with the given name, 0 if no matching
+ * interface was found
+ */
+bgpstream_data_interface_id_t
+bgpstream_get_data_interface_id_by_name(bgpstream_t *bs, const char *name);
+
+/** Get information for the given data interface
+ *
+ * @param bs            pointer to a BGP Stream instance
+ * @param if_id         ID of the interface to get the name for
+ * @return borrowed pointer to an interface info structure
+ */
+bgpstream_data_interface_info_t *
+bgpstream_get_data_interface_info(bgpstream_t *bs,
+                                  bgpstream_data_interface_id_t if_id);
+
+/** Get a list of valid option types for the given data interface
+ *
+ * @param bs            pointer to a BGP Stream instance
+ * @param if_id         ID of the interface to get option names for
+ * @param[out] opt_cnt  pointer to a value to be set with the number of options
+ *                      in the returned array
+ * @return borrowed pointer to an array of options
+ *
+ * @note the returned array belongs to BGP Stream. It must not be freed by the
+ * user.
+ */
+bgpstream_data_interface_option_t *
+bgpstream_get_data_interface_options(bgpstream_t *bs,
+                                     bgpstream_data_interface_id_t if_id,
+                                     int *opt_cnt);
+
+/** Get the data interface option for the given data interface and option name
+ *
+ * @param bs            pointer to a BGP Stream instance
+ * @param if_id         ID of the interface to get option info for
+ * @param name          name of the option to retrieve
+ * @return pointer to the option information with the given name, NULL if either
+ * the interface ID is not valid, or the name does not match any options
+ */
+bgpstream_data_interface_option_t *
+bgpstream_get_data_interface_option_by_name(bgpstream_t *bs,
+                                            bgpstream_data_interface_id_t if_id,
+                                            const char *name);
+
+/** Set a data interface option
+ *
+ * @param bs            pointer to a BGP Stream instance to configure
+ * @param option_type   pointer to the option to set
+ * @param option_value  value to set the option to
+ *
+ * Use the bgpstream_get_data_interface_options function to discover the set of
+ * options for an interface.
+ */
+void bgpstream_set_data_interface_option(bgpstream_t *bs,
+                                bgpstream_data_interface_option_t *option_type,
+                                const char *option_value);
+
 /** Set the data interface that BGP Stream uses to find BGP data
  *
  * @param bs            pointer to a BGP Stream instance to configure
  * @param if_id         ID of the data interface to use
  */
 void bgpstream_set_data_interface(bgpstream_t *bs,
-                                  bgpstream_datasource_type_t datasource);
-
-/** Set a data interface option
- *
- * @param bs            pointer to a BGP Stream instance to configure
- * @param if_id         ID if the data interface to set an option for
- * @param option_type   name of the option to set
- * @param option_value  value to set the option to
- */
-void bgpstream_set_data_interface_options(bgpstream_t *bs,
-                                        bgpstream_datasource_option option_type,
-				        char *option_value);
+                                  bgpstream_data_interface_id_t if_id);
 
 /** Configure the interface to blocks waiting for new data instead of returning
  * end-of-stream if no more data is available.

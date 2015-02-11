@@ -77,7 +77,7 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
     return NULL; // can't allocate memory
   }
   // default values
-  datasource_mgr->datasource = BGPSTREAM_DATASOURCE_MYSQL; // default data source
+  datasource_mgr->datasource = BGPSTREAM_DATA_INTERFACE_MYSQL; // default data source
   datasource_mgr->blocking = 0;
   datasource_mgr->backoff_time = bs_min_wait;
   // datasources (none of them is active at the beginning)
@@ -95,7 +95,7 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
 }
 
 void bgpstream_datasource_mgr_set_data_interface(bgpstream_datasource_mgr_t *datasource_mgr,
-						 const bgpstream_datasource_type_t datasource) {
+						 const bgpstream_data_interface_id_t datasource) {
   bgpstream_debug("\tBSDS_MGR: set data interface start");
   if(datasource_mgr == NULL) {
     return; // no manager
@@ -106,40 +106,55 @@ void bgpstream_datasource_mgr_set_data_interface(bgpstream_datasource_mgr_t *dat
 
 
 void bgpstream_datasource_mgr_set_data_interface_option(bgpstream_datasource_mgr_t *datasource_mgr,
-							const bgpstream_datasource_option option_type,
-							char *option) {
+				 const bgpstream_data_interface_option_t *option_type,
+							const char *option_value) {
   // this option has no effect if the datasource selected is not
   // using this option
-  switch(option_type)
+  switch(option_type->if_id)
     {
-    case BS_MYSQL_DB:
-      if(datasource_mgr->mysql_dbname!=NULL)
-	{
-	  free(datasource_mgr->mysql_dbname);
-	}
-      datasource_mgr->mysql_dbname = strdup(option);      
+    case BGPSTREAM_DATA_INTERFACE_MYSQL:
+      switch(option_type->id)
+        {
+        case 0:
+          if(datasource_mgr->mysql_dbname!=NULL)
+            {
+              free(datasource_mgr->mysql_dbname);
+            }
+          datasource_mgr->mysql_dbname = strdup(option_value);
+          break;
+        case 1:
+          if(datasource_mgr->mysql_user!=NULL)
+            {
+              free(datasource_mgr->mysql_user);
+            }
+          datasource_mgr->mysql_user = strdup(option_value);
+          break;
+        case 2:
+          if(datasource_mgr->mysql_host!=NULL)
+            {
+              free(datasource_mgr->mysql_host);
+            }
+          datasource_mgr->mysql_host = strdup(option_value);
+          break;
+        }
       break;
-    case BS_MYSQL_USER:
-      if(datasource_mgr->mysql_user!=NULL)
-	{
-	  free(datasource_mgr->mysql_user);
-	}
-      datasource_mgr->mysql_user = strdup(option);      
+
+    case BGPSTREAM_DATA_INTERFACE_CUSTOMLIST:
+      /* no options */
       break;
-    case BS_MYSQL_HOST:
-      if(datasource_mgr->mysql_host!=NULL)
-	{
-	  free(datasource_mgr->mysql_host);
-	}
-      datasource_mgr->mysql_host = strdup(option);      
+
+    case BGPSTREAM_DATA_INTERFACE_CSVFILE:
+      switch(option_type->id)
+        {
+        case 0:
+          if(datasource_mgr->csvfile_file!=NULL)
+            {
+              free(datasource_mgr->csvfile_file);
+            }
+          datasource_mgr->csvfile_file = strdup(option_value);
+          break;
+        }
       break;
-    case BS_CSVFILE_FILE:
-      if(datasource_mgr->csvfile_file!=NULL)
-	{
-	  free(datasource_mgr->csvfile_file);
-	}
-      datasource_mgr->csvfile_file = strdup(option);      
-      break;      
     }
 }
 
@@ -151,7 +166,7 @@ void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
     return; // no manager
   }
   // datasource_mgr->blocking can be set at any time
-  if (datasource_mgr->datasource == BGPSTREAM_DATASOURCE_MYSQL) {
+  if (datasource_mgr->datasource == BGPSTREAM_DATA_INTERFACE_MYSQL) {
     datasource_mgr->mysql_ds = bgpstream_mysql_datasource_create(filter_mgr, 
 								 datasource_mgr->mysql_dbname,
 								 datasource_mgr->mysql_user,
@@ -163,7 +178,7 @@ void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
       datasource_mgr->status = DS_ON;
     }
   }
-  if (datasource_mgr->datasource == BGPSTREAM_DATASOURCE_CUSTOMLIST) {
+  if (datasource_mgr->datasource == BGPSTREAM_DATA_INTERFACE_CUSTOMLIST) {
     datasource_mgr->customlist_ds = bgpstream_customlist_datasource_create(filter_mgr);
     if(datasource_mgr->customlist_ds == NULL) {
       datasource_mgr->status = DS_ERROR;
@@ -172,7 +187,7 @@ void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
       datasource_mgr->status = DS_ON;
     }
   }
-  if (datasource_mgr->datasource == BGPSTREAM_DATASOURCE_CSVFILE) {
+  if (datasource_mgr->datasource == BGPSTREAM_DATA_INTERFACE_CSVFILE) {
     datasource_mgr->csvfile_ds = bgpstream_csvfile_datasource_create(filter_mgr,
 								     datasource_mgr->csvfile_file);
     if(datasource_mgr->csvfile_ds == NULL) {
@@ -204,7 +219,7 @@ int bgpstream_datasource_mgr_update_input_queue(bgpstream_datasource_mgr_t *data
     return -1; // no datasource manager
   }
   int results = -1;
-  if(datasource_mgr->datasource == BGPSTREAM_DATASOURCE_MYSQL) {
+  if(datasource_mgr->datasource == BGPSTREAM_DATA_INTERFACE_MYSQL) {
     do{
       results = bgpstream_mysql_datasource_update_input_queue(datasource_mgr->mysql_ds, input_mgr);
       if(results == 0 && datasource_mgr->blocking) {
@@ -222,11 +237,11 @@ int bgpstream_datasource_mgr_update_input_queue(bgpstream_datasource_mgr_t *data
       datasource_mgr->backoff_time = bs_min_wait;
     }
   }
-  if(datasource_mgr->datasource == BGPSTREAM_DATASOURCE_CUSTOMLIST) {
+  if(datasource_mgr->datasource == BGPSTREAM_DATA_INTERFACE_CUSTOMLIST) {
     results = bgpstream_customlist_datasource_update_input_queue(datasource_mgr->customlist_ds, input_mgr);
     bgpstream_debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
   }
-  if(datasource_mgr->datasource == BGPSTREAM_DATASOURCE_CSVFILE) {
+  if(datasource_mgr->datasource == BGPSTREAM_DATA_INTERFACE_CSVFILE) {
     results = bgpstream_csvfile_datasource_update_input_queue(datasource_mgr->csvfile_ds, input_mgr);
     bgpstream_debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
   }
@@ -241,15 +256,15 @@ void bgpstream_datasource_mgr_close(bgpstream_datasource_mgr_t *datasource_mgr) 
   if(datasource_mgr == NULL) {
     return; // no manager to destroy
   }
-  if (datasource_mgr->datasource == BGPSTREAM_DATASOURCE_MYSQL) {
+  if (datasource_mgr->datasource == BGPSTREAM_DATA_INTERFACE_MYSQL) {
     bgpstream_mysql_datasource_destroy(datasource_mgr->mysql_ds);
     datasource_mgr->mysql_ds = NULL;
   }
-  if (datasource_mgr->datasource == BGPSTREAM_DATASOURCE_CUSTOMLIST) {
+  if (datasource_mgr->datasource == BGPSTREAM_DATA_INTERFACE_CUSTOMLIST) {
     bgpstream_customlist_datasource_destroy(datasource_mgr->customlist_ds);
     datasource_mgr->customlist_ds = NULL;
   }
-  if (datasource_mgr->datasource == BGPSTREAM_DATASOURCE_CSVFILE) {
+  if (datasource_mgr->datasource == BGPSTREAM_DATA_INTERFACE_CSVFILE) {
     bgpstream_csvfile_datasource_destroy(datasource_mgr->csvfile_ds);
     datasource_mgr->csvfile_ds = NULL;
   }

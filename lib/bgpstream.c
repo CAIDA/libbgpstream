@@ -23,12 +23,83 @@
  *
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <bgpdump_lib.h>
 
+#include "utils.h"
+
 #include "bgpstream_int.h"
 #include "bgpstream_debug.h"
+
+/* TEMPORARY STRUCTURES TO FAKE DATA INTERFACE PLUGIN API */
+
+/* this should be the complete list of interface types */
+static bgpstream_data_interface_id_t bgpstream_data_interfaces[] = {
+  BGPSTREAM_DATA_INTERFACE_MYSQL,
+  BGPSTREAM_DATA_INTERFACE_CUSTOMLIST,
+  BGPSTREAM_DATA_INTERFACE_CSVFILE,
+};
+
+static bgpstream_data_interface_info_t bgpstream_data_interface_infos[] = {
+  { /* NO VALID IF WITH ID 0 */ },
+
+  {
+    BGPSTREAM_DATA_INTERFACE_MYSQL,
+    "mysql",
+    "Retrieve metadata information from the bgparchive mysql database",
+  },
+  {
+    BGPSTREAM_DATA_INTERFACE_CUSTOMLIST,
+    "custom-list",
+    "TODO: Mock datasource used to test the library",
+  },
+  {
+    BGPSTREAM_DATA_INTERFACE_CSVFILE,
+    "csvfile",
+    "Retrieve metadata information from a csv file",
+  },
+};
+
+/* this should be a complete list of per-interface options */
+static bgpstream_data_interface_option_t bgpstream_mysql_options[] = {
+  /* Database Name */
+  {
+    BGPSTREAM_DATA_INTERFACE_MYSQL,
+    0,
+    "db-name",
+    "Name of the mysql database to use (default: bgparchive)",
+  },
+
+  /* Database username */
+  {
+    BGPSTREAM_DATA_INTERFACE_MYSQL,
+    1,
+    "db-user",
+    "mysql username to use (default: bgpstream)",
+  },
+
+  /* Database host */
+  {
+    BGPSTREAM_DATA_INTERFACE_MYSQL,
+    2,
+    "db-host",
+    "Hostname/IP of the mysql server (default: localhost)",
+  },
+};
+
+static bgpstream_data_interface_option_t *bgpstream_customlist_options = NULL;
+
+static bgpstream_data_interface_option_t bgpstream_csvfile_options[] = {
+  /* File name */
+  {
+    BGPSTREAM_DATA_INTERFACE_CSVFILE,
+    0,
+    "filename",
+    "Hostname/IP of the mysql server (default: TODO)",
+  },
+};
 
 
 /* allocate memory for a new bgpstream interface
@@ -104,33 +175,123 @@ void bgpstream_add_interval_filter(bgpstream_t *bs,
   bgpstream_debug("BS: set_filter end");
 }
 
+bgpstream_data_interface_id_t *bgpstream_get_data_interfaces(bgpstream_t *bs,
+                                                          int *if_cnt)
+{
+  assert(if_cnt != NULL);
+  *if_cnt = ARR_CNT(bgpstream_data_interfaces);
+  return bgpstream_data_interfaces;
+}
+
+bgpstream_data_interface_id_t
+bgpstream_get_data_interface_id_by_name(bgpstream_t *bs, const char *name)
+{
+  int i;
+
+  for(i=1; i<ARR_CNT(bgpstream_data_interface_infos); i++)
+    {
+      if(strcmp(bgpstream_data_interface_infos[i].name, name) == 0)
+        {
+          return bgpstream_data_interface_infos[i].id;
+        }
+    }
+
+  return 0;
+}
+
+bgpstream_data_interface_info_t *
+bgpstream_get_data_interface_info(bgpstream_t *bs,
+                                  bgpstream_data_interface_id_t if_id)
+{
+  return &bgpstream_data_interface_infos[if_id];
+}
+
+bgpstream_data_interface_option_t *
+bgpstream_get_data_interface_options(bgpstream_t *bs,
+                                     bgpstream_data_interface_id_t if_id,
+                                     int *opt_cnt)
+{
+  assert(opt_cnt != NULL);
+
+  switch(if_id)
+    {
+    case BGPSTREAM_DATA_INTERFACE_MYSQL:
+      *opt_cnt = ARR_CNT(bgpstream_mysql_options);
+      return bgpstream_mysql_options;
+      break;
+
+    case BGPSTREAM_DATA_INTERFACE_CUSTOMLIST:
+      *opt_cnt = ARR_CNT(bgpstream_customlist_options);
+      return bgpstream_customlist_options;
+      break;
+
+    case BGPSTREAM_DATA_INTERFACE_CSVFILE:
+      *opt_cnt = ARR_CNT(bgpstream_csvfile_options);
+      return bgpstream_csvfile_options;
+      break;
+
+    default:
+      *opt_cnt = 0;
+      return NULL;
+      break;
+    }
+}
+
+bgpstream_data_interface_option_t *
+bgpstream_get_data_interface_option_by_name(bgpstream_t *bs,
+                                            bgpstream_data_interface_id_t if_id,
+                                            const char *name)
+{
+  bgpstream_data_interface_option_t *options;
+  int opt_cnt = 0;
+  int i;
+
+  options = bgpstream_get_data_interface_options(bs, if_id, &opt_cnt);
+
+  if(options == NULL || opt_cnt == 0)
+    {
+      return NULL;
+    }
+
+  for(i=0; i<opt_cnt; i++)
+    {
+      if(strcmp(options[i].name, name) == 0)
+        {
+          return &options[i];
+        }
+    }
+
+  return NULL;
+}
+
+/* configure the datasource interface options */
+
+void bgpstream_set_data_interface_option(bgpstream_t *bs,
+			        bgpstream_data_interface_option_t *option_type,
+                                const char *option_value) {
+
+  bgpstream_debug("BS: set_data_interface_options start");
+  if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
+    return; // nothing to customize
+  }
+
+  bgpstream_datasource_mgr_set_data_interface_option(bs->datasource_mgr,
+                                                     option_type, option_value);
+
+  bgpstream_debug("BS: set_data_interface_options stop");
+}
 
 /* configure the interface so that it connects
  * to a specific datasource interface
  */
 void bgpstream_set_data_interface(bgpstream_t *bs,
-                                  bgpstream_datasource_type_t datasource) {
+                                  bgpstream_data_interface_id_t datasource) {
   bgpstream_debug("BS: set_data_interface start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return; // nothing to customize
   }
   bgpstream_datasource_mgr_set_data_interface(bs->datasource_mgr, datasource);
   bgpstream_debug("BS: set_data_interface stop");
-}
-
-
-/* configure the datasource interface options */
-
-void bgpstream_set_data_interface_options(bgpstream_t *bs,
-			                bgpstream_datasource_option option_type,
-					char *option) {
-  bgpstream_debug("BS: set_data_interface_options start");
-  if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
-    return; // nothing to customize
-  }
-  bgpstream_datasource_mgr_set_data_interface_option(bs->datasource_mgr,
-                                                     option_type, option);
-  bgpstream_debug("BS: set_data_interface_options stop");
 }
 
 
