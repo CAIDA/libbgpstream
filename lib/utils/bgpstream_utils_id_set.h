@@ -24,58 +24,83 @@
  */
 
 
-#ifndef _BL_ID_SET_H
-#define _BL_ID_SET_H
+#ifndef __BGPSTREAM_UTILS_ID_SET_H
+#define __BGPSTREAM_UTILS_ID_SET_H
 
-#include "bgpstream_utils.h"
-
-
-typedef struct bl_id_set_t bl_id_set_t;
-
- 
-/** Allocate memory for a strucure that maintains
- *  unique set of ids.
+/** @file
  *
- * @return a pointer to the structure, or
- *  NULL if an error occurred
- */
-bl_id_set_t *bl_id_set_create();
-
-/** Insert a new id into the id set.
+ * @brief Header file that exposes the public interface of the BGP Stream ID
+ * Set.
  *
- * @param id_set a pointer to the id set
- * @param id id to insert in the table
- * @return 1 if an id has been inserted, 0 if it already existed
+ * @author Chiara Orsini
+ *
  */
-int bl_id_set_insert(bl_id_set_t *id_set, uint32_t id);
 
-// TODO: documentation
-int bl_id_set_exists(bl_id_set_t *id_set, uint32_t id);
+/**
+ * @name Opaque Data Structures
+ *
+ * @{ */
+
+/** Opaque structure containing a ID set instance */
+typedef struct bgpstream_id_set bgpstream_id_set_t;
+
+/** @} */
+
+/**
+ * @name Public API Functions
+ *
+ * @{ */
+
+/** Create a new ID set instance
+ *
+ * @return a pointer to the structure, or NULL if an error occurred
+ */
+bgpstream_id_set_t *bgpstream_id_set_create();
+
+/** Insert a new ID into the given set.
+ *
+ * @param set           pointer to the id set
+ * @param id            id to insert in the set
+ * @return 1 if the id was inserted, 0 if it already existed, -1 if an error
+ * occurred
+ */
+int bgpstream_id_set_insert(bgpstream_id_set_t *set, uint32_t id);
+
+/** Check whether an ID exists in the set
+ *
+ * @param set           pointer to the ID set
+ * @param id            the ID to check
+ * @return 0 if the ID is not in the set, 1 if it is in the set
+ */
+int bgpstream_id_set_exists(bgpstream_id_set_t *set, uint32_t id);
+
+/** Get the number of IDs in the given set
+ *
+ * @param set           pointer to the id set
+ * @return the size of the id set
+ */
+int bgpstream_id_set_size(bgpstream_id_set_t *set);
+
+/** Merge two ID sets
+ *
+ * @param dst_set      pointer to the set to merge src into
+ * @param src_set      pointer to the set to merge into dst
+ * @return 0 if the sets were merged succsessfully, -1 otherwise
+ */
+int bgpstream_id_set_merge(bgpstream_id_set_t *dst_set,
+                           bgpstream_id_set_t *src_set);
+
+/** Destroy the given ID set
+ *
+ * @param set           pointer to the ID set to destroy
+ */
+void bgpstream_id_set_destroy(bgpstream_id_set_t *set);
 
 /** Empty the id set.
  *
- * @param id_set a pointer to the id set
+ * @param set           a pointer to the id set to clear
  */
-void bl_id_set_reset(bl_id_set_t *id_set);
+void bgpstream_id_set_clear(bgpstream_id_set_t *set);
 
-/** Get the size of the set.
- *
- * @param as_set pointer to the id set
- * @return the size of the id set
- */
-int bl_id_set_size(bl_id_set_t *id_set);
-
-/** Get the merge of the set.
- *  @param union_set pointer to the id set that will include the merge
- *  @param part_set pointer to the id set that will be merged with the union_set
- */
-void bl_id_set_merge(bl_id_set_t *union_set, bl_id_set_t *part_set);
-
-/** Deallocate memory for the AS table.
- *
- * @param id_set a pointer to the AS set
- */
-void bl_id_set_destroy(bl_id_set_t *id_set);
-
-#endif /* _BL_ID_SET_H */
+#endif /* __BGPSTREAM_UTILS_ID_SET_H */
 

@@ -29,87 +29,99 @@
 #include "khash.h"
 #include "utils.h"
 
-#include "bgpstream_utils_id_set.h"
+#include <bgpstream_utils_id_set.h>
 
+/* PRIVATE */
 
 /** set of unique ids
  *  this structure maintains a set of unique
  *  ids (using a uint32 type)
  */
-KHASH_INIT(bl_id_set /* name */, 
-	   uint32_t  /* khkey_t */, 
-	   char /* khval_t */, 
-	   0  /* kh_is_set */, 
-	   kh_int_hash_func /*__hash_func */,  
+KHASH_INIT(bgpstream_id_set /* name */,
+	   uint32_t  /* khkey_t */,
+	   char /* khval_t */,
+	   0  /* kh_is_set */,
+	   kh_int_hash_func /*__hash_func */,
 	   kh_int_hash_equal /* __hash_equal */);
 
 
-struct bl_id_set_t {
-  khash_t(bl_id_set) *hash;
+struct bgpstream_id_set {
+  khash_t(bgpstream_id_set) *hash;
 };
 
-			   
-bl_id_set_t *bl_id_set_create()
+
+/* PUBLIC FUNCTIONS */
+
+bgpstream_id_set_t *bgpstream_id_set_create()
 {
-  bl_id_set_t *id_set =  (bl_id_set_t *) malloc(sizeof(bl_id_set_t));
-  id_set->hash = kh_init(bl_id_set);
-  return id_set;
+  bgpstream_id_set_t *set;
+
+  if((set = (bgpstream_id_set_t*)malloc(sizeof(bgpstream_id_set_t))) == NULL)
+    {
+      return NULL;
+    }
+
+  if((set->hash = kh_init(bgpstream_id_set)) == NULL)
+    {
+      bgpstream_id_set_destroy(set);
+      return NULL;
+    }
+
+  return set;
 }
 
-int bl_id_set_insert(bl_id_set_t *id_set,  uint32_t id)
+int bgpstream_id_set_insert(bgpstream_id_set_t *set,  uint32_t id)
 {
   int khret;
   khiter_t k;
-  if((k = kh_get(bl_id_set, id_set->hash,
-			       id)) == kh_end(id_set->hash))
-    { 
-      k = kh_put(bl_id_set, id_set->hash, id, &khret);
+  if((k = kh_get(bgpstream_id_set, set->hash, id)) == kh_end(set->hash))
+    {
+      /** @todo we should always check the return value from khash funcs */
+      k = kh_put(bgpstream_id_set, set->hash, id, &khret);
       return 1;
     }
   return 0;
 }
 
-int bl_id_set_exists(bl_id_set_t *id_set,  uint32_t id)
+int bgpstream_id_set_exists(bgpstream_id_set_t *set,  uint32_t id)
 {
   khiter_t k;
-  if((k = kh_get(bl_id_set, id_set->hash,
-			       id)) == kh_end(id_set->hash))
-    { 
+  if((k = kh_get(bgpstream_id_set, set->hash, id)) == kh_end(set->hash))
+    {
       return 0;
     }
   return 1;
 }
 
-void bl_id_set_reset(bl_id_set_t *id_set)
+int bgpstream_id_set_merge(bgpstream_id_set_t *dst_set,
+                           bgpstream_id_set_t *src_set)
 {
-  kh_clear(bl_id_set, id_set->hash);
-}
-
-
-void bl_id_set_merge(bl_id_set_t *union_set, bl_id_set_t *part_set)
-{
-  uint32_t id;
   khiter_t k;
-  for(k = kh_begin(part_set->hash);
-      k != kh_end(part_set->hash); ++k)
+  for(k = kh_begin(src_set->hash); k != kh_end(src_set->hash); ++k)
     {
-      if (kh_exist(part_set->hash, k))
+      if(kh_exist(src_set->hash, k))
 	{
-	  id = kh_key(part_set->hash, k);
-	  bl_id_set_insert(union_set, id);
+	  if(bgpstream_id_set_insert(dst_set, kh_key(src_set->hash, k)) < 0)
+            {
+              return -1;
+            }
 	}
     }
+  return 0;
 }
 
-int bl_id_set_size(bl_id_set_t *id_set)
+int bgpstream_id_set_size(bgpstream_id_set_t *set)
 {
-  return kh_size(id_set->hash);
+  return kh_size(set->hash);
 }
 
-void bl_id_set_destroy(bl_id_set_t *id_set) 
+void bgpstream_id_set_destroy(bgpstream_id_set_t *set)
 {
-  kh_destroy(bl_id_set, id_set->hash);
-  free(id_set);
+  kh_destroy(bgpstream_id_set, set->hash);
+  free(set);
 }
 
-
+void bgpstream_id_set_clear(bgpstream_id_set_t *set)
+{
+  kh_clear(bgpstream_id_set, set->hash);
+}
