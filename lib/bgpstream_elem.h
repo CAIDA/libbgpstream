@@ -182,7 +182,7 @@ void bgpstream_elem_queue_destroy(bgpstream_elem_t *elem_queue);
  * @return the number of characters that would have been written if len was
  * unlimited
  */
-int bgpstream_elem_type_snprintf(char * restrict buf, size_t len,
+int bgpstream_elem_type_snprintf(char *buf, size_t len,
                                  bgpstream_elem_type_t type);
 
 /** Write the string representation of the elem peerstate into the provided
@@ -194,7 +194,7 @@ int bgpstream_elem_type_snprintf(char * restrict buf, size_t len,
  * @return the number of characters that would have been written if len was
  * unlimited
  */
-int bgpstream_elem_peerstate_snprintf(char * restrict buf, size_t len,
+int bgpstream_elem_peerstate_snprintf(char *buf, size_t len,
                                       bgpstream_elem_peerstate_t state);
 
 /** Write the string representation of the elem into the provided buffer
@@ -204,7 +204,7 @@ int bgpstream_elem_peerstate_snprintf(char * restrict buf, size_t len,
  * @param elem          pointer to a BGP Stream Elem to convert to string
  * @return pointer to the start of the buffer if successful, NULL otherwise
  */
-char *bgpstream_elem_snprintf(char * restrict buf, size_t len,
+char *bgpstream_elem_snprintf(char *buf, size_t len,
                               bgpstream_elem_t *elem);
 
 /** @} */

@@ -709,7 +709,7 @@ void bgpstream_elem_queue_destroy(bgpstream_elem_t * elem_queue) {
   bd2bi_destroy_route_info_queue(elem_queue);
 }
 
-int bgpstream_elem_type_snprintf(char * restrict buf, size_t len,
+int bgpstream_elem_type_snprintf(char *buf, size_t len,
                                  bgpstream_elem_type_t type)
 {
   /* ensure we have enough bytes to write our single character */
@@ -747,7 +747,7 @@ int bgpstream_elem_type_snprintf(char * restrict buf, size_t len,
   return 1;
 }
 
-int bgpstream_elem_peerstate_snprintf(char * restrict buf, size_t len,
+int bgpstream_elem_peerstate_snprintf(char *buf, size_t len,
                                       bgpstream_elem_peerstate_t state)
 {
   size_t written = 0;
@@ -824,7 +824,7 @@ int bgpstream_elem_peerstate_snprintf(char * restrict buf, size_t len,
       }                                         \
  } while(0)
 
-char *bgpstream_elem_snprintf(char * restrict buf, size_t len,
+char *bgpstream_elem_snprintf(char *buf, size_t len,
                               bgpstream_elem_t *elem)
 {
   assert(elem);
