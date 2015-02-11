@@ -32,8 +32,19 @@ noinst_LTLIBRARIES = libbgpstream-utils.la
 
 CONDITIONAL_LIBS=
 
-include_HEADERS= bgpstream_utils.h \
-		 bgpstream_utils_addr.h
+# TODO: Do not install _int headers!
+include_HEADERS= bgpstream_utils.h 		     \
+		 bgpstream_utils_addr.h 	     \
+		 bgpstream_utils_addr_set.h	     \
+		 bgpstream_utils_as.h		     \
+		 bgpstream_utils_id_set.h     	     \
+		 bgpstream_utils_peer_sig_map.h      \
+		 bgpstream_utils_pfx.h		     \
+		 bgpstream_utils_pfx_set.h	     \
+		 bgpstream_utils_str_set.h
+		 \
+		 bgpstream_utils_peer_sig_map_int.h  \
+		 bgpstream_utils_pfx_set_int.h
 
 libbgpstream_utils_la_SOURCES =             \
 	bgpstream_utils.h                   \
