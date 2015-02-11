@@ -24,81 +24,185 @@
  */
 
 
-#ifndef _BL_PFX_SET_H
-#define _BL_PFX_SET_H
+#ifndef __BGPSTREAM_UTILS_PFX_SET_H
+#define __BGPSTREAM_UTILS_PFX_SET_H
 
-#include <bgpstream_utils.h>
+#include <bgpstream_utils_pfx.h>
 
-
-typedef struct bgpstream_pfx_storage_set_t bgpstream_pfx_storage_set_t;
-
-/** Allocate memory for a strucure that maintains
- *  unique set of IP prefixes.
+/** @file
  *
- * @return a pointer to the structure, or
- *  NULL if an error occurred
+ * @brief Header file that exposes the public interface of the BGP Stream
+ * Prefix Sets. There is one set for each bgpstream_pfx type (Storage, IPv4
+ * and IPv6).
+ *
+ * @author Chiara Orsini
+ *
+ */
+
+/**
+ * @name Opaque Data Structures
+ *
+ * @{ */
+
+/** Opaque structure containing an Prefix Storage set instance */
+typedef struct bgpstream_pfx_storage_set bgpstream_pfx_storage_set_t;
+
+/** Opaque structure containing an IPv4 Prefix set instance */
+typedef struct bgpstream_ipv4_pfx_set bgpstream_ipv4_pfx_set_t;
+
+/** Opaque structure containing an IPv6 Prefix set instance */
+typedef struct bgpstream_ipv6_pfx_set bgpstream_ipv6_pfx_set_t;
+
+/** @} */
+
+/**
+ * @name Public API Functions
+ *
+ * @{ */
+
+/* STORAGE */
+
+/** Create a new Prefix Storage set instance
+ *
+ * @return a pointer to the structure, or NULL if an error occurred
  */
 bgpstream_pfx_storage_set_t *bgpstream_pfx_storage_set_create();
 
-/** Insert a new prefix into the prefix set.
+/** Insert a new prefix into the given set.
  *
- * @param as_set pointer to the prefix set
- * @param ip_prefix generic prefix
- * @return 1 if a prefix has been inserted, 0 if it already existed
+ * @param set           pointer to the prefix set
+ * @param pfx          prefix to insert in the set
+ * @return 1 if the prefix was inserted, 0 if it already existed, -1 if an
+ * error occurred
  */
-int bgpstream_pfx_storage_set_insert(bgpstream_pfx_storage_set_t *ip_prefix_set, bgpstream_pfx_storage_t prefix);
+int bgpstream_pfx_storage_set_insert(bgpstream_pfx_storage_set_t *set,
+                                      bgpstream_pfx_storage_t *pfx);
+
+/** Get the number of prefixes in the given set
+ *
+ * @param set           pointer to the prefix set
+ * @return the size of the prefix set
+ */
+int bgpstream_pfx_storage_set_size(bgpstream_pfx_storage_set_t *set);
+
+/** Merge two prefix sets
+ *
+ * @param dst_set      pointer to the set to merge src into
+ * @param src_set      pointer to the set to merge into dst
+ * @return 0 if the sets were merged succsessfully, -1 otherwise
+ */
+int bgpstream_pfx_storage_set_merge(bgpstream_pfx_storage_set_t *dst_set,
+                                     bgpstream_pfx_storage_set_t *src_set);
+
+/** Destroy the given prefix set
+ *
+ * @param set           pointer to the prefix set to destroy
+ */
+void bgpstream_pfx_storage_set_destroy(bgpstream_pfx_storage_set_t *set);
 
 /** Empty the prefix set.
  *
- * @param as_set pointer to the prefix set
+ * @param set           pointer to the prefix set to clear
  */
-void bgpstream_pfx_storage_set_reset(bgpstream_pfx_storage_set_t *ip_prefix_set);
+void bgpstream_pfx_storage_set_clear(bgpstream_pfx_storage_set_t *set);
 
-/** Get the size of the set.
+
+
+
+/* IPv4 */
+
+/** Create a new IPv4 Prefix set instance
  *
- * @param as_set pointer to the prefix set
+ * @return a pointer to the structure, or NULL if an error occurred
+ */
+bgpstream_ipv4_pfx_set_t *bgpstream_ipv4_pfx_set_create();
+
+/** Insert a new prefix into the given set.
+ *
+ * @param set           pointer to the prefix set
+ * @param pfx          prefix to insert in the set
+ * @return 1 if the prefix was inserted, 0 if it already existed, -1 if an
+ * error occurred
+ *
+ * This function takes a copy of the prefix before it is inserted in the set.
+ */
+int bgpstream_ipv4_pfx_set_insert(bgpstream_ipv4_pfx_set_t *set,
+                                      bgpstream_ipv4_pfx_t *pfx);
+
+/** Get the number of prefixes in the given set
+ *
+ * @param set           pointer to the prefix set
  * @return the size of the prefix set
  */
-int bgpstream_pfx_storage_set_size(bgpstream_pfx_storage_set_t *ip_prefix_set);
+int bgpstream_ipv4_pfx_set_size(bgpstream_ipv4_pfx_set_t *set);
 
-/** Get the merge of the set.
- *  @param union_set pointer to the prefix set that will include the merge
- *  @param part_set pointer to the prefix set that will be merged with the union_set
- */
-void bgpstream_pfx_storage_set_merge(bgpstream_pfx_storage_set_t *union_set, bgpstream_pfx_storage_set_t *part_set);
-
-/** Deallocate memory for the IP prefix set
+/** Merge two prefix sets
  *
- * @param as_set a pointer to the AS set
+ * @param dst_set      pointer to the set to merge src into
+ * @param src_set      pointer to the set to merge into dst
+ * @return 0 if the sets were merged succsessfully, -1 otherwise
  */
-void bgpstream_pfx_storage_set_destroy(bgpstream_pfx_storage_set_t *ip_prefix_set);
+int bgpstream_ipv4_pfx_set_merge(bgpstream_ipv4_pfx_set_t *dst_set,
+                                  bgpstream_ipv4_pfx_set_t *src_set);
+
+/** Destroy the given prefix set
+ *
+ * @param set           pointer to the prefix set to destroy
+ */
+void bgpstream_ipv4_pfx_set_destroy(bgpstream_ipv4_pfx_set_t *set);
+
+/** Empty the prefix set.
+ *
+ * @param set           pointer to the prefix set to clear
+ */
+void bgpstream_ipv4_pfx_set_clear(bgpstream_ipv4_pfx_set_t *set);
 
 
-// same functions, ipv4 specific
 
-typedef struct bgpstream_ipv4_pfx_set_t bgpstream_ipv4_pfx_set_t;
+/** Create a new IPv6 Prefix set instance
+ *
+ * @return a pointer to the structure, or NULL if an error occurred
+ */
+bgpstream_ipv6_pfx_set_t *bgpstream_ipv6_pfx_set_create();
 
+/** Insert a new prefix into the given set.
+ *
+ * @param set           pointer to the prefix set
+ * @param pfx          prefix to insert in the set
+ * @return 1 if the prefix was inserted, 0 if it already existed, -1 if an
+ * error occurred
+ */
+int bgpstream_ipv6_pfx_set_insert(bgpstream_ipv6_pfx_set_t *set,
+                                      bgpstream_ipv6_pfx_t *pfx);
 
-bgpstream_ipv4_pfx_set_t *bgpstream_ipv4_pfx_set_create(); 
-int bgpstream_ipv4_pfx_set_insert(bgpstream_ipv4_pfx_set_t *ip_prefix_set, bgpstream_ipv4_pfx_t prefix);
-void bgpstream_ipv4_pfx_set_reset(bgpstream_ipv4_pfx_set_t *ip_prefix_set);
-int bgpstream_ipv4_pfx_set_size(bgpstream_ipv4_pfx_set_t *ip_prefix_set);
-void bgpstream_ipv4_pfx_set_merge(bgpstream_ipv4_pfx_set_t *union_set, bgpstream_ipv4_pfx_set_t *part_set);
-void bgpstream_ipv4_pfx_set_destroy(bgpstream_ipv4_pfx_set_t *ip_prefix_set);
+/** Get the number of prefixes in the given set
+ *
+ * @param set           pointer to the prefix set
+ * @return the size of the prefix set
+ */
+int bgpstream_ipv6_pfx_set_size(bgpstream_ipv6_pfx_set_t *set);
 
+/** Merge two prefix sets
+ *
+ * @param dst_set      pointer to the set to merge src into
+ * @param src_set      pointer to the set to merge into dst
+ * @return 0 if the sets were merged succsessfully, -1 otherwise
+ */
+int bgpstream_ipv6_pfx_set_merge(bgpstream_ipv6_pfx_set_t *dst_set,
+                                  bgpstream_ipv6_pfx_set_t *src_set);
 
-// same functions, ipv6 specific
+/** Destroy the given prefix set
+ *
+ * @param set           pointer to the prefix set to destroy
+ */
+void bgpstream_ipv6_pfx_set_destroy(bgpstream_ipv6_pfx_set_t *set);
 
-typedef struct bgpstream_ipv6_pfx_set_t bgpstream_ipv6_pfx_set_t;
+/** Empty the prefix set.
+ *
+ * @param set           pointer to the prefix set to clear
+ */
+void bgpstream_ipv6_pfx_set_clear(bgpstream_ipv6_pfx_set_t *set);
 
+#endif /* __BGPSTREAM_UTILS_PFX_SET_H */
 
-bgpstream_ipv6_pfx_set_t *bgpstream_ipv6_pfx_set_create(); 
-int bgpstream_ipv6_pfx_set_insert(bgpstream_ipv6_pfx_set_t *ip_prefix_set, bgpstream_ipv6_pfx_t prefix);
-void bgpstream_ipv6_pfx_set_reset(bgpstream_ipv6_pfx_set_t *ip_prefix_set);
-int bgpstream_ipv6_pfx_set_size(bgpstream_ipv6_pfx_set_t *ip_prefix_set);
-void bgpstream_ipv6_pfx_set_merge(bgpstream_ipv6_pfx_set_t *union_set, bgpstream_ipv6_pfx_set_t *part_set);
-void bgpstream_ipv6_pfx_set_destroy(bgpstream_ipv6_pfx_set_t *ip_prefix_set);
-
-
-#endif /* _BL_PFX_SET_H */
 

@@ -23,11 +23,24 @@
  *
  */
 
-#ifndef _BL_PFX_SET_INT_H
-#define _BL_PFX_SET_INT_H
+#ifndef __BGPSTREAM_UTILS_PFX_SET_INT_H
+#define __BGPSTREAM_UTILS_PFX_SET_INT_H
+
+#include "khash.h"
 
 #include <bgpstream_utils_pfx_set.h>
-#include "khash.h"
+
+/** @file
+ *
+ * @brief Header file that exposes the private interface of the BGP Stream
+ * Prefix Sets.
+ *
+ * @author Chiara Orsini
+ *
+ * @note this interface MUST NOT be used. It will be removed in the next version
+ * of BGP Stream.
+ *
+ */
 
 #define STORAGE_HASH_VAL(arg) bgpstream_pfx_storage_hash(&(arg))
 #define STORAGE_EQUAL_VAL(arg1, arg2) \
@@ -54,7 +67,7 @@ KHASH_INIT(bgpstream_pfx_storage_set /* name */,
 	   STORAGE_EQUAL_VAL /* __hash_equal */);
 
 
-struct bgpstream_pfx_storage_set_t {
+struct bgpstream_pfx_storage_set {
   khash_t(bgpstream_pfx_storage_set) *hash;
 };
 
@@ -68,7 +81,7 @@ KHASH_INIT(bgpstream_ipv4_pfx_set /* name */,
 	   V4_EQUAL_VAL /* __hash_equal */);
 
 
-struct bgpstream_ipv4_pfx_set_t {
+struct bgpstream_ipv4_pfx_set {
   khash_t(bgpstream_ipv4_pfx_set) *hash;
 };
 
@@ -82,9 +95,9 @@ KHASH_INIT(bgpstream_ipv6_pfx_set /* name */,
 	   V6_EQUAL_VAL /* __hash_equal */);
 
 
-struct bgpstream_ipv6_pfx_set_t {
+struct bgpstream_ipv6_pfx_set {
   khash_t(bgpstream_ipv6_pfx_set) *hash;
 };
 
 
-#endif /* _BL_PFX_SET_INT_H */
+#endif /* __BGPSTREAM_UTILS_PFX_SET_INT_H */
