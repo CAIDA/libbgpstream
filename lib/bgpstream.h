@@ -84,13 +84,6 @@ typedef enum {
 
 } bgpstream_data_interface_id_t;
 
-/** @todo REPLACE these with per-interface options */
-typedef enum {
-  BS_MYSQL_DB,
-  BS_MYSQL_USER,
-  BS_MYSQL_HOST,
-  BS_CSVFILE_FILE
-} bgpstream_datasource_option;
 
 /** @} */
 
