@@ -82,7 +82,7 @@ bgpstream_t *bgpstream_create() {
 
 /* configure filters in order to select a subset of the bgp data available */
 void bgpstream_add_filter(bgpstream_t *bs,
-                          bgpstream_filter_type filter_type,
+                          bgpstream_filter_type_t filter_type,
 			  const char* filter_value) {
   bgpstream_debug("BS: set_filter start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
@@ -109,7 +109,7 @@ void bgpstream_add_interval_filter(bgpstream_t *bs,
  * to a specific datasource interface
  */
 void bgpstream_set_data_interface(bgpstream_t *bs,
-                                  bgpstream_datasource_type datasource) {
+                                  bgpstream_datasource_type_t datasource) {
   bgpstream_debug("BS: set_data_interface start");
   if(bs == NULL || (bs != NULL && bs->status != ALLOCATED)) {
     return; // nothing to customize

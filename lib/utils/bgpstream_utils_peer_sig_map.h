@@ -62,7 +62,7 @@ typedef struct bgpstream_peer_sig_map bgpstream_peer_sig_map_t;
 typedef struct struct_bgpstream_peer_sig_t {
 
   /** The string name of the collector that this peer belongs to */
-  char collector_str[BGPSTREAM_UTILS_COLLECTOR_NAME_LEN];
+  char collector_str[BGPSTREAM_UTILS_STR_NAME_LEN];
 
   /** The IP address of this peer */
   bgpstream_addr_storage_t peer_ip_addr;

@@ -26,6 +26,8 @@
 #ifndef __BGPSTREAM_RECORD_H
 #define __BGPSTREAM_RECORD_H
 
+#include <bgpstream_utils.h>
+
 /** @file
  *
  * @brief Header file that exposes the public interface of a bgpstream record.
@@ -53,9 +55,6 @@ typedef struct struct_BGPDUMP_ENTRY bgpstream_record_mrt_data_t;
  * @name Public Constants
  *
  * @{ */
-
-/** The maximum number of characters in a string attribute */
-#define BGPSTREAM_PAR_LEN 512
 
 /** @} */
 
@@ -120,10 +119,10 @@ typedef enum {
 typedef struct struct_bgpstream_record_attributes_t {
 
   /** Project name */
-  char dump_project[BGPSTREAM_PAR_LEN];
+  char dump_project[BGPSTREAM_UTILS_STR_NAME_LEN];
 
   /** Collector name */
-  char dump_collector[BGPSTREAM_PAR_LEN];
+  char dump_collector[BGPSTREAM_UTILS_STR_NAME_LEN];
 
   /** Dump type */
   bgpstream_record_dump_type_t dump_type;

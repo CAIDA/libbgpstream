@@ -66,33 +66,30 @@ typedef struct struct_bgpstream_t bgpstream_t;
 typedef enum {
 
   /** Filter records based on associated project (e.g. 'ris') */
-  BS_PROJECT       = 1,
+  BGPSTREAM_FILTER_TYPE_PROJECT       = 1,
 
   /** Filter records based on collector (e.g. 'rrc01') */
-  BS_COLLECTOR     = 2,
+  BGPSTREAM_FILTER_TYPE_COLLECTOR     = 2,
 
   /** Filter records based on record type (e.g. 'updates') */
-  BS_BGP_TYPE      = 3,
+  BGPSTREAM_FILTER_TYPE_RECORD_TYPE   = 3,
 
-  /** Filter records based on time */
-  BS_TIME_INTERVAL = 4,
-
-} bgpstream_filter_type;
+} bgpstream_filter_type_t;
 
 
 /** Data Interface IDs */
 typedef enum {
 
   /** MySQL data interface */
-  BS_MYSQL      = 1,
+  BGPSTREAM_DATASOURCE_MYSQL      = 1,
 
   /** Customlist interface */
-  BS_CUSTOMLIST = 2,
+  BGPSTREAM_DATASOURCE_CUSTOMLIST = 2,
 
   /** CSV file interface */
-  BS_CSVFILE    = 3,
+  BGPSTREAM_DATASOURCE_CSVFILE    = 3,
 
-} bgpstream_datasource_type;
+} bgpstream_datasource_type_t;
 
 /** @todo REPLACE these with per-interface options */
 typedef enum {
@@ -122,7 +119,7 @@ bgpstream_t *bgpstream_create();
  * @param filter_value  the value to set the filter to
  */
 void bgpstream_add_filter(bgpstream_t *bs,
-                          bgpstream_filter_type filter_type,
+                          bgpstream_filter_type_t filter_type,
 			  const char* filter_value);
 
 /** Add a filter to select a specific time range from the BGP data available
@@ -141,7 +138,7 @@ void bgpstream_add_interval_filter(bgpstream_t *bs,
  * @param if_id         ID of the data interface to use
  */
 void bgpstream_set_data_interface(bgpstream_t *bs,
-                                  bgpstream_datasource_type datasource);
+                                  bgpstream_datasource_type_t datasource);
 
 /** Set a data interface option
  *

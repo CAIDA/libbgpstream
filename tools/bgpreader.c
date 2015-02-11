@@ -239,22 +239,22 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
-  bgpstream_datasource_type datasource_type;
+  bgpstream_datasource_type_t datasource_type;
   if(strcmp(datasource_name, "mysql") == 0)
     {
-      datasource_type = BS_MYSQL;
+      datasource_type = BGPSTREAM_DATASOURCE_MYSQL;
     }
   else
     {
       if(strcmp(datasource_name, "csvfile") == 0)
 	{
-	  datasource_type = BS_CSVFILE;
+	  datasource_type = BGPSTREAM_DATASOURCE_CSVFILE;
 	}
       else
 	{
 	  if(strcmp(datasource_name, "customlist") == 0)
 	    {
-	      datasource_type = BS_CUSTOMLIST;
+	      datasource_type = BGPSTREAM_DATASOURCE_CUSTOMLIST;
 	    }
 	  else
 	    {
@@ -267,9 +267,9 @@ int main(int argc, char *argv[])
 
   // signal if there are incompatible arguments that will be ignored
   if(
-     (datasource_type != BS_MYSQL &&
+     (datasource_type != BGPSTREAM_DATASOURCE_MYSQL &&
      (mysql_dbname != NULL || mysql_user != NULL || mysql_host != NULL) ) ||
-     (datasource_type != BS_CSVFILE && csvfile_file != NULL)
+     (datasource_type != BGPSTREAM_DATASOURCE_CSVFILE && csvfile_file != NULL)
      )
     {
       fprintf(stderr, "WARNING: some of the datasource options provided do not apply\n"
@@ -297,21 +297,21 @@ int main(int argc, char *argv[])
   /* projects */
   for(i=0; i<projects_cnt; i++)
     {
-      bgpstream_add_filter(bs, BS_PROJECT, projects[i]);
+      bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_PROJECT, projects[i]);
       free(projects[i]);
     }
 
   /* collectors */
   for(i=0; i<collectors_cnt; i++)
     {
-      bgpstream_add_filter(bs, BS_COLLECTOR, collectors[i]);
+      bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_COLLECTOR, collectors[i]);
       free(collectors[i]);
     }
 
   /* types */
   for(i=0; i<types_cnt; i++)
     {
-      bgpstream_add_filter(bs, BS_BGP_TYPE, types[i]);
+      bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_RECORD_TYPE, types[i]);
       free(types[i]);
     }
 

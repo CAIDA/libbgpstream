@@ -45,7 +45,7 @@ bgpstream_filter_mgr_t *bgpstream_filter_mgr_create() {
 
 
 void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
-				     bgpstream_filter_type filter_type,
+				     bgpstream_filter_type_t filter_type,
 				     const char* filter_value) {
   bgpstream_debug("\tBSF_MGR:: add_filter start");
   if(bs_filter_mgr == NULL) {
@@ -62,21 +62,17 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
   strcpy(f->value, filter_value);
   // add filter to the appropriate list
   switch(filter_type) {    
-  case BS_PROJECT:
+  case BGPSTREAM_FILTER_TYPE_PROJECT:
     f->next = bs_filter_mgr->projects;
     bs_filter_mgr->projects = f;
     break;
-  case BS_COLLECTOR:
+  case BGPSTREAM_FILTER_TYPE_COLLECTOR:
     f->next = bs_filter_mgr->collectors;
     bs_filter_mgr->collectors = f;
     break;
-  case BS_BGP_TYPE:    
+  case BGPSTREAM_FILTER_TYPE_RECORD_TYPE:
     f->next = bs_filter_mgr->bgp_types;
     bs_filter_mgr->bgp_types = f;
-    break;
-  case BS_TIME_INTERVAL:    
-    free(f);
-    bgpstream_log_warn("\tBSF_MGR: wrong interval filter request - ignoring");   
     break;
   default:
     free(f);

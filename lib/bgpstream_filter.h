@@ -57,7 +57,7 @@ bgpstream_filter_mgr_t *bgpstream_filter_mgr_create();
 
 /* configure filters in order to select a subset of the bgp data available */
 void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
-				     bgpstream_filter_type filter_type,
+				     bgpstream_filter_type_t filter_type,
 				     const char* filter_value);
 
 void bgpstream_filter_mgr_interval_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,

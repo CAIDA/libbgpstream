@@ -91,7 +91,7 @@ typedef struct struct_bgpstream_mysql_datasource_t {
 
 
 typedef struct struct_bgpstream_datasource_mgr_t {  
-  bgpstream_datasource_type datasource;
+  bgpstream_datasource_type_t datasource;
   // datasources available
   bgpstream_mysql_datasource_t *mysql_ds;
   bgpstream_customlist_datasource_t *customlist_ds;
@@ -112,7 +112,7 @@ typedef struct struct_bgpstream_datasource_mgr_t {
 bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create();
 
 void bgpstream_datasource_mgr_set_data_interface(bgpstream_datasource_mgr_t *datasource_mgr,
-						 const bgpstream_datasource_type datasource);
+						 const bgpstream_datasource_type_t datasource);
 
 void bgpstream_datasource_mgr_set_data_interface_option(bgpstream_datasource_mgr_t *datasource_mgr,
 							const bgpstream_datasource_option option_type,
