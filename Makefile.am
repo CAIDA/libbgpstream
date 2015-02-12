@@ -22,7 +22,7 @@
 # along with bgpstream.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-SUBDIRS = common bgpdump-caida lib tools
+SUBDIRS = common lib tools
 
 AM_CPPFLAGS =
 

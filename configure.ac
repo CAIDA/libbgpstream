@@ -145,12 +145,12 @@ AC_HEADER_ASSERT
 
 AC_CONFIG_FILES([Makefile
 		lib/Makefile
+                lib/bgpdump/Makefile
                 lib/utils/Makefile
 		tools/Makefile
 		common/Makefile
 		common/libpatricia/Makefile
 		common/libinterval3/Makefile
 		common/libinterval3/rb_tree/Makefile
-		common/libcsv/Makefile
-                bgpdump-caida/Makefile])
+		common/libcsv/Makefile])
 AC_OUTPUT
