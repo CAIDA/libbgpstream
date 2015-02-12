@@ -175,12 +175,12 @@ void bgpstream_add_interval_filter(bgpstream_t *bs,
   bgpstream_debug("BS: set_filter end");
 }
 
-bgpstream_data_interface_id_t *bgpstream_get_data_interfaces(bgpstream_t *bs,
-                                                          int *if_cnt)
+int bgpstream_get_data_interfaces(bgpstream_t *bs,
+                                  bgpstream_data_interface_id_t **if_ids)
 {
-  assert(if_cnt != NULL);
-  *if_cnt = ARR_CNT(bgpstream_data_interfaces);
-  return bgpstream_data_interfaces;
+  assert(if_ids != NULL);
+  *if_ids = bgpstream_data_interfaces;
+  return ARR_CNT(bgpstream_data_interfaces);
 }
 
 bgpstream_data_interface_id_t
@@ -206,33 +206,32 @@ bgpstream_get_data_interface_info(bgpstream_t *bs,
   return &bgpstream_data_interface_infos[if_id];
 }
 
-bgpstream_data_interface_option_t *
-bgpstream_get_data_interface_options(bgpstream_t *bs,
-                                     bgpstream_data_interface_id_t if_id,
-                                     int *opt_cnt)
+int bgpstream_get_data_interface_options(bgpstream_t *bs,
+                                         bgpstream_data_interface_id_t if_id,
+                                         bgpstream_data_interface_option_t **opts)
 {
-  assert(opt_cnt != NULL);
+  assert(opts != NULL);
 
   switch(if_id)
     {
     case BGPSTREAM_DATA_INTERFACE_MYSQL:
-      *opt_cnt = ARR_CNT(bgpstream_mysql_options);
-      return bgpstream_mysql_options;
+      *opts = bgpstream_mysql_options;
+      return ARR_CNT(bgpstream_mysql_options);
       break;
 
     case BGPSTREAM_DATA_INTERFACE_CUSTOMLIST:
-      *opt_cnt = ARR_CNT(bgpstream_customlist_options);
-      return bgpstream_customlist_options;
+      *opts = bgpstream_customlist_options;
+      return ARR_CNT(bgpstream_customlist_options);
       break;
 
     case BGPSTREAM_DATA_INTERFACE_CSVFILE:
-      *opt_cnt = ARR_CNT(bgpstream_csvfile_options);
-      return bgpstream_csvfile_options;
+      *opts = bgpstream_csvfile_options;
+      return ARR_CNT(bgpstream_csvfile_options);
       break;
 
     default:
-      *opt_cnt = 0;
-      return NULL;
+      *opts = NULL;
+      return 0;
       break;
     }
 }
@@ -246,7 +245,7 @@ bgpstream_get_data_interface_option_by_name(bgpstream_t *bs,
   int opt_cnt = 0;
   int i;
 
-  options = bgpstream_get_data_interface_options(bs, if_id, &opt_cnt);
+  opt_cnt = bgpstream_get_data_interface_options(bs, if_id, &options);
 
   if(options == NULL || opt_cnt == 0)
     {

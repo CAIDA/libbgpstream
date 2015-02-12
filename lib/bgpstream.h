@@ -161,15 +161,16 @@ void bgpstream_add_interval_filter(bgpstream_t *bs,
 /** Get a list of data interfaces that are currently supported
  *
  * @param bs            pointer to the BGP Stream instance
- * @param[out] if_cnt   pointer to a value to be set with the number of elements
  *                      in the returned array
- * @return borrowed pointer to an array of bgpstream_datasource_type_t values
+ * @param[out] if_ids   set to a borrowed pointer to an array of
+ *                      bgpstream_datasource_type_t values
+ * @return the number of elements the the if_ids array
  *
  * @note the returned array belongs to BGP Stream. It must not be freed by the
  * user.
  */
-bgpstream_data_interface_id_t *bgpstream_get_data_interfaces(bgpstream_t *bs,
-                                                             int *if_cnt);
+int bgpstream_get_data_interfaces(bgpstream_t *bs,
+                                  bgpstream_data_interface_id_t **if_ids);
 
 /** Get the ID of the data interface with the given name
  *
@@ -194,17 +195,16 @@ bgpstream_get_data_interface_info(bgpstream_t *bs,
  *
  * @param bs            pointer to a BGP Stream instance
  * @param if_id         ID of the interface to get option names for
- * @param[out] opt_cnt  pointer to a value to be set with the number of options
  *                      in the returned array
- * @return borrowed pointer to an array of options
+ * @param[out] opts     set to a borrowed pointer to an array of options
+ * @return the number of elements in the opts array
  *
  * @note the returned array belongs to BGP Stream. It must not be freed by the
  * user.
  */
-bgpstream_data_interface_option_t *
-bgpstream_get_data_interface_options(bgpstream_t *bs,
-                                     bgpstream_data_interface_id_t if_id,
-                                     int *opt_cnt);
+int bgpstream_get_data_interface_options(bgpstream_t *bs,
+                                      bgpstream_data_interface_id_t if_id,
+                                      bgpstream_data_interface_option_t **opts);
 
 /** Get the data interface option for the given data interface and option name
  *

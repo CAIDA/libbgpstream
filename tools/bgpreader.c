@@ -58,7 +58,7 @@ void data_if_usage() {
 
   bgpstream_data_interface_info_t *info = NULL;
 
-  ids = bgpstream_get_data_interfaces(bs, &id_cnt);
+  id_cnt = bgpstream_get_data_interfaces(bs, &ids);
 
   for(i=0; i<id_cnt; i++)
     {
@@ -76,7 +76,7 @@ void dump_if_options() {
   int opt_cnt = 0;
   int i;
 
-  options = bgpstream_get_data_interface_options(bs, datasource_id, &opt_cnt);
+  opt_cnt = bgpstream_get_data_interface_options(bs, datasource_id, &options);
 
   fprintf(stderr, "Data interface options for '%s':\n", datasource_name);
   if(opt_cnt == 0)
