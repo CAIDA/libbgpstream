@@ -84,7 +84,7 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
   datasource_mgr->mysql_ds = NULL;
   datasource_mgr->customlist_ds = NULL;
   datasource_mgr->csvfile_ds = NULL;
-  datasource_mgr->status = DS_OFF;
+  datasource_mgr->status = BGPSTREAM_DATASOURCE_STATUS_OFF;
   // datasource options
   datasource_mgr->mysql_dbname = NULL;
   datasource_mgr->mysql_user = NULL;
@@ -172,29 +172,29 @@ void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
 								 datasource_mgr->mysql_user,
 								 datasource_mgr->mysql_host);
     if(datasource_mgr->mysql_ds == NULL) {
-      datasource_mgr->status = DS_ERROR;
+      datasource_mgr->status = BGPSTREAM_DATASOURCE_STATUS_ERROR;
     } 
     else {
-      datasource_mgr->status = DS_ON;
+      datasource_mgr->status = BGPSTREAM_DATASOURCE_STATUS_ON;
     }
   }
   if (datasource_mgr->datasource == BGPSTREAM_DATA_INTERFACE_CUSTOMLIST) {
     datasource_mgr->customlist_ds = bgpstream_customlist_datasource_create(filter_mgr);
     if(datasource_mgr->customlist_ds == NULL) {
-      datasource_mgr->status = DS_ERROR;
+      datasource_mgr->status = BGPSTREAM_DATASOURCE_STATUS_ERROR;
     } 
     else {
-      datasource_mgr->status = DS_ON;
+      datasource_mgr->status = BGPSTREAM_DATASOURCE_STATUS_ON;
     }
   }
   if (datasource_mgr->datasource == BGPSTREAM_DATA_INTERFACE_CSVFILE) {
     datasource_mgr->csvfile_ds = bgpstream_csvfile_datasource_create(filter_mgr,
 								     datasource_mgr->csvfile_file);
     if(datasource_mgr->csvfile_ds == NULL) {
-      datasource_mgr->status = DS_ERROR;
+      datasource_mgr->status = BGPSTREAM_DATASOURCE_STATUS_ERROR;
     } 
     else {
-      datasource_mgr->status = DS_ON;
+      datasource_mgr->status = BGPSTREAM_DATASOURCE_STATUS_ON;
     }
   }
   // if none of the datasources is matched the status of the DS is not set to ON
@@ -269,7 +269,7 @@ void bgpstream_datasource_mgr_close(bgpstream_datasource_mgr_t *datasource_mgr) 
     datasource_mgr->csvfile_ds = NULL;
   }
 
-  datasource_mgr->status = DS_OFF;
+  datasource_mgr->status = BGPSTREAM_DATASOURCE_STATUS_OFF;
   bgpstream_debug("\tBSDS_MGR: close end");
 }
 

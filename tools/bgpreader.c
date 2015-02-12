@@ -397,7 +397,7 @@ int main(int argc, char *argv[])
 	{
 	  print_bs_record(bs_record);
 	}
-      if(get_next_ret && bs_record->status == VALID_RECORD)
+      if(get_next_ret && bs_record->status == BGPSTREAM_RECORD_STATUS_VALID_RECORD)
 	{
 	  if(record_bgpdump_output_on)
 	    {
@@ -463,15 +463,15 @@ static char *get_record_status_str(bgpstream_record_status_t status)
 {
   switch(status)
     {
-    case VALID_RECORD:
+    case BGPSTREAM_RECORD_STATUS_VALID_RECORD:
       return "valid_record";
-    case FILTERED_SOURCE:
+    case BGPSTREAM_RECORD_STATUS_FILTERED_SOURCE:
       return "filtered_source";
-    case EMPTY_SOURCE:
+    case BGPSTREAM_RECORD_STATUS_EMPTY_SOURCE:
       return "empty_source";
-    case CORRUPTED_SOURCE:
+    case BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE:
       return "corrupted_source";
-    case CORRUPTED_RECORD:
+    case BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD:
       return "corrupted_record";
     }
   return "";

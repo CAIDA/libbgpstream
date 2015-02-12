@@ -675,7 +675,7 @@ static bgpstream_elem_t *bgp_state_change(BGPDUMP_ENTRY *entry) {
 bgpstream_elem_t *bgpstream_elem_queue_create(bgpstream_record_t *bs_record) {
 
   if(bs_record == NULL || bs_record->bd_entry == NULL ||
-     bs_record->status != VALID_RECORD) {
+     bs_record->status != BGPSTREAM_RECORD_STATUS_VALID_RECORD) {
     return NULL;
   }
   switch(bs_record->bd_entry->type) {

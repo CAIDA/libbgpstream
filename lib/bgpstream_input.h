@@ -41,7 +41,10 @@ typedef struct struct_bgpstream_input_t {
 } bgpstream_input_t;
 
 
-typedef enum {EMPTY_INPUT_QUEUE, NON_EMPTY_INPUT_QUEUE} bgpstream_input_mgr_status_t;
+typedef enum {
+  BGPSTREAM_INPUT_MGR_STATUS_EMPTY_INPUT_QUEUE,
+  BGPSTREAM_INPUT_MGR_STATUS_NON_EMPTY_INPUT_QUEUE
+} bgpstream_input_mgr_status_t;
 
 typedef struct struct_bgpstream_input_mgr_t {
   bgpstream_input_t *head;

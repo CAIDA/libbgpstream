@@ -34,7 +34,11 @@
 #include "bgpstream_filter.h"
 
 
-typedef enum {ALLOCATED, ON, OFF} bgpstream_status;
+typedef enum {
+  BGPSTREAM_STATUS_ALLOCATED,
+  BGPSTREAM_STATUS_ON,
+  BGPSTREAM_STATUS_OFF
+} bgpstream_status;
 
 struct struct_bgpstream_t {
   bgpstream_input_mgr_t *input_mgr;

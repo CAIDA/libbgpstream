@@ -32,7 +32,6 @@
 #include "bgpstream_debug.h"
 
 
-
 /* -------------- Reader functions -------------- */
 
 static bool bgpstream_reader_filter_bd_entry(const BGPDUMP_ENTRY * const bd_entry, 
@@ -68,12 +67,12 @@ static void bgpstream_reader_read_new_data(bgpstream_reader_t * const bs_reader,
     bgpstream_debug("\t\tBSR: read new data: invalid reader provided");    
     return;
   }  
-  if(bs_reader->status != VALID_ENTRY) {
+  if(bs_reader->status != BGPSTREAM_READER_STATUS_VALID_ENTRY) {
     bgpstream_debug("\t\tBSR: read new data: reader cannot read new data (previous read was not successful)");    
     return;
   }  
   // if a valid record was read before (or it is the first time we read something)
-  // assert(bs_reader->status == VALID_ENTRY)
+  // assert(bs_reader->status == BGPSTREAM_READER_STATUS_VALID_ENTRY)
   bgpstream_debug("\t\tBSR: read new data: bd_entry has to be set to NULL");
   // entry should not be destroyed, otherwise we could destroy
   // what is in the current record, the next export record will take
@@ -83,7 +82,7 @@ static void bgpstream_reader_read_new_data(bgpstream_reader_t * const bs_reader,
   // reading a new value
   if(bs_reader->bd_mgr->eof != 0) {
     bgpstream_debug("\t\tBSR: read new data: end of file reached");      
-    bs_reader->status = END_OF_DUMP;
+    bs_reader->status = BGPSTREAM_READER_STATUS_END_OF_DUMP;
     return;
   }
   bgpstream_debug("\t\tBSR: read new data (previous): %ld\t%ld\t%s\t%s\t%d",  
@@ -104,7 +103,7 @@ static void bgpstream_reader_read_new_data(bgpstream_reader_t * const bs_reader,
       if(bgpstream_reader_filter_bd_entry(bs_reader->bd_entry, filter_mgr)) {
 	// update reader fields
 	bs_reader->valid_read++;
-	bs_reader->status = VALID_ENTRY;
+	bs_reader->status = BGPSTREAM_READER_STATUS_VALID_ENTRY;
 	bs_reader->record_time = (long) bs_reader->bd_entry->time;
 	significant_entry = true;
       }
@@ -120,7 +119,7 @@ static void bgpstream_reader_read_new_data(bgpstream_reader_t * const bs_reader,
       // if the corrupted entry flag is
       // active, then dump is corrupted
       if(bs_reader->bd_mgr->corrupted_read) {
-	bs_reader->status = CORRUPTED_DUMP;
+	bs_reader->status = BGPSTREAM_READER_STATUS_CORRUPTED_DUMP;
 	significant_entry = true;	
       }
       // empty read, not corrupted
@@ -130,19 +129,19 @@ static void bgpstream_reader_read_new_data(bgpstream_reader_t * const bs_reader,
 	  significant_entry = true;
 	  if(bs_reader->successful_read == 0) {
 	    // file was empty
-	    bs_reader->status = EMPTY_DUMP;
+	    bs_reader->status = BGPSTREAM_READER_STATUS_EMPTY_DUMP;
 	  }
 	  else {
 	    if(bs_reader->valid_read == 0) {
 	      // valid contained entries, but
 	      // none of them was compatible with
 	      // filters
-	      bs_reader->status = FILTERED_DUMP;
+	      bs_reader->status = BGPSTREAM_READER_STATUS_FILTERED_DUMP;
 	    }
 	    else {
 	      // something valid has been read before
 	      // reached the end of file
-	      bs_reader->status = END_OF_DUMP;	
+	      bs_reader->status = BGPSTREAM_READER_STATUS_END_OF_DUMP;	
 	    }
 	  }
 	}	  
@@ -192,7 +191,7 @@ static bgpstream_reader_t * bgpstream_reader_create(const bgpstream_input_t * co
   strcpy(bs_reader->dump_type, bs_input->filetype);
   bs_reader->dump_time = bs_input->epoch_filetime;
   bs_reader->record_time = bs_input->epoch_filetime;
-  bs_reader->status = VALID_ENTRY; // let's be optimistic :)
+  bs_reader->status = BGPSTREAM_READER_STATUS_VALID_ENTRY; // let's be optimistic :)
   bs_reader->valid_read = 0;
   bs_reader->successful_read = 0;
   // open bgpdump
@@ -200,7 +199,7 @@ static bgpstream_reader_t * bgpstream_reader_create(const bgpstream_input_t * co
   bs_reader->bd_mgr = bgpdump_open_dump(bs_reader->dump_name);   
   if(bs_reader->bd_mgr == NULL) {     
     bgpstream_debug("\t\tBSR: create reader: bgpdump_open_dump fails to open");
-    bs_reader->status = CANT_OPEN_DUMP;
+    bs_reader->status = BGPSTREAM_READER_STATUS_CANT_OPEN_DUMP;
     return bs_reader; // can't open bgpdump
   }
   // call bgpstream_reader_read_new_data
@@ -224,9 +223,9 @@ static void bgpstream_reader_export_record(bgpstream_reader_t * const bs_reader,
     bgpstream_debug("\t\tBSR: export record: invalid record provided");    
     return;
   }  
-  // if bs_reader status is END_OF_DUMP we shouldn't have called this
+  // if bs_reader status is BGPSTREAM_READER_STATUS_END_OF_DUMP we shouldn't have called this
   // function
-  if(bs_reader->status == END_OF_DUMP) {
+  if(bs_reader->status == BGPSTREAM_READER_STATUS_END_OF_DUMP) {
     bgpstream_debug("\t\tBSR: export record: end of dump was reached");    
     return;
   }  
@@ -267,23 +266,23 @@ static void bgpstream_reader_export_record(bgpstream_reader_t * const bs_reader,
   }
   bgpstream_debug("\t\tBSR: export record: copying status");    
   switch(bs_reader->status){
-  case VALID_ENTRY:
-    bs_record->status = VALID_RECORD;
+  case BGPSTREAM_READER_STATUS_VALID_ENTRY:
+    bs_record->status = BGPSTREAM_RECORD_STATUS_VALID_RECORD;
     break;
-  case FILTERED_DUMP:
-    bs_record->status = FILTERED_SOURCE;
+  case BGPSTREAM_READER_STATUS_FILTERED_DUMP:
+    bs_record->status = BGPSTREAM_RECORD_STATUS_FILTERED_SOURCE;
     break;
-  case EMPTY_DUMP:
-    bs_record->status = EMPTY_SOURCE;
+  case BGPSTREAM_READER_STATUS_EMPTY_DUMP:
+    bs_record->status = BGPSTREAM_RECORD_STATUS_EMPTY_SOURCE;
     break;
-  case CANT_OPEN_DUMP:
-    bs_record->status = CORRUPTED_SOURCE;
+  case BGPSTREAM_READER_STATUS_CANT_OPEN_DUMP:
+    bs_record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE;
     break;
-  case CORRUPTED_DUMP:
-    bs_record->status = CORRUPTED_RECORD;
+  case BGPSTREAM_READER_STATUS_CORRUPTED_DUMP:
+    bs_record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
     break;
   default:
-    bs_record->status = EMPTY_SOURCE;
+    bs_record->status = BGPSTREAM_RECORD_STATUS_EMPTY_SOURCE;
   }
   bgpstream_debug("Exported: %ld\t%ld\t%d\t%s\t%d", 		   
 		   bs_record->attributes.record_time,
@@ -348,7 +347,7 @@ bgpstream_reader_mgr_t * bgpstream_reader_mgr_create(const bgpstream_filter_mgr_
   bgpstream_debug("\tBSR_MGR: create reader mgr: initialization");
   bs_reader_mgr->reader_queue = NULL;
   bs_reader_mgr->filter_mgr = filter_mgr;
-  bs_reader_mgr->status = EMPTY_READER_MGR;
+  bs_reader_mgr->status = BGPSTREAM_READER_MGR_STATUS_EMPTY_READER_MGR;
   bgpstream_debug("\tBSR_MGR: create reader mgr: end");
   return bs_reader_mgr;
 }
@@ -360,7 +359,7 @@ bool bgpstream_reader_mgr_is_empty(const bgpstream_reader_mgr_t * const bs_reade
   bgpstream_debug("\tBSR_MGR: is_empty end: empty!");
     return true;
   }
-  if(bs_reader_mgr->status == EMPTY_READER_MGR) {
+  if(bs_reader_mgr->status == BGPSTREAM_READER_MGR_STATUS_EMPTY_READER_MGR) {
     bgpstream_debug("\tBSR_MGR: is_empty end: empty!");
     return true;
   }
@@ -389,10 +388,10 @@ static void bgpstream_reader_mgr_sorted_insert(bgpstream_reader_mgr_t * const bs
   // insert new reader in priority queue
   while(!inserted) {    
     // case 1: insertion in empty queue (reader_queue == NULL)
-    if(bs_reader_mgr->status == EMPTY_READER_MGR) {
+    if(bs_reader_mgr->status == BGPSTREAM_READER_MGR_STATUS_EMPTY_READER_MGR) {
       bs_reader_mgr->reader_queue = bs_reader;
       bs_reader->next = NULL;
-      bs_reader_mgr->status = NON_EMPTY_READER_MGR;  
+      bs_reader_mgr->status = BGPSTREAM_READER_MGR_STATUS_NON_EMPTY_READER_MGR;  
       inserted = true;
       continue;
     }
@@ -513,7 +512,7 @@ int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reade
     bgpstream_debug("BSR_MGR: get_next_record: null record provided");    
     return -1;
   }
-  if(bs_reader_mgr->status == EMPTY_READER_MGR) {
+  if(bs_reader_mgr->status == BGPSTREAM_READER_MGR_STATUS_EMPTY_READER_MGR) {
     bgpstream_debug("\tBSR_MGR: get_next_record: empty reader mgr");    
     return 0;
   }
@@ -521,7 +520,7 @@ int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reade
   bgpstream_reader_t *bs_reader = bs_reader_mgr->reader_queue;
   bs_reader_mgr->reader_queue = bs_reader_mgr->reader_queue->next;
   if(bs_reader_mgr->reader_queue == NULL) { // check if last reader
-    bs_reader_mgr->status = EMPTY_READER_MGR;
+    bs_reader_mgr->status = BGPSTREAM_READER_MGR_STATUS_EMPTY_READER_MGR;
   }
   // disconnect reader from the queue
   bs_reader->next = NULL;
@@ -533,11 +532,11 @@ int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reade
   int read_diff = bs_reader->successful_read - bs_reader->valid_read;
   // if previous read was successful, we read next
   // entry from same reader
-  if(bs_reader->status == VALID_ENTRY) {
+  if(bs_reader->status == BGPSTREAM_READER_STATUS_VALID_ENTRY) {
     bgpstream_reader_read_new_data(bs_reader, filter_mgr);
     // if end of dump is reached after a successful read (already exported)
     // we destroy the reader
-    if(bs_reader->status == END_OF_DUMP) {
+    if(bs_reader->status == BGPSTREAM_READER_STATUS_END_OF_DUMP) {
       if((bs_reader->successful_read - bs_reader->valid_read) == read_diff) {
 	bs_record->dump_pos = BGPSTREAM_DUMP_END;
       }
@@ -576,7 +575,7 @@ void bgpstream_reader_mgr_destroy(bgpstream_reader_mgr_t * const bs_reader_mgr) 
     bs_reader_mgr->reader_queue = iterator->next;
     bgpstream_reader_destroy(iterator);
   }
-  bs_reader_mgr->status = EMPTY_READER_MGR;
+  bs_reader_mgr->status = BGPSTREAM_READER_MGR_STATUS_EMPTY_READER_MGR;
   free(bs_reader_mgr);
   bgpstream_debug("\tBSR_MGR: destroy reader mgr: end");
 }

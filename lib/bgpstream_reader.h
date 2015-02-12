@@ -36,12 +36,13 @@
 #include <stdbool.h>
 
 
-typedef enum {VALID_ENTRY, 
-	      FILTERED_DUMP, 
-	      EMPTY_DUMP, 
-	      CANT_OPEN_DUMP, 
-	      CORRUPTED_DUMP, 
-	      END_OF_DUMP
+typedef enum {
+  BGPSTREAM_READER_STATUS_VALID_ENTRY, 
+  BGPSTREAM_READER_STATUS_FILTERED_DUMP, 
+  BGPSTREAM_READER_STATUS_EMPTY_DUMP, 
+  BGPSTREAM_READER_STATUS_CANT_OPEN_DUMP, 
+  BGPSTREAM_READER_STATUS_CORRUPTED_DUMP, 
+  BGPSTREAM_READER_STATUS_END_OF_DUMP
 } bgpstream_reader_status_t;
 
 typedef struct struct_bgpstream_reader_t {
@@ -59,8 +60,10 @@ typedef struct struct_bgpstream_reader_t {
   bgpstream_reader_status_t status;
 } bgpstream_reader_t;
 
-
-typedef enum {EMPTY_READER_MGR,NON_EMPTY_READER_MGR} bgpstream_reader_mgr_status_t;
+typedef enum {
+  BGPSTREAM_READER_MGR_STATUS_EMPTY_READER_MGR,
+  BGPSTREAM_READER_MGR_STATUS_NON_EMPTY_READER_MGR
+} bgpstream_reader_mgr_status_t;
 
 typedef struct struct_bgpstream_reader_mgr_t {
   bgpstream_reader_t *reader_queue;

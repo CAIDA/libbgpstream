@@ -35,9 +35,10 @@
 #include <mysql.h>
 
 
-typedef enum {DS_ON,    /* current data source is on */
-	      DS_OFF,   /* current data source is off */
-	      DS_ERROR  /* current data source generated an error */
+typedef enum {
+  BGPSTREAM_DATASOURCE_STATUS_ON,    /* current data source is on */
+  BGPSTREAM_DATASOURCE_STATUS_OFF,   /* current data source is off */
+  BGPSTREAM_DATASOURCE_STATUS_ERROR  /* current data source generated an error */
 } bgpstream_datasource_status_t;
 
 

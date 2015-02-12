@@ -39,7 +39,7 @@ bgpstream_record_t *bgpstream_record_create() {
     return NULL; // can't allocate memory
   }
   bs_record->bd_entry = NULL;
-  bs_record->status = EMPTY_SOURCE;
+  bs_record->status = BGPSTREAM_RECORD_STATUS_EMPTY_SOURCE;
   bs_record->dump_pos = BGPSTREAM_DUMP_START;
   strcpy(bs_record->attributes.dump_project, "");
   strcpy(bs_record->attributes.dump_collector, "");

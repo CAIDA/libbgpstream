@@ -93,19 +93,20 @@ typedef enum {
 typedef enum {
 
   /** The record is valid and may be used */
-  VALID_RECORD     = 0,
+  BGPSTREAM_RECORD_STATUS_VALID_RECORD     = 0,
 
   /** Source is not empty, but no valid record was found */
-  FILTERED_SOURCE  = 1,
+  BGPSTREAM_RECORD_STATUS_FILTERED_SOURCE  = 1,
 
   /** Source has no entries */
-  EMPTY_SOURCE     = 2,
+  BGPSTREAM_RECORD_STATUS_EMPTY_SOURCE     = 2,
 
   /* Error in opening dump */
-  CORRUPTED_SOURCE = 3,
+  BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE = 3,
 
   /* Dump corrupted at some point */
-  CORRUPTED_RECORD = 4,
+  BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD = 4,
+
 } bgpstream_record_status_t;
 
 /** @} */

@@ -60,7 +60,7 @@ bgpstream_input_mgr_t *bgpstream_input_mgr_create() {
   bs_input_mgr->head = NULL;
   bs_input_mgr->tail = NULL;
   bs_input_mgr->last_to_process = NULL;
-  bs_input_mgr->status = EMPTY_INPUT_QUEUE;
+  bs_input_mgr->status = BGPSTREAM_INPUT_MGR_STATUS_EMPTY_INPUT_QUEUE;
   bs_input_mgr->epoch_minimum_date = 0;
   bs_input_mgr->epoch_last_ts_input = 0;
   bgpstream_debug("\tBSI_MGR: create input mgr end ");
@@ -72,7 +72,7 @@ bgpstream_input_mgr_t *bgpstream_input_mgr_create() {
  */
 bool bgpstream_input_mgr_is_empty(const bgpstream_input_mgr_t * const bs_input_mgr) {
   bgpstream_debug("\tBSI_MGR: is empty start");
-  if(bs_input_mgr != NULL && bs_input_mgr->status != EMPTY_INPUT_QUEUE) {
+  if(bs_input_mgr != NULL && bs_input_mgr->status != BGPSTREAM_INPUT_MGR_STATUS_EMPTY_INPUT_QUEUE) {
     bgpstream_debug("\tBSI_MGR: is empty end: not empty!");
     return false;
   }
@@ -111,12 +111,12 @@ int bgpstream_input_mgr_push_sorted_input(bgpstream_input_mgr_t * const bs_input
   bs_input->epoch_filetime = epoch_filetime;
 
   // update the bs_input_mgr
-  if(bs_input_mgr->status == EMPTY_INPUT_QUEUE) {
+  if(bs_input_mgr->status == BGPSTREAM_INPUT_MGR_STATUS_EMPTY_INPUT_QUEUE) {
     // if the queue is empty a new input is added
     // as first element
     bs_input_mgr->head = bs_input;
     bs_input_mgr->tail = bs_input;
-    bs_input_mgr->status = NON_EMPTY_INPUT_QUEUE;
+    bs_input_mgr->status = BGPSTREAM_INPUT_MGR_STATUS_NON_EMPTY_INPUT_QUEUE;
   }
   else {
     // otherwise we scan the queue until we
@@ -324,7 +324,7 @@ bgpstream_input_t *bgpstream_input_mgr_get_queue_to_process(bgpstream_input_mgr_
   if(bs_input_mgr == NULL) {
     return NULL; // if the bs_input_mgr is not initialized, then we cannot remove any input
   }
-  if(bs_input_mgr->status == EMPTY_INPUT_QUEUE){
+  if(bs_input_mgr->status == BGPSTREAM_INPUT_MGR_STATUS_EMPTY_INPUT_QUEUE){
     return NULL; // can't get a sublist from an empty queue
   }
   /* this is the only function that call the function 
@@ -342,7 +342,7 @@ bgpstream_input_t *bgpstream_input_mgr_get_queue_to_process(bgpstream_input_mgr_
   bs_input_mgr->last_to_process = NULL; // reset last_to_process ptr
   if(bs_input_mgr->head == NULL) { // check if we removed the entire queue
     bs_input_mgr->tail = NULL;
-    bs_input_mgr->status = EMPTY_INPUT_QUEUE;
+    bs_input_mgr->status = BGPSTREAM_INPUT_MGR_STATUS_EMPTY_INPUT_QUEUE;
   }
   print_input_queue(to_process);
   bgpstream_debug("\tBSI_MGR: get subqueue to process end");
