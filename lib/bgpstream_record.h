@@ -27,6 +27,7 @@
 #define __BGPSTREAM_RECORD_H
 
 #include <bgpstream_utils.h>
+#include <bgpstream_elem.h>
 
 /** @file
  *
@@ -144,6 +145,9 @@ typedef struct struct_bgpstream_record_t {
   /** INTERNAL: buffer containing the underlying MRT data for the record */
   bgpstream_record_mrt_data_t *bd_entry;
 
+  /** INTERNAL: state used to generate elems for get_next_elem */
+  struct bgpstream_elem_generator *elem_generator;
+
   /** Collection of attributes pertaining to this record */
   bgpstream_record_attributes_t attributes;
 
@@ -177,6 +181,28 @@ bgpstream_record_t *bgpstream_record_create();
  * @param record        pointer to a BGP Stream Record instance to destroy
  */
 void bgpstream_record_destroy(bgpstream_record_t *record);
+
+/** Clear the given BGP Stream Record instance
+ *
+ * @param record        pointer to a BGP Stream Record instance to clear
+ *
+ * @note the record passed to bgpstream_get_next_record is automatically
+ * cleaned.
+ */
+void bgpstream_record_clear(bgpstream_record_t *record);
+
+/** Retrieve the next elem from the record
+ *
+ * @param record        pointer to the BGP Stream Record to retrieve the elem
+ *                      from
+ * @return borrowed pointer to the next Elem in the record, NULL if there are no
+ * more Elems
+ *
+ * The returned pointer is guaranteed to be valid until the record is re-used in
+ * a subsequent call to bgpstream_get_next_record, or is destroyed with
+ * bgpstream_record_destroy
+ */
+bgpstream_elem_t *bgpstream_record_get_next_elem(bgpstream_record_t *record);
 
 /** Dump the given record to stdout in bgpdump format
  *

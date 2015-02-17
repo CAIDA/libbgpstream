@@ -27,7 +27,6 @@
 #define __BGPSTREAM_ELEM_H
 
 #include <bgpstream_utils.h>
-#include <bgpstream_record.h>
 
 /** @file
  *
@@ -36,6 +35,13 @@
  * @author Chiara Orsini
  *
  */
+
+/**
+ * @name Public Opaque Data Structures
+ *
+ * @{ */
+
+/** @} */
 
 /**
  * @name Public Enums
@@ -146,9 +152,6 @@ typedef struct struct_bgpstream_elem_t {
    */
   bgpstream_elem_peerstate_t new_state;
 
-  /** Pointer to the next elem in the queue */
-  struct struct_bgpstream_elem_t *next;
-
 } bgpstream_elem_t;
 
 /** @} */
@@ -157,22 +160,6 @@ typedef struct struct_bgpstream_elem_t {
  * @name Public API Functions
  *
  * @{ */
-
-/** Extract a list of elements from the given BGP Stream Record
- *
- * @param record        pointer to a BGP Stream Record instance
- * @return pointer to a linked-list of bgpstream_elem_t objects
- *
- * @note the returned elem list must be destroyed using
- * bgpstream_elem_queue_destroy
- */
-bgpstream_elem_t *bgpstream_elem_queue_create(bgpstream_record_t *record);
-
-/** Destroy the given linked-list of Elem instances
- *
- * @param elem_queue    pointer to a linked-list of elems
- */
-void bgpstream_elem_queue_destroy(bgpstream_elem_t *elem_queue);
 
 /** Write the string representation of the elem type into the provided buffer
  *

@@ -229,14 +229,6 @@ static void bgpstream_reader_export_record(bgpstream_reader_t * const bs_reader,
     bgpstream_debug("\t\tBSR: export record: end of dump was reached");    
     return;
   }  
-  // if bs_record contains an initialized bgpdump entry we destroy it
-  if(bs_record->bd_entry != NULL) {
-    bgpstream_debug("\t\tBSR: export record: free memory for bgpdump entry");    
-    // at this point the client/user has already used (or made a
-    // a copy of) the record
-    bgpdump_free_mem(bs_record->bd_entry);
-    bs_record->bd_entry = NULL;
-  }
   // read bgpstream_reader field and copy them to a bs_record
   bgpstream_debug("\t\tBSR: export record: copying bd_entry");    
   bs_record->bd_entry = bs_reader->bd_entry;

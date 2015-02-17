@@ -348,6 +348,10 @@ int bgpstream_get_next_record(bgpstream_t *bs,
   // bgpstream_record_t *record = NULL;
   int num_query_results = 0;
   bgpstream_input_t *bs_in = NULL;
+
+  // if bs_record contains an initialized bgpdump entry we destroy it
+  bgpstream_record_clear(record);
+
   while(bgpstream_reader_mgr_is_empty(bs->reader_mgr)) {
     bgpstream_debug("BS: reader mgr is empty");
     // get new data to process and set the reader_mgr

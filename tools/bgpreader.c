@@ -388,8 +388,7 @@ int main(int argc, char *argv[])
 
   // use the interface
   int get_next_ret = 0;
-  bgpstream_elem_t * bs_elem_head;
-  bgpstream_elem_t * bs_elem_iterator;
+  bgpstream_elem_t * bs_elem;
   do
     {
       get_next_ret = bgpstream_get_next_record(bs, bs_record);
@@ -405,15 +404,11 @@ int main(int argc, char *argv[])
 	    }
 	  if(elem_output_on)
 	    {
-	      // extract queue
-	      bs_elem_head = bgpstream_elem_queue_create(bs_record);
-	      bs_elem_iterator = bs_elem_head;
-	      while(bs_elem_iterator)
+	      while((bs_elem =
+                     bgpstream_record_get_next_elem(bs_record)) != NULL)
 		{
-		  print_elem(bs_elem_iterator);
-		  bs_elem_iterator = bs_elem_iterator->next;
+		  print_elem(bs_elem);
 		}
-	      bgpstream_elem_queue_destroy(bs_elem_head);
 	    }
 	}
   }
