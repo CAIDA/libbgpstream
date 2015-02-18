@@ -1,12 +1,21 @@
 /*
- * libbgpstream
+ * This file is part of bgpstream
  *
- * Chiara Orsini, CAIDA, UC San Diego
- * chiara@caida.org
+ * Copyright (C) 2015 The Regents of the University of California.
+ * Authors: Alistair King, Chiara Orsini
  *
- * Copyright (C) 2013 The Regents of the University of California.
+ * All rights reserved.
  *
- * http://c.learncodethehardway.org/book/ex20.html
+ * This code has been developed by CAIDA at UC San Diego.
+ * For more information, contact bgpstream-info@caida.org
+ *
+ * This source code is proprietary to the CAIDA group at UC San Diego and may
+ * not be redistributed, published or disclosed without prior permission from
+ * CAIDA.
+ *
+ * Report any bugs, questions or comments to bgpstream-info@caida.org
+ *
+ * Some code adapted from http://c.learncodethehardway.org/book/ex20.html
  *
  */
 
