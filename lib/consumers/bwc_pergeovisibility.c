@@ -1,25 +1,19 @@
 /*
- * bgpwatcher
- *
- * Chiara Orsini, CAIDA, UC San Diego
- * corsaro-info@caida.org
+ * This file is part of bgpwatcher
  *
  * Copyright (C) 2015 The Regents of the University of California.
+ * Authors: Alistair King, Chiara Orsini
  *
- * This file is part of bgpwatcher.
+ * All rights reserved.
  *
- * bgpwatcher is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This code has been developed by CAIDA at UC San Diego.
+ * For more information, contact bgpstream-info@caida.org
  *
- * bgpwatcher is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This source code is proprietary to the CAIDA group at UC San Diego and may
+ * not be redistributed, published or disclosed without prior permission from
+ * CAIDA.
  *
- * You should have received a copy of the GNU General Public License
- * along with bgpwatcher.  If not, see <http://www.gnu.org/licenses/>.
+ * Report any bugs, questions or comments to bgpstream-info@caida.org
  *
  */
 
