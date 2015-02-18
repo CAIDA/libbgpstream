@@ -348,12 +348,10 @@ int process_mrtd_table_dump(struct mstream *s,BGPDUMP_ENTRY *entry) {
   case BGPDUMP_SUBTYPE_MRTD_TABLE_DUMP_AFI_IP_32BIT_AS:
     entry->body.mrtd_table_dump.prefix.v4_addr = mstream_get_ipv4(s);
     break;
-#ifdef BGPDUMP_HAVE_IPV6
   case BGPDUMP_SUBTYPE_MRTD_TABLE_DUMP_AFI_IP6:
   case BGPDUMP_SUBTYPE_MRTD_TABLE_DUMP_AFI_IP6_32BIT_AS:
     mstream_get(s, &entry->body.mrtd_table_dump.prefix.v6_addr.s6_addr, 16);
     break;
-#endif
   default:
     bgpdump_warn("process_mrtd_table_dump: unknown AFI %d",  afi);
     mstream_get(s, NULL, mstream_can_read(s));
@@ -369,12 +367,10 @@ int process_mrtd_table_dump(struct mstream *s,BGPDUMP_ENTRY *entry) {
   case BGPDUMP_SUBTYPE_MRTD_TABLE_DUMP_AFI_IP_32BIT_AS:
     entry->body.mrtd_table_dump.peer_ip.v4_addr = mstream_get_ipv4(s);
     break;
-#ifdef BGPDUMP_HAVE_IPV6
   case BGPDUMP_SUBTYPE_MRTD_TABLE_DUMP_AFI_IP6:
   case BGPDUMP_SUBTYPE_MRTD_TABLE_DUMP_AFI_IP6_32BIT_AS:
     mstream_get(s, &entry->body.mrtd_table_dump.peer_ip.v6_addr.s6_addr, 16);
     break;
-#endif
   }
 
   switch(afi) {
@@ -462,19 +458,15 @@ int process_mrtd_table_dump_v2_peer_index_table(struct mstream *s,BGPDUMP_ENTRY 
   for(i=0; i < t->peer_count; i++) {
     mstream_getc(s,&peertype);
     t->entries[i].afi = AFI_IP;
-#ifdef BGPDUMP_HAVE_IPV6
     if(peertype & BGPDUMP_PEERTYPE_TABLE_DUMP_V2_AFI_IP6)
       t->entries[i].afi = AFI_IP6;
-#endif
-
+    
     t->entries[i].peer_bgp_id = mstream_get_ipv4(s);
 
     if(t->entries[i].afi == AFI_IP)
       t->entries[i].peer_ip.v4_addr = mstream_get_ipv4(s);
-#ifdef BGPDUMP_HAVE_IPV6
     else
       mstream_get(s, &t->entries[i].peer_ip.v6_addr.s6_addr, 16);
-#endif
 
 
     if(peertype & BGPDUMP_PEERTYPE_TABLE_DUMP_V2_AS4)
@@ -523,7 +515,6 @@ int process_mrtd_table_dump_v2_ipv4_unicast(struct mstream *s, BGPDUMP_ENTRY *en
 
 
 int process_mrtd_table_dump_v2_ipv6_unicast(struct mstream *s, BGPDUMP_ENTRY *entry){
-#ifdef BGPDUMP_HAVE_IPV6
   BGPDUMP_TABLE_DUMP_V2_PREFIX *prefixdata;
   prefixdata = &entry->body.mrtd_table_dump_v2_prefix;
   uint16_t i;
@@ -556,7 +547,6 @@ int process_mrtd_table_dump_v2_ipv6_unicast(struct mstream *s, BGPDUMP_ENTRY *en
     e->attr = process_attributes(s, 4, NULL);
   }
 
-#endif
   return 1;
 }
 
@@ -616,7 +606,6 @@ int process_zebra_bgp_state_change(struct mstream *s,BGPDUMP_ENTRY *entry, u_int
     entry->body.zebra_state_change.source_ip.v4_addr = mstream_get_ipv4(s);
     entry->body.zebra_state_change.destination_ip.v4_addr = mstream_get_ipv4(s);
     break;
-#ifdef BGPDUMP_HAVE_IPV6
   case AFI_IP6:
     // length could be 44 or 48 (asn16 vs asn32)
     if(entry->length != 44 && entry->length != 48) {
@@ -628,7 +617,6 @@ int process_zebra_bgp_state_change(struct mstream *s,BGPDUMP_ENTRY *entry, u_int
     mstream_get(s, &entry->body.zebra_state_change.source_ip.v6_addr.s6_addr, 16);
     mstream_get(s, &entry->body.zebra_state_change.destination_ip.v6_addr.s6_addr, 16);
     break;
-#endif
   default:
     bgpdump_warn("process_zebra_bgp_state_change: unknown AFI %d",
 	 entry->body.zebra_state_change.address_family);
@@ -659,13 +647,11 @@ int process_zebra_bgp_message(struct mstream *s,BGPDUMP_ENTRY *entry, u_int8_t a
     entry->body.zebra_message.destination_ip.v4_addr = mstream_get_ipv4(s);
     mstream_get (s, marker, 16);
     break;
-#ifdef BGPDUMP_HAVE_IPV6
   case AFI_IP6:
     mstream_get(s,&entry->body.zebra_message.source_ip.v6_addr.s6_addr, 16);
     mstream_get(s,&entry->body.zebra_message.destination_ip.v6_addr.s6_addr, 16);
     mstream_get (s, marker, 16);
     break;
-#endif
   case 0xFFFF:
     /* Zebra doesn't dump ifindex or src/dest IPs in OPEN
      * messages. Work around it. */
@@ -1181,8 +1167,6 @@ static struct mp_nlri *get_nexthop(struct mstream *s, u_int16_t afi) {
     nlri->nexthop.v4_addr = mstream_get_ipv4(s);
     return nlri;
   }
-
-#ifdef BGPDUMP_HAVE_IPV6
   assert(afi == AFI_IP6);
   mstream_get(s, &nlri->nexthop.v6_addr, 16);
   if(nlri->nexthop_len == 32) {
@@ -1191,7 +1175,6 @@ static struct mp_nlri *get_nexthop(struct mstream *s, u_int16_t afi) {
   } else if(nlri->nexthop_len != 16) {
     bgpdump_warn("process_mp_announce: unknown MP nexthop length %d", nlri->nexthop_len);
   }
-#endif
   return nlri;
 }
 

@@ -187,7 +187,6 @@ static int table_line_mrtd_route(bgpstream_elem_generator_t *self,
   ri->timestamp = entry->time;
 
   // peer and prefix
-#ifdef BGPDUMP_HAVE_IPV6
   if (entry->subtype == AFI_IP6)
     {
       ri->peer_address.version = BGPSTREAM_ADDR_VERSION_IPV6;
@@ -196,7 +195,6 @@ static int table_line_mrtd_route(bgpstream_elem_generator_t *self,
       ri->prefix.address.ipv6 = entry->body.mrtd_table_dump.prefix.v6_addr;
     }
   else
-#endif
     {
       ri->peer_address.version = BGPSTREAM_ADDR_VERSION_IPV4;
       ri->peer_address.ipv4 = entry->body.mrtd_table_dump.peer_ip.v4_addr;
@@ -214,7 +212,6 @@ static int table_line_mrtd_route(bgpstream_elem_generator_t *self,
     }
 
   // nextop
-#ifdef BGPDUMP_HAVE_IPV6
     if((entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_MP_REACH_NLRI)) &&
 	entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST])
       {
@@ -223,7 +220,6 @@ static int table_line_mrtd_route(bgpstream_elem_generator_t *self,
           entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop.v6_addr;
       }
     else
-#endif
       {
 	ri->nexthop.version = BGPSTREAM_ADDR_VERSION_IPV4;
 	ri->nexthop.ipv4 = entry->attr->nexthop;
@@ -257,7 +253,6 @@ int table_line_dump_v2_prefix(bgpstream_elem_generator_t *self,
       ri->peer_address.version = BGPSTREAM_ADDR_VERSION_IPV4;
       ri->peer_address.ipv4 = e->entries[i].peer.peer_ip.v4_addr;
     }
-#ifdef BGPDUMP_HAVE_IPV6
     else {
       if(e->entries[i].peer.afi == AFI_IP6){
 	ri->peer_address.version = BGPSTREAM_ADDR_VERSION_IPV6;
@@ -267,7 +262,6 @@ int table_line_dump_v2_prefix(bgpstream_elem_generator_t *self,
         return -1;
       }
     }
-#endif
 
     ri->peer_asnumber = e->entries[i].peer.peer_as;
 
@@ -276,32 +270,27 @@ int table_line_dump_v2_prefix(bgpstream_elem_generator_t *self,
       ri->prefix.address.version = BGPSTREAM_ADDR_VERSION_IPV4;
       ri->prefix.address.ipv4 = e->prefix.v4_addr;
     }
-
-#ifdef BGPDUMP_HAVE_IPV6
     else{
       if(e->afi == AFI_IP6) {
 	ri->prefix.address.version = BGPSTREAM_ADDR_VERSION_IPV6;
 	ri->prefix.address.ipv6 = e->prefix.v6_addr;
       }
     }
-#endif
     ri->prefix.mask_len = e->prefix_length;
     // as path
     if (attr->aspath) {
       get_aspath_struct(attr->aspath, &ri->aspath);
     }
     // next hop
- #ifdef BGPDUMP_HAVE_IPV6
     if ((attr->flag & ATTR_FLAG_BIT(BGP_ATTR_MP_REACH_NLRI)) &&
 	attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]) {
       ri->nexthop.version = BGPSTREAM_ADDR_VERSION_IPV6;
       ri->nexthop.ipv6 = attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop.v6_addr;
     }
     else
-#endif
       {
-      ri->nexthop.version = BGPSTREAM_ADDR_VERSION_IPV4;
-      ri->nexthop.ipv4 = attr->nexthop;
+        ri->nexthop.version = BGPSTREAM_ADDR_VERSION_IPV4;
+        ri->nexthop.ipv4 = attr->nexthop;
       }
 
   }
@@ -323,12 +312,10 @@ static int table_line_announce(bgpstream_elem_generator_t *self,
     ri->type = BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT;
     ri->timestamp = entry->time;
     // peer
-#ifdef BGPDUMP_HAVE_IPV6
     if(entry->body.zebra_message.address_family == AFI_IP6) {
       ri->peer_address.version = BGPSTREAM_ADDR_VERSION_IPV6;
       ri->peer_address.ipv6 = entry->body.zebra_message.source_ip.v6_addr;
     }
-#endif
     if(entry->body.zebra_message.address_family == AFI_IP) {
       ri->peer_address.version = BGPSTREAM_ADDR_VERSION_IPV4;
       ri->peer_address.ipv4 = entry->body.zebra_message.source_ip.v4_addr;
@@ -366,12 +353,10 @@ static int table_line_announce_1(bgpstream_elem_generator_t *self,
     ri->type = BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT;
     ri->timestamp = entry->time;
     // peer
-#ifdef BGPDUMP_HAVE_IPV6
     if(entry->body.zebra_message.address_family == AFI_IP6) {
       ri->peer_address.version = BGPSTREAM_ADDR_VERSION_IPV6;
       ri->peer_address.ipv6 = entry->body.zebra_message.source_ip.v6_addr;
     }
-#endif
     if(entry->body.zebra_message.address_family == AFI_IP) {
       ri->peer_address.version = BGPSTREAM_ADDR_VERSION_IPV4;
       ri->peer_address.ipv4 = entry->body.zebra_message.source_ip.v4_addr;
@@ -393,7 +378,6 @@ static int table_line_announce_1(bgpstream_elem_generator_t *self,
   return 0;
 }
 
-#ifdef BGPDUMP_HAVE_IPV6
 static int table_line_announce6(bgpstream_elem_generator_t *self,
                                 struct mp_nlri *prefix,
                                 int count,
@@ -410,12 +394,10 @@ static int table_line_announce6(bgpstream_elem_generator_t *self,
     ri->type = BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT;
     ri->timestamp = entry->time;
     // peer
-#ifdef BGPDUMP_HAVE_IPV6
     if(entry->body.zebra_message.address_family == AFI_IP6) {
       ri->peer_address.version = BGPSTREAM_ADDR_VERSION_IPV6;
       ri->peer_address.ipv6 = entry->body.zebra_message.source_ip.v6_addr;
     }
-#endif
     if(entry->body.zebra_message.address_family == AFI_IP) {
       ri->peer_address.version = BGPSTREAM_ADDR_VERSION_IPV4;
       ri->peer_address.ipv4 = entry->body.zebra_message.source_ip.v4_addr;
@@ -436,7 +418,6 @@ static int table_line_announce6(bgpstream_elem_generator_t *self,
   }
   return 0;
 }
-#endif
 
 static int table_line_withdraw(bgpstream_elem_generator_t *self,
                                struct prefix *prefix,
@@ -454,12 +435,10 @@ static int table_line_withdraw(bgpstream_elem_generator_t *self,
     ri->type = BGPSTREAM_ELEM_TYPE_WITHDRAWAL;
     ri->timestamp = entry->time;
     // peer
-#ifdef BGPDUMP_HAVE_IPV6
     if(entry->body.zebra_message.address_family == AFI_IP6) {
       ri->peer_address.version = BGPSTREAM_ADDR_VERSION_IPV6;
       ri->peer_address.ipv6 = entry->body.zebra_message.source_ip.v6_addr;
     }
-#endif
     if(entry->body.zebra_message.address_family == AFI_IP) {
       ri->peer_address.version = BGPSTREAM_ADDR_VERSION_IPV4;
       ri->peer_address.ipv4 = entry->body.zebra_message.source_ip.v4_addr;
@@ -473,7 +452,6 @@ static int table_line_withdraw(bgpstream_elem_generator_t *self,
   return 0;
 }
 
-#ifdef BGPDUMP_HAVE_IPV6
 static int table_line_withdraw6(bgpstream_elem_generator_t *self,
                                 struct prefix *prefix,
                                 int count,
@@ -506,7 +484,6 @@ static int table_line_withdraw6(bgpstream_elem_generator_t *self,
   }
   return 0;
 }
-#endif
 
 static int table_line_update(bgpstream_elem_generator_t *self,
                              BGPDUMP_ENTRY *entry) {
@@ -553,7 +530,6 @@ static int table_line_update(bgpstream_elem_generator_t *self,
   }
 
   // withdrawals (IPv6)
-#ifdef BGPDUMP_HAVE_IPV6
   if (entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST] &&
       entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST]->prefix_count) {
     prefix = entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST]->nlri;
@@ -581,7 +557,6 @@ static int table_line_update(bgpstream_elem_generator_t *self,
         return -1;
       }
   }
-#endif
 
   // announce
   if ( (entry->body.zebra_message.announce_count) ||
@@ -623,8 +598,7 @@ static int table_line_update(bgpstream_elem_generator_t *self,
       }
   }
 
-  // announce ipv 6
-#ifdef BGPDUMP_HAVE_IPV6
+  // announce ipv6
   if (entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST] &&
       entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->prefix_count) {
     prefix_mp = entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST];
@@ -652,7 +626,7 @@ static int table_line_update(bgpstream_elem_generator_t *self,
         return -1;
       }
   }
-#endif
+
   return 0;
 }
 
@@ -668,12 +642,10 @@ static int bgp_state_change(bgpstream_elem_generator_t *self,
   ri->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
   ri->timestamp = entry->time;
   // peer
-#ifdef BGPDUMP_HAVE_IPV6
   if(entry->body.zebra_message.address_family == AFI_IP6) {
     ri->peer_address.version = BGPSTREAM_ADDR_VERSION_IPV6;
     ri->peer_address.ipv6 = entry->body.zebra_state_change.source_ip.v6_addr;
   }
-#endif
   if(entry->body.zebra_message.address_family == AFI_IP) {
     ri->peer_address.version = BGPSTREAM_ADDR_VERSION_IPV4;
     ri->peer_address.ipv4 = entry->body.zebra_state_change.source_ip.v4_addr;

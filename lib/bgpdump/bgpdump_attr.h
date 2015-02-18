@@ -84,14 +84,9 @@ Original Author: Dan Ardelean (dan@ripe.net)
 #define com_nthval(X,n)  ((X)->val + (n))
 
 /* MP-BGP address families */
-#ifdef BGPDUMP_HAVE_IPV6
 #define AFI_IP 1
 #define AFI_IP6 2
 #define BGPDUMP_MAX_AFI AFI_IP6
-#else
-#define AFI_IP 1
-#define BGPDUMP_MAX_AFI AFI_IP
-#endif
 
 #define SAFI_UNICAST		1
 #define SAFI_MULTICAST		2
@@ -189,10 +184,8 @@ struct mp_info {
   struct mp_nlri	*announce[BGPDUMP_MAX_AFI+1][BGPDUMP_MAX_SAFI+1];
 };
 
-#ifdef BGPDUMP_HAVE_IPV6
 #define MP_IPV6_ANNOUNCE(m) ((m)->announce[AFI_IP6][SAFI_UNICAST])
 #define MP_IPV6_WITHDRAW(m) ((m)->withdraw[AFI_IP6][SAFI_UNICAST])
-#endif
 
 typedef union union_BGPDUMP_IP_ADDRESS {
     struct in_addr	v4_addr;
