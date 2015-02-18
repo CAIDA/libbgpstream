@@ -166,10 +166,11 @@ int bgpstream_elem_peerstate_snprintf(char *buf, size_t len,
 #define B_FULL   (written >= len)
 #define ADD_PIPE                                \
   do {                                          \
-  if(B_REMAIN > 1)                              \
+  if(B_REMAIN > 2)                              \
     {                                           \
       *buf_p = '|';                             \
       buf_p++;                                  \
+      *buf_p = '\0';                            \
       written++;                                \
     }                                           \
   else                                          \
@@ -180,7 +181,7 @@ int bgpstream_elem_peerstate_snprintf(char *buf, size_t len,
 
 #define SEEK_STR_END                            \
   do {                                          \
-    while(*buf_p)                               \
+    while(*buf_p != '\0')                       \
       {                                         \
         written++;                              \
         buf_p++;                                \
@@ -267,7 +268,7 @@ char *bgpstream_elem_snprintf(char *buf, size_t len,
 
       ADD_PIPE;
 
-      /* AS HOP */
+      /* ORIGIN AS */
       if(bgpstream_as_path_get_origin_as(&elem->aspath, &as_hop) != 0)
         {
           return NULL;
@@ -276,6 +277,13 @@ char *bgpstream_elem_snprintf(char *buf, size_t len,
       written += c;
       buf_p += c;
 
+      ADD_PIPE;
+
+      /* OLD STATE (empty) */
+      ADD_PIPE;
+
+      /* NEW STATE (empty) */
+      
       if(B_FULL)
         return NULL;
 
@@ -283,14 +291,41 @@ char *bgpstream_elem_snprintf(char *buf, size_t len,
       break;
 
     case BGPSTREAM_ELEM_TYPE_WITHDRAWAL:
+
+      /* PREFIX */
       if(bgpstream_pfx_snprintf(buf_p, B_REMAIN,
                                 (bgpstream_pfx_t*)&(elem->prefix)) == NULL)
         {
           return NULL;
         }
+      SEEK_STR_END;
+      ADD_PIPE;
+      /* NEXT HOP (empty) */      
+      ADD_PIPE;
+      /* AS PATH (empty) */
+      ADD_PIPE;
+      /* ORIGIN AS (empty) */
+      ADD_PIPE;
+      /* OLD STATE (empty) */
+      ADD_PIPE;
+      /* NEW STATE (empty) */
+      if(B_FULL)
+        return NULL;
+      /* END OF LINE */
       break;
 
     case BGPSTREAM_ELEM_TYPE_PEERSTATE:
+
+      /* PREFIX (empty) */
+      ADD_PIPE;
+      /* NEXT HOP (empty) */      
+      ADD_PIPE;
+      /* AS PATH (empty) */
+      ADD_PIPE;
+      /* ORIGIN AS (empty) */
+      ADD_PIPE;
+
+      /* OLD STATE */
       c = bgpstream_elem_peerstate_snprintf(buf_p, B_REMAIN,
                                             elem->old_state);
       written += c;
@@ -300,13 +335,15 @@ char *bgpstream_elem_snprintf(char *buf, size_t len,
         return NULL;
 
       ADD_PIPE;
-
+      
+      /* NEW STATE (empty) */
       c = bgpstream_elem_peerstate_snprintf(buf_p, B_REMAIN, elem->new_state);
       written += c;
       buf_p += c;
 
       if(B_FULL)
         return NULL;
+      /* END OF LINE */
       break;
 
     default:
