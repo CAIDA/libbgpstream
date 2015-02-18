@@ -166,7 +166,7 @@ int bgpstream_elem_peerstate_snprintf(char *buf, size_t len,
 #define B_FULL   (written >= len)
 #define ADD_PIPE                                \
   do {                                          \
-  if(B_REMAIN > 2)                              \
+  if(B_REMAIN > 1)                              \
     {                                           \
       *buf_p = '|';                             \
       buf_p++;                                  \
