@@ -102,7 +102,10 @@ AC_CHECK_LIB([ipmeta], [ipmeta_lookup], ,[AC_MSG_ERROR([ipmeta is required])])
 
 
 
-# @@todo add libbgpstream here
+# libbgpstream
+AC_CHECK_LIB([bgpstream], [bgpstream_create], ,[AC_MSG_ERROR(
+		      [libbgpstream required])])
+
 
 ## @note AC_CHECK_LIB is for when you know the name of the library,
 ## AC_SEARCH_LIBS is when you need to determine the library that a specific
@@ -128,7 +131,6 @@ AC_CONFIG_FILES([Makefile
                 common/libinterval3/rb_tree/Makefile
 		common/libpatricia/Makefile
 		common/libcsv/Makefile
-                bgpcommon/Makefile
 		lib/Makefile
 		lib/consumers/Makefile
 		tools/Makefile
