@@ -71,16 +71,52 @@ static bgpstream_data_interface_option_t bgpstream_mysql_options[] = {
     BGPSTREAM_DATA_INTERFACE_MYSQL,
     1,
     "db-user",
-    "mysql username to use (default: bgpstream)",
+    "Mysql username to use (default: bgpstream)",
+  },
+  /* Database password */
+  {
+    BGPSTREAM_DATA_INTERFACE_MYSQL,
+    2,
+    "db-password",
+    "mysql password to use (default: none)",
   },
 
   /* Database host */
   {
     BGPSTREAM_DATA_INTERFACE_MYSQL,
-    2,
+    3,
     "db-host",
-    "Hostname/IP of the mysql server (default: localhost)",
+    "Hostname/IP of the mysql server (default: mysql default host)",
   },
+  /* Database connection port */
+  {
+    BGPSTREAM_DATA_INTERFACE_MYSQL,
+    4,
+    "db-port",
+    "Port of the mysql server (default: mysql default port)",
+  },
+  /* Database Unix socket */
+  {
+    BGPSTREAM_DATA_INTERFACE_MYSQL,
+    5,
+    "db-socket",
+    "Unix socket of the mysql server (default: mysql default socket)",
+  },
+  /* RIS data path */
+  {
+    BGPSTREAM_DATA_INTERFACE_MYSQL,
+    6,
+    "ris-path",
+    "Prefix path of RIS data (default: RIS path contained in mysql db projects table)",
+  },
+  /* Routeviews data path */
+  {
+    BGPSTREAM_DATA_INTERFACE_MYSQL,
+    7,
+    "rv-path",
+    "Prefix path of RouteViews data (default: Routeviews path contained in mysql db projects table)",
+  },
+
 };
 
 static bgpstream_data_interface_option_t *bgpstream_customlist_options = NULL;

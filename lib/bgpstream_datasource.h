@@ -61,9 +61,17 @@ typedef struct struct_bgpstream_csvfile_datasource_t {
 
 typedef struct struct_bgpstream_mysql_datasource_t {
   MYSQL * mysql_con;
+  // mysql connection options
   char *mysql_dbname;
   char *mysql_user;
+  char *mysql_password;
   char *mysql_host;
+  unsigned int mysql_port;
+  char *mysql_socket;
+  // command-line options
+  char *mysql_ris_path;
+  char *mysql_rv_path;
+  // query text
   char sql_query[2048];
   MYSQL_STMT *stmt;          // mysql statement
   MYSQL_BIND parameters[2];  // parameters for placeholders
@@ -94,7 +102,13 @@ typedef struct struct_bgpstream_datasource_mgr_t {
   // datasource specific_options
   char *mysql_dbname;
   char *mysql_user;
+  char *mysql_password;
   char *mysql_host;
+  unsigned int mysql_port;
+  char *mysql_socket;
+  char *mysql_ris_path;
+  char *mysql_rv_path;
+
   char *csvfile_file;
   // blocking options
   int blocking;

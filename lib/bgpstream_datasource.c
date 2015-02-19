@@ -50,7 +50,13 @@ static void bgpstream_csvfile_datasource_destroy(bgpstream_csvfile_datasource_t*
 static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
 								       char * mysql_dbname,
 								       char * mysql_user,
-								       char * mysql_host);
+                                                                       char * mysql_password,
+								       char * mysql_host,
+                                                                       unsigned int mysql_port,
+                                                                       char * mysql_socket,
+                                                                       char * mysql_ris_path,
+                                                                       char * mysql_rv_path
+                                                                       );
 static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasource_t* mysql_ds,
 							 bgpstream_input_mgr_t *input_mgr);
 static void bgpstream_mysql_datasource_destroy(bgpstream_mysql_datasource_t* mysql_ds);
@@ -82,7 +88,12 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
   // datasource options
   datasource_mgr->mysql_dbname = NULL;
   datasource_mgr->mysql_user = NULL;
+  datasource_mgr->mysql_password = NULL;
   datasource_mgr->mysql_host = NULL;
+  datasource_mgr->mysql_port = 0; // i.e. not set  => use the default in the system
+  datasource_mgr->mysql_socket = NULL;
+  datasource_mgr->mysql_ris_path = NULL;
+  datasource_mgr->mysql_rv_path = NULL;
   datasource_mgr->csvfile_file = NULL;
   bgpstream_debug("\tBSDS_MGR: create end");
   return datasource_mgr;
@@ -100,7 +111,7 @@ void bgpstream_datasource_mgr_set_data_interface(bgpstream_datasource_mgr_t *dat
 
 
 void bgpstream_datasource_mgr_set_data_interface_option(bgpstream_datasource_mgr_t *datasource_mgr,
-				 const bgpstream_data_interface_option_t *option_type,
+                                                        const bgpstream_data_interface_option_t *option_type,
 							const char *option_value) {
   // this option has no effect if the datasource selected is not
   // using this option
@@ -124,11 +135,42 @@ void bgpstream_datasource_mgr_set_data_interface_option(bgpstream_datasource_mgr
           datasource_mgr->mysql_user = strdup(option_value);
           break;
         case 2:
+          if(datasource_mgr->mysql_password!=NULL)
+            {
+              free(datasource_mgr->mysql_password);
+            }
+          datasource_mgr->mysql_password = strdup(option_value);
+          break;
+        case 3: 
           if(datasource_mgr->mysql_host!=NULL)
             {
               free(datasource_mgr->mysql_host);
             }
           datasource_mgr->mysql_host = strdup(option_value);
+          break;
+        case 4: 
+          datasource_mgr->mysql_port = atoi(option_value);
+          break;
+        case 5: 
+          if(datasource_mgr->mysql_socket!=NULL)
+            {
+              free(datasource_mgr->mysql_socket);
+            }
+          datasource_mgr->mysql_socket = strdup(option_value);
+          break;
+        case 6: 
+          if(datasource_mgr->mysql_ris_path!=NULL)
+            {
+              free(datasource_mgr->mysql_ris_path);
+            }
+          datasource_mgr->mysql_ris_path = strdup(option_value);
+          break;
+        case 7: 
+          if(datasource_mgr->mysql_rv_path!=NULL)
+            {
+              free(datasource_mgr->mysql_rv_path);
+            }
+          datasource_mgr->mysql_rv_path = strdup(option_value);
           break;
         }
       break;
@@ -164,7 +206,12 @@ void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
     datasource_mgr->mysql_ds = bgpstream_mysql_datasource_create(filter_mgr, 
 								 datasource_mgr->mysql_dbname,
 								 datasource_mgr->mysql_user,
-								 datasource_mgr->mysql_host);
+                                                                 datasource_mgr->mysql_password,
+								 datasource_mgr->mysql_host,
+                                                                 datasource_mgr->mysql_port,
+                                                                 datasource_mgr->mysql_socket,
+                                                                 datasource_mgr->mysql_ris_path,
+                                                                 datasource_mgr->mysql_rv_path);
     if(datasource_mgr->mysql_ds == NULL) {
       datasource_mgr->status = BGPSTREAM_DATASOURCE_STATUS_ERROR;
     } 
@@ -295,9 +342,25 @@ void bgpstream_datasource_mgr_destroy(bgpstream_datasource_mgr_t *datasource_mgr
     {
       free(datasource_mgr->mysql_user);
     }
+  if(datasource_mgr->mysql_password!=NULL)
+    {
+      free(datasource_mgr->mysql_password);
+    }
   if(datasource_mgr->mysql_host!=NULL)
     {
       free(datasource_mgr->mysql_host);
+    }
+  if(datasource_mgr->mysql_socket!=NULL)
+    {
+      free(datasource_mgr->mysql_socket);
+    }
+  if(datasource_mgr->mysql_ris_path!=NULL)
+    {
+      free(datasource_mgr->mysql_ris_path);
+    }
+  if(datasource_mgr->mysql_rv_path!=NULL)
+    {
+      free(datasource_mgr->mysql_rv_path);
     }
   if(datasource_mgr->csvfile_file!=NULL)
     {
@@ -666,15 +729,21 @@ static void bgpstream_csvfile_datasource_destroy(bgpstream_csvfile_datasource_t*
 /* ----------- mysql related functions ----------- */
 
 static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
-								       char *mysql_dbname,
-								       char *mysql_user,
-								       char *mysql_host) {
+								       char * mysql_dbname,
+								       char * mysql_user,
+                                                                       char * mysql_password,
+								       char * mysql_host,
+                                                                       unsigned int mysql_port,
+								       char * mysql_socket,
+                                                                       char * mysql_ris_path,
+                                                                       char * mysql_rv_path) {
   bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds start");
   bgpstream_mysql_datasource_t *mysql_ds = (bgpstream_mysql_datasource_t*) malloc(sizeof(bgpstream_mysql_datasource_t));
   if(mysql_ds == NULL) {
     return NULL; // can't allocate memory
   }
   // set up options or provide defaults
+  // default: bgparchive
   if(mysql_dbname == NULL)
     {
       mysql_ds->mysql_dbname = strdup("bgparchive");      
@@ -683,6 +752,7 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
     {
       mysql_ds->mysql_dbname = strdup(mysql_dbname);
     }
+  // default user : bgpstream
   if(mysql_user == NULL)
     {
       mysql_ds->mysql_user = strdup("bgpstream");      
@@ -691,14 +761,58 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
     {
       mysql_ds->mysql_user = strdup(mysql_user);
     }
+  // default: no password
+  if(mysql_password == NULL)
+    {
+      mysql_ds->mysql_password = NULL;      
+    }
+  else 
+    {
+      mysql_ds->mysql_password = strdup(mysql_password);
+    }
+  // default: localhost (if null is passed, localhost is assumed)
   if(mysql_host == NULL)
     {
-      mysql_ds->mysql_host = strdup("localhost");      
+      mysql_ds->mysql_host = NULL;      
     }
   else 
     {
       mysql_ds->mysql_host = strdup(mysql_host);
     }
+  // default: default unix socket (if null is give)
+  if(mysql_socket == NULL)
+    {
+      mysql_ds->mysql_socket = NULL;      
+    }
+  else 
+    {
+      mysql_ds->mysql_socket = strdup(mysql_socket);
+    }
+  // default: default port (if 0)
+  if(mysql_port != 0)
+    {
+      mysql_ds->mysql_port = mysql_port;      
+    }
+  // default: NULL (data is taken from db)
+  if(mysql_ris_path == NULL)
+    {
+      mysql_ds->mysql_ris_path = NULL;      
+    }
+  else 
+    {
+      mysql_ds->mysql_ris_path = strdup(mysql_ris_path);
+    }
+  // default: NULL (data is taken from db)
+  if(mysql_rv_path == NULL)
+    {
+      mysql_ds->mysql_rv_path = NULL;      
+    }
+  else 
+    {
+      mysql_ds->mysql_rv_path = strdup(mysql_rv_path);
+    }
+
+  
   // Initialize a MySQL object suitable for connection
   bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds mysql connection init");
   mysql_ds->mysql_con = mysql_init(NULL);
@@ -708,11 +822,30 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
     free(mysql_ds);
     mysql_ds = NULL;
     return NULL;
-  }  
+  }
+
+  /* fprintf(stderr, */
+  /*         "Mysql configuration: \n\t" */
+  /*         "host: %s " */
+  /*         "user: %s " */
+  /*         "password: %s " */
+  /*         "db: %s " */
+  /*         "port: %u " */
+  /*         "socket: %s\n" */
+  /*         "RIS path: %s \n" */
+  /*         "RV path: %s \n", */
+  /*         mysql_ds->mysql_host, */
+  /*         mysql_ds->mysql_user, mysql_ds->mysql_password,  */
+  /*         mysql_ds->mysql_dbname, mysql_ds->mysql_port, */
+  /*         mysql_ds->mysql_socket, */
+  /*         mysql_ds->mysql_ris_path, mysql_ds->mysql_rv_path); */
+          
   // Establish a connection to the database
   bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds mysql connection establishment");
-  if (mysql_real_connect(mysql_ds->mysql_con, mysql_ds->mysql_host, mysql_ds->mysql_user, NULL, 
-			     mysql_ds->mysql_dbname, 0, NULL, 0) == NULL) 
+  if (mysql_real_connect(mysql_ds->mysql_con, mysql_ds->mysql_host,
+                         mysql_ds->mysql_user, mysql_ds->mysql_password, 
+                         mysql_ds->mysql_dbname, mysql_ds->mysql_port,
+                         mysql_ds->mysql_socket, 0 /* client-flag */) == NULL) 
     {
     fprintf(stderr, "%s\n", mysql_error(mysql_ds->mysql_con));
     mysql_close(mysql_ds->mysql_con);
@@ -954,7 +1087,9 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
 }
 
 static char *build_filename(bgpstream_mysql_datasource_t *ds) {
-  char *filename = NULL;
+
+  char filename[4096];
+
   char date[11]; /* "YYYY/MM/DD" */
   long tmp = ds->filetime_res;
   struct tm time_result;
@@ -963,15 +1098,34 @@ static char *build_filename(bgpstream_mysql_datasource_t *ds) {
     return NULL;
   }
 
-  asprintf(&filename, "%s/%s/%s/%s/%s.%s.%s.%d.%s",
-	   ds->proj_path_res, ds->coll_path_res,
+  // default path
+  char *path_string = ds->proj_path_res;
+  
+  // project is r[o]uteviews and rv path is set
+  if(ds->mysql_rv_path != NULL && ds->proj_name_res[1] == 'o')
+    {
+      path_string = ds->mysql_rv_path;
+    }
+  
+  // project is r[i]s and ris path is set
+  if(ds->mysql_ris_path != NULL && ds->proj_name_res[1] == 'i')
+    {
+      path_string = ds->mysql_ris_path;
+    }
+
+  if(sprintf(filename, "%s/%s/%s/%s/%s.%s.%s.%d.%s",
+	   path_string, ds->coll_path_res,
 	   ds->type_path_res, date,
 	   ds->proj_name_res, ds->coll_name_res,
 	   ds->type_name_res, ds->filetime_res,
 	   ds->file_ext_res
-	   );
+             ) -1 > 4095)
+    {
+      fprintf(stderr, "Error, trying to write a file name larger than 4095 characters!\n");
+      return NULL;
+    }
 
-  return filename;
+  return strdup(filename);
 }
 
 
@@ -1019,7 +1173,8 @@ static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasou
           wait_time = wait_time *2;
         }
       
-      fprintf(stderr, "bgpstream: connection to mysql failed, retrying [last timestamp: %ld, attempt: %d]\n",
+      fprintf(stderr,
+              "bgpstream: connection to mysql failed, retrying [last timestamp: %ld, attempt: %d]\n",
 	      mysql_ds->last_timestamp, retry_attempts);
 
       sleep(wait_time);
@@ -1039,14 +1194,17 @@ static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasou
 
       if( (mysql_ds->mysql_con = mysql_init(NULL)) != NULL)
 	{
-	  if (mysql_real_connect(mysql_ds->mysql_con, mysql_ds->mysql_host, mysql_ds->mysql_user, NULL, 
-				 mysql_ds->mysql_dbname, 0, NULL, 0) != NULL)	
+	  if (mysql_real_connect(mysql_ds->mysql_con, mysql_ds->mysql_host,
+                                 mysql_ds->mysql_user, mysql_ds->mysql_password, 
+				 mysql_ds->mysql_dbname, mysql_ds->mysql_port,
+                                 mysql_ds->mysql_socket, 0 /* client-flag */) != NULL)	
 	    {
 	      if(mysql_query(mysql_ds->mysql_con, "set time_zone='+0:0'") == 0)
 		{
 		  if((mysql_ds->stmt = mysql_stmt_init(mysql_ds->mysql_con)) != NULL)
 		    {
-		      if (mysql_stmt_prepare(mysql_ds->stmt, mysql_ds->sql_query, strlen(mysql_ds->sql_query)) == 0)
+		      if (mysql_stmt_prepare(mysql_ds->stmt, mysql_ds->sql_query,
+                                             strlen(mysql_ds->sql_query)) == 0)
 			{
 			  if(mysql_stmt_bind_param(mysql_ds->stmt, mysql_ds->parameters) == 0)
 			    {
@@ -1138,9 +1296,25 @@ static void bgpstream_mysql_datasource_destroy(bgpstream_mysql_datasource_t* mys
     {
       free(mysql_ds->mysql_user);
     }
+  if(mysql_ds->mysql_password != NULL)
+    {
+      free(mysql_ds->mysql_password);
+    }
   if(mysql_ds->mysql_host != NULL)
     {
       free(mysql_ds->mysql_host);
+    }
+  if(mysql_ds->mysql_socket != NULL)
+    {
+      free(mysql_ds->mysql_socket);
+    }
+  if(mysql_ds->mysql_ris_path != NULL)
+    {
+      free(mysql_ds->mysql_ris_path);
+    }
+  if(mysql_ds->mysql_rv_path != NULL)
+    {
+      free(mysql_ds->mysql_rv_path);
     }
   free(mysql_ds);
   bgpstream_debug("\t\tBSDS_MYSQL: destroy mysql_ds end");
