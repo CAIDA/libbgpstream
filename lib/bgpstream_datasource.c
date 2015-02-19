@@ -997,14 +997,33 @@ static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasou
   mysql_ds->file_ext_res[0]  = '\0';
 
   // mysql_ds->last_timestamp is the only parameter for the query
-  /* Try to execute the statement */
-  int stmt_ret = mysql_stmt_execute(mysql_ds->stmt);
-  int attempts = 0;
-  int max_attempts = 30; // 30 ~ number of collectors
-  while(stmt_ret != 0 && attempts < max_attempts)
-    {
-      attempts++;
 
+  /* Try to execute the statement, if it
+  *  fails then retry after waiting an
+  *  increasing retry delay
+  */
+  int stmt_ret = mysql_stmt_execute(mysql_ds->stmt);
+
+  unsigned int retry_attempts = 0;
+  unsigned int maximum_wait_time = 900; // 15 minutes
+  unsigned int wait_time = 1; // initial wait time 1 second
+  
+  while(stmt_ret != 0)
+    {
+      retry_attempts++;      
+
+      // check if the wait time is less than the maximum
+      if(wait_time < maximum_wait_time)
+        {
+          // we double the wait time at each attempt
+          wait_time = wait_time *2;
+        }
+      
+      fprintf(stderr, "bgpstream: connection to mysql failed, retrying [last timestamp: %ld, attempt: %d]\n",
+	      mysql_ds->last_timestamp, retry_attempts);
+
+      sleep(wait_time);
+      
       // closing all structures and restarting
       if(mysql_ds->stmt != NULL)
 	{
