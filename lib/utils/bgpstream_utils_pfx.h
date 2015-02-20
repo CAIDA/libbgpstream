@@ -176,6 +176,25 @@ int bgpstream_ipv6_pfx_equal(bgpstream_ipv6_pfx_t *pfx1,
 int bgpstream_pfx_storage_equal(bgpstream_pfx_storage_t *pfx1,
                                 bgpstream_pfx_storage_t *pfx2);
 
+
+/** Utility macros used to pass khashes objects by reference
+ *  instead of copying them */
+
+#define bgpstream_pfx_storage_hash_val(arg) \
+        bgpstream_pfx_storage_hash(&(arg))
+#define bgpstream_pfx_storage_equal_val(arg1, arg2) \
+        bgpstream_pfx_storage_equal(&(arg1), &(arg2))
+
+#define bgpstream_ipv4_pfx_storage_hash_val(arg) \
+        bgpstream_ipv4_pfx_hash(&(arg))
+#define bgpstream_ipv4_pfx_storage_equal_val(arg1, arg2) \
+        bgpstream_ipv4_pfx_equal(&(arg1), &(arg2))
+
+#define bgpstream_ipv6_pfx_storage_hash_val(arg) \
+        bgpstream_ipv6_pfx_hash(&(arg))
+#define bgpstream_ipv6_pfx_storage_equal_val(arg1, arg2) \
+        bgpstream_ipv6_pfx_equal(&(arg1), &(arg2))
+
 /** @} */
 
 #endif /* __BGPSTREAM_UTILS_PFX_H */

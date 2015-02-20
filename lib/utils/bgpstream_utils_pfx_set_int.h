@@ -36,17 +36,6 @@
  *
  */
 
-#define STORAGE_HASH_VAL(arg) bgpstream_pfx_storage_hash(&(arg))
-#define STORAGE_EQUAL_VAL(arg1, arg2) \
-  bgpstream_pfx_storage_equal(&(arg1), &(arg2))
-
-#define V4_HASH_VAL(arg) bgpstream_ipv4_pfx_hash(&(arg))
-#define V4_EQUAL_VAL(arg1, arg2) \
-  bgpstream_ipv4_pfx_equal(&(arg1), &(arg2))
-
-#define V6_HASH_VAL(arg) bgpstream_ipv6_pfx_hash(&(arg))
-#define V6_EQUAL_VAL(arg1, arg2) \
-  bgpstream_ipv6_pfx_equal(&(arg1), &(arg2))
 
 /** set of unique IP prefixes
  *  this structure maintains a set of unique
@@ -57,8 +46,8 @@ KHASH_INIT(bgpstream_pfx_storage_set /* name */,
 	   bgpstream_pfx_storage_t /* khkey_t */,
 	   char /* khval_t */,
 	   0  /* kh_is_set */,
-	   STORAGE_HASH_VAL /*__hash_func */,
-	   STORAGE_EQUAL_VAL /* __hash_equal */);
+	   bgpstream_pfx_storage_hash_val /*__hash_func */,
+	   bgpstream_pfx_storage_equal_val /* __hash_equal */);
 
 
 struct bgpstream_pfx_storage_set {
@@ -71,8 +60,8 @@ KHASH_INIT(bgpstream_ipv4_pfx_set /* name */,
 	   bgpstream_ipv4_pfx_t /* khkey_t */,
 	   char /* khval_t */,
 	   0  /* kh_is_set */,
-	   V4_HASH_VAL /*__hash_func */,
-	   V4_EQUAL_VAL /* __hash_equal */);
+	   bgpstream_ipv4_pfx_storage_hash_val /*__hash_func */,
+	   bgpstream_ipv4_pfx_storage_equal_val /* __hash_equal */);
 
 
 struct bgpstream_ipv4_pfx_set {
@@ -85,8 +74,8 @@ KHASH_INIT(bgpstream_ipv6_pfx_set /* name */,
 	   bgpstream_ipv6_pfx_t /* khkey_t */,
 	   char /* khval_t */,
 	   0  /* kh_is_set */,
-	   V6_HASH_VAL /*__hash_func */,
-	   V6_EQUAL_VAL /* __hash_equal */);
+	   bgpstream_ipv6_pfx_storage_hash_val /*__hash_func */,
+	   bgpstream_ipv6_pfx_storage_equal_val /* __hash_equal */);
 
 
 struct bgpstream_ipv6_pfx_set {
