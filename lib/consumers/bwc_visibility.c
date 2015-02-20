@@ -28,7 +28,7 @@
 #include "utils.h"
 #include "khash.h"
 
-#include "bl_pfx_set.h"
+#include "bgpstream_utils_pfx_set.h"
 #include "bgpstream_utils_id_set.h"
 
 

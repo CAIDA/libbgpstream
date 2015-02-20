@@ -19,6 +19,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "utils.h"
 #include "parse_cmd.h"

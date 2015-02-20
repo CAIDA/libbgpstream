@@ -21,6 +21,7 @@
 #define __BGPWATCHER_STORE_H
 
 #include "bgpwatcher_server.h"
+#include <bgpstream_utils_pfx.h>
 
 /** @file
  *
@@ -94,7 +95,7 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
  */
 int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
                                       bgpwatcher_pfx_table_t *table,
-                                      bl_pfx_storage_t *pfx,
+                                      bgpstream_pfx_storage_t *pfx,
                                       bgpwatcher_pfx_peer_info_t *peer_infos);
 
 /** Complete the given table

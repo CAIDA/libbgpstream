@@ -55,7 +55,7 @@ struct bgpwatcher_view_iter {
 /* ========== PRIVATE FUNCTIONS ========== */
 
 static int peerinfo_add_pfx(bgpwatcher_view_t *view, bgpstream_peer_id_t peerid,
-                            bl_pfx_storage_t *prefix)
+                            bgpstream_pfx_t *prefix)
 {
   khiter_t k;
   int khret;
@@ -110,7 +110,7 @@ static bwv_peerid_pfxinfo_t* peerid_pfxinfo_create()
 }
 
 static int peerid_pfxinfo_insert(bgpwatcher_view_t *view,
-                                 bl_pfx_storage_t *prefix,
+                                 bgpstream_pfx_t *prefix,
                                  bwv_peerid_pfxinfo_t *v,
                                  bgpstream_peer_id_t peerid,
                                  bgpwatcher_pfx_peer_info_t *pfx_info)
@@ -175,7 +175,7 @@ static void peerid_pfxinfo_destroy(bwv_peerid_pfxinfo_t *v)
 
 /** @todo consider making these macros? */
 static bwv_peerid_pfxinfo_t *get_v4pfx_peerids(bgpwatcher_view_t *view,
-                                               bl_ipv4_pfx_t *v4pfx)
+                                               bgpstream_ipv4_pfx_t *v4pfx)
 {
   bwv_peerid_pfxinfo_t *peerids_pfxinfo;
   khiter_t k;
@@ -205,7 +205,7 @@ static bwv_peerid_pfxinfo_t *get_v4pfx_peerids(bgpwatcher_view_t *view,
 }
 
 static bwv_peerid_pfxinfo_t *get_v6pfx_peerids(bgpwatcher_view_t *view,
-                                               bl_ipv6_pfx_t *v6pfx)
+                                               bgpstream_ipv6_pfx_t *v6pfx)
 {
   bwv_peerid_pfxinfo_t *peerids_pfxinfo;
   khiter_t k;
@@ -235,15 +235,15 @@ static bwv_peerid_pfxinfo_t *get_v6pfx_peerids(bgpwatcher_view_t *view,
 }
 
 static bwv_peerid_pfxinfo_t *get_pfx_peerids(bgpwatcher_view_t *view,
-                                             bl_pfx_storage_t *prefix)
+                                             bgpstream_pfx_storage_t *prefix)
 {
   if(prefix->address.version == BGPSTREAM_ADDR_VERSION_IPV4)
     {
-      return get_v4pfx_peerids(view, bl_pfx_storage2ipv4(prefix));
+      return get_v4pfx_peerids(view, (bgpstream_ipv4_pfx_t *)(prefix));
     }
   else if(prefix->address.version == BGPSTREAM_ADDR_VERSION_IPV6)
     {
-      return get_v6pfx_peerids(view, bl_pfx_storage2ipv6(prefix));
+      return get_v6pfx_peerids(view, (bgpstream_ipv6_pfx_t *)(prefix));
     }
 
   return NULL;
@@ -286,7 +286,7 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
 }
 
 int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
-                               bl_pfx_storage_t *prefix,
+                               bgpstream_pfx_storage_t *prefix,
                                bgpstream_peer_id_t peerid,
                                bgpwatcher_pfx_peer_info_t *pfx_info,
 			       void **cache)
@@ -733,7 +733,7 @@ uint64_t bgpwatcher_view_iter_size(bgpwatcher_view_iter_t *iter,
     }
 }
 
-bl_ipv4_pfx_t *bgpwatcher_view_iter_get_v4pfx(bgpwatcher_view_iter_t *iter)
+bgpstream_ipv4_pfx_t *bgpwatcher_view_iter_get_v4pfx(bgpwatcher_view_iter_t *iter)
 {
   if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX))
     {
@@ -742,7 +742,7 @@ bl_ipv4_pfx_t *bgpwatcher_view_iter_get_v4pfx(bgpwatcher_view_iter_t *iter)
   return &kh_key(iter->view->v4pfxs, iter->v4pfx_it);
 }
 
-bl_ipv6_pfx_t *bgpwatcher_view_iter_get_v6pfx(bgpwatcher_view_iter_t *iter)
+bgpstream_ipv6_pfx_t *bgpwatcher_view_iter_get_v6pfx(bgpwatcher_view_iter_t *iter)
 {
   if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX))
     {

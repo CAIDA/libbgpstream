@@ -48,19 +48,19 @@
  * @{ */
 
 KHASH_INIT(v4pfx_peers,
-           bl_ipv4_pfx_t,
+           bgpstream_ipv4_pfx_t,
            bgpwatcher_pfx_peer_info_t*,
            1,
-           bl_ipv4_pfx_hash_func,
-           bl_ipv4_pfx_hash_equal)
+           bgpstream_ipv4_pfx_storage_hash_val,
+           bgpstream_ipv4_pfx_storage_equal_val)
 
 KHASH_INIT(v6pfx_peers,
-           bl_ipv6_pfx_t,
+           bgpstream_ipv6_pfx_t,
            bgpwatcher_pfx_peer_info_t*,
            1,
-           bl_ipv6_pfx_hash_func,
-           bl_ipv6_pfx_hash_equal)
-
+           bgpstream_ipv6_pfx_storage_hash_val,
+           bgpstream_ipv6_pfx_storage_equal_val)
+  
 struct bgpwatcher_client_pfx_table {
 
   /** Indicates that a table_start message should not be sent on the next

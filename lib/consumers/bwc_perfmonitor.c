@@ -21,7 +21,7 @@
 #include <stdio.h>
 
 #include "utils.h"
-#include "bl_bgp_utils.h"
+#include "bgpstream_utils.h"
 #include "czmq.h"
 
 #include "bgpwatcher_consumer_interface.h"
@@ -202,7 +202,7 @@ int bwc_perfmonitor_process_view(bwc_t *consumer, uint8_t interests,
   unsigned long long pfx6_cnt;
   unsigned long long peer_on = 1;
 
-  char *addr;
+  char addr[INET6_ADDRSTRLEN] = "";
 
   for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
       !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
@@ -216,7 +216,8 @@ int bwc_perfmonitor_process_view(bwc_t *consumer, uint8_t interests,
       /** @todo Chiara all these bl_print_* functions should probably take a
 	  char buffer and a length so that they don't have to do mallocs every
 	  time */
-      addr = graphite_safe(bl_print_addr_storage(&(sig->peer_ip_addr)));
+      bgpstream_addr_ntop(addr, INET6_ADDRSTRLEN, &(sig->peer_ip_addr));
+      graphite_safe(addr);
       DUMP_METRIC(peer_on,
 		  bgpwatcher_view_time(view),
 		  "peers.%s.%s.peer_on", sig->collector_str, addr);

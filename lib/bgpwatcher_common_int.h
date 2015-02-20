@@ -25,6 +25,7 @@
 #include <sys/socket.h>
 
 #include <bgpwatcher_common.h>
+#include <bgpstream_utils_pfx.h>
 
 /** @file
  *
@@ -258,7 +259,7 @@ void bgpwatcher_pfx_table_dump(bgpwatcher_pfx_table_t *table);
  * @return 0 if the record was sent successfully, -1 otherwise
  */
 int bgpwatcher_pfx_row_send(void *dest,
-                            bl_pfx_storage_t *pfx,
+                            bgpstream_pfx_t *pfx,
                             bgpwatcher_pfx_peer_info_t *peer_infos,
                             int peer_cnt);
 
@@ -270,7 +271,7 @@ int bgpwatcher_pfx_row_send(void *dest,
  * @return 0 if the information was deserialized successfully, -1 otherwise
  */
 int bgpwatcher_pfx_row_recv(void *src,
-                            bl_pfx_storage_t *pfx,
+                            bgpstream_pfx_storage_t *pfx,
                             bgpwatcher_pfx_peer_info_t *peer_infos,
                             int peer_cnt);
 

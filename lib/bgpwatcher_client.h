@@ -160,7 +160,7 @@ int bgpwatcher_client_pfx_table_add_peer(bgpwatcher_client_t *client,
  */
 int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
                                     int peer_id,
-				    bl_pfx_storage_t *prefix,
+				    bgpstream_pfx_storage_t *prefix,
                                     uint32_t orig_asn);
 
 /** Flush prefix table to the bgpwatcher server

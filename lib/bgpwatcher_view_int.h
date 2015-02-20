@@ -32,10 +32,10 @@
 #include "khash.h"
 #include "utils.h"
 
-#include "bl_bgp_utils.h"
 
 #include "bgpwatcher_view.h"
 #include "bgpwatcher_common.h"
+#include "bgpstream_utils_pfx.h"
 
 /** Value for a prefix in the v4pfxs and v6pfxs tables */
 typedef struct bwv_peerid_pfxinfo {
@@ -59,12 +59,12 @@ typedef struct bwv_peerid_pfxinfo {
 
 /************ map from prefix -> peers [-> prefix info] ************/
 
-KHASH_INIT(bwv_v4pfx_peerid_pfxinfo, bl_ipv4_pfx_t, bwv_peerid_pfxinfo_t *, 1,
-	   bl_ipv4_pfx_hash_func, bl_ipv4_pfx_hash_equal)
+KHASH_INIT(bwv_v4pfx_peerid_pfxinfo, bgpstream_ipv4_pfx_t, bwv_peerid_pfxinfo_t *, 1,
+	   bgpstream_ipv4_pfx_storage_hash_val, bgpstream_ipv4_pfx_storage_equal_val)
 typedef khash_t(bwv_v4pfx_peerid_pfxinfo) bwv_v4pfx_peerid_pfxinfo_t;
 
-KHASH_INIT(bwv_v6pfx_peerid_pfxinfo, bl_ipv6_pfx_t, bwv_peerid_pfxinfo_t *, 1,
-	   bl_ipv6_pfx_hash_func, bl_ipv6_pfx_hash_equal)
+KHASH_INIT(bwv_v6pfx_peerid_pfxinfo, bgpstream_ipv6_pfx_t, bwv_peerid_pfxinfo_t *, 1,
+	   bgpstream_ipv6_pfx_storage_hash_val, bgpstream_ipv6_pfx_storage_equal_val)
 typedef khash_t(bwv_v6pfx_peerid_pfxinfo) bwv_v6pfx_peerid_pfxinfo_t;
 
 
@@ -138,7 +138,7 @@ struct bgpwatcher_view {
  * @return 0 if successful, -1 otherwise
  */
 int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
-                               bl_pfx_storage_t *prefix,
+                               bgpstream_pfx_storage_t *prefix,
                                bgpstream_peer_id_t peerid,
                                bgpwatcher_pfx_peer_info_t *pfx_info,
 			       void **cache);

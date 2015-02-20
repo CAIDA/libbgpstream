@@ -27,7 +27,7 @@
 #include "khash.h"
 #include "czmq.h"
 
-#include "bl_pfx_set.h"
+#include "bgpstream_utils_pfx_set.h"
 #include "bgpstream_utils_id_set.h"
 
 #include "bgpwatcher_consumer_interface.h"
@@ -514,7 +514,7 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
       // First we check if this prefix has been already
       // geotagged in previous iterations
 
-      cck_set = (bgpstream_id_set_t *) bgpwatcher_view_iter_get_v4pfx_user(it);
+      cck_set = (khash_t(country_k_set) *) bgpwatcher_view_iter_get_v4pfx_user(it);
 
       // if the set is null, then we need to initialize the set
       // and proceed with the geolocation

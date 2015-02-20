@@ -394,7 +394,7 @@ static int handle_table_prefix_end(bgpwatcher_server_t *server,
 static int handle_pfx_record(bgpwatcher_server_t *server,
 			     bgpwatcher_server_client_t *client)
 {
-  bl_pfx_storage_t pfx;
+  bgpstream_pfx_storage_t pfx;
 
   if(client->pfx_table_started == 0)
     {

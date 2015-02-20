@@ -672,7 +672,7 @@ void bgpwatcher_pfx_table_dump(bgpwatcher_pfx_table_t *table)
 */
 /* @todo consider moving the buffer into the client */
 int bgpwatcher_pfx_row_send(void *dest,
-                            bl_pfx_storage_t *pfx,
+                            bgpstream_pfx_t *pfx,
                             bgpwatcher_pfx_peer_info_t *peer_infos,
                             int peer_cnt)
 {
@@ -725,7 +725,7 @@ int bgpwatcher_pfx_row_send(void *dest,
 }
 
 int bgpwatcher_pfx_row_recv(void *src,
-                            bl_pfx_storage_t *pfx,
+                            bgpstream_pfx_storage_t *pfx,
                             bgpwatcher_pfx_peer_info_t *peer_infos,
                             int peer_cnt)
 {

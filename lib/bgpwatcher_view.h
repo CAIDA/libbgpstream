@@ -254,7 +254,7 @@ uint64_t bgpwatcher_view_iter_size(bgpwatcher_view_iter_t *iter,
  *         NULL if the iterator is not initialized, or has reached the end of
  *         the v4 prefixes.
  */
-bl_ipv4_pfx_t *bgpwatcher_view_iter_get_v4pfx(bgpwatcher_view_iter_t *iter);
+bgpstream_ipv4_pfx_t *bgpwatcher_view_iter_get_v4pfx(bgpwatcher_view_iter_t *iter);
 
 /** Get the current v6 prefix for the given iterator
  *
@@ -263,7 +263,7 @@ bl_ipv4_pfx_t *bgpwatcher_view_iter_get_v4pfx(bgpwatcher_view_iter_t *iter);
  *         NULL if the iterator is not initialized, or has reached the end of
  *         the v6 prefixes.
  */
-bl_ipv6_pfx_t *bgpwatcher_view_iter_get_v6pfx(bgpwatcher_view_iter_t *iter);
+bgpstream_ipv6_pfx_t *bgpwatcher_view_iter_get_v6pfx(bgpwatcher_view_iter_t *iter);
 
 /** Get the current v4 prefix user pointer for the given iterator
  *
