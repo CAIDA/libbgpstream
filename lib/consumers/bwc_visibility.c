@@ -209,7 +209,7 @@ static int create_gen_metrics(bwc_t *consumer)
 
 static void find_ff_peers(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 {
-  bl_peerid_t peerid;
+  bgpstream_peer_id_t peerid;
   int pfx_cnt;
 
   for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);

@@ -197,7 +197,7 @@ int bwc_perfmonitor_process_view(bwc_t *consumer, uint8_t interests,
       return -1;
     }
 
-  bl_peer_signature_t *sig;
+  bgpstream_peer_sig_t *sig;
   unsigned long long pfx4_cnt;
   unsigned long long pfx6_cnt;
   unsigned long long peer_on = 1;

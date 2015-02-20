@@ -21,8 +21,8 @@
 
 #include <czmq.h>
 
-/* we need to poke our fingers into the peersign map */
-#include "bl_peersign_map_int.h"
+/* we need to poke our fingers into the peersign map @TODO do we? */
+#include "bgpstream_utils_peer_sig_map.h"
 
 #include "bgpwatcher_view_int.h"
 
@@ -54,7 +54,7 @@ struct bgpwatcher_view_iter {
 
 /* ========== PRIVATE FUNCTIONS ========== */
 
-static int peerinfo_add_pfx(bgpwatcher_view_t *view, bl_peerid_t peerid,
+static int peerinfo_add_pfx(bgpwatcher_view_t *view, bgpstream_peer_id_t peerid,
                             bl_pfx_storage_t *prefix)
 {
   khiter_t k;
@@ -112,7 +112,7 @@ static bwv_peerid_pfxinfo_t* peerid_pfxinfo_create()
 static int peerid_pfxinfo_insert(bgpwatcher_view_t *view,
                                  bl_pfx_storage_t *prefix,
                                  bwv_peerid_pfxinfo_t *v,
-                                 bl_peerid_t peerid,
+                                 bgpstream_peer_id_t peerid,
                                  bgpwatcher_pfx_peer_info_t *pfx_info)
 {
   int i;
@@ -287,7 +287,7 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
 
 int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
                                bl_pfx_storage_t *prefix,
-                               bl_peerid_t peerid,
+                               bgpstream_peer_id_t peerid,
                                bgpwatcher_pfx_peer_info_t *pfx_info,
 			       void **cache)
 {
@@ -320,7 +320,7 @@ int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
 
 /* ========== PUBLIC FUNCTIONS ========== */
 
-bgpwatcher_view_t *bgpwatcher_view_create_shared(bl_peersign_map_t *peersigns)
+bgpwatcher_view_t *bgpwatcher_view_create_shared(bgpstream_peer_sig_map_t *peersigns)
 {
   bgpwatcher_view_t *view;
 
@@ -346,7 +346,7 @@ bgpwatcher_view_t *bgpwatcher_view_create_shared(bl_peersign_map_t *peersigns)
     }
   else
     {
-      if((view->peersigns = bl_peersign_map_create()) == NULL)
+      if((view->peersigns = bgpstream_peer_sig_map_create()) == NULL)
 	{
 	  fprintf(stderr, "Failed to create peersigns table\n");
 	  goto err;
@@ -400,7 +400,7 @@ void bgpwatcher_view_destroy(bgpwatcher_view_t *view)
 
   if(view->peersigns_shared == 0 && view->peersigns != NULL)
     {
-      bl_peersign_map_destroy(view->peersigns);
+      bgpstream_peer_sig_map_destroy(view->peersigns);
       view->peersigns = NULL;
     }
 
@@ -789,7 +789,7 @@ void bgpwatcher_view_iter_set_v6pfx_user(bgpwatcher_view_iter_t *iter, void *use
   return;
 }
 
-bl_peerid_t
+bgpstream_peer_id_t
 bgpwatcher_view_iter_get_peerid(bgpwatcher_view_iter_t *iter)
 {
   if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_PEER))
@@ -799,14 +799,14 @@ bgpwatcher_view_iter_get_peerid(bgpwatcher_view_iter_t *iter)
   return kh_key(iter->view->peerinfo, iter->peer_it);
 }
 
-bl_peer_signature_t *
+bgpstream_peer_sig_t *
 bgpwatcher_view_iter_get_peersig(bgpwatcher_view_iter_t *iter)
 {
   if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_PEER))
     {
       return NULL;
     }
-  return bl_peersign_map_get_peersign(iter->view->peersigns,
+  return bgpstream_peer_sig_map_get_sig(iter->view->peersigns,
 				      bgpwatcher_view_iter_get_peerid(iter));
 }
 
@@ -830,7 +830,7 @@ int bgpwatcher_view_iter_get_peer_v6pfx_cnt(bgpwatcher_view_iter_t *iter)
   return kh_val(iter->view->peerinfo, iter->peer_it).v6_pfx_cnt;
 }
 
-bl_peerid_t
+bgpstream_peer_id_t
 bgpwatcher_view_iter_get_v4pfx_peerid(bgpwatcher_view_iter_t *iter)
 {
   if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER))
@@ -841,7 +841,7 @@ bgpwatcher_view_iter_get_v4pfx_peerid(bgpwatcher_view_iter_t *iter)
   return iter->v4pfx_peer_it;
 }
 
-bl_peerid_t
+bgpstream_peer_id_t
 bgpwatcher_view_iter_get_v6pfx_peerid(bgpwatcher_view_iter_t *iter)
 {
   if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER))
@@ -852,7 +852,7 @@ bgpwatcher_view_iter_get_v6pfx_peerid(bgpwatcher_view_iter_t *iter)
   return iter->v6pfx_peer_it;
 }
 
-bl_peer_signature_t *
+bgpstream_peer_sig_t *
 bgpwatcher_view_iter_get_v4pfx_peersig(bgpwatcher_view_iter_t *iter)
 {
   if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER))
@@ -860,11 +860,11 @@ bgpwatcher_view_iter_get_v4pfx_peersig(bgpwatcher_view_iter_t *iter)
       return NULL;
     }
 
-  return bl_peersign_map_get_peersign(iter->view->peersigns,
-				   bgpwatcher_view_iter_get_v4pfx_peerid(iter));
+  return bgpstream_peer_sig_map_get_sig(iter->view->peersigns,
+                                        bgpwatcher_view_iter_get_v4pfx_peerid(iter));
 }
 
-bl_peer_signature_t *
+bgpstream_peer_sig_t *
 bgpwatcher_view_iter_get_v6pfx_peersig(bgpwatcher_view_iter_t *iter)
 {
   if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER))
@@ -872,8 +872,8 @@ bgpwatcher_view_iter_get_v6pfx_peersig(bgpwatcher_view_iter_t *iter)
       return NULL;
     }
 
-  return bl_peersign_map_get_peersign(iter->view->peersigns,
-				   bgpwatcher_view_iter_get_v6pfx_peerid(iter));
+  return bgpstream_peer_sig_map_get_sig(iter->view->peersigns,
+                                        bgpwatcher_view_iter_get_v6pfx_peerid(iter));
 }
 
 bgpwatcher_pfx_peer_info_t *

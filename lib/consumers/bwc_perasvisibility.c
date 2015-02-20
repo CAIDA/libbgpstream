@@ -80,7 +80,7 @@ KHASH_INIT(as_pfxs,
 	   kh_int_hash_equal);
 
 KHASH_INIT(peerid_set,
-           bl_peerid_t,
+           bgpstream_peer_id_t,
            char,
            0,
            kh_int_hash_func,
@@ -227,7 +227,7 @@ static int flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 {
   bl_ipv4_pfx_t *v4pfx;
 
-  bl_peerid_t peerid;
+  bgpstream_peer_id_t peerid;
   bgpwatcher_pfx_peer_info_t *pfxinfo;
 
   peras_info_t *info;
@@ -284,7 +284,7 @@ static int flip_v6table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 {
   bl_ipv6_pfx_t *v6pfx;
 
-  bl_peerid_t peerid;
+  bgpstream_peer_id_t peerid;
   bgpwatcher_pfx_peer_info_t *pfxinfo;
 
   peras_info_t *info;

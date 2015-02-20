@@ -40,8 +40,8 @@
 static void peers_dump(bgpwatcher_view_t *view,
 		       bgpwatcher_view_iter_t *it)
 {
-  bl_peerid_t peerid;
-  bl_peer_signature_t *ps;
+  bgpstream_peer_id_t peerid;
+  bgpstream_peer_sig_t *ps;
   int v4pfx_cnt = -1;
   int v6pfx_cnt = -1;
   char peer_str[INET6_ADDRSTRLEN] = "";
@@ -72,7 +72,7 @@ static void peerids_dump(bgpwatcher_view_iter_t *it,
 			 bgpwatcher_view_iter_field_t field,
 			 int version)
 {
-  bl_peerid_t peerid;
+  bgpstream_peer_id_t peerid;
   bgpwatcher_pfx_peer_info_t *pfxinfo;
 
   for(bgpwatcher_view_iter_first(it, field);
@@ -362,7 +362,7 @@ static int recv_pfxs(void *src, bgpwatcher_view_t *view)
   int i, j;
 
   bl_pfx_storage_t pfx;
-  bl_peerid_t peerid;
+  bgpstream_peer_id_t peerid;
   bgpwatcher_pfx_peer_info_t pfx_info;
   void *cache = NULL;
 
@@ -451,7 +451,7 @@ static int send_peers(void *dest, bgpwatcher_view_iter_t *it)
 {
   uint16_t u16;
 
-  bl_peer_signature_t *ps;
+  bgpstream_peer_sig_t *ps;
   size_t len;
 
   uint16_t peers_cnt;
@@ -507,9 +507,9 @@ static int recv_peers(void *src, bgpwatcher_view_t *view)
   uint16_t pc;
   int i;
 
-  bl_peerid_t peerid;
+  bgpstream_peer_id_t peerid;
 
-  bl_peer_signature_t ps;
+  bgpstream_peer_sig_t ps;
   int len;
 
   ASSERT_MORE;
@@ -551,11 +551,11 @@ static int recv_peers(void *src, bgpwatcher_view_t *view)
 	  goto err;
 	}
 
-      if(bl_peersign_map_set(view->peersigns, peerid, ps.collector_str,
-			     &ps.peer_ip_addr) != 0)
+      if(bgpstream_peer_sig_map_get_id(view->peersigns, peerid, ps.collector_str,
+                                       &ps.peer_ip_addr) != 0)
 	{
           fprintf(stderr, "Could not add peer to peersigns\n");
-	  fprintf(stderr, "Consider making bl_peersign_map_set more robust\n");
+	  fprintf(stderr, "Consider making bgpstream_peer_sig_map more robust\n");
 	  goto err;
 	}
     }
@@ -643,7 +643,7 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
   /* this is not really needed, but if the server is ever restarted while the
      consumer is running, this will prevent any issues. It shouldn't cause too
      much performance problems (famous last words) */
-  bl_peersign_map_clear(view->peersigns);
+  bgpstream_peer_sig_map_clear(view->peersigns);
 
   /* time */
   if(zmq_recv(src, &u32, sizeof(u32), 0) != sizeof(u32))

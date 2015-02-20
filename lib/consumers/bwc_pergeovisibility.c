@@ -433,7 +433,7 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   /* fprintf(stderr, "geotag_v4table START: \n"); */
 
   bl_ipv4_pfx_t *v4pfx;
-  bl_peerid_t peerid;
+  bgpstream_peer_id_t peerid;
   int fullfeed_cnt;
   bl_id_set_t *cck_set;
 

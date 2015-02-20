@@ -20,7 +20,7 @@
 #ifndef __BGPWATCHER_VIEW_H
 #define __BGPWATCHER_VIEW_H
 
-#include "bl_peersign_map.h"
+#include "bgpstream_utils_peer_sig_map.h"
 
 #include "bgpwatcher_common.h" /* < pfx_peer_info_t */
 
@@ -105,7 +105,7 @@ bgpwatcher_view_t *bgpwatcher_view_create();
  *
  * @return a pointer to the view if successful, NULL otherwise
  */
-bgpwatcher_view_t *bgpwatcher_view_create_shared(bl_peersign_map_t *peersigns);
+bgpwatcher_view_t *bgpwatcher_view_create_shared(bgpstream_peer_sig_map_t *peersigns);
 
 /** @todo create a nice high-level api for accessing information in the view */
 
@@ -305,7 +305,7 @@ void bgpwatcher_view_iter_set_v6pfx_user(bgpwatcher_view_iter_t *iter, void *use
  *         NULL if the iterator is not initialized, or has reached the end of
  *         the peers
  */
-bl_peerid_t
+bgpstream_peer_id_t
 bgpwatcher_view_iter_get_peerid(bgpwatcher_view_iter_t *iter);
 
 /** Get the current peer signature for the given iterator
@@ -315,7 +315,7 @@ bgpwatcher_view_iter_get_peerid(bgpwatcher_view_iter_t *iter);
  *         pointed at, NULL if the iterator is not initialized, or has reached
  *         the end of the peers
  */
-bl_peer_signature_t *
+bgpstream_peer_sig_t *
 bgpwatcher_view_iter_get_peersig(bgpwatcher_view_iter_t *iter);
 
 /** Get the current peer's IPv4 prefix count for the given iterator
@@ -350,7 +350,7 @@ bgpwatcher_view_iter_get_peer_v6pfx_cnt(bgpwatcher_view_iter_t *iter);
  *
  * @note the peer ID is only meaningful *within* a view.
  */
-bl_peerid_t
+bgpstream_peer_id_t
 bgpwatcher_view_iter_get_v4pfx_peerid(bgpwatcher_view_iter_t *iter);
 
 /** Get the current peer ID (key) for the current v6pfx.
@@ -365,7 +365,7 @@ bgpwatcher_view_iter_get_v4pfx_peerid(bgpwatcher_view_iter_t *iter);
  *
  * @note the peer ID is only meaningful *within* a view.
  */
-bl_peerid_t
+bgpstream_peer_id_t
 bgpwatcher_view_iter_get_v6pfx_peerid(bgpwatcher_view_iter_t *iter);
 
 /** Get the current peer signature (key) for the current v4pfx.
@@ -378,7 +378,7 @@ bgpwatcher_view_iter_get_v6pfx_peerid(bgpwatcher_view_iter_t *iter);
  * @note this returns the current peer (BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER)
  * for the current prefix (BGPWATCHER_VIEW_ITER_FIELD_V4PFX).
  */
-bl_peer_signature_t *
+bgpstream_peer_sig_t *
 bgpwatcher_view_iter_get_v4pfx_peersig(bgpwatcher_view_iter_t *iter);
 
 /** Get the current peer signature (key) for the current v6pfx.
@@ -391,7 +391,7 @@ bgpwatcher_view_iter_get_v4pfx_peersig(bgpwatcher_view_iter_t *iter);
  * @note this returns the current peer (BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER)
  * for the current prefix (BGPWATCHER_VIEW_ITER_FIELD_V6PFX).
  */
-bl_peer_signature_t *
+bgpstream_peer_sig_t *
 bgpwatcher_view_iter_get_v6pfx_peersig(bgpwatcher_view_iter_t *iter);
 
 /** Get the current pfx info (value) for the current v4pfx.
