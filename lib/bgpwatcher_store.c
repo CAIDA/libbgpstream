@@ -24,8 +24,8 @@
 #include "bgpwatcher_server_int.h"
 #include "bgpwatcher_view_int.h"
 
-#include "bl_bgp_utils.h"
-#include "bl_str_set.h"
+// #include "bl_bgp_utils.h"
+#include "bgpstream_utils_str_set.h"
 #include "bgpstream_utils_id_set.h"
 #include "bgpstream_utils_peer_sig_map.h"
 #include "utils.h"
@@ -121,7 +121,7 @@ typedef struct store_view {
   uint8_t modified;
 
   /** list of clients that have sent at least one complete table */
-  bl_string_set_t *done_clients;
+  bgpstream_str_set_t *done_clients;
 
   /** list of inactive peers (status null or down) */
   bgpstream_id_set_t *inactive_peers;
@@ -184,7 +184,7 @@ static void store_view_destroy(store_view_t *sview)
 
   if(sview->done_clients != NULL)
     {
-      bl_string_set_destroy(sview->done_clients);
+      bgpstream_str_set_destroy(sview->done_clients);
       sview->done_clients = NULL;
     }
 
@@ -220,7 +220,7 @@ store_view_t *store_view_create(bgpwatcher_store_t *store, int id)
 
   sview->reuse_remaining = STORE_VIEW_REUSE_MAX-1;
 
-  if((sview->done_clients = bl_string_set_create()) == NULL)
+  if((sview->done_clients = bgpstream_str_set_create()) == NULL)
     {
       goto err;
     }
@@ -290,7 +290,7 @@ static store_view_t *store_view_clear(bgpwatcher_store_t *store,
 
   sview->modified = 0;
 
-  bl_string_set_reset(sview->done_clients);
+  bgpstream_str_set_clear(sview->done_clients);
 
   bgpstream_id_set_clear(sview->inactive_peers);
 
@@ -322,7 +322,7 @@ static int store_view_completion_check(bgpwatcher_store_t *store,
       if(client->intents & BGPWATCHER_PRODUCER_INTENT_PREFIX)
 	{
 	  // check if all the producers are done with sending pfx tables
-	  if(bl_string_set_exists(sview->done_clients, client->name) == 0)
+	  if(bgpstream_str_set_exists(sview->done_clients, client->name) == 0)
 	    {
 	      sview->state = STORE_VIEW_PARTIAL;
 	      return 0;
@@ -401,7 +401,7 @@ static int store_view_table_end(store_view_t *sview,
     }
 
   // add this client to the list of clients done
-  bl_string_set_insert(sview->done_clients, client->name);
+  bgpstream_str_set_insert(sview->done_clients, client->name);
 
   int i;
   for(i = 0; i <= STORE_VIEW_STATE_MAX; i++)
@@ -490,7 +490,7 @@ static int dispatcher_run(bgpwatcher_store_t *store,
               sview->view->time,
               "%s", "completion_trigger");
 
-  DUMP_METRIC((uint64_t)bl_string_set_size(sview->done_clients),
+  DUMP_METRIC((uint64_t)bgpstream_str_set_size(sview->done_clients),
               sview->view->time,
               "%s", "done_clients_cnt");
   DUMP_METRIC((uint64_t)kh_size(store->active_clients),
