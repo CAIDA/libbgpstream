@@ -136,7 +136,7 @@ int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_t *client,
 /** Add a peer record to the given client
  *
  * @param client        pointer to a client instance to add peer to
- * @param peer_ip       pointer to the peer ip
+ * @param peer_ip       pointer to the peer ip storage
  * @param status        status value
  * @return a peer ID (to be used with bgpwatcher_client_pfx_table_add) if
  *         successful, -1 otherwise
@@ -144,7 +144,7 @@ int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_t *client,
  * @note the caller maintains ownership of the peer record
  */
 int bgpwatcher_client_pfx_table_add_peer(bgpwatcher_client_t *client,
-                                         bl_addr_storage_t *peer_ip,
+                                         bgpstream_addr_storage_t *peer_ip,
                                          uint8_t status);
 
 /** Add a prefix record to the given client

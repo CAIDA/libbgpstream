@@ -276,11 +276,13 @@ int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_t *client,
 }
 
 int bgpwatcher_client_pfx_table_add_peer(bgpwatcher_client_t *client,
-                                         bl_addr_storage_t *peer_ip,
+                                         bgpstream_addr_storage_t *peer_ip,
                                          uint8_t status)
 {
   int peer_id;
   assert(client != NULL);
+  assert(peer_ip != NULL);
+  
   /* make sure they aren't trying to add more peers than they promised */
   assert(TBL.info.peers_cnt > TBL.peers_added);
 
@@ -312,7 +314,7 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
 
   switch(prefix->address.version)
     {
-    case BL_ADDR_IPV4:
+    case BGPSTREAM_ADDR_VERSION_IPV4:
       /* either get or insert this prefix */
       if((k = kh_get(v4pfx_peers, TBL.v4pfx_peers,
                      *bl_pfx_storage2ipv4(prefix)))
@@ -334,7 +336,7 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
           peer_infos = kh_val(TBL.v4pfx_peers, k);
         }
       break;
-    case BL_ADDR_IPV6:
+    case BGPSTREAM_ADDR_VERSION_IPV6:
       if((k = kh_get(v6pfx_peers, TBL.v6pfx_peers,
                      *bl_pfx_storage2ipv6(prefix)))
          == kh_end(TBL.v6pfx_peers))

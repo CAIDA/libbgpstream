@@ -37,12 +37,6 @@
 #define BW_INTERNAL_AF_INET  4
 #define BW_INTERNAL_AF_INET6 6
 
-static void *get_in_addr(bl_addr_storage_t *ip) {
-  assert(ip->version != BL_ADDR_TYPE_UNKNOWN);
-  return ip->version == BL_ADDR_IPV4
-    ? (void *) &(ip->ipv4)
-    : (void *) &(ip->ipv6);
-}
 
 static char *recv_str(void *src)
 {
@@ -278,34 +272,35 @@ static int recv_pfx_peer_info(void *src, bgpwatcher_pfx_peer_info_t *info)
 
 /* ========== UTILITIES ========== */
 
-int bw_send_ip(void *dest, bl_addr_storage_t *ip, int flags)
+int bw_send_ip(void *dest, bgpstream_ip_addr_t *ip, int flags)
 {
   switch(ip->version)
     {
-    case BL_ADDR_IPV4:
-      if(zmq_send(dest, &ip->ipv4.s_addr,
+    case BGPSTREAM_ADDR_VERSION_IPV4:
+      if(zmq_send(dest, &((bgpstream_ipv4_addr_t *)ip)->ipv4.s_addr,
                   sizeof(uint32_t), flags) == sizeof(uint32_t))
         {
           return 0;
         }
       break;
 
-    case BL_ADDR_IPV6:
-      if(zmq_send(dest, &ip->ipv6.s6_addr,
+    case BGPSTREAM_ADDR_VERSION_IPV6:
+      if(zmq_send(dest, &((bgpstream_ipv6_addr_t *)ip)->ipv6.s6_addr,
                   (sizeof(uint8_t)*16), flags) == sizeof(uint8_t)*16)
         {
           return 0;
         }
       break;
 
-    case BL_ADDR_TYPE_UNKNOWN:
+    case BGPSTREAM_ADDR_VERSION_UNKNOWN:
       return -1;
     }
 
   return -1;
 }
 
-int bw_recv_ip(void *src, bl_addr_storage_t *ip)
+
+int bw_recv_ip(void *src, bgpstream_addr_storage_t *ip)
 {
   zmq_msg_t llm;
   assert(ip != NULL);
@@ -319,7 +314,7 @@ int bw_recv_ip(void *src, bl_addr_storage_t *ip)
   if(zmq_msg_size(&llm) == sizeof(uint32_t))
     {
       /* v4 */
-      ip->version = BL_ADDR_IPV4;
+      ip->version = BGPSTREAM_ADDR_VERSION_IPV4;
       memcpy(&ip->ipv4.s_addr,
 	     zmq_msg_data(&llm),
 	     sizeof(uint32_t));
@@ -327,7 +322,7 @@ int bw_recv_ip(void *src, bl_addr_storage_t *ip)
   else if(zmq_msg_size(&llm) == sizeof(uint8_t)*16)
     {
       /* v6 */
-      ip->version = BL_ADDR_IPV6;
+      ip->version = BGPSTREAM_ADDR_VERSION_IPV6;
       memcpy(&ip->ipv6.s6_addr,
 	     zmq_msg_data(&llm),
 	     sizeof(uint8_t)*16);
@@ -347,14 +342,15 @@ int bw_recv_ip(void *src, bl_addr_storage_t *ip)
   return -1;
 }
 
-int bw_serialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip)
+int bw_serialize_ip(uint8_t *buf, size_t len, bgpstream_ip_addr_t *ip)
 {
+  
   size_t written = 0;
 
   /* now serialize the actual address */
   switch(ip->version)
     {
-    case BL_ADDR_IPV4:
+    case BGPSTREAM_ADDR_VERSION_IPV4:
       /* serialize the version */
       assert(len >= 1);
       *buf = BW_INTERNAL_AF_INET;
@@ -362,11 +358,11 @@ int bw_serialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip)
       written++;
 
       assert((len-written) >= sizeof(uint32_t));
-      memcpy(buf, &ip->ipv4.s_addr, sizeof(uint32_t));
+      memcpy(buf, &((bgpstream_ipv4_addr_t *)ip)->ipv4.s_addr, sizeof(uint32_t));
       return written + sizeof(uint32_t);
       break;
 
-    case BL_ADDR_IPV6:
+    case BGPSTREAM_ADDR_VERSION_IPV6:
       /* serialize the version */
       assert(len >= 1);
       *buf = BW_INTERNAL_AF_INET6;
@@ -374,18 +370,18 @@ int bw_serialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip)
       written++;
 
       assert((len-written) >= (sizeof(uint8_t)*16));
-      memcpy(buf, &ip->ipv6.s6_addr, sizeof(uint8_t)*16);
+      memcpy(buf, &((bgpstream_ipv6_addr_t *)ip)->ipv6.s6_addr, sizeof(uint8_t)*16);
       return written + sizeof(uint8_t)*16;
       break;
 
-    case BL_ADDR_TYPE_UNKNOWN:
+    case BGPSTREAM_ADDR_VERSION_UNKNOWN:
       return -1;
     }
 
   return -1;
 }
 
-int bw_deserialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip)
+int bw_deserialize_ip(uint8_t *buf, size_t len, bgpstream_addr_storage_t *ip)
 {
   size_t read = 0;
 
@@ -395,7 +391,7 @@ int bw_deserialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip)
   switch(*buf)
     {
     case BW_INTERNAL_AF_INET:
-      ip->version = BL_ADDR_IPV4;
+      ip->version = BGPSTREAM_ADDR_VERSION_IPV4;
       buf++;
       read++;
 
@@ -405,7 +401,7 @@ int bw_deserialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip)
       break;
 
     case BW_INTERNAL_AF_INET6:
-      ip->version = BL_ADDR_IPV6;
+      ip->version = BGPSTREAM_ADDR_VERSION_IPV6;
       buf++;
       read++;
 
@@ -414,7 +410,7 @@ int bw_deserialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip)
       return read + (sizeof(uint8_t) * 16);
       break;
 
-    case BL_ADDR_TYPE_UNKNOWN:
+    case BGPSTREAM_ADDR_VERSION_UNKNOWN:
       return -1;
     }
 
@@ -650,9 +646,7 @@ void bgpwatcher_pfx_table_dump(bgpwatcher_pfx_table_t *table)
 
       for(i=0; i<table->peers_cnt; i++)
         {
-          inet_ntop(table->peers[i].ip.version,
-                    get_in_addr(&table->peers[i].ip),
-                    peer_str, INET6_ADDRSTRLEN);
+          bgpstream_addr_ntop(peer_str,INET6_ADDRSTRLEN, &table->peers[i].ip);
           fprintf(stdout,
                   "Peer %03d:\t%s (%d)\n",
                   i,
@@ -879,10 +873,10 @@ int bgpwatcher_pfx_row_recv(void *src, bgpwatcher_pfx_row_t *row_out,
 #endif
 
 void bgpwatcher_pfx_row_dump(bgpwatcher_pfx_table_t *table,
-                             bl_pfx_storage_t *pfx,
+                             bgpstream_pfx_storage_t *pfx,
                              bgpwatcher_pfx_peer_info_t *peer_infos)
 {
-  char pfx_str[INET6_ADDRSTRLEN] = "";
+  char pfx_str[INET6_ADDRSTRLEN+3] = "";
   int i;
   char peer_str[INET6_ADDRSTRLEN] = "";
 
@@ -895,23 +889,17 @@ void bgpwatcher_pfx_row_dump(bgpwatcher_pfx_table_t *table,
     }
   else
     {
-      inet_ntop(pfx->address.version,
-                get_in_addr(&pfx->address),
-                pfx_str, INET6_ADDRSTRLEN);
 
+      bgpstream_pfx_snprintf(pfx_str,INET6_ADDRSTRLEN+3, pfx);
       fprintf(stdout,
 	      "------------------------------\n"
-	      "Prefix:\t%s/%"PRIu8"\n",
-              pfx_str, pfx->mask_len);
+	      "Prefix:\t%s\n", pfx_str);
 
       for(i=0; i<table->peers_cnt; i++)
         {
           if(peer_infos[i].in_use != 0)
             {
-              inet_ntop(table->peers[i].ip.version,
-                        get_in_addr(&table->peers[i].ip),
-                        peer_str, INET6_ADDRSTRLEN);
-
+              bgpstream_addr_ntop(peer_str,INET6_ADDRSTRLEN, &table->peers[i].ip);
               fprintf(stdout,
                       "\tPeer:\t%s\n"
                       "\t\tOrig ASN:\t%"PRIu32"\n",

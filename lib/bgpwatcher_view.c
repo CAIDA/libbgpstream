@@ -76,11 +76,11 @@ static int peerinfo_add_pfx(bgpwatcher_view_t *view, bgpstream_peer_id_t peerid,
 
   switch(prefix->address.version)
     {
-    case BL_ADDR_IPV4:
+    case BGPSTREAM_ADDR_VERSION_IPV4:
       kh_val(view->peerinfo, k).v4_pfx_cnt++;
       break;
 
-    case BL_ADDR_IPV6:
+    case BGPSTREAM_ADDR_VERSION_IPV6:
       kh_val(view->peerinfo, k).v6_pfx_cnt++;
       break;
 
@@ -237,11 +237,11 @@ static bwv_peerid_pfxinfo_t *get_v6pfx_peerids(bgpwatcher_view_t *view,
 static bwv_peerid_pfxinfo_t *get_pfx_peerids(bgpwatcher_view_t *view,
                                              bl_pfx_storage_t *prefix)
 {
-  if(prefix->address.version == BL_ADDR_IPV4)
+  if(prefix->address.version == BGPSTREAM_ADDR_VERSION_IPV4)
     {
       return get_v4pfx_peerids(view, bl_pfx_storage2ipv4(prefix));
     }
-  else if(prefix->address.version == BL_ADDR_IPV6)
+  else if(prefix->address.version == BGPSTREAM_ADDR_VERSION_IPV6)
     {
       return get_v6pfx_peerids(view, bl_pfx_storage2ipv6(prefix));
     }

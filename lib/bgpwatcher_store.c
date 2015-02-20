@@ -1008,13 +1008,16 @@ int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
       assert(ap_status != NULL);
 
       // update counters
-      if(pfx->address.version == BL_ADDR_IPV4)
+      if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4)
         {
           ap_status->recived_ipv4_pfx_cnt++;
         }
       else
         {
-          ap_status->recived_ipv6_pfx_cnt++;
+          if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV6)
+            {
+              ap_status->recived_ipv6_pfx_cnt++;
+            }
         }
     }
 

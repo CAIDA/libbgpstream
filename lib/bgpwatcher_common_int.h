@@ -171,16 +171,16 @@ typedef enum {
 /* ========== UTILITIES ========== */
 
 /** Send the given IP over the given socket */
-int bw_send_ip(void *dest, bl_addr_storage_t *ip, int flags);
+int bw_send_ip(void *dest, bgpstream_ip_addr_t *ip, int flags);
 
 /** Receive an IP address on the given socket */
-int bw_recv_ip(void *src, bl_addr_storage_t *ip);
+int bw_recv_ip(void *src, bgpstream_addr_storage_t *ip);
 
 /** Serialize the given IP into the given byte array */
-int bw_serialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip);
+int bw_serialize_ip(uint8_t *buf, size_t len, bgpstream_ip_addr_t *ip);
 
-/** Deerialize an IP from given byte array */
-int bw_deserialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip);
+/** Deserialize an IP from given byte array */
+int bw_deserialize_ip(uint8_t *buf, size_t len, bgpstream_addr_storage_t *ip);
 
 /* ========== MESSAGE TYPES ========== */
 
@@ -280,7 +280,7 @@ int bgpwatcher_pfx_row_recv(void *src,
  * @param row        pointer to a prefix row
  */
 void bgpwatcher_pfx_row_dump(bgpwatcher_pfx_table_t *table,
-                             bl_pfx_storage_t *pfx,
+                             bgpstream_pfx_storage_t *pfx,
                              bgpwatcher_pfx_peer_info_t *peer_infos);
 
 /* ========== INTERESTS/VIEWS ========== */

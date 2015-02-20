@@ -229,7 +229,7 @@ static int send_v4pfxs(void *dest, bgpwatcher_view_t *view)
 
       /* pfx address */
       if((s = bw_serialize_ip(ptr, (len-written),
-			      bl_addr_ipv42storage(&key->address))) == -1)
+                              (bgpstream_ip_addr_t *) (&key->address))) == -1)
 	{
 	  goto err;
 	}
@@ -311,7 +311,7 @@ static int send_v6pfxs(void *dest, bgpwatcher_view_t *view)
 
       /* pfx address */
       if((s = bw_serialize_ip(ptr, (len-written),
-			      bl_addr_ipv62storage(&key->address))) == -1)
+			      (bgpstream_ip_addr_t *)(&key->address))) == -1)
 	{
 	  goto err;
 	}
