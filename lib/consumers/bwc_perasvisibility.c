@@ -261,8 +261,8 @@ static int flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 	{
           /* only consider peers that are full-feed */
           peerid = bgpwatcher_view_iter_get_v4pfx_peerid(it);
-	  if(bl_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v4ff_peerids,
-                              peerid) == 0)
+	  if(bgpstream_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v4ff_peerids,
+                                     peerid) == 0)
             {
 	      continue;
 	    }
@@ -318,8 +318,8 @@ static int flip_v6table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 	{
           /* only consider peers that are full-feed */
           peerid = bgpwatcher_view_iter_get_v6pfx_peerid(it);
-	  if(bl_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v6ff_peerids,
-                              peerid) == 0)
+	  if(bgpstream_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v6ff_peerids,
+                                     peerid) == 0)
             {
 	      continue;
 	    }

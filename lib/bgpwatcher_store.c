@@ -26,7 +26,7 @@
 
 #include "bl_bgp_utils.h"
 #include "bl_str_set.h"
-#include "bl_id_set.h"
+#include "bgpstream_utils_id_set.h"
 #include "bgpstream_utils_peer_sig_map.h"
 #include "utils.h"
 
@@ -124,7 +124,7 @@ typedef struct store_view {
   bl_string_set_t *done_clients;
 
   /** list of inactive peers (status null or down) */
-  bl_id_set_t *inactive_peers;
+  bgpstream_id_set_t *inactive_peers;
 
   /** for each active id we store its status */
   peerid_peerstatus_t *active_peers_info;
@@ -190,7 +190,7 @@ static void store_view_destroy(store_view_t *sview)
 
   if(sview->inactive_peers != NULL)
     {
-      bl_id_set_destroy(sview->inactive_peers);
+      bgpstream_id_set_destroy(sview->inactive_peers);
       sview->inactive_peers = NULL;
     }
 
@@ -225,7 +225,7 @@ store_view_t *store_view_create(bgpwatcher_store_t *store, int id)
       goto err;
     }
 
-  if((sview->inactive_peers = bl_id_set_create()) == NULL)
+  if((sview->inactive_peers = bgpstream_id_set_create()) == NULL)
     {
       goto err;
     }
@@ -292,7 +292,7 @@ static store_view_t *store_view_clear(bgpwatcher_store_t *store,
 
   bl_string_set_reset(sview->done_clients);
 
-  bl_id_set_reset(sview->inactive_peers);
+  bgpstream_id_set_clear(sview->inactive_peers);
 
   kh_free_vals(peerid_peerstatus, sview->active_peers_info,
                active_peers_destroy);
@@ -373,7 +373,7 @@ static active_peer_status_t *store_view_add_peer(store_view_t *sview,
   else
     {
       // add a new inactive peer to the list
-      bl_id_set_insert(sview->inactive_peers, peer_info->server_id);
+      bgpstream_id_set_insert(sview->inactive_peers, peer_info->server_id);
     }
   return ap_status;
 }
@@ -501,7 +501,7 @@ static int dispatcher_run(bgpwatcher_store_t *store,
               sview->view->time,
               "%s", "active_peers_cnt");
 
-  DUMP_METRIC((uint64_t)bl_id_set_size(sview->inactive_peers),
+  DUMP_METRIC((uint64_t)bgpstream_id_set_size(sview->inactive_peers),
               sview->view->time,
               "%s", "inactive_peers_cnt");
 

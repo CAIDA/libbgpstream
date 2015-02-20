@@ -28,8 +28,7 @@
 #include "czmq.h"
 
 #include "bl_pfx_set.h"
-#include "bl_id_set.h"
-#include "bl_id_set_int.h"
+#include "bgpstream_utils_id_set.h"
 
 #include "bgpwatcher_consumer_interface.h"
 
@@ -427,15 +426,23 @@ static void dump_v4table(bwc_t *consumer)
     }
 }
 
+
+KHASH_INIT(country_k_set /* name */,
+	   uint32_t  /* khkey_t */,
+	   char /* khval_t */,
+	   0  /* kh_is_set */,
+	   kh_int_hash_func /*__hash_func */,
+	   kh_int_hash_equal /* __hash_equal */);
+
+
 static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 {
 
   /* fprintf(stderr, "geotag_v4table START: \n"); */
 
-  bl_ipv4_pfx_t *v4pfx;
+  bgpstream_ipv4_pfx_t *v4pfx;
   bgpstream_peer_id_t peerid;
   int fullfeed_cnt;
-  bl_id_set_t *cck_set;
 
   pergeo_info_t *geo_info;
   ipmeta_record_t *rec;
@@ -443,8 +450,11 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   khiter_t k;
   int num_records;
 
+  int khret;
+  khash_t(country_k_set) *cck_set = NULL;
   khiter_t idk;
   uint32_t cck;
+  khiter_t setk;
 
   for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
       !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
@@ -477,8 +487,8 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 	{
           /* only consider peers that are full-feed */
           peerid = bgpwatcher_view_iter_get_v4pfx_peerid(it);
-	  if(bl_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v4ff_peerids,
-                              peerid) == 0)
+	  if(bgpstream_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v4ff_peerids,
+                                     peerid) == 0)
             {
 	      continue;
 	    }
@@ -504,7 +514,7 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
       // First we check if this prefix has been already
       // geotagged in previous iterations
 
-      cck_set = (bl_id_set_t *) bgpwatcher_view_iter_get_v4pfx_user(it);
+      cck_set = (bgpstream_id_set_t *) bgpwatcher_view_iter_get_v4pfx_user(it);
 
       // if the set is null, then we need to initialize the set
       // and proceed with the geolocation
@@ -514,9 +524,9 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 
           // a new set has to be created, with the geolocation
           // information
-          if( (cck_set = bl_id_set_create()) == NULL)
+          if( (cck_set = kh_init(country_k_set)) == NULL)
             {
-              fprintf(stderr, "Error: cannot bl_id_set_create()\n");
+              fprintf(stderr, "Error: cannot create country_k_set\n");
               return;
             }
 
@@ -542,7 +552,11 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
                 }
               else
                 {
-                  bl_id_set_insert(cck_set, k);
+                  // insert k in the country-code-k set
+                  if((setk = kh_get(country_k_set, cck_set, k)) == kh_end(cck_set))
+                    {
+                      setk = kh_put(country_k_set, cck_set, k, &khret);                              
+                    }                  
                 }
             }
 
@@ -565,21 +579,21 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
       // cc_k_set contains the k position of a country in the
       // countrycode_pfxs hash map
 
-      for(idk = kh_begin(cck_set->hash);
-          idk != kh_end(cck_set->hash); ++idk)
+      for(idk = kh_begin(cck_set);
+          idk != kh_end(cck_set); ++idk)
         {
-          if (kh_exist(cck_set->hash, idk))
+          if (kh_exist(cck_set, idk))
             {
-              cck = kh_key(cck_set->hash, idk);
+              cck = kh_key(cck_set, idk);
               geo_info = &kh_value(STATE->countrycode_pfxs, cck);
               geo_info->v4pfxs_cnt++;
               STATE->avg_numcountries_perpfx++;
             }
         }
 
-      if(bl_id_set_size(cck_set) > STATE->max_numcountries_perpfx)
+      if(kh_size(cck_set) > STATE->max_numcountries_perpfx)
         {
-          STATE->max_numcountries_perpfx = bl_id_set_size(cck_set);
+          STATE->max_numcountries_perpfx = kh_size(cck_set);
         }
 
     } /* end per-pfx loop */
@@ -740,7 +754,7 @@ int bwc_pergeovisibility_process_view(bwc_t *consumer, uint8_t interests,
         }
     }
 
-  // IPV6: also if(bl_id_set_size(kh_STATE->v6ff_peerids) > ROUTED_PFX_PEERCNT)
+  // IPV6: also if(bgpstream_id_set_size(kh_STATE->v6ff_peerids) > ROUTED_PFX_PEERCNT)
 
   // compute processed delay (must come prior to dump_gen_metrics)
   STATE->processed_delay = zclock_time()/1000- bgpwatcher_view_time(view);

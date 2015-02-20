@@ -27,7 +27,7 @@
 
 #include "bl_bgp_utils.h"
 #include "bl_str_set.h"
-#include "bl_id_set.h"
+#include "bgpstream_utils_id_set.h"
 #include "bl_pfx_set.h"
 
 #include "khash.h"

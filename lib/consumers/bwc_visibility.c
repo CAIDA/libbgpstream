@@ -29,8 +29,8 @@
 #include "khash.h"
 
 #include "bl_pfx_set.h"
-#include "bl_id_set.h"
-#include "bl_id_set_int.h"
+#include "bgpstream_utils_id_set.h"
+
 
 #include "bgpwatcher_consumer_interface.h"
 
@@ -229,7 +229,7 @@ static void find_ff_peers(bwc_t *consumer, bgpwatcher_view_iter_t *it)
       if(pfx_cnt >= STATE->v4_fullfeed_size)
         {
           /* add to the v4 fullfeed set */
-	  bl_id_set_insert(CHAIN_STATE->v4ff_peerids, peerid);
+	  bgpstream_id_set_insert(CHAIN_STATE->v4ff_peerids, peerid);
         }
 
       pfx_cnt = bgpwatcher_view_iter_get_peer_v6pfx_cnt(it);
@@ -242,7 +242,7 @@ static void find_ff_peers(bwc_t *consumer, bgpwatcher_view_iter_t *it)
       if(pfx_cnt >= STATE->v6_fullfeed_size)
         {
           /* add to the v6 fullfeed table */
-	  bl_id_set_insert(CHAIN_STATE->v6ff_peerids, peerid);
+	  bgpstream_id_set_insert(CHAIN_STATE->v6ff_peerids, peerid);
         }
     }
 }
@@ -256,10 +256,10 @@ static void dump_gen_metrics(bwc_t *consumer)
                     CHAIN_STATE->v6_peer_cnt);
 
   timeseries_kp_set(STATE->kp, STATE->gen_metrics.v4_ff_peers_idx,
-                    bl_id_set_size(CHAIN_STATE->v4ff_peerids));
+                    bgpstream_id_set_size(CHAIN_STATE->v4ff_peerids));
 
   timeseries_kp_set(STATE->kp, STATE->gen_metrics.v6_ff_peers_idx,
-                    bl_id_set_size(CHAIN_STATE->v6ff_peerids));
+                    bgpstream_id_set_size(CHAIN_STATE->v6ff_peerids));
 
   /* META metrics */
   timeseries_kp_set(STATE->kp, STATE->gen_metrics.arrival_delay_idx,
@@ -274,8 +274,8 @@ static void dump_gen_metrics(bwc_t *consumer)
 
 static void reset_chain_state(bwc_t *consumer)
 {
-  bl_id_set_reset(CHAIN_STATE->v4ff_peerids);
-  bl_id_set_reset(CHAIN_STATE->v6ff_peerids);
+  bgpstream_id_set_clear(CHAIN_STATE->v4ff_peerids);
+  bgpstream_id_set_clear(CHAIN_STATE->v6ff_peerids);
 
   CHAIN_STATE->v4_peer_cnt = 0;
   CHAIN_STATE->v6_peer_cnt = 0;
@@ -308,12 +308,12 @@ int bwc_visibility_init(bwc_t *consumer, int argc, char **argv)
   state->v4_fullfeed_size  = IPV4_FULLFEED_SIZE;
   state->v6_fullfeed_size  = IPV6_FULLFEED_SIZE;
 
-  if((CHAIN_STATE->v4ff_peerids = bl_id_set_create()) == NULL)
+  if((CHAIN_STATE->v4ff_peerids = bgpstream_id_set_create()) == NULL)
     {
       fprintf(stderr, "Error: unable to create full-feed peers (v4)\n");
       goto err;
     }
-  if((CHAIN_STATE->v6ff_peerids = bl_id_set_create()) == NULL)
+  if((CHAIN_STATE->v6ff_peerids = bgpstream_id_set_create()) == NULL)
     {
       fprintf(stderr, "Error: unable to create full-feed peers (v6)\n");
       goto err;
@@ -356,12 +356,12 @@ void bwc_visibility_destroy(bwc_t *consumer)
   /* destroy things here */
   if(CHAIN_STATE->v4ff_peerids != NULL)
     {
-      bl_id_set_destroy(CHAIN_STATE->v4ff_peerids);
+      bgpstream_id_set_destroy(CHAIN_STATE->v4ff_peerids);
       CHAIN_STATE->v4ff_peerids = NULL;
     }
   if(CHAIN_STATE->v6ff_peerids != NULL)
     {
-      bl_id_set_destroy(CHAIN_STATE->v6ff_peerids);
+      bgpstream_id_set_destroy(CHAIN_STATE->v6ff_peerids);
       CHAIN_STATE->v6ff_peerids = NULL;
     }
 
@@ -396,13 +396,13 @@ int bwc_visibility_process_view(bwc_t *consumer, uint8_t interests,
   /* find the full-feed peers */
   find_ff_peers(consumer, it);
 
-  if(bl_id_set_size(CHAIN_STATE->v4ff_peerids) >=
+  if(bgpstream_id_set_size(CHAIN_STATE->v4ff_peerids) >=
      CHAIN_STATE->pfx_vis_peers_threshold)
     {
       CHAIN_STATE->v4_usable = 1;
     }
 
-  if(bl_id_set_size(CHAIN_STATE->v6ff_peerids) >=
+  if(bgpstream_id_set_size(CHAIN_STATE->v6ff_peerids) >=
      CHAIN_STATE->pfx_vis_peers_threshold)
     {
       CHAIN_STATE->v6_usable = 1;
