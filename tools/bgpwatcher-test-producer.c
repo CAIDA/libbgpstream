@@ -39,16 +39,16 @@
 #define ASN_MAX 50000
 
 /* pfx table */
-static char                   *test_collector_name;
-static uint32_t                test_time;
-static uint32_t                test_peer_first_ip;
-static bl_addr_storage_t       test_peer_ip;
-static uint8_t                 test_peer_status;
+static char                     *test_collector_name;
+static uint32_t                  test_time;
+static uint32_t                  test_peer_first_ip;
+static bgpstream_addr_storage_t  test_peer_ip;
+static uint8_t                   test_peer_status;
 
 /* pfx row */
-static bl_pfx_storage_t        test_prefix;
-static uint32_t                test_prefix_first_addr;
-static uint32_t                test_orig_asn;
+static bgpstream_pfx_storage_t   test_prefix;
+static uint32_t                  test_prefix_first_addr;
+static uint32_t                  test_orig_asn;
 
 static void create_test_data()
 {
@@ -62,14 +62,14 @@ static void create_test_data()
 
   /* FIRST PEER IP */
   test_peer_ip.ipv4.s_addr = test_peer_first_ip = 0x00FAD982; /* add one each time */
-  test_peer_ip.version = BL_ADDR_IPV4;
+  test_peer_ip.version = BGPSTREAM_ADDR_VERSION_IPV4;
 
   /* FIRST PEER STATUS */
   test_peer_status = 0x01;
 
   /* FIRST PREFIX */
   test_prefix_first_addr = test_prefix.address.ipv4.s_addr = 0x00000000;
-  test_prefix.address.version = BL_ADDR_IPV4;
+  test_prefix.address.version = BGPSTREAM_ADDR_VERSION_IPV4;
   test_prefix.mask_len = 24;
 
   /* ORIG ASN */

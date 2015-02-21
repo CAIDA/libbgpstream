@@ -276,11 +276,13 @@ int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_t *client,
 }
 
 int bgpwatcher_client_pfx_table_add_peer(bgpwatcher_client_t *client,
-                                         bl_addr_storage_t *peer_ip,
+                                         bgpstream_addr_storage_t *peer_ip,
                                          uint8_t status)
 {
   int peer_id;
   assert(client != NULL);
+  assert(peer_ip != NULL);
+  
   /* make sure they aren't trying to add more peers than they promised */
   assert(TBL.info.peers_cnt > TBL.peers_added);
 
@@ -294,7 +296,7 @@ int bgpwatcher_client_pfx_table_add_peer(bgpwatcher_client_t *client,
 
 int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
                                     int peer_id,
-				    bl_pfx_storage_t *prefix,
+				    bgpstream_pfx_storage_t *prefix,
                                     uint32_t orig_asn)
 {
   int khret;
@@ -312,10 +314,10 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
 
   switch(prefix->address.version)
     {
-    case BL_ADDR_IPV4:
+    case BGPSTREAM_ADDR_VERSION_IPV4:
       /* either get or insert this prefix */
       if((k = kh_get(v4pfx_peers, TBL.v4pfx_peers,
-                     *bl_pfx_storage2ipv4(prefix)))
+                     *((bgpstream_ipv4_pfx_t *)prefix)))
          == kh_end(TBL.v4pfx_peers))
         {
           /* allocate a peer info array */
@@ -326,7 +328,7 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
               return -1;
             }
           k = kh_put(v4pfx_peers, TBL.v4pfx_peers,
-                     *bl_pfx_storage2ipv4(prefix), &khret);
+                     *((bgpstream_ipv4_pfx_t *)prefix), &khret);
           kh_val(TBL.v4pfx_peers, k) = peer_infos;
         }
       else
@@ -334,9 +336,9 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
           peer_infos = kh_val(TBL.v4pfx_peers, k);
         }
       break;
-    case BL_ADDR_IPV6:
+    case BGPSTREAM_ADDR_VERSION_IPV6:
       if((k = kh_get(v6pfx_peers, TBL.v6pfx_peers,
-                     *bl_pfx_storage2ipv6(prefix)))
+                     *((bgpstream_ipv6_pfx_t *)prefix)))
          == kh_end(TBL.v6pfx_peers))
         {
           /* allocate a peer info array */
@@ -347,7 +349,7 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
               return -1;
             }
           k = kh_put(v6pfx_peers, TBL.v6pfx_peers,
-                     *bl_pfx_storage2ipv6(prefix), &khret);
+                     *((bgpstream_ipv6_pfx_t *)prefix), &khret);
           kh_val(TBL.v6pfx_peers, k) = peer_infos;
         }
       else
@@ -373,8 +375,8 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
 int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client)
 {
   khiter_t k;
-  bl_ipv4_pfx_t *v4pfx;
-  bl_ipv6_pfx_t *v6pfx;
+  bgpstream_ipv4_pfx_t *v4pfx;
+  bgpstream_ipv6_pfx_t *v6pfx;
   bgpwatcher_pfx_peer_info_t *peer_infos;
 
   assert(TBL.peers_added == TBL.info.peers_cnt);
@@ -407,7 +409,7 @@ int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client)
           peer_infos = kh_val(TBL.v4pfx_peers, k);
 
           if(bgpwatcher_pfx_row_send(client->broker_zocket,
-                                     bl_pfx_ipv42storage(v4pfx),
+                                     (bgpstream_pfx_t *)(v4pfx),
                                      peer_infos,
                                      TBL.info.peers_cnt) != 0)
             {
@@ -426,7 +428,7 @@ int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client)
           peer_infos = kh_val(TBL.v6pfx_peers, k);
 
           if(bgpwatcher_pfx_row_send(client->broker_zocket,
-                                     bl_pfx_ipv62storage(v6pfx),
+                                     (bgpstream_pfx_t *)(v6pfx),
                                      peer_infos,
                                      TBL.info.peers_cnt) != 0)
             {

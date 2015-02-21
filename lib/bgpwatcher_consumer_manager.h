@@ -25,7 +25,7 @@
 #include <stdint.h>
 #include <timeseries.h>
 
-#include "bl_id_set.h"
+#include "bgpstream_utils_id_set.h"
 
 #include "bgpwatcher_view.h"
 
@@ -72,7 +72,7 @@ typedef struct bwc_chain_state {
   int visibility_computed;
 
   /** Set of v4 full-feed peers */
-  bl_id_set_t *v4ff_peerids;
+  bgpstream_id_set_t *v4ff_peerids;
 
   /** Total number of v4 peers in the view */
   int v4_peer_cnt;
@@ -81,7 +81,7 @@ typedef struct bwc_chain_state {
   int v4_usable;
 
   /** Set of v6 full-feed peers */
-  bl_id_set_t *v6ff_peerids;
+  bgpstream_id_set_t *v6ff_peerids;
 
   /** Total number of v6 peers in the view */
   int v6_peer_cnt;

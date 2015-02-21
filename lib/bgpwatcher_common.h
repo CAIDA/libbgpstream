@@ -22,7 +22,7 @@
 
 #include <stdint.h>
 
-#include <bl_bgp_utils.h>
+#include <bgpstream_utils_addr.h>
 
 /** @file
  *
@@ -78,7 +78,7 @@ typedef uint32_t seq_num_t;
 typedef struct bgpwatcher_peer {
 
   /** Peer IP address */
-  bl_addr_storage_t ip;
+  bgpstream_addr_storage_t ip;
 
   /** Peer status */
   uint8_t status;

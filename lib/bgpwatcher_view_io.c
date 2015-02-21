@@ -40,8 +40,8 @@
 static void peers_dump(bgpwatcher_view_t *view,
 		       bgpwatcher_view_iter_t *it)
 {
-  bl_peerid_t peerid;
-  bl_peer_signature_t *ps;
+  bgpstream_peer_id_t peerid;
+  bgpstream_peer_sig_t *ps;
   int v4pfx_cnt = -1;
   int v6pfx_cnt = -1;
   char peer_str[INET6_ADDRSTRLEN] = "";
@@ -72,7 +72,7 @@ static void peerids_dump(bgpwatcher_view_iter_t *it,
 			 bgpwatcher_view_iter_field_t field,
 			 int version)
 {
-  bl_peerid_t peerid;
+  bgpstream_peer_id_t peerid;
   bgpwatcher_pfx_peer_info_t *pfxinfo;
 
   for(bgpwatcher_view_iter_first(it, field);
@@ -95,7 +95,7 @@ static void peerids_dump(bgpwatcher_view_iter_t *it,
 static void v4pfxs_dump(bgpwatcher_view_t *view,
 			bgpwatcher_view_iter_t *it)
 {
-  bl_ipv4_pfx_t *pfx;
+  bgpstream_ipv4_pfx_t *pfx;
   char pfx_str[INET6_ADDRSTRLEN] = "";
 
   fprintf(stdout, "V4 Prefixes (%d):\n", bgpwatcher_view_v4pfx_size(view));
@@ -121,7 +121,7 @@ static void v4pfxs_dump(bgpwatcher_view_t *view,
 static void v6pfxs_dump(bgpwatcher_view_t *view,
 			bgpwatcher_view_iter_t *it)
 {
-  bl_ipv6_pfx_t *pfx;
+  bgpstream_ipv6_pfx_t *pfx;
   char pfx_str[INET6_ADDRSTRLEN] = "";
 
   fprintf(stdout, "V6 Prefixes (%d):\n", bgpwatcher_view_v6pfx_size(view));
@@ -189,7 +189,7 @@ static int send_v4pfxs(void *dest, bgpwatcher_view_t *view)
 
   khiter_t k;
 
-  bl_ipv4_pfx_t *key;
+  bgpstream_ipv4_pfx_t *key;
   bwv_peerid_pfxinfo_t *v;
 
   size_t len = BUFFER_LEN;
@@ -229,7 +229,7 @@ static int send_v4pfxs(void *dest, bgpwatcher_view_t *view)
 
       /* pfx address */
       if((s = bw_serialize_ip(ptr, (len-written),
-			      bl_addr_ipv42storage(&key->address))) == -1)
+                              (bgpstream_ip_addr_t *) (&key->address))) == -1)
 	{
 	  goto err;
 	}
@@ -271,7 +271,7 @@ static int send_v6pfxs(void *dest, bgpwatcher_view_t *view)
 
   khiter_t k;
 
-  bl_ipv6_pfx_t *key;
+  bgpstream_ipv6_pfx_t *key;
   bwv_peerid_pfxinfo_t *v;
 
   size_t len = BUFFER_LEN;
@@ -311,7 +311,7 @@ static int send_v6pfxs(void *dest, bgpwatcher_view_t *view)
 
       /* pfx address */
       if((s = bw_serialize_ip(ptr, (len-written),
-			      bl_addr_ipv62storage(&key->address))) == -1)
+			      (bgpstream_ip_addr_t *)(&key->address))) == -1)
 	{
 	  goto err;
 	}
@@ -361,8 +361,8 @@ static int recv_pfxs(void *src, bgpwatcher_view_t *view)
   uint16_t peer_cnt;
   int i, j;
 
-  bl_pfx_storage_t pfx;
-  bl_peerid_t peerid;
+  bgpstream_pfx_storage_t pfx;
+  bgpstream_peer_id_t peerid;
   bgpwatcher_pfx_peer_info_t pfx_info;
   void *cache = NULL;
 
@@ -451,7 +451,7 @@ static int send_peers(void *dest, bgpwatcher_view_iter_t *it)
 {
   uint16_t u16;
 
-  bl_peer_signature_t *ps;
+  bgpstream_peer_sig_t *ps;
   size_t len;
 
   uint16_t peers_cnt;
@@ -487,7 +487,7 @@ static int send_peers(void *dest, bgpwatcher_view_iter_t *it)
 	  goto err;
 	}
 
-      if(bw_send_ip(dest, &ps->peer_ip_addr, ZMQ_SNDMORE) != 0)
+      if(bw_send_ip(dest, (bgpstream_ip_addr_t *)(&ps->peer_ip_addr), ZMQ_SNDMORE) != 0)
 	{
 	  goto err;
 	}
@@ -507,9 +507,9 @@ static int recv_peers(void *src, bgpwatcher_view_t *view)
   uint16_t pc;
   int i;
 
-  bl_peerid_t peerid;
+  bgpstream_peer_id_t peerid;
 
-  bl_peer_signature_t ps;
+  bgpstream_peer_sig_t ps;
   int len;
 
   ASSERT_MORE;
@@ -536,7 +536,7 @@ static int recv_peers(void *src, bgpwatcher_view_t *view)
       ASSERT_MORE;
 
       /* collector name */
-      if((len = zmq_recv(src, ps.collector_str, BGPCOMMON_COLLECTOR_NAME_LEN, 0)) <= 0)
+      if((len = zmq_recv(src, ps.collector_str, BGPSTREAM_UTILS_STR_NAME_LEN, 0)) <= 0)
 	{
           fprintf(stderr, "Could not receive collector name\n");
 	  goto err;
@@ -551,11 +551,11 @@ static int recv_peers(void *src, bgpwatcher_view_t *view)
 	  goto err;
 	}
 
-      if(bl_peersign_map_set(view->peersigns, peerid, ps.collector_str,
-			     &ps.peer_ip_addr) != 0)
+      if((peerid = bgpstream_peer_sig_map_get_id(view->peersigns, ps.collector_str,
+                                                 &ps.peer_ip_addr)) == 0)
 	{
           fprintf(stderr, "Could not add peer to peersigns\n");
-	  fprintf(stderr, "Consider making bl_peersign_map_set more robust\n");
+	  fprintf(stderr, "Consider making bgpstream_peer_sig_map more robust\n");
 	  goto err;
 	}
     }
@@ -643,7 +643,7 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
   /* this is not really needed, but if the server is ever restarted while the
      consumer is running, this will prevent any issues. It shouldn't cause too
      much performance problems (famous last words) */
-  bl_peersign_map_clear(view->peersigns);
+  bgpstream_peer_sig_map_clear(view->peersigns);
 
   /* time */
   if(zmq_recv(src, &u32, sizeof(u32), 0) != sizeof(u32))

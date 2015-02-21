@@ -26,7 +26,7 @@
 #include "utils.h"
 #include "khash.h"
 
-#include "bl_pfx_set.h"
+#include "bgpstream_utils_pfx_set.h"
 
 #include "bgpwatcher_consumer_interface.h"
 
@@ -65,10 +65,11 @@ typedef struct peras_info {
   uint32_t v6_idx;
 
   /** The v4 prefixes that this AS observed */
-  bl_ipv4_pfx_set_t *v4pfxs;
+  bgpstream_ipv4_pfx_set_t *v4pfxs;
 
   /** The v4 prefixes that this AS observed */
-  bl_ipv6_pfx_set_t *v6pfxs;
+  bgpstream_ipv6_pfx_set_t *v6pfxs;
+  
 } peras_info_t;
 
 /** Map from ASN => v4PFX-SET */
@@ -80,7 +81,7 @@ KHASH_INIT(as_pfxs,
 	   kh_int_hash_equal);
 
 KHASH_INIT(peerid_set,
-           bl_peerid_t,
+           bgpstream_peer_id_t,
            char,
            0,
            kh_int_hash_func,
@@ -172,8 +173,8 @@ static int create_gen_metrics(bwc_t *consumer)
 
 static void peras_info_destroy(peras_info_t info)
 {
-  bl_ipv4_pfx_set_destroy(info.v4pfxs);
-  bl_ipv6_pfx_set_destroy(info.v6pfxs);
+  bgpstream_ipv4_pfx_set_destroy(info.v4pfxs);
+  bgpstream_ipv6_pfx_set_destroy(info.v6pfxs);
 }
 
 static peras_info_t *as_pfxs_get_info(bwc_perasvisibility_state_t *state,
@@ -206,11 +207,11 @@ static peras_info_t *as_pfxs_get_info(bwc_perasvisibility_state_t *state,
           return NULL;
         }
 
-      if((info->v4pfxs = bl_ipv4_pfx_set_create()) == NULL)
+      if((info->v4pfxs = bgpstream_ipv4_pfx_set_create()) == NULL)
         {
           return NULL;
         }
-      if((info->v6pfxs = bl_ipv6_pfx_set_create()) == NULL)
+      if((info->v6pfxs = bgpstream_ipv6_pfx_set_create()) == NULL)
         {
           return NULL;
         }
@@ -225,9 +226,9 @@ static peras_info_t *as_pfxs_get_info(bwc_perasvisibility_state_t *state,
 
 static int flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 {
-  bl_ipv4_pfx_t *v4pfx;
+  bgpstream_ipv4_pfx_t *v4pfx;
 
-  bl_peerid_t peerid;
+  bgpstream_peer_id_t peerid;
   bgpwatcher_pfx_peer_info_t *pfxinfo;
 
   peras_info_t *info;
@@ -261,8 +262,8 @@ static int flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 	{
           /* only consider peers that are full-feed */
           peerid = bgpwatcher_view_iter_get_v4pfx_peerid(it);
-	  if(bl_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v4ff_peerids,
-                              peerid) == 0)
+	  if(bgpstream_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v4ff_peerids,
+                                     peerid) == 0)
             {
 	      continue;
 	    }
@@ -273,7 +274,7 @@ static int flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
             {
               return -1;
             }
-          bl_ipv4_pfx_set_insert(info->v4pfxs, *v4pfx);
+          bgpstream_ipv4_pfx_set_insert(info->v4pfxs, v4pfx);
 	}
     }
 
@@ -282,9 +283,9 @@ static int flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 
 static int flip_v6table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 {
-  bl_ipv6_pfx_t *v6pfx;
+  bgpstream_ipv6_pfx_t *v6pfx;
 
-  bl_peerid_t peerid;
+  bgpstream_peer_id_t peerid;
   bgpwatcher_pfx_peer_info_t *pfxinfo;
 
   peras_info_t *info;
@@ -318,8 +319,8 @@ static int flip_v6table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 	{
           /* only consider peers that are full-feed */
           peerid = bgpwatcher_view_iter_get_v6pfx_peerid(it);
-	  if(bl_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v6ff_peerids,
-                              peerid) == 0)
+	  if(bgpstream_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v6ff_peerids,
+                                     peerid) == 0)
             {
 	      continue;
 	    }
@@ -330,7 +331,7 @@ static int flip_v6table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
             {
               return -1;
             }
-          bl_ipv6_pfx_set_insert(info->v6pfxs, *v6pfx);
+          bgpstream_ipv6_pfx_set_insert(info->v6pfxs, v6pfx);
 	}
     }
 
@@ -362,12 +363,12 @@ static void dump_table(bwc_t *consumer)
 	{
           info = &kh_val(STATE->as_pfxs, k);
           timeseries_kp_set(STATE->kp_v4, info->v4_idx,
-                            bl_ipv4_pfx_set_size(info->v4pfxs));
+                            bgpstream_ipv4_pfx_set_size(info->v4pfxs));
           timeseries_kp_set(STATE->kp_v6, info->v6_idx,
-                            bl_ipv6_pfx_set_size(info->v6pfxs));
+                            bgpstream_ipv6_pfx_set_size(info->v6pfxs));
 
-          bl_ipv4_pfx_set_reset(info->v4pfxs);
-          bl_ipv6_pfx_set_reset(info->v6pfxs);
+          bgpstream_ipv4_pfx_set_clear(info->v4pfxs);
+          bgpstream_ipv6_pfx_set_clear(info->v6pfxs);
 	}
     }
 }

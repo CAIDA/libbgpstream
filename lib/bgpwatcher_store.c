@@ -24,10 +24,9 @@
 #include "bgpwatcher_server_int.h"
 #include "bgpwatcher_view_int.h"
 
-#include "bl_bgp_utils.h"
-#include "bl_str_set.h"
-#include "bl_id_set.h"
-#include "bl_peersign_map.h"
+#include "bgpstream_utils_str_set.h"
+#include "bgpstream_utils_id_set.h"
+#include "bgpstream_utils_peer_sig_map.h"
 #include "utils.h"
 
 #define WDW_LEN         (store->sviews_cnt)
@@ -70,8 +69,8 @@ typedef struct active_peer_status {
 
 } active_peer_status_t;
 
-/************ bl_peerid_t -> status ************/
-KHASH_INIT(peerid_peerstatus, bl_peerid_t, active_peer_status_t*, 1,
+/************ bgpstream_peer_id_t -> status ************/
+KHASH_INIT(peerid_peerstatus, bgpstream_peer_id_t, active_peer_status_t*, 1,
 	   kh_int_hash_func, kh_int_hash_equal)
 typedef khash_t(peerid_peerstatus) peerid_peerstatus_t;
 
@@ -121,10 +120,10 @@ typedef struct store_view {
   uint8_t modified;
 
   /** list of clients that have sent at least one complete table */
-  bl_string_set_t *done_clients;
+  bgpstream_str_set_t *done_clients;
 
   /** list of inactive peers (status null or down) */
-  bl_id_set_t *inactive_peers;
+  bgpstream_id_set_t *inactive_peers;
 
   /** for each active id we store its status */
   peerid_peerstatus_t *active_peers_info;
@@ -159,7 +158,7 @@ struct bgpwatcher_store {
   clientinfo_map_t *active_clients;
 
   /** Shared peersign table (each sview->view borrows a reference to this) */
-  bl_peersign_map_t *peersigns;
+  bgpstream_peer_sig_map_t *peersigns;
 };
 
 enum {
@@ -184,13 +183,13 @@ static void store_view_destroy(store_view_t *sview)
 
   if(sview->done_clients != NULL)
     {
-      bl_string_set_destroy(sview->done_clients);
+      bgpstream_str_set_destroy(sview->done_clients);
       sview->done_clients = NULL;
     }
 
   if(sview->inactive_peers != NULL)
     {
-      bl_id_set_destroy(sview->inactive_peers);
+      bgpstream_id_set_destroy(sview->inactive_peers);
       sview->inactive_peers = NULL;
     }
 
@@ -220,12 +219,12 @@ store_view_t *store_view_create(bgpwatcher_store_t *store, int id)
 
   sview->reuse_remaining = STORE_VIEW_REUSE_MAX-1;
 
-  if((sview->done_clients = bl_string_set_create()) == NULL)
+  if((sview->done_clients = bgpstream_str_set_create()) == NULL)
     {
       goto err;
     }
 
-  if((sview->inactive_peers = bl_id_set_create()) == NULL)
+  if((sview->inactive_peers = bgpstream_id_set_create()) == NULL)
     {
       goto err;
     }
@@ -290,9 +289,9 @@ static store_view_t *store_view_clear(bgpwatcher_store_t *store,
 
   sview->modified = 0;
 
-  bl_string_set_reset(sview->done_clients);
+  bgpstream_str_set_clear(sview->done_clients);
 
-  bl_id_set_reset(sview->inactive_peers);
+  bgpstream_id_set_clear(sview->inactive_peers);
 
   kh_free_vals(peerid_peerstatus, sview->active_peers_info,
                active_peers_destroy);
@@ -322,7 +321,7 @@ static int store_view_completion_check(bgpwatcher_store_t *store,
       if(client->intents & BGPWATCHER_PRODUCER_INTENT_PREFIX)
 	{
 	  // check if all the producers are done with sending pfx tables
-	  if(bl_string_set_exists(sview->done_clients, client->name) == 0)
+	  if(bgpstream_str_set_exists(sview->done_clients, client->name) == 0)
 	    {
 	      sview->state = STORE_VIEW_PARTIAL;
 	      return 0;
@@ -373,7 +372,7 @@ static active_peer_status_t *store_view_add_peer(store_view_t *sview,
   else
     {
       // add a new inactive peer to the list
-      bl_id_set_insert(sview->inactive_peers, peer_info->server_id);
+      bgpstream_id_set_insert(sview->inactive_peers, peer_info->server_id);
     }
   return ap_status;
 }
@@ -388,7 +387,7 @@ static int store_view_table_end(store_view_t *sview,
 
   for(remote_peer_id = 0; remote_peer_id < table->peers_cnt; remote_peer_id++)
     {
-      /** @todo Chiara use bl_bgp_utils!!!!!!!!!!!!!!!! ######################*/
+      /** @todo Chiara define status in some header ####################*/
       if(table->peers[remote_peer_id].status == 2)
 	{
 	  // get the active peer status ptr for the current id
@@ -401,7 +400,7 @@ static int store_view_table_end(store_view_t *sview,
     }
 
   // add this client to the list of clients done
-  bl_string_set_insert(sview->done_clients, client->name);
+  bgpstream_str_set_insert(sview->done_clients, client->name);
 
   int i;
   for(i = 0; i <= STORE_VIEW_STATE_MAX; i++)
@@ -436,7 +435,7 @@ static int dispatcher_run(bgpwatcher_store_t *store,
                           completion_trigger_t trigger)
 {
 #if 0
-  bl_peerid_t valid_peers[BGPWATCHER_STORE_MAX_PEERS_CNT];
+  bgpstream_peer_id_t valid_peers[BGPWATCHER_STORE_MAX_PEERS_CNT];
   int valid_peers_cnt;
 #endif
   int dispatch_interests = 0;
@@ -490,7 +489,7 @@ static int dispatcher_run(bgpwatcher_store_t *store,
               sview->view->time,
               "%s", "completion_trigger");
 
-  DUMP_METRIC((uint64_t)bl_string_set_size(sview->done_clients),
+  DUMP_METRIC((uint64_t)bgpstream_str_set_size(sview->done_clients),
               sview->view->time,
               "%s", "done_clients_cnt");
   DUMP_METRIC((uint64_t)kh_size(store->active_clients),
@@ -501,11 +500,11 @@ static int dispatcher_run(bgpwatcher_store_t *store,
               sview->view->time,
               "%s", "active_peers_cnt");
 
-  DUMP_METRIC((uint64_t)bl_id_set_size(sview->inactive_peers),
+  DUMP_METRIC((uint64_t)bgpstream_id_set_size(sview->inactive_peers),
               sview->view->time,
               "%s", "inactive_peers_cnt");
 
-  DUMP_METRIC((uint64_t)bl_peersign_map_get_size(store->peersigns),
+  DUMP_METRIC((uint64_t)bgpstream_peer_sig_map_get_size(store->peersigns),
               sview->view->time,
               "%s", "peersigns_hash_size");
 
@@ -773,7 +772,7 @@ bgpwatcher_store_t *bgpwatcher_store_create(bgpwatcher_server_t *server,
       goto err;
     }
 
-  if((store->peersigns = bl_peersign_map_create()) == NULL)
+  if((store->peersigns = bgpstream_peer_sig_map_create()) == NULL)
     {
       fprintf(stderr, "Failed to create peersigns table\n");
       goto err;
@@ -841,7 +840,7 @@ void bgpwatcher_store_destroy(bgpwatcher_store_t *store)
 
   if(store->peersigns != NULL)
     {
-      bl_peersign_map_destroy(store->peersigns);
+      bgpstream_peer_sig_map_destroy(store->peersigns);
       store->peersigns = NULL;
     }
 
@@ -945,8 +944,8 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
       peer_info = &(table->peers[remote_peer_id]);
       // set "static" (server) id assigned to (collector,peer) by current process
       peer_info->server_id =
-        bl_peersign_map_set_and_get(store->peersigns,
-                                    table->collector, &(peer_info->ip));
+        bgpstream_peer_sig_map_get_id(store->peersigns,
+                                       table->collector, &(peer_info->ip));
       // send peer info to the appropriate bgp view
 
       assert(sview->view->peersigns_shared != 0);
@@ -960,14 +959,14 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
 
 int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
                                       bgpwatcher_pfx_table_t *table,
-                                      bl_pfx_storage_t *pfx,
+                                      bgpstream_pfx_storage_t *pfx,
                                       bgpwatcher_pfx_peer_info_t *peer_infos)
 {
   store_view_t *sview;
 
   int i;
   bgpwatcher_pfx_peer_info_t *pfx_info;
-  bl_peerid_t server_id;
+  bgpstream_peer_id_t server_id;
 
   active_peer_status_t *ap_status;
 
@@ -1008,13 +1007,16 @@ int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
       assert(ap_status != NULL);
 
       // update counters
-      if(pfx->address.version == BL_ADDR_IPV4)
+      if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4)
         {
           ap_status->recived_ipv4_pfx_cnt++;
         }
       else
         {
-          ap_status->recived_ipv6_pfx_cnt++;
+          if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV6)
+            {
+              ap_status->recived_ipv6_pfx_cnt++;
+            }
         }
     }
 

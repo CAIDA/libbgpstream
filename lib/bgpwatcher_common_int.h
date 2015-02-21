@@ -25,6 +25,7 @@
 #include <sys/socket.h>
 
 #include <bgpwatcher_common.h>
+#include <bgpstream_utils_pfx.h>
 
 /** @file
  *
@@ -171,16 +172,16 @@ typedef enum {
 /* ========== UTILITIES ========== */
 
 /** Send the given IP over the given socket */
-int bw_send_ip(void *dest, bl_addr_storage_t *ip, int flags);
+int bw_send_ip(void *dest, bgpstream_ip_addr_t *ip, int flags);
 
 /** Receive an IP address on the given socket */
-int bw_recv_ip(void *src, bl_addr_storage_t *ip);
+int bw_recv_ip(void *src, bgpstream_addr_storage_t *ip);
 
 /** Serialize the given IP into the given byte array */
-int bw_serialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip);
+int bw_serialize_ip(uint8_t *buf, size_t len, bgpstream_ip_addr_t *ip);
 
-/** Deerialize an IP from given byte array */
-int bw_deserialize_ip(uint8_t *buf, size_t len, bl_addr_storage_t *ip);
+/** Deserialize an IP from given byte array */
+int bw_deserialize_ip(uint8_t *buf, size_t len, bgpstream_addr_storage_t *ip);
 
 /* ========== MESSAGE TYPES ========== */
 
@@ -258,7 +259,7 @@ void bgpwatcher_pfx_table_dump(bgpwatcher_pfx_table_t *table);
  * @return 0 if the record was sent successfully, -1 otherwise
  */
 int bgpwatcher_pfx_row_send(void *dest,
-                            bl_pfx_storage_t *pfx,
+                            bgpstream_pfx_t *pfx,
                             bgpwatcher_pfx_peer_info_t *peer_infos,
                             int peer_cnt);
 
@@ -270,7 +271,7 @@ int bgpwatcher_pfx_row_send(void *dest,
  * @return 0 if the information was deserialized successfully, -1 otherwise
  */
 int bgpwatcher_pfx_row_recv(void *src,
-                            bl_pfx_storage_t *pfx,
+                            bgpstream_pfx_storage_t *pfx,
                             bgpwatcher_pfx_peer_info_t *peer_infos,
                             int peer_cnt);
 
@@ -280,7 +281,7 @@ int bgpwatcher_pfx_row_recv(void *src,
  * @param row        pointer to a prefix row
  */
 void bgpwatcher_pfx_row_dump(bgpwatcher_pfx_table_t *table,
-                             bl_pfx_storage_t *pfx,
+                             bgpstream_pfx_storage_t *pfx,
                              bgpwatcher_pfx_peer_info_t *peer_infos);
 
 /* ========== INTERESTS/VIEWS ========== */
