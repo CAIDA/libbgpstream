@@ -24,7 +24,6 @@
 #include "bgpwatcher_server_int.h"
 #include "bgpwatcher_view_int.h"
 
-// #include "bl_bgp_utils.h"
 #include "bgpstream_utils_str_set.h"
 #include "bgpstream_utils_id_set.h"
 #include "bgpstream_utils_peer_sig_map.h"
@@ -388,7 +387,7 @@ static int store_view_table_end(store_view_t *sview,
 
   for(remote_peer_id = 0; remote_peer_id < table->peers_cnt; remote_peer_id++)
     {
-      /** @todo Chiara use bl_bgp_utils!!!!!!!!!!!!!!!! ######################*/
+      /** @todo Chiara define status in some header ####################*/
       if(table->peers[remote_peer_id].status == 2)
 	{
 	  // get the active peer status ptr for the current id

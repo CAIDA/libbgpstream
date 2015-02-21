@@ -213,9 +213,6 @@ int bwc_perfmonitor_process_view(bwc_t *consumer, uint8_t interests,
       pfx4_cnt = bgpwatcher_view_iter_get_peer_v4pfx_cnt(it);
       pfx6_cnt = bgpwatcher_view_iter_get_peer_v6pfx_cnt(it);
 
-      /** @todo Chiara all these bl_print_* functions should probably take a
-	  char buffer and a length so that they don't have to do mallocs every
-	  time */
       bgpstream_addr_ntop(addr, INET6_ADDRSTRLEN, &(sig->peer_ip_addr));
       graphite_safe(addr);
       DUMP_METRIC(peer_on,
