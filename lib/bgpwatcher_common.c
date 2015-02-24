@@ -93,7 +93,7 @@ static int send_table(void *dest, bgpwatcher_table_type_t type,
 static int send_peer(void *dest, bgpwatcher_peer_t *peer, int sndmore)
 {
   /* peer ip */
-  if(bw_send_ip(dest, &peer->ip, ZMQ_SNDMORE) != 0)
+  if(bw_send_ip(dest, (bgpstream_ip_addr_t *)(&peer->ip), ZMQ_SNDMORE) != 0)
     {
       goto err;
     }
@@ -890,7 +890,7 @@ void bgpwatcher_pfx_row_dump(bgpwatcher_pfx_table_t *table,
   else
     {
 
-      bgpstream_pfx_snprintf(pfx_str,INET6_ADDRSTRLEN+3, pfx);
+      bgpstream_pfx_snprintf(pfx_str,INET6_ADDRSTRLEN+3, (bgpstream_pfx_t *)pfx);
       fprintf(stdout,
 	      "------------------------------\n"
 	      "Prefix:\t%s\n", pfx_str);

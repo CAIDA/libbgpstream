@@ -225,8 +225,7 @@ int bwc_perfmonitor_process_view(bwc_t *consumer, uint8_t interests,
 
       DUMP_METRIC(pfx6_cnt,
 		  bgpwatcher_view_time(view),
-		  "peers.%s.%s.ipv6_cnt", sig->collector_str, addr);
-      free(addr);
+		  "peers.%s.%s.ipv6_cnt", sig->collector_str, addr);      
     }
 
   /* destroy the view iterator */
