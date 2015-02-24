@@ -310,7 +310,8 @@ int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
       peerids_pfxinfo = *cache;
     }
 
-  if(peerid_pfxinfo_insert(view, prefix, peerids_pfxinfo, peerid, pfx_info) < 0)
+  if(peerid_pfxinfo_insert(view, (bgpstream_pfx_t *)prefix,
+                           peerids_pfxinfo, peerid, pfx_info) < 0)
     {
       return -1;
     }
