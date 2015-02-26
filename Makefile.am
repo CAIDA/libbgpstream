@@ -16,7 +16,7 @@
 # Report any bugs, questions or comments to bgpstream-info@caida.org
 #
 
-SUBDIRS = common lib tools test
+SUBDIRS = common lib tools test docs
 
 AM_CPPFLAGS =
 
