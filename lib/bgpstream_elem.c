@@ -274,6 +274,7 @@ char *bgpstream_elem_snprintf(char *buf, size_t len,
           return NULL;
         }
       c = bgpstream_as_hop_snprintf(buf_p, B_REMAIN, &as_hop);
+      bgpstream_as_hop_clear(&as_hop);
       written += c;
       buf_p += c;
 
