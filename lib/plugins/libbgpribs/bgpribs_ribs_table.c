@@ -262,6 +262,16 @@ void ribs_table_reset(ribs_table_t *ribs_table)
 	}
     }
   ribs_table->ipv6_size = 0;
+
+  // destroy the memory
+  kh_destroy(ipv4_rib_map, ribs_table->ipv4_rib);
+  kh_destroy(ipv6_rib_map, ribs_table->ipv6_rib);
+  // and allocate a new minimum one
+  ribs_table->ipv4_rib = kh_init(ipv4_rib_map);
+  ribs_table->ipv6_rib = kh_init(ipv6_rib_map);
+
+  
+      
 }
 
 

@@ -787,6 +787,11 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 #endif
 
 
+  int ipv4_active_pfxs = 0;
+  int ipv4_inactive_pfxs = 0;
+  int ipv6_active_pfxs = 0;
+  int ipv6_inactive_pfxs = 0;
+  
   bl_ipv4_pfx_t *ipv4_prefix;
   bl_ipv6_pfx_t *ipv6_prefix;
   
@@ -809,6 +814,7 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  pd = kh_value(peer_data->active_ribs_table->ipv4_rib, k);
 	  if(pd.is_active == 1) 
 	    {
+              ipv4_active_pfxs++;
 	      origin_as = 0;
 	      // get the origin as number 
 	      origin_hop = bl_get_origin_as(&(pd.aspath));
@@ -839,6 +845,9 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 		}
 #endif
 	    }
+          else{
+            ipv4_inactive_pfxs++;
+          }
 	}
     }
   
@@ -853,6 +862,7 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 	  pd = kh_value(peer_data->active_ribs_table->ipv6_rib, k);
 	  if(pd.is_active == 1) 
 	    {
+              ipv6_active_pfxs++;
 	      origin_as = 0;
 	      // get the origin as number 
 	      origin_hop = bl_get_origin_as(&(pd.aspath));
@@ -883,9 +893,49 @@ int peerdata_interval_end(char *project_str, char *collector_str,
 		}
 #endif
 	    }
+          else
+            {
+              ipv6_inactive_pfxs++;
+            }      
 	}
     }
 
+
+  // DEBUG ACTIVE / NON ACTIVE RIB PREFIXES (IPV4 AND IPV6)
+  fprintf(stdout, "%s.%s.%s.%s.peer_ipv4_active_size %d %d\n",
+	  metric_pfx,
+	  project_str,
+	  collector_str,
+	  peer_data->peer_address_str,
+	  ipv4_active_pfxs,
+	  interval_start);
+
+  fprintf(stdout, "%s.%s.%s.%s.peer_ipv4_inactive_size %d %d\n",
+	  metric_pfx,
+	  project_str,
+	  collector_str,
+	  peer_data->peer_address_str,
+	  ipv4_inactive_pfxs,
+	  interval_start);
+  
+  fprintf(stdout, "%s.%s.%s.%s.peer_ipv6_active_size %d %d\n",
+	  metric_pfx,
+	  project_str,
+	  collector_str,
+	  peer_data->peer_address_str,
+	  ipv6_active_pfxs,
+	  interval_start);
+
+  fprintf(stdout, "%s.%s.%s.%s.peer_ipv6_inactive_size %d %d\n",
+	  metric_pfx,
+	  project_str,
+	  collector_str,
+	  peer_data->peer_address_str,
+	  ipv6_inactive_pfxs,
+	  interval_start);
+  // END OF DEBUG
+
+  
   // OUTPUT METRIC: ipv4_rib_size
   fprintf(stdout, "%s.%s.%s.%s.peer_ipv4_rib_size %d %d\n",
 	  metric_pfx,
