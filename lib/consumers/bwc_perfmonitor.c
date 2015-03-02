@@ -210,6 +210,7 @@ int bwc_perfmonitor_process_view(bwc_t *consumer, uint8_t interests,
     {
       /* grab the peer id */
       sig = bgpwatcher_view_iter_get_peersig(it);
+      assert(sig != NULL);
       pfx4_cnt = bgpwatcher_view_iter_get_peer_v4pfx_cnt(it);
       pfx6_cnt = bgpwatcher_view_iter_get_peer_v6pfx_cnt(it);
 
