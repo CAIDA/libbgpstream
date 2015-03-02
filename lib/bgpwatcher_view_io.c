@@ -21,6 +21,9 @@
 
 #include <czmq.h>
 
+/* for bgpstream_peer_sig_map_set */
+#include <bgpstream_utils_peer_sig_map_int.h>
+
 #include "bgpwatcher_common_int.h"
 #include "bgpwatcher_view_int.h"
 
@@ -551,11 +554,14 @@ static int recv_peers(void *src, bgpwatcher_view_t *view)
 	  goto err;
 	}
 
-      if((peerid = bgpstream_peer_sig_map_get_id(view->peersigns, ps.collector_str,
-                                                 &ps.peer_ip_addr)) == 0)
+      if(bgpstream_peer_sig_map_set(view->peersigns,
+                                    peerid,
+                                    ps.collector_str,
+                                    &ps.peer_ip_addr) != 0)
 	{
           fprintf(stderr, "Could not add peer to peersigns\n");
-	  fprintf(stderr, "Consider making bgpstream_peer_sig_map more robust\n");
+	  fprintf(stderr,
+                  "Consider making bgpstream_peer_sig_map_set more robust\n");
 	  goto err;
 	}
     }
