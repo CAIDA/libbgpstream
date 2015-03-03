@@ -127,6 +127,22 @@ struct bgpwatcher_view {
   /** The number of times this view has been published since it was cleared */
   int pub_cnt;
 
+  /** Pointer to a function that destroys the user structure
+   *  in the bgpwatcher_view_t structure */
+  bgpwatcher_view_destroy_user_t *user_destructor;
+
+  /** Pointer to a function that destroys the user structure
+   *  in the bwv_peerinfo_t structure */
+  bgpwatcher_view_destroy_user_t *peer_user_destructor;
+
+  /** Pointer to a function that destroys the user structure
+   *  in the bwv_peerid_pfxinfo_t structure */
+  bgpwatcher_view_destroy_user_t *pfx_user_destructor;
+  
+  /** Pointer to a function that destroys the user structure
+   *  in the bgpwatcher_pfx_peer_info_t structure */
+  bgpwatcher_view_destroy_user_t *pfx_peer_user_destructor;
+  
   /** Generic pointer to store information related to the view */
   void *user;
 

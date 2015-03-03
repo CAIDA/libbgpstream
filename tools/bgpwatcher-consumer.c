@@ -389,7 +389,7 @@ int main(int argc, char **argv)
     }
   fprintf(stderr, "done\n");
 
-  if((view = bgpwatcher_view_create(NULL)) == NULL)
+  if((view = bgpwatcher_view_create(NULL, NULL, NULL, NULL)) == NULL)
     {
       fprintf(stderr, "ERROR: Could not create view\n");
       goto err;

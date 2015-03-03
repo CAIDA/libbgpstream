@@ -239,7 +239,7 @@ store_view_t *store_view_create(bgpwatcher_store_t *store, int id)
   // dis_status -> everything is set to zero
 
   assert(store->peersigns != NULL);
-  if((sview->view = bgpwatcher_view_create_shared(store->peersigns)) == NULL)
+  if((sview->view = bgpwatcher_view_create_shared(store->peersigns, NULL, NULL, NULL, NULL)) == NULL)
     {
       goto err;
     }

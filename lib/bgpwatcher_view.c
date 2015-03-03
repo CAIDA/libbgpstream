@@ -321,7 +321,11 @@ int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
 
 /* ========== PUBLIC FUNCTIONS ========== */
 
-bgpwatcher_view_t *bgpwatcher_view_create_shared(bgpstream_peer_sig_map_t *peersigns)
+bgpwatcher_view_t *bgpwatcher_view_create_shared(bgpstream_peer_sig_map_t *peersigns,
+                                                 bgpwatcher_view_destroy_user_t *bwv_user_destructor,
+                                                 bgpwatcher_view_destroy_user_t *bwv_peer_user_destructor,
+                                                 bgpwatcher_view_destroy_user_t *bwv_pfx_user_destructor,
+                                                 bgpwatcher_view_destroy_user_t *bwv_pfx_peer_user_destructor)
 {
   bgpwatcher_view_t *view;
 
@@ -363,6 +367,11 @@ bgpwatcher_view_t *bgpwatcher_view_create_shared(bgpstream_peer_sig_map_t *peers
 
   gettimeofday(&view->time_created, NULL);
 
+  view->user_destructor = bwv_user_destructor;
+  view->peer_user_destructor = bwv_peer_user_destructor;
+  view->pfx_user_destructor = bwv_pfx_user_destructor;  
+  view->pfx_peer_user_destructor = bwv_pfx_peer_user_destructor;
+  
   view->user = NULL;
 
   return view;
@@ -373,9 +382,13 @@ bgpwatcher_view_t *bgpwatcher_view_create_shared(bgpstream_peer_sig_map_t *peers
   return NULL;
 }
 
-bgpwatcher_view_t *bgpwatcher_view_create()
+bgpwatcher_view_t *bgpwatcher_view_create(bgpwatcher_view_destroy_user_t *bwv_user_destructor,
+                                          bgpwatcher_view_destroy_user_t *bwv_peer_user_destructor,
+                                          bgpwatcher_view_destroy_user_t *bwv_pfx_user_destructor,
+                                          bgpwatcher_view_destroy_user_t *bwv_pfx_peer_user_destructor)
 {
-  return bgpwatcher_view_create_shared(NULL);
+  return bgpwatcher_view_create_shared(NULL, bwv_user_destructor, bwv_peer_user_destructor,
+                                       bwv_pfx_user_destructor, bwv_pfx_peer_user_destructor);
 }
 
 void bgpwatcher_view_destroy(bgpwatcher_view_t *view)
@@ -413,34 +426,43 @@ void bgpwatcher_view_destroy(bgpwatcher_view_t *view)
       view->peerinfo = NULL;
     }
 
-  // take care of view->user ?
+  //TODO Make sure we take care of other view****->users!!!!!!!
+
+  if(view->user != NULL)
+    {
+      if(view->user_destructor != NULL)
+        {
+          view->user_destructor(view->user);
+        }
+      view->user = NULL;
+    }
 
   free(view);
 }
 
-
-void bgpwatcher_view_destroy_user(bgpwatcher_view_t *view,
-				  bgpwatcher_view_destroy_user_cb *call_back)
-{
-  khiter_t k;
-  assert(call_back != NULL);
-  for(k = kh_begin(view->v4pfxs); k != kh_end(view->v4pfxs); k++)
-    {
-      if(kh_exist(view->v4pfxs,k))
-	{
-	  call_back(kh_val(view->v4pfxs,k)->user);
-	  kh_val(view->v4pfxs,k)->user = NULL;
-	}
-    }
-  for(k = kh_begin(view->v6pfxs); k != kh_end(view->v6pfxs); k++)
-    {
-      if(kh_exist(view->v6pfxs,k))
-	{
-	  call_back(kh_val(view->v6pfxs,k)->user);
-	  kh_val(view->v6pfxs,k)->user = NULL;
-	}
-    } 
-}
+// TODO REMOVE!
+/* void bgpwatcher_view_destroy_user(bgpwatcher_view_t *view, */
+/* 				  bgpwatcher_view_destroy_user_cb *call_back) */
+/* { */
+/*   khiter_t k; */
+/*   assert(call_back != NULL); */
+/*   for(k = kh_begin(view->v4pfxs); k != kh_end(view->v4pfxs); k++) */
+/*     { */
+/*       if(kh_exist(view->v4pfxs,k)) */
+/* 	{ */
+/* 	  call_back(kh_val(view->v4pfxs,k)->user); */
+/* 	  kh_val(view->v4pfxs,k)->user = NULL; */
+/* 	} */
+/*     } */
+/*   for(k = kh_begin(view->v6pfxs); k != kh_end(view->v6pfxs); k++) */
+/*     { */
+/*       if(kh_exist(view->v6pfxs,k)) */
+/* 	{ */
+/* 	  call_back(kh_val(view->v6pfxs,k)->user); */
+/* 	  kh_val(view->v6pfxs,k)->user = NULL; */
+/* 	} */
+/*     }  */
+/* } */
 
 
 /* ==================== SIMPLE ACCESSOR FUNCTIONS ==================== */
@@ -480,8 +502,23 @@ void *bgpwatcher_view_get_user(bgpwatcher_view_t *view)
 
 void bgpwatcher_view_set_user(bgpwatcher_view_t *view, void *user)
 {
+  if(view->user == user)
+    {
+      return;
+    }
+  if(view->user != NULL && view->user_destructor != NULL)
+    {
+      view->user_destructor(view->user);
+    }
   view->user = user;
 }
+
+void bgpwatcher_view_set_user_destructor(bgpwatcher_view_t *view,
+                                         bgpwatcher_view_destroy_user_t *bwv_user_destructor)
+{
+  view->user_destructor = bwv_user_destructor;
+}
+
 
 
 /* ==================== ITERATOR FUNCTIONS ==================== */

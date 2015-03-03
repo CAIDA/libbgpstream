@@ -54,10 +54,12 @@ typedef struct bgpwatcher_view_iter bgpwatcher_view_iter_t;
  *
  * @{ */
 
-/** Callback for destroying a custom user structure associated with a pfx
+/** Callback for destroying a custom user structure associated with bgpwatcher
+ *  view or one of its substructures
  * @param user    user pointer to destroy
  */
-typedef void (bgpwatcher_view_destroy_user_cb) (void* user);
+typedef void (bgpwatcher_view_destroy_user_t) (void* user);
+
 
 /** @} */
 
@@ -91,10 +93,30 @@ typedef enum {
  *
  * A BGP View holds a snapshot of the aggregated prefix information.
  * Basically, it maps from prefix -> peers -> prefix info
+ * 
+ * @param bwv_user_destructor           a function that destroys the user structure 
+ *                                      in the bgpwatcher_view_t structure
+ * @param bwv_peer_user_destructor      a function that destroys the user structure 
+ *                                      used in each bwv_peerinfo_t structure
+ * @param bwv_pfx_user_destructor       a function that destroys the user structure 
+ *                                      used in each bwv_peerid_pfxinfo_t structure
+ * @param bwv_pfx_peer_user_destructor  a function that destroys the user structure 
+ *                                      used in each bgpwatcher_pfx_peer_info_t structure
  *
  * @return a pointer to the view if successful, NULL otherwise
+ *
+ * The destroy functions passed are called everytime the associated user pointer
+ * is set to a new value or when the corresponding structure are destroyed.
+ * If a NULL parameter is passed, then when a the user pointer is set to a new
+ * value (or when the structure containing such a user pointer is deallocated)
+ * no destructor is called. In other words, when the destroy callback is set to
+ * NULL the programmer is responsible for deallocating the user memory outside
+ * the bgpwatcher API.
  */
-bgpwatcher_view_t *bgpwatcher_view_create();
+bgpwatcher_view_t *bgpwatcher_view_create(bgpwatcher_view_destroy_user_t *bwv_user_destructor,
+                                          bgpwatcher_view_destroy_user_t *bwv_peer_user_destructor,
+                                          bgpwatcher_view_destroy_user_t *bwv_pfx_user_destructor,
+                                          bgpwatcher_view_destroy_user_t *bwv_pfx_peer_user_destructor);
 
 /** Create a new BGP View, reusing an existing peersigns table
  *
@@ -103,9 +125,22 @@ bgpwatcher_view_t *bgpwatcher_view_create();
  * A BGP View holds a snapshot of the aggregated prefix information.
  * Basically, it maps from prefix -> peers -> prefix info
  *
+ * @param bwv_user_destructor           a function that destroys the user structure 
+ *                                      in the bgpwatcher_view_t structure
+ * @param bwv_peer_user_destructor      a function that destroys the user structure 
+ *                                      used in each bwv_peerinfo_t structure
+ * @param bwv_pfx_user_destructor       a function that destroys the user structure 
+ *                                      used in each bwv_peerid_pfxinfo_t structure
+ * @param bwv_pfx_peer_user_destructor  a function that destroys the user structure 
+ *                                      used in each bgpwatcher_pfx_peer_info_t structure
+ *
  * @return a pointer to the view if successful, NULL otherwise
  */
-bgpwatcher_view_t *bgpwatcher_view_create_shared(bgpstream_peer_sig_map_t *peersigns);
+bgpwatcher_view_t *bgpwatcher_view_create_shared(bgpstream_peer_sig_map_t *peersigns,
+                                                 bgpwatcher_view_destroy_user_t *bwv_user_destructor,
+                                                 bgpwatcher_view_destroy_user_t *bwv_peer_user_destructor,
+                                                 bgpwatcher_view_destroy_user_t *bwv_pfx_user_destructor,
+                                                 bgpwatcher_view_destroy_user_t *bwv_pfx_peer_user_destructor);
 
 /** @todo create a nice high-level api for accessing information in the view */
 
@@ -133,8 +168,8 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view);
  * @param call_back     function that actually destroy the specific user structure
  *                      used in this view
  */
-void bgpwatcher_view_destroy_user(bgpwatcher_view_t *view,
-				  bgpwatcher_view_destroy_user_cb *call_back);
+// void bgpwatcher_view_destroy_user(bgpwatcher_view_t *view,
+//				  bgpwatcher_view_destroy_user_cb *call_back);
 
 /** Dump the given BGP View to stdout
  *
@@ -195,6 +230,16 @@ void *bgpwatcher_view_get_user(bgpwatcher_view_t *view);
  * @param user          user pointer to associate with the view structure
  */
 void bgpwatcher_view_set_user(bgpwatcher_view_t *view, void *user);
+
+/** Set the user destructor function. If the function is set to NULL,
+ *  then no the user pointer will not be destroyed by the bgpwatcher
+ *  functions, the programmer is responsible for that in its own program.
+ *
+ * @param view                  pointer to a view structure
+ * @param bwv_user_destructor   user pointer to associate with the view structure
+ */
+void bgpwatcher_view_set_user_destructor(bgpwatcher_view_t *view,
+                                         bgpwatcher_view_destroy_user_t *bwv_user_destructor);
 
 /** @} */
 
