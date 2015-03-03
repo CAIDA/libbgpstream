@@ -181,12 +181,14 @@ static int peerid_pfxinfo_insert(bgpwatcher_view_t *view,
 
 static void pfx_peer_info_destroy(bgpwatcher_view_t *view, bgpwatcher_pfx_peer_info_t *v)
 {
-
-
-
-  // HEREEEEEEEEEEEEEEEEEEEEEE
-
-  
+  if(v != NULL)
+    {
+      if(v->user != NULL && view->pfx_peer_user_destructor != NULL)
+        {
+          view->pfx_peer_user_destructor(v->user);
+        }
+      v->user = NULL;
+    }
 }
 
 
@@ -196,9 +198,16 @@ static void peerid_pfxinfo_destroy(bgpwatcher_view_t *view, bwv_peerid_pfxinfo_t
     {
       return;
     }
-
-  // TODO: check this later (for pfx_peer_info user)
-  free(v->peers);
+  int i = 0;
+  if(v->peers!=NULL)
+    {
+      for(i = 0; i< v->peers_alloc_cnt; i++)
+        {
+          pfx_peer_info_destroy(view, &v->peers[i]);
+        }
+        free(v->peers);
+    }
+  v->peers = NULL;
   v->peers_cnt = 0;
   v->peers_alloc_cnt = 0;
   if(view->pfx_user_destructor != NULL && v->user != NULL)
@@ -316,7 +325,6 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
   view->v6pfxs_cnt = 0;
 
   /* clear out the peerinfo table */
-  peerinfo_destroy_user(view);
   kh_clear(bwv_peerid_peerinfo, view->peerinfo);
 
   view->pub_cnt = 0;
@@ -475,8 +483,6 @@ void bgpwatcher_view_destroy(bgpwatcher_view_t *view)
       kh_destroy(bwv_peerid_peerinfo, view->peerinfo);
       view->peerinfo = NULL;
     }
-
-  //TODO Make sure we take care of other view****->users!!!!!!!
 
   if(view->user != NULL)
     {
