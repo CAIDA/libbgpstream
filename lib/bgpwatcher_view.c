@@ -67,11 +67,20 @@ static int peerinfo_add_pfx(bgpwatcher_view_t *view, bgpstream_peer_id_t peerid,
   if((k = kh_get(bwv_peerid_peerinfo, view->peerinfo, peerid))
      == kh_end(view->peerinfo))
     {
-      /* first prefix for this peer */
+      /* first prefix for this peer, it creates a new peerinfo structure */
       k = kh_put(bwv_peerid_peerinfo, view->peerinfo, peerid, &khret);
       kh_val(view->peerinfo, k).id = peerid;
+      kh_val(view->peerinfo, k).in_use = 0;
+      kh_val(view->peerinfo, k).user = NULL;
+    }
+  
+  // activate/init peer
+  if(kh_val(view->peerinfo, k).in_use == 0)
+    {
       kh_val(view->peerinfo, k).v4_pfx_cnt = 0;
       kh_val(view->peerinfo, k).v6_pfx_cnt = 0;
+      kh_val(view->peerinfo, k).in_use = 1;
+      view->peerinfo_cnt++;
     }
 
   switch(prefix->address.version)
@@ -176,6 +185,7 @@ static int peerid_pfxinfo_insert(bgpwatcher_view_t *view,
 
   v->peers[peerid] = *pfx_info;
   v->peers[peerid].in_use = 1;
+  v->peers[peerid].user = NULL;
   return 0;
 }
 
@@ -325,7 +335,15 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
   view->v6pfxs_cnt = 0;
 
   /* clear out the peerinfo table */
-  kh_clear(bwv_peerid_peerinfo, view->peerinfo);
+  for(k = kh_begin(view->peerinfo); k != kh_end(view->peerinfo); ++k)
+    {
+      if(kh_exist(view->peerinfo, k))
+	{
+	  kh_value(view->peerinfo, k).in_use = 0;
+	}
+    }
+  view->peerinfo_cnt = 0;
+
 
   view->pub_cnt = 0;
 }
@@ -540,10 +558,7 @@ uint32_t bgpwatcher_view_pfx_size(bgpwatcher_view_t *view)
 
 uint32_t bgpwatcher_view_peer_size(bgpwatcher_view_t *view)
 {
-  /* note that while the peersigns table may be shared and thus have many more
-     peers in it than are in use in this table, the peerinfo table is cleared
-     completely, so every peer it contains is in use */
-  return kh_size(view->peerinfo);
+  return view->peerinfo_cnt;
 }
 
 uint32_t bgpwatcher_view_time(bgpwatcher_view_t *view)
@@ -640,7 +655,8 @@ void bgpwatcher_view_iter_first(bgpwatcher_view_iter_t *iter,
 
       /* keep searching if this does not exist */
       while(iter->peer_it != kh_end(iter->view->peerinfo) &&
-	    !kh_exist(iter->view->peerinfo, iter->peer_it))
+	    (!kh_exist(iter->view->peerinfo, iter->peer_it) ||
+             !kh_val(iter->view->peerinfo, iter->peer_it).in_use))
 	{
 	  iter->peer_it++;
 	}
@@ -763,7 +779,8 @@ void bgpwatcher_view_iter_next(bgpwatcher_view_iter_t *iter,
       do {
 	iter->peer_it++;
       } while(iter->peer_it != kh_end(iter->view->peerinfo) &&
-	      !kh_exist(iter->view->peerinfo, iter->peer_it));
+              (!kh_exist(iter->view->peerinfo, iter->peer_it) ||
+               !kh_val(iter->view->peerinfo, iter->peer_it).in_use));
       break;
 
     case BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER:

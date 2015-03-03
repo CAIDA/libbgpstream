@@ -83,6 +83,9 @@ typedef struct bwv_peerinfo {
   /** The number of v6 prefixes that this peer observed */
   uint32_t v6_pfx_cnt;
 
+  /** If set, this peer contributed to the view.  */
+  uint8_t in_use;
+  
   /** Generic pointer to store information related to the peer */
   void *user;
   
@@ -123,6 +126,9 @@ struct bgpwatcher_view {
 
   /** Table of peerid -> peerinfo */
   kh_bwv_peerid_peerinfo_t *peerinfo;
+
+  /** The number of in-use peers */
+  uint32_t peerinfo_cnt;
 
   /** The number of times this view has been published since it was cleared */
   int pub_cnt;
