@@ -179,6 +179,17 @@ static int peerid_pfxinfo_insert(bgpwatcher_view_t *view,
   return 0;
 }
 
+static void pfx_peer_info_destroy(bgpwatcher_view_t *view, bgpwatcher_pfx_peer_info_t *v)
+{
+
+
+
+  // HEREEEEEEEEEEEEEEEEEEEEEE
+
+  
+}
+
+
 static void peerid_pfxinfo_destroy(bgpwatcher_view_t *view, bwv_peerid_pfxinfo_t *v)
 {
   if(v == NULL)
@@ -873,7 +884,7 @@ int bgpwatcher_view_iter_set_v4pfx_user(bgpwatcher_view_iter_t *iter, void *user
       return 0;
     }
   if(kh_val(iter->view->v4pfxs, iter->v4pfx_it)->user != NULL &&
-     iter->view->peer_user_destructor != NULL)
+     iter->view->pfx_user_destructor != NULL)
     {
       iter->view->pfx_user_destructor(kh_val(iter->view->v4pfxs, iter->v4pfx_it)->user);
     } 
@@ -892,7 +903,7 @@ int bgpwatcher_view_iter_set_v6pfx_user(bgpwatcher_view_iter_t *iter, void *user
       return 0;
     }
   if(kh_val(iter->view->v6pfxs, iter->v6pfx_it)->user != NULL &&
-     iter->view->peer_user_destructor != NULL)
+     iter->view->pfx_user_destructor != NULL)
     {
       iter->view->pfx_user_destructor(kh_val(iter->view->v6pfxs, iter->v6pfx_it)->user);
     } 
@@ -1053,3 +1064,73 @@ bgpwatcher_view_iter_get_v6pfx_pfxinfo(bgpwatcher_view_iter_t *iter)
 
   return &kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers[iter->v6pfx_peer_it];
 }
+
+void *
+bgpwatcher_view_iter_get_v4pfx_pfxinfo_user(bgpwatcher_view_iter_t *iter)
+{
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER))
+    {
+      return NULL;
+    }
+  return kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers[iter->v4pfx_peer_it].user;
+}
+
+void *
+bgpwatcher_view_iter_get_v6pfx_pfxinfo_user(bgpwatcher_view_iter_t *iter)
+{
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER))
+    {
+      return NULL;
+    }
+  return kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers[iter->v6pfx_peer_it].user;
+}
+
+int
+bgpwatcher_view_iter_set_v4pfx_pfxinfo_user(bgpwatcher_view_iter_t *iter, void *user)
+{
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER))
+    {
+      return -1;
+    }
+  void *cur_user = kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers[iter->v4pfx_peer_it].user;
+  if(cur_user == user)
+    {
+      return 0;
+    }
+  if(cur_user != NULL &&
+     iter->view->pfx_peer_user_destructor != NULL)
+    {
+      iter->view->pfx_peer_user_destructor(cur_user);
+    } 
+  kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers[iter->v4pfx_peer_it].user = user;
+  return 1;
+}
+
+int
+bgpwatcher_view_iter_set_v6pfx_pfxinfo_user(bgpwatcher_view_iter_t *iter, void *user)
+{
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER))
+    {
+      return -1;
+    }
+  void *cur_user = kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers[iter->v6pfx_peer_it].user;
+  if(cur_user == user)
+    {
+      return 0;
+    }
+  if(cur_user != NULL &&
+     iter->view->pfx_peer_user_destructor != NULL)
+    {
+      iter->view->pfx_peer_user_destructor(cur_user);
+    } 
+  kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers[iter->v6pfx_peer_it].user = user;
+  return 1;
+}
+
+void
+bgpwatcher_view_set_pfx_peer_user_destructor(bgpwatcher_view_t *view,
+                                               bgpwatcher_view_destroy_user_t *bwv_pfx_peer_user_destructor)
+{
+  view->pfx_peer_user_destructor = bwv_pfx_peer_user_destructor;
+}
+

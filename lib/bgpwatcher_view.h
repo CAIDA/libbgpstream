@@ -113,10 +113,11 @@ typedef enum {
  * NULL the programmer is responsible for deallocating the user memory outside
  * the bgpwatcher API.
  */
-bgpwatcher_view_t *bgpwatcher_view_create(bgpwatcher_view_destroy_user_t *bwv_user_destructor,
-                                          bgpwatcher_view_destroy_user_t *bwv_peer_user_destructor,
-                                          bgpwatcher_view_destroy_user_t *bwv_pfx_user_destructor,
-                                          bgpwatcher_view_destroy_user_t *bwv_pfx_peer_user_destructor);
+bgpwatcher_view_t *
+bgpwatcher_view_create(bgpwatcher_view_destroy_user_t *bwv_user_destructor,
+                       bgpwatcher_view_destroy_user_t *bwv_peer_user_destructor,
+                       bgpwatcher_view_destroy_user_t *bwv_pfx_user_destructor,
+                       bgpwatcher_view_destroy_user_t *bwv_pfx_peer_user_destructor);
 
 /** Create a new BGP View, reusing an existing peersigns table
  *
@@ -136,11 +137,12 @@ bgpwatcher_view_t *bgpwatcher_view_create(bgpwatcher_view_destroy_user_t *bwv_us
  *
  * @return a pointer to the view if successful, NULL otherwise
  */
-bgpwatcher_view_t *bgpwatcher_view_create_shared(bgpstream_peer_sig_map_t *peersigns,
-                                                 bgpwatcher_view_destroy_user_t *bwv_user_destructor,
-                                                 bgpwatcher_view_destroy_user_t *bwv_peer_user_destructor,
-                                                 bgpwatcher_view_destroy_user_t *bwv_pfx_user_destructor,
-                                                 bgpwatcher_view_destroy_user_t *bwv_pfx_peer_user_destructor);
+bgpwatcher_view_t *
+bgpwatcher_view_create_shared(bgpstream_peer_sig_map_t *peersigns,
+                              bgpwatcher_view_destroy_user_t *bwv_user_destructor,
+                              bgpwatcher_view_destroy_user_t *bwv_peer_user_destructor,
+                              bgpwatcher_view_destroy_user_t *bwv_pfx_user_destructor,
+                              bgpwatcher_view_destroy_user_t *bwv_pfx_peer_user_destructor);
 
 /** @todo create a nice high-level api for accessing information in the view */
 
@@ -148,7 +150,8 @@ bgpwatcher_view_t *bgpwatcher_view_create_shared(bgpstream_peer_sig_map_t *peers
  *
  * @param view          pointer to the view to destroy
  */
-void bgpwatcher_view_destroy(bgpwatcher_view_t *view);
+void
+bgpwatcher_view_destroy(bgpwatcher_view_t *view);
 
 /** Empty a view
  *
@@ -158,7 +161,8 @@ void bgpwatcher_view_destroy(bgpwatcher_view_t *view);
  * dirty so that future inserts can re-use the memory allocation. It does *not*
  * clear the peersigns table.
  */
-void bgpwatcher_view_clear(bgpwatcher_view_t *view);
+void
+bgpwatcher_view_clear(bgpwatcher_view_t *view);
 
 /** WARNING!!!!! change name here, not to be confused with user
  * pointer in the bgpview!
@@ -175,7 +179,8 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view);
  *
  * @param view        pointer to a view structure
  */
-void bgpwatcher_view_dump(bgpwatcher_view_t *view);
+void
+bgpwatcher_view_dump(bgpwatcher_view_t *view);
 
 /**
  * @name Simple Accessor Functions
@@ -187,42 +192,48 @@ void bgpwatcher_view_dump(bgpwatcher_view_t *view);
  * @param view          pointer to a view structure
  * @return the number of IPv4 prefixes in the view
  */
-uint32_t bgpwatcher_view_v4pfx_size(bgpwatcher_view_t *view);
+uint32_t
+bgpwatcher_view_v4pfx_size(bgpwatcher_view_t *view);
 
 /** Get the total number of IPv6 prefixes in the view
  *
  * @param view          pointer to a view structure
  * @return the number of IPv6 prefixes in the view
  */
-uint32_t bgpwatcher_view_v6pfx_size(bgpwatcher_view_t *view);
+uint32_t
+bgpwatcher_view_v6pfx_size(bgpwatcher_view_t *view);
 
 /** Get the total number of prefixes (v4+v6) in the view
  *
  * @param view          pointer to a view structure
  * @return the number of prefixes in the view
  */
-uint32_t bgpwatcher_view_pfx_size(bgpwatcher_view_t *view);
+uint32_t
+bgpwatcher_view_pfx_size(bgpwatcher_view_t *view);
 
 /** Get the number of peers in the view
  *
  * @param view          pointer to a view structure
  * @return the number of peers in the view
  */
-uint32_t bgpwatcher_view_peer_size(bgpwatcher_view_t *view);
+uint32_t
+bgpwatcher_view_peer_size(bgpwatcher_view_t *view);
 
 /** Get the BGP time that the view represents
  *
  * @param view          pointer to a view structure
  * @return the time that the view represents
  */
-uint32_t bgpwatcher_view_time(bgpwatcher_view_t *view);
+uint32_t
+bgpwatcher_view_time(bgpwatcher_view_t *view);
 
 /** Get the user pointer associated with the view
  *
  * @param view          pointer to a view structure
  * @return the user pointer associated with the view
  */
-void *bgpwatcher_view_get_user(bgpwatcher_view_t *view);
+void *
+bgpwatcher_view_get_user(bgpwatcher_view_t *view);
 
 /** Set the user pointer associated with the view
  *
@@ -231,16 +242,18 @@ void *bgpwatcher_view_get_user(bgpwatcher_view_t *view);
  * @return 1 if a new user pointer is set, 0 if the user pointer was already
  *         set to the address provided.
  */
-int bgpwatcher_view_set_user(bgpwatcher_view_t *view, void *user);
+int
+bgpwatcher_view_set_user(bgpwatcher_view_t *view, void *user);
 
 /** Set the user destructor function. If the function is set to NULL,
  *  then no the user pointer will not be destroyed by the bgpwatcher
  *  functions, the programmer is responsible for that in its own program.
  *
  * @param view                  pointer to a view structure
- * @param bwv_user_destructor   user pointer to associate with the view structure
+ * @param bwv_user_destructor   function that destroys the view user memory
  */
-void bgpwatcher_view_set_user_destructor(bgpwatcher_view_t *view,
+void
+bgpwatcher_view_set_user_destructor(bgpwatcher_view_t *view,
                                          bgpwatcher_view_destroy_user_t *bwv_user_destructor);
 
 /** @} */
@@ -255,20 +268,23 @@ void bgpwatcher_view_set_user_destructor(bgpwatcher_view_t *view,
  * @param               Pointer to the view to create iterator for
  * @return pointer to an iterator if successful, NULL otherwise
  */
-bgpwatcher_view_iter_t *bgpwatcher_view_iter_create(bgpwatcher_view_t *view);
+bgpwatcher_view_iter_t *
+bgpwatcher_view_iter_create(bgpwatcher_view_t *view);
 
 /** Destroy the given iterator
  *
  * @param               Pointer to the iterator to destroy
  */
-void bgpwatcher_view_iter_destroy(bgpwatcher_view_iter_t *iter);
+void
+bgpwatcher_view_iter_destroy(bgpwatcher_view_iter_t *iter);
 
 /** Reset the given iterator to the first item for the given field
  *
  * @param iter          Pointer to an iterator structure
  * @param field         The iterator field to reset
  */
-void bgpwatcher_view_iter_first(bgpwatcher_view_iter_t *iter,
+void
+bgpwatcher_view_iter_first(bgpwatcher_view_iter_t *iter,
 				bgpwatcher_view_iter_field_t field);
 
 /** Check if the given iterator has reached the end of the items for the given
@@ -282,7 +298,8 @@ void bgpwatcher_view_iter_first(bgpwatcher_view_iter_t *iter,
  * @note the various `get` functions will return invalid results when this
  * function returns 1
  */
-int bgpwatcher_view_iter_is_end(bgpwatcher_view_iter_t *iter,
+int
+bgpwatcher_view_iter_is_end(bgpwatcher_view_iter_t *iter,
 				bgpwatcher_view_iter_field_t field);
 
 /** Advance the provided iterator to the next prefix in the given view
@@ -293,7 +310,8 @@ int bgpwatcher_view_iter_is_end(bgpwatcher_view_iter_t *iter,
  * @note this function will have no effect if bgpwatcher_view_iter_is_end
  * returns non-zero for the given field.
  */
-void bgpwatcher_view_iter_next(bgpwatcher_view_iter_t *iter,
+void
+bgpwatcher_view_iter_next(bgpwatcher_view_iter_t *iter,
 			       bgpwatcher_view_iter_field_t field);
 
 /** Get the total number of items in the iterator for the given field
@@ -307,7 +325,8 @@ void bgpwatcher_view_iter_next(bgpwatcher_view_iter_t *iter,
  * corresponding top-level (v4pfx or v6pfx) iterator is valid to get the size
  * for the v4pfx_peers and v6pfx_peers fields respectively.
  */
-uint64_t bgpwatcher_view_iter_size(bgpwatcher_view_iter_t *iter,
+uint64_t
+bgpwatcher_view_iter_size(bgpwatcher_view_iter_t *iter,
 				   bgpwatcher_view_iter_field_t field);
 
 /** Get the current v4 prefix for the given iterator
@@ -317,7 +336,8 @@ uint64_t bgpwatcher_view_iter_size(bgpwatcher_view_iter_t *iter,
  *         NULL if the iterator is not initialized, or has reached the end of
  *         the v4 prefixes.
  */
-bgpstream_ipv4_pfx_t *bgpwatcher_view_iter_get_v4pfx(bgpwatcher_view_iter_t *iter);
+bgpstream_ipv4_pfx_t *
+bgpwatcher_view_iter_get_v4pfx(bgpwatcher_view_iter_t *iter);
 
 /** Get the current v6 prefix for the given iterator
  *
@@ -326,7 +346,8 @@ bgpstream_ipv4_pfx_t *bgpwatcher_view_iter_get_v4pfx(bgpwatcher_view_iter_t *ite
  *         NULL if the iterator is not initialized, or has reached the end of
  *         the v6 prefixes.
  */
-bgpstream_ipv6_pfx_t *bgpwatcher_view_iter_get_v6pfx(bgpwatcher_view_iter_t *iter);
+bgpstream_ipv6_pfx_t *
+bgpwatcher_view_iter_get_v6pfx(bgpwatcher_view_iter_t *iter);
 
 /** Get the current v4 prefix user pointer for the given iterator
  *
@@ -335,7 +356,8 @@ bgpstream_ipv6_pfx_t *bgpwatcher_view_iter_get_v6pfx(bgpwatcher_view_iter_t *ite
  *         NULL if the iterator is not initialized, or has reached the end of
  *         the v4 prefixes.
  */
-void *bgpwatcher_view_iter_get_v4pfx_user(bgpwatcher_view_iter_t *iter);
+void *
+bgpwatcher_view_iter_get_v4pfx_user(bgpwatcher_view_iter_t *iter);
 
 /** Get the current v6 prefix user pointer for the given iterator
  *
@@ -344,7 +366,8 @@ void *bgpwatcher_view_iter_get_v4pfx_user(bgpwatcher_view_iter_t *iter);
  *         NULL if the iterator is not initialized, or has reached the end of
  *         the v6 prefixes.
  */
-void *bgpwatcher_view_iter_get_v6pfx_user(bgpwatcher_view_iter_t *iter);
+void *
+bgpwatcher_view_iter_get_v6pfx_user(bgpwatcher_view_iter_t *iter);
 
 /** Set the current v4 prefix user pointer for the given iterator
  *
@@ -354,7 +377,8 @@ void *bgpwatcher_view_iter_get_v6pfx_user(bgpwatcher_view_iter_t *iter);
  *           provided was already set, -1 if the iterator is not initialized,
  *           or has reached the end of the peers.
  */
-int bgpwatcher_view_iter_set_v4pfx_user(bgpwatcher_view_iter_t *iter, void *user);
+int
+bgpwatcher_view_iter_set_v4pfx_user(bgpwatcher_view_iter_t *iter, void *user);
 
 /** Set the current v6 prefix user pointer for the given iterator
  *
@@ -364,17 +388,19 @@ int bgpwatcher_view_iter_set_v4pfx_user(bgpwatcher_view_iter_t *iter, void *user
  *           provided was already set, -1 if the iterator is not initialized,
  *           or has reached the end of the peers.
  */
-int bgpwatcher_view_iter_set_v6pfx_user(bgpwatcher_view_iter_t *iter, void *user);
+int
+bgpwatcher_view_iter_set_v6pfx_user(bgpwatcher_view_iter_t *iter, void *user);
 
 /** Set the pfx user destructor function. If the function is set to NULL,
  *  then no the user pointer will not be destroyed by the bgpwatcher
  *  functions, the programmer is responsible for that in its own program.
  *
  * @param view                       pointer to a view structure
- * @param bwv_pfx_user_destructor    user pointer per prefix (in bwv_peerid_pfxinfo_t)
+ * @param bwv_pfx_user_destructor    function that destroys the per-pfx user memory
  */
-void bgpwatcher_view_set_pfx_user_destructor(bgpwatcher_view_t *view,
-                                             bgpwatcher_view_destroy_user_t *bwv_pfx_user_destructor);
+void
+bgpwatcher_view_set_pfx_user_destructor(bgpwatcher_view_t *view,
+                                        bgpwatcher_view_destroy_user_t *bwv_pfx_user_destructor);
 
 /** Get the current peer ID for the given iterator
  *
@@ -442,9 +468,10 @@ bgpwatcher_view_iter_set_peer_user(bgpwatcher_view_iter_t *iter, void *user);
  *  functions, the programmer is responsible for that in its own program.
  *
  * @param view                       pointer to a view structure
- * @param bwv_peer_user_destructor   user pointer to associate with the view structure
+ * @param bwv_peer_user_destructor   function that destroys the per-peer view user memory
  */
-void bgpwatcher_view_set_peer_user_destructor(bgpwatcher_view_t *view,
+void
+bgpwatcher_view_set_peer_user_destructor(bgpwatcher_view_t *view,
                                               bgpwatcher_view_destroy_user_t *bwv_peer_user_destructor);
 
 /** Get the current peer ID (key) for the current v4pfx.
@@ -530,6 +557,68 @@ bgpwatcher_view_iter_get_v4pfx_pfxinfo(bgpwatcher_view_iter_t *iter);
  */
 bgpwatcher_pfx_peer_info_t *
 bgpwatcher_view_iter_get_v6pfx_pfxinfo(bgpwatcher_view_iter_t *iter);
+
+
+
+/* ######## ######## ######## ######## ######## ######## ######## 
+ * TODO: write an accessor function for each field in 
+ *  bgpwatcher_pfx_peer_info_t (so far we explicitely take care
+ *  of the user pointer, nothing more)
+ * ######## ######## ######## ######## ######## ######## ######## */
+
+
+/** Get the current v4 prefix-peer's user pointer for the given iterator
+ *
+ * @param iter          Pointer to an iterator structure
+ * @return the user pointer associated with the pfx-peer currently pointed at by 
+ *         the iterator's pfx-peer field. NULL if the iterator is not initialized, or
+ *         has reached the end of the pfx-peers.
+ */
+void *
+bgpwatcher_view_iter_get_v4pfx_pfxinfo_user(bgpwatcher_view_iter_t *iter);
+
+/** Get the current v6 prefix-peer's user pointer for the given iterator
+ *
+ * @param iter          Pointer to an iterator structure
+ * @return the user pointer associated with the pfx-peer currently pointed at by 
+ *         the iterator's pfx-peer field. NULL if the iterator is not initialized, or
+ *         has reached the end of the pfx-peers.
+ */
+void *
+bgpwatcher_view_iter_get_v6pfx_pfxinfo_user(bgpwatcher_view_iter_t *iter);
+
+/** Set the current v4 prefix-peer user pointer for the given iterator
+ *
+ * @param iter      Pointer to an iterator structure
+ * @param user      Pointer to store per-pfx per-peer information on consumers
+ * @return 1 if a new user pointer is set, 0 if the user pointer
+ *           provided was already set, -1 if the iterator is not initialized,
+ *           or has reached the end of the peers.
+ */
+int
+bgpwatcher_view_iter_set_v4pfx_pfxinfo_user(bgpwatcher_view_iter_t *iter, void *user);
+
+/** Set the current v6 prefix-peer user pointer for the given iterator
+ *
+ * @param iter      Pointer to an iterator structure
+ * @param user      Pointer to store per-pfx per-peer information on consumers
+ * @return 1 if a new user pointer is set, 0 if the user pointer
+ *           provided was already set, -1 if the iterator is not initialized,
+ *           or has reached the end of the peers.
+ */
+int
+bgpwatcher_view_iter_set_v6pfx_pfxinfo_user(bgpwatcher_view_iter_t *iter, void *user);
+
+/** Set the pfx-peer user destructor function. If the function is set to NULL,
+ *  then no the user pointer will not be destroyed by the bgpwatcher
+ *  functions, the programmer is responsible for that in its own program.
+ *
+ * @param view                            pointer to a view structure
+ * @param bwv_pfx_peer_user_destructor    function that destroys the per-pfx per-peer user memory
+ */
+void
+bgpwatcher_view_set_pfx_peer_user_destructor(bgpwatcher_view_t *view,
+                                               bgpwatcher_view_destroy_user_t *bwv_pfx_peer_user_destructor);
 
 /** @} */
 
