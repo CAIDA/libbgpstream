@@ -106,6 +106,9 @@ typedef struct bgpwatcher_pfx_peer_info {
    */
   uint8_t in_use;
 
+  /** Generic pointer to store per-pfx-per-peer information */
+  void *user;
+
 } __attribute__((packed)) bgpwatcher_pfx_peer_info_t;
 
 /** Information about the a prefix table */
