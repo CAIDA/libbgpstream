@@ -124,6 +124,9 @@ struct bgpwatcher_view {
   /** The number of times this view has been published since it was cleared */
   int pub_cnt;
 
+  /** Generic pointer to store information related to the view */
+  void *user;
+
 };
 
 /** Add a prefix to a view

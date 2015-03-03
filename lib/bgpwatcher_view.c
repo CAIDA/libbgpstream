@@ -363,6 +363,8 @@ bgpwatcher_view_t *bgpwatcher_view_create_shared(bgpstream_peer_sig_map_t *peers
 
   gettimeofday(&view->time_created, NULL);
 
+  view->user = NULL;
+
   return view;
 
  err:
@@ -410,6 +412,8 @@ void bgpwatcher_view_destroy(bgpwatcher_view_t *view)
       kh_destroy(bwv_peerid_peerinfo, view->peerinfo);
       view->peerinfo = NULL;
     }
+
+  // take care of view->user ?
 
   free(view);
 }
@@ -468,6 +472,17 @@ uint32_t bgpwatcher_view_time(bgpwatcher_view_t *view)
 {
   return view->time;
 }
+
+void *bgpwatcher_view_get_user(bgpwatcher_view_t *view)
+{
+  return view->user;
+}
+
+void bgpwatcher_view_set_user(bgpwatcher_view_t *view, void *user)
+{
+  view->user = user;
+}
+
 
 /* ==================== ITERATOR FUNCTIONS ==================== */
 

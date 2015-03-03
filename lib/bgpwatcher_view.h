@@ -125,7 +125,9 @@ void bgpwatcher_view_destroy(bgpwatcher_view_t *view);
  */
 void bgpwatcher_view_clear(bgpwatcher_view_t *view);
 
-/** Destroy all the per-pfx user data
+/** WARNING!!!!! change name here, not to be confused with user
+ * pointer in the bgpview!
+ * Destroy all the per-pfx user data
  *
  * @param view          view to destroy user data for
  * @param call_back     function that actually destroy the specific user structure
@@ -179,6 +181,20 @@ uint32_t bgpwatcher_view_peer_size(bgpwatcher_view_t *view);
  * @return the time that the view represents
  */
 uint32_t bgpwatcher_view_time(bgpwatcher_view_t *view);
+
+/** Get the user pointer associated with the view
+ *
+ * @param view          pointer to a view structure
+ * @return the user pointer associated with the view
+ */
+void *bgpwatcher_view_get_user(bgpwatcher_view_t *view);
+
+/** Set the user pointer associated with the view
+ *
+ * @param view          pointer to a view structure
+ * @param user          user pointer to associate with the view structure
+ */
+void bgpwatcher_view_set_user(bgpwatcher_view_t *view, void *user);
 
 /** @} */
 
