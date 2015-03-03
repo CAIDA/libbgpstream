@@ -83,6 +83,9 @@ typedef struct bwv_peerinfo {
   /** The number of v6 prefixes that this peer observed */
   uint32_t v6_pfx_cnt;
 
+  /** Generic pointer to store information related to the peer */
+  void *user;
+  
 } bwv_peerinfo_t;
 
 KHASH_INIT(bwv_peerid_peerinfo, bgpstream_peer_id_t, bwv_peerinfo_t, 1,

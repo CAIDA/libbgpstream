@@ -339,7 +339,7 @@ bgpwatcher_view_iter_get_peersig(bgpwatcher_view_iter_t *iter);
  * @param iter          Pointer to an iterator structure
  * @return the number of prefixes observed by the peer currently pointed at by
  *         the iterator's peer field. -1 if the iterator is not initialized, or
- *         as reached the end of the peers.
+ *         has reached the end of the peers.
  */
 int
 bgpwatcher_view_iter_get_peer_v4pfx_cnt(bgpwatcher_view_iter_t *iter);
@@ -349,10 +349,30 @@ bgpwatcher_view_iter_get_peer_v4pfx_cnt(bgpwatcher_view_iter_t *iter);
  * @param iter          Pointer to an iterator structure
  * @return the number of prefixes observed by the peer currently pointed at by
  *         the iterator's peer field. -1 if the iterator is not initialized, or
- *         as reached the end of the peers.
+ *         has reached the end of the peers.
  */
 int
 bgpwatcher_view_iter_get_peer_v6pfx_cnt(bgpwatcher_view_iter_t *iter);
+
+/** Get the current peer's user pointer for the given iterator
+ *
+ * @param iter          Pointer to an iterator structure
+ * @return the user pointer associated witht the peer currently pointed at by 
+ *         the iterator's peer field. NULL if the iterator is not initialized, or
+ *         has reached the end of the peers.
+ */
+void *
+bgpwatcher_view_iter_get_peer_user(bgpwatcher_view_iter_t *iter);
+
+/** Set the current peer's user pointer for the given iterator
+ *
+ * @param iter          Pointer to an iterator structure
+ * @param user          Pointer to a user structure
+ * @return 1 if the user pointer is set. -1 if the iterator is not initialized,
+ *         or has reached the end of the peers.
+ */
+int
+bgpwatcher_view_iter_set_peer_user(bgpwatcher_view_iter_t *iter, void *user);
 
 /** Get the current peer ID (key) for the current v4pfx.
  *

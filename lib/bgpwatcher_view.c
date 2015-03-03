@@ -846,6 +846,27 @@ int bgpwatcher_view_iter_get_peer_v6pfx_cnt(bgpwatcher_view_iter_t *iter)
   return kh_val(iter->view->peerinfo, iter->peer_it).v6_pfx_cnt;
 }
 
+void *bgpwatcher_view_iter_get_peer_user(bgpwatcher_view_iter_t *iter)
+{
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_PEER))
+    {
+      return NULL;
+    }
+
+  return kh_val(iter->view->peerinfo, iter->peer_it).user;
+}
+
+int bgpwatcher_view_iter_set_peer_user(bgpwatcher_view_iter_t *iter, void *user)
+{
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_PEER))
+    {
+      return -1;
+    }
+
+  kh_val(iter->view->peerinfo, iter->peer_it).user = user;
+  return 1;
+}
+
 bgpstream_peer_id_t
 bgpwatcher_view_iter_get_v4pfx_peerid(bgpwatcher_view_iter_t *iter)
 {
