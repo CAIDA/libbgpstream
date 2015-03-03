@@ -166,7 +166,7 @@ struct bgpwatcher_view {
  * @return 0 if successful, -1 otherwise
  */
 int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
-                               bgpstream_pfx_storage_t *prefix,
+                               bgpstream_pfx_t *prefix,
                                bgpstream_peer_id_t peerid,
                                bgpwatcher_pfx_peer_info_t *pfx_info,
 			       void **cache);

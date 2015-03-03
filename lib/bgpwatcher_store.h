@@ -90,12 +90,13 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
  *
  * @param store         pointer to a store instance
  * @param table         pointer to the table the row belongs to
- * @param row           pointer to the row to handle
+ * @param pfx           pointer to the prefix 
+ * @param peer_infos    pointer to the peer_infos array to associate to the prefix
  * @return 0 if successful, -1 otherwise
  */
 int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
                                       bgpwatcher_pfx_table_t *table,
-                                      bgpstream_pfx_storage_t *pfx,
+                                      bgpstream_pfx_t *pfx,
                                       bgpwatcher_pfx_peer_info_t *peer_infos);
 
 /** Complete the given table

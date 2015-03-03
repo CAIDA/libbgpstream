@@ -416,7 +416,7 @@ static int handle_pfx_record(bgpwatcher_server_t *server,
 
   if(bgpwatcher_store_prefix_table_row(server->store,
                                        &client->pfx_table,
-                                       &pfx,
+                                       (bgpstream_pfx_t *)&pfx,
                                        client->peer_infos) != 0)
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_STORE,

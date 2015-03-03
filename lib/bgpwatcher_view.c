@@ -290,7 +290,7 @@ static bwv_peerid_pfxinfo_t *get_v6pfx_peerids(bgpwatcher_view_t *view,
 }
 
 static bwv_peerid_pfxinfo_t *get_pfx_peerids(bgpwatcher_view_t *view,
-                                             bgpstream_pfx_storage_t *prefix)
+                                             bgpstream_pfx_t *prefix)
 {
   if(prefix->address.version == BGPSTREAM_ADDR_VERSION_IPV4)
     {
@@ -349,7 +349,7 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
 }
 
 int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
-                               bgpstream_pfx_storage_t *prefix,
+                               bgpstream_pfx_t *prefix,
                                bgpstream_peer_id_t peerid,
                                bgpwatcher_pfx_peer_info_t *pfx_info,
 			       void **cache)
@@ -373,7 +373,7 @@ int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
       peerids_pfxinfo = *cache;
     }
 
-  if(peerid_pfxinfo_insert(view, (bgpstream_pfx_t *)prefix,
+  if(peerid_pfxinfo_insert(view, prefix,
                            peerids_pfxinfo, peerid, pfx_info) < 0)
     {
       return -1;
