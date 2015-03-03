@@ -228,8 +228,10 @@ void *bgpwatcher_view_get_user(bgpwatcher_view_t *view);
  *
  * @param view          pointer to a view structure
  * @param user          user pointer to associate with the view structure
+ * @return 1 if a new user pointer is set, 0 if the user pointer was already
+ *         set to the address provided.
  */
-void bgpwatcher_view_set_user(bgpwatcher_view_t *view, void *user);
+int bgpwatcher_view_set_user(bgpwatcher_view_t *view, void *user);
 
 /** Set the user destructor function. If the function is set to NULL,
  *  then no the user pointer will not be destroyed by the bgpwatcher
@@ -348,16 +350,31 @@ void *bgpwatcher_view_iter_get_v6pfx_user(bgpwatcher_view_iter_t *iter);
  *
  * @param iter      Pointer to an iterator structure
  * @param user      Pointer to store per-pfx information on consumers
+ * @return 1 if a new user pointer is set, 0 if the user pointer
+ *           provided was already set, -1 if the iterator is not initialized,
+ *           or has reached the end of the peers.
  */
-void bgpwatcher_view_iter_set_v4pfx_user(bgpwatcher_view_iter_t *iter, void *user);
+int bgpwatcher_view_iter_set_v4pfx_user(bgpwatcher_view_iter_t *iter, void *user);
 
 /** Set the current v6 prefix user pointer for the given iterator
  *
  * @param iter      Pointer to an iterator structure
  * @param user      Pointer to store per-pfx information on consumers
+ * @return 1 if a new user pointer is set, 0 if the user pointer
+ *           provided was already set, -1 if the iterator is not initialized,
+ *           or has reached the end of the peers.
  */
-void bgpwatcher_view_iter_set_v6pfx_user(bgpwatcher_view_iter_t *iter, void *user);
+int bgpwatcher_view_iter_set_v6pfx_user(bgpwatcher_view_iter_t *iter, void *user);
 
+/** Set the pfx user destructor function. If the function is set to NULL,
+ *  then no the user pointer will not be destroyed by the bgpwatcher
+ *  functions, the programmer is responsible for that in its own program.
+ *
+ * @param view                       pointer to a view structure
+ * @param bwv_pfx_user_destructor    user pointer per prefix (in bwv_peerid_pfxinfo_t)
+ */
+void bgpwatcher_view_set_pfx_user_destructor(bgpwatcher_view_t *view,
+                                             bgpwatcher_view_destroy_user_t *bwv_pfx_user_destructor);
 
 /** Get the current peer ID for the given iterator
  *
@@ -413,11 +430,22 @@ bgpwatcher_view_iter_get_peer_user(bgpwatcher_view_iter_t *iter);
  *
  * @param iter          Pointer to an iterator structure
  * @param user          Pointer to a user structure
- * @return 1 if the user pointer is set. -1 if the iterator is not initialized,
- *         or has reached the end of the peers.
+ * @return 1 if a new user pointer is set, 0 if the user pointer
+ *           provided was already set, -1 if the iterator is not initialized,
+ *           or has reached the end of the peers.
  */
 int
 bgpwatcher_view_iter_set_peer_user(bgpwatcher_view_iter_t *iter, void *user);
+
+/** Set the peer user destructor function. If the function is set to NULL,
+ *  then no the user pointer will not be destroyed by the bgpwatcher
+ *  functions, the programmer is responsible for that in its own program.
+ *
+ * @param view                       pointer to a view structure
+ * @param bwv_peer_user_destructor   user pointer to associate with the view structure
+ */
+void bgpwatcher_view_set_peer_user_destructor(bgpwatcher_view_t *view,
+                                              bgpwatcher_view_destroy_user_t *bwv_peer_user_destructor);
 
 /** Get the current peer ID (key) for the current v4pfx.
  *
