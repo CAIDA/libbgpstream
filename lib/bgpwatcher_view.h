@@ -254,7 +254,7 @@ bgpwatcher_view_set_user(bgpwatcher_view_t *view, void *user);
  */
 void
 bgpwatcher_view_set_user_destructor(bgpwatcher_view_t *view,
-                                         bgpwatcher_view_destroy_user_t *bwv_user_destructor);
+                                    bgpwatcher_view_destroy_user_t *bwv_user_destructor);
 
 /** @} */
 
@@ -285,7 +285,7 @@ bgpwatcher_view_iter_destroy(bgpwatcher_view_iter_t *iter);
  */
 void
 bgpwatcher_view_iter_first(bgpwatcher_view_iter_t *iter,
-				bgpwatcher_view_iter_field_t field);
+                           bgpwatcher_view_iter_field_t field);
 
 /** Check if the given iterator has reached the end of the items for the given
  * field.
@@ -300,7 +300,7 @@ bgpwatcher_view_iter_first(bgpwatcher_view_iter_t *iter,
  */
 int
 bgpwatcher_view_iter_is_end(bgpwatcher_view_iter_t *iter,
-				bgpwatcher_view_iter_field_t field);
+                            bgpwatcher_view_iter_field_t field);
 
 /** Advance the provided iterator to the next prefix in the given view
  *
@@ -312,7 +312,7 @@ bgpwatcher_view_iter_is_end(bgpwatcher_view_iter_t *iter,
  */
 void
 bgpwatcher_view_iter_next(bgpwatcher_view_iter_t *iter,
-			       bgpwatcher_view_iter_field_t field);
+                          bgpwatcher_view_iter_field_t field);
 
 /** Get the total number of items in the iterator for the given field
  *

@@ -171,5 +171,57 @@ int bwc_test_process_view(bwc_t *consumer, uint8_t interests,
 
   STATE->view_cnt++;
 
+  // ########################################################
+  // Add some memory to the users pointers
+  // ########################################################
+
+  void *my_memory = NULL;
+  bgpwatcher_view_iter_t *it;
+  it = bgpwatcher_view_iter_create(view);
+
+  // set destructors
+  bgpwatcher_view_set_user_destructor(view, free);
+  bgpwatcher_view_set_pfx_user_destructor(view, free);
+  bgpwatcher_view_set_peer_user_destructor(view, free);
+  bgpwatcher_view_set_pfx_peer_user_destructor(view, free);
+
+  // view user memory allocation
+  my_memory = malloc(sizeof(int));
+  bgpwatcher_view_set_user(view, my_memory);
+  my_memory = NULL;
+
+  // per-peer user memory allocation
+  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
+      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
+      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_PEER))
+    {
+      my_memory = malloc(sizeof(int));
+      bgpwatcher_view_iter_set_peer_user(it, my_memory);
+      my_memory = NULL;            
+    }
+
+  // per-prefix user memory allocation
+  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
+      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
+      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX))
+    {
+      my_memory = malloc(sizeof(int));
+      bgpwatcher_view_iter_set_v4pfx_user(it, my_memory);
+      my_memory = NULL;
+      
+      // per-prefix per-peer user memory allocation
+      for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER);
+            !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER);
+            bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER))
+        {
+          my_memory = malloc(sizeof(int));
+          bgpwatcher_view_iter_set_v4pfx_pfxinfo_user(it, my_memory);
+          my_memory = NULL;          
+        }
+    }
+
+  
+  bgpwatcher_view_iter_destroy(it);
+  
   return 0;
 }
