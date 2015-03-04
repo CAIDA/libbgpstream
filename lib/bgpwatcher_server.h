@@ -23,7 +23,7 @@
 #include <czmq.h>
 #include <stdint.h>
 
-#include <bgpwatcher_common.h>
+#include "bgpwatcher_common.h"
 
 /** @file
  *

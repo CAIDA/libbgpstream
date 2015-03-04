@@ -19,7 +19,7 @@
 
 #include <stdint.h>
 
-#include <bgpwatcher_client_int.h>
+#include "bgpwatcher_client_int.h"
 
 #include "khash.h"
 #include "utils.h"

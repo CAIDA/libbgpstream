@@ -27,7 +27,7 @@
 #include <time.h>       /* time */
 
 /* this must be all we include from bgpwatcher */
-#include <bgpwatcher_client.h>
+#include "bgpwatcher_client.h"
 
 #include "config.h"
 #include "utils.h"

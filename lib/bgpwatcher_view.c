@@ -427,6 +427,7 @@ bgpwatcher_view_t *bgpwatcher_view_create_shared(bgpstream_peer_sig_map_t *peers
       fprintf(stderr, "Failed to create peer info table\n");
       goto err;
     }
+  view->peerinfo_cnt = 0;
 
   gettimeofday(&view->time_created, NULL);
 
@@ -513,30 +514,6 @@ void bgpwatcher_view_destroy(bgpwatcher_view_t *view)
 
   free(view);
 }
-
-// TODO REMOVE!
-/* void bgpwatcher_view_destroy_user(bgpwatcher_view_t *view, */
-/* 				  bgpwatcher_view_destroy_user_cb *call_back) */
-/* { */
-/*   khiter_t k; */
-/*   assert(call_back != NULL); */
-/*   for(k = kh_begin(view->v4pfxs); k != kh_end(view->v4pfxs); k++) */
-/*     { */
-/*       if(kh_exist(view->v4pfxs,k)) */
-/* 	{ */
-/* 	  call_back(kh_val(view->v4pfxs,k)->user); */
-/* 	  kh_val(view->v4pfxs,k)->user = NULL; */
-/* 	} */
-/*     } */
-/*   for(k = kh_begin(view->v6pfxs); k != kh_end(view->v6pfxs); k++) */
-/*     { */
-/*       if(kh_exist(view->v6pfxs,k)) */
-/* 	{ */
-/* 	  call_back(kh_val(view->v6pfxs,k)->user); */
-/* 	  kh_val(view->v6pfxs,k)->user = NULL; */
-/* 	} */
-/*     }  */
-/* } */
 
 
 /* ==================== SIMPLE ACCESSOR FUNCTIONS ==================== */

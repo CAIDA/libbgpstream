@@ -27,9 +27,9 @@
 #include <time.h>       /* time */
 
 /* this must be all we include from bgpwatcher */
-#include <bgpwatcher_client.h>
-#include <bgpwatcher_view.h>
-#include <bgpwatcher_consumer_manager.h>
+#include "bgpwatcher_client.h"
+#include "bgpwatcher_view.h"
+#include "bgpwatcher_consumer_manager.h"
 
 #include "config.h"
 #include "utils.h"
@@ -394,7 +394,7 @@ int main(int argc, char **argv)
       fprintf(stderr, "ERROR: Could not create view\n");
       goto err;
     }
-
+  
   while((rx_interests =
          bgpwatcher_client_recv_view(client,
                                      BGPWATCHER_CLIENT_RECV_MODE_BLOCK,

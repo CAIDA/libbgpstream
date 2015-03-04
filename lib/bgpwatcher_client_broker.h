@@ -25,7 +25,7 @@
 
 #include <khash.h>
 
-#include <bgpwatcher_common_int.h>
+#include "bgpwatcher_common_int.h"
 
 /** @file
  *
