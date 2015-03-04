@@ -394,7 +394,7 @@ int main(int argc, char **argv)
       fprintf(stderr, "ERROR: Could not create view\n");
       goto err;
     }
-  
+
   while((rx_interests =
          bgpwatcher_client_recv_view(client,
                                      BGPWATCHER_CLIENT_RECV_MODE_BLOCK,

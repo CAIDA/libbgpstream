@@ -144,7 +144,7 @@ static int peerid_pfxinfo_insert(bgpwatcher_view_t *view,
                                  bgpwatcher_pfx_peer_info_t *pfx_info)
 {
   int i;
-
+  
   /* if we are the first to insert a peer for this prefix after it was cleared,
      we are also responsible for clearing all the peer info */
   if(v->peers_cnt == 0)
@@ -169,6 +169,7 @@ static int peerid_pfxinfo_insert(bgpwatcher_view_t *view,
       for(i = v->peers_alloc_cnt; i <= peerid; i++)
         {
           v->peers[i].in_use = 0;
+          v->peers[i].user = NULL;
         }
 
       v->peers_alloc_cnt = peerid+1;
@@ -183,9 +184,15 @@ static int peerid_pfxinfo_insert(bgpwatcher_view_t *view,
       peerinfo_add_pfx(view, peerid, prefix);
     }
 
+  /* we save the user pointer that is assigned
+   * to v->peers[peerid] (otherwise it would be
+   * lost after the assignment
+   *  v->peers[peerid] = *pfx_info; */
+  void *previous_user = v->peers[peerid].user;
   v->peers[peerid] = *pfx_info;
   v->peers[peerid].in_use = 1;
-  v->peers[peerid].user = NULL;
+  v->peers[peerid].user = previous_user;
+
   return 0;
 }
 
@@ -211,7 +218,13 @@ static void peerid_pfxinfo_destroy(bgpwatcher_view_t *view, bwv_peerid_pfxinfo_t
   int i = 0;
   if(v->peers!=NULL)
     {
-      for(i = 0; i< v->peers_alloc_cnt; i++)
+      /* Warning: the peer id is always equal to the position
+       * of the peer in the peers array. Since there is no 
+       * peer with id 0, the array is always 1 elem larger, also
+       * position 0 is to be considered not valid at all times.
+       * We cannot destroy memory that is not valid, so we
+       * destroy just the peer_infos with id >=1  */
+      for(i = 1; i< v->peers_alloc_cnt; i++)
         {
           pfx_peer_info_destroy(view, &v->peers[i]);
         }
@@ -343,8 +356,7 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
 	}
     }
   view->peerinfo_cnt = 0;
-
-
+  
   view->pub_cnt = 0;
 }
 
@@ -1092,15 +1104,16 @@ bgpwatcher_view_iter_set_v4pfx_pfxinfo_user(bgpwatcher_view_iter_t *iter, void *
     {
       return -1;
     }
-  void *cur_user = kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers[iter->v4pfx_peer_it].user;
-  if(cur_user == user)
+
+  if(kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers[iter->v4pfx_peer_it].user == user)
     {
       return 0;
     }
-  if(cur_user != NULL &&
+
+  if(kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers[iter->v4pfx_peer_it].user != NULL &&
      iter->view->pfx_peer_user_destructor != NULL)
     {
-      iter->view->pfx_peer_user_destructor(cur_user);
+      iter->view->pfx_peer_user_destructor(kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers[iter->v4pfx_peer_it].user);
     } 
   kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers[iter->v4pfx_peer_it].user = user;
   return 1;
