@@ -22,8 +22,6 @@
 
 #include "bgpstream_utils_peer_sig_map.h"
 
-// #include "bgpwatcher_common.h" /* < pfx_peer_info_t */
-
 /** @file
  *
  * @brief Header file that exposes the public interface of bgpwatcher view.
@@ -75,7 +73,7 @@ typedef enum {
   /** Iterate over the IPv6 prefixes in the view */
   BGPWATCHER_VIEW_ITER_FIELD_V6PFX      = 2,
 
-  /** Iterate over the Peer information (peerid=>(collector,IP)) in the view */
+  /** Iterate over the Peer information in the view */
   BGPWATCHER_VIEW_ITER_FIELD_PEER       = 3,
 
   /** Iterate over the peers for the current v4 pfx */
@@ -213,17 +211,6 @@ bgpwatcher_view_destroy(bgpwatcher_view_t *view);
  */
 void
 bgpwatcher_view_clear(bgpwatcher_view_t *view);
-
-/** WARNING!!!!! change name here, not to be confused with user
- * pointer in the bgpview!
- * Destroy all the per-pfx user data
- *
- * @param view          view to destroy user data for
- * @param call_back     function that actually destroy the specific user structure
- *                      used in this view
- */
-// void bgpwatcher_view_destroy_user(bgpwatcher_view_t *view,
-//				  bgpwatcher_view_destroy_user_cb *call_back);
 
 /** Dump the given BGP View to stdout
  *
@@ -387,20 +374,145 @@ bgpwatcher_view_iter_size(bgpwatcher_view_iter_t *iter,
                           bgpwatcher_view_iter_field_t field,
                           uint8_t state_mask);
 
-/** Advance the provided iterator to the next prefix in the given view
+/** Get the iterator to the peerid in the given view (if it exists and it matches
+ *  the mask)
  *
- * @param iter          Pointer to an iterator structure
- * @param field         The iterator field to advance
+ * @param iter          Pointer to an iterator structure (this iterator will be 
+ *                      modified and returned)
+ * @param peerid        The peer id
+ * @param state_mask    A mask that indicates the state of the field we iterate
+ *                      through
  *
- * @note this function will have no effect if bgpwatcher_view_iter_is_end
- * returns non-zero for the given field.
+ * @return a pointer to the iterator structure that points to the given
+ *         peerid if it exists, otherwise the bgpwatcher_view_iter_is_end(it) will be
+ *         positive
  */
-/* void */
-/* bgpwatcher_view_iter_seek_peer(bgpwatcher_view_iter_t *iter, */
-/*                                ********HERE************* */
-/*                                bgpwatcher_view_iter_field_t field); */
+bgpwatcher_view_iter_t *
+bgpwatcher_view_iter_seek_peerid(bgpwatcher_view_iter_t *iter,
+                                 bgpstream_peer_id_t peerid,
+                                 uint8_t state_mask); 
 
 
+/** Get the iterator to the v4pfx in the given view (if it exists and it matches
+ *  the mask)
+ *
+ * @param iter          Pointer to an iterator structure (this iterator will be 
+ *                      modified and returned)
+ * @param v4pfx         IPv4 prefix
+ * @param state_mask    A mask that indicates the state of the field we iterate
+ *                      through
+ *
+ * @return a pointer to the iterator structure that points to the given
+ *         prefix if it exists, otherwise the bgpwatcher_view_iter_is_end(it) will be
+ *         positive
+ */
+bgpwatcher_view_iter_t *
+bgpwatcher_view_iter_seek_v4pfx(bgpwatcher_view_iter_t *iter,
+                                bgpstream_ipv4_pfx_t *v4pfx,
+                                uint8_t state_mask); 
+
+/** Get the iterator to the v6pfx in the given view (if it exists and it matches
+ *  the mask)
+ *
+ * @param iter          Pointer to an iterator structure (this iterator will be 
+ *                      modified and returned)
+ * @param v6pfx         IPv6 prefix
+ * @param state_mask    A mask that indicates the state of the field we iterate
+ *                      through
+ *
+ * @return a pointer to the iterator structure that points to the given
+ *         prefix if it exists, otherwise the bgpwatcher_view_iter_is_end(it) will be
+ *         positive
+ */
+bgpwatcher_view_iter_t *
+bgpwatcher_view_iter_seek_v6pfx(bgpwatcher_view_iter_t *iter,
+                                bgpstream_ipv6_pfx_t *v6pfx,
+                                uint8_t state_mask); 
+
+
+/** Get the iterator to the peerid for the currently pointed ipv4 prefix in the given
+ *  view (if it exists and it matches the mask)
+ *
+ * @param iter          Pointer to an iterator structure (this iterator will be 
+ *                      modified and returned)
+ * @param peerid        The peer id
+ * @param state_mask    A mask that indicates the state of the field we iterate
+ *                      through
+ *
+ * @return a pointer to the iterator structure that points to the given
+ *         peerid if it exists, otherwise the bgpwatcher_view_iter_is_end(it) will be
+ *         positive
+ */
+bgpwatcher_view_iter_t *
+bgpwatcher_view_iter_seek_v4pfx_peerid(bgpwatcher_view_iter_t *iter,
+                                       bgpstream_peer_id_t peerid,
+                                       uint8_t state_mask);
+
+/** Get the iterator to the peerid for the currently pointed ipv6 prefix in the given
+ *  view (if it exists and it matches the mask)
+ *
+ * @param iter          Pointer to an iterator structure (this iterator will be 
+ *                      modified and returned)
+ * @param peerid        The peer id
+ * @param state_mask    A mask that indicates the state of the field we iterate
+ *                      through
+ *
+ * @return a pointer to the iterator structure that points to the given
+ *         peerid if it exists, otherwise the bgpwatcher_view_iter_is_end(it) will be
+ *         positive
+ */
+bgpwatcher_view_iter_t *
+bgpwatcher_view_iter_seek_v6pfx_peerid(bgpwatcher_view_iter_t *iter,
+                                       bgpstream_peer_id_t peerid,
+                                       uint8_t state_mask);
+
+/** Get the iterator to the peerid for the specified ipv4 prefix
+ *  view (if both exist and both match the relative masks)
+ *
+ * @param iter          Pointer to an iterator structure (this iterator will be 
+ *                      modified and returned)
+ * @param v4pfx         IPv4 prefix
+ * @param peerid        The peer id
+ * @param state_mask    A mask that indicates the state of the field we iterate
+ *                      through
+ *
+ * @return a pointer to the iterator structure that points to the given prefix and
+ *         peerid if they exist, otherwise the bgpwatcher_view_iter_is_end(it) will be
+ *         positive
+ */
+bgpwatcher_view_iter_t *
+bgpwatcher_view_iter_seek_v4pfx_peerid_pair(bgpwatcher_view_iter_t *iter,
+                                            bgpstream_ipv4_pfx_t *v4pfx,
+                                            bgpstream_peer_id_t peerid,
+                                            uint8_t pfx_state_mask,
+                                            uint8_t peer_state_mask);
+
+/** Get the iterator to the peerid for the specified ipv6 prefix
+ *  view (if both exist and both match the relative masks)
+ *
+ * @param iter          Pointer to an iterator structure (this iterator will be 
+ *                      modified and returned)
+ * @param v6pfx         IPv6 prefix
+ * @param peerid        The peer id
+ * @param state_mask    A mask that indicates the state of the field we iterate
+ *                      through
+ *
+ * @return a pointer to the iterator structure that points to the given prefix and
+ *         peerid if they exist, otherwise the bgpwatcher_view_iter_is_end(it) will be
+ *         positive
+ */
+bgpwatcher_view_iter_t *
+bgpwatcher_view_iter_seek_v6pfx_peerid_pair(bgpwatcher_view_iter_t *iter,
+                                            bgpstream_ipv6_pfx_t *v6pfx,
+                                            bgpstream_peer_id_t peerid,
+                                            uint8_t pfx_state_mask,
+                                            uint8_t peer_state_mask);
+
+
+/**
+ * @name View Iterator Getter and Setter Functions
+ *
+ * @{ */
 
 /** Get the current v4 prefix for the given iterator
  *
@@ -633,8 +745,8 @@ bgpwatcher_view_iter_get_v6pfx_pfxinfo(bgpwatcher_view_iter_t *iter);
 
 
 
-/* ######## ######## ######## ######## ######## ######## ######## 
- * TODO: write an accessor function for each field in 
+/** ######## ######## ######## ######## ######## ######## ######## 
+ *  @todo: write an accessor function for each field in 
  *  bgpwatcher_pfx_peer_info_t (so far we explicitely take care
  *  of the user pointer, nothing more)
  * ######## ######## ######## ######## ######## ######## ######## */
@@ -692,6 +804,8 @@ bgpwatcher_view_iter_set_v6pfx_pfxinfo_user(bgpwatcher_view_iter_t *iter, void *
 void
 bgpwatcher_view_set_pfx_peer_user_destructor(bgpwatcher_view_t *view,
                                                bgpwatcher_view_destroy_user_t *bwv_pfx_peer_user_destructor);
+
+/** @} */
 
 /** @} */
 

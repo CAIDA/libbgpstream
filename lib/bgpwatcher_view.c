@@ -861,6 +861,156 @@ uint64_t bgpwatcher_view_iter_size(bgpwatcher_view_iter_t *iter,
     }
 }
 
+bgpwatcher_view_iter_t *
+bgpwatcher_view_iter_seek_peerid(bgpwatcher_view_iter_t *iter, bgpstream_peer_id_t peerid,
+                                 uint8_t state_mask)
+{       
+  // get the iterator that points to the peerid requested
+  iter->peer_it = kh_get(bwv_peerid_peerinfo, iter->view->peerinfo, peerid);
+  // if the key does not exist, return the iterator end
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_PEER,
+                                 state_mask))
+    {
+      return iter;
+    }
+  // if it not at the end, check that the field matches the mask
+  if(state_mask & kh_val(iter->view->peerinfo, iter->peer_it).state)
+    {
+      return iter;      
+    }
+  // if it doesn't match, then set the iterator to the end
+  iter->peer_it = kh_end(iter->view->peerinfo);
+  return iter;
+}
+
+bgpwatcher_view_iter_t *
+bgpwatcher_view_iter_seek_v4pfx(bgpwatcher_view_iter_t *iter,
+                                bgpstream_ipv4_pfx_t *v4pfx,
+                                uint8_t state_mask)
+{       
+  // get the iterator that points to the v4 prefix requested
+  iter->v4pfx_it = kh_get(bwv_v4pfx_peerid_pfxinfo, iter->view->v4pfxs, *v4pfx);
+  // if the key does not exist, return the iterator end
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX,
+                                 state_mask))
+    {
+      return iter;
+    }
+  // if it not at the end, check that the field matches the mask
+  if(state_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)->state)
+    {
+      return iter;      
+    }
+  // if it doesn't match, then set the iterator to the end
+  iter->v4pfx_it = kh_end(iter->view->v4pfxs);
+  return iter;
+}
+
+bgpwatcher_view_iter_t *
+bgpwatcher_view_iter_seek_v6pfx(bgpwatcher_view_iter_t *iter,
+                                bgpstream_ipv6_pfx_t *v6pfx,
+                                uint8_t state_mask)
+{       
+  // get the iterator that points to the v6 prefix requested
+  iter->v6pfx_it = kh_get(bwv_v6pfx_peerid_pfxinfo, iter->view->v6pfxs, *v6pfx);
+  // if the key does not exist, return the iterator end
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX,
+                                 state_mask))
+    {
+      return iter;
+    }
+  // if it not at the end, check that the field matches the mask
+  if(state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state)
+    {
+      return iter;      
+    }
+  // if it doesn't match, then set the iterator to the end
+  iter->v6pfx_it = kh_end(iter->view->v6pfxs);
+  return iter;
+}
+
+bgpwatcher_view_iter_t *
+bgpwatcher_view_iter_seek_v4pfx_peerid(bgpwatcher_view_iter_t *iter,
+                                       bgpstream_peer_id_t peerid,
+                                       uint8_t state_mask)
+{
+  // ensure that the iterator is pointing to a valid ipv4 prefix
+  assert(iter->v4pfx_it != kh_end(iter->view->v4pfxs));
+
+  if(peerid < kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_alloc_cnt)
+    {
+      if(state_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers[peerid].state)
+        {
+          iter->v4pfx_peer_it_valid = 1;
+          iter->v4pfx_peer_it = peerid;
+          return iter;
+        }
+    }
+  // if the key does not exist, or it exists with the wrong mask
+  // return the iterator end
+  iter->v4pfx_peer_it = kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_alloc_cnt;
+  iter->v4pfx_peer_it_valid = 0;  
+  return iter;
+}
+
+bgpwatcher_view_iter_t *
+bgpwatcher_view_iter_seek_v6pfx_peerid(bgpwatcher_view_iter_t *iter,
+                                       bgpstream_peer_id_t peerid,
+                                       uint8_t state_mask)
+{
+  // ensure that the iterator is pointing to a valid ipv6 prefix
+  assert(iter->v6pfx_it != kh_end(iter->view->v6pfxs));
+
+  if(peerid < kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_alloc_cnt)
+    {
+      if(state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers[peerid].state)
+        {
+          iter->v6pfx_peer_it_valid = 1;
+          iter->v6pfx_peer_it = peerid;
+          return iter;
+        }
+    }
+  // if the key does not exist, or it exists with the wrong mask
+  // return the iterator end
+  iter->v6pfx_peer_it = kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_alloc_cnt;
+  iter->v6pfx_peer_it_valid = 0;  
+  return iter;
+}
+
+bgpwatcher_view_iter_t *
+bgpwatcher_view_iter_seek_v4pfx_peerid_pair(bgpwatcher_view_iter_t *iter,
+                                            bgpstream_ipv4_pfx_t *v4pfx,
+                                            bgpstream_peer_id_t peerid,
+                                            uint8_t pfx_state_mask,
+                                            uint8_t peer_state_mask)
+{
+  iter = bgpwatcher_view_iter_seek_v4pfx(iter, v4pfx, pfx_state_mask);
+  if(!bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX,
+                                 pfx_state_mask))
+    {
+      iter = bgpwatcher_view_iter_seek_v4pfx_peerid(iter, peerid, peer_state_mask);
+    }
+  return iter;
+}
+
+
+bgpwatcher_view_iter_t *
+bgpwatcher_view_iter_seek_v6pfx_peerid_pair(bgpwatcher_view_iter_t *iter,
+                                            bgpstream_ipv6_pfx_t *v6pfx,
+                                            bgpstream_peer_id_t peerid,
+                                            uint8_t pfx_state_mask,
+                                            uint8_t peer_state_mask)
+{
+  iter = bgpwatcher_view_iter_seek_v6pfx(iter, v6pfx, pfx_state_mask);
+  if(!bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX,
+                                 pfx_state_mask))
+    {
+      iter = bgpwatcher_view_iter_seek_v6pfx_peerid(iter, peerid, peer_state_mask);
+    }
+  return iter;
+}
+
+
 /** Note: the get functions work on every type of iterator, therefore the mask
  *  that we use to check whether or not we reached the end is generic */
 

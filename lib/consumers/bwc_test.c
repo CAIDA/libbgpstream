@@ -24,6 +24,7 @@
 #include "utils.h"
 
 #include "bgpwatcher_consumer_interface.h"
+#include <bgpstream_utils_pfx_set.h>
 
 #include "bwc_test.h"
 
@@ -44,6 +45,7 @@ typedef struct bwc_test_state {
 
   /** The number of views we have processed */
   int view_cnt;
+
 
 } bwc_test_state_t;
 
@@ -126,16 +128,15 @@ void bwc_test_destroy(bwc_t *consumer)
 {
   bwc_test_state_t *state = STATE;
 
-  fprintf(stdout, "BWC-TEST: %d views processed\n",
-	  STATE->view_cnt);
-
   if(state == NULL)
     {
       return;
     }
 
-  /* destroy things here */
+  fprintf(stdout, "BWC-TEST: %d views processed\n",
+	  STATE->view_cnt);
 
+  /* destroy things here */
   free(state);
 
   BWC_SET_STATE(consumer, NULL);
@@ -144,6 +145,8 @@ void bwc_test_destroy(bwc_t *consumer)
 int bwc_test_process_view(bwc_t *consumer, uint8_t interests,
 			  bgpwatcher_view_t *view)
 {
+  bwc_test_state_t *state = STATE;
+
   fprintf(stdout, "BWC-TEST: Interests: ");
   bgpwatcher_consumer_interest_dump(interests);
   fprintf(stdout, "\n");
@@ -169,7 +172,7 @@ int bwc_test_process_view(bwc_t *consumer, uint8_t interests,
 			bgpwatcher_view_v4pfx_size(view),
 			bgpwatcher_view_time(view));
 
-  STATE->view_cnt++;
+  state->view_cnt++;
 
   // ########################################################
   // Add some memory to the users pointers
@@ -179,6 +182,7 @@ int bwc_test_process_view(bwc_t *consumer, uint8_t interests,
   bgpwatcher_view_iter_t *it;
   it = bgpwatcher_view_iter_create(view);
 
+  
   // set destructors
   bgpwatcher_view_set_user_destructor(view, free);
   bgpwatcher_view_set_pfx_user_destructor(view, free);
@@ -219,6 +223,31 @@ int bwc_test_process_view(bwc_t *consumer, uint8_t interests,
           my_memory = NULL;          
         }
     }
+
+  // use seek in peers
+
+  int i = 0;
+  for(i = 0; i < 10; i++)
+    {
+      it = bgpwatcher_view_iter_seek_peerid(it, i, BGPWATCHER_VIEW_FIELD_ALL_VALID);
+      if(bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ALL_VALID))
+        {
+          fprintf(stderr,"Peer %d not found\n",i);
+        }
+      else
+        {
+          it = bgpwatcher_view_iter_seek_peerid(it, i, BGPWATCHER_VIEW_FIELD_ACTIVE);
+          if(bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE))
+            {
+              fprintf(stderr,"Peer %d found - [INACTIVE]\n",i);
+            }
+          else
+            {
+              fprintf(stderr,"Peer %d found - [ACTIVE]\n",i);
+            }
+        }
+    }
+  
 
   
   bgpwatcher_view_iter_destroy(it);
