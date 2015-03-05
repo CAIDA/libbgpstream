@@ -36,7 +36,8 @@
 
 /* ==================== PROTECTED FUNCTIONS ==================== */
 
-/* route info create and destroy methods */
+/* ==================== PUBLIC FUNCTIONS ==================== */
+
 bgpstream_elem_t *bgpstream_elem_create() {
   // allocate memory for new element
   bgpstream_elem_t * ri;
@@ -69,8 +70,23 @@ void bgpstream_elem_clear(bgpstream_elem_t *elem) {
   bgpstream_as_path_clear(&elem->aspath);
 }
 
+bgpstream_elem_t *bgpstream_elem_copy(bgpstream_elem_t *dst,
+                                      bgpstream_elem_t *src)
+{
+  /* do a memcpy and then manually copy the as path */
+  memcpy(dst, src, sizeof(bgpstream_elem_t));
 
-/* ==================== PUBLIC FUNCTIONS ==================== */
+  /* ignore whatever crap is in there right now */
+  bgpstream_as_path_init(&dst->aspath);
+
+  if(bgpstream_as_path_copy(&dst->aspath, &src->aspath) != 0)
+    {
+      return NULL;
+    }
+
+  return dst;
+}
+
 
 int bgpstream_elem_type_snprintf(char *buf, size_t len,
                                  bgpstream_elem_type_t type)
