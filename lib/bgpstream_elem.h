@@ -173,6 +173,19 @@ void bgpstream_elem_destroy(bgpstream_elem_t *elem);
  */
 void bgpstream_elem_clear(bgpstream_elem_t *elem);
 
+/** Copy the given BGP Stream Elem to the given destination
+ *
+ * @param dst           pointer to an elem to copy into
+ * @param src           pointer to an elem to copy from
+ * @return pointer to dst if successful, NULL otherwise
+ *
+ * The `dst` elem must have been created using bgpstream_elem_create, or if
+ * being re-used, cleared using bgpstream_elem_clear before calling this
+ * function.
+ */
+bgpstream_elem_t *bgpstream_elem_copy(bgpstream_elem_t *dst,
+                                      bgpstream_elem_t *src);
+
 /** Write the string representation of the elem type into the provided buffer
  *
  * @param buf           pointer to a char array
