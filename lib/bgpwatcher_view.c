@@ -52,12 +52,6 @@ struct bgpwatcher_view_iter {
 
 };
 
-/** BGPWATCHER_VIEW_FIELD_ALL_VALID is the expression to use
- *  when we do not need to specify ACTIVE or INACTIVE states,
- *  we are looking for any VALID state
- */
-#define BGPWATCHER_VIEW_FIELD_ALL_VALID  BGPWATCHER_VIEW_FIELD_ACTIVE | BGPWATCHER_VIEW_FIELD_INACTIVE
-
 
 /* ========== PRIVATE FUNCTIONS ========== */
 
