@@ -36,7 +36,8 @@
 
 /* ==================== PROTECTED FUNCTIONS ==================== */
 
-/* route info create and destroy methods */
+/* ==================== PUBLIC FUNCTIONS ==================== */
+
 bgpstream_elem_t *bgpstream_elem_create() {
   // allocate memory for new element
   bgpstream_elem_t * ri;
@@ -70,7 +71,6 @@ void bgpstream_elem_clear(bgpstream_elem_t *elem) {
 }
 
 
-/* ==================== PUBLIC FUNCTIONS ==================== */
 
 int bgpstream_elem_type_snprintf(char *buf, size_t len,
                                  bgpstream_elem_type_t type)

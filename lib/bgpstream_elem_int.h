@@ -36,23 +36,6 @@
  *
  * @{ */
 
-/** Create a new BGP Stream Elem instance
- *
- * @return a pointer to an Elem instance if successful, NULL otherwise
- */
-bgpstream_elem_t *bgpstream_elem_create();
-
-/** Destroy the given BGP Stream Elem instance
- *
- * @param elem        pointer to a BGP Stream Elem instance to destroy
- */
-void bgpstream_elem_destroy(bgpstream_elem_t *elem);
-
-/** Clear the given BGP Stream Elem instance
- *
- * @param elem        pointer to a BGP Stream Elem instance to clear
- */
-void bgpstream_elem_clear(bgpstream_elem_t *elem);
 
 /** @} */
 
