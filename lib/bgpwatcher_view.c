@@ -52,6 +52,13 @@ struct bgpwatcher_view_iter {
 
 };
 
+/** BGPWATCHER_VIEW_FIELD_ALL_VALID is the expression to use
+ *  when we do not need to specify ACTIVE or INACTIVE states,
+ *  we are looking for any VALID state
+ */
+#define BGPWATCHER_VIEW_FIELD_ALL_VALID  BGPWATCHER_VIEW_FIELD_ACTIVE | BGPWATCHER_VIEW_FIELD_INACTIVE
+
+
 /* ========== PRIVATE FUNCTIONS ========== */
 
 static int peerinfo_add_pfx(bgpwatcher_view_t *view, bgpstream_peer_id_t peerid,
@@ -70,16 +77,16 @@ static int peerinfo_add_pfx(bgpwatcher_view_t *view, bgpstream_peer_id_t peerid,
       /* first prefix for this peer, it creates a new peerinfo structure */
       k = kh_put(bwv_peerid_peerinfo, view->peerinfo, peerid, &khret);
       kh_val(view->peerinfo, k).id = peerid;
-      kh_val(view->peerinfo, k).in_use = 0;
+      kh_val(view->peerinfo, k).state = BGPWATCHER_VIEW_FIELD_INVALID;
       kh_val(view->peerinfo, k).user = NULL;
     }
   
   // activate/init peer
-  if(kh_val(view->peerinfo, k).in_use == 0)
+  if(kh_val(view->peerinfo, k).state != BGPWATCHER_VIEW_FIELD_ACTIVE)
     {
       kh_val(view->peerinfo, k).v4_pfx_cnt = 0;
       kh_val(view->peerinfo, k).v6_pfx_cnt = 0;
-      kh_val(view->peerinfo, k).in_use = 1;
+      kh_val(view->peerinfo, k).state = BGPWATCHER_VIEW_FIELD_ACTIVE;
       view->peerinfo_cnt++;
     }
 
@@ -132,6 +139,8 @@ static bwv_peerid_pfxinfo_t* peerid_pfxinfo_create()
   v->peers = NULL;
   v->peers_alloc_cnt = 0;
   v->peers_cnt = 0;
+  v->state = BGPWATCHER_VIEW_FIELD_INVALID;
+
   v->user = NULL;
 
   return v;
@@ -151,7 +160,7 @@ static int peerid_pfxinfo_insert(bgpwatcher_view_t *view,
     {
       for(i=0; i<v->peers_alloc_cnt; i++)
 	{
-          v->peers[i].in_use = 0;
+          v->peers[i].state = BGPWATCHER_VIEW_FIELD_INVALID;
 	}
     }
 
@@ -168,7 +177,7 @@ static int peerid_pfxinfo_insert(bgpwatcher_view_t *view,
       /* now we have to zero everything between prev_last and the end */
       for(i = v->peers_alloc_cnt; i <= peerid; i++)
         {
-          v->peers[i].in_use = 0;
+          v->peers[i].state = BGPWATCHER_VIEW_FIELD_INVALID;
           v->peers[i].user = NULL;
         }
 
@@ -176,22 +185,17 @@ static int peerid_pfxinfo_insert(bgpwatcher_view_t *view,
     }
 
   /* if this peer was not previously used, we need to count it */
-  if(v->peers[peerid].in_use == 0)
+  if(v->peers[peerid].state != BGPWATCHER_VIEW_FIELD_ACTIVE)
     {
       v->peers_cnt++;
-
+      v->state = BGPWATCHER_VIEW_FIELD_ACTIVE;
       /* and we need to add this prefix to the peerinfo counter */
       peerinfo_add_pfx(view, peerid, prefix);
     }
 
-  /* we save the user pointer that is assigned
-   * to v->peers[peerid] (otherwise it would be
-   * lost after the assignment
-   *  v->peers[peerid] = *pfx_info; */
-  void *previous_user = v->peers[peerid].user;
-  v->peers[peerid] = *pfx_info;
-  v->peers[peerid].in_use = 1;
-  v->peers[peerid].user = previous_user;
+  v->peers[peerid].orig_asn = pfx_info->orig_asn;
+  v->peers[peerid].state = BGPWATCHER_VIEW_FIELD_ACTIVE;
+  /** v->peers[peerid].user remains untouched */
 
   return 0;
 }
@@ -231,7 +235,7 @@ static void peerid_pfxinfo_destroy(bgpwatcher_view_t *view, bwv_peerid_pfxinfo_t
         free(v->peers);
     }
   v->peers = NULL;
-  v->peers_cnt = 0;
+  v->peers_cnt = BGPWATCHER_VIEW_FIELD_INVALID;
   v->peers_alloc_cnt = 0;
   if(view->pfx_user_destructor != NULL && v->user != NULL)
     {
@@ -333,6 +337,7 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
       if(kh_exist(view->v4pfxs, k))
 	{
 	  kh_value(view->v4pfxs, k)->peers_cnt = 0;
+          kh_value(view->v4pfxs, k)->state = BGPWATCHER_VIEW_FIELD_INVALID;
 	}
     }
   view->v4pfxs_cnt = 0;
@@ -343,6 +348,7 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
       if(kh_exist(view->v6pfxs, k))
 	{
 	  kh_value(view->v6pfxs, k)->peers_cnt = 0;
+          kh_value(view->v6pfxs, k)->state = BGPWATCHER_VIEW_FIELD_INVALID;
 	}
     }
   view->v6pfxs_cnt = 0;
@@ -352,7 +358,7 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
     {
       if(kh_exist(view->peerinfo, k))
 	{
-	  kh_value(view->peerinfo, k).in_use = 0;
+	  kh_value(view->peerinfo, k).state = BGPWATCHER_VIEW_FIELD_INVALID;
 	}
     }
   view->peerinfo_cnt = 0;
@@ -611,8 +617,9 @@ void bgpwatcher_view_iter_destroy(bgpwatcher_view_iter_t *iter)
 }
 
 void bgpwatcher_view_iter_first(bgpwatcher_view_iter_t *iter,
-				bgpwatcher_view_iter_field_t field)
-{
+				bgpwatcher_view_iter_field_t field,
+                                uint8_t state_mask)
+{  
   switch(field)
     {
     case BGPWATCHER_VIEW_ITER_FIELD_V4PFX:
@@ -621,7 +628,7 @@ void bgpwatcher_view_iter_first(bgpwatcher_view_iter_t *iter,
       /* keep searching if this does not exist */
       while(iter->v4pfx_it != kh_end(iter->view->v4pfxs) &&
 	    (!kh_exist(iter->view->v4pfxs, iter->v4pfx_it) ||
-	     !kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_cnt))
+             !(state_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)->state)))
 	{
 	  iter->v4pfx_it++;
 	}
@@ -633,7 +640,7 @@ void bgpwatcher_view_iter_first(bgpwatcher_view_iter_t *iter,
       /* keep searching if this does not exist */
       while(iter->v6pfx_it != kh_end(iter->view->v6pfxs) &&
 	    (!kh_exist(iter->view->v6pfxs, iter->v6pfx_it) ||
-	     !kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_cnt))
+             !(state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state)))
 	{
 	  iter->v6pfx_it++;
 	}
@@ -645,7 +652,7 @@ void bgpwatcher_view_iter_first(bgpwatcher_view_iter_t *iter,
       /* keep searching if this does not exist */
       while(iter->peer_it != kh_end(iter->view->peerinfo) &&
 	    (!kh_exist(iter->view->peerinfo, iter->peer_it) ||
-             !kh_val(iter->view->peerinfo, iter->peer_it).in_use))
+             !(state_mask & kh_val(iter->view->peerinfo, iter->peer_it).state)))
 	{
 	  iter->peer_it++;
 	}
@@ -658,8 +665,8 @@ void bgpwatcher_view_iter_first(bgpwatcher_view_iter_t *iter,
 
       while((iter->v4pfx_peer_it <
              kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_alloc_cnt) &&
-	    (!kh_val(iter->view->v4pfxs, iter->v4pfx_it)
-             ->peers[iter->v4pfx_peer_it].in_use))
+	    (!(state_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)
+               ->peers[iter->v4pfx_peer_it].state)))
 	{
 	  iter->v4pfx_peer_it++;
 	}
@@ -672,9 +679,9 @@ void bgpwatcher_view_iter_first(bgpwatcher_view_iter_t *iter,
 
       while((iter->v6pfx_peer_it <
              kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_alloc_cnt) &&
-	    (!kh_val(iter->view->v6pfxs, iter->v6pfx_it)
-             ->peers[iter->v6pfx_peer_it].in_use))
-	{
+	    (!(state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)
+               ->peers[iter->v6pfx_peer_it].state)))
+        {
 	  iter->v6pfx_peer_it++;
 	}
       break;
@@ -686,8 +693,13 @@ void bgpwatcher_view_iter_first(bgpwatcher_view_iter_t *iter,
 }
 
 int bgpwatcher_view_iter_is_end(bgpwatcher_view_iter_t *iter,
-				bgpwatcher_view_iter_field_t field)
+				bgpwatcher_view_iter_field_t field,
+                                uint8_t state_mask)
 {
+  // uint8_t state_mask is currently unused, but it may be
+  // helpful in the future
+  assert(state_mask);
+  
   switch(field)
     {
     case BGPWATCHER_VIEW_ITER_FIELD_V4PFX:
@@ -739,9 +751,10 @@ int bgpwatcher_view_iter_is_end(bgpwatcher_view_iter_t *iter,
 }
 
 void bgpwatcher_view_iter_next(bgpwatcher_view_iter_t *iter,
-			       bgpwatcher_view_iter_field_t field)
+			       bgpwatcher_view_iter_field_t field,
+                               uint8_t state_mask)
 {
-  if(bgpwatcher_view_iter_is_end(iter, field))
+  if(bgpwatcher_view_iter_is_end(iter, field, state_mask))
     {
       return;
     }
@@ -753,7 +766,7 @@ void bgpwatcher_view_iter_next(bgpwatcher_view_iter_t *iter,
 	iter->v4pfx_it++;
       } while(iter->v4pfx_it != kh_end(iter->view->v4pfxs) &&
 	      (!kh_exist(iter->view->v4pfxs, iter->v4pfx_it) ||
-	       !kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_cnt));
+	       !(state_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)->state)));
       break;
 
     case BGPWATCHER_VIEW_ITER_FIELD_V6PFX:
@@ -761,7 +774,7 @@ void bgpwatcher_view_iter_next(bgpwatcher_view_iter_t *iter,
 	iter->v6pfx_it++;
       } while(iter->v6pfx_it != kh_end(iter->view->v6pfxs) &&
 	      (!kh_exist(iter->view->v6pfxs, iter->v6pfx_it) ||
-	       !kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_cnt));
+	       !(state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state)));
       break;
 
     case BGPWATCHER_VIEW_ITER_FIELD_PEER:
@@ -769,7 +782,7 @@ void bgpwatcher_view_iter_next(bgpwatcher_view_iter_t *iter,
 	iter->peer_it++;
       } while(iter->peer_it != kh_end(iter->view->peerinfo) &&
               (!kh_exist(iter->view->peerinfo, iter->peer_it) ||
-               !kh_val(iter->view->peerinfo, iter->peer_it).in_use));
+               !(state_mask & kh_val(iter->view->peerinfo, iter->peer_it).state)));
       break;
 
     case BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER:
@@ -782,8 +795,8 @@ void bgpwatcher_view_iter_next(bgpwatcher_view_iter_t *iter,
 	iter->v4pfx_peer_it++;
       } while(iter->v4pfx_peer_it <
 	      kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_alloc_cnt &&
-	      (!kh_val(iter->view->v4pfxs, iter->v4pfx_it)
-               ->peers[iter->v4pfx_peer_it].in_use));
+	      (!(state_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)
+               ->peers[iter->v4pfx_peer_it].state)));
       break;
 
     case BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER:
@@ -796,8 +809,8 @@ void bgpwatcher_view_iter_next(bgpwatcher_view_iter_t *iter,
 	iter->v6pfx_peer_it++;
       } while(iter->v6pfx_peer_it <
 	      kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_alloc_cnt &&
-	      (!kh_val(iter->view->v6pfxs, iter->v6pfx_it)
-               ->peers[iter->v6pfx_peer_it].in_use));
+	      (!(state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)
+               ->peers[iter->v6pfx_peer_it].state)));
       break;
 
     default:
@@ -807,8 +820,13 @@ void bgpwatcher_view_iter_next(bgpwatcher_view_iter_t *iter,
 }
 
 uint64_t bgpwatcher_view_iter_size(bgpwatcher_view_iter_t *iter,
-				   bgpwatcher_view_iter_field_t field)
+				   bgpwatcher_view_iter_field_t field,
+                                   uint8_t state_mask)
 {
+  /** @todo implement the correct function when the
+   *  state_mask != BGPWATCHER_VIEW_FIELD_ACTIVE  */
+  assert(state_mask == BGPWATCHER_VIEW_FIELD_ACTIVE);
+  
   switch(field)
     {
     case BGPWATCHER_VIEW_ITER_FIELD_V4PFX:
@@ -826,7 +844,7 @@ uint64_t bgpwatcher_view_iter_size(bgpwatcher_view_iter_t *iter,
     case BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER:
       if(!iter->v4pfx_peer_it_valid)
 	{
-	  bgpwatcher_view_iter_first(iter, field);
+	  bgpwatcher_view_iter_first(iter, field, state_mask);
 	}
       assert(iter->v4pfx_it != kh_end(iter->view->v4pfxs));
       assert(iter->v4pfx_peer_it_valid);
@@ -836,7 +854,7 @@ uint64_t bgpwatcher_view_iter_size(bgpwatcher_view_iter_t *iter,
     case BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER:
       if(!iter->v6pfx_peer_it_valid)
 	{
-	  bgpwatcher_view_iter_first(iter, field);
+	  bgpwatcher_view_iter_first(iter, field, state_mask);
 	}
       assert(iter->v6pfx_it != kh_end(iter->view->v6pfxs));
       assert(iter->v6pfx_peer_it_valid);
@@ -849,9 +867,13 @@ uint64_t bgpwatcher_view_iter_size(bgpwatcher_view_iter_t *iter,
     }
 }
 
+/** Note: the get functions work on every type of iterator, therefore the mask
+ *  that we use to check whether or not we reached the end is generic */
+
 bgpstream_ipv4_pfx_t *bgpwatcher_view_iter_get_v4pfx(bgpwatcher_view_iter_t *iter)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return NULL;
     }
@@ -860,7 +882,8 @@ bgpstream_ipv4_pfx_t *bgpwatcher_view_iter_get_v4pfx(bgpwatcher_view_iter_t *ite
 
 bgpstream_ipv6_pfx_t *bgpwatcher_view_iter_get_v6pfx(bgpwatcher_view_iter_t *iter)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return NULL;
     }
@@ -869,7 +892,8 @@ bgpstream_ipv6_pfx_t *bgpwatcher_view_iter_get_v6pfx(bgpwatcher_view_iter_t *ite
 
 void *bgpwatcher_view_iter_get_v4pfx_user(bgpwatcher_view_iter_t *iter)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return NULL;
     }
@@ -878,7 +902,8 @@ void *bgpwatcher_view_iter_get_v4pfx_user(bgpwatcher_view_iter_t *iter)
 
 void *bgpwatcher_view_iter_get_v6pfx_user(bgpwatcher_view_iter_t *iter)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return NULL;
     }
@@ -887,7 +912,8 @@ void *bgpwatcher_view_iter_get_v6pfx_user(bgpwatcher_view_iter_t *iter)
 
 int bgpwatcher_view_iter_set_v4pfx_user(bgpwatcher_view_iter_t *iter, void *user)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return -1;
     }
@@ -906,7 +932,8 @@ int bgpwatcher_view_iter_set_v4pfx_user(bgpwatcher_view_iter_t *iter, void *user
 
 int bgpwatcher_view_iter_set_v6pfx_user(bgpwatcher_view_iter_t *iter, void *user)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return -1;
     }
@@ -932,7 +959,8 @@ void bgpwatcher_view_set_pfx_user_destructor(bgpwatcher_view_t *view,
 bgpstream_peer_id_t
 bgpwatcher_view_iter_get_peerid(bgpwatcher_view_iter_t *iter)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_PEER))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_PEER,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return 0;
     }
@@ -942,7 +970,8 @@ bgpwatcher_view_iter_get_peerid(bgpwatcher_view_iter_t *iter)
 bgpstream_peer_sig_t *
 bgpwatcher_view_iter_get_peersig(bgpwatcher_view_iter_t *iter)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_PEER))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_PEER,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return NULL;
     }
@@ -952,7 +981,8 @@ bgpwatcher_view_iter_get_peersig(bgpwatcher_view_iter_t *iter)
 
 int bgpwatcher_view_iter_get_peer_v4pfx_cnt(bgpwatcher_view_iter_t *iter)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_PEER))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_PEER,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return -1;
     }
@@ -962,7 +992,8 @@ int bgpwatcher_view_iter_get_peer_v4pfx_cnt(bgpwatcher_view_iter_t *iter)
 
 int bgpwatcher_view_iter_get_peer_v6pfx_cnt(bgpwatcher_view_iter_t *iter)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_PEER))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_PEER,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return -1;
     }
@@ -972,7 +1003,8 @@ int bgpwatcher_view_iter_get_peer_v6pfx_cnt(bgpwatcher_view_iter_t *iter)
 
 void *bgpwatcher_view_iter_get_peer_user(bgpwatcher_view_iter_t *iter)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_PEER))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_PEER,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return NULL;
     }
@@ -982,7 +1014,8 @@ void *bgpwatcher_view_iter_get_peer_user(bgpwatcher_view_iter_t *iter)
 
 int bgpwatcher_view_iter_set_peer_user(bgpwatcher_view_iter_t *iter, void *user)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_PEER))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_PEER,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return -1;
     }
@@ -1012,7 +1045,8 @@ void bgpwatcher_view_set_peer_user_destructor(bgpwatcher_view_t *view,
 bgpstream_peer_id_t
 bgpwatcher_view_iter_get_v4pfx_peerid(bgpwatcher_view_iter_t *iter)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return 0;
     }
@@ -1023,7 +1057,8 @@ bgpwatcher_view_iter_get_v4pfx_peerid(bgpwatcher_view_iter_t *iter)
 bgpstream_peer_id_t
 bgpwatcher_view_iter_get_v6pfx_peerid(bgpwatcher_view_iter_t *iter)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return 0;
     }
@@ -1034,7 +1069,8 @@ bgpwatcher_view_iter_get_v6pfx_peerid(bgpwatcher_view_iter_t *iter)
 bgpstream_peer_sig_t *
 bgpwatcher_view_iter_get_v4pfx_peersig(bgpwatcher_view_iter_t *iter)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return NULL;
     }
@@ -1046,7 +1082,8 @@ bgpwatcher_view_iter_get_v4pfx_peersig(bgpwatcher_view_iter_t *iter)
 bgpstream_peer_sig_t *
 bgpwatcher_view_iter_get_v6pfx_peersig(bgpwatcher_view_iter_t *iter)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return NULL;
     }
@@ -1058,7 +1095,8 @@ bgpwatcher_view_iter_get_v6pfx_peersig(bgpwatcher_view_iter_t *iter)
 bgpwatcher_pfx_peer_info_t *
 bgpwatcher_view_iter_get_v4pfx_pfxinfo(bgpwatcher_view_iter_t *iter)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return NULL;
     }
@@ -1069,7 +1107,8 @@ bgpwatcher_view_iter_get_v4pfx_pfxinfo(bgpwatcher_view_iter_t *iter)
 bgpwatcher_pfx_peer_info_t *
 bgpwatcher_view_iter_get_v6pfx_pfxinfo(bgpwatcher_view_iter_t *iter)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return NULL;
     }
@@ -1080,7 +1119,8 @@ bgpwatcher_view_iter_get_v6pfx_pfxinfo(bgpwatcher_view_iter_t *iter)
 void *
 bgpwatcher_view_iter_get_v4pfx_pfxinfo_user(bgpwatcher_view_iter_t *iter)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return NULL;
     }
@@ -1090,7 +1130,8 @@ bgpwatcher_view_iter_get_v4pfx_pfxinfo_user(bgpwatcher_view_iter_t *iter)
 void *
 bgpwatcher_view_iter_get_v6pfx_pfxinfo_user(bgpwatcher_view_iter_t *iter)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return NULL;
     }
@@ -1100,7 +1141,8 @@ bgpwatcher_view_iter_get_v6pfx_pfxinfo_user(bgpwatcher_view_iter_t *iter)
 int
 bgpwatcher_view_iter_set_v4pfx_pfxinfo_user(bgpwatcher_view_iter_t *iter, void *user)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return -1;
     }
@@ -1122,7 +1164,8 @@ bgpwatcher_view_iter_set_v4pfx_pfxinfo_user(bgpwatcher_view_iter_t *iter, void *
 int
 bgpwatcher_view_iter_set_v6pfx_pfxinfo_user(bgpwatcher_view_iter_t *iter, void *user)
 {
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER))
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
       return -1;
     }

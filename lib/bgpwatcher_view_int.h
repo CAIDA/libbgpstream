@@ -48,6 +48,9 @@ typedef struct bwv_peerid_pfxinfo {
   /** The number of peers in the peers list that are actually valid */
   uint16_t peers_cnt;
 
+  /** State of the prefix */
+  bgpwatcher_view_field_state_t state;
+  
   /** Generic pointer to store per-pfx information on consumers */
   void *user;
 
@@ -84,7 +87,10 @@ typedef struct bwv_peerinfo {
   uint32_t v6_pfx_cnt;
 
   /** If set, this peer contributed to the view.  */
-  uint8_t in_use;
+  // uint8_t in_use;
+  
+  /** State of the peer */
+  bgpwatcher_view_field_state_t state;
   
   /** Generic pointer to store information related to the peer */
   void *user;
@@ -125,7 +131,8 @@ struct bgpwatcher_view {
   int peersigns_shared;
 
   /** Table of peerid -> peerinfo */
-  kh_bwv_peerid_peerinfo_t *peerinfo;
+  /** todo*/ 
+  kh_bwv_peerid_peerinfo_t *peerinfo; 
 
   /** The number of in-use peers */
   uint32_t peerinfo_cnt;
@@ -148,7 +155,10 @@ struct bgpwatcher_view {
   /** Pointer to a function that destroys the user structure
    *  in the bgpwatcher_pfx_peer_info_t structure */
   bgpwatcher_view_destroy_user_t *pfx_peer_user_destructor;
-  
+
+  /** State of the view */
+  bgpwatcher_view_field_state_t state;
+
   /** Generic pointer to store information related to the view */
   void *user;
 

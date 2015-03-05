@@ -234,9 +234,9 @@ static int flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   peras_info_t *info;
 
   /* IPv4 */
-  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX))
+  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX, BGPWATCHER_VIEW_FIELD_ACTIVE))
     {
       /* get the current v4 prefix */
       v4pfx = bgpwatcher_view_iter_get_v4pfx(it);
@@ -249,16 +249,16 @@ static int flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
       	}
 
       /* only consider pfxs with peers_cnt >= pfx_vis_threshold */
-      if(bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER)
+      if(bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE)
 	 < BWC_GET_CHAIN_STATE(consumer)->pfx_vis_peers_threshold)
 	{
 	  continue;
 	}
 
       /* iterate over the peers for the current v4pfx */
-      for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER);
-	  !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER);
-	  bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER))
+      for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
+	  !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
+	  bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE))
 	{
           /* only consider peers that are full-feed */
           peerid = bgpwatcher_view_iter_get_v4pfx_peerid(it);
@@ -291,9 +291,9 @@ static int flip_v6table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   peras_info_t *info;
 
   /* IPv6 */
-  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX))
+  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX, BGPWATCHER_VIEW_FIELD_ACTIVE))
     {
       /* get the current v6 prefix */
       v6pfx = bgpwatcher_view_iter_get_v6pfx(it);
@@ -306,16 +306,16 @@ static int flip_v6table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
       	}
 
       /* only consider pfxs with peers_cnt >= pfx_vis_threshold */
-      if(bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER)
+      if(bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE)
 	 < BWC_GET_CHAIN_STATE(consumer)->pfx_vis_peers_threshold)
 	{
 	  continue;
 	}
 
       /* iterate over the peers for the current v6pfx */
-      for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER);
-	  !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER);
-	  bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER))
+      for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
+	  !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
+	  bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE))
 	{
           /* only consider peers that are full-feed */
           peerid = bgpwatcher_view_iter_get_v6pfx_peerid(it);

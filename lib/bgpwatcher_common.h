@@ -91,25 +91,6 @@ typedef struct bgpwatcher_peer {
 
 } bgpwatcher_peer_t;
 
-/** Information about a prefix from a peer */
-typedef struct bgpwatcher_pfx_peer_info {
-
-  /** Origin ASN */
-  uint32_t orig_asn;
-
-  /** @todo add other pfx info fields here (AS path, etc) */
-
-  /** If set, this prefix is seen by this peer.
-   *
-   * @note this is also used by the store to track which peers are active for a
-   * prefix
-   */
-  uint8_t in_use;
-
-  /** Generic pointer to store per-pfx-per-peer information */
-  void *user;
-
-} __attribute__((packed)) bgpwatcher_pfx_peer_info_t;
 
 /** Information about the a prefix table */
 typedef struct bgpwatcher_pfx_table {

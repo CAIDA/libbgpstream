@@ -144,14 +144,14 @@ static int send_pfx_peer_info(void *dest, bgpwatcher_pfx_peer_info_t *info,
   uint32_t n32;
 
   /* in use */
-  if(zmq_send(dest, &info->in_use, sizeof(info->in_use),
-              (info->in_use != 0 || sndmore != 0) ? ZMQ_SNDMORE : 0)
-     != sizeof(info->in_use))
+  if(zmq_send(dest, &info->state, sizeof(info->state),
+              (info->state == BGPWATCHER_VIEW_FIELD_ACTIVE || sndmore != 0) ? ZMQ_SNDMORE : 0)
+     != sizeof(info->state))
     {
       goto err;
     }
 
-  if(info->in_use == 0)
+  if(info->state != BGPWATCHER_VIEW_FIELD_ACTIVE)
     {
       return 0;
     }
@@ -180,12 +180,12 @@ static int serialize_pfx_peer_info(uint8_t *buf, size_t len,
   size_t written = 0;
   size_t s = 0;
 
-  assert(len >= sizeof(info->in_use));
-  memcpy(buf, &info->in_use, sizeof(info->in_use));
-  s = sizeof(info->in_use);
+  assert(len >= sizeof(info->state));
+  memcpy(buf, &info->state, sizeof(info->state));
+  s = sizeof(info->state);
   written += s;
 
-  if(info->in_use == 0)
+  if(info->state != BGPWATCHER_VIEW_FIELD_ACTIVE)
     {
       return written;
     }
@@ -208,12 +208,12 @@ static int deserialize_pfx_peer_info(uint8_t *buf, size_t len,
   size_t read = 0;
   size_t s = 0;
 
-  assert(len >= sizeof(info->in_use));
-  memcpy(&info->in_use, buf, sizeof(info->in_use));
-  s = sizeof(info->in_use);
+  assert(len >= sizeof(info->state));
+  memcpy(&info->state, buf, sizeof(info->state));
+  s = sizeof(info->state);
   read += s;
 
-  if(info->in_use == 0)
+  if(info->state != BGPWATCHER_VIEW_FIELD_ACTIVE)
     {
       return read;
     }
@@ -897,7 +897,7 @@ void bgpwatcher_pfx_row_dump(bgpwatcher_pfx_table_t *table,
 
       for(i=0; i<table->peers_cnt; i++)
         {
-          if(peer_infos[i].in_use != 0)
+          if(peer_infos[i].state == BGPWATCHER_VIEW_FIELD_ACTIVE)
             {
               bgpstream_addr_ntop(peer_str,INET6_ADDRSTRLEN, &table->peers[i].ip);
               fprintf(stdout,

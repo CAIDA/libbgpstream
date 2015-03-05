@@ -22,7 +22,7 @@
 
 #include "bgpstream_utils_peer_sig_map.h"
 
-#include "bgpwatcher_common.h" /* < pfx_peer_info_t */
+// #include "bgpwatcher_common.h" /* < pfx_peer_info_t */
 
 /** @file
  *
@@ -50,23 +50,22 @@ typedef struct bgpwatcher_view_iter bgpwatcher_view_iter_t;
 /** @} */
 
 /**
- * @name Public Data Structures
- *
- * @{ */
-
-/** Callback for destroying a custom user structure associated with bgpwatcher
- *  view or one of its substructures
- * @param user    user pointer to destroy
- */
-typedef void (bgpwatcher_view_destroy_user_t) (void* user);
-
-
-/** @} */
-
-/**
  * @name Public Enums
  *
  * @{ */
+
+typedef enum {
+
+  /** The current field is invalid (never initialized) */
+  BGPWATCHER_VIEW_FIELD_INVALID   = 0b000,
+
+  /** The current field is active */
+  BGPWATCHER_VIEW_FIELD_ACTIVE    = 0b001,
+
+  /** The current field is inactive */
+  BGPWATCHER_VIEW_FIELD_INACTIVE  = 0b010,
+
+} bgpwatcher_view_field_state_t;
 
 typedef enum {
 
@@ -86,6 +85,45 @@ typedef enum {
   BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER = 5,
 
 } bgpwatcher_view_iter_field_t;
+
+/** @} */
+
+/**
+ * @name Public Data Structures
+ *
+ * @{ */
+
+/** @todo: remove from here and make it private */
+
+/** Information about a prefix from a peer */
+typedef struct bgpwatcher_pfx_peer_info {
+
+  /** Origin ASN */
+  uint32_t orig_asn;
+
+  /** @todo add other pfx info fields here (AS path, etc) */
+
+  /** If set, this prefix is seen by this peer.
+   *
+   * @note this is also used by the store to track which peers are active for a
+   * prefix
+   */
+  // uint8_t in_use;
+
+  /** State of the per-pfx per-peer data */
+  bgpwatcher_view_field_state_t state;
+
+  /** Generic pointer to store per-pfx-per-peer information */
+  void *user;
+
+} __attribute__((packed)) bgpwatcher_pfx_peer_info_t;
+
+/** Callback for destroying a custom user structure associated with bgpwatcher
+ *  view or one of its substructures
+ * @param user    user pointer to destroy
+ */
+typedef void (bgpwatcher_view_destroy_user_t) (void* user);
+
 
 /** @} */
 
@@ -282,16 +320,19 @@ bgpwatcher_view_iter_destroy(bgpwatcher_view_iter_t *iter);
  *
  * @param iter          Pointer to an iterator structure
  * @param field         The iterator field to reset
+ * @param state_mask    A mask that indicates the state of the field we iterate through
  */
 void
 bgpwatcher_view_iter_first(bgpwatcher_view_iter_t *iter,
-                           bgpwatcher_view_iter_field_t field);
+                           bgpwatcher_view_iter_field_t field,
+                           uint8_t state_mask);
 
 /** Check if the given iterator has reached the end of the items for the given
  * field.
  *
  * @param iter          Pointer to an iterator structure
  * @param field         The iterator field to check
+ * @param state_mask    A mask that indicates the state of the field we iterate through
  * @return 0 if the iterator is pointing to a valid item, 1 if all items have
  * been iterated over.
  *
@@ -300,24 +341,28 @@ bgpwatcher_view_iter_first(bgpwatcher_view_iter_t *iter,
  */
 int
 bgpwatcher_view_iter_is_end(bgpwatcher_view_iter_t *iter,
-                            bgpwatcher_view_iter_field_t field);
+                            bgpwatcher_view_iter_field_t field,
+                            uint8_t state_mask);
 
 /** Advance the provided iterator to the next prefix in the given view
  *
  * @param iter          Pointer to an iterator structure
  * @param field         The iterator field to advance
+ * @param state_mask    A mask that indicates the state of the field we iterate through
  *
  * @note this function will have no effect if bgpwatcher_view_iter_is_end
  * returns non-zero for the given field.
  */
 void
 bgpwatcher_view_iter_next(bgpwatcher_view_iter_t *iter,
-                          bgpwatcher_view_iter_field_t field);
+                          bgpwatcher_view_iter_field_t field,
+                          uint8_t state_mask);
 
 /** Get the total number of items in the iterator for the given field
  *
  * @param iter          Pointer to an iterator structure
  * @param field         The iterator field to get the size of
+ * @param state_mask    A mask that indicates the state of the field we iterate through
  * @return the number of items for the given field
  *
  * @note this function can be called at any time using a valid iterator for the
@@ -327,7 +372,23 @@ bgpwatcher_view_iter_next(bgpwatcher_view_iter_t *iter,
  */
 uint64_t
 bgpwatcher_view_iter_size(bgpwatcher_view_iter_t *iter,
-				   bgpwatcher_view_iter_field_t field);
+                          bgpwatcher_view_iter_field_t field,
+                          uint8_t state_mask);
+
+/** Advance the provided iterator to the next prefix in the given view
+ *
+ * @param iter          Pointer to an iterator structure
+ * @param field         The iterator field to advance
+ *
+ * @note this function will have no effect if bgpwatcher_view_iter_is_end
+ * returns non-zero for the given field.
+ */
+/* void */
+/* bgpwatcher_view_iter_seek_peer(bgpwatcher_view_iter_t *iter, */
+/*                                ********HERE************* */
+/*                                bgpwatcher_view_iter_field_t field); */
+
+
 
 /** Get the current v4 prefix for the given iterator
  *

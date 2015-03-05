@@ -51,9 +51,9 @@ static void peers_dump(bgpwatcher_view_t *view,
 
   fprintf(stdout, "Peers (%d):\n", bgpwatcher_view_peer_size(view));
 
-  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_PEER))
+  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE))
     {
       peerid = bgpwatcher_view_iter_get_peerid(it);
       ps = bgpwatcher_view_iter_get_peersig(it);
@@ -78,9 +78,9 @@ static void peerids_dump(bgpwatcher_view_iter_t *it,
   bgpstream_peer_id_t peerid;
   bgpwatcher_pfx_peer_info_t *pfxinfo;
 
-  for(bgpwatcher_view_iter_first(it, field);
-      !bgpwatcher_view_iter_is_end(it, field);
-      bgpwatcher_view_iter_next(it, field))
+  for(bgpwatcher_view_iter_first(it, field, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      !bgpwatcher_view_iter_is_end(it, field, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_next(it, field, BGPWATCHER_VIEW_FIELD_ACTIVE))
     {
       peerid = (version == 4) ?
 	bgpwatcher_view_iter_get_v4pfx_peerid(it) :
@@ -103,9 +103,9 @@ static void v4pfxs_dump(bgpwatcher_view_t *view,
 
   fprintf(stdout, "V4 Prefixes (%d):\n", bgpwatcher_view_v4pfx_size(view));
 
-  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX))
+  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX, BGPWATCHER_VIEW_FIELD_ACTIVE))
     {
       pfx = bgpwatcher_view_iter_get_v4pfx(it);
       assert(pfx);
@@ -116,7 +116,7 @@ static void v4pfxs_dump(bgpwatcher_view_t *view,
 
       fprintf(stdout, "  %s/%d (%"PRIu64" peers)\n",
 	      pfx_str, pfx->mask_len,
-	      bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER));
+	      bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE));
       peerids_dump(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER, 4);
     }
 }
@@ -129,9 +129,9 @@ static void v6pfxs_dump(bgpwatcher_view_t *view,
 
   fprintf(stdout, "V6 Prefixes (%d):\n", bgpwatcher_view_v6pfx_size(view));
 
-  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX))
+  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX, BGPWATCHER_VIEW_FIELD_ACTIVE))
     {
       pfx = bgpwatcher_view_iter_get_v6pfx(it);
       assert(pfx);
@@ -142,7 +142,7 @@ static void v6pfxs_dump(bgpwatcher_view_t *view,
 
       fprintf(stdout, "  %s/%d (%"PRIu64" peers)\n",
 	      pfx_str, pfx->mask_len,
-	      bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER));
+	      bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE));
       peerids_dump(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER, 6);
     }
 }
@@ -168,7 +168,7 @@ static int send_pfx_peers(uint8_t *buf, size_t len, bwv_peerid_pfxinfo_t *pfxpee
 
   for(i=0; i<pfxpeers->peers_alloc_cnt; i++)
     {
-      if(pfxpeers->peers[i].in_use)
+      if(pfxpeers->peers[i].state == BGPWATCHER_VIEW_FIELD_ACTIVE)
 	{
 	  /* peer id */
 	  u16 = i;
@@ -375,7 +375,7 @@ static int recv_pfxs(void *src, bgpwatcher_view_t *view)
   size_t read = 0;
   size_t s = 0;
 
-  pfx_info.in_use = 1;
+  pfx_info.state = BGPWATCHER_VIEW_FIELD_ACTIVE;
 
   ASSERT_MORE;
 
@@ -462,7 +462,7 @@ static int send_peers(void *dest, bgpwatcher_view_iter_t *it)
 
   /* peer cnt */
   peers_cnt =
-    (uint16_t)bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
+    (uint16_t)bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
   u16 = htons(peers_cnt);
   if(zmq_send(dest, &u16, sizeof(u16), ZMQ_SNDMORE) != sizeof(u16))
     {
@@ -470,9 +470,9 @@ static int send_peers(void *dest, bgpwatcher_view_iter_t *it)
     }
 
   /* foreach peer, send peerid, collector string, peer ip (version, address) */
-  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_PEER))
+  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE))
     {
       /* peer id */
       u16 = bgpwatcher_view_iter_get_peerid(it);

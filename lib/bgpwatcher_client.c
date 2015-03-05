@@ -367,7 +367,7 @@ int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
 
   /* now update the peer info */
   peer_infos[peer_id].orig_asn = orig_asn;
-  peer_infos[peer_id].in_use = 1;
+  peer_infos[peer_id].state = BGPWATCHER_VIEW_FIELD_ACTIVE;
 
   return 0;
 }

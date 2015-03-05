@@ -989,7 +989,7 @@ int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
 
   for(i=0; i<table->peers_cnt; i++)
     {
-      if(peer_infos[i].in_use == 0)
+      if(peer_infos[i].state != BGPWATCHER_VIEW_FIELD_ACTIVE)
 	{
           continue;
         }
