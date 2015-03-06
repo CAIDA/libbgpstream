@@ -37,6 +37,26 @@
 #include "bgpwatcher_common.h"
 #include "bgpstream_utils_pfx.h"
 
+
+/** Information about a prefix as seen from a peer */
+typedef struct bgpwatcher_pfx_peer_info {
+
+  /** Origin ASN */
+  uint32_t orig_asn;
+
+  /** @todo add other pfx info fields here (AS path, etc) */
+
+  /** State of the per-pfx per-peer data 
+   *  if ACTIVE the prefix is currently
+   *  seen by a peer. */
+  bgpwatcher_view_field_state_t state;
+
+  /** Generic pointer to store per-pfx-per-peer information */
+  void *user;
+
+} __attribute__((packed)) bgpwatcher_pfx_peer_info_t;
+
+
 /** Value for a prefix in the v4pfxs and v6pfxs tables */
 typedef struct bwv_peerid_pfxinfo {
 
@@ -56,7 +76,8 @@ typedef struct bwv_peerid_pfxinfo {
 
 } __attribute__((packed)) bwv_peerid_pfxinfo_t;
 
-// TODO: add documentation
+
+/** @todo: add documentation ? */
 
 
 
@@ -196,5 +217,35 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view);
  * @return pointer to the view instance received, NULL if an error occurred.
  */
 int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view);
+
+
+/** Get the current pfx info (ptr) for the current v4pfx.
+ *
+ * @param iter          Pointer to a valid iterator structure
+ * @return the prefix-peer info that the iterator's peer field is currently
+ *         pointed at, NULL if the iterator is not initialized, or has reached
+ *         the end of the peers for the current prefix
+ *
+ * @note this returns the pfxinfo for the current peer
+ * (BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER) for the current prefix
+ * (BGPWATCHER_VIEW_ITER_FIELD_V4PFX).
+ */
+bgpwatcher_pfx_peer_info_t *
+bgpwatcher_view_iter_get_v4pfx_pfxinfo(bgpwatcher_view_iter_t *iter);
+
+
+/** Get the current pfx info (ptr) for the current v6pfx.
+ *
+ * @param iter          Pointer to a valid iterator structure
+ * @return the prefix-peer info that the iterator's peer field is currently
+ *         pointed at, NULL if the iterator is not initialized, or has reached
+ *         the end of the peers for the current prefix
+ *
+ * @note this returns the pfxinfo for the current peer
+ * (BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER) for the current prefix
+ * (BGPWATCHER_VIEW_ITER_FIELD_V6PFX).
+ */
+bgpwatcher_pfx_peer_info_t *
+bgpwatcher_view_iter_get_v6pfx_pfxinfo(bgpwatcher_view_iter_t *iter);
 
 #endif /* __BGPWATCHER_VIEW_INT_H */

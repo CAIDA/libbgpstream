@@ -394,6 +394,30 @@ int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
   return 0;
 }
 
+bgpwatcher_pfx_peer_info_t *
+bgpwatcher_view_iter_get_v4pfx_pfxinfo(bgpwatcher_view_iter_t *iter)
+{
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
+    {
+      return NULL;
+    }
+
+  return &kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers[iter->v4pfx_peer_it];
+}
+
+bgpwatcher_pfx_peer_info_t *
+bgpwatcher_view_iter_get_v6pfx_pfxinfo(bgpwatcher_view_iter_t *iter)
+{
+  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
+    {
+      return NULL;
+    }
+
+  return &kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers[iter->v6pfx_peer_it];
+}
+
 /* ========== PUBLIC FUNCTIONS ========== */
 
 bgpwatcher_view_t *bgpwatcher_view_create_shared(bgpstream_peer_sig_map_t *peersigns,
@@ -1236,28 +1260,28 @@ bgpwatcher_view_iter_get_v6pfx_peersig(bgpwatcher_view_iter_t *iter)
                                         bgpwatcher_view_iter_get_v6pfx_peerid(iter));
 }
 
-bgpwatcher_pfx_peer_info_t *
-bgpwatcher_view_iter_get_v4pfx_pfxinfo(bgpwatcher_view_iter_t *iter)
+int
+bgpwatcher_view_iter_get_v4pfx_orig_asn(bgpwatcher_view_iter_t *iter)
 {
   if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER,
                                  BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
-      return NULL;
+      return -1;
     }
 
-  return &kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers[iter->v4pfx_peer_it];
+  return kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers[iter->v4pfx_peer_it].orig_asn;
 }
 
-bgpwatcher_pfx_peer_info_t *
-bgpwatcher_view_iter_get_v6pfx_pfxinfo(bgpwatcher_view_iter_t *iter)
+int
+bgpwatcher_view_iter_get_v6pfx_orig_asn(bgpwatcher_view_iter_t *iter)
 {
   if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER,
                                  BGPWATCHER_VIEW_FIELD_ALL_VALID))
     {
-      return NULL;
+      return -1;
     }
 
-  return &kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers[iter->v6pfx_peer_it];
+  return kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers[iter->v6pfx_peer_it].orig_asn;
 }
 
 void *
@@ -1333,4 +1357,5 @@ bgpwatcher_view_set_pfx_peer_user_destructor(bgpwatcher_view_t *view,
 {
   view->pfx_peer_user_destructor = bwv_pfx_peer_user_destructor;
 }
+
 

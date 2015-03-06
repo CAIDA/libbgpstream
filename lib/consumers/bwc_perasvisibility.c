@@ -229,7 +229,7 @@ static int flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   bgpstream_ipv4_pfx_t *v4pfx;
 
   bgpstream_peer_id_t peerid;
-  bgpwatcher_pfx_peer_info_t *pfxinfo;
+  int origin_asn;
 
   peras_info_t *info;
 
@@ -268,13 +268,15 @@ static int flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 	      continue;
 	    }
 
-	  pfxinfo = bgpwatcher_view_iter_get_v4pfx_pfxinfo(it);
-
-          if((info = as_pfxs_get_info(STATE, pfxinfo->orig_asn)) == NULL)
+	  origin_asn = bgpwatcher_view_iter_get_v4pfx_orig_asn(it);
+          if(origin_asn != -1)
             {
-              return -1;
+              if((info = as_pfxs_get_info(STATE, origin_asn)) == NULL)
+                {
+                  return -1;
+                }
+              bgpstream_ipv4_pfx_set_insert(info->v4pfxs, v4pfx);
             }
-          bgpstream_ipv4_pfx_set_insert(info->v4pfxs, v4pfx);
 	}
     }
 
@@ -286,7 +288,7 @@ static int flip_v6table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   bgpstream_ipv6_pfx_t *v6pfx;
 
   bgpstream_peer_id_t peerid;
-  bgpwatcher_pfx_peer_info_t *pfxinfo;
+  int origin_asn;
 
   peras_info_t *info;
 
@@ -325,13 +327,15 @@ static int flip_v6table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 	      continue;
 	    }
 
-	  pfxinfo = bgpwatcher_view_iter_get_v6pfx_pfxinfo(it);
-
-          if((info = as_pfxs_get_info(STATE, pfxinfo->orig_asn)) == NULL)
+	  origin_asn = bgpwatcher_view_iter_get_v6pfx_orig_asn(it);
+          if(origin_asn != -1)
             {
-              return -1;
+              if((info = as_pfxs_get_info(STATE, origin_asn)) == NULL)
+                {
+                  return -1;
+                }
+              bgpstream_ipv6_pfx_set_insert(info->v6pfxs, v6pfx);
             }
-          bgpstream_ipv6_pfx_set_insert(info->v6pfxs, v6pfx);
 	}
     }
 

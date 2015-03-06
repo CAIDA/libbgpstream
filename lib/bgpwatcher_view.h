@@ -54,7 +54,13 @@ typedef struct bgpwatcher_view_iter bgpwatcher_view_iter_t;
 
 typedef enum {
 
-  /** The current field is invalid (never initialized) */
+  /** The current field is invalid (it could
+   *  be destroyed and the status of the view
+   *  would still be consistent). The number 
+   *  associated with the enumerator is such 
+   *  that no mask will ever iterate/seek
+   *  over this field (it is exactly equivalent
+   *  to a non existent field). */
   BGPWATCHER_VIEW_FIELD_INVALID   = 0b000,
 
   /** The current field is active */
@@ -103,37 +109,11 @@ typedef enum {
  *
  * @{ */
 
-/** @todo: remove from here and make it private */
-
-/** Information about a prefix from a peer */
-typedef struct bgpwatcher_pfx_peer_info {
-
-  /** Origin ASN */
-  uint32_t orig_asn;
-
-  /** @todo add other pfx info fields here (AS path, etc) */
-
-  /** If set, this prefix is seen by this peer.
-   *
-   * @note this is also used by the store to track which peers are active for a
-   * prefix
-   */
-  // uint8_t in_use;
-
-  /** State of the per-pfx per-peer data */
-  bgpwatcher_view_field_state_t state;
-
-  /** Generic pointer to store per-pfx-per-peer information */
-  void *user;
-
-} __attribute__((packed)) bgpwatcher_pfx_peer_info_t;
-
 /** Callback for destroying a custom user structure associated with bgpwatcher
  *  view or one of its substructures
  * @param user    user pointer to destroy
  */
 typedef void (bgpwatcher_view_destroy_user_t) (void* user);
-
 
 /** @} */
 
@@ -315,6 +295,8 @@ bgpwatcher_view_iter_create(bgpwatcher_view_t *view);
 void
 bgpwatcher_view_iter_destroy(bgpwatcher_view_iter_t *iter);
 
+
+
 /** Reset the given iterator to the first item for the given field
  *
  * @param iter          Pointer to an iterator structure
@@ -391,7 +373,6 @@ bgpwatcher_view_iter_t *
 bgpwatcher_view_iter_seek_peerid(bgpwatcher_view_iter_t *iter,
                                  bgpstream_peer_id_t peerid,
                                  uint8_t state_mask); 
-
 
 /** Get the iterator to the v4pfx in the given view (if it exists and it matches
  *  the mask)
@@ -507,7 +488,6 @@ bgpwatcher_view_iter_seek_v6pfx_peerid_pair(bgpwatcher_view_iter_t *iter,
                                             bgpstream_peer_id_t peerid,
                                             uint8_t pfx_state_mask,
                                             uint8_t peer_state_mask);
-
 
 /**
  * @name View Iterator Getter and Setter Functions
@@ -715,42 +695,33 @@ bgpwatcher_view_iter_get_v4pfx_peersig(bgpwatcher_view_iter_t *iter);
 bgpstream_peer_sig_t *
 bgpwatcher_view_iter_get_v6pfx_peersig(bgpwatcher_view_iter_t *iter);
 
-/** Get the current pfx info (value) for the current v4pfx.
+/** Get the current origin AS number for the current v4pfx.
  *
  * @param iter          Pointer to a valid iterator structure
- * @return the prefix-peer info that the iterator's peer field is currently
- *         pointed at, NULL if the iterator is not initialized, or has reached
- *         the end of the peers for the current prefix
+ * @return the origin AS number fore the current prefix as observed
+ *         from the current peer, -1 if the iterator is not initialized,
+ *         or has reached the end of the peers for the current prefix
  *
  * @note this returns the pfxinfo for the current peer
  * (BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER) for the current prefix
  * (BGPWATCHER_VIEW_ITER_FIELD_V4PFX).
  */
-bgpwatcher_pfx_peer_info_t *
-bgpwatcher_view_iter_get_v4pfx_pfxinfo(bgpwatcher_view_iter_t *iter);
+int
+bgpwatcher_view_iter_get_v4pfx_orig_asn(bgpwatcher_view_iter_t *iter);
 
-/** Get the current pfx info (value) for the current v6pfx.
+/** Get the current origin AS number for the current v6pfx.
  *
  * @param iter          Pointer to a valid iterator structure
- * @return the prefix-peer info that the iterator's peer field is currently
- *         pointed at, NULL if the iterator is not initialized, or has reached
- *         the end of the peers for the current prefix
+ * @return the origin AS number fore the current prefix as observed
+ *         from the current peer, -1 if the iterator is not initialized,
+ *         or has reached the end of the peers for the current prefix
  *
  * @note this returns the pfxinfo for the current peer
  * (BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER) for the current prefix
  * (BGPWATCHER_VIEW_ITER_FIELD_V6PFX).
  */
-bgpwatcher_pfx_peer_info_t *
-bgpwatcher_view_iter_get_v6pfx_pfxinfo(bgpwatcher_view_iter_t *iter);
-
-
-
-/** ######## ######## ######## ######## ######## ######## ######## 
- *  @todo: write an accessor function for each field in 
- *  bgpwatcher_pfx_peer_info_t (so far we explicitely take care
- *  of the user pointer, nothing more)
- * ######## ######## ######## ######## ######## ######## ######## */
-
+int
+bgpwatcher_view_iter_get_v6pfx_orig_asn(bgpwatcher_view_iter_t *iter);
 
 /** Get the current v4 prefix-peer's user pointer for the given iterator
  *

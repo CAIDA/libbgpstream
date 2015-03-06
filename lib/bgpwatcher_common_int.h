@@ -25,7 +25,7 @@
 #include <sys/socket.h>
 
 #include "bgpwatcher_common.h"
-#include "bgpwatcher_view.h" /* < pfx_peer_info_t */
+#include "bgpwatcher_view_int.h" /* < pfx_peer_info_t */
 #include <bgpstream_utils_pfx.h>
 
 /** @file

@@ -21,7 +21,7 @@
 #define __BGPWATCHER_STORE_H
 
 #include "bgpwatcher_server.h"
-#include "bgpwatcher_view.h" /* < pfx_peer_info_t */
+#include "bgpwatcher_view_int.h" /* < pfx_peer_info_t */
 #include <bgpstream_utils_pfx.h>
 
 /** @file
