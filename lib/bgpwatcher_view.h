@@ -495,6 +495,107 @@ bgpwatcher_view_iter_pfx_seek_peer(bgpwatcher_view_iter_t *iter,
                                    bgpstream_peer_id_t peerid,
                                    uint8_t state_mask);
 
+/** Reset the peer iterator to the first peer that matches the
+ *  the peer mask for the first pfx that matches the IP version
+ *  and the pfx_mask
+ *
+ * @param iter          Pointer to an iterator structure
+ * @param version       IP version (we may want to reset to
+ *                      the first IPv4 or IPv6 prefix)
+ * @param pfx_mask      A mask that indicates the state of the
+ *                      prefixes we iterate through
+ * @param peer_mask     A mask that indicates the state of the
+ *                      peers we iterate through
+ * @param all_versions  1 if the intention is to iterate over
+ *                      all IP versions, 0 if the intention
+ *                      is to iterate over 'version' prefixes
+ *                      only
+ * @return 1 if the iterator points at an existing prefix,
+ *         0 if the end has been reached
+ *
+ * @note 1: if the intention is to iterate over all versions
+ * of prefixes, then the version type has to be 
+ * BGPSTREAM_ADDR_VERSION_IPV4
+ *
+ * @note 2: if the intention is to iterate over all versions
+ * of prefixes, then it is possible that, at the end of the
+ * function, the iterator will point at a prefix version
+ * which appears in the table after the provided 'version'
+ */
+int
+bgpwatcher_view_iter_first_pfx_peer(bgpwatcher_view_iter_t *iter,
+                                    bgpstream_addr_version_t version,
+                                    uint8_t pfx_mask,
+                                    uint8_t peer_mask,
+                                    uint8_t all_versions);
+
+/** Advance the provided iterator to the next peer that matches the
+ *  the peer mask for the next pfx that matches the pfx_mask
+ * @param iter          Pointer to an iterator structure
+ * @param pfx_mask      A mask that indicates the state of the
+ *                      prefixes we iterate through
+ * @param peer_mask     A mask that indicates the state of the
+ *                      peers we iterate through
+ * @param all_versions  1 if the intention is to iterate over
+ *                      all IP versions, 0 if the intention
+ *                      is to iterate over the current prefix
+ *                      version
+ * @return 1 if the iterator points at an existing peer,
+ *         0 if the end has been reached
+ */
+int
+bgpwatcher_view_iter_next_pfx_peer(bgpwatcher_view_iter_t *iter,
+                                   uint8_t pfx_mask,
+                                   uint8_t peer_mask,
+                                   uint8_t all_versions);
+
+/** Check if the provided iterator point at an existing peer/prefix
+ *  or the end has been reached
+ *
+ * @param iter          Pointer to an iterator structure
+ * @param pfx_mask      A mask that indicates the state of the
+ *                      prefixes we iterate through
+ * @param peer_mask     A mask that indicates the state of the
+ *                      peers we iterate through
+ * @param all_versions  1 if the intention is to iterate over
+ *                      all IP versions, 0 if the intention
+ *                      is to iterate over the current prefix
+ *                      version
+ * @return 1 if the iterator points at an existing peer,
+ *         0 if the end has been reached
+ */
+int
+bgpwatcher_view_iter_has_more_pfx_peer(bgpwatcher_view_iter_t *iter,
+                                       uint8_t pfx_mask,
+                                       uint8_t peer_mask,
+                                       uint8_t all_versions);
+
+/** Check if the provided peer exists for the given prefix 
+ *  and their states match the masks provided; set the provided
+ *  iterator to point at the peer (if it exists) or set it
+ *  to the end of the prefix/peer tables (if it doesn't exist)
+ *
+ * @param iter          Pointer to an iterator structure
+ * @param pfx           A pointer to a prefix, the prefix version
+ *                      will be extracted from this structure
+ * @param pfx_mask      A mask that indicates the state of the
+ *                      prefixes we iterate through
+ * @param peer_mask     A mask that indicates the state of the
+ *                      peers we iterate through
+ * @return 1 if the iterator points at an existing prefix,
+ *         0 if the end has been reached
+ */
+int
+bgpwatcher_view_iter_seek_pfx_peer(bgpwatcher_view_iter_t *iter,
+                                   bgpstream_pfx_t *pfx,
+                                   bgpstream_peer_id_t peerid,                                   
+                                   uint8_t pfx_mask,
+                                   uint8_t peer_mask);
+
+
+
+
+
 
 /** ######################### old iterators API  ######################### **/
 

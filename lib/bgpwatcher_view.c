@@ -667,6 +667,8 @@ bgpwatcher_view_iter_first_pfx(bgpwatcher_view_iter_t *iter,
       // a matching first ipv4 prefix was found
       if(iter->v4pfx_it != kh_end(iter->view->v4pfxs))
         {
+          iter->v4pfx_peer_it = 0;
+          iter->v4pfx_peer_it_valid = 1;
           return 1;
         }
       // no ipv4 prefix was found, we don't look for other versions
@@ -692,6 +694,8 @@ bgpwatcher_view_iter_first_pfx(bgpwatcher_view_iter_t *iter,
       // a matching first ipv6 prefix was found
       if(iter->v6pfx_it != kh_end(iter->view->v6pfxs))
         {
+          iter->v6pfx_peer_it = 0;
+          iter->v6pfx_peer_it_valid = 1;      
           return 1;
         }
       // there are no more ip versions to look for
@@ -716,6 +720,8 @@ bgpwatcher_view_iter_next_pfx(bgpwatcher_view_iter_t *iter,
       // a matching ipv4 prefix was found
       if(iter->v4pfx_it != kh_end(iter->view->v4pfxs))
         {
+          iter->v4pfx_peer_it = 0;
+          iter->v4pfx_peer_it_valid = 1;
           return 1;
         }
       // no ipv4 prefix was found, we don't look for other versions
@@ -740,6 +746,8 @@ bgpwatcher_view_iter_next_pfx(bgpwatcher_view_iter_t *iter,
       // a matching ipv6 prefix was found
       if(iter->v6pfx_it != kh_end(iter->view->v6pfxs))
         {
+          iter->v6pfx_peer_it = 0;
+          iter->v6pfx_peer_it_valid = 1;      
           return 1;
         }
       // there are no more ip versions to look for
@@ -800,6 +808,8 @@ bgpwatcher_view_iter_seek_pfx(bgpwatcher_view_iter_t *iter,
         {
           if(state_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)->state)
             {
+              iter->v4pfx_peer_it = 0;
+              iter->v4pfx_peer_it_valid = 1;
               return 1;
             }
           // if the mask does not match, than set the iterator to the end
@@ -812,6 +822,8 @@ bgpwatcher_view_iter_seek_pfx(bgpwatcher_view_iter_t *iter,
         {
           if(state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state)
             {
+              iter->v6pfx_peer_it = 0;
+              iter->v6pfx_peer_it_valid = 1;
               return 1;
             }
           // if the mask does not match, than set the iterator to the end
@@ -1046,6 +1058,90 @@ bgpwatcher_view_iter_pfx_seek_peer(bgpwatcher_view_iter_t *iter,
       /* programming error */
       assert(0);
     }
+  return 0;
+}
+
+
+
+
+int
+bgpwatcher_view_iter_first_pfx_peer(bgpwatcher_view_iter_t *iter,
+                                    bgpstream_addr_version_t version,
+                                    uint8_t pfx_mask,
+                                    uint8_t peer_mask,
+                                    uint8_t all_versions)
+{
+  // start from the first matching prefix
+  bgpwatcher_view_iter_first_pfx(iter, version, pfx_mask, all_versions);  
+  while(bgpwatcher_view_iter_has_more_pfx(iter, pfx_mask, all_versions))
+    {
+      // look for the first matching peer within the prefix
+      if(bgpwatcher_view_iter_pfx_first_peer(iter, peer_mask))
+        {
+          return 1;
+        }
+      bgpwatcher_view_iter_next_pfx(iter, pfx_mask, all_versions);
+    }
+  return 0;       
+}
+
+int 
+bgpwatcher_view_iter_next_pfx_peer(bgpwatcher_view_iter_t *iter,
+                                   uint8_t pfx_mask,
+                                   uint8_t peer_mask,
+                                   uint8_t all_versions)
+{
+    while(bgpwatcher_view_iter_has_more_pfx(iter, pfx_mask, all_versions))
+    {
+      // look for the next matching peer within the prefix
+      if(bgpwatcher_view_iter_pfx_next_peer(iter, peer_mask))
+        {
+          return 1;
+        }
+      bgpwatcher_view_iter_next_pfx(iter, pfx_mask, all_versions);
+      bgpwatcher_view_iter_pfx_first_peer(iter, peer_mask);
+    }
+    return 0;
+}
+
+int
+bgpwatcher_view_iter_has_more_pfx_peer(bgpwatcher_view_iter_t *iter,
+                                       uint8_t pfx_mask,
+                                       uint8_t peer_mask,
+                                       uint8_t all_versions)
+{
+    while(bgpwatcher_view_iter_has_more_pfx(iter, pfx_mask, all_versions))
+    {
+      // look for the next matching peer within the prefix
+      if(bgpwatcher_view_iter_pfx_has_more_peer(iter, peer_mask))
+        {
+          return 1;
+        }
+      bgpwatcher_view_iter_next_pfx(iter, pfx_mask, all_versions);
+      bgpwatcher_view_iter_pfx_first_peer(iter, peer_mask);
+    }
+    return 0;
+}
+
+int
+bgpwatcher_view_iter_seek_pfx_peer(bgpwatcher_view_iter_t *iter,
+                                   bgpstream_pfx_t *pfx,
+                                   bgpstream_peer_id_t peerid,                                   
+                                   uint8_t pfx_mask,
+                                   uint8_t peer_mask)
+{
+  if(bgpwatcher_view_iter_seek_pfx(iter, pfx, pfx_mask))
+    {
+      if(bgpwatcher_view_iter_pfx_seek_peer(iter, peerid, peer_mask))
+        {
+          return 1;          
+        }
+      // if the peer is not found we also reset the prefix iterator
+      iter->v4pfx_it = kh_end(iter->view->v4pfxs);
+      iter->v6pfx_it = kh_end(iter->view->v6pfxs);
+    }  
+  iter->v4pfx_peer_it_valid = 0;
+  iter->v6pfx_peer_it_valid = 0;     
   return 0;
 }
 
