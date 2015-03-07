@@ -890,6 +890,164 @@ bgpwatcher_view_iter_seek_peer(bgpwatcher_view_iter_t *iter,
   return 0;
 }
 
+int
+bgpwatcher_view_iter_pfx_first_peer(bgpwatcher_view_iter_t *iter,
+                                    uint8_t state_mask)
+{     
+  switch(iter->version)
+    {
+    case BGPSTREAM_ADDR_VERSION_IPV4:
+      assert(iter->v4pfx_it != kh_end(iter->view->v4pfxs));
+      iter->v4pfx_peer_it = 0;
+      iter->v4pfx_peer_it_valid = 1;
+        while((iter->v4pfx_peer_it <
+             kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_alloc_cnt) &&
+	    (!(state_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)
+               ->peers[iter->v4pfx_peer_it].state)))
+	{
+	  iter->v4pfx_peer_it++;
+	}
+        if(iter->v4pfx_peer_it < kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_alloc_cnt)
+          {
+            return 1;
+          }
+        iter->v4pfx_peer_it_valid = 0;
+        return 0;
+    case BGPSTREAM_ADDR_VERSION_IPV6:
+      assert(iter->v6pfx_it != kh_end(iter->view->v6pfxs));
+      iter->v6pfx_peer_it = 0;
+      iter->v6pfx_peer_it_valid = 1;
+        while((iter->v6pfx_peer_it <
+             kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_alloc_cnt) &&
+	    (!(state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)
+               ->peers[iter->v6pfx_peer_it].state)))
+	{
+	  iter->v6pfx_peer_it++;
+	}
+        if(iter->v6pfx_peer_it < kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_alloc_cnt)
+          {
+            return 1;
+          }
+        iter->v6pfx_peer_it_valid = 0;
+        return 0;
+    default:
+      /* programming error */
+      assert(0);
+    }
+  return 0;
+}
+
+int
+bgpwatcher_view_iter_pfx_next_peer(bgpwatcher_view_iter_t *iter,
+                                   uint8_t state_mask)
+{
+  switch(iter->version)
+    {
+    case BGPSTREAM_ADDR_VERSION_IPV4:
+      assert(iter->v4pfx_it != kh_end(iter->view->v4pfxs));
+      do {
+	iter->v4pfx_peer_it++;
+      } while(iter->v4pfx_peer_it <
+	      kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_alloc_cnt &&
+	      (!(state_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)
+               ->peers[iter->v4pfx_peer_it].state)));
+      if(iter->v4pfx_peer_it < kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_alloc_cnt)
+        {
+          return 1;
+        }
+      iter->v4pfx_peer_it_valid = 0;      
+      return 0;
+    case BGPSTREAM_ADDR_VERSION_IPV6:
+      assert(iter->v6pfx_it != kh_end(iter->view->v6pfxs));
+      do {
+	iter->v6pfx_peer_it++;
+      } while(iter->v6pfx_peer_it <
+	      kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_alloc_cnt &&
+	      (!(state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)
+               ->peers[iter->v6pfx_peer_it].state)));
+      if(iter->v6pfx_peer_it < kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_alloc_cnt)
+        {
+          return 1;
+        }
+      iter->v6pfx_peer_it_valid = 0;
+      return 0;
+    default:
+      /* programming error */
+      assert(0);
+    }
+  return 0;
+}
+
+int
+bgpwatcher_view_iter_pfx_has_more_peer(bgpwatcher_view_iter_t *iter,
+                                       uint8_t state_mask)
+{
+  switch(iter->version)
+    {
+    case BGPSTREAM_ADDR_VERSION_IPV4:
+      assert(iter->v4pfx_it != kh_end(iter->view->v4pfxs));
+      if(iter->v4pfx_peer_it < kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_alloc_cnt)
+        {
+          return 1;
+        }
+      iter->v4pfx_peer_it_valid = 0;
+      return 0;
+    case BGPSTREAM_ADDR_VERSION_IPV6:
+      assert(iter->v6pfx_it != kh_end(iter->view->v6pfxs));
+      if(iter->v6pfx_peer_it < kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_alloc_cnt)
+        {
+          return 1;
+        }
+      iter->v6pfx_peer_it_valid = 0;
+      return 0;
+    default:
+      /* programming error */
+      assert(0);
+    }
+  return 0;  
+}
+
+int
+bgpwatcher_view_iter_pfx_seek_peer(bgpwatcher_view_iter_t *iter,
+                                   bgpstream_peer_id_t peerid,
+                                   uint8_t state_mask)
+{
+  switch(iter->version)
+    {
+    case BGPSTREAM_ADDR_VERSION_IPV4:
+      assert(iter->v4pfx_it != kh_end(iter->view->v4pfxs));
+      if(peerid < kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_alloc_cnt)
+        {
+          if(state_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers[peerid].state)
+            {
+              iter->v4pfx_peer_it_valid = 1;
+              iter->v4pfx_peer_it = peerid;
+              return 1;
+            }
+        }
+      iter->v4pfx_peer_it = kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_alloc_cnt;
+      iter->v4pfx_peer_it_valid = 0;
+      return 0;
+    case BGPSTREAM_ADDR_VERSION_IPV6:
+      assert(iter->v6pfx_it != kh_end(iter->view->v6pfxs));
+      if(peerid < kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_alloc_cnt)
+        {
+          if(state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers[peerid].state)
+            {
+              iter->v6pfx_peer_it_valid = 1;
+              iter->v6pfx_peer_it = peerid;
+              return 1;
+            }
+        }
+      iter->v6pfx_peer_it = kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_alloc_cnt;
+      iter->v6pfx_peer_it_valid = 0;
+      return 0;
+    default:
+      /* programming error */
+      assert(0);
+    }
+  return 0;
+}
 
 
 
