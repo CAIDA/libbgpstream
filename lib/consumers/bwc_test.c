@@ -195,28 +195,28 @@ int bwc_test_process_view(bwc_t *consumer, uint8_t interests,
   my_memory = NULL;
 
   // per-peer user memory allocation
-  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE))
+  for(bgpwatcher_view_iter_first_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      !bgpwatcher_view_iter_has_more_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_next_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE))
     {
       my_memory = malloc(sizeof(int));
       bgpwatcher_view_iter_set_peer_user(it, my_memory);
       my_memory = NULL;            
     }
 
-  // per-prefix user memory allocation
-  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX, BGPWATCHER_VIEW_FIELD_ACTIVE))
+  // per-prefix user memory allocation 
+  for(bgpwatcher_view_iter_first_pfx(it, BGPSTREAM_ADDR_VERSION_IPV4, BGPWATCHER_VIEW_FIELD_ACTIVE, 0);
+      !bgpwatcher_view_iter_has_more_pfx(it, BGPWATCHER_VIEW_FIELD_ACTIVE, 0);
+      bgpwatcher_view_iter_next_pfx(it, BGPWATCHER_VIEW_FIELD_ACTIVE, 0))
     {
       my_memory = malloc(sizeof(int));
       bgpwatcher_view_iter_set_v4pfx_user(it, my_memory);
       my_memory = NULL;
       
       // per-prefix per-peer user memory allocation
-      for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
-          !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
-          bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE))
+      for(bgpwatcher_view_iter_pfx_first_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
+          !bgpwatcher_view_iter_pfx_has_more_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
+          bgpwatcher_view_iter_pfx_next_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE))
         {
           my_memory = malloc(sizeof(int));
           bgpwatcher_view_iter_set_v4pfx_pfxinfo_user(it, my_memory);
@@ -229,19 +229,17 @@ int bwc_test_process_view(bwc_t *consumer, uint8_t interests,
   int i = 0;
   for(i = 0; i < 10; i++)
     {
-      it = bgpwatcher_view_iter_seek_peerid(it, i, BGPWATCHER_VIEW_FIELD_ALL_VALID);
-      if(bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ALL_VALID))
+      if(!bgpwatcher_view_iter_seek_peer(it, i, BGPWATCHER_VIEW_FIELD_ALL_VALID))
         {
           fprintf(stderr,"Peer %d not found\n",i);
         }
       else
         {
-          it = bgpwatcher_view_iter_seek_peerid(it, i, BGPWATCHER_VIEW_FIELD_ACTIVE);
-          if(bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE))
+          if(bgpwatcher_view_iter_seek_peer(it, i, BGPWATCHER_VIEW_FIELD_ACTIVE))
             {
-              fprintf(stderr,"Peer %d found - [INACTIVE]\n",i);
+              fprintf(stderr,"Peer %d found - [ACTIVE]\n",i);
             }
-          else
+          if(bgpwatcher_view_iter_seek_peer(it, i, BGPWATCHER_VIEW_FIELD_INACTIVE))
             {
               fprintf(stderr,"Peer %d found - [ACTIVE]\n",i);
             }
