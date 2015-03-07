@@ -297,6 +297,100 @@ bgpwatcher_view_iter_destroy(bgpwatcher_view_iter_t *iter);
 
 
 
+/** ######################### new iterators API  ######################### **/
+
+
+/** Reset the prefix iterator to the first item for the given 
+ *  IP version that also matches the mask
+ *
+ * @param iter          Pointer to an iterator structure
+ * @param version       IP version (we may want to reset to
+ *                      the first IPv4 or IPv6 prefix)
+ * @param state_mask    A mask that indicates the state of the
+ *                      fields we iterate through
+ * @param all_versions  1 if the intention is to iterate over
+ *                      all IP versions, 0 if the intention
+ *                      is to iterate over 'version' prefixes
+ *                      only
+ * @return 1 if the iterator points at an existing prefix,
+ *         0 if the end has been reached
+ *
+ * @note 1: if the intention is to iterate over all versions
+ * of prefixes, then the version type has to be 
+ * BGPSTREAM_ADDR_VERSION_IPV4
+ *
+ * @note 2: if the intention is to iterate over all versions
+ * of prefixes, then it is possible that, at the end of the
+ * function, the iterator will point at a prefix version
+ * which appears in the table after the provided 'version'
+ * 
+ */
+int
+bgpwatcher_view_iter_first_pfx(bgpwatcher_view_iter_t *iter,
+                               bgpstream_addr_version_t version,
+                               uint8_t state_mask,
+                               uint8_t all_versions);
+
+/** Advance the provided iterator to the next prefix in the given view
+ *
+ * @param iter          Pointer to an iterator structure
+ * @param state_mask    A mask that indicates the state of the
+ *                      fields we iterate through
+ * @param all_versions  1 if the intention is to iterate over
+ *                      all IP versions, 0 if the intention
+ *                      is to iterate over the current prefix
+ *                      version
+ * @return 1 if the iterator points at an existing prefix,
+ *         0 if the end has been reached
+ *
+ */
+int
+bgpwatcher_view_iter_next_pfx(bgpwatcher_view_iter_t *iter,
+                              uint8_t state_mask, 
+                              uint8_t all_versions);
+
+/** Check if the provided iterator point to an existing prefix
+ *  or the end has been reached
+ *
+ * @param iter          Pointer to an iterator structure
+ * @param state_mask    A mask that indicates the state of the
+ *                      fields we iterate through
+ * @param all_versions  1 if the intention is to iterate over
+ *                      all IP versions, 0 if the intention
+ *                      is to iterate over the current prefix
+ *                      version
+ * @return 1 if the iterator points at an existing prefix,
+ *         0 if the end has been reached
+ *
+ */
+int
+bgpwatcher_view_iter_has_more_pfx(bgpwatcher_view_iter_t *iter,
+                                  uint8_t state_mask, 
+                                  uint8_t all_versions);
+
+/** Check if the provided prefix exists in the current view
+ *  and its state matches the mask provided; set the provided
+ *  iterator to point at the prefix (if it exists) or set it
+ *  to the end of the prefix table (if it doesn't exist)
+ *
+ * @param iter          Pointer to an iterator structure
+ * @param pfx           A pointer to a prefix, the prefix version
+ *                      will be extracted from this structure
+ * @param state_mask    A mask that indicates the state of the
+ *                      fields we iterate through
+ * @return 1 if the iterator points at an existing prefix,
+ *         0 if the end has been reached
+ *
+ */
+int
+bgpwatcher_view_iter_seek_pfx(bgpwatcher_view_iter_t *iter,
+                              bgpstream_pfx_t *pfx,
+                              uint8_t state_mask);
+
+
+/** ######################### old iterators API  ######################### **/
+
+
 /** Reset the given iterator to the first item for the given field
  *
  * @param iter          Pointer to an iterator structure

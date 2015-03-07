@@ -31,13 +31,19 @@ struct bgpwatcher_view_iter {
   /** Pointer to the view instance we are iterating over */
   bgpwatcher_view_t *view;
 
+  /** Current IP version for the 'all_version'
+   *  prefix iterators */
+  bgpstream_addr_version_t version;
+
   /** Current v4pfx */
   khiter_t v4pfx_it;
 
   /** Current v6pfx */
   khiter_t v6pfx_it;
 
-  /** Current peersig */
+  /** Current peersig
+   *  @todo: I guess this is an old doc, we are actually
+   *  iterating over fields of value bwv_peerinfo_t */
   khiter_t peer_it;
 
   /** Current v4pfx_peer */
@@ -619,6 +625,8 @@ bgpwatcher_view_iter_t *bgpwatcher_view_iter_create(bgpwatcher_view_t *view)
 
   iter->view = view;
 
+  iter->version = BGPSTREAM_ADDR_VERSION_IPV4;
+  
   iter->v4pfx_it = kh_end(iter->view->v4pfxs);
   iter->v6pfx_it = kh_end(iter->view->v6pfxs);
   iter->peer_it  = kh_end(iter->view->peerinfo);
@@ -633,6 +641,194 @@ void bgpwatcher_view_iter_destroy(bgpwatcher_view_iter_t *iter)
 {
   free(iter);
 }
+
+
+
+/** ######################### new API  ######################### **/
+
+
+int
+bgpwatcher_view_iter_first_pfx(bgpwatcher_view_iter_t *iter,
+                               bgpstream_addr_version_t version,
+                               uint8_t state_mask,
+                               uint8_t all_versions)
+{
+  iter->version = version;
+    
+  if(iter->version == BGPSTREAM_ADDR_VERSION_IPV4)
+    {
+      iter->v4pfx_it = kh_begin(iter->view->v4pfxs);
+      while(iter->v4pfx_it != kh_end(iter->view->v4pfxs) &&
+	    (!kh_exist(iter->view->v4pfxs, iter->v4pfx_it) ||
+             !(state_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)->state)))
+	{
+	  iter->v4pfx_it++;
+	}
+      // a matching first ipv4 prefix was found
+      if(iter->v4pfx_it != kh_end(iter->view->v4pfxs))
+        {
+          return 1;
+        }
+      // no ipv4 prefix was found, we don't look for other versions
+      if(!all_versions) 
+        { 
+          return 0;   
+        }
+
+      // continue to the next IP version
+      iter->version = BGPSTREAM_ADDR_VERSION_IPV6;
+    }
+
+  if(iter->version == BGPSTREAM_ADDR_VERSION_IPV6)
+    {
+      iter->v6pfx_it = kh_begin(iter->view->v6pfxs);
+      /* keep searching if this does not exist */
+      while(iter->v6pfx_it != kh_end(iter->view->v6pfxs) &&
+	    (!kh_exist(iter->view->v6pfxs, iter->v6pfx_it) ||
+             !(state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state)))
+	{
+	  iter->v6pfx_it++;
+	}
+      // a matching first ipv6 prefix was found
+      if(iter->v6pfx_it != kh_end(iter->view->v6pfxs))
+        {
+          return 1;
+        }
+      // there are no more ip versions to look for
+      return 0;   
+    }
+
+  return 0;
+}
+
+int
+bgpwatcher_view_iter_next_pfx(bgpwatcher_view_iter_t *iter,
+                              uint8_t state_mask, 
+                              uint8_t all_versions)
+{
+   if(iter->version == BGPSTREAM_ADDR_VERSION_IPV4)
+    {
+      while(iter->v4pfx_it != kh_end(iter->view->v4pfxs) &&
+	    (!kh_exist(iter->view->v4pfxs, iter->v4pfx_it) ||
+             !(state_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)->state)))
+	{
+	  iter->v4pfx_it++;
+	}
+      // a matching ipv4 prefix was found
+      if(iter->v4pfx_it != kh_end(iter->view->v4pfxs))
+        {
+          return 1;
+        }
+      // no ipv4 prefix was found, we don't look for other versions
+      if(!all_versions) 
+        { 
+          return 0;   
+        }
+
+      // continue to the next IP version
+      iter->v6pfx_it = kh_begin(iter->view->v6pfxs);
+      iter->version = BGPSTREAM_ADDR_VERSION_IPV6;      
+    }
+
+  if(iter->version == BGPSTREAM_ADDR_VERSION_IPV6)
+    {
+      /* keep searching if this does not exist */
+      while(iter->v6pfx_it != kh_end(iter->view->v6pfxs) &&
+	    (!kh_exist(iter->view->v6pfxs, iter->v6pfx_it) ||
+             !(state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state)))
+	{
+	  iter->v6pfx_it++;
+	}
+      // a matching first ipv6 prefix was found
+      if(iter->v6pfx_it != kh_end(iter->view->v6pfxs))
+        {
+          return 1;
+        }
+      // there are no more ip versions to look for
+      return 0;   
+    }
+
+  return 0;
+}
+
+int
+bgpwatcher_view_iter_has_more_pfx(bgpwatcher_view_iter_t *iter,
+                                  uint8_t state_mask, 
+                                  uint8_t all_versions)
+{
+  if(iter->version == BGPSTREAM_ADDR_VERSION_IPV4)
+    {
+      if(!all_versions)
+        {
+          return iter->v4pfx_it == kh_end(iter->view->v4pfxs);
+        }
+      // continue to the next IP version
+      iter->version = BGPSTREAM_ADDR_VERSION_IPV6;
+    }
+  
+  if(iter->version == BGPSTREAM_ADDR_VERSION_IPV6)
+    {
+      return iter->v6pfx_it == kh_end(iter->view->v6pfxs);
+    }
+
+  return 0;
+}
+
+int
+bgpwatcher_view_iter_seek_pfx(bgpwatcher_view_iter_t *iter,
+                              bgpstream_pfx_t *pfx,
+                              uint8_t state_mask)
+{
+  iter->version = pfx->address.version;
+
+  // after an unsuccessful seek, all the pfx iterators
+  // have to point at the end
+  iter->v4pfx_it = kh_end(iter->view->v4pfxs);
+  iter->v6pfx_it = kh_end(iter->view->v6pfxs);
+  
+  switch(pfx->address.version)
+    {
+    case BGPSTREAM_ADDR_VERSION_IPV4:
+      iter->v4pfx_it = kh_get(bwv_v4pfx_peerid_pfxinfo, iter->view->v4pfxs, *((bgpstream_ipv4_pfx_t *)pfx));
+      if(iter->v4pfx_it != kh_end(iter->view->v4pfxs))
+        {
+          if(state_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)->state)
+            {
+              return 1;
+            }
+          // if the mask does not match, than set the iterator to the end
+          iter->v4pfx_it = kh_end(iter->view->v4pfxs);
+        }
+      return 0;
+    case BGPSTREAM_ADDR_VERSION_IPV6:
+      iter->v6pfx_it = kh_get(bwv_v6pfx_peerid_pfxinfo, iter->view->v6pfxs, *((bgpstream_ipv6_pfx_t *)pfx));
+      if(iter->v6pfx_it != kh_end(iter->view->v6pfxs))
+        {
+          if(state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state)
+            {
+              return 1;
+            }
+          // if the mask does not match, than set the iterator to the end
+          iter->v6pfx_it = kh_end(iter->view->v6pfxs);
+        }
+      return 0;
+    default:
+      /* programming error */
+      assert(0);
+    }
+  return 0;
+}
+
+
+
+
+
+
+
+/** ######################### old API  ######################### **/
+
+
+
 
 void bgpwatcher_view_iter_first(bgpwatcher_view_iter_t *iter,
 				bgpwatcher_view_iter_field_t field,

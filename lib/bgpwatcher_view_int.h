@@ -68,7 +68,11 @@ typedef struct bwv_peerid_pfxinfo {
   /** The number of peers in the peers list that are actually valid */
   uint16_t peers_cnt;
 
-  /** State of the prefix */
+  /** State of the prefix, if ACTIVE 
+   *  the prefix is currently seen
+   *  by at least one peer.
+   *  if active <==> peers_cnt >0
+   */
   bgpwatcher_view_field_state_t state;
   
   /** Generic pointer to store per-pfx information on consumers */
@@ -110,7 +114,7 @@ typedef struct bwv_peerinfo {
   /** If set, this peer contributed to the view.  */
   // uint8_t in_use;
   
-  /** State of the peer */
+  /** State of the peer, if the peer is active */
   bgpwatcher_view_field_state_t state;
   
   /** Generic pointer to store information related to the peer */
