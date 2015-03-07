@@ -708,12 +708,11 @@ bgpwatcher_view_iter_next_pfx(bgpwatcher_view_iter_t *iter,
 {
    if(iter->version == BGPSTREAM_ADDR_VERSION_IPV4)
     {
-      while(iter->v4pfx_it != kh_end(iter->view->v4pfxs) &&
-	    (!kh_exist(iter->view->v4pfxs, iter->v4pfx_it) ||
-             !(state_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)->state)))
-	{
-	  iter->v4pfx_it++;
-	}
+      do {
+	iter->v4pfx_it++;
+      } while(iter->v4pfx_it != kh_end(iter->view->v4pfxs) &&
+	      (!kh_exist(iter->view->v4pfxs, iter->v4pfx_it) ||
+	       !(state_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)->state)));
       // a matching ipv4 prefix was found
       if(iter->v4pfx_it != kh_end(iter->view->v4pfxs))
         {
@@ -725,21 +724,20 @@ bgpwatcher_view_iter_next_pfx(bgpwatcher_view_iter_t *iter,
           return 0;   
         }
 
-      // continue to the next IP version
+      // when we reach the end of ipv4 we continue to
+      // the next IP version
       iter->v6pfx_it = kh_begin(iter->view->v6pfxs);
       iter->version = BGPSTREAM_ADDR_VERSION_IPV6;      
     }
 
   if(iter->version == BGPSTREAM_ADDR_VERSION_IPV6)
     {
-      /* keep searching if this does not exist */
-      while(iter->v6pfx_it != kh_end(iter->view->v6pfxs) &&
-	    (!kh_exist(iter->view->v6pfxs, iter->v6pfx_it) ||
-             !(state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state)))
-	{
-	  iter->v6pfx_it++;
-	}
-      // a matching first ipv6 prefix was found
+      do {
+	iter->v6pfx_it++;
+      } while(iter->v6pfx_it != kh_end(iter->view->v6pfxs) &&
+	      (!kh_exist(iter->view->v6pfxs, iter->v6pfx_it) ||
+	       !(state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state)));
+      // a matching ipv6 prefix was found
       if(iter->v6pfx_it != kh_end(iter->view->v6pfxs))
         {
           return 1;
@@ -763,7 +761,15 @@ bgpwatcher_view_iter_has_more_pfx(bgpwatcher_view_iter_t *iter,
           return iter->v4pfx_it == kh_end(iter->view->v4pfxs);
         }
       // continue to the next IP version
+      iter->v6pfx_it = kh_begin(iter->view->v6pfxs);
       iter->version = BGPSTREAM_ADDR_VERSION_IPV6;
+      /* keep searching if this does not exist */
+      while(iter->v6pfx_it != kh_end(iter->view->v6pfxs) &&
+	    (!kh_exist(iter->view->v6pfxs, iter->v6pfx_it) ||
+             !(state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state)))
+	{
+	  iter->v6pfx_it++;
+	}
     }
   
   if(iter->version == BGPSTREAM_ADDR_VERSION_IPV6)
@@ -820,7 +826,69 @@ bgpwatcher_view_iter_seek_pfx(bgpwatcher_view_iter_t *iter,
 }
 
 
+int
+bgpwatcher_view_iter_first_peer(bgpwatcher_view_iter_t *iter,                               
+                                uint8_t state_mask)
+{
+  iter->peer_it = kh_begin(iter->view->peerinfo);
 
+  /* keep searching if this does not exist */
+  while(iter->peer_it != kh_end(iter->view->peerinfo) &&
+        (!kh_exist(iter->view->peerinfo, iter->peer_it) ||
+         !(state_mask & kh_val(iter->view->peerinfo, iter->peer_it).state)))
+    {
+      iter->peer_it++;
+    }
+  if(iter->peer_it != kh_end(iter->view->peerinfo))
+    {
+      return 1;
+    }
+  return 0;
+}
+
+int
+bgpwatcher_view_iter_next_peer(bgpwatcher_view_iter_t *iter,
+                               uint8_t state_mask)
+{
+  do {
+    iter->peer_it++;
+  } while(iter->peer_it != kh_end(iter->view->peerinfo) &&
+          (!kh_exist(iter->view->peerinfo, iter->peer_it) ||
+           !(state_mask & kh_val(iter->view->peerinfo, iter->peer_it).state)));  
+  if(iter->peer_it != kh_end(iter->view->peerinfo))
+    {
+      return 1;
+    }
+  return 0;
+}
+
+int
+bgpwatcher_view_iter_has_more_peer(bgpwatcher_view_iter_t *iter,
+                                   uint8_t state_mask)
+{
+  if(iter->peer_it != kh_end(iter->view->peerinfo))
+    {
+      return 1;
+    }
+  return 0;
+}
+
+int
+bgpwatcher_view_iter_seek_peer(bgpwatcher_view_iter_t *iter,
+                               bgpstream_peer_id_t peerid,
+                               uint8_t state_mask)
+{
+  iter->peer_it = kh_get(bwv_peerid_peerinfo, iter->view->peerinfo, peerid);
+  if(iter->peer_it != kh_end(iter->view->peerinfo))
+    {
+      if(state_mask & kh_val(iter->view->peerinfo, iter->peer_it).state)
+        {
+          return 1;
+        }
+      iter->peer_it = kh_end(iter->view->peerinfo);
+    }
+  return 0;
+}
 
 
 

@@ -323,7 +323,6 @@ bgpwatcher_view_iter_destroy(bgpwatcher_view_iter_t *iter);
  * of prefixes, then it is possible that, at the end of the
  * function, the iterator will point at a prefix version
  * which appears in the table after the provided 'version'
- * 
  */
 int
 bgpwatcher_view_iter_first_pfx(bgpwatcher_view_iter_t *iter,
@@ -342,14 +341,13 @@ bgpwatcher_view_iter_first_pfx(bgpwatcher_view_iter_t *iter,
  *                      version
  * @return 1 if the iterator points at an existing prefix,
  *         0 if the end has been reached
- *
  */
 int
 bgpwatcher_view_iter_next_pfx(bgpwatcher_view_iter_t *iter,
                               uint8_t state_mask, 
                               uint8_t all_versions);
 
-/** Check if the provided iterator point to an existing prefix
+/** Check if the provided iterator point at an existing prefix
  *  or the end has been reached
  *
  * @param iter          Pointer to an iterator structure
@@ -361,7 +359,6 @@ bgpwatcher_view_iter_next_pfx(bgpwatcher_view_iter_t *iter,
  *                      version
  * @return 1 if the iterator points at an existing prefix,
  *         0 if the end has been reached
- *
  */
 int
 bgpwatcher_view_iter_has_more_pfx(bgpwatcher_view_iter_t *iter,
@@ -380,12 +377,66 @@ bgpwatcher_view_iter_has_more_pfx(bgpwatcher_view_iter_t *iter,
  *                      fields we iterate through
  * @return 1 if the iterator points at an existing prefix,
  *         0 if the end has been reached
- *
  */
 int
 bgpwatcher_view_iter_seek_pfx(bgpwatcher_view_iter_t *iter,
                               bgpstream_pfx_t *pfx,
                               uint8_t state_mask);
+
+/** Reset the peer iterator to the first peer that matches 
+ *  the mask
+ *
+ * @param iter          Pointer to an iterator structure
+ * @param state_mask    A mask that indicates the state of the
+ *                      fields we iterate through
+ * @return 1 if the iterator points at an existing peer,
+ *         0 if the end has been reached
+ */
+int
+bgpwatcher_view_iter_first_peer(bgpwatcher_view_iter_t *iter,                               
+                                uint8_t state_mask);
+
+/** Advance the provided iterator to the next peer in the given view
+ *
+ * @param iter          Pointer to an iterator structure
+ * @param state_mask    A mask that indicates the state of the
+ *                      fields we iterate through
+ * @return 1 if the iterator points at an existing peer,
+ *         0 if the end has been reached
+ */
+int
+bgpwatcher_view_iter_next_peer(bgpwatcher_view_iter_t *iter,
+                               uint8_t state_mask);
+
+/** Check if the provided iterator point at an existing peer
+ *  or the end has been reached
+ *
+ * @param iter          Pointer to an iterator structure
+ * @param state_mask    A mask that indicates the state of the
+ *                      fields we iterate through
+ * @return 1 if the iterator points at an existing peer,
+ *         0 if the end has been reached
+ */
+int
+bgpwatcher_view_iter_has_more_peer(bgpwatcher_view_iter_t *iter,
+                                   uint8_t state_mask);
+
+/** Check if the provided peer exists in the current view
+ *  and its state matches the mask provided; set the provided
+ *  iterator to point at the peer (if it exists) or set it
+ *  to the end of the peer table (if it doesn't exist)
+ *
+ * @param iter          Pointer to an iterator structure
+ * @param peerid        The peer id
+ * @param state_mask    A mask that indicates the state of the
+ *                      fields we iterate through
+ * @return 1 if the iterator points at an existing peer,
+ *         0 if the end has been reached
+ */
+int
+bgpwatcher_view_iter_seek_peer(bgpwatcher_view_iter_t *iter,
+                               bgpstream_peer_id_t peerid,
+                               uint8_t state_mask);
 
 
 /** ######################### old iterators API  ######################### **/
