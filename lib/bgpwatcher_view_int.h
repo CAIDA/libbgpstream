@@ -110,9 +110,6 @@ typedef struct bwv_peerinfo {
 
   /** The number of v6 prefixes that this peer observed */
   uint32_t v6_pfx_cnt;
-
-  /** If set, this peer contributed to the view.  */
-  // uint8_t in_use;
   
   /** State of the peer, if the peer is active */
   bgpwatcher_view_field_state_t state;
