@@ -212,14 +212,14 @@ static void find_ff_peers(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   bgpstream_peer_id_t peerid;
   int pfx_cnt;
 
-  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE))
+  for(bgpwatcher_view_iter_first_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_has_more_peer(it);
+      bgpwatcher_view_iter_next_peer(it))
     {
       /* grab the peer id */
-      peerid = bgpwatcher_view_iter_get_peerid(it);
+      peerid = bgpwatcher_view_iter_peer_get_peer(it);
 
-      pfx_cnt = bgpwatcher_view_iter_get_peer_v4pfx_cnt(it);
+      pfx_cnt = bgpwatcher_view_iter_peer_get_pfx_count(it,BGPSTREAM_ADDR_VERSION_IPV4);
       /* does this peer have any v4 tables? */
       if(pfx_cnt > 0)
         {
@@ -232,7 +232,7 @@ static void find_ff_peers(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 	  bgpstream_id_set_insert(CHAIN_STATE->v4ff_peerids, peerid);
         }
 
-      pfx_cnt = bgpwatcher_view_iter_get_peer_v6pfx_cnt(it);
+      pfx_cnt = bgpwatcher_view_iter_peer_get_pfx_count(it,BGPSTREAM_ADDR_VERSION_IPV6);
       /* does this peer have any v6 tables? */
       if(pfx_cnt > 0)
         {

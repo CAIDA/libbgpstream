@@ -273,6 +273,39 @@ void
 bgpwatcher_view_set_user_destructor(bgpwatcher_view_t *view,
                                     bgpwatcher_view_destroy_user_t *bwv_user_destructor);
 
+/** Set the pfx user destructor function. If the function is set to NULL,
+ *  then no the user pointer will not be destroyed by the bgpwatcher
+ *  functions, the programmer is responsible for that in its own program.
+ *
+ * @param view                       pointer to a view structure
+ * @param bwv_pfx_user_destructor    function that destroys the per-pfx user memory
+ */
+void
+bgpwatcher_view_set_pfx_user_destructor(bgpwatcher_view_t *view,
+                                        bgpwatcher_view_destroy_user_t *bwv_pfx_user_destructor);
+
+/** Set the peer user destructor function. If the function is set to NULL,
+ *  then no the user pointer will not be destroyed by the bgpwatcher
+ *  functions, the programmer is responsible for that in its own program.
+ *
+ * @param view                       pointer to a view structure
+ * @param bwv_peer_user_destructor   function that destroys the per-peer view user memory
+ */
+void
+bgpwatcher_view_set_peer_user_destructor(bgpwatcher_view_t *view,
+                                         bgpwatcher_view_destroy_user_t *bwv_peer_user_destructor);
+
+/** Set the pfx-peer user destructor function. If the function is set to NULL,
+ *  then no the user pointer will not be destroyed by the bgpwatcher
+ *  functions, the programmer is responsible for that in its own program.
+ *
+ * @param view                            pointer to a view structure
+ * @param bwv_pfx_peer_user_destructor    function that destroys the per-pfx per-peer user memory
+ */
+void
+bgpwatcher_view_set_pfx_peer_user_destructor(bgpwatcher_view_t *view,
+                                             bgpwatcher_view_destroy_user_t *bwv_pfx_peer_user_destructor);
+
 /** @} */
 
 /**

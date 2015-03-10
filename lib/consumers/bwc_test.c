@@ -196,30 +196,33 @@ int bwc_test_process_view(bwc_t *consumer, uint8_t interests,
 
   // per-peer user memory allocation
   for(bgpwatcher_view_iter_first_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      !bgpwatcher_view_iter_has_more_peer(it);
+      bgpwatcher_view_iter_has_more_peer(it);
       bgpwatcher_view_iter_next_peer(it))
     {
       my_memory = malloc(sizeof(int));
-      bgpwatcher_view_iter_set_peer_user(it, my_memory);
+      *(int *)my_memory = bgpwatcher_view_iter_peer_get_peer(it) + 100;
+      bgpwatcher_view_iter_peer_set_user(it, my_memory);
+      
       my_memory = NULL;            
     }
 
   // per-prefix user memory allocation 
   for(bgpwatcher_view_iter_first_pfx(it, BGPSTREAM_ADDR_VERSION_IPV4, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      !bgpwatcher_view_iter_has_more_pfx(it);
+      bgpwatcher_view_iter_has_more_pfx(it);
       bgpwatcher_view_iter_next_pfx(it))
     {
       my_memory = malloc(sizeof(int));
-      bgpwatcher_view_iter_set_v4pfx_user(it, my_memory);
+      bgpwatcher_view_iter_pfx_set_user(it, my_memory);
       my_memory = NULL;
       
       // per-prefix per-peer user memory allocation
       for(bgpwatcher_view_iter_pfx_first_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
-          !bgpwatcher_view_iter_pfx_has_more_peer(it);
+          bgpwatcher_view_iter_pfx_has_more_peer(it);
           bgpwatcher_view_iter_pfx_next_peer(it))
         {
           my_memory = malloc(sizeof(int));
-          bgpwatcher_view_iter_set_v4pfx_pfxinfo_user(it, my_memory);
+          *(int *)my_memory = bgpwatcher_view_iter_peer_get_peer(it);
+          bgpwatcher_view_iter_pfx_peer_set_user(it, my_memory);
           my_memory = NULL;          
         }
     }
@@ -245,9 +248,19 @@ int bwc_test_process_view(bwc_t *consumer, uint8_t interests,
             }
         }
     }
-  
 
-  
+  // check pfx-peers iterator
+  for(bgpwatcher_view_iter_first_pfx_peer(it, BGPSTREAM_ADDR_VERSION_IPV4,
+                                          BGPWATCHER_VIEW_FIELD_ACTIVE,
+                                          BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_has_more_pfx_peer(it);
+      bgpwatcher_view_iter_next_pfx_peer(it))
+    {
+      fprintf(stderr, "Peer id: %d, %d\n",
+              *(int *)bgpwatcher_view_iter_peer_get_user(it),
+              *(int *)bgpwatcher_view_iter_pfx_peer_get_user(it));
+    }
+
   bgpwatcher_view_iter_destroy(it);
   
   return 0;

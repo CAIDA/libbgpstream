@@ -204,15 +204,15 @@ int bwc_perfmonitor_process_view(bwc_t *consumer, uint8_t interests,
 
   char addr[INET6_ADDRSTRLEN] = "";
 
-  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE))
+  for(bgpwatcher_view_iter_first_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_has_more_peer(it);
+      bgpwatcher_view_iter_next_peer(it))
     {
       /* grab the peer id */
-      sig = bgpwatcher_view_iter_get_peersig(it);
+      sig = bgpwatcher_view_iter_peer_get_sign(it);
       assert(sig != NULL);
-      pfx4_cnt = bgpwatcher_view_iter_get_peer_v4pfx_cnt(it);
-      pfx6_cnt = bgpwatcher_view_iter_get_peer_v6pfx_cnt(it);
+      pfx4_cnt = bgpwatcher_view_iter_peer_get_pfx_count(it,BGPSTREAM_ADDR_VERSION_IPV4);
+      pfx6_cnt = bgpwatcher_view_iter_peer_get_pfx_count(it,BGPSTREAM_ADDR_VERSION_IPV6);
 
       bgpstream_addr_ntop(addr, INET6_ADDRSTRLEN, &(sig->peer_ip_addr));
       graphite_safe(addr);

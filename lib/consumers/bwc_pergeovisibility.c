@@ -440,7 +440,7 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 
   /* fprintf(stderr, "geotag_v4table START: \n"); */
 
-  bgpstream_ipv4_pfx_t *v4pfx;
+  bgpstream_pfx_t *pfx;
   bgpstream_peer_id_t peerid;
   int fullfeed_cnt;
 
@@ -456,53 +456,55 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   uint32_t cck;
   khiter_t setk;
 
-  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX, BGPWATCHER_VIEW_FIELD_ACTIVE))
+  for(bgpwatcher_view_iter_first_pfx(it, BGPSTREAM_ADDR_VERSION_IPV4, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_has_more_pfx(it);
+      bgpwatcher_view_iter_next_pfx(it))
     {
 
+      // WARNING we do not geolocate ipv6 prefixes
+      assert(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4);
+
+
       /* get the current v4 prefix */
-      v4pfx = bgpwatcher_view_iter_get_v4pfx(it);
+      pfx = bgpwatcher_view_iter_pfx_get_pfx(it);
 
-      /* we do not process prefixes whose mask is shorter than a /6 */
-      if(v4pfx->mask_len <
-         BWC_GET_CHAIN_STATE(consumer)->pfx_vis_mask_len_threshold)
-      	{
-      	  continue;
-      	}
-
-      /* exclude prefixes that are not seen by at least threshold peers
-       * no matter if they are full feed or not */
-      if(bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE)
+      /* only consider pfxs with peers_cnt >= pfx_vis_threshold */
+      if(bgpwatcher_view_iter_pfx_get_peers_cnt(it)
 	 < BWC_GET_CHAIN_STATE(consumer)->pfx_vis_peers_threshold)
 	{
 	  continue;
 	}
+     
+      /* only consider ipv4 prefixes whose mask is shorter than a /6 */
+      if(pfx->mask_len < BWC_GET_CHAIN_STATE(consumer)->pfx_vis_mask_len_threshold)
+        {
+          continue;
+        }
 
       fullfeed_cnt = 0;
-      /* iterate over the peers for the current v4pfx */
-      for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
-	  !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
-	  bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE))
-	{
-          /* only consider peers that are full-feed */
-          peerid = bgpwatcher_view_iter_get_v4pfx_peerid(it);
-	  if(bgpstream_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v4ff_peerids,
+      /* iterate over the peers for the current pfx */
+      for(bgpwatcher_view_iter_pfx_first_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
+          bgpwatcher_view_iter_pfx_has_more_peer(it);
+          bgpwatcher_view_iter_pfx_next_peer(it))
+        {
+           /* only consider peers that are full-feed */
+          peerid = bgpwatcher_view_iter_peer_get_peer(it);
+          if(bgpstream_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v4ff_peerids,
                                      peerid) == 0)
             {
-	      continue;
-	    }
-	  // else increment the full feed count
-	  fullfeed_cnt++;
-	  if(fullfeed_cnt >=
+              continue;
+            }
+          // else increment the full feed count
+          fullfeed_cnt++;
+          if(fullfeed_cnt >=
              BWC_GET_CHAIN_STATE(consumer)->pfx_vis_peers_threshold)
-	    {
+            {
               // we don't need to know all the full feed peers
-	      // that contributed to the threshold
-	      break;
-	    }
-	}
-
+              // that contributed to the threshold
+              break;
+            }        
+        }
+      
       // if the prefix is ROUTED, then it can be geotagged
       if(fullfeed_cnt < BWC_GET_CHAIN_STATE(consumer)->pfx_vis_peers_threshold)
 	{
@@ -514,7 +516,7 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
       // First we check if this prefix has been already
       // geotagged in previous iterations
 
-      cck_set = (khash_t(country_k_set) *) bgpwatcher_view_iter_get_v4pfx_user(it);
+      cck_set = (khash_t(country_k_set) *) bgpwatcher_view_iter_pfx_get_user(it);
 
       // if the set is null, then we need to initialize the set
       // and proceed with the geolocation
@@ -531,11 +533,11 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
             }
 
           // then we link this set to the appropriate user ptr
-          bgpwatcher_view_iter_set_v4pfx_user(it, (void *) cck_set);
+          bgpwatcher_view_iter_pfx_set_user(it, (void *) cck_set);
 
           // geolocation
-          ipmeta_lookup(STATE->provider, (uint32_t) v4pfx->address.ipv4.s_addr,
-                        v4pfx->mask_len, STATE->records);
+          ipmeta_lookup(STATE->provider, (uint32_t) ((bgpstream_ipv4_pfx_t *)pfx)->address.ipv4.s_addr,
+                        pfx->mask_len, STATE->records);
           ipmeta_record_set_rewind(STATE->records);
           num_records = 0;
           while ( (rec = ipmeta_record_set_next(STATE->records, &num_ips)) )

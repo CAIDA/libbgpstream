@@ -224,122 +224,82 @@ static peras_info_t *as_pfxs_get_info(bwc_perasvisibility_state_t *state,
   return info;
 }
 
-static int flip_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
-{
-  bgpstream_ipv4_pfx_t *v4pfx;
 
+static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
+{
+  bgpstream_pfx_t *pfx;
   bgpstream_peer_id_t peerid;
   int origin_asn;
 
   peras_info_t *info;
 
-  /* IPv4 */
-  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX, BGPWATCHER_VIEW_FIELD_ACTIVE))
+  for(bgpwatcher_view_iter_first_pfx(it, 0 /* all ip versions*/, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_has_more_pfx(it);
+      bgpwatcher_view_iter_next_pfx(it))
     {
-      /* get the current v4 prefix */
-      v4pfx = bgpwatcher_view_iter_get_v4pfx(it);
-
-      /* only consider prefixes whose mask is shorter than a /6 */
-      if(v4pfx->mask_len <
-         BWC_GET_CHAIN_STATE(consumer)->pfx_vis_mask_len_threshold)
-      	{
-      	  continue;
-      	}
+      pfx = bgpwatcher_view_iter_pfx_get_pfx(it);
 
       /* only consider pfxs with peers_cnt >= pfx_vis_threshold */
-      if(bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE)
+      if(bgpwatcher_view_iter_pfx_get_peers_cnt(it)
 	 < BWC_GET_CHAIN_STATE(consumer)->pfx_vis_peers_threshold)
 	{
 	  continue;
 	}
+     
+      /* only consider ipv4 prefixes whose mask is shorter than a /6 */
+      if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4 &&
+         pfx->mask_len < BWC_GET_CHAIN_STATE(consumer)->pfx_vis_mask_len_threshold)
+        {
+          continue;
+        }
 
-      /* iterate over the peers for the current v4pfx */
-      for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
-	  !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
-	  bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE))
-	{
-          /* only consider peers that are full-feed */
-          peerid = bgpwatcher_view_iter_get_v4pfx_peerid(it);
-	  if(bgpstream_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v4ff_peerids,
-                                     peerid) == 0)
+      /* iterate over the peers for the current pfx */
+      for(bgpwatcher_view_iter_pfx_first_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
+          bgpwatcher_view_iter_pfx_has_more_peer(it);
+          bgpwatcher_view_iter_pfx_next_peer(it))
+        {
+           /* only consider peers that are full-feed */
+          peerid = bgpwatcher_view_iter_peer_get_peer(it);
+          if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4)
             {
-	      continue;
-	    }
-
-	  origin_asn = bgpwatcher_view_iter_get_v4pfx_orig_asn(it);
-          if(origin_asn != -1)
-            {
-              if((info = as_pfxs_get_info(STATE, origin_asn)) == NULL)
+              if(bgpstream_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v4ff_peerids,
+                                         peerid) == 0)
                 {
-                  return -1;
+                  continue;
                 }
-              bgpstream_ipv4_pfx_set_insert(info->v4pfxs, v4pfx);
+              	  origin_asn = bgpwatcher_view_iter_pfx_peer_get_orig_asn(it);
+                  if(origin_asn != -1)
+                    {
+                      if((info = as_pfxs_get_info(STATE, origin_asn)) == NULL)
+                        {
+                          return -1;
+                        }
+                      bgpstream_ipv4_pfx_set_insert(info->v4pfxs,
+                                                    (bgpstream_ipv4_pfx_t *)pfx);
+                    }                  
             }
-	}
-    }
-
-  return 0;
-}
-
-static int flip_v6table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
-{
-  bgpstream_ipv6_pfx_t *v6pfx;
-
-  bgpstream_peer_id_t peerid;
-  int origin_asn;
-
-  peras_info_t *info;
-
-  /* IPv6 */
-  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX, BGPWATCHER_VIEW_FIELD_ACTIVE))
-    {
-      /* get the current v6 prefix */
-      v6pfx = bgpwatcher_view_iter_get_v6pfx(it);
-
-      /* only consider prefixes whose mask is shorter than a /6 */
-      if(v6pfx->mask_len <
-         BWC_GET_CHAIN_STATE(consumer)->pfx_vis_mask_len_threshold)
-      	{
-      	  continue;
-      	}
-
-      /* only consider pfxs with peers_cnt >= pfx_vis_threshold */
-      if(bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE)
-	 < BWC_GET_CHAIN_STATE(consumer)->pfx_vis_peers_threshold)
-	{
-	  continue;
-	}
-
-      /* iterate over the peers for the current v6pfx */
-      for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
-	  !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
-	  bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE))
-	{
-          /* only consider peers that are full-feed */
-          peerid = bgpwatcher_view_iter_get_v6pfx_peerid(it);
-	  if(bgpstream_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v6ff_peerids,
-                                     peerid) == 0)
+          
+          if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV6)
             {
-	      continue;
-	    }
-
-	  origin_asn = bgpwatcher_view_iter_get_v6pfx_orig_asn(it);
-          if(origin_asn != -1)
-            {
-              if((info = as_pfxs_get_info(STATE, origin_asn)) == NULL)
+              if(bgpstream_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v6ff_peerids,
+                                         peerid) == 0)
                 {
-                  return -1;
+                  continue;
                 }
-              bgpstream_ipv6_pfx_set_insert(info->v6pfxs, v6pfx);
+              	  origin_asn = bgpwatcher_view_iter_pfx_peer_get_orig_asn(it);
+                  if(origin_asn != -1)
+                    {
+                      if((info = as_pfxs_get_info(STATE, origin_asn)) == NULL)
+                        {
+                          return -1;
+                        }
+                      bgpstream_ipv6_pfx_set_insert(info->v6pfxs,
+                                                    (bgpstream_ipv6_pfx_t *)pfx);
+                    }                  
             }
-	}
+        }
     }
-
-  return 0;
+  return 0;     
 }
 
 static void dump_gen_metrics(bwc_t *consumer)
@@ -494,8 +454,8 @@ int bwc_perasvisibility_process_view(bwc_t *consumer, uint8_t interests,
     }
 
   /* flip the view into a per-AS table */
-  flip_v4table(consumer, it);
-  flip_v6table(consumer, it);
+  flip_table(consumer, it);
+
 
   /* now dump the per-as table(s) */
   dump_table(consumer);

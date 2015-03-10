@@ -51,16 +51,16 @@ static void peers_dump(bgpwatcher_view_t *view,
 
   fprintf(stdout, "Peers (%d):\n", bgpwatcher_view_peer_size(view));
 
-  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE))
+  for(bgpwatcher_view_iter_first_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_has_more_peer(it);
+      bgpwatcher_view_iter_next_peer(it))
     {
-      peerid = bgpwatcher_view_iter_get_peerid(it);
-      ps = bgpwatcher_view_iter_get_peersig(it);
+      peerid = bgpwatcher_view_iter_peer_get_peer(it);
+      ps = bgpwatcher_view_iter_peer_get_sign(it);
       assert(ps);
-      v4pfx_cnt = bgpwatcher_view_iter_get_peer_v4pfx_cnt(it);
+      v4pfx_cnt = bgpwatcher_view_iter_peer_get_pfx_count(it, BGPSTREAM_ADDR_VERSION_IPV4);
       assert(v4pfx_cnt >= 0);
-      v6pfx_cnt = bgpwatcher_view_iter_get_peer_v6pfx_cnt(it);
+      v6pfx_cnt = bgpwatcher_view_iter_peer_get_pfx_count(it, BGPSTREAM_ADDR_VERSION_IPV6);
       assert(v6pfx_cnt >= 0);
 
       inet_ntop(ps->peer_ip_addr.version, &(ps->peer_ip_addr.ipv4),
@@ -71,81 +71,34 @@ static void peers_dump(bgpwatcher_view_t *view,
     }
 }
 
-static void peerids_dump(bgpwatcher_view_iter_t *it,
-			 bgpwatcher_view_iter_field_t field,
-			 int version)
-{
-  bgpstream_peer_id_t peerid;
-  bgpwatcher_pfx_peer_info_t *pfxinfo;
-
-  for(bgpwatcher_view_iter_first(it, field, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      !bgpwatcher_view_iter_is_end(it, field, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      bgpwatcher_view_iter_next(it, field, BGPWATCHER_VIEW_FIELD_ACTIVE))
-    {
-      peerid = (version == 4) ?
-	bgpwatcher_view_iter_get_v4pfx_peerid(it) :
-	bgpwatcher_view_iter_get_v6pfx_peerid(it);
-
-      pfxinfo = (version == 4) ?
-	bgpwatcher_view_iter_get_v4pfx_pfxinfo(it) :
-	bgpwatcher_view_iter_get_v6pfx_pfxinfo(it);
-
-      fprintf(stdout, "    %"PRIu16":\t%"PRIu32"\n",
-	      peerid, pfxinfo->orig_asn);
-    }
-}
-
-static void v4pfxs_dump(bgpwatcher_view_t *view,
-			bgpwatcher_view_iter_t *it)
+static void pfxs_dump(bgpwatcher_view_t *view,
+                      bgpwatcher_view_iter_t *it)
 {
   bgpstream_ipv4_pfx_t *pfx;
-  char pfx_str[INET6_ADDRSTRLEN] = "";
+  char pfx_str[INET6_ADDRSTRLEN+3] = "";
 
-  fprintf(stdout, "V4 Prefixes (%d):\n", bgpwatcher_view_v4pfx_size(view));
+  fprintf(stdout, "Prefixes (v4 %d, v6 %d):\n", bgpwatcher_view_v4pfx_size(view), bgpwatcher_view_v6pfx_size(view));
 
-  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX, BGPWATCHER_VIEW_FIELD_ACTIVE))
+  for(bgpwatcher_view_iter_first_pfx(it, 0, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_has_more_pfx(it);
+      bgpwatcher_view_iter_next_pfx(it))
     {
-      pfx = bgpwatcher_view_iter_get_v4pfx(it);
-      assert(pfx);
-
-      inet_ntop(pfx->address.version,
-		&(pfx->address.ipv4),
-		pfx_str, INET6_ADDRSTRLEN);
-
-      fprintf(stdout, "  %s/%d (%"PRIu64" peers)\n",
-	      pfx_str, pfx->mask_len,
-	      bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE));
-      peerids_dump(it, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER, 4);
+      pfx = bgpwatcher_view_iter_pfx_get_pfx(it);
+      bgpstream_pfx_snprintf(pfx_str, INET6_ADDRSTRLEN+3, pfx);      
+      fprintf(stdout, "  %s/ (%"PRIu64" peers)\n",
+              pfx_str, bgpwatcher_view_iter_pfx_get_peers_cnt(it));
+      
+      for(bgpwatcher_view_iter_pfx_first_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
+          bgpwatcher_view_iter_pfx_has_more_peer(it);
+          bgpwatcher_view_iter_pfx_next_peer(it))
+        {
+          fprintf(stdout, "    %"PRIu16":\t%d\n",
+                  bgpwatcher_view_iter_peer_get_peer(it),
+                  bgpwatcher_view_iter_pfx_peer_get_orig_asn(it));
+        }
     }
 }
 
-static void v6pfxs_dump(bgpwatcher_view_t *view,
-			bgpwatcher_view_iter_t *it)
-{
-  bgpstream_ipv6_pfx_t *pfx;
-  char pfx_str[INET6_ADDRSTRLEN] = "";
-
-  fprintf(stdout, "V6 Prefixes (%d):\n", bgpwatcher_view_v6pfx_size(view));
-
-  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX, BGPWATCHER_VIEW_FIELD_ACTIVE))
-    {
-      pfx = bgpwatcher_view_iter_get_v6pfx(it);
-      assert(pfx);
-
-      inet_ntop(pfx->address.version,
-		&(pfx->address.ipv6),
-		pfx_str, INET6_ADDRSTRLEN);
-
-      fprintf(stdout, "  %s/%d (%"PRIu64" peers)\n",
-	      pfx_str, pfx->mask_len,
-	      bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE));
-      peerids_dump(it, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER, 6);
-    }
-}
 
 #define SERIALIZE_VAL(from)				\
   do {							\
@@ -742,9 +695,7 @@ void bgpwatcher_view_dump(bgpwatcher_view_t *view)
 
       peers_dump(view, it);
 
-      v4pfxs_dump(view, it);
-
-      v6pfxs_dump(view, it);
+      pfxs_dump(view, it);
 
       fprintf(stdout,
 	      "------------------------------\n\n");

@@ -413,29 +413,8 @@ int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
   return 0;
 }
 
-bgpwatcher_pfx_peer_info_t *
-bgpwatcher_view_iter_get_v4pfx_pfxinfo(bgpwatcher_view_iter_t *iter)
-{
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V4PFX_PEER,
-                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
-    {
-      return NULL;
-    }
 
-  return &kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers[iter->v4pfx_peer_it];
-}
 
-bgpwatcher_pfx_peer_info_t *
-bgpwatcher_view_iter_get_v6pfx_pfxinfo(bgpwatcher_view_iter_t *iter)
-{
-  if(bgpwatcher_view_iter_is_end(iter, BGPWATCHER_VIEW_ITER_FIELD_V6PFX_PEER,
-                                 BGPWATCHER_VIEW_FIELD_ALL_VALID))
-    {
-      return NULL;
-    }
-
-  return &kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers[iter->v6pfx_peer_it];
-}
 
 /* ========== PUBLIC FUNCTIONS ========== */
 
@@ -623,7 +602,26 @@ void bgpwatcher_view_set_user_destructor(bgpwatcher_view_t *view,
   view->user_destructor = bwv_user_destructor;
 }
 
+void
+bgpwatcher_view_set_pfx_user_destructor(bgpwatcher_view_t *view,
+                                        bgpwatcher_view_destroy_user_t *bwv_pfx_user_destructor)
+{
+   view->pfx_user_destructor = bwv_pfx_user_destructor;  
+}
 
+void
+bgpwatcher_view_set_peer_user_destructor(bgpwatcher_view_t *view,
+                                         bgpwatcher_view_destroy_user_t *bwv_peer_user_destructor)
+{
+  view->peer_user_destructor = bwv_peer_user_destructor;
+}
+
+void
+bgpwatcher_view_set_pfx_peer_user_destructor(bgpwatcher_view_t *view,
+                                             bgpwatcher_view_destroy_user_t *bwv_pfx_peer_user_destructor)
+{
+  view->pfx_peer_user_destructor = bwv_pfx_peer_user_destructor;
+}
 
 /* ==================== ITERATOR FUNCTIONS ==================== */
 
@@ -670,7 +668,7 @@ bgpwatcher_view_iter_first_pfx(bgpwatcher_view_iter_t *iter,
   iter->version_filter = version;
   
   // set the version we start iterating through
-  if(iter->version_filter == BGPSTREAM_ADDR_VERSION_IPV4 || iter->version_filter = 0)
+  if(iter->version_filter == BGPSTREAM_ADDR_VERSION_IPV4 || iter->version_filter == 0)
     {
       iter->version_ptr = BGPSTREAM_ADDR_VERSION_IPV4;
     }
@@ -680,14 +678,14 @@ bgpwatcher_view_iter_first_pfx(bgpwatcher_view_iter_t *iter,
     }
 
   // set the pfx mask
-  iter->pfx_mask = state_mask;
+  iter->pfx_state_mask = state_mask;
      
-  if(iter->version == BGPSTREAM_ADDR_VERSION_IPV4)
+  if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV4)
     {
       iter->v4pfx_it = kh_begin(iter->view->v4pfxs);
       while(iter->v4pfx_it != kh_end(iter->view->v4pfxs) &&
 	    (!kh_exist(iter->view->v4pfxs, iter->v4pfx_it) ||
-             !(iter->pfx_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)->state)))
+             !(iter->pfx_state_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)->state)))
 	{
 	  iter->v4pfx_it++;
 	}
@@ -706,7 +704,7 @@ bgpwatcher_view_iter_first_pfx(bgpwatcher_view_iter_t *iter,
         }
 
       // continue to the next IP version
-      iter->version = BGPSTREAM_ADDR_VERSION_IPV6;
+      iter->version_ptr = BGPSTREAM_ADDR_VERSION_IPV6;
     }
 
   if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV6)
@@ -715,7 +713,7 @@ bgpwatcher_view_iter_first_pfx(bgpwatcher_view_iter_t *iter,
       /* keep searching if this does not exist */
       while(iter->v6pfx_it != kh_end(iter->view->v6pfxs) &&
 	    (!kh_exist(iter->view->v6pfxs, iter->v6pfx_it) ||
-             !(iter->pfx_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state)))
+             !(iter->pfx_state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state)))
 	{
 	  iter->v6pfx_it++;
 	}
@@ -742,7 +740,7 @@ bgpwatcher_view_iter_next_pfx(bgpwatcher_view_iter_t *iter)
 	iter->v4pfx_it++;
       } while(iter->v4pfx_it != kh_end(iter->view->v4pfxs) &&
 	      (!kh_exist(iter->view->v4pfxs, iter->v4pfx_it) ||
-	       !(iter->pfx_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)->state)));
+	       !(iter->pfx_state_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)->state)));
       // a matching ipv4 prefix was found
       if(iter->v4pfx_it != kh_end(iter->view->v4pfxs))
         {
@@ -768,7 +766,7 @@ bgpwatcher_view_iter_next_pfx(bgpwatcher_view_iter_t *iter)
 	iter->v6pfx_it++;
       } while(iter->v6pfx_it != kh_end(iter->view->v6pfxs) &&
 	      (!kh_exist(iter->view->v6pfxs, iter->v6pfx_it) ||
-	       !(iter->pfx_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state)));
+	       !(iter->pfx_state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state)));
       // a matching ipv6 prefix was found
       if(iter->v6pfx_it != kh_end(iter->view->v6pfxs))
         {
@@ -798,7 +796,7 @@ bgpwatcher_view_iter_has_more_pfx(bgpwatcher_view_iter_t *iter)
       /* keep searching if this does not exist */
       while(iter->v6pfx_it != kh_end(iter->view->v6pfxs) &&
 	    (!kh_exist(iter->view->v6pfxs, iter->v6pfx_it) ||
-             !(iter->pfx_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state)))
+             !(iter->pfx_state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state)))
 	{
 	  iter->v6pfx_it++;
 	}
@@ -819,7 +817,7 @@ bgpwatcher_view_iter_seek_pfx(bgpwatcher_view_iter_t *iter,
 {
   iter->version_filter = pfx->address.version;
   iter->version_ptr = pfx->address.version;
-  iter->pfx_mask = state_mask;
+  iter->pfx_state_mask = state_mask;
   
   // after an unsuccessful seek, all the pfx iterators
   // have to point at the end
@@ -832,7 +830,7 @@ bgpwatcher_view_iter_seek_pfx(bgpwatcher_view_iter_t *iter,
       iter->v4pfx_it = kh_get(bwv_v4pfx_peerid_pfxinfo, iter->view->v4pfxs, *((bgpstream_ipv4_pfx_t *)pfx));
       if(iter->v4pfx_it != kh_end(iter->view->v4pfxs))
         {
-          if(iter->pfx_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)->state)
+          if(iter->pfx_state_mask & kh_val(iter->view->v4pfxs, iter->v4pfx_it)->state)
             {
               iter->v4pfx_peer_it = 0;
               iter->v4pfx_peer_it_valid = 1;
@@ -846,7 +844,7 @@ bgpwatcher_view_iter_seek_pfx(bgpwatcher_view_iter_t *iter,
       iter->v6pfx_it = kh_get(bwv_v6pfx_peerid_pfxinfo, iter->view->v6pfxs, *((bgpstream_ipv6_pfx_t *)pfx));
       if(iter->v6pfx_it != kh_end(iter->view->v6pfxs))
         {
-          if(iter->pfx_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state)
+          if(iter->pfx_state_mask & kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state)
             {
               iter->v6pfx_peer_it = 0;
               iter->v6pfx_peer_it_valid = 1;
@@ -992,7 +990,7 @@ bgpwatcher_view_iter_pfx_next_peer(bgpwatcher_view_iter_t *iter)
                ->peers[iter->v4pfx_peer_it].state)));
       if(iter->v4pfx_peer_it < kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_alloc_cnt)
         {
-          bgpwatcher_view_iter_pfx_seek_peer(iter, iter->v4pfx_peer_it, state_mask);
+          bgpwatcher_view_iter_pfx_seek_peer(iter, iter->v4pfx_peer_it, iter->pfx_peer_state_mask);
           return 1;
         }
       iter->v4pfx_peer_it_valid = 0;      
@@ -1007,7 +1005,7 @@ bgpwatcher_view_iter_pfx_next_peer(bgpwatcher_view_iter_t *iter)
                ->peers[iter->v6pfx_peer_it].state)));
       if(iter->v6pfx_peer_it < kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_alloc_cnt)
         {
-          bgpwatcher_view_iter_pfx_seek_peer(iter, iter->v6pfx_peer_it, state_mask);
+          bgpwatcher_view_iter_pfx_seek_peer(iter, iter->v6pfx_peer_it, iter->pfx_peer_state_mask);
           return 1;
         }
       iter->v6pfx_peer_it_valid = 0;
@@ -1102,7 +1100,7 @@ bgpwatcher_view_iter_first_pfx_peer(bgpwatcher_view_iter_t *iter,
   iter->version_filter = version;
   
   // set the version we start iterating through
-  if(iter->version_filter == BGPSTREAM_ADDR_VERSION_IPV4 || iter->version_filter = 0)
+  if(iter->version_filter == BGPSTREAM_ADDR_VERSION_IPV4 || iter->version_filter == 0)
     {
       iter->version_ptr = BGPSTREAM_ADDR_VERSION_IPV4;
     }
@@ -1172,10 +1170,10 @@ bgpwatcher_view_iter_seek_pfx_peer(bgpwatcher_view_iter_t *iter,
   // set by the single seek fuctions 
   iter->version_filter = 0;
   iter->version_ptr = BGPSTREAM_ADDR_VERSION_IPV4;
-  iter->pfx_mask = 0;
+  iter->pfx_state_mask = 0;
   iter->pfx_peer_state_mask = 0;
   
-  if(bgpwatcher_view_iter_seek_pfx(iter, pfx, iter->pfx_mask))
+  if(bgpwatcher_view_iter_seek_pfx(iter, pfx, pfx_mask))
     {
       if(bgpwatcher_view_iter_pfx_seek_peer(iter, peerid, peer_mask))
         {
@@ -1198,11 +1196,11 @@ bgpwatcher_view_iter_pfx_get_pfx(bgpwatcher_view_iter_t *iter)
     {
       if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV4)
         {
-          return &kh_key(iter->view->v4pfxs, iter->v4pfx_it);
+          return (bgpstream_pfx_t *)&kh_key(iter->view->v4pfxs, iter->v4pfx_it);
         }
       if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV6)
         {
-          return &kh_key(iter->view->v6pfxs, iter->v6pfx_it);
+          return (bgpstream_pfx_t *)&kh_key(iter->view->v6pfxs, iter->v6pfx_it);
         }
     }
   return NULL;
@@ -1312,7 +1310,7 @@ bgpwatcher_view_iter_peer_get_sign(bgpwatcher_view_iter_t *iter)
   if(bgpwatcher_view_iter_has_more_peer(iter))
     {
       return bgpstream_peer_sig_map_get_sig(iter->view->peersigns,
-                                            bgpwatcher_view_iter_get_peerid(iter));
+                                            bgpwatcher_view_iter_peer_get_peer(iter));
     }
   return NULL;
 }
@@ -1326,16 +1324,16 @@ bgpwatcher_view_iter_peer_get_pfx_count(bgpwatcher_view_iter_t *iter,
     {  
       if(version == BGPSTREAM_ADDR_VERSION_IPV4)
         {
-          return kh_value(iter->view->peerinfo, iter->peer_it)->v4_pfx_cnt;
+          return kh_value(iter->view->peerinfo, iter->peer_it).v4_pfx_cnt;
         }
       if(version == BGPSTREAM_ADDR_VERSION_IPV6)
         {
-          return kh_value(iter->view->peerinfo, iter->peer_it)->v6_pfx_cnt;
+          return kh_value(iter->view->peerinfo, iter->peer_it).v6_pfx_cnt;
         }
       if(version == 0)
         {
-          return kh_value(iter->view->peerinfo, iter->peer_it)->v4_pfx_cnt +
-            kh_value(iter->view->peerinfo, iter->peer_it)->v6pfxs_cnt;
+          return kh_value(iter->view->peerinfo, iter->peer_it).v4_pfx_cnt +
+            kh_value(iter->view->peerinfo, iter->peer_it).v6_pfx_cnt;
         }
     }
   return -1;
@@ -1346,7 +1344,7 @@ bgpwatcher_view_iter_peer_get_state(bgpwatcher_view_iter_t *iter)
 {
  if(bgpwatcher_view_iter_has_more_peer(iter))
     {
-      return kh_val(iter->view->peerinfo, iter->peer_it)->state;
+      return kh_val(iter->view->peerinfo, iter->peer_it).state;
     }
   return BGPWATCHER_VIEW_FIELD_INVALID;
 }
@@ -1356,7 +1354,7 @@ bgpwatcher_view_iter_peer_get_user(bgpwatcher_view_iter_t *iter)
 {
    if(bgpwatcher_view_iter_has_more_peer(iter))
     {
-      return kh_val(iter->view->peerinfo, iter->peer_it)->user;
+      return kh_val(iter->view->peerinfo, iter->peer_it).user;
     }
   return NULL;
 }
@@ -1366,16 +1364,16 @@ bgpwatcher_view_iter_peer_set_user(bgpwatcher_view_iter_t *iter, void *user)
 {
  if(bgpwatcher_view_iter_has_more_peer(iter))
     {
-      if(kh_val(iter->view->peerinfo, iter->peer_it)->user == user)
+      if(kh_val(iter->view->peerinfo, iter->peer_it).user == user)
         {
           return 0;
         }          
-      if(kh_val(iter->view->peerinfo, iter->peer_it)->user != NULL &&
+      if(kh_val(iter->view->peerinfo, iter->peer_it).user != NULL &&
          iter->view->peer_user_destructor != NULL)
         {
-          iter->view->peer_user_destructor(kh_val(iter->view->peerinfo, iter->peer_it)->user);              
+          iter->view->peer_user_destructor(kh_val(iter->view->peerinfo, iter->peer_it).user);              
         }
-      kh_val(iter->view->peerinfo, iter->peer_it)->user = user;              
+      kh_val(iter->view->peerinfo, iter->peer_it).user = user;              
       return 1;
     }
   return -1;
@@ -1445,39 +1443,39 @@ bgpwatcher_view_iter_pfx_peer_set_user(bgpwatcher_view_iter_t *iter, void *user)
     {
       if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV4)
         {      
-          if(kh_kh_val(iter->view->v4pfxs, iter->v4pfx_it)
+          if(kh_val(iter->view->v4pfxs, iter->v4pfx_it)
              ->peers[iter->v4pfx_peer_it].user == user)
             {
               return 0;
             }
             
-          if(kh_kh_val(iter->view->v4pfxs, iter->v4pfx_it)
+          if(kh_val(iter->view->v4pfxs, iter->v4pfx_it)
              ->peers[iter->v4pfx_peer_it].user != NULL &&
              iter->view->pfx_peer_user_destructor != NULL)
             {
-              iter->view->pfx_peer_user_destructor(kh_kh_val(iter->view->v4pfxs, iter->v4pfx_it)
+              iter->view->pfx_peer_user_destructor(kh_val(iter->view->v4pfxs, iter->v4pfx_it)
                                                    ->peers[iter->v4pfx_peer_it].user);              
             }
-          kh_kh_val(iter->view->v4pfxs, iter->v4pfx_it)
+          kh_val(iter->view->v4pfxs, iter->v4pfx_it)
             ->peers[iter->v4pfx_peer_it].user = user;              
           return 1;
         }
       if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV6)
         {      
-          if(kh_kh_val(iter->view->v6pfxs, iter->v6pfx_it)
+          if(kh_val(iter->view->v6pfxs, iter->v6pfx_it)
              ->peers[iter->v6pfx_peer_it].user == user)
             {
               return 0;
             }
             
-          if(kh_kh_val(iter->view->v6pfxs, iter->v6pfx_it)
+          if(kh_val(iter->view->v6pfxs, iter->v6pfx_it)
              ->peers[iter->v6pfx_peer_it].user != NULL &&
              iter->view->pfx_peer_user_destructor != NULL)
             {
-              iter->view->pfx_peer_user_destructor(kh_kh_val(iter->view->v6pfxs, iter->v6pfx_it)
+              iter->view->pfx_peer_user_destructor(kh_val(iter->view->v6pfxs, iter->v6pfx_it)
                                                    ->peers[iter->v6pfx_peer_it].user);              
             }
-          kh_kh_val(iter->view->v6pfxs, iter->v6pfx_it)
+          kh_val(iter->view->v6pfxs, iter->v6pfx_it)
             ->peers[iter->v6pfx_peer_it].user = user;              
           return 1;
         }
