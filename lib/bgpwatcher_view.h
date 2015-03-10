@@ -569,6 +569,16 @@ bgpwatcher_view_iter_seek_pfx_peer(bgpwatcher_view_iter_t *iter,
  *
  * @{ */
 
+
+/** Get the current view
+ *
+ * @param iter          Pointer to an iterator structure
+ * @return a pointer to the current view,
+ *         NULL if the iterator is not initialized.
+ */
+bgpwatcher_view_t *
+bgpwatcher_view_iter_get_view(bgpwatcher_view_iter_t *iter);
+
 /** Get the current prefix for the given iterator
  *
  * @param iter          Pointer to an iterator structure

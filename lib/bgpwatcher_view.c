@@ -1189,6 +1189,16 @@ bgpwatcher_view_iter_seek_pfx_peer(bgpwatcher_view_iter_t *iter,
   return 0;
 }
 
+bgpwatcher_view_t *
+bgpwatcher_view_iter_get_view(bgpwatcher_view_iter_t *iter)
+{
+  if(iter != NULL)
+    {
+      return iter->view;
+    }
+  return NULL;
+}
+
 bgpstream_pfx_t *
 bgpwatcher_view_iter_pfx_get_pfx(bgpwatcher_view_iter_t *iter)
 {
@@ -1480,6 +1490,7 @@ bgpwatcher_view_iter_pfx_peer_set_user(bgpwatcher_view_iter_t *iter, void *user)
           return 1;
         }
     }
-  return -1;
+ return -1;
 }
+
 

@@ -74,7 +74,7 @@ static void peers_dump(bgpwatcher_view_t *view,
 static void pfxs_dump(bgpwatcher_view_t *view,
                       bgpwatcher_view_iter_t *it)
 {
-  bgpstream_ipv4_pfx_t *pfx;
+  bgpstream_pfx_t *pfx;
   char pfx_str[INET6_ADDRSTRLEN+3] = "";
 
   fprintf(stdout, "Prefixes (v4 %d, v6 %d):\n", bgpwatcher_view_v4pfx_size(view), bgpwatcher_view_v6pfx_size(view));
@@ -85,7 +85,7 @@ static void pfxs_dump(bgpwatcher_view_t *view,
     {
       pfx = bgpwatcher_view_iter_pfx_get_pfx(it);
       bgpstream_pfx_snprintf(pfx_str, INET6_ADDRSTRLEN+3, pfx);      
-      fprintf(stdout, "  %s/ (%"PRIu64" peers)\n",
+      fprintf(stdout, "  %s (%d peers)\n",
               pfx_str, bgpwatcher_view_iter_pfx_get_peers_cnt(it));
       
       for(bgpwatcher_view_iter_pfx_first_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
@@ -413,9 +413,8 @@ static int send_peers(void *dest, bgpwatcher_view_iter_t *it)
   uint16_t peers_cnt;
   int peers_tx = 0;
 
-  /* peer cnt */
-  peers_cnt =
-    (uint16_t)bgpwatcher_view_iter_size(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
+  /* peer cnt ( @todo make sure we just count the active) */
+  peers_cnt = (uint16_t)bgpwatcher_view_peer_size(bgpwatcher_view_iter_get_view(it));
   u16 = htons(peers_cnt);
   if(zmq_send(dest, &u16, sizeof(u16), ZMQ_SNDMORE) != sizeof(u16))
     {
@@ -423,19 +422,19 @@ static int send_peers(void *dest, bgpwatcher_view_iter_t *it)
     }
 
   /* foreach peer, send peerid, collector string, peer ip (version, address) */
-  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_PEER, BGPWATCHER_VIEW_FIELD_ACTIVE))
+  for(bgpwatcher_view_iter_first_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_has_more_peer(it);
+      bgpwatcher_view_iter_next_peer(it))
     {
       /* peer id */
-      u16 = bgpwatcher_view_iter_get_peerid(it);
+      u16 = bgpwatcher_view_iter_peer_get_peer(it);
       u16 = htons(u16);
       if(zmq_send(dest, &u16, sizeof(u16), ZMQ_SNDMORE) != sizeof(u16))
 	{
 	  goto err;
 	}
 
-      ps = bgpwatcher_view_iter_get_peersig(it);
+      ps = bgpwatcher_view_iter_peer_get_sign(it);
       assert(ps);
       len = strlen(ps->collector_str);
       if(zmq_send(dest, &ps->collector_str, len, ZMQ_SNDMORE) != len)
