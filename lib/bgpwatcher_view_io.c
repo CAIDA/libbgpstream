@@ -77,7 +77,9 @@ static void pfxs_dump(bgpwatcher_view_t *view,
   bgpstream_pfx_t *pfx;
   char pfx_str[INET6_ADDRSTRLEN+3] = "";
 
-  fprintf(stdout, "Prefixes (v4 %d, v6 %d):\n", bgpwatcher_view_v4pfx_size(view), bgpwatcher_view_v6pfx_size(view));
+  fprintf(stdout, "Prefixes (v4 %d, v6 %d):\n",
+          bgpwatcher_view_v4pfx_size(view),
+          bgpwatcher_view_v6pfx_size(view));
 
   for(bgpwatcher_view_iter_first_pfx(it, 0, BGPWATCHER_VIEW_FIELD_ACTIVE);
       bgpwatcher_view_iter_has_more_pfx(it);
