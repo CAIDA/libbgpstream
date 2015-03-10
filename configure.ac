@@ -135,8 +135,6 @@ AX_LIB_SOCKET_NSL
 
 
 # Checks for libraries.
-AC_CHECK_LIB([bgpdump], [bgpdump_read_next], ,
-	               [AC_MSG_ERROR( [libbgpdump required ])])
 AC_CHECK_LIB([bgpstream], [bgpstream_create], ,[AC_MSG_ERROR(
 		      [libbgpstream required])])
 AC_SEARCH_LIBS([wandio_create], [wandio trace], ,[AC_MSG_ERROR(
@@ -239,9 +237,9 @@ ED_WITH_PLUGIN([bgpcorsaro_dump],[dump],[DUMP],[yes])
 
 # optional plugins
 ED_WITH_PLUGIN([bgpcorsaro_bgpstats],[bgpstats],[BGPSTATS],[no])
-ED_WITH_PLUGIN([bgpcorsaro_bgpribs],[bgpribs],[BGPRIBS],[no])
 ED_WITH_PLUGIN([bgpcorsaro_filtervis],[filtervis],[FILTERVIS],[no])
 ED_WITH_PLUGIN([bgpcorsaro_pacifier],[pacifier],[PACIFIER],[no])
+ED_WITH_PLUGIN([bgpcorsaro_routingtables],[routingtables],[ROUTINGTABLES],[no])
 ED_WITH_PLUGIN([bgpcorsaro_tagstats],[tagstats],[TAGSTATS],[no])
 
 # this MUST go after all the ED_WITH_PLUGIN macro calls
@@ -281,10 +279,9 @@ AC_SUBST([BGPCORSARO_MINOR_VERSION])
 AC_HEADER_ASSERT
 
 AC_CONFIG_FILES([Makefile lib/Makefile lib/plugins/Makefile
-			  lib/plugins/libbgpribs/Makefile
+			  lib/plugins/libroutingtables/Makefile
 			  tools/Makefile
 			  common/Makefile
 			  common/libpatricia/Makefile
-			  common/libcsv/Makefile
-			  bgpcommon/Makefile])
+			  common/libcsv/Makefile])
 AC_OUTPUT

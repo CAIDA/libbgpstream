@@ -4,7 +4,7 @@
  * Chiara Orsini, CAIDA, UC San Diego
  * corsaro-info@caida.org
  *
- * Copyright (C) 2014 The Regents of the University of California.
+ * Copyright (C) 2015 The Regents of the University of California.
  *
  * This file is part of bgpcorsaro.
  *
@@ -23,27 +23,8 @@
  *
  */
 
-#ifndef __BGPRIBS_INT_H
-#define __BGPRIBS_INT_H
+#ifndef __ROUTINGTABLES_LIB_H
+#define __ROUTINGTABLES_LIB_H
 
 
-#include "config.h"
-#ifdef WITH_BGPWATCHER
-#include "bgpribs_bgpwatcher_client.h"
-#endif
-
-
-#include "bgpribs_collectors_table.h"
-
-struct bgpribs {
-  int interval_start;                            /// interval start time 
-  int interval_end;                              /// interval end time 
-  int interval_processing_start;                 /// local time when a new interval is started
-  collectors_table_wrapper_t *collectors_table;  /// set of collectors to manage
-  char *metric_pfx;                              /// prefix that is prepended to every metric
-#ifdef WITH_BGPWATCHER
-  bw_client_t *bw_client;
-#endif
-};
-
-#endif /* __BGPRIBS_INT_H */
+#endif /* __ROUTINGTABLES_LIB_H */

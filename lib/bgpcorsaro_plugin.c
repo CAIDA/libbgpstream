@@ -75,6 +75,10 @@
 #include "bgpcorsaro_pacifier.h"
 #endif
 
+#ifdef WITH_PLUGIN_ROUTINGTABLES
+#include "bgpcorsaro_routingtables.h"
+#endif
+
 /*
  * add new plugin includes below using:
  *

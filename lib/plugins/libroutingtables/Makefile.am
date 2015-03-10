@@ -4,7 +4,7 @@
 # Chiara Orsini, CAIDA, UC San Diego
 # corsaro-info@caida.org
 #
-# Copyright (C) 2012 The Regents of the University of California.
+# Copyright (C) 2015 The Regents of the University of California.
 #
 # This file is part of bgpcorsaro.
 #
@@ -22,30 +22,14 @@
 # along with bgpcorsaro.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-AM_CPPFLAGS = -I$(top_srcdir)/common -I$(top_srcdir)/bgpcommon 
+AM_CPPFLAGS = -I$(top_srcdir)/common
 
-noinst_LTLIBRARIES = libbgpribs.la
+noinst_LTLIBRARIES = libroutingtables.la
 
-libbgpribs_la_SOURCES = bgpribs_lib.h   \
-			bgpribs_int.h   \
-			bgpribs_lib.c   \
-			bgpribs_collectors_table.h	\
-			bgpribs_collectors_table.c	\
-			bgpribs_collectordata.h	\
-			bgpribs_collectordata.c	\
-			bgpribs_peers_table.h	\
-			bgpribs_peers_table.c	\
-			bgpribs_peerdata.h	\
-			bgpribs_peerdata.c	\
-			bgpribs_ribs_table.h	\
-			bgpribs_ribs_table.c	\
-			bgpribs_bgpwatcher_client.h	\
-			bgpribs_bgpwatcher_client.c	\
-			bgpribs_common.h	\
-			bgpribs_common.c	
+libroutingtables_la_SOURCES = 	routingtables_lib.h  \
+				routingtables_lib.c
 
-# libbgpribs_la_LIBADD =
-
+# libroutingtables_la_LIBADD =
 
 ACLOCAL_AMFLAGS = -I m4
 

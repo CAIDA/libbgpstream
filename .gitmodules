@@ -1,6 +1,3 @@
 [submodule "common"]
 	path = common
 	url = git://github.com/alistairking/cc-common.git
-[submodule "bgpcommon"]
-	path = bgpcommon
-	url = https://github.com/CAIDA/bgpcommon.git

@@ -27,7 +27,6 @@ SUBDIRS =
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/common \
 	-I$(top_srcdir)/common/libpatricia \
 	-I$(top_srcdir)/common/libcsv \
-	-I$(top_srcdir) -I$(top_srcdir)/bgpcommon \
 	-I$(top_srcdir)/lib
 
 noinst_LTLIBRARIES = libbgpcorsaroplugins.la
@@ -38,12 +37,6 @@ PLUGIN_LIBS=
 
 if WITH_PLUGIN_BGPSTATS
 PLUGIN_SRC+=bgpcorsaro_bgpstats.c bgpcorsaro_bgpstats.h
-endif
-if WITH_PLUGIN_BGPRIBS
-SUBDIRS += libbgpribs
-PLUGIN_LIBS += $(top_builddir)/lib/plugins/libbgpribs/libbgpribs.la
-AM_CPPFLAGS += -I$(top_srcdir)/lib/plugins/libbgpribs
-PLUGIN_SRC += bgpcorsaro_bgpribs.c bgpcorsaro_bgpribs.h
 endif
 if WITH_PLUGIN_FILTERVIS
 PLUGIN_SRC+=bgpcorsaro_filtervis.c bgpcorsaro_filtervis.h
@@ -62,6 +55,12 @@ PLUGIN_SRC+=bgpcorsaro_filtergeo.c bgpcorsaro_filtergeo.h
 endif
 if WITH_PLUGIN_FILTERPFX
 PLUGIN_SRC+=bgpcorsaro_filterpfx.c bgpcorsaro_filterpfx.h
+endif
+if WITH_PLUGIN_ROUTINGTABLES
+SUBDIRS += libroutingtables
+PLUGIN_LIBS += $(top_builddir)/lib/plugins/libroutingtables/libroutingtables.la
+AM_CPPFLAGS += -I$(top_srcdir)/lib/plugins/libroutingtables
+PLUGIN_SRC+=bgpcorsaro_routingtables.c bgpcorsaro_routingtables.h
 endif
 if WITH_PLUGIN_TAGSTATS
 PLUGIN_SRC+=bgpcorsaro_tagstats.c bgpcorsaro_tagstats.h

@@ -118,9 +118,9 @@ typedef enum bgpcorsaro_plugin_id
   /** BGPStats plugin */
   BGPCORSARO_PLUGIN_ID_BGPSTATS         = 10,
 
-  /** BGPRibs plugin */
-  BGPCORSARO_PLUGIN_ID_BGPRIBS          = 11,
-
+  /** RoutingTables plugin */
+  BGPCORSARO_PLUGIN_ID_ROUTINGTABLES    = 11,
+  
   /** FilterVis plugin */
   BGPCORSARO_PLUGIN_ID_FILTERVIS        = 12,
 
