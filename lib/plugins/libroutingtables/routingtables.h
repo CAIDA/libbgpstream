@@ -39,6 +39,40 @@ typedef struct struct_routingtables_t routingtables_t;
 /** @} */
 
 /**
+ * @name Public Enums
+ *
+ * @{ */
+
+#ifdef WITH_BGPWATCHER
+/** Type of feed */
+typedef enum {
+
+  ROUTINGTABLES_FEED_IPV4_PARTIAL  = 0b0001,
+
+  ROUTINGTABLES_FEED_IPV4_FULL     = 0b0010,
+
+  ROUTINGTABLES_FEED_IPV6_PARTIAL  = 0b0100,
+
+  ROUTINGTABLES_FEED_IPV6_FULL     = 0b1000,
+
+} routingtables_feed_type_t;
+#endif
+/** @} */
+
+/**
+ * @name Public Constants
+ *
+ * @{ */
+
+/** ROUTINGTABLES_ALL_FEEDS is the expression to use
+ *  when we want to select all kinds of peers (ipv4 and
+ *  ipv6, full and partial feeds) */
+#define ROUTINGTABLES_ALL_FEEDS  ROUTINGTABLES_FEED_IPV4_PARTIAL | ROUTINGTABLES_FEED_IPV4_FULL | \
+                                 ROUTINGTABLES_FEED_IPV6_PARTIAL | ROUTINGTABLES_FEED_IPV6_FULL
+
+/** @} */
+
+/**
  * @name Public API Functions
  *
  * @{ */
