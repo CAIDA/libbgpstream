@@ -56,6 +56,23 @@
 #define ROUTINGTABLES_DEFAULT_IPV6_FULLFEED_THR 10000 
 
 
+
+typedef enum {
+
+  /** It is not possible to infer the state of 
+   *  the collector (e.g. initialization time,
+   *  or corrupted data) */
+  ROUTINGTABLES_COLLECTOR_STATE_UNKNOWN   = 0b000,
+
+  /** The collector is active */
+  ROUTINGTABLES_COLLECTOR_STATE_UP        = 0b001,
+
+  /** The collector is inactive */
+  ROUTINGTABLES_COLLECTOR_STATE_DOWN      = 0b010,
+
+} collector_state_t;
+
+
 /** Information about the current status 
  *  of a pfx-peer info */
 typedef struct struct_perpfx_perpeer_info_t {
@@ -137,13 +154,11 @@ typedef struct struct_collector_t {
   uint32_t bgp_time_ref_rib_dump_time;
 
   /** Current status of the collector */
-  /** @todo add here collector status */
+  collector_state_t state;
 
   /** Indicates whether a new bgpview is
    *  under construction or not */
-  
-  /** @todo add here collector rib in progress
-   *  status */
+  uint8_t view_construction_inprogress;
 
 } collector_t;
 
