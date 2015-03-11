@@ -246,10 +246,40 @@ int bgpcorsaro_routingtables_init_output(bgpcorsaro_t *bgpcorsaro)
   /* parse the arguments */
   if(parse_args(bgpcorsaro) != 0)
     {
-      return -1;
+      goto err;
     }
+  
+  // update state with parsed args
+  if(state->metric_prefix != NULL)
+    {
+      routingtables_set_metric_prefix(state->routing_tables, state->metric_prefix);
+    }
+  if(state->ipv4_fullfeed_th > 0)
+    {
+      routingtables_set_fullfeed_threshold(state->routing_tables,
+                                           BGPSTREAM_ADDR_VERSION_IPV4,
+                                           state->ipv4_fullfeed_th);
+    }
+  if(state->ipv6_fullfeed_th > 0)
+    {
+      routingtables_set_fullfeed_threshold(state->routing_tables,
+                                           BGPSTREAM_ADDR_VERSION_IPV6,
+                                           state->ipv6_fullfeed_th);
+    }
+#ifdef WITH_BGPWATCHER
+  if(state->watcher_tx)
+    {
+      if(routingtables_activate_watcher_tx(state->routing_tables,
+                                           state->watcher_client_id,
+                                           state->watcher_server_uri,
+                                           state->tables_mask) < 0)
+        {
+          goto err;
+        }
+    }
+#endif
 
-  // @todo update state with parsed args
+  
   
   /* defer opening the output file until we start the first interval */
 
@@ -327,10 +357,17 @@ int bgpcorsaro_routingtables_start_interval(bgpcorsaro_t *bgpcorsaro,
 	outfile_p[state->outfile_n];
     }
 
+  /** plugin interval start operations */
+  if(routingtables_interval_start(state->routing_tables, int_start->time) < 0)
+    {
+      // an error occurred during the interval_end operations
+      bgpcorsaro_log(__func__, bgpcorsaro, "could not start interval for %s plugin",
+		     PLUGIN(bgpcorsaro)->name);      
+      return -1;
+    }
+
   bgpcorsaro_io_write_interval_start(bgpcorsaro, state->outfile, int_start);
 
-  // @todo start interval
-  
   return 0;
 }
 
@@ -339,6 +376,18 @@ int bgpcorsaro_routingtables_end_interval(bgpcorsaro_t *bgpcorsaro,
 				 bgpcorsaro_interval_t *int_end)
 {
   struct bgpcorsaro_routingtables_state_t *state = STATE(bgpcorsaro);
+
+  bgpcorsaro_log(__func__, bgpcorsaro, "Dumping stats for interval %d",
+		 int_end->number);
+  
+  /** plugin end of interval operations */
+  if(routingtables_interval_end(state->routing_tables, int_end->time) < 0)
+    {
+      // an error occurred during the interval_end operations
+      bgpcorsaro_log(__func__, bgpcorsaro, "could not end interval for %s plugin",
+		     PLUGIN(bgpcorsaro)->name);      
+      return -1;
+    }
 
   bgpcorsaro_io_write_interval_end(bgpcorsaro, state->outfile, int_end);
 
@@ -362,15 +411,15 @@ int bgpcorsaro_routingtables_end_interval(bgpcorsaro_t *bgpcorsaro,
       state->outfile = NULL;
     }
 
-  // @todo end interval
-
   return 0;
 }
 
 /** Implements the process_record function of the plugin API */
 int bgpcorsaro_routingtables_process_record(bgpcorsaro_t *bgpcorsaro,
-				   bgpcorsaro_record_t *record)
+                                            bgpcorsaro_record_t *record)
 {
+  struct bgpcorsaro_routingtables_state_t *state = STATE(bgpcorsaro);
+  bgpstream_record_t * bs_record = BS_REC(record);
 
   /* no point carrying on if a previous plugin has already decided we should
      ignore this record */
@@ -379,8 +428,5 @@ int bgpcorsaro_routingtables_process_record(bgpcorsaro_t *bgpcorsaro,
       return 0;
     }
 
-  // @todo new record available for processing
-
-
-  return 0;
+  return routingtables_process_record(state->routing_tables, bs_record);
 }

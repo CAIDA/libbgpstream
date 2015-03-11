@@ -36,11 +36,10 @@ routingtables_t *routingtables_create()
   return rt;
 }
 
-int routingtables_set_metric_prefix(routingtables_t *rt,
+void routingtables_set_metric_prefix(routingtables_t *rt,
                                     char *metric_prefix)
 {
   /** @todo */
-  return 0;
 }
 
 char *routingtables_get_metric_prefix(routingtables_t *rt)
@@ -60,12 +59,11 @@ int routingtables_activate_watcher_tx(routingtables_t *rt,
 }
 #endif
 
-int routingtables_set_fullfeed_threshold(routingtables_t *rt,
+void routingtables_set_fullfeed_threshold(routingtables_t *rt,
                                          bgpstream_addr_version_t ip_version,
                                          int threshold)
 {
   /** @todo */
-  return 0;
 }
 
 int routingtables_get_fullfeed_threshold(routingtables_t *rt,

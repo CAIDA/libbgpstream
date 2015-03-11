@@ -54,9 +54,8 @@ routingtables_t *routingtables_create();
  *  
  * @param rt               pointer to a routingtables instance to update
  * @param metric_prefix    metric prefix string
- * @return 0 if the option was set correctly, <0 if an error occurred.
  */
-int routingtables_set_metric_prefix(routingtables_t *rt,
+void routingtables_set_metric_prefix(routingtables_t *rt,
                                     char *metric_prefix);
 
 /** Get the metric prefix to be used for when outpting the time series
@@ -96,9 +95,8 @@ int routingtables_activate_watcher_tx(routingtables_t *rt,
  * @param ip_version    IP version 
  * @param threshold     number of prefixes that populate a full feed
  *                      routing table
- * @return 0 if the option was set correctly, <0 if an error occurred.
  */
-int routingtables_set_fullfeed_threshold(routingtables_t *rt,
+void routingtables_set_fullfeed_threshold(routingtables_t *rt,
                                          bgpstream_addr_version_t ip_version,
                                          int threshold);
 
