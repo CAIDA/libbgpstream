@@ -217,7 +217,7 @@ AM_CONDITIONAL([WITH_BGPWATCHER], [test "x$with_bgpwatcher" == xyes])
 # ---------------------------                                                  #
 #                                                                              #
 # Each ED_WITH_PLUGIN macro defines a plugin which can be compiled into        #
-# Bgpcorsaro.                                                                     #
+# Bgpcorsaro.                                                                  #
 #                                                                              #
 # The order in which these plugins are listed is the _default_ order in which  #
 # they will be run.                                                            #

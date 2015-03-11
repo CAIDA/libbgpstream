@@ -41,6 +41,7 @@
 #include "bgpcorsaro_plugin.h"
 
 #include "bgpcorsaro_routingtables.h"
+#include "routingtables.h"
 
 /** @file
  *
@@ -63,9 +64,9 @@
 
 /** Common plugin information across all instances */
 static bgpcorsaro_plugin_t bgpcorsaro_routingtables_plugin = {
-  PLUGIN_NAME,                                  /* name */
-  PLUGIN_VERSION,                               /* version */
-  BGPCORSARO_PLUGIN_ID_ROUTINGTABLES,                 /* id */
+  PLUGIN_NAME,                                               /* name */
+  PLUGIN_VERSION,                                            /* version */
+  BGPCORSARO_PLUGIN_ID_ROUTINGTABLES,                        /* id */
   BGPCORSARO_PLUGIN_GENERATE_PTRS(bgpcorsaro_routingtables), /* func ptrs */
   BGPCORSARO_PLUGIN_GENERATE_TAIL,
 };
@@ -80,15 +81,17 @@ struct bgpcorsaro_routingtables_state_t {
   /** The current outfile */
   int outfile_n;
 
-  // custom variables
+  // @todo custom variables
 };
 
 /** Extends the generic plugin state convenience macro in bgpcorsaro_plugin.h */
 #define STATE(bgpcorsaro)						\
   (BGPCORSARO_PLUGIN_STATE(bgpcorsaro, routingtables, BGPCORSARO_PLUGIN_ID_ROUTINGTABLES))
+
 /** Extends the generic plugin plugin convenience macro in bgpcorsaro_plugin.h */
 #define PLUGIN(bgpcorsaro)						\
   (BGPCORSARO_PLUGIN_PLUGIN(bgpcorsaro, BGPCORSARO_PLUGIN_ID_ROUTINGTABLES))
+
 
 /** Print usage information to stderr */
 static void usage(bgpcorsaro_plugin_t *plugin)

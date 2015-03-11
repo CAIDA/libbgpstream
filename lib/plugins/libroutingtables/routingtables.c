@@ -23,8 +23,6 @@
  *
  */
 
-#ifndef __ROUTINGTABLES_LIB_H
-#define __ROUTINGTABLES_LIB_H
 
-
-#endif /* __ROUTINGTABLES_LIB_H */
+#include "routingtables.h"
+#include "routingtables_int.h"

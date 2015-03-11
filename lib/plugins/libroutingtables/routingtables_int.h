@@ -23,4 +23,10 @@
  *
  */
 
+#ifndef __ROUTINGTABLES_INT_H
+#define __ROUTINGTABLES_INT_H
 
+#include "bgpwatcher_view.h"
+
+
+#endif /* __ROUTINGTABLES_INT_H */
