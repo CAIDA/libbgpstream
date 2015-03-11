@@ -56,19 +56,60 @@
 #define ROUTINGTABLES_DEFAULT_IPV6_FULLFEED_THR 10000 
 
 
-/** @todo define here the structures pointed
- *  by the user pointers in the bgpview:
- *  - view user
- *  - peer user
- *  - pfx user
- *  - pfx-peer user
- */
+/** Information about the current status 
+ *  of a pfx-peer info */
+typedef struct struct_perpfx_perpeer_info_t {
+
+  /** Last bgp time associated with the most
+   *  recent operation involving the current
+   *  prefix and the current peer  */
+  uint32_t bgp_time_last_ts;   
+
+} perpfx_perpeer_info_t;
+
+
+/** Information about the current status 
+ *  of a peer */
+typedef struct struct_perpeer_info_t {
+  
+  /** Graphite-safe peer string: peer_ASn.peer_IP */
+  char peer_str[BGPSTREAM_UTILS_STR_NAME_LEN];
+
+  /** BGP Finite State Machine of the current peer.
+   *  If the peer is active, then its state
+   *  is assumed BGPSTREAM_ELEM_PEERSTATE_ESTABLISHED,
+   *  if the peer becomes inactive because of a state 
+   *  change then the bgp_fsm_state reflects the current
+   *  fsm state, finally if the peer is inactive and no
+   *  fsm state is known, then state is set to
+   *  BGPSTREAM_ELEM_PEERSTATE_UNKNOWN
+   */
+  bgpstream_elem_peerstate_t bgp_fsm_state;
+
+} perpeer_info_t;
+
+
+/** Information about the current status 
+ *  of a view */
+typedef struct struct_perview_info_t {
+  
+  /** first timestamp in the current reference RIB */
+  uint32_t bgp_time_ref_rib_start;
+  
+  /** last timestamp in the current reference RIB */
+  uint32_t bgp_time_ref_rib_end;
+
+  /** dump time of the current reference RIB */
+  uint32_t bgp_time_ref_rib_dump_time;
+
+} perview_info_t;
+
 
 /** Information about the current status 
  *  of a collector */
 typedef struct struct_collector_t {
 
-  /** Collector string */
+  /** Graphite-safe collector string: project.collector */
   char collector_str[BGPSTREAM_UTILS_STR_NAME_LEN];
   
   /** Table of peerid -> peersign */
@@ -84,7 +125,25 @@ typedef struct struct_collector_t {
    *  collector's routing tables */
   bgpwatcher_view_t *inprogress_view;
 
-  /** @todo add other state variables here */
+  /** last time this collector was involved
+   *  in bgp operations (bgp time) */
+  uint32_t bgp_time_last;
+  
+  /** last time this collector was involved
+   *  in bgp operations (wall time) */
+  uint32_t wall_time_last;
+
+  /** dump time of the current reference RIB */
+  uint32_t bgp_time_ref_rib_dump_time;
+
+  /** Current status of the collector */
+  /** @todo add here collector status */
+
+  /** Indicates whether a new bgpview is
+   *  under construction or not */
+  
+  /** @todo add here collector rib in progress
+   *  status */
 
 } collector_t;
 
@@ -99,6 +158,17 @@ typedef khash_t(str_id_map) collector_id_t;
  *  the bgp stream in input */
 struct struct_routingtables_t {
 
+  /** A map that associate an incremental
+   *  numerical id with each collector,
+   *  the id can be used as an index to
+   *  access collector data */
+  collector_id_t *collector_id_map;
+  
+  /** Sparse list of collectors, where the
+   *  index is the collector id and the value
+   *  is a pointer to a collector structure */
+  collector_t *collectors[ROUTINGTABLES_MAX_COLLECTORS];
+
   /** Metric prefix */
   char metric_prefix[ROUTINGTABLES_METRIC_PFX_LEN];
 
@@ -110,16 +180,15 @@ struct struct_routingtables_t {
    * routing tables */
   uint32_t ipv6_fullfeed_th;
 
-  /** A map that associate an incremental
-   *  numerical id with each collector,
-   *  the id can be used as an index to
-   *  access collector data */
-  collector_id_t *collector_id_map;
+  /** beginning of the interval (bgp time) */
+  uint32_t bgp_time_interval_start;
+
+  /** end of the interval (bgp time) */
+  uint32_t bgp_time_interval_end;
   
-  /** Sparse list of collectors, where the
-   *  index is the collector id and the value
-   *  is a pointer to a collector structure */
-  collector_t* collectors[ROUTINGTABLES_MAX_COLLECTORS];
+  /** last time (wall time) we received
+   *  an interval_start signal */
+  uint32_t wall_time_interval_start;
 
   /** @todo add other state variables here */
   

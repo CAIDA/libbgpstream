@@ -33,6 +33,110 @@
 #include "routingtables_int.h"
 
 
+/* ========== PRIVATE FUNCTIONS ========== */
+
+//static
+perpfx_perpeer_info_t *perpfx_perpeer_info_create(uint32_t bgp_time_last_ts)
+{
+  perpfx_perpeer_info_t *pfxpeeri = (perpfx_perpeer_info_t *) malloc_zero(sizeof(perpfx_perpeer_info_t));
+  if(pfxpeeri != NULL)
+    {
+      pfxpeeri->bgp_time_last_ts = bgp_time_last_ts;
+    }
+  return pfxpeeri;
+}
+
+//static
+perpeer_info_t *perpeer_info_create(uint32_t peer_asnumber,
+                                           bgpstream_ip_addr_t *peer_ip,
+                                           bgpstream_elem_peerstate_t bgp_fsm_state)
+{
+  // @todo CALL GRAPHITE SAFE FUNCTION 
+  
+  perpeer_info_t *peeri = (perpeer_info_t *) malloc_zero(sizeof(perpeer_info_t));
+  if(peeri != NULL)
+    {
+      peeri->peer_str[0] = '\0'; // @todo
+      peeri->bgp_fsm_state = bgp_fsm_state;
+    }
+  return peeri;
+}
+
+//static
+perview_info_t *perview_info_create(uint32_t bgp_time_ref_rib_start,
+                                           uint32_t bgp_time_ref_rib_end,
+                                           uint32_t bgp_time_ref_rib_dump_time)
+{
+  perview_info_t *viewi = (perview_info_t *) malloc_zero(sizeof(perview_info_t));
+  if(viewi != NULL)
+    {
+      viewi->bgp_time_ref_rib_start = bgp_time_ref_rib_start;
+      viewi->bgp_time_ref_rib_end = bgp_time_ref_rib_end;
+      viewi->bgp_time_ref_rib_dump_time = bgp_time_ref_rib_dump_time;
+    }
+  return viewi;
+}
+
+/** Note:
+ *  all the xxx_info_create functions do not allocate dynamic
+ *  memory other than the structure itself, therefore free() 
+ *  is enough to dealloc safely their memory.
+ */
+
+
+static uint8_t get_collector_id(routingtables_t * rt,
+                                char *project,
+                                char *collector)
+{
+  khiter_t k;
+  int khret;
+  uint8_t id = 0;
+
+  // create new collector-related structures if it is the first time
+  // we see it
+  if((k = kh_get(str_id_map, rt->collector_id_map, collector))
+     == kh_end(rt->collector_id_map))
+    {
+      // ROUTINGTABLES_MAX_COLLECTORS is the maximum number of collectors allowed
+      assert(kh_size(rt->collector_id_map) < ROUTINGTABLES_MAX_COLLECTORS);
+
+      // insert new incremental id
+      id = kh_size(rt->collector_id_map);
+      k = kh_put(str_id_map, rt->collector_id_map, strdup(collector), &khret);
+      kh_val(rt->collector_id_map,k) = id;
+
+      // @todo populate collector_str with GRAPHITE SAFE FUNCTION
+      
+      // assert no spurious data was there before
+      assert(rt->collectors[id] == NULL);
+
+      rt->collectors[id] = (collector_t *) malloc_zero(sizeof(collector_t));
+      rt->collectors[id]->peersigns = bgpstream_peer_sig_map_create();
+      rt->collectors[id]->active_view = bgpwatcher_view_create_shared(rt->collectors[id]->peersigns,
+                                                                      free /* view user destructor */,
+                                                                      NULL /* pfx destructor */,
+                                                                      free /* peer user destructor */,
+                                                                      free /* pfxpeer user destructor */);
+      rt->collectors[id]->inprogress_view = bgpwatcher_view_create_shared(rt->collectors[id]->peersigns,
+                                                                          free /* view user destructor */,
+                                                                          NULL /* pfx destructor */,
+                                                                          free /* peer user destructor */,
+                                                                          free /* pfxpeer user destructor */);
+      rt->collectors[id]->bgp_time_last = 0;
+      rt->collectors[id]->wall_time_last = 0;      
+      rt->collectors[id]->bgp_time_ref_rib_dump_time = 0;
+      
+      // @todo assert somehow that a new collector was correctly created      
+    }
+
+  id = kh_val(rt->collector_id_map,k);
+  return id;
+}
+
+
+
+/* ========== PUBLIC FUNCTIONS ========== */
+
 routingtables_t *routingtables_create()
 {  
   routingtables_t *rt = (routingtables_t *)malloc_zero(sizeof(routingtables_t));
@@ -58,6 +162,10 @@ routingtables_t *routingtables_create()
   // set the ff thresholds to their default values
   rt->ipv4_fullfeed_th = ROUTINGTABLES_DEFAULT_IPV4_FULLFEED_THR;
   rt->ipv6_fullfeed_th = ROUTINGTABLES_DEFAULT_IPV6_FULLFEED_THR;
+
+  rt->bgp_time_interval_start = 0;
+  rt->bgp_time_interval_end = 0;
+  rt->wall_time_interval_start = 0;
     
 #ifdef WITH_BGPWATCHER
   rt->watcher_tx_on = 0;
@@ -188,22 +296,58 @@ int routingtables_get_fullfeed_threshold(routingtables_t *rt,
 int routingtables_interval_start(routingtables_t *rt,
                                  int start_time)
 {
-  /** @todo */
+  rt->bgp_time_interval_start = (uint32_t) start_time;
+  struct timeval tv;
+  gettimeofday_wrap(&tv);
+  rt->wall_time_interval_start = tv.tv_sec;
   return 0;
 }
 
 int routingtables_interval_end(routingtables_t *rt,
                                int end_time)
 {
-  /** @todo */
+  rt->bgp_time_interval_end = (uint32_t) end_time;
+  struct timeval tv;
+  gettimeofday_wrap(&tv);
+  uint32_t elapsed_time = tv.tv_sec - rt->wall_time_interval_start;
+  fprintf(stderr, "Interval [%"PRIu32", %"PRIu32"] processed in %"PRIu32"s\n",
+          rt->bgp_time_interval_start, rt->bgp_time_interval_end, elapsed_time);
   return 0;
 }
 
 int routingtables_process_record(routingtables_t *rt,
                                  bgpstream_record_t *record)
 {
+  /* get collector id and initialize the appropriate fields
+   * if the collector is processed for the first time */
+  uint8_t collector_id = get_collector_id(rt,
+                                          record->attributes.dump_project,
+                                          record->attributes.dump_collector);
+  bgpstream_elem_t *elem;
+  switch(record->status)
+    {
+    case BGPSTREAM_RECORD_STATUS_VALID_RECORD:
+      while((elem = bgpstream_record_get_next_elem(record)) != NULL)
+        {
+          // @todo process record,elem
+        }
+      break;
+    case BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE:
+    case BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD:
+      
+      // @todo invalidate entire collector data (don't destroy memory)
+      break;
+    case BGPSTREAM_RECORD_STATUS_FILTERED_SOURCE:
+    case BGPSTREAM_RECORD_STATUS_EMPTY_SOURCE:
+      // @todo do nothing or update times...
+      break;
+    default:
+      /* programming error */
+      assert(0);            
+    }
+  
   /** @todo */
-  // fprintf(stderr, "Processing record %ld\n", record->attributes.record_time);
+  fprintf(stderr, "Processing %"PRIu8" record %ld\n", collector_id, record->attributes.record_time);
   return 0;
 }
 
