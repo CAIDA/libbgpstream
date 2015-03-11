@@ -59,6 +59,15 @@ routingtables_t *routingtables_create();
 int routingtables_set_metric_prefix(routingtables_t *rt,
                                     char *metric_prefix);
 
+/** Get the metric prefix to be used for when outpting the time series
+ *  variables at the end of the interval
+ *  
+ * @param rt               pointer to a routingtables instance to update
+ * @return the current metric prefix string, NULL if an error occurred.
+ */
+char *routingtables_get_metric_prefix(routingtables_t *rt);
+
+#ifdef WITH_BGPWATCHER
 /** Activate the transmission of bgp views to a bgp watcher server
  *  at the end of every interval
  *  
@@ -78,6 +87,8 @@ int routingtables_activate_watcher_tx(routingtables_t *rt,
                                       char *client_name,
                                       char *server_uri,
                                       uint8_t tables_mask);
+#endif
+
 
 /** Set the value of threshold used to consider a peer a full feed
  *  

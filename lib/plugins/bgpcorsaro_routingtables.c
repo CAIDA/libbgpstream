@@ -71,7 +71,6 @@ static bgpcorsaro_plugin_t bgpcorsaro_routingtables_plugin = {
   BGPCORSARO_PLUGIN_GENERATE_TAIL,
 };
 
-
 /** Holds the state for an instance of this plugin */
 struct bgpcorsaro_routingtables_state_t {
   /** The outfile for the plugin */
@@ -80,8 +79,25 @@ struct bgpcorsaro_routingtables_state_t {
   iow_t *outfile_p[OUTFILE_POINTERS];
   /** The current outfile */
   int outfile_n;
-
-  // @todo custom variables
+  /* plugin custom variables */
+  /** routing tables instance */
+  routingtables_t *routing_tables;
+  /** prefix used for outputed metrics */
+  char *metric_prefix;
+  /** ipv4 full feed size threshold */
+  int ipv4_fullfeed_th;
+  /** ipv6 full feed size threshold */
+  int ipv6_fullfeed_th;
+#ifdef WITH_BGPWATCHER
+  /** Transmission of bgp views flag */
+  uint8_t watcher_tx;
+  /** Watcher server uri */
+  char *watcher_server_uri;
+  /** Client identity */
+  char *watcher_client_id;
+  /** Table transmission filter  */
+  uint8_t tables_mask;
+#endif
 };
 
 /** Extends the generic plugin state convenience macro in bgpcorsaro_plugin.h */
@@ -94,39 +110,92 @@ struct bgpcorsaro_routingtables_state_t {
 
 
 /** Print usage information to stderr */
-static void usage(bgpcorsaro_plugin_t *plugin)
+static void usage(bgpcorsaro_t *bgpcorsaro)
 {
-  /** @todo modify */
+  bgpcorsaro_plugin_t *plugin = PLUGIN(bgpcorsaro);
+  struct bgpcorsaro_routingtables_state_t *state = STATE(bgpcorsaro);
+
   fprintf(stderr,
-	  "plugin usage: %s [-w interval-lenght] -a\n"
-	  "       -w interval-lenght  (default: 30s)\n"
-	  "       -a                  adaptive (default:off) \n",
-	  plugin->argv[0]);
+          "plugin usage: %s [<options>]\n"
+	  "       -m <prefix>                  metric prefix (default: %s)\n"
+	  "       -f <fullfeed-ipv4-th>        set the IPv4 full feed threshold  (default: %d)\n"
+	  "       -F <fullfeed-ipv6-th>        set the IPv6 full feed threshold  (default: %d)\n"
+#ifdef WITH_BGPWATCHER
+          "       -w                           enables bgpwatcher transmission (default: off)\n"
+	  "       -u <server-uri>              0MQ-style URI to connect to server (default: tcp://*:6300)\n"
+	  "       -c <client-identity>         set client identity name (default: randomly choosen)\n"
+	  "       -4                           send IPv4 prefixes to the watcher\n"
+	  "       -6                           send IPv6 prefixes to the watcher\n"
+	  "       -a                           send full feed and partial tables to the watcher (default: full feed only)\n\n"
+#endif
+          , // end of options
+          plugin->argv[0],
+          routingtables_get_metric_prefix(state->routing_tables),
+          routingtables_get_fullfeed_threshold(state->routing_tables, BGPSTREAM_ADDR_VERSION_IPV4),
+          routingtables_get_fullfeed_threshold(state->routing_tables, BGPSTREAM_ADDR_VERSION_IPV6));
 }
 
 /** Parse the arguments given to the plugin */
 static int parse_args(bgpcorsaro_t *bgpcorsaro)
 {
-  /** @todo modify */
-  bgpcorsaro_plugin_t *plugin = PLUGIN(bgpcorsaro);
-  // struct bgpcorsaro_routingtables_state_t *state = STATE(bgpcorsaro);
   int opt;
+  bgpcorsaro_plugin_t *plugin = PLUGIN(bgpcorsaro);
+  struct bgpcorsaro_routingtables_state_t *state = STATE(bgpcorsaro);
 
   if(plugin->argc <= 0)
     {
       return 0;
     }
+  
   /* NB: remember to reset optind to 1 before using getopt! */
   optind = 1;
+  
   /* parsing args */
-  while((opt = getopt(plugin->argc, plugin->argv, "?")) >= 0)
+
+  while((opt = getopt(plugin->argc, plugin->argv,
+                      ":m:f:F:"
+#ifdef WITH_BGPWATCHER
+                      "wa46u:c:"
+#endif
+                      "?")) >= 0)
     {
       switch(opt)
 	{
+    	case 'm':
+	  state->metric_prefix = strdup(optarg);
+	  break;
+    	case 'f':
+	  state->ipv4_fullfeed_th = atoi(optarg);
+	  break;
+    	case 'F':
+	  state->ipv6_fullfeed_th = atoi(optarg);
+	  break;
+#ifdef WITH_BGPWATCHER
+    	case 'w':
+	  state->watcher_tx = 1;
+	  break;
+          /** @todo: set the masks with an OR to set (full feed and partial feed)
+              using the appropriate number ################################################## */
+    	case 'a':
+	  state->tables_mask = 1;
+	  break;          
+    	case '4':
+	  state->tables_mask = 1;
+	  break;          
+    	case '6':
+	  state->tables_mask = 1;
+	  break;
+        case 'u':
+	  state->watcher_server_uri = strdup(optarg);
+	  break;
+        case 'c':
+	  state->watcher_client_id = strdup(optarg);
+	  break;
+#endif
 	case '?':
 	case ':':
 	default:
-	  usage(plugin);
+	  usage(bgpcorsaro);
 	  return -1;
 	}
     }
@@ -154,12 +223,26 @@ int bgpcorsaro_routingtables_init_output(bgpcorsaro_t *bgpcorsaro)
 		     "could not malloc bgpcorsaro_routingtables_state_t");
       goto err;
     }
+
+  /** initialize plugin custom variables */
+  if((state->routing_tables = routingtables_create()) == NULL)
+    {
+      bgpcorsaro_log(__func__, bgpcorsaro,
+		     "could not create routingtables in routingtables plugin");
+      goto err;      
+    }
+  state->metric_prefix = NULL;
+  state->ipv4_fullfeed_th = 0; // default: not set
+  state->ipv6_fullfeed_th = 0; // default: not set
+#ifdef WITH_BGPWATCHER
+  state->watcher_tx = 0; // default: don't send data
+  state->watcher_server_uri = NULL;
+  state->watcher_client_id = NULL;
+  state->tables_mask = 0; // default: all
+#endif
+
   bgpcorsaro_plugin_register_state(bgpcorsaro->plugin_manager, plugin, state);
-
-
-  // initializing state
-  state = STATE(bgpcorsaro);
-
+    
   /* parse the arguments */
   if(parse_args(bgpcorsaro) != 0)
     {
@@ -195,6 +278,28 @@ int bgpcorsaro_routingtables_close_output(bgpcorsaro_t *bgpcorsaro)
 	    }
 	}
       state->outfile = NULL;
+
+        /** destroy plugin custom variables */
+      routingtables_destroy(state->routing_tables);
+      state->routing_tables = NULL;
+      if(state->metric_prefix != NULL)
+        {
+          free(state->metric_prefix);
+        }
+      state->metric_prefix = NULL;
+#ifdef WITH_BGPWATCHER
+      if(state->watcher_server_uri != NULL)
+        {
+          free(state->watcher_server_uri);
+        }
+      state->watcher_server_uri = NULL;
+      if(state->watcher_client_id != NULL)
+        {
+          free(state->watcher_client_id);
+        }
+      state->watcher_client_id = NULL;
+#endif
+  
       bgpcorsaro_plugin_free_state(bgpcorsaro->plugin_manager, PLUGIN(bgpcorsaro));
     }
   return 0;
