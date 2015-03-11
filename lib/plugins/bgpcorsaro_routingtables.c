@@ -31,7 +31,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "bgpstream_lib.h"
+#include "bgpstream.h"
 
 #include "utils.h"
 #include "wandio_utils.h"
@@ -65,8 +65,8 @@
 static bgpcorsaro_plugin_t bgpcorsaro_routingtables_plugin = {
   PLUGIN_NAME,                                  /* name */
   PLUGIN_VERSION,                               /* version */
-  BGPCORSARO_PLUGIN_ID_PACIFIER,                 /* id */
-  BGPCORSARO_PLUGIN_GENERATE_PTRS(bgpcorsaro_pacifier), /* func ptrs */
+  BGPCORSARO_PLUGIN_ID_ROUTINGTABLES,                 /* id */
+  BGPCORSARO_PLUGIN_GENERATE_PTRS(bgpcorsaro_routingtables), /* func ptrs */
   BGPCORSARO_PLUGIN_GENERATE_TAIL,
 };
 
@@ -104,31 +104,22 @@ static void usage(bgpcorsaro_plugin_t *plugin)
 /** Parse the arguments given to the plugin */
 static int parse_args(bgpcorsaro_t *bgpcorsaro)
 {
-
   /** @todo modify */
-
   bgpcorsaro_plugin_t *plugin = PLUGIN(bgpcorsaro);
-  struct bgpcorsaro_routingtables_state_t *state = STATE(bgpcorsaro);
+  // struct bgpcorsaro_routingtables_state_t *state = STATE(bgpcorsaro);
   int opt;
 
   if(plugin->argc <= 0)
     {
       return 0;
     }
-
   /* NB: remember to reset optind to 1 before using getopt! */
   optind = 1;
-
-  while((opt = getopt(plugin->argc, plugin->argv, ":w:a?")) >= 0)
+  /* parsing args */
+  while((opt = getopt(plugin->argc, plugin->argv, "?")) >= 0)
     {
       switch(opt)
 	{
-	case 'w':
-	  state->wait = atoi(optarg);
-	  break;
-	case 'a':
-	  state->adaptive = 1;
-	  break;
 	case '?':
 	case ':':
 	default:
@@ -136,19 +127,8 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
 	  return -1;
 	}
     }
-
-  /* dump doesn't take any arguments */
-  if(optind != plugin->argc)
-    {
-      usage(plugin);
-      return -1;
-    }
-
   return 0;
 }
-
-
-
 
 /* == PUBLIC PLUGIN FUNCS BELOW HERE == */
 
@@ -165,10 +145,10 @@ int bgpcorsaro_routingtables_init_output(bgpcorsaro_t *bgpcorsaro)
   bgpcorsaro_plugin_t *plugin = PLUGIN(bgpcorsaro);
   assert(plugin != NULL);
 
-  if((state = malloc_zero(sizeof(struct bgpcorsaro_pacifier_state_t))) == NULL)
+  if((state = malloc_zero(sizeof(struct bgpcorsaro_routingtables_state_t))) == NULL)
     {
       bgpcorsaro_log(__func__, bgpcorsaro,
-		     "could not malloc bgpcorsaro_pacifier_state_t");
+		     "could not malloc bgpcorsaro_routingtables_state_t");
       goto err;
     }
   bgpcorsaro_plugin_register_state(bgpcorsaro->plugin_manager, plugin, state);
@@ -176,18 +156,15 @@ int bgpcorsaro_routingtables_init_output(bgpcorsaro_t *bgpcorsaro)
 
   // initializing state
   state = STATE(bgpcorsaro);
-  state->tv_start = 0;      // 0 means it is the first interval, so the time has to be initialized at interval start
-  state->wait = 30;         // 30 seconds is the default wait time, between start and end
-  state->tv_first_time = 0; // 0 means it is the first interval, so the time has to be initialized at interval start
-  state->intervals = 0;     // number of intervals processed
-  state->adaptive = 0;      // default behavior is not adaptive
-  
+
   /* parse the arguments */
   if(parse_args(bgpcorsaro) != 0)
     {
       return -1;
     }
 
+  // @todo update state with parsed args
+  
   /* defer opening the output file until we start the first interval */
 
   return 0;
@@ -244,20 +221,8 @@ int bgpcorsaro_routingtables_start_interval(bgpcorsaro_t *bgpcorsaro,
 
   bgpcorsaro_io_write_interval_start(bgpcorsaro, state->outfile, int_start);
 
-  struct timeval tv;
-
-  if(state->tv_start == 0)
-    {
-      gettimeofday_wrap(&tv);
-      state->tv_start = tv.tv_sec;
-      state->tv_first_time = state->tv_start;
-    }
-
-  // a new interval is starting
-  state->intervals++;
+  // @todo start interval
   
-  // fprintf(stderr, "START INTERVAL TIME: %d \n", state->tv_start);
-
   return 0;
 }
 
@@ -289,33 +254,8 @@ int bgpcorsaro_routingtables_end_interval(bgpcorsaro_t *bgpcorsaro,
       state->outfile = NULL;
     }
 
+  // @todo end interval
 
-  struct timeval tv;
-  gettimeofday_wrap(&tv);
-  
-  int expected_time = 0;
-  int diff = 0;
-
-  if(state->adaptive == 0)
-    {
-      diff = state->wait - (tv.tv_sec - state->tv_start);
-    }
-  else
-    {
-      expected_time = state->tv_first_time + state->intervals *  state->wait;
-      diff = expected_time - tv.tv_sec ;
-    }
-  // if the end interval is faster than "the wait" time
-  // then we wait for the remaining seconds
-  if(diff > 0)
-    {
-      // fprintf(stderr, "\tWaiting: %d s\n", diff);
-      sleep(diff);
-      gettimeofday_wrap(&tv);
-    }  
-  state->tv_start = tv.tv_sec;
-
-  // fprintf(stderr, "END INTERVAL TIME: %d \n", state->tv_start);
   return 0;
 }
 
@@ -323,12 +263,6 @@ int bgpcorsaro_routingtables_end_interval(bgpcorsaro_t *bgpcorsaro,
 int bgpcorsaro_routingtables_process_record(bgpcorsaro_t *bgpcorsaro,
 				   bgpcorsaro_record_t *record)
 {
-  BGPDUMP_ENTRY *bd_entry = BS_REC(record)->bd_entry;
-
-  if(BS_REC(record)->status != VALID_RECORD)
-    {
-      return 0;
-    }
 
   /* no point carrying on if a previous plugin has already decided we should
      ignore this record */
@@ -337,7 +271,8 @@ int bgpcorsaro_routingtables_process_record(bgpcorsaro_t *bgpcorsaro,
       return 0;
     }
 
-  // process(bgpcorsaro, bd_entry);
+  // @todo new record available for processing
+
 
   return 0;
 }

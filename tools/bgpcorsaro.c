@@ -99,7 +99,7 @@ static void clean()
 {
   if(record != NULL)
     {
-      bgpstream_destroy_record(record);
+      bgpstream_record_destroy(record);
       record = NULL;
     }
 
@@ -433,7 +433,7 @@ int main(int argc, char *argv[])
 
   /* create a record buffer */
   if (record == NULL &&
-      (record = bgpstream_create_record()) == NULL) {
+      (record = bgpstream_record_create()) == NULL) {
     fprintf(stderr, "ERROR: Could not create BGPStream record\n");
     return -1;
   }
@@ -447,59 +447,42 @@ int main(int argc, char *argv[])
 
   /* we support multiple datasources, mysql is the default */
 
-  bgpstream_datasource_type datasource_type = BS_MYSQL;
+
+  bgpstream_data_interface_id_t ds_id = bgpstream_get_data_interface_id_by_name(stream, "mysql");
 
   if(datasource_set == 1)
     {
-      if(strcmp(datasource, "mysql") == 0) 
-	{
-	  datasource_type = BS_MYSQL;
-	}
-      else 
-	{
-	  if(strcmp(datasource, "csvfile") == 0)
-	    {
-	  datasource_type = BS_CSVFILE;
-	    }
-	  else 
-	    {
-	      if(strcmp(datasource, "customlist") == 0) 
-		{
-		  datasource_type = BS_CUSTOMLIST;
-		}
-	      else 
-		{
-		  fprintf(stderr, "ERROR: Datasource %s is not valid.\n", datasource);
-		  usage();
-		  exit(-1);
-		}
-	    }
-	}      
+      ds_id = bgpstream_get_data_interface_id_by_name(stream, datasource);
+      if (ds_id == 0)
+        {
+          fprintf(stderr, "ERROR: Datasource %s is not valid.\n", datasource);
+          usage();
+          exit(-1);
+        }	 
     }
 
-  bgpstream_set_data_interface(stream, datasource_type);
-  
+  bgpstream_set_data_interface(stream, ds_id);
 
   /* pass along the user's filter requests to bgpstream */
 
   /* types */
   for(i=0; i<types_cnt; i++)
     {
-      bgpstream_add_filter(stream, BS_BGP_TYPE, types[i]);
+      bgpstream_add_filter(stream, BGPSTREAM_FILTER_TYPE_RECORD_TYPE, types[i]);
       free(types[i]);
     }
 
   /* projects */
   for(i=0; i<projects_cnt; i++)
     {
-      bgpstream_add_filter(stream, BS_PROJECT, projects[i]);
+      bgpstream_add_filter(stream, BGPSTREAM_FILTER_TYPE_PROJECT, projects[i]);
       free(projects[i]);
     }
 
   /* collectors */
   for(i=0; i<collectors_cnt; i++)
     {
-      bgpstream_add_filter(stream, BS_COLLECTOR, collectors[i]);
+      bgpstream_add_filter(stream, BGPSTREAM_FILTER_TYPE_COLLECTOR, collectors[i]);
       free(collectors[i]);
     }
 
@@ -508,8 +491,7 @@ int main(int argc, char *argv[])
   int current_time = 0;
   for(i=0; i<windows_cnt; i++)
     {
-      bgpstream_add_interval_filter(stream, BS_TIME_INTERVAL,
-				    windows[i].start, windows[i].end);
+      bgpstream_add_interval_filter(stream, atoi(windows[i].start), atoi(windows[i].end));
       current_time =  atoi(windows[i].start);
       if(minimum_time == 0 || current_time < minimum_time)
 	{
@@ -525,7 +507,8 @@ int main(int argc, char *argv[])
       bgpstream_set_blocking(stream);
     }
 
-  if(bgpstream_init(stream) < 0) {
+  
+  if(bgpstream_start(stream) < 0) {
     fprintf(stderr, "ERROR: Could not init BGPStream\n");
     return -1;
   }

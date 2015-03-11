@@ -31,9 +31,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "bgpstream_lib.h"
-#include "bgpdump_util.h"
-
 #include "utils.h"
 #include "wandio_utils.h"
 
@@ -144,13 +141,6 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
 	  usage(plugin);
 	  return -1;
 	}
-    }
-
-  /* dump doesn't take any arguments */
-  if(optind != plugin->argc)
-    {
-      usage(plugin);
-      return -1;
     }
 
   return 0;
@@ -330,14 +320,8 @@ int bgpcorsaro_pacifier_end_interval(bgpcorsaro_t *bgpcorsaro,
 
 /** Implements the process_record function of the plugin API */
 int bgpcorsaro_pacifier_process_record(bgpcorsaro_t *bgpcorsaro,
-				   bgpcorsaro_record_t *record)
+                                       bgpcorsaro_record_t *record)
 {
-  BGPDUMP_ENTRY *bd_entry = BS_REC(record)->bd_entry;
-
-  if(BS_REC(record)->status != VALID_RECORD)
-    {
-      return 0;
-    }
 
   /* no point carrying on if a previous plugin has already decided we should
      ignore this record */
@@ -345,8 +329,6 @@ int bgpcorsaro_pacifier_process_record(bgpcorsaro_t *bgpcorsaro,
     {
       return 0;
     }
-
-  // process(bgpcorsaro, bd_entry);
 
   return 0;
 }

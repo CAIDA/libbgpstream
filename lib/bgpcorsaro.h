@@ -26,7 +26,7 @@
 #ifndef __BGPCORSARO_H
 #define __BGPCORSARO_H
 
-#include "bgpstream_lib.h"
+#include "bgpstream.h"
 #include "wandio.h"
 
 /** @file

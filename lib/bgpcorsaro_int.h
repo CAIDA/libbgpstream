@@ -28,7 +28,7 @@
 
 #include "config.h"
 
-#include "bgpstream_lib.h"
+#include "bgpstream.h"
 
 #ifdef WITH_PLUGIN_IPMETA
 #include <libipmeta.h>
