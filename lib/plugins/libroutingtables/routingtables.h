@@ -98,7 +98,7 @@ int routingtables_activate_watcher_tx(routingtables_t *rt,
  */
 void routingtables_set_fullfeed_threshold(routingtables_t *rt,
                                          bgpstream_addr_version_t ip_version,
-                                         int threshold);
+                                         uint32_t threshold);
 
 /** get the value of threshold used to consider a peer a full feed
  *  

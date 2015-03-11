@@ -276,16 +276,18 @@ int bgpcorsaro_routingtables_init_output(bgpcorsaro_t *bgpcorsaro)
         {
           goto err;
         }
+      bgpcorsaro_log(__func__, NULL,
+                     "BGP watcher connection setup successful");
+
     }
 #endif
 
-  
-  
   /* defer opening the output file until we start the first interval */
 
   return 0;
 
  err:
+  usage(bgpcorsaro);
   bgpcorsaro_routingtables_close_output(bgpcorsaro);
   return -1;
 }
