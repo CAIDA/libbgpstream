@@ -339,7 +339,7 @@ static bwv_peerid_pfxinfo_t *get_pfx_peerids(bgpwatcher_view_t *view,
 void bgpwatcher_view_clear(bgpwatcher_view_t *view)
 {
   khiter_t k;
-
+  int i;
   view->time = 0;
 
   gettimeofday(&view->time_created, NULL);
@@ -351,6 +351,10 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
 	{
 	  kh_value(view->v4pfxs, k)->peers_cnt = 0;
           kh_value(view->v4pfxs, k)->state = BGPWATCHER_VIEW_FIELD_INVALID;
+          for(i = 0; i < kh_val(view->v4pfxs, k)->peers_alloc_cnt; i++)
+            {
+              kh_val(view->v4pfxs, k)->peers[i].state = BGPWATCHER_VIEW_FIELD_INVALID;
+            }
 	}
     }
   view->v4pfxs_cnt = 0;
@@ -362,6 +366,10 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
 	{
 	  kh_value(view->v6pfxs, k)->peers_cnt = 0;
           kh_value(view->v6pfxs, k)->state = BGPWATCHER_VIEW_FIELD_INVALID;
+          for(i = 0; i < kh_val(view->v6pfxs, k)->peers_alloc_cnt; i++)
+            {
+              kh_val(view->v6pfxs, k)->peers[i].state = BGPWATCHER_VIEW_FIELD_INVALID;
+            }
 	}
     }
   view->v6pfxs_cnt = 0;
