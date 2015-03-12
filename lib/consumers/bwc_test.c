@@ -228,9 +228,7 @@ int bwc_test_process_view(bwc_t *consumer, uint8_t interests,
     }
 
   // use seek in peers
-
-  int i = 0;
-  for(i = 0; i < 10; i++)
+  for(int i = 1; i <= 3 ; i++)
     {
       if(!bgpwatcher_view_iter_seek_peer(it, i, BGPWATCHER_VIEW_FIELD_ALL_VALID))
         {
@@ -259,8 +257,16 @@ int bwc_test_process_view(bwc_t *consumer, uint8_t interests,
       fprintf(stderr, "Peer id: %d, %d\n",
               *(int *)bgpwatcher_view_iter_peer_get_user(it),
               *(int *)bgpwatcher_view_iter_pfx_peer_get_user(it));
+      if(rand()%10 > 5)
+        {
+          bgpwatcher_view_iter_pfx_deactivate_peer(it);
+          fprintf(stderr,"Deactivating\n");
+        }
     }
 
+  // dump view after random deactivation
+  bgpwatcher_view_dump(view);
+   
   bgpwatcher_view_iter_destroy(it);
   
   return 0;

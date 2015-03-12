@@ -204,7 +204,7 @@ bgpwatcher_view_dump(bgpwatcher_view_t *view);
  *
  * @{ */
 
-/** Get the total number of IPv4 prefixes in the view
+/** Get the total number of active IPv4 prefixes in the view
  *
  * @param view          pointer to a view structure
  * @return the number of IPv4 prefixes in the view
@@ -212,7 +212,7 @@ bgpwatcher_view_dump(bgpwatcher_view_t *view);
 uint32_t
 bgpwatcher_view_v4pfx_size(bgpwatcher_view_t *view);
 
-/** Get the total number of IPv6 prefixes in the view
+/** Get the total number of active IPv6 prefixes in the view
  *
  * @param view          pointer to a view structure
  * @return the number of IPv6 prefixes in the view
@@ -220,7 +220,7 @@ bgpwatcher_view_v4pfx_size(bgpwatcher_view_t *view);
 uint32_t
 bgpwatcher_view_v6pfx_size(bgpwatcher_view_t *view);
 
-/** Get the total number of prefixes (v4+v6) in the view
+/** Get the total number of active prefixes (v4+v6) in the view
  *
  * @param view          pointer to a view structure
  * @return the number of prefixes in the view
@@ -228,7 +228,7 @@ bgpwatcher_view_v6pfx_size(bgpwatcher_view_t *view);
 uint32_t
 bgpwatcher_view_pfx_size(bgpwatcher_view_t *view);
 
-/** Get the number of peers in the view
+/** Get the number of active peers in the view
  *
  * @param view          pointer to a view structure
  * @return the number of peers in the view
@@ -579,6 +579,30 @@ bgpwatcher_view_iter_seek_pfx_peer(bgpwatcher_view_iter_t *iter,
 bgpwatcher_view_t *
 bgpwatcher_view_iter_get_view(bgpwatcher_view_iter_t *iter);
 
+/** Activate the current prefix
+ *
+ * @param iter          Pointer to an iterator structure
+ * @return  0 if the prefix was already active
+ *          1 if the prefix was inactive and it became active,
+ *         -1 if the iterator is not initialized, or has reached the end of
+ *         the prefixes.
+ */
+int
+bgpwatcher_view_iter_activate_pfx(bgpwatcher_view_iter_t *iter);
+
+/** De-activate the current prefix
+ *
+ * @param iter          Pointer to an iterator structure
+ * @return  0 if the prefix was already inactive
+ *          1 if the prefix was active and it became inactive,
+ *         -1 if the iterator is not initialized, or has reached the end of
+ *         the prefixes.
+ * @note the function deactivates all the peer-pfxs associated with the 
+ *       same prefix
+ */
+int
+bgpwatcher_view_iter_deactivate_prefix(bgpwatcher_view_iter_t *iter);
+
 /** Get the current prefix for the given iterator
  *
  * @param iter          Pointer to an iterator structure
@@ -631,6 +655,30 @@ bgpwatcher_view_iter_pfx_get_user(bgpwatcher_view_iter_t *iter);
  */
 int
 bgpwatcher_view_iter_pfx_set_user(bgpwatcher_view_iter_t *iter, void *user);
+
+/** Activate the current peer
+ *
+ * @param iter          Pointer to an iterator structure
+ * @return  0 if the peer was already active
+ *          1 if the peer was inactive and it became active,
+ *         -1 if the iterator is not initialized, or has reached the end of
+ *         the prefixes.
+ */
+int
+bgpwatcher_view_iter_activate_peer(bgpwatcher_view_iter_t *iter);
+
+/** De-activate the current peer
+ *
+ * @param iter          Pointer to an iterator structure
+ * @return  0 if the peer was already inactive
+ *          1 if the peer was active and it became inactive,
+ *         -1 if the iterator is not initialized, or has reached the end of
+ *         the prefixes.
+ * @note the function deactivates all the peer-pfxs of the bgpview
+ *       associated with the same peer
+ */
+int
+bgpwatcher_view_iter_deactivate_peer(bgpwatcher_view_iter_t *iter);
 
 /** Get the current peer id for the given iterator
  *
@@ -701,13 +749,40 @@ bgpwatcher_view_iter_peer_get_user(bgpwatcher_view_iter_t *iter);
 int
 bgpwatcher_view_iter_peer_set_user(bgpwatcher_view_iter_t *iter, void *user);
 
+/** Activate the current pfx-peer
+ *
+ * @param iter          Pointer to an iterator structure
+ * @return  0 if the pfx-peer was already active
+ *          1 if the pfx-peer was inactive and it became active,
+ *         -1 if the iterator is not initialized, or has reached the end of
+ *         the peers for the given prefix.
+ *
+ * @note: this function will automatically activate the corresponding
+ *        prefix and peer (if they are not active already)
+ */
+int
+bgpwatcher_view_iter_pfx_activate_peer(bgpwatcher_view_iter_t *iter);
+
+/** De-activate the current pfx-peer
+ *
+ * @param iter          Pointer to an iterator structure
+ * @return  0 if the pfx-peer was already inactive
+ *          1 if the pfx-peer was active and it became inactive,
+ *         -1 if the iterator is not initialized, or has reached the end of
+ *         the peers for the given prefix.
+ * @note if this is the last peer active for the the given prefix, then it
+ *       deactivates the prefix.
+ */
+int
+bgpwatcher_view_iter_pfx_deactivate_peer(bgpwatcher_view_iter_t *iter);
+
 
 /** Get the origin AS number for the current pfx-peer structure pointed by the given iterator
  *
  * @param iter          Pointer to an iterator structure
  * @return the origin AS number, 
  *         -1 if the iterator is not initialized, or has reached the end of
- *         the peer for the given prefix.
+ *         the peers for the given prefix.
  */
 int
 bgpwatcher_view_iter_pfx_peer_get_orig_asn(bgpwatcher_view_iter_t *iter);

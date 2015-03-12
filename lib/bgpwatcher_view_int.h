@@ -65,7 +65,10 @@ typedef struct bwv_peerid_pfxinfo {
 
   uint16_t peers_alloc_cnt;
 
-  /** The number of peers in the peers list that are actually valid */
+  /** The number of peers in the peers list that are valid */
+  //  uint16_t peers_cnt;
+
+  /** The number of peers in the peers list that currently observe this prefix */
   uint16_t peers_cnt;
 
   /** State of the prefix, if ACTIVE 

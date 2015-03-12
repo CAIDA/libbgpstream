@@ -1236,6 +1236,62 @@ bgpwatcher_view_iter_get_view(bgpwatcher_view_iter_t *iter)
   return NULL;
 }
 
+int
+bgpwatcher_view_iter_activate_pfx(bgpwatcher_view_iter_t *iter)
+{
+  bgpwatcher_view_field_state_t *st;
+  if(bgpwatcher_view_iter_has_more_pfx(iter))
+    {
+      if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV4)
+        {
+          st = &kh_val(iter->view->v4pfxs, iter->v4pfx_it)->state;
+        }
+      if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV6)
+        {
+          st = &kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state;
+        }
+      if(*st == BGPWATCHER_VIEW_FIELD_INACTIVE)
+        {
+          *st = BGPWATCHER_VIEW_FIELD_ACTIVE;
+          return 1;
+        }
+      // if already active
+      return 0;
+    }
+  return -1;
+}
+
+int
+bgpwatcher_view_iter_deactivate_pfx(bgpwatcher_view_iter_t *iter)
+{
+  bgpwatcher_view_field_state_t *st;
+  if(bgpwatcher_view_iter_has_more_pfx(iter))
+    {
+      if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV4)
+        {
+          st = &kh_val(iter->view->v4pfxs, iter->v4pfx_it)->state;
+        }
+      if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV6)
+        {
+          st = &kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state;
+        }
+      if(*st == BGPWATCHER_VIEW_FIELD_ACTIVE)
+        {
+          // deactivate all the pfx-peers for this prefix
+          for(bgpwatcher_view_iter_pfx_first_peer(iter, BGPWATCHER_VIEW_FIELD_ACTIVE);
+              bgpwatcher_view_iter_pfx_has_more_peer(iter);
+              bgpwatcher_view_iter_pfx_next_peer(iter))
+            {
+              bgpwatcher_view_iter_pfx_deactivate_peer(iter);
+            }
+          *st = BGPWATCHER_VIEW_FIELD_INACTIVE;          
+        }
+      // if already inactive
+      return 0;
+    }
+  return -1;
+}
+
 bgpstream_pfx_t *
 bgpwatcher_view_iter_pfx_get_pfx(bgpwatcher_view_iter_t *iter)
 {
@@ -1341,6 +1397,54 @@ bgpwatcher_view_iter_pfx_set_user(bgpwatcher_view_iter_t *iter, void *user)
   return -1;
 }
 
+int
+bgpwatcher_view_iter_activate_peer(bgpwatcher_view_iter_t *iter)
+{
+  if(bgpwatcher_view_iter_has_more_peer(iter))
+    {
+      if(kh_val(iter->view->peerinfo, iter->peer_it).state == BGPWATCHER_VIEW_FIELD_INACTIVE)
+        {
+          kh_val(iter->view->peerinfo, iter->peer_it).state = BGPWATCHER_VIEW_FIELD_ACTIVE;
+          return 1;
+        }
+      // if already active
+      return 0;
+    }
+  return -1;
+}
+
+int
+bgpwatcher_view_iter_deactivate_peer(bgpwatcher_view_iter_t *iter)
+{
+  if(bgpwatcher_view_iter_has_more_peer(iter))
+    {
+      if(kh_val(iter->view->peerinfo, iter->peer_it).state == BGPWATCHER_VIEW_FIELD_ACTIVE)
+        {
+          bgpwatcher_view_iter_t *inn_it;
+          inn_it = bgpwatcher_view_iter_create(iter->view);
+          for(bgpwatcher_view_iter_first_pfx_peer(inn_it, BGPSTREAM_ADDR_VERSION_IPV4,
+                                                  BGPWATCHER_VIEW_FIELD_ACTIVE,
+                                                  BGPWATCHER_VIEW_FIELD_ACTIVE);
+              bgpwatcher_view_iter_has_more_pfx_peer(inn_it);
+              bgpwatcher_view_iter_next_pfx_peer(inn_it))
+            {
+              // deactivate all the peer-pfx associated with the peer
+              if(bgpwatcher_view_iter_peer_get_peer(inn_it) == bgpwatcher_view_iter_peer_get_peer(iter))
+                {
+                  bgpwatcher_view_iter_pfx_deactivate_peer(inn_it);
+                }
+            }
+          // reduce the number of active peers
+          iter->view->peerinfo_cnt--;
+          kh_val(iter->view->peerinfo, iter->peer_it).state = BGPWATCHER_VIEW_FIELD_INACTIVE;
+          return 1;
+        }
+      // if already inactive
+      return 0;
+    }
+  return -1;
+}
+
 bgpstream_peer_id_t 
 bgpwatcher_view_iter_peer_get_peer(bgpwatcher_view_iter_t *iter)
 {
@@ -1425,6 +1529,89 @@ bgpwatcher_view_iter_peer_set_user(bgpwatcher_view_iter_t *iter, void *user)
     }
   return -1;
 }
+
+int
+bgpwatcher_view_iter_pfx_activate_peer(bgpwatcher_view_iter_t *iter)
+{
+  bgpwatcher_view_field_state_t *st;
+  uint32_t *num_pfxs_ptr;
+  uint16_t *num_peers_ptr;
+
+  if(bgpwatcher_view_iter_pfx_has_more_peer(iter))
+    {
+      if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV4)
+        {
+          st = &kh_val(iter->view->v4pfxs, iter->v4pfx_it)
+               ->peers[iter->v4pfx_peer_it].state;
+          num_peers_ptr = &kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_cnt;
+          num_pfxs_ptr = &kh_value(iter->view->peerinfo, iter->peer_it).v4_pfx_cnt;
+        }
+      if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV6)
+        {
+          st = &kh_val(iter->view->v6pfxs, iter->v6pfx_it)
+               ->peers[iter->v6pfx_peer_it].state;
+          num_peers_ptr = &kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_cnt;
+          num_pfxs_ptr = &kh_value(iter->view->peerinfo, iter->peer_it).v6_pfx_cnt;
+        }
+      if(*st == BGPWATCHER_VIEW_FIELD_INACTIVE)
+        {
+          *st = BGPWATCHER_VIEW_FIELD_ACTIVE;
+          // increment the number of peers that observe the prefix
+          *num_peers_ptr = *num_peers_ptr + 1;
+          bgpwatcher_view_iter_activate_pfx(iter);
+          // increment the number of prefixes observed by the peer
+          *num_pfxs_ptr = *num_pfxs_ptr + 1;
+          bgpwatcher_view_iter_activate_peer(iter);
+          return 1;
+        }
+      // if already active
+      return 0;
+    }
+ return -1;
+}
+
+int
+bgpwatcher_view_iter_pfx_deactivate_peer(bgpwatcher_view_iter_t *iter)
+{
+  bgpwatcher_view_field_state_t *st;
+  uint32_t *num_pfxs_ptr;
+  uint16_t *num_peers_ptr;
+  if(bgpwatcher_view_iter_pfx_has_more_peer(iter))
+    {
+      if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV4)
+        {
+          st = &kh_val(iter->view->v4pfxs, iter->v4pfx_it)
+               ->peers[iter->v4pfx_peer_it].state;
+          num_peers_ptr = &kh_val(iter->view->v4pfxs, iter->v4pfx_it)->peers_cnt;
+          num_pfxs_ptr = &kh_value(iter->view->peerinfo, iter->peer_it).v4_pfx_cnt;
+        }
+      if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV6)
+        {
+          st = &kh_val(iter->view->v6pfxs, iter->v6pfx_it)
+               ->peers[iter->v6pfx_peer_it].state;
+          num_peers_ptr = &kh_val(iter->view->v6pfxs, iter->v6pfx_it)->peers_cnt;
+          num_pfxs_ptr = &kh_value(iter->view->peerinfo, iter->peer_it).v6_pfx_cnt;
+        }
+      if(*st == BGPWATCHER_VIEW_FIELD_ACTIVE)
+        {
+          *st = BGPWATCHER_VIEW_FIELD_INACTIVE;
+          // decrease prefix counters (for the current peer)
+          *num_pfxs_ptr = *num_pfxs_ptr - 1;
+          // decrease peers counter (for the current prefix)
+          *num_peers_ptr = *num_peers_ptr - 1;
+          if(*num_peers_ptr == 0)
+            {
+              bgpwatcher_view_iter_deactivate_pfx(iter);
+            }
+          return 1;
+        }
+      // if already active
+      return 0;
+    }
+ return -1;
+
+}
+
 
 int
 bgpwatcher_view_iter_pfx_peer_get_orig_asn(bgpwatcher_view_iter_t *iter)
