@@ -579,16 +579,13 @@ bgpwatcher_view_iter_seek_pfx_peer(bgpwatcher_view_iter_t *iter,
 bgpwatcher_view_t *
 bgpwatcher_view_iter_get_view(bgpwatcher_view_iter_t *iter);
 
-/** Activate the current prefix
- *
- * @param iter          Pointer to an iterator structure
- * @return  0 if the prefix was already active
- *          1 if the prefix was inactive and it became active,
- *         -1 if the iterator is not initialized, or has reached the end of
- *         the prefixes.
+/** Activate the current prefix: 
+ *  a prefix is active only when there is at least one prefix
+ *  peer info which is active. In order to have a coherent 
+ *  behavior the only way to activate a prefix is either to
+ *  activate a peer-pfx or to insert/add a peer-pfx (that 
+ *  automatically causes the activation.
  */
-int
-bgpwatcher_view_iter_activate_pfx(bgpwatcher_view_iter_t *iter);
 
 /** De-activate the current prefix
  *
@@ -601,7 +598,7 @@ bgpwatcher_view_iter_activate_pfx(bgpwatcher_view_iter_t *iter);
  *       same prefix
  */
 int
-bgpwatcher_view_iter_deactivate_prefix(bgpwatcher_view_iter_t *iter);
+bgpwatcher_view_iter_deactivate_pfx(bgpwatcher_view_iter_t *iter);
 
 /** Get the current prefix for the given iterator
  *

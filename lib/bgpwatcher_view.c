@@ -31,7 +31,7 @@ struct bgpwatcher_view_iter {
   /** Pointer to the view instance we are iterating over */
   bgpwatcher_view_t *view;
 
-  /** The IP version that is currently iterated*/
+  /** The IP version that is currently iterated */
   bgpstream_addr_version_t version_ptr;
 
   /** 0 if all IP versions are iterated, 
@@ -1244,23 +1244,27 @@ bgpwatcher_view_iter_get_view(bgpwatcher_view_iter_t *iter)
   return NULL;
 }
 
-int
+static int
 bgpwatcher_view_iter_activate_pfx(bgpwatcher_view_iter_t *iter)
 {
   bgpwatcher_view_field_state_t *st;
+  uint32_t *pfx_cnt_ptr;
   if(bgpwatcher_view_iter_has_more_pfx(iter))
     {
       if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV4)
         {
           st = &kh_val(iter->view->v4pfxs, iter->v4pfx_it)->state;
+          pfx_cnt_ptr = &iter->view->v4pfxs_cnt;
         }
       if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV6)
         {
           st = &kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state;
+          pfx_cnt_ptr = &iter->view->v6pfxs_cnt;
         }
       if(*st == BGPWATCHER_VIEW_FIELD_INACTIVE)
         {
           *st = BGPWATCHER_VIEW_FIELD_ACTIVE;
+          *pfx_cnt_ptr = *pfx_cnt_ptr + 1;
           return 1;
         }
       // if already active
@@ -1273,15 +1277,18 @@ int
 bgpwatcher_view_iter_deactivate_pfx(bgpwatcher_view_iter_t *iter)
 {
   bgpwatcher_view_field_state_t *st;
+  uint32_t *pfx_cnt_ptr;
   if(bgpwatcher_view_iter_has_more_pfx(iter))
     {
       if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV4)
         {
           st = &kh_val(iter->view->v4pfxs, iter->v4pfx_it)->state;
+          pfx_cnt_ptr = &iter->view->v4pfxs_cnt;
         }
       if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV6)
         {
           st = &kh_val(iter->view->v6pfxs, iter->v6pfx_it)->state;
+          pfx_cnt_ptr = &iter->view->v6pfxs_cnt;
         }
       if(*st == BGPWATCHER_VIEW_FIELD_ACTIVE)
         {
@@ -1292,7 +1299,8 @@ bgpwatcher_view_iter_deactivate_pfx(bgpwatcher_view_iter_t *iter)
             {
               bgpwatcher_view_iter_pfx_deactivate_peer(iter);
             }
-          *st = BGPWATCHER_VIEW_FIELD_INACTIVE;          
+          *st = BGPWATCHER_VIEW_FIELD_INACTIVE;
+          *pfx_cnt_ptr = *pfx_cnt_ptr - 1;
         }
       // if already inactive
       return 0;
