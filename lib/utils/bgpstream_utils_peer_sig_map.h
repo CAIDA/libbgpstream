@@ -61,6 +61,9 @@ typedef struct struct_bgpstream_peer_sig_t {
   /** The IP address of this peer */
   bgpstream_addr_storage_t peer_ip_addr;
 
+  /** The AS number of this peer*/
+  uint32_t peer_asnumber;
+
 } bgpstream_peer_sig_t;
 
 /** @} */
@@ -84,14 +87,15 @@ bgpstream_peer_sig_map_t *bgpstream_peer_sig_map_create();
  * @param map            pointer to the peer sig map to query
  * @param collector_str  string name of the collector
  * @param peer_ip_addr   pointer to the IP address of the peer
+ * @param peer_asnumber  AS number of the peer
  * @return the peer ID for this peer signature, 0 if an error occurred
  *
- * @todo add peer ASN
  */
 bgpstream_peer_id_t bgpstream_peer_sig_map_get_id(
                                         bgpstream_peer_sig_map_t *map,
                                         char *collector_str,
-					bgpstream_addr_storage_t *peer_ip_addr);
+					bgpstream_addr_storage_t *peer_ip_addr,
+                                        uint32_t peer_asnumber);
 
 /** Get the peer signature for the given peer ID
  *

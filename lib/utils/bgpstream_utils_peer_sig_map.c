@@ -59,6 +59,7 @@ static bgpstream_peer_id_t bgpstream_peer_sig_map_set_and_get_ps(
 
 /* PROTECTED FUNCTIONS (_int.h) */
 
+
 khint64_t bgpstream_peer_sig_hash(bgpstream_peer_sig_t *ps)
 {
   /* assuming that the number of peers that have the same ip and belong to two
@@ -67,6 +68,8 @@ khint64_t bgpstream_peer_sig_hash(bgpstream_peer_sig_t *ps)
   return bgpstream_addr_storage_hash(&ps->peer_ip_addr);
 }
 
+/** @note we do not need to take into account the peer AS number
+ *  to check whether a peer differs or not */
 int bgpstream_peer_sig_equal(bgpstream_peer_sig_t *ps1,
                              bgpstream_peer_sig_t *ps2)
 {
@@ -77,7 +80,8 @@ int bgpstream_peer_sig_equal(bgpstream_peer_sig_t *ps1,
 int bgpstream_peer_sig_map_set(bgpstream_peer_sig_map_t *map,
                                bgpstream_peer_id_t peerid,
                                char *collector_str,
-                               bgpstream_addr_storage_t *peer_ip_addr)
+                               bgpstream_addr_storage_t *peer_ip_addr,
+                               uint32_t peer_asnumber)
 {
   khiter_t k;
   int khret;
@@ -85,6 +89,7 @@ int bgpstream_peer_sig_map_set(bgpstream_peer_sig_map_t *map,
   bgpstream_peer_sig_t *new_ps;
   ps.peer_ip_addr = *peer_ip_addr;
   strcpy(ps.collector_str, collector_str);
+  ps.peer_asnumber = peer_asnumber;
 
   /* check if this peer id is in the map already */
   if((k = kh_get(bgpstream_peer_id_sig_map, map->id_ps, peerid)) !=
@@ -169,7 +174,8 @@ bgpstream_peer_sig_map_t *bgpstream_peer_sig_map_create()
 
 bgpstream_peer_id_t bgpstream_peer_sig_map_get_id(bgpstream_peer_sig_map_t *map,
                                                   char *collector_str,
-					 bgpstream_addr_storage_t *peer_ip_addr)
+                                                  bgpstream_addr_storage_t *peer_ip_addr,
+                                                  uint32_t peer_asnumber)
 {
   bgpstream_peer_sig_t *new_ps;
   if((new_ps = malloc(sizeof(bgpstream_peer_sig_t))) == NULL)
@@ -179,6 +185,7 @@ bgpstream_peer_id_t bgpstream_peer_sig_map_get_id(bgpstream_peer_sig_map_t *map,
 
   new_ps->peer_ip_addr = *peer_ip_addr;
   strcpy(new_ps->collector_str, collector_str);
+  new_ps->peer_asnumber = peer_asnumber;
 
   return bgpstream_peer_sig_map_set_and_get_ps(map,new_ps);
 }

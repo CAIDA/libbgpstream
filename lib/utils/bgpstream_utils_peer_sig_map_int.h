@@ -59,6 +59,7 @@ int bgpstream_peer_sig_equal(bgpstream_peer_sig_t *ps1,
  * @param peer_id       peer id to set
  * @param collector_str name of the collector the peer is associated with
  * @param peer_ip_addr  pointer to the peer IP address
+ * @param peer_asnumber  AS number of the peer
  * @return 0 if the ID was associated successfully, -1 otherwise
  *
  * @note the peer sig map expects to be able to allocate IDs internally. This
@@ -67,7 +68,8 @@ int bgpstream_peer_sig_equal(bgpstream_peer_sig_t *ps1,
 int bgpstream_peer_sig_map_set(bgpstream_peer_sig_map_t *map,
                                bgpstream_peer_id_t peer_id,
                                char *collector_str,
-                               bgpstream_addr_storage_t *peer_ip_addr);
+                               bgpstream_addr_storage_t *peer_ip_addr,
+                               uint32_t peer_asnumber);
 
 
 /** Map from peer signature to peer ID */
