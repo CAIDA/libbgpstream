@@ -43,6 +43,8 @@ static char                     *test_collector_name;
 static uint32_t                  test_time;
 static uint32_t                  test_peer_first_ip;
 static bgpstream_addr_storage_t  test_peer_ip;
+static uint32_t                  test_peer_first_asn;
+static uint32_t                  test_peer_asn;
 static uint8_t                   test_peer_status;
 
 /* pfx row */
@@ -64,6 +66,9 @@ static void create_test_data()
   test_peer_ip.ipv4.s_addr = test_peer_first_ip = 0x00FAD982; /* add one each time */
   test_peer_ip.version = BGPSTREAM_ADDR_VERSION_IPV4;
 
+  /* FIRST PEER ASN */
+  test_peer_asn = test_peer_first_asn = 1;
+  
   /* FIRST PEER STATUS */
   test_peer_status = 0x01;
 
@@ -334,22 +339,26 @@ int main(int argc, char **argv)
 
       /* reset peer ip */
       test_peer_ip.ipv4.s_addr = test_peer_first_ip;
+      test_peer_asn = test_peer_first_asn;
 
       fprintf(stderr, "TEST: Simulating %d peer(s)\n", test_peer_num);
       for(peer = 0; peer < test_peer_num; peer++)
         {
           test_peer_ip.ipv4.s_addr += htonl(1);
+          test_peer_asn = test_peer_asn + 1;
+          
           // returns number from 0 to 2
 	  test_peer_status = (use_random_peers) ? rand() % 3 : 2;
           if((peer_id =
               bgpwatcher_client_pfx_table_add_peer(client,
                                                    &test_peer_ip,
+                                                   test_peer_asn,
 						   test_peer_status)) < 0)
             {
               fprintf(stderr, "Could not add peer to table\n");
               goto err;
             }
-          fprintf(stderr, "TEST: Added peer %d ", peer_id);
+          fprintf(stderr, "TEST: Added peer %d (asn: %"PRIu32") ", peer_id, test_peer_asn);
 
 	  if(test_peer_status != 2)
             {

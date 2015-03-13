@@ -945,7 +945,7 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
       // set "static" (server) id assigned to (collector,peer) by current process
       peer_info->server_id =
         bgpstream_peer_sig_map_get_id(store->peersigns,
-                                       table->collector, &(peer_info->ip));
+                                      table->collector, &(peer_info->ip), peer_info->asn);
       // send peer info to the appropriate bgp view
 
       assert(sview->view->peersigns_shared != 0);

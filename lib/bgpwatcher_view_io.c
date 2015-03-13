@@ -66,8 +66,8 @@ static void peers_dump(bgpwatcher_view_t *view,
       inet_ntop(ps->peer_ip_addr.version, &(ps->peer_ip_addr.ipv4),
 		peer_str, INET6_ADDRSTRLEN);
 
-      fprintf(stdout, "  %"PRIu16":\t%s, %s (%d v4 pfxs, %d v6 pfxs)\n",
-	      peerid, ps->collector_str, peer_str, v4pfx_cnt, v6pfx_cnt);
+      fprintf(stdout, "  %"PRIu16":\t%s, %s %"PRIu32" (%d v4 pfxs, %d v6 pfxs)\n",
+	      peerid, ps->collector_str, peer_str, ps->peer_asnumber, v4pfx_cnt, v6pfx_cnt);
     }
 }
 
@@ -408,6 +408,7 @@ static int recv_pfxs(void *src, bgpwatcher_view_t *view)
 static int send_peers(void *dest, bgpwatcher_view_iter_t *it)
 {
   uint16_t u16;
+  uint32_t u32;
 
   bgpstream_peer_sig_t *ps;
   size_t len;
@@ -423,7 +424,7 @@ static int send_peers(void *dest, bgpwatcher_view_iter_t *it)
       goto err;
     }
 
-  /* foreach peer, send peerid, collector string, peer ip (version, address) */
+  /* foreach peer, send peerid, collector string, peer ip (version, address), peer asn */
   for(bgpwatcher_view_iter_first_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
       bgpwatcher_view_iter_has_more_peer(it);
       bgpwatcher_view_iter_next_peer(it))
@@ -444,10 +445,20 @@ static int send_peers(void *dest, bgpwatcher_view_iter_t *it)
 	  goto err;
 	}
 
+      // peer IP address
       if(bw_send_ip(dest, (bgpstream_ip_addr_t *)(&ps->peer_ip_addr), ZMQ_SNDMORE) != 0)
 	{
 	  goto err;
 	}
+
+      // peer AS number
+      u32 = ps->peer_asnumber;
+      u32 = htonl(u32);            
+      if(zmq_send(dest, &u32, sizeof(u32), ZMQ_SNDMORE) != sizeof(u32))
+	{
+	  goto err;
+	}
+     
       peers_tx++;
     }
 
@@ -480,7 +491,7 @@ static int recv_peers(void *src, bgpwatcher_view_t *view)
   pc = ntohs(pc);
   ASSERT_MORE;
 
-  /* foreach peer, recv peerid, collector string, peer ip (version, address) */
+  /* foreach peer, recv peerid, collector string, peer ip (version, address), peer asn */
   for(i=0; i<pc; i++)
     {
       /* peerid */
@@ -507,11 +518,21 @@ static int recv_peers(void *src, bgpwatcher_view_t *view)
           fprintf(stderr, "Could not receive peer ip\n");
 	  goto err;
 	}
-
+      ASSERT_MORE;
+      
+      /* peer asn */      
+      if(zmq_recv(src, &ps.peer_asnumber, sizeof(ps.peer_asnumber), 0) != sizeof(ps.peer_asnumber))
+	{
+          fprintf(stderr, "Could not receive peer AS number\n");
+	  goto err;
+	}
+      ps.peer_asnumber = ntohl(ps.peer_asnumber);            
+      
       if(bgpstream_peer_sig_map_set(view->peersigns,
                                     peerid,
                                     ps.collector_str,
-                                    &ps.peer_ip_addr) != 0)
+                                    &ps.peer_ip_addr,
+                                    ps.peer_asnumber) != 0)
 	{
           fprintf(stderr, "Could not add peer to peersigns\n");
 	  fprintf(stderr,

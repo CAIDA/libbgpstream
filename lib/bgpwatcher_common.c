@@ -92,8 +92,18 @@ static int send_table(void *dest, bgpwatcher_table_type_t type,
 
 static int send_peer(void *dest, bgpwatcher_peer_t *peer, int sndmore)
 {
+  uint32_t u32;
+
   /* peer ip */
   if(bw_send_ip(dest, (bgpstream_ip_addr_t *)(&peer->ip), ZMQ_SNDMORE) != 0)
+    {
+      goto err;
+    }
+
+  /* peer asn */
+  u32 = peer->asn;
+  u32 = htonl(u32);            
+  if(zmq_send(dest, &u32, sizeof(u32), ZMQ_SNDMORE) != sizeof(u32))
     {
       goto err;
     }
@@ -118,6 +128,19 @@ static int recv_peer(void *src, bgpwatcher_peer_t *peer)
     {
       goto err;
     }
+
+  if(zsocket_rcvmore(src) == 0)
+    {
+      goto err;
+    }
+
+  /* peer asn */
+  if(zmq_recv(src, &peer->asn, sizeof(peer->asn), 0) != sizeof(peer->asn))
+    {
+      fprintf(stderr, "Could not receive peer AS number\n");
+      goto err;
+    }
+  peer->asn = ntohl(peer->asn);            
 
   if(zsocket_rcvmore(src) == 0)
     {
@@ -230,41 +253,6 @@ static int deserialize_pfx_peer_info(uint8_t *buf, size_t len,
 
   return read;
 }
-
-#if 0
-static int recv_pfx_peer_info(void *src, bgpwatcher_pfx_peer_info_t *info)
-{
-  /* in use */
-  if(zmq_recv(src, &info->in_use, sizeof(info->in_use), 0)
-     != sizeof(info->in_use))
-    {
-      goto err;
-    }
-
-  if(info->in_use == 0)
-    {
-      return 0;
-    }
-
-  if(zsocket_rcvmore(src) == 0)
-    {
-      goto err;
-    }
-
-  /* orig asn */
-  if(zmq_recv(src, &info->orig_asn, sizeof(info->orig_asn), 0)
-     != sizeof(info->orig_asn))
-    {
-      goto err;
-    }
-  info->orig_asn = ntohl(info->orig_asn);
-
-  return 0;
-
- err:
-  return -1;
-}
-#endif
 
 
 /* ========== PROTECTED FUNCTIONS BELOW HERE ========== */

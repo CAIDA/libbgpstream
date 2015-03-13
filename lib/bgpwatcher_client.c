@@ -277,6 +277,7 @@ int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_t *client,
 
 int bgpwatcher_client_pfx_table_add_peer(bgpwatcher_client_t *client,
                                          bgpstream_addr_storage_t *peer_ip,
+                                         uint32_t peer_asn,
                                          uint8_t status)
 {
   int peer_id;
@@ -290,6 +291,7 @@ int bgpwatcher_client_pfx_table_add_peer(bgpwatcher_client_t *client,
 
   peer_id = TBL.peers_added++;
   TBL.info.peers[peer_id].ip = *peer_ip;
+  TBL.info.peers[peer_id].asn = peer_asn;
   TBL.info.peers[peer_id].status = status;
   return peer_id;
 }

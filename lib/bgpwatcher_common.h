@@ -80,6 +80,9 @@ typedef struct bgpwatcher_peer {
   /** Peer IP address */
   bgpstream_addr_storage_t ip;
 
+  /** The AS number of this peer*/
+  uint32_t asn;
+
   /** Peer status */
   uint8_t status;
 
