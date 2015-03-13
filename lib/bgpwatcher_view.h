@@ -199,6 +199,47 @@ bgpwatcher_view_clear(bgpwatcher_view_t *view);
 void
 bgpwatcher_view_dump(bgpwatcher_view_t *view);
 
+
+/** Insert a new peer in the BGP Watcher view
+ *
+ * @param view             pointer to a view structure
+ * @param collector_str    pointer to the peer's collector name
+ * @param peer_address     pointer to a peer's ip address
+ * @param peer_asnumber    peer's AS number
+ * @return the peer_id that is associated with the inserted peer
+ *
+ * @note: when a new peer is created its state is set to
+ *        active, if the peer is already in the view it
+ *        will be activated
+ */
+bgpstream_peer_id_t
+bgpwatcher_view_add_peer(bgpwatcher_view_t *view,
+                         char *collector_str,
+                         bgpstream_ip_addr_t *peer_address,
+                         uint32_t peer_asnumber);
+
+/** Insert a new pfx-peer information in the BGP Watcher view
+ *
+ * @param view             pointer to a view structure
+ * @param pfx              pointer to the prefix 
+ * @param peer_id          peer identifier 
+ * @param origin_asn       origin AS number for the prefix as observed
+ *                         by peer peer_id
+ * @return 0 if the insertion was successful, <0 otherwise
+ *
+ * @note: in order for the function to succeed the peer must
+ *        exist (it can be either active or inactive)
+ * @note: when a new pfx-peer is created its state is set to
+ *        active, the corresponding peer and prefix are 
+ *        activated too.
+ */
+int 
+bgpwatcher_view_add_pfx_peer(bgpwatcher_view_t *view,
+                             bgpstream_pfx_t *pfx,
+                             bgpstream_peer_id_t peer_id,
+                             uint32_t origin_asn);
+
+
 /**
  * @name Simple Accessor Functions
  *
