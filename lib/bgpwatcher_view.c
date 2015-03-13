@@ -89,7 +89,6 @@ static int peerinfo_add_pfx(bgpwatcher_view_t *view, bgpstream_peer_id_t peerid,
     {
       /* first prefix for this peer, it creates a new peerinfo structure */
       k = kh_put(bwv_peerid_peerinfo, view->peerinfo, peerid, &khret);
-      kh_val(view->peerinfo, k).id = peerid;
       kh_val(view->peerinfo, k).state = BGPWATCHER_VIEW_FIELD_INVALID;
       kh_val(view->peerinfo, k).user = NULL;
     }
@@ -163,7 +162,7 @@ static int peerid_pfxinfo_insert(bgpwatcher_view_t *view,
                                  bgpstream_pfx_t *prefix,
                                  bwv_peerid_pfxinfo_t *v,
                                  bgpstream_peer_id_t peerid,
-                                 bgpwatcher_pfx_peer_info_t *pfx_info)
+                                 uint32_t origin_asn)
 {
   int i;
   
@@ -206,7 +205,7 @@ static int peerid_pfxinfo_insert(bgpwatcher_view_t *view,
       peerinfo_add_pfx(view, peerid, prefix);
     }
 
-  v->peers[peerid].orig_asn = pfx_info->orig_asn;
+  v->peers[peerid].orig_asn = origin_asn;
   v->peers[peerid].state = BGPWATCHER_VIEW_FIELD_ACTIVE;
   /** v->peers[peerid].user remains untouched */
 
@@ -336,61 +335,10 @@ static bwv_peerid_pfxinfo_t *get_pfx_peerids(bgpwatcher_view_t *view,
 
 /* ========== PROTECTED FUNCTIONS ========== */
 
-void bgpwatcher_view_clear(bgpwatcher_view_t *view)
-{
-  khiter_t k;
-  int i;
-  view->time = 0;
-
-  gettimeofday(&view->time_created, NULL);
-
-  /* mark all ipv4 prefixes as unused */
-  for(k = kh_begin(view->v4pfxs); k != kh_end(view->v4pfxs); ++k)
-    {
-      if(kh_exist(view->v4pfxs, k))
-	{
-	  kh_value(view->v4pfxs, k)->peers_cnt = 0;
-          kh_value(view->v4pfxs, k)->state = BGPWATCHER_VIEW_FIELD_INVALID;
-          for(i = 0; i < kh_val(view->v4pfxs, k)->peers_alloc_cnt; i++)
-            {
-              kh_val(view->v4pfxs, k)->peers[i].state = BGPWATCHER_VIEW_FIELD_INVALID;
-            }
-	}
-    }
-  view->v4pfxs_cnt = 0;
-
-  /* mark all ipv6 prefixes as unused */
-  for(k = kh_begin(view->v6pfxs); k != kh_end(view->v6pfxs); ++k)
-    {
-      if(kh_exist(view->v6pfxs, k))
-	{
-	  kh_value(view->v6pfxs, k)->peers_cnt = 0;
-          kh_value(view->v6pfxs, k)->state = BGPWATCHER_VIEW_FIELD_INVALID;
-          for(i = 0; i < kh_val(view->v6pfxs, k)->peers_alloc_cnt; i++)
-            {
-              kh_val(view->v6pfxs, k)->peers[i].state = BGPWATCHER_VIEW_FIELD_INVALID;
-            }
-	}
-    }
-  view->v6pfxs_cnt = 0;
-
-  /* clear out the peerinfo table */
-  for(k = kh_begin(view->peerinfo); k != kh_end(view->peerinfo); ++k)
-    {
-      if(kh_exist(view->peerinfo, k))
-	{
-	  kh_value(view->peerinfo, k).state = BGPWATCHER_VIEW_FIELD_INVALID;
-	}
-    }
-  view->peerinfo_cnt = 0;
-  
-  view->pub_cnt = 0;
-}
-
 int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
                                bgpstream_pfx_t *prefix,
                                bgpstream_peer_id_t peerid,
-                               bgpwatcher_pfx_peer_info_t *pfx_info,
+                               uint32_t origin_asn,
 			       void **cache)
 {
   bwv_peerid_pfxinfo_t *peerids_pfxinfo;
@@ -413,7 +361,7 @@ int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
     }
 
   if(peerid_pfxinfo_insert(view, prefix,
-                           peerids_pfxinfo, peerid, pfx_info) < 0)
+                           peerids_pfxinfo, peerid, origin_asn) < 0)
     {
       return -1;
     }
@@ -557,6 +505,144 @@ void bgpwatcher_view_destroy(bgpwatcher_view_t *view)
   free(view);
 }
 
+void bgpwatcher_view_clear(bgpwatcher_view_t *view)
+{
+  khiter_t k;
+  int i;
+  view->time = 0;
+
+  gettimeofday(&view->time_created, NULL);
+
+  /* mark all ipv4 prefixes as unused */
+  for(k = kh_begin(view->v4pfxs); k != kh_end(view->v4pfxs); ++k)
+    {
+      if(kh_exist(view->v4pfxs, k))
+	{
+	  kh_value(view->v4pfxs, k)->peers_cnt = 0;
+          kh_value(view->v4pfxs, k)->state = BGPWATCHER_VIEW_FIELD_INVALID;
+          for(i = 0; i < kh_val(view->v4pfxs, k)->peers_alloc_cnt; i++)
+            {
+              kh_val(view->v4pfxs, k)->peers[i].state = BGPWATCHER_VIEW_FIELD_INVALID;
+            }
+	}
+    }
+  view->v4pfxs_cnt = 0;
+
+  /* mark all ipv6 prefixes as unused */
+  for(k = kh_begin(view->v6pfxs); k != kh_end(view->v6pfxs); ++k)
+    {
+      if(kh_exist(view->v6pfxs, k))
+	{
+	  kh_value(view->v6pfxs, k)->peers_cnt = 0;
+          kh_value(view->v6pfxs, k)->state = BGPWATCHER_VIEW_FIELD_INVALID;
+          for(i = 0; i < kh_val(view->v6pfxs, k)->peers_alloc_cnt; i++)
+            {
+              kh_val(view->v6pfxs, k)->peers[i].state = BGPWATCHER_VIEW_FIELD_INVALID;
+            }
+	}
+    }
+  view->v6pfxs_cnt = 0;
+
+  /* clear out the peerinfo table */
+  for(k = kh_begin(view->peerinfo); k != kh_end(view->peerinfo); ++k)
+    {
+      if(kh_exist(view->peerinfo, k))
+	{
+	  kh_value(view->peerinfo, k).state = BGPWATCHER_VIEW_FIELD_INVALID;
+	}
+    }
+  view->peerinfo_cnt = 0;
+  
+  view->pub_cnt = 0;
+}
+
+bgpstream_peer_id_t
+bgpwatcher_view_add_peer(bgpwatcher_view_t *view,
+                         char *collector_str,
+                         bgpstream_ip_addr_t *peer_address,
+                         uint32_t peer_asnumber)
+{
+  bgpstream_peer_id_t peer_id;
+  bgpstream_addr_storage_t peer_addr_storage;
+  khiter_t k;
+  int khret;
+  
+  peer_addr_storage.version = peer_address->version;
+  switch(peer_address->version)
+    {
+    case BGPSTREAM_ADDR_VERSION_IPV4:
+      memcpy(&peer_addr_storage.ipv4.s_addr,
+             &((bgpstream_ipv4_addr_t *)peer_address)->ipv4.s_addr,
+             sizeof(uint32_t));
+      break;
+    case BGPSTREAM_ADDR_VERSION_IPV6:
+      memcpy(&peer_addr_storage.ipv6.s6_addr,
+             &((bgpstream_ipv6_addr_t *)peer_address)->ipv6.s6_addr,
+             sizeof(uint8_t)*16);
+      break;        
+    default:
+      /* programming error */
+      assert(0);
+    }
+  
+  /* add peer to signatures' map */
+  if((peer_id = bgpstream_peer_sig_map_get_id(view->peersigns,
+                                             collector_str,
+                                             &peer_addr_storage,
+                                             peer_asnumber)) == 0)
+	{
+          fprintf(stderr, "Could not add peer to peersigns\n");
+	  fprintf(stderr,
+                  "Consider making bgpstream_peer_sig_map_set more robust\n");
+	  return 0;
+	}
+
+  /* populate peer information in peerinfo */
+
+  if((k = kh_get(bwv_peerid_peerinfo, view->peerinfo, peer_id))
+     == kh_end(view->peerinfo))
+    {
+      /* new peer!  */
+      k = kh_put(bwv_peerid_peerinfo, view->peerinfo, peer_id, &khret);
+      kh_val(view->peerinfo, k).state = BGPWATCHER_VIEW_FIELD_INVALID;
+      kh_val(view->peerinfo, k).user = NULL;
+    }
+
+  /* activate/init peer */
+  if(kh_val(view->peerinfo, k).state != BGPWATCHER_VIEW_FIELD_ACTIVE)
+    {
+      kh_val(view->peerinfo, k).v4_pfx_cnt = 0;
+      kh_val(view->peerinfo, k).v6_pfx_cnt = 0;
+      view->peerinfo_cnt++;
+      kh_val(view->peerinfo, k).state = BGPWATCHER_VIEW_FIELD_ACTIVE;
+    }
+
+  return peer_id;
+}
+
+int
+bgpwatcher_view_add_pfx_peer(bgpwatcher_view_t *view,
+                             bgpstream_pfx_t *pfx,
+                             bgpstream_peer_id_t peer_id,
+                             uint32_t origin_asn)
+{
+  khiter_t k;
+
+  /* the peer must be present already part of the view */
+  if((k = kh_get(bwv_peerid_peerinfo, view->peerinfo, peer_id))
+     == kh_end(view->peerinfo))
+    {
+      return -1;
+    }
+  /* and it has to be valid */
+  if(kh_val(view->peerinfo, k).state == BGPWATCHER_VIEW_FIELD_INVALID)
+    {
+      
+      return -1;
+    }
+
+  return bgpwatcher_view_add_prefix(view, pfx, peer_id, origin_asn, NULL);
+}
 
 /* ==================== SIMPLE ACCESSOR FUNCTIONS ==================== */
 

@@ -65,9 +65,6 @@ typedef struct bwv_peerid_pfxinfo {
 
   uint16_t peers_alloc_cnt;
 
-  /** The number of peers in the peers list that are valid */
-  //  uint16_t peers_cnt;
-
   /** The number of peers in the peers list that currently observe this prefix */
   uint16_t peers_cnt;
 
@@ -104,9 +101,6 @@ typedef khash_t(bwv_v6pfx_peerid_pfxinfo) bwv_v6pfx_peerid_pfxinfo_t;
 
 /** Additional per-peer info */
 typedef struct bwv_peerinfo {
-
-  /** The ID of this peer */
-  bgpstream_peer_id_t id;
 
   /** The number of v4 prefixes that this peer observed */
   uint32_t v4_pfx_cnt;
@@ -203,7 +197,7 @@ struct bgpwatcher_view {
 int bgpwatcher_view_add_prefix(bgpwatcher_view_t *view,
                                bgpstream_pfx_t *prefix,
                                bgpstream_peer_id_t peerid,
-                               bgpwatcher_pfx_peer_info_t *pfx_info,
+                               uint32_t origin_asn,
 			       void **cache);
 
 /** Send the given view to the given socket

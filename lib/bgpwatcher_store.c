@@ -997,7 +997,7 @@ int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
       pfx_info = &(peer_infos[i]);
 
       if(bgpwatcher_view_add_prefix(sview->view, pfx,
-                                    server_id, pfx_info, &view_cache) != 0)
+                                    server_id, pfx_info->orig_asn, &view_cache) != 0)
         {
           return -1;
         }

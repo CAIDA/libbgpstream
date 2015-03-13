@@ -388,7 +388,7 @@ static int recv_pfxs(void *src, bgpwatcher_view_t *view)
 	  pfx_info.orig_asn = ntohl(pfx_info.orig_asn);
 
 	  if(bgpwatcher_view_add_prefix(view, (bgpstream_pfx_t *)&pfx, peerid,
-					&pfx_info, &cache) != 0)
+					pfx_info.orig_asn, &cache) != 0)
 	    {
               fprintf(stderr, "Could not add prefix\n");
 	      goto err;
