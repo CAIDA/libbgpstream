@@ -815,7 +815,8 @@ int
 bgpwatcher_view_iter_pfx_deactivate_peer(bgpwatcher_view_iter_t *iter);
 
 
-/** Get the origin AS number for the current pfx-peer structure pointed by the given iterator
+/** Get the origin AS number for the current pfx-peer structure pointed by
+ *  the given iterator
  *
  * @param iter          Pointer to an iterator structure
  * @return the origin AS number, 
@@ -824,6 +825,19 @@ bgpwatcher_view_iter_pfx_deactivate_peer(bgpwatcher_view_iter_t *iter);
  */
 int
 bgpwatcher_view_iter_pfx_peer_get_orig_asn(bgpwatcher_view_iter_t *iter);
+
+
+/** Set the origin AS number for the current pfx-peer structure pointed by
+ *  the given iterator
+ *
+ * @param iter          Pointer to an iterator structure
+ * @param asn           Origin AS number
+ * @return 0 if the process ends correctly, -1 if the iterator is not
+ *         initialized, or has reached the end of the peers for the 
+ *         given prefix.
+ */
+int
+bgpwatcher_view_iter_pfx_peer_set_orig_asn(bgpwatcher_view_iter_t *iter, uint32_t asn);
 
 
 /** Get the state of the current pfx-peer pointed by the given iterator

@@ -1714,7 +1714,6 @@ bgpwatcher_view_iter_pfx_deactivate_peer(bgpwatcher_view_iter_t *iter)
 
 }
 
-
 int
 bgpwatcher_view_iter_pfx_peer_get_orig_asn(bgpwatcher_view_iter_t *iter)
 {
@@ -1729,6 +1728,27 @@ bgpwatcher_view_iter_pfx_peer_get_orig_asn(bgpwatcher_view_iter_t *iter)
         {
           return kh_val(iter->view->v6pfxs, iter->v6pfx_it)
                ->peers[iter->v6pfx_peer_it].orig_asn;
+        }
+    }
+  return -1;
+}
+
+int
+bgpwatcher_view_iter_pfx_peer_set_orig_asn(bgpwatcher_view_iter_t *iter, uint32_t asn)
+{
+ if(bgpwatcher_view_iter_pfx_has_more_peer(iter))
+    {
+      if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV4)
+        {
+          kh_val(iter->view->v4pfxs, iter->v4pfx_it)
+            ->peers[iter->v4pfx_peer_it].orig_asn = asn;
+          return 0;
+        }
+      if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV6)
+        {
+          kh_val(iter->view->v6pfxs, iter->v6pfx_it)
+            ->peers[iter->v6pfx_peer_it].orig_asn = asn;
+          return 0;
         }
     }
   return -1;
