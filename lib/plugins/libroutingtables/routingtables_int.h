@@ -37,9 +37,6 @@
 #include "khash.h"
 #include "utils.h"
 
-/** Maximum number of collectors supported by the
- *  current implementation */
-#define ROUTINGTABLES_MAX_COLLECTORS 256
 
 /** Default metric prefix */
 #define ROUTINGTABLES_DEFAULT_METRIC_PFX "bgp.routingtables."
@@ -54,7 +51,6 @@
 /** Default full feed prefix count threshold for IPv6
  * routing tables */
 #define ROUTINGTABLES_DEFAULT_IPV6_FULLFEED_THR 10000 
-
 
 
 typedef enum {
@@ -82,7 +78,20 @@ typedef struct struct_perpfx_perpeer_info_t {
    *  prefix and the current peer  */
   uint32_t bgp_time_last_ts;   
 
-} perpfx_perpeer_info_t;
+  /** Difference between the current under
+   *  construction RIB start time for the 
+   *  current peer and the last RIB message
+   *  received for the prefix  */
+  uint16_t bgp_time_uc_delta_ts;
+
+  /** Origin AS number observed in the current
+   *  under construction RIB. If the origin AS
+   *  number is 0 then it means the current 
+   *  prefix is not observed in the under 
+   *  construction RIB */
+  uint32_t uc_origin_asn;  
+
+} __attribute__((packed)) perpfx_perpeer_info_t;
 
 
 /** Information about the current status 
@@ -103,6 +112,18 @@ typedef struct struct_perpeer_info_t {
    */
   bgpstream_elem_peerstate_t bgp_fsm_state;
 
+  /** first timestamp in the current reference RIB */
+  uint32_t bgp_time_ref_rib_start;
+  
+  /** last timestamp in the current reference RIB */
+  uint32_t bgp_time_ref_rib_end;
+
+  /** first timestamp in the current under construction RIB */
+  uint32_t bgp_time_uc_rib_start;
+  
+  /** last timestamp in the current under construction RIB */
+  uint32_t bgp_time_uc_rib_end;
+
 } perpeer_info_t;
 
 
@@ -110,14 +131,7 @@ typedef struct struct_perpeer_info_t {
  *  of a view */
 typedef struct struct_perview_info_t {
   
-  /** first timestamp in the current reference RIB */
-  uint32_t bgp_time_ref_rib_start;
-  
-  /** last timestamp in the current reference RIB */
-  uint32_t bgp_time_ref_rib_end;
-
-  /** dump time of the current reference RIB */
-  uint32_t bgp_time_ref_rib_dump_time;
+  /** @todo add other state variables here */
 
 } perview_info_t;
 
@@ -126,64 +140,62 @@ typedef struct struct_perview_info_t {
  *  of a collector */
 typedef struct struct_collector_t {
 
-  /** Graphite-safe collector string: project.collector */
+  /** graphite-safe collector string: project.collector */
   char collector_str[BGPSTREAM_UTILS_STR_NAME_LEN];
+
+  /** unique set of peer ids that are associated
+   *  peers providing information to the current */
+  bgpstream_id_set_t *collector_peerids;
   
-  /** Table of peerid -> peersign */
-  bgpstream_peer_sig_map_t *peersigns;
-
-  /** Active bgp view: it represents a consistent
-   *  state of the routing tables as seen by each
-   *  peer of the current collector */
-  bgpwatcher_view_t *active_view;
-
-  /** Inprogress bgp view: it is the temporary view
-   *  that is used to build a new state of the
-   *  collector's routing tables */
-  bgpwatcher_view_t *inprogress_view;
-
   /** last time this collector was involved
    *  in bgp operations (bgp time) */
   uint32_t bgp_time_last;
   
   /** last time this collector was involved
-   *  in bgp operations (wall time) */
+   *  in valid bgp operations (wall time) */
   uint32_t wall_time_last;
 
   /** dump time of the current reference RIB */
   uint32_t bgp_time_ref_rib_dump_time;
 
+  /** start time of the current reference RIB */
+  uint32_t bgp_time_ref_rib_start_time;
+  
+  /** dump time of the current under construction
+   *  RIB, if 0 the under construction process is
+   *  off, is on otherwise */
+  uint32_t bgp_time_uc_rib_dump_time;
+
   /** Current status of the collector */
   collector_state_t state;
-
-  /** Indicates whether a new bgpview is
-   *  under construction or not */
-  uint8_t view_construction_inprogress;
 
 } collector_t;
 
 
-/** A map that associate an incremental
- *  numerical id with each collector */
-KHASH_INIT(str_id_map, char *, uint8_t, 1, kh_str_hash_func, kh_str_hash_equal);
-typedef khash_t(str_id_map) collector_id_t;
+/** A map that associates an a collector_t
+ *  structure with each collector */
+KHASH_INIT(collector_data, char *, collector_t, 1, kh_str_hash_func, kh_str_hash_equal);
+typedef khash_t(collector_data) collector_data_t;
 
 /** Structure that manages all the routing
  *  tables that can be possibly built using
  *  the bgp stream in input */
 struct struct_routingtables_t {
 
-  /** A map that associate an incremental
-   *  numerical id with each collector,
-   *  the id can be used as an index to
-   *  access collector data */
-  collector_id_t *collector_id_map;
+  /** Table of peer id <-> peer signature */
+  bgpstream_peer_sig_map_t *peersigns;
   
-  /** Sparse list of collectors, where the
-   *  index is the collector id and the value
-   *  is a pointer to a collector structure */
-  collector_t *collectors[ROUTINGTABLES_MAX_COLLECTORS];
-
+  /** BGP view that contains the information associated
+   *  with the active and inactive prefixes/peers/pfx-peer
+   *  information. Every active field represents consistent
+   *  states of the routing tables as seen by each peer
+   *  of the each collector */
+  bgpwatcher_view_t *view;
+  
+  /** per collector information: name, peers and
+   *  current state */
+  collector_data_t *collectors;
+  
   /** Metric prefix */
   char metric_prefix[ROUTINGTABLES_METRIC_PFX_LEN];
 

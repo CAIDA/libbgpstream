@@ -35,7 +35,8 @@
 
 /* ========== PRIVATE FUNCTIONS ========== */
 
-static char *graphite_safe(char *p)
+static char *
+graphite_safe(char *p)
 {
   if(p == NULL)
     {
@@ -58,33 +59,42 @@ static char *graphite_safe(char *p)
   return r;
 }
 
-static uint32_t get_wall_time_now()
+static uint32_t
+get_wall_time_now()
 {
   struct timeval tv;
   gettimeofday_wrap(&tv);
   return tv.tv_sec;
 }
 
-static perpfx_perpeer_info_t *perpfx_perpeer_info_create(uint32_t bgp_time_last_ts)
+// static
+perpfx_perpeer_info_t *
+perpfx_perpeer_info_create(uint32_t bgp_time_last_ts,
+                           uint16_t bgp_time_uc_delta_ts,
+                           uint32_t uc_origin_asn)
 {
   perpfx_perpeer_info_t *pfxpeeri = (perpfx_perpeer_info_t *) malloc_zero(sizeof(perpfx_perpeer_info_t));
   if(pfxpeeri != NULL)
     {
       pfxpeeri->bgp_time_last_ts = bgp_time_last_ts;
+      pfxpeeri->bgp_time_uc_delta_ts = bgp_time_uc_delta_ts;
+      pfxpeeri->uc_origin_asn = uc_origin_asn;
     }
   return pfxpeeri;
 }
 
-static perpeer_info_t *perpeer_info_create(uint32_t peer_asnumber,
-                                           bgpstream_ip_addr_t *peer_ip,
-                                           bgpstream_elem_peerstate_t bgp_fsm_state)
+// static
+perpeer_info_t *
+perpeer_info_create(uint32_t peer_asnumber,
+                    bgpstream_ip_addr_t *peer_ip,
+                    bgpstream_elem_peerstate_t bgp_fsm_state,
+                    uint32_t bgp_time_ref_rib_start, uint32_t bgp_time_ref_rib_end,
+                    uint32_t bgp_time_uc_rib_start,  uint32_t bgp_time_uc_rib_end)
 {
   char ip_str[INET_ADDRSTRLEN];
   perpeer_info_t *peeri = (perpeer_info_t *) malloc_zero(sizeof(perpeer_info_t));
   if(peeri != NULL)
     {
-      // @todo remove!
-      if(peer_ip == NULL) return peeri;
       bgpstream_addr_ntop(ip_str, INET_ADDRSTRLEN, peer_ip);
       graphite_safe(ip_str);  
       if(snprintf(peeri->peer_str, BGPSTREAM_UTILS_STR_NAME_LEN,
@@ -93,67 +103,66 @@ static perpeer_info_t *perpeer_info_create(uint32_t peer_asnumber,
           fprintf(stderr, "Warning: could not print peer signature: truncated output\n");
         }
       peeri->bgp_fsm_state = bgp_fsm_state;
+      peeri->bgp_time_ref_rib_start = bgp_time_ref_rib_start;
+      peeri->bgp_time_ref_rib_end = bgp_time_ref_rib_end;
+      peeri->bgp_time_uc_rib_start = bgp_time_uc_rib_start;
+      peeri->bgp_time_uc_rib_end = bgp_time_uc_rib_end;
     }
   return peeri;
 }
 
-static perview_info_t *perview_info_create(uint32_t bgp_time_ref_rib_start,
-                                           uint32_t bgp_time_ref_rib_end,
-                                           uint32_t bgp_time_ref_rib_dump_time)
+// static
+perview_info_t *perview_info_create()
 {
   perview_info_t *viewi = (perview_info_t *) malloc_zero(sizeof(perview_info_t));
   if(viewi != NULL)
     {
-      viewi->bgp_time_ref_rib_start = bgp_time_ref_rib_start;
-      viewi->bgp_time_ref_rib_end = bgp_time_ref_rib_end;
-      viewi->bgp_time_ref_rib_dump_time = bgp_time_ref_rib_dump_time;
+      /** @todo initialize state variables here */
     }
   return viewi;
 }
 
-/** Note:
+/** @note:
  *  all the xxx_info_create functions do not allocate dynamic
  *  memory other than the structure itself, therefore free() 
  *  is enough to dealloc safely their memory.
  */
 
 
-static uint8_t get_collector_id(routingtables_t * rt,
-                                char *project,
-                                char *collector)
+
+/** @note:
+ *  In order to save memory we can use the reserved AS numbers
+ *  to embed other informations associated with an AS number, i.e.:
+ *  - origin as = 0 -> prefix not seen in the RIB
+ *  - AS in [64496-64511] -> AS is actually an AS set
+ *  - AS in [64512-65534] -> AS is actually an AS confederation  
+ */
+/* static void asn_mgmt_fun() */
+/* { */
+  /* http://www.iana.org/assignments/as-numbers/as-numbers.xhtml */
+  /* 0	           Reserved */
+  /* 64198-64495   Reserved by the IANA */ 
+  /* 23456	   AS_TRANS RFC6793 */
+  /* 64496-64511   Reserved for use in documentation and sample code RFC5398 */
+  /* 64512-65534   Reserved for Private Use RFC6996 */
+  /* 65535	   Reserved RFC7300 */
+/* } */
+
+static collector_t *
+get_collector_data(collector_data_t *collectors, char *project, char *collector)
 {
   khiter_t k;
   int khret;
-  uint8_t id = 0;
-
+  collector_t c_data;
+  
   // create new collector-related structures if it is the first time
   // we see it
-  if((k = kh_get(str_id_map, rt->collector_id_map, collector))
-     == kh_end(rt->collector_id_map))
+  if((k = kh_get(collector_data, collectors, collector))
+     == kh_end(collectors))
     {
-      // ROUTINGTABLES_MAX_COLLECTORS is the maximum number of collectors allowed
-      assert(kh_size(rt->collector_id_map) < ROUTINGTABLES_MAX_COLLECTORS);
 
-      // insert new incremental id
-      id = kh_size(rt->collector_id_map);
-      k = kh_put(str_id_map, rt->collector_id_map, strdup(collector), &khret);
-      kh_val(rt->collector_id_map,k) = id;
-
-      // assert no spurious data was there before
-      assert(rt->collectors[id] == NULL);
-
-      rt->collectors[id] = (collector_t *) malloc_zero(sizeof(collector_t));
-      rt->collectors[id]->peersigns = bgpstream_peer_sig_map_create();
-      rt->collectors[id]->active_view = bgpwatcher_view_create_shared(rt->collectors[id]->peersigns,
-                                                                      free /* view user destructor */,
-                                                                      NULL /* pfx destructor */,
-                                                                      free /* peer user destructor */,
-                                                                      free /* pfxpeer user destructor */);
-      rt->collectors[id]->inprogress_view = bgpwatcher_view_create_shared(rt->collectors[id]->peersigns,
-                                                                          free /* view user destructor */,
-                                                                          NULL /* pfx destructor */,
-                                                                          free /* peer user destructor */,
-                                                                          free /* pfxpeer user destructor */);
+      // collector data initialization
+      
       char project_name[BGPSTREAM_UTILS_STR_NAME_LEN];
       strncpy(project_name, project, BGPSTREAM_UTILS_STR_NAME_LEN);
       graphite_safe(project_name);  
@@ -162,56 +171,46 @@ static uint8_t get_collector_id(routingtables_t * rt,
       strncpy(collector_name, collector, BGPSTREAM_UTILS_STR_NAME_LEN);
       graphite_safe(collector_name);  
 
-      if(snprintf(rt->collectors[id]->collector_str, BGPSTREAM_UTILS_STR_NAME_LEN,
+      if(snprintf(c_data.collector_str , BGPSTREAM_UTILS_STR_NAME_LEN,
                   "%s.%s", project_name, collector_name) >= BGPSTREAM_UTILS_STR_NAME_LEN)
         {
           fprintf(stderr, "Warning: could not print collector signature: truncated output\n");
         }
       
-      rt->collectors[id]->bgp_time_last = 0;
-      rt->collectors[id]->wall_time_last = 0;      
-      rt->collectors[id]->bgp_time_ref_rib_dump_time = 0;
-      rt->collectors[id]->state = ROUTINGTABLES_COLLECTOR_STATE_UNKNOWN;
+      if((c_data.collector_peerids = bgpstream_id_set_create()) == NULL)
+        {
+          return NULL;
+        }
 
-      // @todo assert somehow that a new collector was correctly created      
+      c_data.bgp_time_last = 0;
+      c_data.wall_time_last = 0;
+      c_data.bgp_time_ref_rib_dump_time = 0;
+      c_data.bgp_time_ref_rib_start_time = 0;
+      c_data.bgp_time_uc_rib_dump_time = 0;
+      c_data.state = ROUTINGTABLES_COLLECTOR_STATE_UNKNOWN;
+      
+      k = kh_put(collector_data, collectors, strdup(collector), &khret);
+      kh_val(collectors,k) = c_data;
     }
-
-  id = kh_val(rt->collector_id_map,k);
-  return id;
+  
+  return &kh_val(collectors,k);
 }
 
 
-static void collector_update_times(collector_t *col,
-                                   uint32_t bgp_time_last,
-                                   uint32_t bgp_time_ref_rib_dump_time)
-{
-  // update the most recent record time processed
-  if(col->bgp_time_last < bgp_time_last)
-    {
-      col->bgp_time_last = bgp_time_last;
-      // update the most recent wall time (only when we process records with a new time)
-      col->wall_time_last = get_wall_time_now();
-    }
-  if(col->bgp_time_ref_rib_dump_time < bgp_time_ref_rib_dump_time)
-    {
-      col->bgp_time_ref_rib_dump_time = bgp_time_ref_rib_dump_time;
-    }
-}
-
-static int collector_invalidate_state(collector_t *col)
-{
-  return 0;
-}
   
 static int collector_process_valid_bgpinfo(collector_t *col,
                                            bgpstream_record_t *record,
                                            bgpstream_elem_t *elem)
 {
 
-  // @todo: delete
-  perpfx_perpeer_info_create(0);
-  perpeer_info_create(0, NULL, BGPSTREAM_ELEM_PEERSTATE_UNKNOWN);
-  perview_info_create(0, 0, 0);
+  // @todo: delete  this test functions calls
+  /* perpfx_perpeer_info_create(0 /\* last_ts *\/, 0 /\* uc_delta_ts *\/, 0 /\* uc_origin_asn *\/); */
+  /* perpeer_info_create(0 /\* peer_asnumber *\/, NULL /\* peer_ip *\/, */
+  /*                     BGPSTREAM_ELEM_PEERSTATE_UNKNOWN /\* bgp_fsm_state *\/, */
+  /*                     0 /\* bgp_time_ref_rib_start *\/, 0 /\* bgp_time_ref_rib_end *\/, */
+  /*                     0 /\* bgp_time_uc_rib_start *\/,  0 /\* bgp_time_uc_rib_end *\/); */
+  
+  /* perview_info_create(); */
   
   return 0;
 }
@@ -228,15 +227,24 @@ routingtables_t *routingtables_create()
     {
       goto err;
     }
-  if((rt->collector_id_map = kh_init(str_id_map)) == NULL)
+
+  if((rt->peersigns = bgpstream_peer_sig_map_create() ) == NULL)
     {
       goto err;
     }
 
-  // make sure all collectors point to NULL
-  for(int c = 0; c < ROUTINGTABLES_MAX_COLLECTORS; c++)
+  if((rt->view = bgpwatcher_view_create_shared(rt->peersigns,
+                                               free /* view user destructor */,
+                                               NULL /* pfx destructor */,
+                                               free /* peer user destructor */,
+                                               free /* pfxpeer user destructor */)) == NULL)
     {
-      rt->collectors[c] = NULL;
+      goto err;
+    }
+
+  if((rt->collectors = kh_init(collector_data)) == NULL)
+    {
+      goto err;
     }
 
   // set the metric prefix string to the default value
@@ -401,53 +409,65 @@ int routingtables_interval_end(routingtables_t *rt,
 int routingtables_process_record(routingtables_t *rt,
                                  bgpstream_record_t *record)
 {
-  /* get collector id and initialize the appropriate fields
-   * if the collector is processed for the first time */
-  uint8_t collector_id = get_collector_id(rt,
-                                          record->attributes.dump_project,
-                                          record->attributes.dump_collector);
   int ret = 0;
+  collector_t *c;
   bgpstream_elem_t *elem;
+  
+  /* get a pointer to the current collector data, if no data
+   * exists yet, a new structure will be created */
+  if((c = get_collector_data(rt->collectors,
+                             record->attributes.dump_project,
+                             record->attributes.dump_collector)) == NULL)
+    {
+      return -1;
+    }
+
+  /* if a record refer to a time prior to the current reference time,
+   * then we discard it */
+  if(record->attributes.record_time < c->bgp_time_ref_rib_start_time)
+    {
+      return 0;
+    }
+  
   switch(record->status)
     {
     case BGPSTREAM_RECORD_STATUS_VALID_RECORD:
       while((elem = bgpstream_record_get_next_elem(record)) != NULL)
         {
-          // @todo add some logic and think how to interpret the return value
-          ret = collector_process_valid_bgpinfo(rt->collectors[collector_id], record, elem);
+          /* @todo add some logic and think how to interpret the return value */
+          ret = collector_process_valid_bgpinfo(c, record, elem);
         }
       break;
     case BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE:
     case BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD:
-      // invalidate entire collector data (don't destroy memory)
-      if(record->attributes.record_time >= rt->collectors[collector_id]->bgp_time_ref_rib_dump_time)
+      
+      /* @todo invalidate data for *active* and check whether
+      *  the under construction should be invalidated too */
+      if(record->attributes.record_time < c->bgp_time_last)
         {
-          ret = collector_invalidate_state(rt->collectors[collector_id]);
+          c->bgp_time_last = record->attributes.record_time;
         }
-      collector_update_times(rt->collectors[collector_id],
-                             record->attributes.record_time,
-                             0 /* i.e. do not updated rib dump time*/);      
-      break;      
+      break;
     case BGPSTREAM_RECORD_STATUS_FILTERED_SOURCE:
     case BGPSTREAM_RECORD_STATUS_EMPTY_SOURCE:
       /** An empty or filtered source does not change the current
        *  state of a collector, however we update the last_ts
        *  observed */
-      collector_update_times(rt->collectors[collector_id],
-                             record->attributes.record_time,
-                             0 /* i.e. do not updated rib dump time*/);
+      if(record->attributes.record_time < c->bgp_time_last)
+        {
+          c->bgp_time_last = record->attributes.record_time;
+        }
       break;
     default:
       /* programming error */
-      assert(0);            
+      assert(0);
     }
   
-  fprintf(stderr, "Processed %s (%"PRIu8") record %ld\n",
-          rt->collectors[collector_id]->collector_str,
-          collector_id,
+  fprintf(stderr, "Processed %s record %ld\n",
+          c->collector_str,
           record->attributes.record_time);
   
-  return ret;
+  return 0;
 }
 
 void routingtables_destroy(routingtables_t *rt)
@@ -455,35 +475,35 @@ void routingtables_destroy(routingtables_t *rt)
   khiter_t k;
   if(rt != NULL)
     {
-      if(rt->collector_id_map != NULL)
+      if(rt->collectors != NULL)
         {
-          /* free all strings in the collectors_id hash */
-          for (k = kh_begin(rt->collector_id_map);
-               k != kh_end(rt->collector_id_map); ++k)
+          for (k = kh_begin(rt->collectors);
+               k != kh_end(rt->collectors); ++k)
             {          
-              if (kh_exist(rt->collector_id_map, k))
+              if (kh_exist(rt->collectors, k))
                 {
-                  free(kh_key(rt->collector_id_map, k));
+                  /* deallocating value dynamic memory */
+                  bgpstream_id_set_destroy(kh_val(rt->collectors, k).collector_peerids);
+                  kh_val(rt->collectors, k).collector_peerids = NULL;
+                  /* deallocating string dynamic memory */
+                  free(kh_key(rt->collectors, k));
                 }
             }   
-          kh_destroy(str_id_map, rt->collector_id_map );
+          kh_destroy(collector_data, rt->collectors );
         }
-      rt->collector_id_map = NULL;
-      
-      for(int c = 0; c < ROUTINGTABLES_MAX_COLLECTORS; c++)
+      rt->collectors = NULL;
+
+      if(rt->view != NULL)
         {
-          if(rt->collectors[c] != NULL)
-            {
-              bgpstream_peer_sig_map_destroy(rt->collectors[c]->peersigns);
-              rt->collectors[c]->peersigns = NULL;
-              bgpwatcher_view_destroy(rt->collectors[c]->active_view);
-              rt->collectors[c]->active_view = NULL;
-              bgpwatcher_view_destroy(rt->collectors[c]->inprogress_view);
-              rt->collectors[c]->inprogress_view = NULL;
-              free(rt->collectors[c]);
-            }
-          rt->collectors[c] = NULL;
+          bgpwatcher_view_destroy(rt->view);
         }
+      rt->view =NULL;
+        
+      if(rt->peersigns != NULL)
+        {
+          bgpstream_peer_sig_map_destroy(rt->peersigns);
+        }
+      rt->peersigns = NULL;      
 
 #ifdef WITH_BGPWATCHER
       if(rt->watcher_client != NULL)
