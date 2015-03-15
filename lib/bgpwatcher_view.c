@@ -1505,8 +1505,9 @@ bgpwatcher_view_iter_activate_peer(bgpwatcher_view_iter_t *iter)
   if(bgpwatcher_view_iter_has_more_peer(iter))
     {
       if(kh_val(iter->view->peerinfo, iter->peer_it).state == BGPWATCHER_VIEW_FIELD_INACTIVE)
-        {
+        {          
           kh_val(iter->view->peerinfo, iter->peer_it).state = BGPWATCHER_VIEW_FIELD_ACTIVE;
+          iter->view->peerinfo_cnt++;
           return 1;
         }
       // if already active
