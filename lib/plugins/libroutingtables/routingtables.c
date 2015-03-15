@@ -198,6 +198,158 @@ get_collector_data(collector_data_t *collectors, char *project, char *collector)
 }
 
 
+
+/** Stop the under construction process
+ *  @note: this function does not deactivate the peer-pfx fields, 
+ *  the peer may be active */
+static void
+stop_uc_process(routingtables_t *rt, collector_t *c)
+{  
+  perpeer_info_t *p;
+  perpfx_perpeer_info_t *pp;
+  
+  for(bgpwatcher_view_iter_first_pfx_peer(rt->iter, 0,
+                                          BGPWATCHER_VIEW_FIELD_ALL_VALID,
+                                          BGPWATCHER_VIEW_FIELD_ALL_VALID);
+      bgpwatcher_view_iter_has_more_pfx_peer(rt->iter);
+      bgpwatcher_view_iter_next_pfx_peer(rt->iter))
+    {
+      /* check if the current field refers to a peer to reset */
+      if(bgpstream_id_set_exists(c->collector_peerids,
+                                 bgpwatcher_view_iter_peer_get_peer(rt->iter)))
+        {
+          pp = bgpwatcher_view_iter_pfx_peer_get_user(rt->iter);
+          pp->bgp_time_uc_delta_ts = 0;
+          pp->uc_origin_asn = 0;              
+          if(bgpwatcher_view_iter_peer_get_state(rt->iter) == BGPWATCHER_VIEW_FIELD_INACTIVE)
+            {
+              bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, 0);
+              pp->bgp_time_last_ts = 0;
+            }
+        }
+    }
+
+  /* reset all the uc information for the peers */
+  for(bgpwatcher_view_iter_first_peer(rt->iter, BGPWATCHER_VIEW_FIELD_ALL_VALID);
+      bgpwatcher_view_iter_has_more_peer(rt->iter);
+      bgpwatcher_view_iter_next_peer(rt->iter))
+    {
+      /* check if the current field refers to a peer to reset */
+      if(bgpstream_id_set_exists(c->collector_peerids,
+                                 bgpwatcher_view_iter_peer_get_peer(rt->iter)))
+        {
+          p = bgpwatcher_view_iter_peer_get_user(rt->iter);
+          p->bgp_time_uc_rib_start = 0;
+          p->bgp_time_uc_rib_end = 0;
+        }
+    }
+
+  /* reset all the uc information for the  collector */
+  c->bgp_time_uc_rib_dump_time = 0;
+  c->bgp_time_uc_rib_start_time = 0;
+}
+
+/** Reset all the pfxpeer data associated with the
+ *  provided peer id 
+ *  @note: this is the function to call when putting a peer down*/
+static void
+reset_peerpfxdata(routingtables_t *rt,
+                  bgpstream_peer_id_t peer_id, uint8_t reset_uc)
+{
+  perpfx_perpeer_info_t *pp;
+  if(bgpwatcher_view_iter_seek_peer(rt->iter,
+                                    peer_id,
+                                    BGPWATCHER_VIEW_FIELD_ALL_VALID) == 1)
+    {
+      for(bgpwatcher_view_iter_first_pfx_peer(rt->iter, 0,
+                                              BGPWATCHER_VIEW_FIELD_ALL_VALID,
+                                              BGPWATCHER_VIEW_FIELD_ALL_VALID);
+          bgpwatcher_view_iter_has_more_pfx_peer(rt->iter);
+          bgpwatcher_view_iter_next_pfx_peer(rt->iter))
+        {
+          if(bgpwatcher_view_iter_peer_get_peer(rt->iter) == peer_id)
+            {
+              bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, 0);
+              pp = bgpwatcher_view_iter_pfx_peer_get_user(rt->iter);
+              pp->bgp_time_last_ts = 0;
+              if(reset_uc)
+                {
+                  pp->bgp_time_uc_delta_ts = 0;
+                  pp->uc_origin_asn = 0;
+                }
+              bgpwatcher_view_iter_pfx_deactivate_peer(rt->iter);
+            }
+        }
+    }  
+}
+
+static int
+end_of_valid_rib(routingtables_t *rt, collector_t *c)
+{
+  perpeer_info_t *p;
+  perpfx_perpeer_info_t *pp;
+
+  for(bgpwatcher_view_iter_first_pfx_peer(rt->iter, 0,
+                                          BGPWATCHER_VIEW_FIELD_ALL_VALID,
+                                          BGPWATCHER_VIEW_FIELD_ALL_VALID);
+      bgpwatcher_view_iter_has_more_pfx_peer(rt->iter);
+      bgpwatcher_view_iter_next_pfx_peer(rt->iter))
+    {
+      p = bgpwatcher_view_iter_peer_get_user(rt->iter);
+      
+      /* check if the current field refers to a peer involved
+       * in the rib process  */
+      if(bgpstream_id_set_exists(c->collector_peerids,
+                                 bgpwatcher_view_iter_peer_get_peer(rt->iter)) &&
+         p->bgp_time_uc_rib_start != 0)
+        {
+          pp = bgpwatcher_view_iter_pfx_peer_get_user(rt->iter);
+          if(pp->bgp_time_uc_delta_ts + p->bgp_time_uc_rib_start >
+             pp->bgp_time_last_ts)
+            {
+              pp->bgp_time_last_ts = pp->bgp_time_uc_delta_ts + p->bgp_time_uc_rib_start;
+              bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, pp->uc_origin_asn);
+              bgpwatcher_view_iter_pfx_activate_peer(rt->iter);
+            }
+          else
+            {
+              // @ add more comments here
+              if(bgpwatcher_view_iter_pfx_peer_get_orig_asn(rt->iter) != 0)
+                {
+                  bgpwatcher_view_iter_pfx_activate_peer(rt->iter);
+                }
+            }
+          /* reset uc fields anyway */
+          pp->bgp_time_uc_delta_ts = 0;
+          pp->uc_origin_asn = 0;
+        }
+
+    }
+  
+  /* reset all the uc information for the peers */
+  for(bgpwatcher_view_iter_first_peer(rt->iter, BGPWATCHER_VIEW_FIELD_ALL_VALID);
+      bgpwatcher_view_iter_has_more_peer(rt->iter);
+      bgpwatcher_view_iter_next_peer(rt->iter))
+    {
+      /* check if the current field refers to a peer to reset */
+      if(bgpstream_id_set_exists(c->collector_peerids,
+                                 bgpwatcher_view_iter_peer_get_peer(rt->iter)))
+        {
+          p = bgpwatcher_view_iter_peer_get_user(rt->iter);
+          p->bgp_time_uc_rib_start = 0;
+          p->bgp_time_uc_rib_end = 0;
+        }
+    }
+  /* reset all the uc information for the  collector */
+  c->bgp_time_ref_rib_dump_time = c->bgp_time_uc_rib_dump_time;
+  c->bgp_time_ref_rib_start_time = c->bgp_time_uc_rib_start_time;
+  c->bgp_time_uc_rib_dump_time = 0;
+  c->bgp_time_uc_rib_start_time = 0;
+  
+  return 0;
+}
+
+
 /** Apply an announcement update or a withdrawal update
  *  @param peer_id peer affected by the update
  *  @param asn     origin 
@@ -411,35 +563,6 @@ apply_prefix_update(routingtables_t *rt, bgpstream_peer_id_t peer_id,
   return 0;
 }
 
-/** reset all the pfxpeer data associated with the
- *  provided peer id */
-static void
-reset_peerpfxdata(routingtables_t *rt,
-                  bgpstream_peer_id_t peer_id, uint8_t reset_uc)
-{
-  perpfx_perpeer_info_t *pp;
-  if(bgpwatcher_view_iter_seek_peer(rt->iter,
-                                    peer_id,
-                                    BGPWATCHER_VIEW_FIELD_ALL_VALID) == 1)
-    {
-      for(bgpwatcher_view_iter_first_pfx_peer(rt->iter, 0,
-                                              BGPWATCHER_VIEW_FIELD_ALL_VALID,
-                                              BGPWATCHER_VIEW_FIELD_ALL_VALID);
-          bgpwatcher_view_iter_has_more_pfx_peer(rt->iter);
-          bgpwatcher_view_iter_next_pfx_peer(rt->iter))
-        {
-          bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, 0);
-          pp = bgpwatcher_view_iter_pfx_peer_get_user(rt->iter);
-          pp->bgp_time_last_ts = 0;
-          if(reset_uc)
-            {
-              pp->bgp_time_uc_delta_ts = 0;
-              pp->uc_origin_asn = 0;
-            }
-          bgpwatcher_view_iter_pfx_deactivate_peer(rt->iter);
-        }
-    }  
-}
 
 static int
 apply_state_update(routingtables_t *rt, bgpstream_peer_id_t peer_id,
@@ -507,6 +630,92 @@ apply_state_update(routingtables_t *rt, bgpstream_peer_id_t peer_id,
   return 0;
 }
 
+static int
+collector_process_rib_message(routingtables_t *rt, bgpstream_peer_id_t peer_id,
+                              bgpstream_elem_t *elem, uint32_t ts)
+{
+  perpeer_info_t *p;
+  bgpstream_peer_sig_t *sg;
+  uint8_t peer_didnt_exist = 0;
+  /* if the peer does not exist, we create it */  
+  if(bgpwatcher_view_iter_seek_peer(rt->iter,
+                                    peer_id,
+                                    BGPWATCHER_VIEW_FIELD_ALL_VALID) != 1)
+    {
+      sg = bgpstream_peer_sig_map_get_sig(rt->peersigns, peer_id);
+      p = perpeer_info_create(sg->peer_asnumber, (bgpstream_ip_addr_t *) &sg->peer_ip_addr,
+                              BGPSTREAM_ELEM_PEERSTATE_UNKNOWN, 0, 0, ts, ts);
+      bgpwatcher_view_add_peer(rt->view, sg->collector_str,
+                               (bgpstream_ip_addr_t *) &sg->peer_ip_addr,
+                               sg->peer_asnumber);
+      bgpwatcher_view_iter_seek_peer(rt->iter, peer_id, BGPWATCHER_VIEW_FIELD_ALL_VALID);      
+      bgpwatcher_view_iter_peer_set_user(rt->iter, p);
+      /* a rib message cannot activate a peer */
+      bgpwatcher_view_iter_deactivate_peer(rt->iter);
+      peer_didnt_exist = 1;
+    }
+  else
+    {
+      p = bgpwatcher_view_iter_peer_get_user(rt->iter);
+      if(p->bgp_time_uc_rib_start == 0)
+        {
+          p->bgp_time_uc_rib_start = ts;
+        }
+      p->bgp_time_uc_rib_end = ts;
+    }
+
+  perpfx_perpeer_info_t *pp;
+  uint32_t asn = 0;           
+  bgpstream_as_hop_t as_hop;
+
+  /* populate correctly the asn */
+  bgpstream_as_hop_init(&as_hop);
+  bgpstream_as_path_get_origin_as(&elem->aspath, &as_hop);
+  if(as_hop.type == BGPSTREAM_AS_TYPE_NUMERIC)
+    {
+      asn = as_hop.as_number;
+    }
+  else
+    {
+      /* @todo invent something here with sets and confederations */
+      asn = 65535; /* use a reserved one to indicate a set/confederation */
+    }
+  bgpstream_as_hop_clear(&as_hop);
+  
+  
+  if(bgpwatcher_view_iter_seek_pfx_peer(rt->iter,
+                                        (bgpstream_pfx_t *) &elem->prefix,
+                                        peer_id,
+                                        BGPWATCHER_VIEW_FIELD_ALL_VALID,
+                                        BGPWATCHER_VIEW_FIELD_ALL_VALID) == 1)
+    {
+      pp = bgpwatcher_view_iter_pfx_peer_get_user(rt->iter);
+      pp->bgp_time_uc_delta_ts = ts - p->bgp_time_uc_rib_start;
+      pp->uc_origin_asn = asn;
+    }
+  else
+    {
+      bgpwatcher_view_add_pfx_peer(rt->view,
+                                   (bgpstream_pfx_t *) &elem->prefix,
+                                   peer_id,
+                                   0);            
+      bgpwatcher_view_iter_seek_pfx_peer(rt->iter,
+                                         (bgpstream_pfx_t *) &elem->prefix,
+                                         peer_id,
+                                         BGPWATCHER_VIEW_FIELD_ALL_VALID,
+                                         BGPWATCHER_VIEW_FIELD_ALL_VALID);
+      bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, 0);
+      pp = perpfx_perpeer_info_create(0, ts - p->bgp_time_uc_rib_start, asn);
+      bgpwatcher_view_iter_pfx_peer_set_user(rt->iter,pp);
+      bgpwatcher_view_iter_pfx_deactivate_peer(rt->iter);
+      if(peer_didnt_exist)
+        {
+        bgpwatcher_view_iter_deactivate_peer(rt->iter);
+        }
+    }
+
+  return 0;
+}
 
 
 /* debug static int peerscount = 0; */
@@ -533,7 +742,8 @@ collector_process_valid_bgpinfo(routingtables_t *rt,
             {
               return -1;                 
             }
-                                                            
+          bgpstream_id_set_insert(c->collector_peerids, peer_id);
+          
           switch(elem->type)
             {
             case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT:
@@ -574,9 +784,8 @@ collector_process_valid_bgpinfo(routingtables_t *rt,
              * process going on, then we have to reset the process */
             if(c->bgp_time_uc_rib_dump_time)
               {
-                // @todo reset_uc_process
+                stop_uc_process(rt, c);
               }
-            // @todo start a new uc process, is this enough ?
             c->bgp_time_uc_rib_dump_time = record->attributes.dump_time;
             c->bgp_time_uc_rib_start_time = record->attributes.record_time;
           }
@@ -586,17 +795,26 @@ collector_process_valid_bgpinfo(routingtables_t *rt,
          * to the same RIB dump */
         if(record->attributes.dump_time == c->bgp_time_uc_rib_dump_time)
           {
-          
-            // @todo process RIB elems here
+         
+            while((elem = bgpstream_record_get_next_elem(record)) != NULL)
+              {
+                /* get the peer id (create one if it doesn't exist) */
+                if((peer_id = bgpstream_peer_sig_map_get_id(rt->peersigns,
+                                                            record->attributes.dump_collector,
+                                                            &elem->peer_address,
+                                                            elem->peer_asnumber)) == 0)
+                  {
+                    return -1;                 
+                  }
+                bgpstream_id_set_insert(c->collector_peerids, peer_id);
+                collector_process_rib_message(rt, peer_id, elem, record->attributes.record_time);
+              }
 
             if(record->dump_pos == BGPSTREAM_DUMP_END)
               {
-                // @todo promote the current uc information to active
-                // information and reset the uc info
-                c->bgp_time_ref_rib_dump_time = c->bgp_time_uc_rib_dump_time;
-                c->bgp_time_ref_rib_start_time = c->bgp_time_uc_rib_start_time;
-                c->bgp_time_uc_rib_dump_time = 0;
-                c->bgp_time_uc_rib_start_time = 0;         
+                /* promote the current uc information to active
+                 * information and reset the uc info */
+                end_of_valid_rib(rt, c);
               }          
           }          
       }
@@ -815,6 +1033,8 @@ int routingtables_interval_end(routingtables_t *rt,
 
   /** @todo: print statistics and send the view to the watcher if tx is on */
 
+  printf("%d - active peers: %"PRIu32"\n", end_time, bgpwatcher_view_peer_size(rt->view));
+
   return 0;
 }
 
@@ -885,9 +1105,9 @@ int routingtables_process_record(routingtables_t *rt,
       assert(0);
     }
   
-  fprintf(stderr, "Processed %s record %ld\n",
-          c->collector_str,
-          record->attributes.record_time);
+  /* fprintf(stderr, "Processed %s record %ld\n", */
+  /*         c->collector_str, */
+  /*         record->attributes.record_time); */
   
   return 0;
 }
