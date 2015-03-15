@@ -52,6 +52,9 @@
  * routing tables */
 #define ROUTINGTABLES_DEFAULT_IPV6_FULLFEED_THR 10000 
 
+/** The time granularity that is used to update the
+ *  last wall time for a collector */
+#define ROUTINGTABLES_COLLECTOR_WALL_UPDATE_FR 10000 
 
 typedef enum {
 
@@ -112,16 +115,22 @@ typedef struct struct_perpeer_info_t {
    */
   bgpstream_elem_peerstate_t bgp_fsm_state;
 
-  /** first timestamp in the current reference RIB */
+  /** first timestamp in the current reference RIB,
+   *  or the time we set the current status
+   *  (e.g. time of a peer established state) */
   uint32_t bgp_time_ref_rib_start;
   
-  /** last timestamp in the current reference RIB */
+  /** last timestamp in the current reference RIB,
+   *  or the time we set the current status
+   *  (e.g. time of a peer established state) */
   uint32_t bgp_time_ref_rib_end;
 
-  /** first timestamp in the current under construction RIB */
+  /** first timestamp in the current under construction RIB,
+   *  0 when the under construction process is off */
   uint32_t bgp_time_uc_rib_start;
   
-  /** last timestamp in the current under construction RIB */
+  /** last timestamp in the current under construction RIB,
+   *  0 when the under construction process is off */
   uint32_t bgp_time_uc_rib_end;
 
 } perpeer_info_t;
@@ -166,6 +175,9 @@ typedef struct struct_collector_t {
    *  off, is on otherwise */
   uint32_t bgp_time_uc_rib_dump_time;
 
+  /** start time of the current under construction RIB */
+  uint32_t bgp_time_uc_rib_start_time;
+
   /** Current status of the collector */
   collector_state_t state;
 
@@ -191,6 +203,9 @@ struct struct_routingtables_t {
    *  states of the routing tables as seen by each peer
    *  of the each collector */
   bgpwatcher_view_t *view;
+
+  /** iterator associated with the view*/
+  bgpwatcher_view_iter_t *iter;
   
   /** per collector information: name, peers and
    *  current state */
