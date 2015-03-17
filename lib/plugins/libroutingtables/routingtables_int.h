@@ -136,14 +136,10 @@ typedef struct struct_perpeer_info_t {
 } perpeer_info_t;
 
 
-/** Information about the current status 
- *  of a view */
-typedef struct struct_perview_info_t {
-  
-  /** @todo add other state variables here */
 
-} perview_info_t;
-
+/** A set that contains a unique set of peer ids */
+KHASH_INIT(peer_id_set, uint32_t, char, 0, kh_int_hash_func, kh_int_hash_equal);
+typedef khash_t(peer_id_set) peer_id_set_t;
 
 /** Information about the current status 
  *  of a collector */
@@ -154,7 +150,7 @@ typedef struct struct_collector_t {
 
   /** unique set of peer ids that are associated
    *  peers providing information to the current */
-  bgpstream_id_set_t *collector_peerids;
+  peer_id_set_t *collector_peerids;
   
   /** last time this collector was involved
    *  in bgp operations (bgp time) */

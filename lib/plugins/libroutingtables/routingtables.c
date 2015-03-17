@@ -67,8 +67,55 @@ get_wall_time_now()
   return tv.tv_sec;
 }
 
-// static
-perpfx_perpeer_info_t *
+/** @note for the future
+ *  In order to save memory we could use the reserved AS numbers
+ *  to embed other informations associated with an AS number, i.e.:
+ *  - origin as = 0 -> prefix not seen in the RIB (e.g. withdrawal)
+ *  - AS in [64496-64511] -> AS is actually an AS set
+ *  - AS in [64512-65534] -> AS is actually an AS confederation  
+ */
+/* static void asn_mgmt_fun() */
+/* { */
+  /* http://www.iana.org/assignments/as-numbers/as-numbers.xhtml */
+  /* 0	           Reserved */
+  /* 64198-64495   Reserved by the IANA */ 
+  /* 23456	   AS_TRANS RFC6793 */
+  /* 64496-64511   Reserved for use in documentation and sample code RFC5398 */
+  /* 64512-65534   Reserved for Private Use RFC6996 */
+  /* 65535	   Reserved RFC7300 */
+/* } */
+
+
+/** Returns the origin AS when the origin AS number
+ *  numeric, it returns 65535 when the origin is
+ *  either a set or a confederation 
+ *
+ *  @param aspath a pointer to a RIB or ANNOUNCEMENT aspath
+ *  @return the origin AS number
+ */
+static uint32_t
+get_origin_asn(bgpstream_as_path_t *aspath)
+{
+  uint32_t asn = 0;
+  bgpstream_as_hop_t as_hop;
+  /* populate correctly the asn */
+  bgpstream_as_hop_init(&as_hop);
+  bgpstream_as_path_get_origin_as(aspath, &as_hop);
+  if(as_hop.type == BGPSTREAM_AS_TYPE_NUMERIC)
+    {
+      asn = as_hop.as_number;
+    }
+  else
+    {
+      /* use a reserved AS number to indicate 
+       * a set/confederation */
+      asn = 65535; 
+    }
+  bgpstream_as_hop_clear(&as_hop);
+  return asn;
+}
+
+static perpfx_perpeer_info_t *
 perpfx_perpeer_info_create(uint32_t bgp_time_last_ts,
                            uint16_t bgp_time_uc_delta_ts,
                            uint32_t uc_origin_asn)
@@ -83,8 +130,7 @@ perpfx_perpeer_info_create(uint32_t bgp_time_last_ts,
   return pfxpeeri;
 }
 
-// static
-perpeer_info_t *
+static perpeer_info_t *
 perpeer_info_create(uint32_t peer_asnumber,
                     bgpstream_ip_addr_t *peer_ip,
                     bgpstream_elem_peerstate_t bgp_fsm_state,
@@ -111,42 +157,12 @@ perpeer_info_create(uint32_t peer_asnumber,
   return peeri;
 }
 
-// static
-perview_info_t *perview_info_create()
-{
-  perview_info_t *viewi = (perview_info_t *) malloc_zero(sizeof(perview_info_t));
-  if(viewi != NULL)
-    {
-      /** @todo initialize state variables here */
-    }
-  return viewi;
-}
-
 /** @note:
  *  all the xxx_info_create functions do not allocate dynamic
  *  memory other than the structure itself, therefore free() 
  *  is enough to dealloc safely their memory.
  */
 
-
-
-/** @note:
- *  In order to save memory we can use the reserved AS numbers
- *  to embed other informations associated with an AS number, i.e.:
- *  - origin as = 0 -> prefix not seen in the RIB
- *  - AS in [64496-64511] -> AS is actually an AS set
- *  - AS in [64512-65534] -> AS is actually an AS confederation  
- */
-/* static void asn_mgmt_fun() */
-/* { */
-  /* http://www.iana.org/assignments/as-numbers/as-numbers.xhtml */
-  /* 0	           Reserved */
-  /* 64198-64495   Reserved by the IANA */ 
-  /* 23456	   AS_TRANS RFC6793 */
-  /* 64496-64511   Reserved for use in documentation and sample code RFC5398 */
-  /* 64512-65534   Reserved for Private Use RFC6996 */
-  /* 65535	   Reserved RFC7300 */
-/* } */
 
 static collector_t *
 get_collector_data(collector_data_t *collectors, char *project, char *collector)
@@ -177,7 +193,7 @@ get_collector_data(collector_data_t *collectors, char *project, char *collector)
           fprintf(stderr, "Warning: could not print collector signature: truncated output\n");
         }
       
-      if((c_data.collector_peerids = bgpstream_id_set_create()) == NULL)
+      if((c_data.collector_peerids = kh_init(peer_id_set)) == NULL)
         {
           return NULL;
         }
@@ -214,10 +230,12 @@ stop_uc_process(routingtables_t *rt, collector_t *c)
       bgpwatcher_view_iter_has_more_pfx_peer(rt->iter);
       bgpwatcher_view_iter_next_pfx_peer(rt->iter))
     {
-      /* check if the current field refers to a peer to reset */
-      if(bgpstream_id_set_exists(c->collector_peerids,
-                                 bgpwatcher_view_iter_peer_get_peer(rt->iter)))
+      
+      /* check if the current field refers to a peer to reset */      
+      if(kh_get(peer_id_set, c->collector_peerids, bgpwatcher_view_iter_peer_get_peer(rt->iter)) !=
+         kh_end(c->collector_peerids))
         {
+          /* the peer belongs to the collector's peers */
           pp = bgpwatcher_view_iter_pfx_peer_get_user(rt->iter);
           pp->bgp_time_uc_delta_ts = 0;
           pp->uc_origin_asn = 0;              
@@ -235,8 +253,8 @@ stop_uc_process(routingtables_t *rt, collector_t *c)
       bgpwatcher_view_iter_next_peer(rt->iter))
     {
       /* check if the current field refers to a peer to reset */
-      if(bgpstream_id_set_exists(c->collector_peerids,
-                                 bgpwatcher_view_iter_peer_get_peer(rt->iter)))
+      if(kh_get(peer_id_set, c->collector_peerids, bgpwatcher_view_iter_peer_get_peer(rt->iter)) !=
+         kh_end(c->collector_peerids))
         {
           p = bgpwatcher_view_iter_peer_get_user(rt->iter);
           p->bgp_time_uc_rib_start = 0;
@@ -299,9 +317,9 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
       
       /* check if the current field refers to a peer involved
        * in the rib process  */
-      if(bgpstream_id_set_exists(c->collector_peerids,
-                                 bgpwatcher_view_iter_peer_get_peer(rt->iter)) &&
-         p->bgp_time_uc_rib_start != 0)
+     if(kh_get(peer_id_set, c->collector_peerids, bgpwatcher_view_iter_peer_get_peer(rt->iter)) !=
+        kh_end(c->collector_peerids)  &&
+        p->bgp_time_uc_rib_start != 0)
         {
           pp = bgpwatcher_view_iter_pfx_peer_get_user(rt->iter);
           if(pp->bgp_time_uc_delta_ts + p->bgp_time_uc_rib_start >
@@ -313,7 +331,9 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
             }
           else
             {
-              // @todo add more comments here
+              /* if an update is more recent than the uc information, then
+               * we decide to keep this data and activate the field if it
+               * is an announcement */
               if(bgpwatcher_view_iter_pfx_peer_get_orig_asn(rt->iter) != 0)
                 {
                   bgpwatcher_view_iter_pfx_activate_peer(rt->iter);
@@ -332,8 +352,8 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
       bgpwatcher_view_iter_next_peer(rt->iter))
     {
       /* check if the current field refers to a peer to reset */
-      if(bgpstream_id_set_exists(c->collector_peerids,
-                                 bgpwatcher_view_iter_peer_get_peer(rt->iter)))
+      if(kh_get(peer_id_set, c->collector_peerids, bgpwatcher_view_iter_peer_get_peer(rt->iter)) !=
+         kh_end(c->collector_peerids))        
         {
           p = bgpwatcher_view_iter_peer_get_user(rt->iter);
           p->bgp_time_uc_rib_start = 0;
@@ -369,23 +389,11 @@ apply_prefix_update(routingtables_t *rt, bgpstream_peer_id_t peer_id,
   perpeer_info_t *p = bgpwatcher_view_iter_peer_get_user(rt->iter);
   perpfx_perpeer_info_t *pp;
   uint32_t asn = 0;           /* 0 for withdrawals, set for announcements */
-  bgpstream_as_hop_t as_hop;
 
   /* populate correctly the asn if it is an announcement */
   if(elem->type == BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT)
     {
-      bgpstream_as_hop_init(&as_hop);
-      bgpstream_as_path_get_origin_as(&elem->aspath, &as_hop);
-      if(as_hop.type == BGPSTREAM_AS_TYPE_NUMERIC)
-        {
-          asn = as_hop.as_number;
-        }
-      else
-        {
-          /* @todo invent something here with sets and confederations */
-          asn = 65535; /* use a reserved one to indicate a set/confederation */
-        }
-      bgpstream_as_hop_clear(&as_hop);
+      asn = get_origin_asn(&elem->aspath);
     }
 
   /* peer is active */
@@ -503,10 +511,12 @@ apply_prefix_update(routingtables_t *rt, bgpstream_peer_id_t peer_id,
                     }
                   return 0;
                 }
-              
-              // @todo check if it is a programming error
-              // dont know why here
-              assert(0);
+
+              /* if a peer is inactive it's state has to be not ESTABLISHED
+              *  it is possible that the state is UNKNOWN, but no uc process
+              *  is on (e.g. after a corrupted read), in this case nothing
+              *  has to change */
+              return 0;
             }
           else
             {
@@ -562,7 +572,12 @@ apply_prefix_update(routingtables_t *rt, bgpstream_peer_id_t peer_id,
                 }
               return 0;
             }
-          // @todo check if this is a programming error
+
+          /* if a peer is inactive it's state has to be not ESTABLISHED
+           *  it is possible that the state is UNKNOWN, but no uc process
+           *  is on (e.g. after a corrupted read), in this case nothing
+           *  has to change */
+          return 0;
         }
     }
   return 0;
@@ -662,8 +677,8 @@ apply_state_update(routingtables_t *rt, bgpstream_peer_id_t peer_id,
 }
 
 static int
-collector_process_rib_message(routingtables_t *rt, bgpstream_peer_id_t peer_id,
-                              bgpstream_elem_t *elem, uint32_t ts)
+apply_rib_message(routingtables_t *rt, bgpstream_peer_id_t peer_id,
+                  bgpstream_elem_t *elem, uint32_t ts)
 {
   perpeer_info_t *p;
   bgpstream_peer_sig_t *sg;
@@ -697,24 +712,9 @@ collector_process_rib_message(routingtables_t *rt, bgpstream_peer_id_t peer_id,
 
   peer_init_state = bgpwatcher_view_iter_peer_get_state(rt->iter);
 
-  perpfx_perpeer_info_t *pp;
-  uint32_t asn = 0;           
-  bgpstream_as_hop_t as_hop;
-
-  /* populate correctly the asn */
-  bgpstream_as_hop_init(&as_hop);
-  bgpstream_as_path_get_origin_as(&elem->aspath, &as_hop);
-  if(as_hop.type == BGPSTREAM_AS_TYPE_NUMERIC)
-    {
-      asn = as_hop.as_number;
-    }
-  else
-    {
-      /* @todo invent something here with sets and confederations */
-      asn = 65535; /* use a reserved one to indicate a set/confederation */
-    }
-  bgpstream_as_hop_clear(&as_hop);
   
+  perpfx_perpeer_info_t *pp;
+  uint32_t asn = get_origin_asn(&elem->aspath);           
   
   if(bgpwatcher_view_iter_seek_pfx_peer(rt->iter,
                                         (bgpstream_pfx_t *) &elem->prefix,
@@ -751,17 +751,82 @@ collector_process_rib_message(routingtables_t *rt, bgpstream_peer_id_t peer_id,
 }
 
 
+static void
+update_collector_state(routingtables_t *rt,
+                       collector_t *c,
+                       bgpstream_record_t *record)
+{
+  /** we update the bgp_time_last and every ROUTINGTABLES_COLLECTOR_WALL_UPDATE_FR 
+   *  seconds we also update the last wall time */
+  if(record->attributes.record_time > c->bgp_time_last)
+    {
+      if(record->attributes.record_time >
+         (c->bgp_time_last + ROUTINGTABLES_COLLECTOR_WALL_UPDATE_FR))
+        {
+          c->wall_time_last = get_wall_time_now();
+        }
+      c->bgp_time_last = record->attributes.record_time;      
+    }
+
+  /** we update the status of the collector based on the state of its peers 
+   * a collector is in an unknown state if all of its peers
+   * are in an unknown state, it is down if all of its peers 
+   * states are either down or unknown, it is up if at least
+   * one peer is up */
+  
+  perpeer_info_t *p;  
+  uint8_t unknown = 1;
+  for(bgpwatcher_view_iter_first_peer(rt->iter, BGPWATCHER_VIEW_FIELD_ALL_VALID);
+      bgpwatcher_view_iter_has_more_peer(rt->iter);
+      bgpwatcher_view_iter_next_peer(rt->iter))
+    {
+        if(kh_get(peer_id_set, c->collector_peerids, bgpwatcher_view_iter_peer_get_peer(rt->iter)) !=
+           kh_end(c->collector_peerids))
+          {
+          switch(bgpwatcher_view_iter_peer_get_state(rt->iter))
+            {
+            case BGPWATCHER_VIEW_FIELD_ACTIVE:
+              c->state = ROUTINGTABLES_COLLECTOR_STATE_UP;
+              return; 
+            case BGPWATCHER_VIEW_FIELD_INACTIVE:
+              p = bgpwatcher_view_iter_peer_get_user(rt->iter);
+              if(p->bgp_fsm_state != BGPSTREAM_ELEM_PEERSTATE_UNKNOWN)
+                {
+                  unknown = 0;
+                }
+              break;
+            default:
+              /* a valid peer cannot be in state invalid */
+              assert(0);
+            }
+        }
+    }
+
+  if(unknown == 1)
+    {
+      c->state = ROUTINGTABLES_COLLECTOR_STATE_DOWN;
+    }
+  else
+    {
+      c->state = ROUTINGTABLES_COLLECTOR_STATE_UNKNOWN;
+    }
+  
+  return;
+}
+
+
 /* debug static int peerscount = 0; */
 
 static int
 collector_process_valid_bgpinfo(routingtables_t *rt,
                                 collector_t *c,
-                                bgpstream_record_t *record,
-                                uint8_t uc_is_affected)
+                                bgpstream_record_t *record)
 {
   int ret;
   bgpstream_elem_t *elem;
   bgpstream_peer_id_t peer_id;  
+  int khret;
+  khiter_t k;
   
   if(record->attributes.dump_type == BGPSTREAM_UPDATE)
     {      
@@ -775,7 +840,12 @@ collector_process_valid_bgpinfo(routingtables_t *rt,
             {
               return -1;                 
             }
-          bgpstream_id_set_insert(c->collector_peerids, peer_id);
+
+          /* insert the peer id in the collector peer ids set */
+          if((k = kh_get(peer_id_set, c->collector_peerids, peer_id)) == kh_end(c->collector_peerids))
+            {
+              k = kh_put(peer_id_set, c->collector_peerids, peer_id, &khret);
+            }
           
           switch(elem->type)
             {
@@ -839,8 +909,15 @@ collector_process_valid_bgpinfo(routingtables_t *rt,
                   {
                     return -1;                 
                   }
-                bgpstream_id_set_insert(c->collector_peerids, peer_id);
-                collector_process_rib_message(rt, peer_id, elem, record->attributes.record_time);
+                
+                /* insert the peer id in the collector peer ids set */
+                if((k = kh_get(peer_id_set, c->collector_peerids, peer_id)) == kh_end(c->collector_peerids))
+                  {
+                    k = kh_put(peer_id_set, c->collector_peerids, peer_id, &khret);
+                  }
+                
+                /* apply the rib message */
+                apply_rib_message(rt, peer_id, elem, record->attributes.record_time);
               }
 
             if(record->dump_pos == BGPSTREAM_DUMP_END)
@@ -858,21 +935,95 @@ collector_process_valid_bgpinfo(routingtables_t *rt,
       }
   }
   
-  /** we update the bgp_time_last and every ROUTINGTABLES_COLLECTOR_WALL_UPDATE_FR 
-   *  seconds we also update the last wall time */
-  if(record->attributes.record_time > c->bgp_time_last)
-    {
-      if(record->attributes.record_time >
-         (c->bgp_time_last + ROUTINGTABLES_COLLECTOR_WALL_UPDATE_FR))
-        {
-          c->wall_time_last = get_wall_time_now();
-        }
-      c->bgp_time_last = record->attributes.record_time;      
-    }
     
   return 0;
 }
 
+
+static int
+collector_process_corrupted_message(routingtables_t *rt,
+                                    collector_t *c,
+                                    bgpstream_record_t *record)
+{
+  khiter_t k;
+  bgpstream_peer_id_t peer_id;  
+  perpeer_info_t *p;
+  /* list of peers whose current active rib is affected by the
+   * corrupted message */
+  bgpstream_id_set_t *cor_affected = bgpstream_id_set_create();
+  /* list of peers whose current under construction rib is affected by the
+   * corrupted message */
+  bgpstream_id_set_t *cor_uc_affected = bgpstream_id_set_create();
+  
+  /* get all the peers that belong to the current collector */    
+  for(k = kh_begin(c->collector_peerids); k != kh_end(c->collector_peerids); ++k)
+    {
+      if(kh_exist(c->collector_peerids, k))
+	{
+          peer_id = kh_key(c->collector_peerids, k);
+          bgpwatcher_view_iter_seek_peer(rt->iter, peer_id, BGPWATCHER_VIEW_FIELD_ALL_VALID);
+          p = bgpwatcher_view_iter_peer_get_user(rt->iter);
+          assert(p);
+          /* save all the peers affected by the corrupted record */    
+          if(p->bgp_time_ref_rib_start != 0 && record->attributes.record_time >= p->bgp_time_ref_rib_start)
+            {
+              bgpstream_id_set_insert(cor_affected, peer_id);
+            }
+          if(p->bgp_time_uc_rib_start != 0 && record->attributes.record_time >= p->bgp_time_uc_rib_start)
+            {
+              bgpstream_id_set_insert(cor_uc_affected, peer_id);
+            }
+        }
+    }
+
+  perpfx_perpeer_info_t *pp;
+  
+  for(bgpwatcher_view_iter_first_pfx_peer(rt->iter, 0,
+                                          BGPWATCHER_VIEW_FIELD_ALL_VALID,
+                                          BGPWATCHER_VIEW_FIELD_ALL_VALID);
+      bgpwatcher_view_iter_has_more_pfx_peer(rt->iter);
+      bgpwatcher_view_iter_next_pfx_peer(rt->iter))
+    {      
+      pp = bgpwatcher_view_iter_pfx_peer_get_user(rt->iter);
+
+      if(bgpstream_id_set_exists(cor_affected, bgpwatcher_view_iter_peer_get_peer(rt->iter)))
+        {
+          if(pp->bgp_time_last_ts !=0 && pp->bgp_time_last_ts <= record->attributes.record_time)
+            {
+              pp->bgp_time_last_ts = 0;
+              bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, 0);
+              bgpwatcher_view_iter_pfx_deactivate_peer(rt->iter);
+            }
+        }
+        
+      if(bgpstream_id_set_exists(cor_uc_affected, bgpwatcher_view_iter_peer_get_peer(rt->iter)))
+        {
+          pp->bgp_time_uc_delta_ts = 0;
+          pp->uc_origin_asn = 0;          
+        }      
+    }
+
+  for(bgpwatcher_view_iter_first_peer(rt->iter, BGPWATCHER_VIEW_FIELD_ALL_VALID);
+      bgpwatcher_view_iter_has_more_peer(rt->iter);
+      bgpwatcher_view_iter_next_peer(rt->iter))
+    {
+      if(bgpstream_id_set_exists(cor_affected, bgpwatcher_view_iter_peer_get_peer(rt->iter)))
+        {
+          p = bgpwatcher_view_iter_peer_get_user(rt->iter);
+          p->bgp_fsm_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
+          p->bgp_time_ref_rib_start = 0;
+          p->bgp_time_ref_rib_end = 0;
+          bgpwatcher_view_iter_deactivate_peer(rt->iter);
+        }
+      if(bgpstream_id_set_exists(cor_uc_affected, bgpwatcher_view_iter_peer_get_peer(rt->iter)))
+        {
+          p->bgp_time_uc_rib_start = 0;
+          p->bgp_time_uc_rib_end = 0;
+        }
+    }
+  
+  return 0;
+}
 
 
 
@@ -892,7 +1043,7 @@ routingtables_t *routingtables_create()
     }
 
   if((rt->view = bgpwatcher_view_create_shared(rt->peersigns,
-                                               free /* view user destructor */,
+                                               NULL /* view user destructor */,
                                                NULL /* pfx destructor */,
                                                free /* peer user destructor */,
                                                free /* pfxpeer user destructor */)) == NULL)
@@ -1088,7 +1239,7 @@ int routingtables_process_record(routingtables_t *rt,
 
   /* if a record refer to a time prior to the current reference time,
    * then we discard it, unless we are in the process of building a
-   * new rib, in that case we check the time against the uc startin
+   * new rib, in that case we check the time against the uc starting
    * time and if it is a prior record we discard it */
   if(record->attributes.record_time < c->bgp_time_ref_rib_start_time)
     {
@@ -1101,27 +1252,14 @@ int routingtables_process_record(routingtables_t *rt,
         }
     }
 
-  uint8_t uc_is_affected = 0;
-  if(record->attributes.record_time >= c->bgp_time_ref_rib_start_time)
-    {
-      uc_is_affected = 0;
-    }
-
   switch(record->status)
     {
     case BGPSTREAM_RECORD_STATUS_VALID_RECORD:
-      ret = collector_process_valid_bgpinfo(rt, c, record, uc_is_affected);
+      ret = collector_process_valid_bgpinfo(rt, c, record);
       break;
     case BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE:
     case BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD:
-      
-      /* @todo invalidate data for *active* and check whether
-      *  the under construction should be invalidated too */
-      if(record->attributes.record_time < c->bgp_time_last)
-        {
-          c->bgp_time_last = record->attributes.record_time;
-        }
-      c->state = ROUTINGTABLES_COLLECTOR_STATE_UNKNOWN;
+      ret = collector_process_corrupted_message(rt, c, record);
       break;
     case BGPSTREAM_RECORD_STATUS_FILTERED_SOURCE:
     case BGPSTREAM_RECORD_STATUS_EMPTY_SOURCE:
@@ -1138,11 +1276,13 @@ int routingtables_process_record(routingtables_t *rt,
       assert(0);
     }
   
+  update_collector_state(rt, c, record);
+
   /* fprintf(stderr, "Processed %s record %ld\n", */
   /*         c->collector_str, */
   /*         record->attributes.record_time); */
-  
-  return 0;
+
+  return ret;
 }
 
 void routingtables_destroy(routingtables_t *rt)
@@ -1158,7 +1298,7 @@ void routingtables_destroy(routingtables_t *rt)
               if (kh_exist(rt->collectors, k))
                 {
                   /* deallocating value dynamic memory */
-                  bgpstream_id_set_destroy(kh_val(rt->collectors, k).collector_peerids);
+                  kh_destroy(peer_id_set, kh_val(rt->collectors, k).collector_peerids);
                   kh_val(rt->collectors, k).collector_peerids = NULL;
                   /* deallocating string dynamic memory */
                   free(kh_key(rt->collectors, k));
