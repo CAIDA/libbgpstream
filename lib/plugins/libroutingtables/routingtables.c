@@ -316,7 +316,6 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
               // @todo add more comments here
               if(bgpwatcher_view_iter_pfx_peer_get_orig_asn(rt->iter) != 0)
                 {
-                  assert(bgpwatcher_view_iter_pfx_peer_get_state(rt->iter) == );
                   bgpwatcher_view_iter_pfx_activate_peer(rt->iter);
                 }
             }
@@ -341,6 +340,7 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
           p->bgp_time_uc_rib_end = 0;
         }
     }
+  
   /* reset all the uc information for the  collector */
   c->bgp_time_ref_rib_dump_time = c->bgp_time_uc_rib_dump_time;
   c->bgp_time_ref_rib_start_time = c->bgp_time_uc_rib_start_time;
@@ -505,6 +505,8 @@ apply_prefix_update(routingtables_t *rt, bgpstream_peer_id_t peer_id,
                 }
               
               // @todo check if it is a programming error
+              // dont know why here
+              assert(0);
             }
           else
             {
@@ -665,7 +667,7 @@ collector_process_rib_message(routingtables_t *rt, bgpstream_peer_id_t peer_id,
 {
   perpeer_info_t *p;
   bgpstream_peer_sig_t *sg;
-  uint8_t peer_didnt_exist = 0;
+  bgpwatcher_view_field_state_t peer_init_state;
 
   if(bgpwatcher_view_iter_seek_peer(rt->iter,
                                     peer_id,
@@ -682,7 +684,6 @@ collector_process_rib_message(routingtables_t *rt, bgpstream_peer_id_t peer_id,
       bgpwatcher_view_iter_peer_set_user(rt->iter, p);
       /* a rib message cannot activate a peer */
       bgpwatcher_view_iter_deactivate_peer(rt->iter);
-      peer_didnt_exist = 1;
     }
   else
     {
@@ -693,6 +694,8 @@ collector_process_rib_message(routingtables_t *rt, bgpstream_peer_id_t peer_id,
         }
       p->bgp_time_uc_rib_end = ts;
     }
+
+  peer_init_state = bgpwatcher_view_iter_peer_get_state(rt->iter);
 
   perpfx_perpeer_info_t *pp;
   uint32_t asn = 0;           
@@ -725,6 +728,7 @@ collector_process_rib_message(routingtables_t *rt, bgpstream_peer_id_t peer_id,
     }
   else
     {
+
       bgpwatcher_view_add_pfx_peer(rt->view,
                                    (bgpstream_pfx_t *) &elem->prefix,
                                    peer_id,
@@ -737,9 +741,9 @@ collector_process_rib_message(routingtables_t *rt, bgpstream_peer_id_t peer_id,
       pp = perpfx_perpeer_info_create(0, ts - p->bgp_time_uc_rib_start, asn);
       bgpwatcher_view_iter_pfx_peer_set_user(rt->iter,pp);
       bgpwatcher_view_iter_pfx_deactivate_peer(rt->iter);
-      if(peer_didnt_exist)
+      if(peer_init_state == BGPWATCHER_VIEW_FIELD_INACTIVE)
         {
-        bgpwatcher_view_iter_deactivate_peer(rt->iter);
+          bgpwatcher_view_iter_deactivate_peer(rt->iter);
         }
     }
 
