@@ -69,9 +69,13 @@ volatile sig_atomic_t bgpcorsaro_shutdown = 0;
 /** The number of SIGINTs to catch before aborting */
 #define HARD_SHUTDOWN 3
 
+/** A pointer to a timeseries object */
+static timeseries_t *timeseries = NULL;
+
 /* for when we are reading trace files */
-/** A pointer to a libtrace object */
+/** A pointer to a bgpstream object */
 static bgpstream_t *stream = NULL;
+
 /** A pointer to a bgpstream record */
 static bgpstream_record_t *record = NULL;
 
@@ -107,6 +111,35 @@ static void clean()
     {
       bgpcorsaro_finalize_output(bgpcorsaro);
     }
+
+  if(timeseries != NULL)
+    {
+      timeseries_free(&timeseries);
+    }
+}
+
+static void timeseries_usage()
+{
+  assert(timeseries != NULL);
+  timeseries_backend_t **backends = NULL;
+  int i;
+
+  backends = timeseries_get_all_backends(timeseries);
+
+  fprintf(stderr,
+	  "                   available backends:\n");
+  for(i = 0; i < TIMESERIES_BACKEND_ID_LAST; i++)
+    {
+      /* skip unavailable backends */
+      if(backends[i] == NULL)
+	{
+	  continue;
+	}
+
+      assert(timeseries_backend_get_name(backends[i]));
+      fprintf(stderr, "                       - %s\n",
+	      timeseries_backend_get_name(backends[i]));
+    }
 }
 
 /** Print usage information to stderr */
@@ -123,13 +156,17 @@ static void usage()
     }
 
   fprintf(stderr,
-	  "usage: bgpcorsaro -o outfile [<options>]\n"
+	  "usage: bgpcorsaro -o outfile -B back-end [<options>]\n"
 	  "\n"
 	  "Available options are:\n"
+          "   -b <backend>   enable the given timeseries backend,\n"
+	  "                  -b can be used multiple times\n");
+  timeseries_usage();
+  fprintf(stderr,
 	  "   -d datasource  select the bgpstream datasource (default: mysql)\n"
 	  "   -a             align the end time of the first interval\n"
-	  "   -b             make blocking requests for BGP records\n"
-	  "                   allows bgpcorsaro to be used to process data in real-time\n"
+	  "   -B             make blocking requests for BGP records\n"
+	  "                  allows bgpcorsaro to be used to process data in real-time\n"
 	  "   -C <collector> process records from only the given collector*\n"
 	  "   -i <interval>  distribution interval in seconds (default: %d)\n"
 	  "   -L             disable logging to a file\n"
@@ -179,6 +216,10 @@ int main(int argc, char *argv[])
   int meta_rotate = -1;
   int logfile_disable = 0;
 
+  char *backends[TIMESERIES_BACKEND_ID_LAST];
+  int backends_cnt = 0;
+  char *backend_arg_ptr = NULL;
+  timeseries_backend_t *backend = NULL;
 
   char datasource[PROJECT_CMD_CNT];
   int datasource_set = 0;
@@ -202,8 +243,16 @@ int main(int argc, char *argv[])
 
   signal(SIGINT, catch_sigint);
 
+
+  /* initialize a timeseries object that will be shared among all plugins */
+  if((timeseries = timeseries_init()) == NULL)
+    {
+      fprintf(stderr, "ERROR: Could not initialize libtimeseries\n");
+      return -1;
+    }
+
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":d:C:i:n:o:p:P:r:R:T:W:abLv?")) >= 0)
+	(opt = getopt(argc, argv, ":b:d:C:i:n:o:p:P:r:R:T:W:aBLv?")) >= 0)
     {
       if (optind == prevoptind + 2 && (optarg == NULL || *optarg == '-') ) {
         opt = ':';
@@ -211,6 +260,11 @@ int main(int argc, char *argv[])
       }
       switch(opt)
 	{
+
+        case 'b':
+	  backends[backends_cnt++] = strdup(optarg);
+	  break;
+
 	case 'd':
 	  if(datasource_set == 1)
 	    {
@@ -228,7 +282,7 @@ int main(int argc, char *argv[])
 	  align = 1;
 	  break;
 
-	case 'b':
+	case 'B':
 	  blocking = 1;
 	  break;
 
@@ -355,6 +409,54 @@ int main(int argc, char *argv[])
   /* -- call NO library functions which may use getopt before here -- */
   /* this ESPECIALLY means bgpcorsaro_enable_plugin */
 
+  if(backends_cnt == 0)
+    {
+      fprintf(stderr,
+	      "ERROR: At least one timeseries backend must be specified using -b\n");
+      usage();
+      goto err;
+    }
+  
+  /* enable the backends that were requested */
+  for(i=0; i<backends_cnt; i++)
+    {
+      /* the string at backends[i] will contain the name of the plugin,
+	 optionally followed by a space and then the arguments to pass
+	 to the plugin */
+      if((backend_arg_ptr = strchr(backends[i], ' ')) != NULL)
+	{
+	  /* set the space to a nul, which allows backends[i] to be used
+	     for the backend name, and then increment plugin_arg_ptr to
+	     point to the next character, which will be the start of the
+	     arg string (or at worst case, the terminating \0 */
+	  *backend_arg_ptr = '\0';
+	  backend_arg_ptr++;
+	}
+
+      /* lookup the backend using the name given */
+      if((backend = timeseries_get_backend_by_name(timeseries,
+						   backends[i])) == NULL)
+	{
+	  fprintf(stderr, "ERROR: Invalid backend name (%s)\n",
+		  backends[i]);
+	  usage();
+	  goto err;
+	}
+
+      if(timeseries_enable_backend(backend, backend_arg_ptr) != 0)
+	{
+	  fprintf(stderr, "ERROR: Failed to initialized backend (%s)",
+		  backends[i]);
+	  usage();
+	  goto err;
+	}
+
+      /* free the string we dup'd */
+      free(backends[i]);
+      backends[i] = NULL;
+    }
+
+  
   if(tmpl == NULL)
     {
       fprintf(stderr,
@@ -364,7 +466,7 @@ int main(int argc, char *argv[])
     }
 
   /* alloc bgpcorsaro */
-  if((bgpcorsaro = bgpcorsaro_alloc_output(tmpl)) == NULL)
+  if((bgpcorsaro = bgpcorsaro_alloc_output(tmpl, timeseries)) == NULL)
     {
       usage();
       goto err;

@@ -1208,7 +1208,8 @@ int routingtables_interval_start(routingtables_t *rt,
 }
 
 int routingtables_interval_end(routingtables_t *rt,
-                               int end_time)
+                               int end_time,
+                               timeseries_t *timeseries)
 {
   rt->bgp_time_interval_end = (uint32_t) end_time;
   uint32_t elapsed_time = get_wall_time_now() - rt->wall_time_interval_start;

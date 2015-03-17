@@ -192,7 +192,7 @@ static int is_meta_rotate_interval(bgpcorsaro_t *bgpcorsaro)
 }
 
 /** Initialize a new bgpcorsaro object */
-static bgpcorsaro_t *bgpcorsaro_init(char *template)
+static bgpcorsaro_t *bgpcorsaro_init(char *template, timeseries_t *timeseries)
 {
   bgpcorsaro_t *e;
 
@@ -225,6 +225,8 @@ static bgpcorsaro_t *bgpcorsaro_init(char *template)
 
   /* check if compression should be used based on the file name */
   e->compress = wandio_detect_compression_type(e->template);
+
+  e->timeseries = timeseries;
 
   /* use the default compression level for now */
   e->compress_level = 6;
@@ -404,7 +406,7 @@ static inline int process_record(bgpcorsaro_t *bgpcorsaro,
 
 /* == PUBLIC BGPCORSARO API FUNCS BELOW HERE == */
 
-bgpcorsaro_t *bgpcorsaro_alloc_output(char *template)
+bgpcorsaro_t *bgpcorsaro_alloc_output(char *template, timeseries_t *timeseries)
 {
   bgpcorsaro_t *bgpcorsaro;
 
@@ -416,7 +418,7 @@ bgpcorsaro_t *bgpcorsaro_alloc_output(char *template)
     }
 
   /* initialize the bgpcorsaro object */
-  if((bgpcorsaro = bgpcorsaro_init(template)) == NULL)
+  if((bgpcorsaro = bgpcorsaro_init(template, timeseries)) == NULL)
     {
       bgpcorsaro_log(__func__, NULL, "could not initialize bgpcorsaro object");
       return NULL;

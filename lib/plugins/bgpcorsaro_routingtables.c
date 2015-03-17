@@ -73,28 +73,40 @@ static bgpcorsaro_plugin_t bgpcorsaro_routingtables_plugin = {
 
 /** Holds the state for an instance of this plugin */
 struct bgpcorsaro_routingtables_state_t {
+  
   /** The outfile for the plugin */
   iow_t *outfile;
+
   /** A set of pointers to outfiles to support non-blocking close */
   iow_t *outfile_p[OUTFILE_POINTERS];
+
   /** The current outfile */
   int outfile_n;
+
   /* plugin custom variables */
+  
   /** routing tables instance */
   routingtables_t *routing_tables;
+
   /** prefix used for outputed metrics */
   char *metric_prefix;
+
   /** ipv4 full feed size threshold */
   int ipv4_fullfeed_th;
+
   /** ipv6 full feed size threshold */
   int ipv6_fullfeed_th;
+
 #ifdef WITH_BGPWATCHER
   /** Transmission of bgp views flag */
   uint8_t watcher_tx;
+
   /** Watcher server uri */
   char *watcher_server_uri;
+
   /** Client identity */
   char *watcher_client_id;
+
   /** Table transmission filter  */
   uint8_t tables_mask;
 #endif
@@ -375,7 +387,7 @@ int bgpcorsaro_routingtables_start_interval(bgpcorsaro_t *bgpcorsaro,
 
 /** Implements the end_interval function of the plugin API */
 int bgpcorsaro_routingtables_end_interval(bgpcorsaro_t *bgpcorsaro,
-				 bgpcorsaro_interval_t *int_end)
+                                          bgpcorsaro_interval_t *int_end)
 {
   struct bgpcorsaro_routingtables_state_t *state = STATE(bgpcorsaro);
 
@@ -383,7 +395,7 @@ int bgpcorsaro_routingtables_end_interval(bgpcorsaro_t *bgpcorsaro,
 		 int_end->number);
   
   /** plugin end of interval operations */
-  if(routingtables_interval_end(state->routing_tables, int_end->time) < 0)
+  if(routingtables_interval_end(state->routing_tables, int_end->time, bgpcorsaro->timeseries) < 0)
     {
       // an error occurred during the interval_end operations
       bgpcorsaro_log(__func__, bgpcorsaro, "could not end interval for %s plugin",

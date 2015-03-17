@@ -137,9 +137,14 @@ AX_LIB_SOCKET_NSL
 # Checks for libraries.
 AC_CHECK_LIB([bgpstream], [bgpstream_create], ,[AC_MSG_ERROR(
 		      [libbgpstream required])])
+
 AC_SEARCH_LIBS([wandio_create], [wandio trace], ,[AC_MSG_ERROR(
 		 [libwandio required (included with libtrace since 3.0.15)]
 		 )])
+
+AC_CHECK_LIB([timeseries], [timeseries_init], , [
+    AC_MSG_ERROR([libtimeseries is required for writing stats into dbats])
+])
 
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h inttypes.h limits.h math.h stdlib.h string.h \

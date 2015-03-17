@@ -198,8 +198,11 @@ struct bgpcorsaro
   /** Has the user asked us not to log to a file? */
   int logfile_disabled;
 
+  /** A borrowed pointer to a libtimeseries instance */
+  timeseries_t *timeseries;
+  
   /** A pointer to the wrapper record passed to the plugins */
-  bgpcorsaro_record_t *record;
+  bgpcorsaro_record_t *record;  
 
   /** A pointer to the bgpcorsaro plugin manager state */
   /* this is what gets passed to any function relating to plugin management */

@@ -27,6 +27,7 @@
 #define __ROUTINGTABLES_H
 
 #include "bgpstream.h"
+#include "timeseries.h"
 
 /**
  * @name Public Opaque Data Structures
@@ -157,11 +158,13 @@ int routingtables_interval_start(routingtables_t *rt,
  *  if the transmission is activated)
  *  
  * @param rt            pointer to a routingtables instance to update
- * @param start_time    start of the interval in epoch time (bgp time)
+ * @param end_time      end of the interval in epoch time (bgp time)
+ * @param timeseries    pointer to an initialized timeseries instance
  * @return 0 if the signal was processed correctly, <0 if an error occurred.
  */
 int routingtables_interval_end(routingtables_t *rt,
-                               int end_time);
+                               int end_time,
+                               timeseries_t *timeseries);
 
 /** Process the bgpstream record, i.e. use the information contained in the
  *  bgpstream record to update the current routing tables
