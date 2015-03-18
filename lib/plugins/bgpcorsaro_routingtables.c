@@ -299,7 +299,6 @@ int bgpcorsaro_routingtables_init_output(bgpcorsaro_t *bgpcorsaro)
   return 0;
 
  err:
-  usage(bgpcorsaro);
   bgpcorsaro_routingtables_close_output(bgpcorsaro);
   return -1;
 }

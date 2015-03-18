@@ -39,7 +39,7 @@
 
 
 /** Default metric prefix */
-#define ROUTINGTABLES_DEFAULT_METRIC_PFX "bgp.routingtables."
+#define ROUTINGTABLES_DEFAULT_METRIC_PFX "bgp.routingtables"
 
 /** Maximum string length for the metric prefix */
 #define ROUTINGTABLES_METRIC_PFX_LEN 256 
@@ -273,6 +273,9 @@ struct struct_routingtables_t {
   /** Metric prefix */
   char metric_prefix[ROUTINGTABLES_METRIC_PFX_LEN];
 
+  /** a borrowed pointer for timeseries */
+  timeseries_t *timeseries;
+
   /** Full feed prefix count threshold for IPv4
    * routing tables */
   uint32_t ipv4_fullfeed_th;
@@ -290,9 +293,6 @@ struct struct_routingtables_t {
   /** last time (wall time) we received
    *  an interval_start signal */
   uint32_t wall_time_interval_start;
-
-  /** a borrowed pointer for timeseries */
-  timeseries_t *timeseries;
   
   /** @todo add other state variables here */
   
@@ -324,19 +324,21 @@ routingtables_dump_metrics(routingtables_t *rt);
 
 /** Generate the metrics associated to a specific peer
  *  
+ * @param rt            pointer to a routingtables instance to read
  * @param p             pointer to a peer user pointer
  * @return 0 if the metrics were generated correctly, <0 if an error occurred.
  */
-int
-peer_generate_metrics(perpeer_info_t *p);
+void
+peer_generate_metrics(routingtables_t *rt, perpeer_info_t *p);
 
 /** Generate the metrics associated to a specific collector
  *  
+ * @param rt            pointer to a routingtables instance to read
  * @param c             pointer to a collector structure
  * @return 0 if the metrics were generated correctly, <0 if an error occurred.
  */
-int
-collector_generate_metrics(collector_t *c);
+void 
+collector_generate_metrics(routingtables_t *rt, collector_t *c);
 
 #endif /* __ROUTINGTABLES_INT_H */
 

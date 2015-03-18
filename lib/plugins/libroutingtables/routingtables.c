@@ -153,34 +153,36 @@ perpeer_info_create(routingtables_t *rt,
                     uint32_t bgp_time_uc_rib_start,  uint32_t bgp_time_uc_rib_end)
 {
   char ip_str[INET_ADDRSTRLEN];
-  perpeer_info_t *peeri;
-  if((peeri = (perpeer_info_t *) malloc_zero(sizeof(perpeer_info_t))) == NULL)
+  perpeer_info_t *p;
+  if((p = (perpeer_info_t *) malloc_zero(sizeof(perpeer_info_t))) == NULL)
     {
       fprintf(stderr, "Error: can't create per-peer info\n");
       goto err;
     }
   bgpstream_addr_ntop(ip_str, INET_ADDRSTRLEN, peer_ip);
   graphite_safe(ip_str);  
-  if(snprintf(peeri->peer_str, BGPSTREAM_UTILS_STR_NAME_LEN,
+  if(snprintf(p->peer_str, BGPSTREAM_UTILS_STR_NAME_LEN,
               "%"PRIu32".%s", peer_asnumber, ip_str) >= BGPSTREAM_UTILS_STR_NAME_LEN)
     {
       fprintf(stderr, "Warning: could not print peer signature: truncated output\n");
     }
-  peeri->bgp_fsm_state = bgp_fsm_state;
-  peeri->bgp_time_ref_rib_start = bgp_time_ref_rib_start;
-  peeri->bgp_time_ref_rib_end = bgp_time_ref_rib_end;
-  peeri->bgp_time_uc_rib_start = bgp_time_uc_rib_start;
-  peeri->bgp_time_uc_rib_end = bgp_time_uc_rib_end;
+  p->bgp_fsm_state = bgp_fsm_state;
+  p->bgp_time_ref_rib_start = bgp_time_ref_rib_start;
+  p->bgp_time_ref_rib_end = bgp_time_ref_rib_end;
+  p->bgp_time_uc_rib_start = bgp_time_uc_rib_start;
+  p->bgp_time_uc_rib_end = bgp_time_uc_rib_end;
 
-  if((peeri->kp = timeseries_kp_init(rt->timeseries, 1)) == NULL)
+  if((p->kp = timeseries_kp_init(rt->timeseries, 1)) == NULL)
     {
       fprintf(stderr, "Error: Could not create timeseries key package (for peer)\n");
       goto err;
     }
-  
-  return peeri;
+
+  peer_generate_metrics(rt, p);
+    
+  return p;
  err:
-  perpeer_info_destroy(peeri);
+  perpeer_info_destroy(p);
   return NULL;
 }
 
@@ -260,6 +262,8 @@ get_collector_data(routingtables_t *rt, char *project, char *collector)
       
       k = kh_put(collector_data, rt->collectors, strdup(collector), &khret);
       kh_val(rt->collectors,k) = c_data;
+
+      collector_generate_metrics(rt, &c_data);
     }
   
   return &kh_val(rt->collectors,k);
