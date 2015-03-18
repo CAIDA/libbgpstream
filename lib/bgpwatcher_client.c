@@ -22,7 +22,7 @@
 #include "bgpwatcher_client_int.h"
 
 #include "bgpwatcher_client_broker.h"
-#include "bgpwatcher_view_int.h"
+#include "bgpwatcher_view_io.h"
 
 #include "khash.h"
 #include "utils.h"
@@ -43,10 +43,11 @@ do {                                                            \
  } while(0)                                                     \
 
 /* create and send headers for a data message */
-int send_data_hdrs(bgpwatcher_client_t *client)
+int send_view_hdrs(bgpwatcher_client_t *client, bgpwatcher_view_t *view)
 {
-  uint8_t   type_b = BGPWATCHER_MSG_TYPE_DATA;
+  uint8_t   type_b = BGPWATCHER_MSG_TYPE_VIEW;
   seq_num_t seq_num = client->seq_num++;
+  uint32_t u32;
 
   /* message type */
   if(zmq_send(client->broker_zocket, &type_b,
@@ -67,30 +68,13 @@ int send_data_hdrs(bgpwatcher_client_t *client)
       goto err;
     }
 
-  return 0;
-
- err:
-  return -1;
-}
-
-static void pfx_peer_info_free(bgpwatcher_pfx_peer_info_t *info)
-{
-  free(info);
-}
-
-static int init_pfx_hashes(bgpwatcher_client_t *client)
-{
-  if((TBL.v4pfx_peers = kh_init(v4pfx_peers)) == NULL)
+  /* view time */
+  u32 = htonl(bgpwatcher_view_get_time(view));
+  if(zmq_send(client->broker_zocket, &u32, sizeof(u32), ZMQ_SNDMORE)
+     != sizeof(u32))
     {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
-			     "Failed to init v4 pfx peers set");
-      goto err;
-    }
-
-  if((TBL.v6pfx_peers = kh_init(v6pfx_peers)) == NULL)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_INIT_FAILED,
-			     "Failed to init v6 pfx peers set");
+      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+			     "Could not send view time header");
       goto err;
     }
 
@@ -111,11 +95,6 @@ bgpwatcher_client_t *bgpwatcher_client_init(uint8_t interests, uint8_t intents)
       return NULL;
     }
   /* now we are ready to set errors... */
-
-  if(init_pfx_hashes(client) != 0)
-    {
-      goto err;
-    }
 
   /* now init the shared state for our broker */
 
@@ -213,247 +192,19 @@ void bgpwatcher_client_perr(bgpwatcher_client_t *client)
 
 #define ASSERT_INTENT(intent) assert((BCFG.intents & intent) != 0);
 
-int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_t *client,
-                                      uint32_t time,
-                                      char *collector,
-                                      int peer_cnt)
+int bgpwatcher_client_send_view(bgpwatcher_client_t *client,
+                                bgpwatcher_view_t *view)
 {
-  assert(TBL.started == 0);
-
-  /* fill the table */
-  TBL.info.time = time;
-  TBL.info.collector = collector;
-
-  /* reset the peer cnt */
-  TBL.info.peers_cnt = peer_cnt;
-  TBL.peers_added = 0;
-  TBL.info.prefix_cnt = 0;
-
-  /* ensure we have enough space to store all the peers */
-  if(TBL.info.peers_alloc_cnt < peer_cnt)
-    {
-      if((TBL.info.peers = realloc(TBL.info.peers,
-                                   sizeof(bgpwatcher_peer_t)*peer_cnt)) == NULL)
-        {
-          return -1;
-        }
-      TBL.info.peers_alloc_cnt = peer_cnt;
-    }
-
-  /* free the peer info structures */
-  kh_free_vals(v4pfx_peers, TBL.v4pfx_peers, pfx_peer_info_free);
-  kh_free_vals(v6pfx_peers, TBL.v6pfx_peers, pfx_peer_info_free);
-
-  /* we allow the actual hash to be reused for a while */
-  if(TBL.reuse_cnt < TABLE_MAX_REUSE_CNT)
-    {
-      /* reset the pfx_peers hash */
-      kh_clear(v4pfx_peers, TBL.v4pfx_peers);
-      kh_clear(v6pfx_peers, TBL.v6pfx_peers);
-      TBL.reuse_cnt++;
-    }
-  else
-    {
-      fprintf(stderr, "DEBUG: Forcing hard-clear of pfx table\n");
-      kh_destroy(v4pfx_peers, TBL.v4pfx_peers);
-      kh_destroy(v6pfx_peers, TBL.v6pfx_peers);
-      if(init_pfx_hashes(client) != 0)
-	{
-	  return -1;
-	}
-      TBL.reuse_cnt = 0;
-    }
-
-  TBL.started = 1;
-
-  /* delay tx until table end */
-
-  DUMP_METRIC(zclock_time()/1000-time,
-              time,
-              "producer.%s.begin_delay", collector);
-
-  return 0;
-}
-
-int bgpwatcher_client_pfx_table_add_peer(bgpwatcher_client_t *client,
-                                         bgpstream_addr_storage_t *peer_ip,
-                                         uint32_t peer_asn,
-                                         uint8_t status)
-{
-  int peer_id;
-  assert(client != NULL);
-  assert(peer_ip != NULL);
-  
-  /* make sure they aren't trying to add more peers than they promised */
-  assert(TBL.info.peers_cnt > TBL.peers_added);
-
-  assert(TBL.info.peers_cnt <= TBL.info.peers_alloc_cnt);
-
-  peer_id = TBL.peers_added++;
-  TBL.info.peers[peer_id].ip = *peer_ip;
-  TBL.info.peers[peer_id].asn = peer_asn;
-  TBL.info.peers[peer_id].status = status;
-  return peer_id;
-}
-
-int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
-                                    int peer_id,
-				    bgpstream_pfx_storage_t *prefix,
-                                    uint32_t orig_asn)
-{
-  int khret;
-  khiter_t k;
-
-  bgpwatcher_pfx_peer_info_t *peer_infos = NULL;
-
-  assert(client != NULL);
-  assert(peer_id >= 0 && peer_id < TBL.peers_added);
-  assert(prefix != NULL);
-
-  // it can cause segfault, as it could potentially access
-  // a non allocated space
-  // findme.prefix = *prefix;
-
-  switch(prefix->address.version)
-    {
-    case BGPSTREAM_ADDR_VERSION_IPV4:
-      /* either get or insert this prefix */
-      if((k = kh_get(v4pfx_peers, TBL.v4pfx_peers,
-                     *((bgpstream_ipv4_pfx_t *)prefix)))
-         == kh_end(TBL.v4pfx_peers))
-        {
-          /* allocate a peer info array */
-          if((peer_infos =
-              malloc_zero(sizeof(bgpwatcher_pfx_peer_info_t)
-			  *TBL.info.peers_cnt)) == NULL)
-            {
-              return -1;
-            }
-          k = kh_put(v4pfx_peers, TBL.v4pfx_peers,
-                     *((bgpstream_ipv4_pfx_t *)prefix), &khret);
-          kh_val(TBL.v4pfx_peers, k) = peer_infos;
-        }
-      else
-        {
-          peer_infos = kh_val(TBL.v4pfx_peers, k);
-        }
-      break;
-    case BGPSTREAM_ADDR_VERSION_IPV6:
-      if((k = kh_get(v6pfx_peers, TBL.v6pfx_peers,
-                     *((bgpstream_ipv6_pfx_t *)prefix)))
-         == kh_end(TBL.v6pfx_peers))
-        {
-          /* allocate a peer info array */
-          if((peer_infos =
-              malloc_zero(sizeof(bgpwatcher_pfx_peer_info_t)
-			  *TBL.info.peers_cnt)) == NULL)
-            {
-              return -1;
-            }
-          k = kh_put(v6pfx_peers, TBL.v6pfx_peers,
-                     *((bgpstream_ipv6_pfx_t *)prefix), &khret);
-          kh_val(TBL.v6pfx_peers, k) = peer_infos;
-        }
-      else
-        {
-          peer_infos = kh_val(TBL.v6pfx_peers, k);
-        }
-      break;
-    default:
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Wrong prefix version");
-      return -1;
-    }
-
-  assert(peer_infos != NULL);
-
-  /* now update the peer info */
-  peer_infos[peer_id].orig_asn = orig_asn;
-  peer_infos[peer_id].state = BGPWATCHER_VIEW_FIELD_ACTIVE;
-
-  return 0;
-}
-
-int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client)
-{
-  khiter_t k;
-  bgpstream_ipv4_pfx_t *v4pfx;
-  bgpstream_ipv6_pfx_t *v6pfx;
-  bgpwatcher_pfx_peer_info_t *peer_infos;
-
-  assert(TBL.peers_added == TBL.info.peers_cnt);
-
-  TBL.info.prefix_cnt = kh_size(TBL.v4pfx_peers) + kh_size(TBL.v6pfx_peers);
-
-  DUMP_METRIC(zclock_time()/1000-TBL.info.time,
-              TBL.info.time,
-              "producer.%s.prefix_delay", TBL.info.collector);
-
-  /* send table begin message */
-  if(send_data_hdrs(client) != 0)
+  if(send_view_hdrs(client, view) != 0)
     {
       goto err;
     }
-  if(bgpwatcher_pfx_table_begin_send(client->broker_zocket,
-                                     &TBL.info) != 0)
+
+  /* now just transmit the view */
+  if(bgpwatcher_view_send(client->broker_zocket, view) != 0)
     {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Failed to send prefix table begin");
       goto err;
     }
-
-  /* send all the prefixes */
-  for(k = kh_begin(TBL.v4pfx_peers); k != kh_end(TBL.v4pfx_peers); ++k)
-    {
-      if(kh_exist(TBL.v4pfx_peers, k))
-        {
-          v4pfx = &kh_key(TBL.v4pfx_peers, k);
-          peer_infos = kh_val(TBL.v4pfx_peers, k);
-
-          if(bgpwatcher_pfx_row_send(client->broker_zocket,
-                                     (bgpstream_pfx_t *)(v4pfx),
-                                     peer_infos,
-                                     TBL.info.peers_cnt) != 0)
-            {
-              bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-                                     "Failed to send prefix row");
-              goto err;
-            }
-        }
-    }
-
-  for(k = kh_begin(TBL.v6pfx_peers); k != kh_end(TBL.v6pfx_peers); ++k)
-    {
-      if(kh_exist(TBL.v6pfx_peers, k))
-        {
-          v6pfx = &kh_key(TBL.v6pfx_peers, k);
-          peer_infos = kh_val(TBL.v6pfx_peers, k);
-
-          if(bgpwatcher_pfx_row_send(client->broker_zocket,
-                                     (bgpstream_pfx_t *)(v6pfx),
-                                     peer_infos,
-                                     TBL.info.peers_cnt) != 0)
-            {
-              bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-                                     "Failed to send prefix row");
-              goto err;
-            }
-        }
-    }
-
-  /* send table end */
-  if(bgpwatcher_pfx_table_end_send(client->broker_zocket, &TBL.info) != 0)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
-			     "Failed to send prefix table end");
-      goto err;
-    }
-
-  DUMP_METRIC(zclock_time()/1000-TBL.info.time,
-              TBL.info.time,
-              "producer.%s.end_delay", TBL.info.collector);
-
-  TBL.started = 0;
 
   return 0;
 
@@ -515,14 +266,6 @@ void bgpwatcher_client_free(bgpwatcher_client_t *client)
     {
       bgpwatcher_client_stop(client);
     }
-
-  /* destroy the peers array */
-  free(TBL.info.peers);
-
-  kh_free_vals(v4pfx_peers, TBL.v4pfx_peers, pfx_peer_info_free);
-  kh_destroy(v4pfx_peers, TBL.v4pfx_peers);
-  kh_free_vals(v6pfx_peers, TBL.v6pfx_peers, pfx_peer_info_free);
-  kh_destroy(v6pfx_peers, TBL.v6pfx_peers);
 
   free(BCFG.server_uri);
   BCFG.server_uri = NULL;

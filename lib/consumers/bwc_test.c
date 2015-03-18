@@ -152,25 +152,27 @@ int bwc_test_process_view(bwc_t *consumer, uint8_t interests,
   fprintf(stdout, "\n");
 
   /* only dump 'small' views, otherwise it is just obnoxious */
-  if(bgpwatcher_view_pfx_size(view) < MAX_DUMP_SIZE)
+  if(bgpwatcher_view_pfx_cnt(view, BGPWATCHER_VIEW_FIELD_ACTIVE)
+     < MAX_DUMP_SIZE)
     {
       bgpwatcher_view_dump(view);
     }
   else
     {
       fprintf(stdout, "BWC-TEST: Time:      %"PRIu32"\n",
-	      bgpwatcher_view_time(view));
+	      bgpwatcher_view_get_time(view));
       fprintf(stdout, "BWC-TEST: IPv4-Pfxs: %"PRIu32"\n",
-	      bgpwatcher_view_v4pfx_size(view));
+	      bgpwatcher_view_v4pfx_cnt(view, BGPWATCHER_VIEW_FIELD_ACTIVE));
       fprintf(stdout, "BWC-TEST: IPv6-Pfxs: %"PRIu32"\n",
-	      bgpwatcher_view_v6pfx_size(view));
+	      bgpwatcher_view_v6pfx_cnt(view, BGPWATCHER_VIEW_FIELD_ACTIVE));
       fprintf(stdout, "--------------------\n");
     }
 
   timeseries_set_single(BWC_GET_TIMESERIES(consumer),
 			"bwc-test.v4pfxs_cnt",
-			bgpwatcher_view_v4pfx_size(view),
-			bgpwatcher_view_time(view));
+			bgpwatcher_view_v4pfx_cnt(view,
+						  BGPWATCHER_VIEW_FIELD_ACTIVE),
+			bgpwatcher_view_get_time(view));
 
   state->view_cnt++;
 

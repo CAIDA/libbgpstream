@@ -219,7 +219,10 @@ static void find_ff_peers(bwc_t *consumer, bgpwatcher_view_iter_t *it)
       /* grab the peer id */
       peerid = bgpwatcher_view_iter_peer_get_peer(it);
 
-      pfx_cnt = bgpwatcher_view_iter_peer_get_pfx_count(it,BGPSTREAM_ADDR_VERSION_IPV4);
+      pfx_cnt =
+        bgpwatcher_view_iter_peer_get_pfx_cnt(it,
+                                                BGPSTREAM_ADDR_VERSION_IPV4,
+                                                BGPWATCHER_VIEW_FIELD_ACTIVE);
       /* does this peer have any v4 tables? */
       if(pfx_cnt > 0)
         {
@@ -232,7 +235,10 @@ static void find_ff_peers(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 	  bgpstream_id_set_insert(CHAIN_STATE->v4ff_peerids, peerid);
         }
 
-      pfx_cnt = bgpwatcher_view_iter_peer_get_pfx_count(it,BGPSTREAM_ADDR_VERSION_IPV6);
+      pfx_cnt =
+        bgpwatcher_view_iter_peer_get_pfx_cnt(it,
+                                                BGPSTREAM_ADDR_VERSION_IPV6,
+                                                BGPWATCHER_VIEW_FIELD_ACTIVE);
       /* does this peer have any v6 tables? */
       if(pfx_cnt > 0)
         {
@@ -385,7 +391,7 @@ int bwc_visibility_process_view(bwc_t *consumer, uint8_t interests,
   CHAIN_STATE->visibility_computed = 1;
 
   // compute arrival delay
-  STATE->arrival_delay = zclock_time()/1000 - bgpwatcher_view_time(view);
+  STATE->arrival_delay = zclock_time()/1000 - bgpwatcher_view_get_time(view);
 
   /* create a new iterator */
   if((it = bgpwatcher_view_iter_create(view)) == NULL)
@@ -409,12 +415,12 @@ int bwc_visibility_process_view(bwc_t *consumer, uint8_t interests,
     }
 
   // compute processed delay (must come prior to dump_gen_metrics)
-  STATE->processed_delay = zclock_time()/1000 - bgpwatcher_view_time(view);
+  STATE->processed_delay = zclock_time()/1000 - bgpwatcher_view_get_time(view);
   /* dump metrics and tables */
   dump_gen_metrics(consumer);
 
   /* now flush the kp */
-  if(timeseries_kp_flush(STATE->kp, bgpwatcher_view_time(view)) != 0)
+  if(timeseries_kp_flush(STATE->kp, bgpwatcher_view_get_time(view)) != 0)
     {
       return -1;
     }

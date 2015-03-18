@@ -469,7 +469,7 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
       pfx = bgpwatcher_view_iter_pfx_get_pfx(it);
 
       /* only consider pfxs with peers_cnt >= pfx_vis_threshold */
-      if(bgpwatcher_view_iter_pfx_get_peers_cnt(it)
+      if(bgpwatcher_view_iter_pfx_get_peer_cnt(it, BGPWATCHER_VIEW_FIELD_ACTIVE)
 	 < BWC_GET_CHAIN_STATE(consumer)->pfx_vis_peers_threshold)
 	{
 	  continue;
@@ -734,7 +734,7 @@ int bwc_pergeovisibility_process_view(bwc_t *consumer, uint8_t interests,
     }
 
   // compute arrival delay
-  STATE->arrival_delay = zclock_time()/1000- bgpwatcher_view_time(view);
+  STATE->arrival_delay = zclock_time()/1000- bgpwatcher_view_get_time(view);
 
   /* create a new iterator */
   if((it = bgpwatcher_view_iter_create(view)) == NULL)
@@ -750,7 +750,7 @@ int bwc_pergeovisibility_process_view(bwc_t *consumer, uint8_t interests,
       dump_v4table(consumer);
 
       /* now flush the kp */
-      if(timeseries_kp_flush(STATE->kp_v4, bgpwatcher_view_time(view)) != 0)
+      if(timeseries_kp_flush(STATE->kp_v4, bgpwatcher_view_get_time(view)) != 0)
         {
           return -1;
         }
@@ -759,12 +759,12 @@ int bwc_pergeovisibility_process_view(bwc_t *consumer, uint8_t interests,
   // IPV6: also if(bgpstream_id_set_size(kh_STATE->v6ff_peerids) > ROUTED_PFX_PEERCNT)
 
   // compute processed delay (must come prior to dump_gen_metrics)
-  STATE->processed_delay = zclock_time()/1000- bgpwatcher_view_time(view);
+  STATE->processed_delay = zclock_time()/1000- bgpwatcher_view_get_time(view);
   /* dump metrics and tables */
   dump_gen_metrics(consumer);
 
   /* now flush the kp */
-  if(timeseries_kp_flush(STATE->kp_gen, bgpwatcher_view_time(view)) != 0)
+  if(timeseries_kp_flush(STATE->kp_gen, bgpwatcher_view_get_time(view)) != 0)
     {
       return -1;
     }

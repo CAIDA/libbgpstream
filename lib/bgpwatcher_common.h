@@ -74,56 +74,6 @@
 /** Type of a sequence number */
 typedef uint32_t seq_num_t;
 
-/** Information about a peer */
-typedef struct bgpwatcher_peer {
-
-  /** Peer IP address */
-  bgpstream_addr_storage_t ip;
-
-  /** The AS number of this peer*/
-  uint32_t asn;
-
-  /** Peer status */
-  uint8_t status;
-
-  /** Internal store info */
-  uint16_t server_id;
-
-  /** Internal store info */
-  void *ap_status;
-
-} bgpwatcher_peer_t;
-
-
-/** Information about the a prefix table */
-typedef struct bgpwatcher_pfx_table {
-
-  /** Generated table ID (server-global) */
-  uint64_t id;
-
-  /** Time that the table represents */
-  uint32_t time;
-
-  /** Collector that the table corresponds to */
-  char *collector;
-
-  /** Number of prefixes in the table */
-  uint32_t prefix_cnt;
-
-  /** Peers that the table contains information for */
-  bgpwatcher_peer_t *peers;
-
-  /** Number of peers referenced in this table */
-  int peers_cnt;
-
-  /** Number of peers allocated in this table */
-  int peers_alloc_cnt;
-
-  /** Internal store state */
-  void *sview;
-
-} bgpwatcher_pfx_table_t;
-
 /** bgpwatcher error information */
 typedef struct bgpwatcher_err {
   /** Error code */

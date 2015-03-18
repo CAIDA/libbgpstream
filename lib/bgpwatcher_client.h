@@ -63,8 +63,6 @@
 
 typedef struct bgpwatcher_client bgpwatcher_client_t;
 
-typedef struct bgpwatcher_client_pfx_table bgpwatcher_client_pfx_table_t;
-
 /** @} */
 
 /**
@@ -118,59 +116,20 @@ void bgpwatcher_client_perr(bgpwatcher_client_t *client);
 
 /** @todo add other error functions if needed (is_err, get_err) */
 
-/** Begin a new prefix table dump for the given client
+/** Queue the given View for transmission to the server
  *
- * @param client        pointer to a client instance to start table for
- * @param collector     name of the collector
- * @param peer_cnt      number of peers that will be added to the table
- *                        (must not exceed BGPWATCHER_PEER_MAX_CNT)
- * @return 0 if the table was begun successfully, -1 otherwise
+ * @param client        pointer to a bgpwatcher client instance
+ * @param view          pointer to the view to transmit
+ * @return 0 if the view was transmitted successfully, -1 otherwise
  *
- * @note the caller maintains ownership of collector memory
+ * This function only sends 'active' fields. Any fields that are 'inactive' in
+ * the view **will not** be present in the view received by the server.
+ *
+ * @note The actual transmission may happen asynchronously, so a return from
+ * this function simply means that the view was queued for transmission.
  */
-int bgpwatcher_client_pfx_table_begin(bgpwatcher_client_t *client,
-                                      uint32_t time,
-                                      char *collector,
-                                      int peer_cnt);
-
-/** Add a peer record to the given client
- *
- * @param client        pointer to a client instance to add peer to
- * @param peer_ip       pointer to the peer ip storage
- * @param peer_asn      peer AS number
- * @param status        status value
- * @return a peer ID (to be used with bgpwatcher_client_pfx_table_add) if
- *         successful, -1 otherwise
- *
- * @note the caller maintains ownership of the peer record
- */
-int bgpwatcher_client_pfx_table_add_peer(bgpwatcher_client_t *client,
-                                         bgpstream_addr_storage_t *peer_ip,
-                                         uint32_t peer_asn,
-                                         uint8_t status);
-
-/** Add a prefix record to the given client
- *
- * @param client          pointer to a client instance to add prefix to
- * @param peer_id         peer id
- *                          (returned by bgpwatcher_client_pfx_table_add_peer)
- * @param prefix          pointer to a bgpstream prefix
- * @param orig_asn        value of the origin ASN
- * @return 0 if the prefix was added successfully, -1 otherwise
- *
- * @note the caller maintains ownership of the prefix record
- */
-int bgpwatcher_client_pfx_table_add(bgpwatcher_client_t *client,
-                                    int peer_id,
-				    bgpstream_pfx_storage_t *prefix,
-                                    uint32_t orig_asn);
-
-/** Flush prefix table to the bgpwatcher server
- *
- * @param client        pointer the a client instance to flush table for
- * @return 0 if the table was flushed successfully, -1 otherwise
- */
-int bgpwatcher_client_pfx_table_end(bgpwatcher_client_t *client);
+int bgpwatcher_client_send_view(bgpwatcher_client_t *client,
+                                bgpwatcher_view_t *view);
 
 /** Attempt to receive an BGP View from the bgpwatcher server
  *
