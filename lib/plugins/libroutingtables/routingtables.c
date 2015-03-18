@@ -145,21 +145,23 @@ perpeer_info_destroy(void *p)
 
 
 static perpeer_info_t *
-perpeer_info_create(routingtables_t *rt,
-                    uint32_t peer_asnumber,
-                    bgpstream_ip_addr_t *peer_ip,
+perpeer_info_create(routingtables_t *rt, collector_t * c,
+                    uint32_t peer_asnumber, bgpstream_ip_addr_t *peer_ip,
                     bgpstream_elem_peerstate_t bgp_fsm_state,
                     uint32_t bgp_time_ref_rib_start, uint32_t bgp_time_ref_rib_end,
                     uint32_t bgp_time_uc_rib_start,  uint32_t bgp_time_uc_rib_end)
 {
-  char ip_str[INET_ADDRSTRLEN];
+  char ip_str[INET6_ADDRSTRLEN];
   perpeer_info_t *p;
   if((p = (perpeer_info_t *) malloc_zero(sizeof(perpeer_info_t))) == NULL)
     {
       fprintf(stderr, "Error: can't create per-peer info\n");
       goto err;
     }
-  bgpstream_addr_ntop(ip_str, INET_ADDRSTRLEN, peer_ip);
+  if(bgpstream_addr_ntop(ip_str, INET6_ADDRSTRLEN, peer_ip) == NULL)
+    {
+      fprintf(stderr, "Warning: could not print peer ip address \n");
+    }
   graphite_safe(ip_str);  
   if(snprintf(p->peer_str, BGPSTREAM_UTILS_STR_NAME_LEN,
               "%"PRIu32".%s", peer_asnumber, ip_str) >= BGPSTREAM_UTILS_STR_NAME_LEN)
@@ -178,7 +180,7 @@ perpeer_info_create(routingtables_t *rt,
       goto err;
     }
 
-  peer_generate_metrics(rt, p);
+  peer_generate_metrics(rt, c, p);
     
   return p;
  err:
@@ -208,6 +210,7 @@ destroy_collector_data(collector_t * c)
         {
           timeseries_kp_free(&c->kp);
         }
+      c->kp = NULL;
     }
 }
 
@@ -443,7 +446,7 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
  *  the update time >= collector->bgp_time_ref_rib_start_time
  */
 static int
-apply_prefix_update(routingtables_t *rt, bgpstream_peer_id_t peer_id,
+apply_prefix_update(routingtables_t *rt, collector_t *c, bgpstream_peer_id_t peer_id,
                     bgpstream_elem_t *elem, uint32_t ts)
 {
   perpeer_info_t *p = bgpwatcher_view_iter_peer_get_user(rt->iter);
@@ -645,7 +648,7 @@ apply_prefix_update(routingtables_t *rt, bgpstream_peer_id_t peer_id,
 
 
 static int
-apply_state_update(routingtables_t *rt, bgpstream_peer_id_t peer_id,
+apply_state_update(routingtables_t *rt, collector_t * c, bgpstream_peer_id_t peer_id,
                    bgpstream_elem_peerstate_t new_state, uint32_t ts)
 {
 
@@ -663,7 +666,7 @@ apply_state_update(routingtables_t *rt, bgpstream_peer_id_t peer_id,
     {      
       /* peer does not exist, create */
       sg = bgpstream_peer_sig_map_get_sig(rt->peersigns, peer_id);
-      p = perpeer_info_create(rt, sg->peer_asnumber, (bgpstream_ip_addr_t *) &sg->peer_ip_addr,
+      p = perpeer_info_create(rt, c, sg->peer_asnumber,(bgpstream_ip_addr_t *) &sg->peer_ip_addr,
                               new_state, ts, ts, 0, 0);
       bgpwatcher_view_add_peer(rt->view, sg->collector_str, (bgpstream_ip_addr_t *) &sg->peer_ip_addr, sg->peer_asnumber);
       bgpwatcher_view_iter_seek_peer(rt->iter, peer_id, BGPWATCHER_VIEW_FIELD_ALL_VALID);
@@ -737,7 +740,7 @@ apply_state_update(routingtables_t *rt, bgpstream_peer_id_t peer_id,
 }
 
 static int
-apply_rib_message(routingtables_t *rt, bgpstream_peer_id_t peer_id,
+apply_rib_message(routingtables_t *rt, collector_t * c, bgpstream_peer_id_t peer_id,
                   bgpstream_elem_t *elem, uint32_t ts)
 {
   perpeer_info_t *p;
@@ -750,7 +753,7 @@ apply_rib_message(routingtables_t *rt, bgpstream_peer_id_t peer_id,
     {
       /* the peer does not exist, we create it */  
       sg = bgpstream_peer_sig_map_get_sig(rt->peersigns, peer_id);
-      p = perpeer_info_create(rt, sg->peer_asnumber, (bgpstream_ip_addr_t *) &sg->peer_ip_addr,
+      p = perpeer_info_create(rt, c, sg->peer_asnumber, (bgpstream_ip_addr_t *) &sg->peer_ip_addr,
                               BGPSTREAM_ELEM_PEERSTATE_UNKNOWN, 0, 0, ts, ts);
       bgpwatcher_view_add_peer(rt->view, sg->collector_str,
                                (bgpstream_ip_addr_t *) &sg->peer_ip_addr,
@@ -840,7 +843,8 @@ update_collector_state(routingtables_t *rt,
       bgpwatcher_view_iter_has_more_peer(rt->iter);
       bgpwatcher_view_iter_next_peer(rt->iter))
     {
-        if(kh_get(peer_id_set, c->collector_peerids, bgpwatcher_view_iter_peer_get_peer(rt->iter)) !=
+        if(kh_get(peer_id_set, c->collector_peerids,
+                  bgpwatcher_view_iter_peer_get_peer(rt->iter)) !=
            kh_end(c->collector_peerids))
           {
           switch(bgpwatcher_view_iter_peer_get_state(rt->iter))
@@ -864,11 +868,11 @@ update_collector_state(routingtables_t *rt,
 
   if(unknown == 1)
     {
-      c->state = ROUTINGTABLES_COLLECTOR_STATE_DOWN;
+      c->state = ROUTINGTABLES_COLLECTOR_STATE_UNKNOWN;
     }
   else
     {
-      c->state = ROUTINGTABLES_COLLECTOR_STATE_UNKNOWN;
+      c->state = ROUTINGTABLES_COLLECTOR_STATE_DOWN;
     }
   
   return;
@@ -917,11 +921,11 @@ collector_process_valid_bgpinfo(routingtables_t *rt,
                                                 peer_id,
                                                 BGPWATCHER_VIEW_FIELD_ALL_VALID) == 1)
                 {
-                  ret = apply_prefix_update(rt, peer_id, elem, record->attributes.record_time);
+                  ret = apply_prefix_update(rt, c, peer_id, elem, record->attributes.record_time);
                 }
               break;
             case BGPSTREAM_ELEM_TYPE_PEERSTATE:            
-              ret = apply_state_update(rt, peer_id, elem->new_state, record->attributes.record_time);
+              ret = apply_state_update(rt, c, peer_id, elem->new_state, record->attributes.record_time);
                 /* debug if(peerscount != bgpwatcher_view_peer_size(rt->view)) */
                 /*   { */
                 /*     peerscount = bgpwatcher_view_peer_size(rt->view); */
@@ -977,7 +981,7 @@ collector_process_valid_bgpinfo(routingtables_t *rt,
                   }
                 
                 /* apply the rib message */
-                apply_rib_message(rt, peer_id, elem, record->attributes.record_time);
+                apply_rib_message(rt, c, peer_id, elem, record->attributes.record_time);
               }
 
             if(record->dump_pos == BGPSTREAM_DUMP_END)
@@ -1282,13 +1286,14 @@ int routingtables_interval_end(routingtables_t *rt,
                                int end_time)
 {
   rt->bgp_time_interval_end = (uint32_t) end_time;
-  uint32_t elapsed_time = get_wall_time_now() - rt->wall_time_interval_start;
+  uint32_t time_now = get_wall_time_now();
+  uint32_t elapsed_time = time_now - rt->wall_time_interval_start;
   fprintf(stderr, "Interval [%"PRIu32", %"PRIu32"] processed in %"PRIu32"s\n",
           rt->bgp_time_interval_start, rt->bgp_time_interval_end, elapsed_time);
 
   // @todo check the return value of these functions
 
-  routingtables_dump_metrics(rt);
+  routingtables_dump_metrics(rt, time_now);
 
 #ifdef WITH_BGPWATCHER
   routingtables_send_view(rt);

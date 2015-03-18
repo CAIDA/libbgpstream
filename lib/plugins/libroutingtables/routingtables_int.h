@@ -174,6 +174,7 @@ typedef struct struct_perpeer_info_t {
 typedef struct collector_metric_idx {
   
   /* performance monitoring metrics */  
+  uint32_t processing_time_idx;
   uint32_t realtime_delay_idx;
 
   /* routing tables metrics */  
@@ -315,21 +316,22 @@ struct struct_routingtables_t {
  *  the metrics to be sent to the active timeseries back-ends
  *  
  * @param rt            pointer to a routingtables instance to read
- * @param timeseries    pointer to an initialized timeseries instance
+ * @param time_now      wall time at the end of the interval
  * @return 0 if the metrics were dumped correctly, <0 if an error occurred.
  */
 int
-routingtables_dump_metrics(routingtables_t *rt);
+routingtables_dump_metrics(routingtables_t *rt, uint32_t time_now);
 
 
 /** Generate the metrics associated to a specific peer
  *  
  * @param rt            pointer to a routingtables instance to read
+ * @param c             pointer to a collector structure
  * @param p             pointer to a peer user pointer
  * @return 0 if the metrics were generated correctly, <0 if an error occurred.
  */
 void
-peer_generate_metrics(routingtables_t *rt, perpeer_info_t *p);
+peer_generate_metrics(routingtables_t *rt, collector_t *c, perpeer_info_t *p);
 
 /** Generate the metrics associated to a specific collector
  *  
