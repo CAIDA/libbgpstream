@@ -17,6 +17,8 @@
  *
  */
 
+#include "config.h"
+
 #include <stdio.h>
 
 #include <czmq.h>
@@ -25,11 +27,15 @@
 #include <bgpstream_utils_peer_sig_map_int.h>
 
 #include "bgpwatcher_common_int.h"
-#include "bgpwatcher_view_int.h"
+#include "bgpwatcher_view_io.h"
 
 
 #define BUFFER_LEN 16384
 
+/* because the values of AF_INET* vary from system to system we need to use
+   our own encoding for the version */
+#define BW_INTERNAL_AF_INET  4
+#define BW_INTERNAL_AF_INET6 6
 
 #define ASSERT_MORE				\
   if(zsocket_rcvmore(src) == 0)			\
@@ -40,6 +46,154 @@
 
 /* ========== PRIVATE FUNCTIONS ========== */
 
+/* ========== UTILITIES ========== */
+
+static int send_ip(void *dest, bgpstream_ip_addr_t *ip, int flags)
+{
+  switch(ip->version)
+    {
+    case BGPSTREAM_ADDR_VERSION_IPV4:
+      if(zmq_send(dest, &((bgpstream_ipv4_addr_t *)ip)->ipv4.s_addr,
+                  sizeof(uint32_t), flags) == sizeof(uint32_t))
+        {
+          return 0;
+        }
+      break;
+
+    case BGPSTREAM_ADDR_VERSION_IPV6:
+      if(zmq_send(dest, &((bgpstream_ipv6_addr_t *)ip)->ipv6.s6_addr,
+                  (sizeof(uint8_t)*16), flags) == sizeof(uint8_t)*16)
+        {
+          return 0;
+        }
+      break;
+
+    case BGPSTREAM_ADDR_VERSION_UNKNOWN:
+      return -1;
+    }
+
+  return -1;
+}
+
+static int recv_ip(void *src, bgpstream_addr_storage_t *ip)
+{
+  zmq_msg_t llm;
+  assert(ip != NULL);
+
+  if(zmq_msg_init(&llm) == -1 || zmq_msg_recv(&llm, src, 0) == -1)
+    {
+      goto err;
+    }
+
+  /* 4 bytes means ipv4, 16 means ipv6 */
+  if(zmq_msg_size(&llm) == sizeof(uint32_t))
+    {
+      /* v4 */
+      ip->version = BGPSTREAM_ADDR_VERSION_IPV4;
+      memcpy(&ip->ipv4.s_addr,
+	     zmq_msg_data(&llm),
+	     sizeof(uint32_t));
+    }
+  else if(zmq_msg_size(&llm) == sizeof(uint8_t)*16)
+    {
+      /* v6 */
+      ip->version = BGPSTREAM_ADDR_VERSION_IPV6;
+      memcpy(&ip->ipv6.s6_addr,
+	     zmq_msg_data(&llm),
+	     sizeof(uint8_t)*16);
+    }
+  else
+    {
+      /* invalid ip address */
+      fprintf(stderr, "Invalid IP address\n");
+      goto err;
+    }
+
+  zmq_msg_close(&llm);
+  return 0;
+
+ err:
+  zmq_msg_close(&llm);
+  return -1;
+}
+
+static int serialize_ip(uint8_t *buf, size_t len, bgpstream_ip_addr_t *ip)
+{
+  size_t written = 0;
+
+  /* now serialize the actual address */
+  switch(ip->version)
+    {
+    case BGPSTREAM_ADDR_VERSION_IPV4:
+      /* serialize the version */
+      assert(len >= 1);
+      *buf = BW_INTERNAL_AF_INET;
+      buf++;
+      written++;
+
+      assert((len-written) >= sizeof(uint32_t));
+      memcpy(buf, &((bgpstream_ipv4_addr_t *)ip)->ipv4.s_addr,
+             sizeof(uint32_t));
+      return written + sizeof(uint32_t);
+      break;
+
+    case BGPSTREAM_ADDR_VERSION_IPV6:
+      /* serialize the version */
+      assert(len >= 1);
+      *buf = BW_INTERNAL_AF_INET6;
+      buf++;
+      written++;
+
+      assert((len-written) >= (sizeof(uint8_t)*16));
+      memcpy(buf, &((bgpstream_ipv6_addr_t *)ip)->ipv6.s6_addr,
+             sizeof(uint8_t)*16);
+      return written + sizeof(uint8_t)*16;
+      break;
+
+    case BGPSTREAM_ADDR_VERSION_UNKNOWN:
+      return -1;
+    }
+
+  return -1;
+}
+
+static int deserialize_ip(uint8_t *buf, size_t len,
+                          bgpstream_addr_storage_t *ip)
+{
+  size_t read = 0;
+
+  assert(len >= 1);
+
+  /* switch on the internal version */
+  switch(*buf)
+    {
+    case BW_INTERNAL_AF_INET:
+      ip->version = BGPSTREAM_ADDR_VERSION_IPV4;
+      buf++;
+      read++;
+
+      assert((len-read) >= sizeof(uint32_t));
+      memcpy(&ip->ipv4.s_addr, buf, sizeof(uint32_t));
+      return read + sizeof(uint32_t);
+      break;
+
+    case BW_INTERNAL_AF_INET6:
+      ip->version = BGPSTREAM_ADDR_VERSION_IPV6;
+      buf++;
+      read++;
+
+      assert((len-read) >= (sizeof(uint8_t)*16));
+      memcpy(&ip->ipv6.s6_addr, buf, sizeof(uint8_t)*16);
+      return read + (sizeof(uint8_t) * 16);
+      break;
+
+    case BGPSTREAM_ADDR_VERSION_UNKNOWN:
+      return -1;
+    }
+
+  return -1;
+}
+
 static void peers_dump(bgpwatcher_view_t *view,
 		       bgpwatcher_view_iter_t *it)
 {
@@ -49,25 +203,35 @@ static void peers_dump(bgpwatcher_view_t *view,
   int v6pfx_cnt = -1;
   char peer_str[INET6_ADDRSTRLEN] = "";
 
-  fprintf(stdout, "Peers (%d):\n", bgpwatcher_view_peer_size(view));
+  fprintf(stdout, "Peers (%d):\n",
+          bgpwatcher_view_peer_cnt(view, BGPWATCHER_VIEW_FIELD_ACTIVE));
 
   for(bgpwatcher_view_iter_first_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
       bgpwatcher_view_iter_has_more_peer(it);
       bgpwatcher_view_iter_next_peer(it))
     {
       peerid = bgpwatcher_view_iter_peer_get_peer(it);
-      ps = bgpwatcher_view_iter_peer_get_sign(it);
+      ps = bgpwatcher_view_iter_peer_get_sig(it);
       assert(ps);
-      v4pfx_cnt = bgpwatcher_view_iter_peer_get_pfx_count(it, BGPSTREAM_ADDR_VERSION_IPV4);
+      v4pfx_cnt =
+        bgpwatcher_view_iter_peer_get_pfx_cnt(it,
+                                              BGPSTREAM_ADDR_VERSION_IPV4,
+                                              BGPWATCHER_VIEW_FIELD_ACTIVE);
       assert(v4pfx_cnt >= 0);
-      v6pfx_cnt = bgpwatcher_view_iter_peer_get_pfx_count(it, BGPSTREAM_ADDR_VERSION_IPV6);
+      v6pfx_cnt =
+        bgpwatcher_view_iter_peer_get_pfx_cnt(it,
+                                              BGPSTREAM_ADDR_VERSION_IPV6,
+                                              BGPWATCHER_VIEW_FIELD_ACTIVE);
+      fprintf(stderr, "v6pfxs: %d\n", v6pfx_cnt);
       assert(v6pfx_cnt >= 0);
 
       inet_ntop(ps->peer_ip_addr.version, &(ps->peer_ip_addr.ipv4),
 		peer_str, INET6_ADDRSTRLEN);
 
-      fprintf(stdout, "  %"PRIu16":\t%s, %s %"PRIu32" (%d v4 pfxs, %d v6 pfxs)\n",
-	      peerid, ps->collector_str, peer_str, ps->peer_asnumber, v4pfx_cnt, v6pfx_cnt);
+      fprintf(stdout,
+              "  %"PRIu16":\t%s, %s %"PRIu32" (%d v4 pfxs, %d v6 pfxs)\n",
+	      peerid, ps->collector_str, peer_str,
+              ps->peer_asnumber, v4pfx_cnt, v6pfx_cnt);
     }
 }
 
@@ -78,18 +242,20 @@ static void pfxs_dump(bgpwatcher_view_t *view,
   char pfx_str[INET6_ADDRSTRLEN+3] = "";
 
   fprintf(stdout, "Prefixes (v4 %d, v6 %d):\n",
-          bgpwatcher_view_v4pfx_size(view),
-          bgpwatcher_view_v6pfx_size(view));
+          bgpwatcher_view_v4pfx_cnt(view, BGPWATCHER_VIEW_FIELD_ACTIVE),
+          bgpwatcher_view_v6pfx_cnt(view, BGPWATCHER_VIEW_FIELD_ACTIVE));
 
   for(bgpwatcher_view_iter_first_pfx(it, 0, BGPWATCHER_VIEW_FIELD_ACTIVE);
       bgpwatcher_view_iter_has_more_pfx(it);
       bgpwatcher_view_iter_next_pfx(it))
     {
       pfx = bgpwatcher_view_iter_pfx_get_pfx(it);
-      bgpstream_pfx_snprintf(pfx_str, INET6_ADDRSTRLEN+3, pfx);      
+      bgpstream_pfx_snprintf(pfx_str, INET6_ADDRSTRLEN+3, pfx);
       fprintf(stdout, "  %s (%d peers)\n",
-              pfx_str, bgpwatcher_view_iter_pfx_get_peers_cnt(it));
-      
+              pfx_str,
+              bgpwatcher_view_iter_pfx_get_peer_cnt(it,
+                                                    BGPWATCHER_VIEW_FIELD_ACTIVE));
+
       for(bgpwatcher_view_iter_pfx_first_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
           bgpwatcher_view_iter_pfx_has_more_peer(it);
           bgpwatcher_view_iter_pfx_next_peer(it))
@@ -111,9 +277,10 @@ static void pfxs_dump(bgpwatcher_view_t *view,
     ptr += s;						\
   } while(0)
 
-static int send_pfx_peers(uint8_t *buf, size_t len, bwv_peerid_pfxinfo_t *pfxpeers)
+static int send_pfx_peers(uint8_t *buf, size_t len,
+                          bgpwatcher_view_iter_t *it,
+                          int peers_cnt)
 {
-  int i;
   uint16_t u16;
   uint32_t u32;
 
@@ -121,34 +288,36 @@ static int send_pfx_peers(uint8_t *buf, size_t len, bwv_peerid_pfxinfo_t *pfxpee
   size_t written = 0;
   size_t s;
 
-  for(i=0; i<pfxpeers->peers_alloc_cnt; i++)
-    {
-      if(pfxpeers->peers[i].state == BGPWATCHER_VIEW_FIELD_ACTIVE)
-	{
-	  /* peer id */
-	  u16 = i;
-	  u16 = htons(u16);
-	  SERIALIZE_VAL(u16);
+  int peers_tx = 0;
 
-	  /* orig_asn */
-	  u32 = pfxpeers->peers[i].orig_asn;
-	  u32 = htonl(u32);
-	  SERIALIZE_VAL(u32);
-	}
+  for(bgpwatcher_view_iter_pfx_first_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_pfx_has_more_peer(it);
+      bgpwatcher_view_iter_pfx_next_peer(it))
+    {
+      /* peer id */
+      u16 = bgpwatcher_view_iter_peer_get_peer(it);
+      assert(u16 > 0);
+      u16 = htons(u16);
+      SERIALIZE_VAL(u16);
+
+      /* orig_asn */
+      u32 = bgpwatcher_view_iter_pfx_peer_get_orig_asn(it);
+      assert(u32 > 0);
+      u32 = htonl(u32);
+      SERIALIZE_VAL(u32);
+
+      peers_tx++;
     }
+
+  assert(peers_tx == peers_cnt);
 
   return written;
 }
 
-static int send_v4pfxs(void *dest, bgpwatcher_view_t *view)
+static int send_pfxs(void *dest, bgpwatcher_view_iter_t *it)
 {
   uint16_t u16;
   uint32_t u32;
-
-  khiter_t k;
-
-  bgpstream_ipv4_pfx_t *key;
-  bwv_peerid_pfxinfo_t *v;
 
   size_t len = BUFFER_LEN;
   uint8_t buf[BUFFER_LEN];
@@ -156,38 +325,37 @@ static int send_v4pfxs(void *dest, bgpwatcher_view_t *view)
   size_t written = 0;
   size_t s = 0;
 
+  bgpwatcher_view_t *view = bgpwatcher_view_iter_get_view(it);
+  assert(view != NULL);
+
+  bgpstream_pfx_t *pfx;
+  int peers_cnt = 0;
+
   /* pfx cnt */
-  u32 = htonl(bgpwatcher_view_v4pfx_size(view));
+  u32 = htonl(bgpwatcher_view_v4pfx_cnt(view, BGPWATCHER_VIEW_FIELD_ACTIVE));
   if(zmq_send(dest, &u32, sizeof(u32), ZMQ_SNDMORE) != sizeof(u32))
     {
       goto err;
     }
 
-  /* foreach pfx, send pfx-ip, pfx-len, [peer-info] */
-  for(k = kh_begin(view->v4pfxs); k != kh_end(view->v4pfxs); ++k)
+  for(bgpwatcher_view_iter_first_pfx(it,
+                                     0, /* all pfx versions */
+                                     BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_has_more_pfx(it);
+      bgpwatcher_view_iter_next_pfx(it))
     {
-      if(!kh_exist(view->v4pfxs, k))
-	{
-	  continue;
-	}
-
       /* reset the buffer */
       len = BUFFER_LEN;
       ptr = buf;
       written = 0;
       s = 0;
 
-      key = &kh_key(view->v4pfxs, k);
-      v = kh_val(view->v4pfxs, k);
-
-      if(v->peers_cnt == 0)
-	{
-	  continue;
-	}
+      pfx = bgpwatcher_view_iter_pfx_get_pfx(it);
+      assert(pfx != NULL);
 
       /* pfx address */
-      if((s = bw_serialize_ip(ptr, (len-written),
-                              (bgpstream_ip_addr_t *) (&key->address))) == -1)
+      if((s = serialize_ip(ptr, (len-written),
+                              (bgpstream_ip_addr_t *) (&pfx->address))) == -1)
 	{
 	  goto err;
 	}
@@ -195,14 +363,18 @@ static int send_v4pfxs(void *dest, bgpwatcher_view_t *view)
       ptr += s;
 
       /* pfx len */
-      SERIALIZE_VAL(key->mask_len);
+      SERIALIZE_VAL(pfx->mask_len);
 
       /* peer cnt */
-      u16 = htons(v->peers_cnt);
+      peers_cnt =
+        bgpwatcher_view_iter_pfx_get_peer_cnt(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      /* for a pfx to be active it must have active peers */
+      assert(peers_cnt > 0);
+      u16 = htons(peers_cnt);
       SERIALIZE_VAL(u16);
 
       /* send the peers */
-      if((s = send_pfx_peers(ptr, (len-written), v)) == -1)
+      if((s = send_pfx_peers(ptr, (len-written), it, peers_cnt)) == -1)
 	{
 	  goto err;
 	}
@@ -222,87 +394,6 @@ static int send_v4pfxs(void *dest, bgpwatcher_view_t *view)
   return -1;
 }
 
-static int send_v6pfxs(void *dest, bgpwatcher_view_t *view)
-{
-  uint16_t u16;
-  uint32_t u32;
-
-  khiter_t k;
-
-  bgpstream_ipv6_pfx_t *key;
-  bwv_peerid_pfxinfo_t *v;
-
-  size_t len = BUFFER_LEN;
-  uint8_t buf[BUFFER_LEN];
-  uint8_t *ptr = buf;
-  size_t written = 0;
-  size_t s = 0;
-
-  /* pfx cnt */
-  u32 = htonl(bgpwatcher_view_v6pfx_size(view));
-  if(zmq_send(dest, &u32, sizeof(u32), ZMQ_SNDMORE) != sizeof(u32))
-    {
-      goto err;
-    }
-
-  /* foreach pfx, send pfx-ip, pfx-len, [peer-info] */
-  for(k = kh_begin(view->v6pfxs); k != kh_end(view->v6pfxs); ++k)
-    {
-      if(!kh_exist(view->v6pfxs, k))
-	{
-	  continue;
-	}
-
-      /* reset the buffer */
-      len = BUFFER_LEN;
-      ptr = buf;
-      written = 0;
-      s = 0;
-
-      key = &kh_key(view->v6pfxs, k);
-      v = kh_val(view->v6pfxs, k);
-
-      if(v->peers_cnt == 0)
-	{
-	  continue;
-	}
-
-      /* pfx address */
-      if((s = bw_serialize_ip(ptr, (len-written),
-			      (bgpstream_ip_addr_t *)(&key->address))) == -1)
-	{
-	  goto err;
-	}
-      written += s;
-      ptr += s;
-
-      /* pfx len */
-      SERIALIZE_VAL(key->mask_len);
-
-      /* peer cnt */
-      u16 = htons(v->peers_cnt);
-      SERIALIZE_VAL(u16);
-
-      /* send the peers */
-      if((s = send_pfx_peers(ptr, (len-written), v)) == -1)
-	{
-	  goto err;
-	}
-      written += s;
-      ptr += s;
-
-      /* send the buffer */
-      if(zmq_send(dest, buf, written, ZMQ_SNDMORE) != written)
-	{
-	  goto err;
-	}
-    }
-
-  return 0;
-
- err:
-  return -1;
-}
 
 #define DESERIALIZE_VAL(to)				\
   do {							\
@@ -313,7 +404,9 @@ static int send_v6pfxs(void *dest, bgpwatcher_view_t *view)
     buf += s;						\
   } while(0)
 
-static int recv_pfxs(void *src, bgpwatcher_view_t *view)
+static int recv_pfxs(void *src, bgpwatcher_view_iter_t *iter,
+                     bgpstream_peer_id_t *peerid_map,
+                     int peerid_map_cnt)
 {
   uint32_t pfx_cnt;
   uint16_t peer_cnt;
@@ -321,16 +414,14 @@ static int recv_pfxs(void *src, bgpwatcher_view_t *view)
 
   bgpstream_pfx_storage_t pfx;
   bgpstream_peer_id_t peerid;
-  bgpwatcher_pfx_peer_info_t pfx_info;
-  void *cache = NULL;
+
+  uint32_t orig_asn;
 
   zmq_msg_t msg;
   uint8_t *buf;
   size_t len;
   size_t read = 0;
   size_t s = 0;
-
-  pfx_info.state = BGPWATCHER_VIEW_FIELD_ACTIVE;
 
   ASSERT_MORE;
 
@@ -345,9 +436,6 @@ static int recv_pfxs(void *src, bgpwatcher_view_t *view)
   /* foreach pfx, recv pfx.ip, pfx.len, [peers_cnt, peer_info] */
   for(i=0; i<pfx_cnt; i++)
     {
-      /* this is a new pfx, reset the cache */
-      cache = NULL;
-
       /* first receive the message */
       if(zmq_msg_init(&msg) == -1 || zmq_msg_recv(&msg, src, 0) == -1)
 	{
@@ -361,7 +449,7 @@ static int recv_pfxs(void *src, bgpwatcher_view_t *view)
       assert(len > 0);
 
       /* pfx_ip */
-      if((s = bw_deserialize_ip(buf, (len-read), &pfx.address)) == -1)
+      if((s = deserialize_ip(buf, (len-read), &pfx.address)) == -1)
 	{
           fprintf(stderr, "Could not deserialize pfx ip\n");
 	  goto err;
@@ -384,15 +472,39 @@ static int recv_pfxs(void *src, bgpwatcher_view_t *view)
 	  peerid = ntohs(peerid);
 
 	  /* orig asn */
-	  DESERIALIZE_VAL(pfx_info.orig_asn);
-	  pfx_info.orig_asn = ntohl(pfx_info.orig_asn);
+	  DESERIALIZE_VAL(orig_asn);
+	  orig_asn = ntohl(orig_asn);
 
-	  if(bgpwatcher_view_add_prefix(view, (bgpstream_pfx_t *)&pfx, peerid,
-					pfx_info.orig_asn, &cache) != 0)
-	    {
-              fprintf(stderr, "Could not add prefix\n");
-	      goto err;
-	    }
+          if(j == 0)
+            {
+              /* we have to use add_pfx_peer */
+              if(bgpwatcher_view_iter_add_pfx_peer(iter,
+                                                   (bgpstream_pfx_t *)&pfx,
+                                                   peerid,
+                                                   orig_asn) != 0)
+                {
+                  fprintf(stderr, "Could not add prefix\n");
+                  goto err;
+                }
+            }
+          else
+            {
+              /* we can use pfx_add_peer for efficiency */
+              if(bgpwatcher_view_iter_pfx_add_peer(iter,
+                                                   peerid,
+                                                   orig_asn) != 0)
+                {
+                  fprintf(stderr, "Could not add prefix\n");
+                  goto err;
+                }
+            }
+
+          /* now we have to activate it */
+          if(bgpwatcher_view_iter_pfx_activate_peer(iter) < 0)
+            {
+              fprintf(stderr, "Could not activate prefix\n");
+              goto err;
+            }
 	}
 
       assert(read == len);
@@ -413,18 +525,24 @@ static int send_peers(void *dest, bgpwatcher_view_iter_t *it)
   bgpstream_peer_sig_t *ps;
   size_t len;
 
-  uint16_t peers_cnt;
+  int peers_cnt;
   int peers_tx = 0;
 
-  /* peer cnt ( @todo make sure we just count the active) */
-  peers_cnt = (uint16_t)bgpwatcher_view_peer_size(bgpwatcher_view_iter_get_view(it));
+  bgpwatcher_view_t *view = bgpwatcher_view_iter_get_view(it);
+  assert(view != NULL);
+
+  /* peer cnt */
+  peers_cnt =
+    (uint16_t)bgpwatcher_view_peer_cnt(view, BGPWATCHER_VIEW_FIELD_ACTIVE);
+  assert(peers_cnt <= UINT16_MAX);
   u16 = htons(peers_cnt);
   if(zmq_send(dest, &u16, sizeof(u16), ZMQ_SNDMORE) != sizeof(u16))
     {
       goto err;
     }
 
-  /* foreach peer, send peerid, collector string, peer ip (version, address), peer asn */
+  /* foreach peer, send peerid, collector string, peer ip (version, address),
+     peer asn */
   for(bgpwatcher_view_iter_first_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
       bgpwatcher_view_iter_has_more_peer(it);
       bgpwatcher_view_iter_next_peer(it))
@@ -437,7 +555,7 @@ static int send_peers(void *dest, bgpwatcher_view_iter_t *it)
 	  goto err;
 	}
 
-      ps = bgpwatcher_view_iter_peer_get_sign(it);
+      ps = bgpwatcher_view_iter_peer_get_sig(it);
       assert(ps);
       len = strlen(ps->collector_str);
       if(zmq_send(dest, &ps->collector_str, len, ZMQ_SNDMORE) != len)
@@ -445,20 +563,21 @@ static int send_peers(void *dest, bgpwatcher_view_iter_t *it)
 	  goto err;
 	}
 
-      // peer IP address
-      if(bw_send_ip(dest, (bgpstream_ip_addr_t *)(&ps->peer_ip_addr), ZMQ_SNDMORE) != 0)
+      /* peer IP address */
+      if(send_ip(dest, (bgpstream_ip_addr_t *)(&ps->peer_ip_addr),
+                    ZMQ_SNDMORE) != 0)
 	{
 	  goto err;
 	}
 
-      // peer AS number
+      /* peer AS number */
       u32 = ps->peer_asnumber;
-      u32 = htonl(u32);            
+      u32 = htonl(u32);
       if(zmq_send(dest, &u32, sizeof(u32), ZMQ_SNDMORE) != sizeof(u32))
 	{
 	  goto err;
 	}
-     
+
       peers_tx++;
     }
 
@@ -470,15 +589,20 @@ static int send_peers(void *dest, bgpwatcher_view_iter_t *it)
   return -1;
 }
 
-static int recv_peers(void *src, bgpwatcher_view_t *view)
+static int recv_peers(void *src, bgpwatcher_view_iter_t *iter,
+                      bgpstream_peer_id_t **peerid_mapping)
 {
   uint16_t pc;
-  int i;
+  int i, j;
 
-  bgpstream_peer_id_t peerid;
+  bgpstream_peer_id_t peerid_orig;
+  bgpstream_peer_id_t peerid_new;
 
   bgpstream_peer_sig_t ps;
   int len;
+
+  bgpstream_peer_id_t *idmap = NULL;
+  int idmap_cnt = 0;
 
   ASSERT_MORE;
 
@@ -491,20 +615,23 @@ static int recv_peers(void *src, bgpwatcher_view_t *view)
   pc = ntohs(pc);
   ASSERT_MORE;
 
-  /* foreach peer, recv peerid, collector string, peer ip (version, address), peer asn */
+  /* foreach peer, recv peerid, collector string, peer ip (version, address),
+     peer asn */
   for(i=0; i<pc; i++)
     {
       /* peerid */
-      if(zmq_recv(src, &peerid, sizeof(peerid), 0) != sizeof(peerid))
+      if(zmq_recv(src, &peerid_orig, sizeof(peerid_orig), 0)
+         != sizeof(peerid_orig))
 	{
           fprintf(stderr, "Could not receive peer id\n");
 	  goto err;
 	}
-      peerid = ntohs(peerid);
+      peerid_orig = ntohs(peerid_orig);
       ASSERT_MORE;
 
       /* collector name */
-      if((len = zmq_recv(src, ps.collector_str, BGPSTREAM_UTILS_STR_NAME_LEN, 0)) <= 0)
+      if((len = zmq_recv(src, ps.collector_str,
+                         BGPSTREAM_UTILS_STR_NAME_LEN, 0)) <= 0)
 	{
           fprintf(stderr, "Could not receive collector name\n");
 	  goto err;
@@ -513,35 +640,53 @@ static int recv_peers(void *src, bgpwatcher_view_t *view)
       ASSERT_MORE;
 
       /* peer ip */
-      if(bw_recv_ip(src, &ps.peer_ip_addr) != 0)
+      if(recv_ip(src, &ps.peer_ip_addr) != 0)
 	{
           fprintf(stderr, "Could not receive peer ip\n");
 	  goto err;
 	}
       ASSERT_MORE;
-      
-      /* peer asn */      
-      if(zmq_recv(src, &ps.peer_asnumber, sizeof(ps.peer_asnumber), 0) != sizeof(ps.peer_asnumber))
+
+      /* peer asn */
+      if(zmq_recv(src, &ps.peer_asnumber, sizeof(ps.peer_asnumber), 0)
+         != sizeof(ps.peer_asnumber))
 	{
           fprintf(stderr, "Could not receive peer AS number\n");
 	  goto err;
 	}
-      ps.peer_asnumber = ntohl(ps.peer_asnumber);            
-      
-      if(bgpstream_peer_sig_map_set(view->peersigns,
-                                    peerid,
-                                    ps.collector_str,
-                                    &ps.peer_ip_addr,
-                                    ps.peer_asnumber) != 0)
-	{
-          fprintf(stderr, "Could not add peer to peersigns\n");
-	  fprintf(stderr,
-                  "Consider making bgpstream_peer_sig_map_set more robust\n");
-	  goto err;
-	}
+      ps.peer_asnumber = ntohl(ps.peer_asnumber);
+
+      /* ensure we have enough space in the id map */
+      if((peerid_orig+1) > idmap_cnt)
+        {
+          if((idmap =
+              realloc(idmap,
+                      sizeof(bgpstream_peer_id_t) * (peerid_orig+1))) == NULL)
+            {
+              goto err;
+            }
+
+          /* now set all ids to 0 (reserved) */
+          for(j=idmap_cnt; j<= peerid_orig; j++)
+            {
+              idmap[j] = 0;
+            }
+          idmap_cnt = peerid_orig+1;
+        }
+
+      /* now ask the view to add this peer */
+      peerid_new = bgpwatcher_view_iter_add_peer(iter,
+                                         ps.collector_str,
+                                         (bgpstream_ip_addr_t*)&ps.peer_ip_addr,
+                                         ps.peer_asnumber);
+      assert(peerid_new != 0);
+      idmap[peerid_orig] = peerid_new;
+
+      bgpwatcher_view_iter_activate_peer(iter);
     }
 
-  return 0;
+  *peerid_mapping = idmap;
+  return idmap_cnt;
 
  err:
   return -1;
@@ -565,19 +710,7 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
     }
 
   /* time */
-  u32 = htonl(view->time);
-  if(zmq_send(dest, &u32, sizeof(u32), ZMQ_SNDMORE) != sizeof(u32))
-    {
-      goto err;
-    }
-
-  /* time_created */
-  u32 = htonl(view->time_created.tv_sec);
-  if(zmq_send(dest, &u32, sizeof(u32), ZMQ_SNDMORE) != sizeof(u32))
-    {
-      goto err;
-    }
-  u32 = htonl(view->time_created.tv_usec);
+  u32 = htonl(bgpwatcher_view_get_time(view));
   if(zmq_send(dest, &u32, sizeof(u32), ZMQ_SNDMORE) != sizeof(u32))
     {
       goto err;
@@ -588,12 +721,7 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
       goto err;
     }
 
-  if(send_v4pfxs(dest, view) != 0)
-    {
-      goto err;
-    }
-
-  if(send_v6pfxs(dest, view) != 0)
+  if(send_pfxs(dest, it) != 0)
     {
       goto err;
     }
@@ -604,8 +732,6 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view)
     }
 
   bgpwatcher_view_iter_destroy(it);
-
-  view->pub_cnt++;
 
   return 0;
 
@@ -619,12 +745,14 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
 
   assert(view != NULL);
 
-  /* to ensure that we never try to set peer ids for existing peer signatures,
-     we clear the peersign table manually */
-  /* this is not really needed, but if the server is ever restarted while the
-     consumer is running, this will prevent any issues. It shouldn't cause too
-     much performance problems (famous last words) */
-  bgpstream_peer_sig_map_clear(view->peersigns);
+  bgpstream_peer_id_t *peerid_map = NULL;
+  int peerid_map_cnt = 0;
+
+  bgpwatcher_view_iter_t *it = NULL;
+  if((it = bgpwatcher_view_iter_create(view)) == NULL)
+    {
+      goto err;
+    }
 
   /* time */
   if(zmq_recv(src, &u32, sizeof(u32), 0) != sizeof(u32))
@@ -632,45 +760,20 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
       fprintf(stderr, "Could not receive 'time'\n");
       goto err;
     }
-  view->time = ntohl(u32);
+  bgpwatcher_view_set_time(view, ntohl(u32));
   ASSERT_MORE;
 
-  /* time_created */
-  if(zmq_recv(src, &u32, sizeof(u32), 0) != sizeof(u32))
-    {
-      fprintf(stderr, "Could not receive 'time created sec'\n");
-      goto err;
-    }
-  view->time_created.tv_sec = ntohl(u32);
-  ASSERT_MORE;
-
-  if(zmq_recv(src, &u32, sizeof(u32), 0) != sizeof(u32))
-    {
-      fprintf(stderr, "Could not receive 'time created usec'\n");
-      goto err;
-    }
-  view->time_created.tv_usec = ntohl(u32);
-  ASSERT_MORE;
-
-  if(recv_peers(src, view) != 0)
+  if((peerid_map_cnt = recv_peers(src, it, &peerid_map)) < 0)
     {
       fprintf(stderr, "Could not receive peers\n");
       goto err;
     }
   ASSERT_MORE;
 
-  /* v4 pfxs */
-  if(recv_pfxs(src, view) != 0)
+  /* pfxs */
+  if(recv_pfxs(src, it, peerid_map, peerid_map_cnt) != 0)
     {
       fprintf(stderr, "Could not receive v4 prefixes\n");
-      goto err;
-    }
-  ASSERT_MORE;
-
-  /* v6 pfxs */
-  if(recv_pfxs(src, view) != 0)
-    {
-      fprintf(stderr, "Could not receive v6 prefixes\n");
       goto err;
     }
   ASSERT_MORE;
@@ -689,7 +792,13 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
   return -1;
 }
 
-/* ========== PUBLIC FUNCTIONS ========== */
+int bgpwatcher_view_recv_discard(void *src)
+{
+  assert(0);
+  return -1;
+}
+
+/* ========== PUBLIC FUNCTIONS (exposed through bgpwatcher_view.h) ========== */
 
 void bgpwatcher_view_dump(bgpwatcher_view_t *view)
 {
@@ -710,10 +819,9 @@ void bgpwatcher_view_dump(bgpwatcher_view_t *view)
       fprintf(stdout,
 	      "------------------------------\n"
 	      "Time:\t%"PRIu32"\n"
-	      "Created:\t%ld.%ld\n",
-	      view->time,
-	      (long)view->time_created.tv_sec,
-	      (long)view->time_created.tv_usec);
+	      "Created:\t%ld\n",
+	      bgpwatcher_view_get_time(view),
+	      (long)bgpwatcher_view_get_time_created(view));
 
       peers_dump(view, it);
 
