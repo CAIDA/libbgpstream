@@ -35,7 +35,7 @@
 /* metric format:
  * <metric-prefix>.<collector|peer signature>.<metric-name>
  */
-#define RT_METRIC_FORMAT "%s.%s.%s." 
+#define RT_METRIC_FORMAT "%s.%s.%s" 
 
 #define BUFFER_LEN 1024
 static char metric_buffer[BUFFER_LEN];

@@ -207,7 +207,8 @@ int main(int argc, char *argv[])
   int prevoptind;
   char *tmpl = NULL;
   char *name = NULL;
-  int i = -1000;
+  int i = 0;
+  int interval = -1000;
   char *plugins[BGPCORSARO_PLUGIN_ID_MAX];
   int plugin_cnt = 0;
   char *plugin_arg_ptr = NULL;
@@ -300,7 +301,7 @@ int main(int argc, char *argv[])
 	  break;
 
 	case 'i':
-	  i = atoi(optarg);
+	  interval = atoi(optarg);
 	  break;
 
 	case 'L':
@@ -478,9 +479,9 @@ int main(int argc, char *argv[])
       goto err;
     }
 
-  if(i > -1000)
+  if(interval > -1000)
     {
-      bgpcorsaro_set_interval(bgpcorsaro, i);
+      bgpcorsaro_set_interval(bgpcorsaro, interval);
     }
 
   if(align == 1)
