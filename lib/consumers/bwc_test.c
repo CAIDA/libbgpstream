@@ -201,7 +201,7 @@ int bwc_test_process_view(bwc_t *consumer, uint8_t interests,
       bgpwatcher_view_iter_next_peer(it))
     {
       my_memory = malloc(sizeof(int));
-      *(int *)my_memory = bgpwatcher_view_iter_peer_get_peer(it) + 100;
+      *(int *)my_memory = bgpwatcher_view_iter_peer_get_peer_id(it) + 100;
       bgpwatcher_view_iter_peer_set_user(it, my_memory);
       
       my_memory = NULL;            
@@ -222,7 +222,7 @@ int bwc_test_process_view(bwc_t *consumer, uint8_t interests,
           bgpwatcher_view_iter_pfx_next_peer(it))
         {
           my_memory = malloc(sizeof(int));
-          *(int *)my_memory = bgpwatcher_view_iter_peer_get_peer(it);
+          *(int *)my_memory = bgpwatcher_view_iter_peer_get_peer_id(it);
           bgpwatcher_view_iter_pfx_peer_set_user(it, my_memory);
           my_memory = NULL;          
         }

@@ -1414,7 +1414,7 @@ bgpwatcher_view_iter_pfx_set_user(bgpwatcher_view_iter_t *iter, void *user)
 }
 
 bgpstream_peer_id_t
-bgpwatcher_view_iter_peer_get_peer(bgpwatcher_view_iter_t *iter)
+bgpwatcher_view_iter_peer_get_peer_id(bgpwatcher_view_iter_t *iter)
 {
   assert(bgpwatcher_view_iter_has_more_peer(iter));
   return kh_key(iter->view->peerinfo, iter->peer_it);
@@ -1425,7 +1425,7 @@ bgpwatcher_view_iter_peer_get_sig(bgpwatcher_view_iter_t *iter)
 {
   assert(bgpwatcher_view_iter_has_more_peer(iter));
   return bgpstream_peer_sig_map_get_sig(iter->view->peersigns,
-                                      bgpwatcher_view_iter_peer_get_peer(iter));
+                                      bgpwatcher_view_iter_peer_get_peer_id(iter));
 }
 
 static int
@@ -1625,8 +1625,8 @@ bgpwatcher_view_iter_deactivate_peer(bgpwatcher_view_iter_t *iter)
           bgpwatcher_view_iter_next_pfx_peer(lit))
         {
           // deactivate all the peer-pfx associated with the peer
-          if(bgpwatcher_view_iter_peer_get_peer(lit) ==
-             bgpwatcher_view_iter_peer_get_peer(lit))
+          if(bgpwatcher_view_iter_peer_get_peer_id(lit) ==
+             bgpwatcher_view_iter_peer_get_peer_id(lit))
             {
               bgpwatcher_view_iter_pfx_deactivate_peer(lit);
             }

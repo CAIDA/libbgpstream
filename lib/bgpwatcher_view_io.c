@@ -210,7 +210,7 @@ static void peers_dump(bgpwatcher_view_t *view,
       bgpwatcher_view_iter_has_more_peer(it);
       bgpwatcher_view_iter_next_peer(it))
     {
-      peerid = bgpwatcher_view_iter_peer_get_peer(it);
+      peerid = bgpwatcher_view_iter_peer_get_peer_id(it);
       ps = bgpwatcher_view_iter_peer_get_sig(it);
       assert(ps);
       v4pfx_cnt =
@@ -261,7 +261,7 @@ static void pfxs_dump(bgpwatcher_view_t *view,
           bgpwatcher_view_iter_pfx_next_peer(it))
         {
           fprintf(stdout, "    %"PRIu16":\t%d\n",
-                  bgpwatcher_view_iter_peer_get_peer(it),
+                  bgpwatcher_view_iter_peer_get_peer_id(it),
                   bgpwatcher_view_iter_pfx_peer_get_orig_asn(it));
         }
     }
@@ -295,7 +295,7 @@ static int send_pfx_peers(uint8_t *buf, size_t len,
       bgpwatcher_view_iter_pfx_next_peer(it))
     {
       /* peer id */
-      u16 = bgpwatcher_view_iter_peer_get_peer(it);
+      u16 = bgpwatcher_view_iter_peer_get_peer_id(it);
       assert(u16 > 0);
       u16 = htons(u16);
       SERIALIZE_VAL(u16);
@@ -556,7 +556,7 @@ static int send_peers(void *dest, bgpwatcher_view_iter_t *it)
       bgpwatcher_view_iter_next_peer(it))
     {
       /* peer id */
-      u16 = bgpwatcher_view_iter_peer_get_peer(it);
+      u16 = bgpwatcher_view_iter_peer_get_peer_id(it);
       u16 = htons(u16);
       if(zmq_send(dest, &u16, sizeof(u16), ZMQ_SNDMORE) != sizeof(u16))
 	{

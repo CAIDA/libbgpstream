@@ -488,7 +488,7 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
           bgpwatcher_view_iter_pfx_next_peer(it))
         {
            /* only consider peers that are full-feed */
-          peerid = bgpwatcher_view_iter_peer_get_peer(it);
+          peerid = bgpwatcher_view_iter_peer_get_peer_id(it);
           if(bgpstream_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v4ff_peerids,
                                      peerid) == 0)
             {
