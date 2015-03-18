@@ -1625,7 +1625,7 @@ bgpwatcher_view_iter_deactivate_peer(bgpwatcher_view_iter_t *iter)
           bgpwatcher_view_iter_next_pfx_peer(lit))
         {
           // deactivate all the peer-pfx associated with the peer
-          if(bgpwatcher_view_iter_peer_get_peer_id(lit) ==
+          if(bgpwatcher_view_iter_peer_get_peer_id(iter) ==
              bgpwatcher_view_iter_peer_get_peer_id(lit))
             {
               bgpwatcher_view_iter_pfx_deactivate_peer(lit);
