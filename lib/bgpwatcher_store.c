@@ -22,7 +22,7 @@
 #include "bgpwatcher_store.h"
 
 #include "bgpwatcher_server_int.h"
-#include "bgpwatcher_view_int.h"
+#include "bgpwatcher_view.h"
 
 #include "bgpstream_utils_str_set.h"
 #include "bgpstream_utils_id_set.h"
@@ -44,6 +44,16 @@ do {                                                            \
           __VA_ARGS__, value, time);                            \
  } while(0)
 
+#define VIEW_GET_SVIEW(store, viewp)                                     \
+  (store->sviews[                                                       \
+                 (store->sviews_first_idx +                             \
+                  ((bgpwatcher_view_get_time(viewp)                     \
+                    - store->sviews_first_time) / WDW_ITEM_TIME))       \
+                 % WDW_LEN                                              \
+                                                                        ])
+#define SVIEW_TIME(sview)                       \
+  (bgpwatcher_view_get_time(sview->view))
+
 typedef enum {
   COMPLETION_TRIGGER_STATE_UNKNOWN        = 0,
   COMPLETION_TRIGGER_WDW_EXCEEDED         = 1,
@@ -51,28 +61,6 @@ typedef enum {
   COMPLETION_TRIGGER_TABLE_END            = 3,
   COMPLETION_TRIGGER_TIMEOUT_EXPIRED      = 4
 } completion_trigger_t;
-
-/************ status of an active peer ************/
-typedef struct active_peer_status {
-
-  /** number of expected prefix tables expected from this peer */
-  uint32_t expected_pfx_tables_cnt;
-
-  /* number of expected prefix tables received from this peer */
-  uint32_t received_pfx_tables_cnt;
-
-  /* number of ipv4 prefixes received */
-  uint32_t recived_ipv4_pfx_cnt;
-
-  /* number of ipv6 prefixes received */
-  uint32_t recived_ipv6_pfx_cnt;
-
-} active_peer_status_t;
-
-/************ bgpstream_peer_id_t -> status ************/
-KHASH_INIT(peerid_peerstatus, bgpstream_peer_id_t, active_peer_status_t*, 1,
-	   kh_int_hash_func, kh_int_hash_equal)
-typedef khash_t(peerid_peerstatus) peerid_peerstatus_t;
 
 typedef enum {
   STORE_VIEW_UNUSED         = 0,
@@ -113,6 +101,9 @@ typedef struct store_view {
   /** Number of uses remaining before this view must be hard-cleared */
   int reuse_remaining;
 
+  /** Number of times this view has been published since it was last cleared */
+  int pub_cnt;
+
   dispatch_status_t dis_status[STORE_VIEW_STATE_MAX+1];
 
   /** whether the bgpview has been modified
@@ -121,12 +112,6 @@ typedef struct store_view {
 
   /** list of clients that have sent at least one complete table */
   bgpstream_str_set_t *done_clients;
-
-  /** list of inactive peers (status null or down) */
-  bgpstream_id_set_t *inactive_peers;
-
-  /** for each active id we store its status */
-  peerid_peerstatus_t *active_peers_info;
 
   /** BGP Watcher View that this view represents */
   bgpwatcher_view_t *view;
@@ -169,11 +154,6 @@ enum {
 
 /* ========== PRIVATE FUNCTIONS ========== */
 
-static void active_peers_destroy(active_peer_status_t *ap)
-{
-  free(ap);
-}
-
 static void store_view_destroy(store_view_t *sview)
 {
   if(sview == NULL)
@@ -185,20 +165,6 @@ static void store_view_destroy(store_view_t *sview)
     {
       bgpstream_str_set_destroy(sview->done_clients);
       sview->done_clients = NULL;
-    }
-
-  if(sview->inactive_peers != NULL)
-    {
-      bgpstream_id_set_destroy(sview->inactive_peers);
-      sview->inactive_peers = NULL;
-    }
-
-  if(sview->active_peers_info != NULL)
-    {
-      kh_free_vals(peerid_peerstatus, sview->active_peers_info,
-                   active_peers_destroy);
-      kh_destroy(peerid_peerstatus, sview->active_peers_info);
-      sview->active_peers_info = NULL;
     }
 
   bgpwatcher_view_destroy(sview->view);
@@ -224,22 +190,14 @@ store_view_t *store_view_create(bgpwatcher_store_t *store, int id)
       goto err;
     }
 
-  if((sview->inactive_peers = bgpstream_id_set_create()) == NULL)
-    {
-      goto err;
-    }
-
-  if((sview->active_peers_info = kh_init(peerid_peerstatus)) == NULL)
-    {
-      goto err;
-    }
-
   sview->state = STORE_VIEW_UNUSED;
 
   // dis_status -> everything is set to zero
 
   assert(store->peersigns != NULL);
-  if((sview->view = bgpwatcher_view_create_shared(store->peersigns, NULL, NULL, NULL, NULL)) == NULL)
+  if((sview->view =
+      bgpwatcher_view_create_shared(store->peersigns,
+                                    NULL, NULL, NULL, NULL)) == NULL)
     {
       goto err;
     }
@@ -274,7 +232,7 @@ static store_view_t *store_view_clear(bgpwatcher_store_t *store,
       return store->sviews[idx];
     }
 
-  fprintf(stderr, "DEBUG: Clearing store (%d)\n", sview->view->time);
+  fprintf(stderr, "DEBUG: Clearing store (%d)\n", SVIEW_TIME(sview));
 
   sview->state = STORE_VIEW_UNUSED;
 
@@ -291,11 +249,7 @@ static store_view_t *store_view_clear(bgpwatcher_store_t *store,
 
   bgpstream_str_set_clear(sview->done_clients);
 
-  bgpstream_id_set_clear(sview->inactive_peers);
-
-  kh_free_vals(peerid_peerstatus, sview->active_peers_info,
-               active_peers_destroy);
-  kh_clear(peerid_peerstatus, sview->active_peers_info);
+  sview->pub_cnt = 0;
 
   /* now clear the child view */
   bgpwatcher_view_clear(sview->view);
@@ -334,88 +288,11 @@ static int store_view_completion_check(bgpwatcher_store_t *store,
   return 1;
 }
 
-static active_peer_status_t *store_view_add_peer(store_view_t *sview,
-                                                 bgpwatcher_peer_t* peer_info)
-{
-  khiter_t k;
-  int khret;
-
-  sview->state = STORE_VIEW_UNKNOWN;
-
-  active_peer_status_t *ap_status = NULL;
-
-  // if peer is up
-  /** @todo Chiara use bgp utils ############# */
-  if(peer_info->status == 2)
-    {
-      // update active peers info
-      if((k = kh_get(peerid_peerstatus, sview->active_peers_info,
-		     peer_info->server_id))
-         == kh_end(sview->active_peers_info))
-	{
-	  k = kh_put(peerid_peerstatus, sview->active_peers_info,
-		     peer_info->server_id, &khret);
-
-          if((ap_status = malloc_zero(sizeof(active_peer_status_t))) == NULL)
-            {
-              return NULL;
-            }
-          kh_value(sview->active_peers_info, k) = ap_status;
-	}
-      else
-        {
-          ap_status = kh_value(sview->active_peers_info, k);
-        }
-      // a new pfx table segment is expected from this peer
-      ap_status->expected_pfx_tables_cnt++;
-    }
-  else
-    {
-      // add a new inactive peer to the list
-      bgpstream_id_set_insert(sview->inactive_peers, peer_info->server_id);
-    }
-  return ap_status;
-}
-
-static int store_view_table_end(store_view_t *sview,
-                                bgpwatcher_server_client_info_t *client,
-                                bgpwatcher_pfx_table_t *table)
-{
-  int remote_peer_id;
-  active_peer_status_t *ap_status;
-  sview->state = STORE_VIEW_UNKNOWN;
-
-  for(remote_peer_id = 0; remote_peer_id < table->peers_cnt; remote_peer_id++)
-    {
-      /** @todo Chiara define status in some header ####################*/
-      if(table->peers[remote_peer_id].status == 2)
-	{
-	  // get the active peer status ptr for the current id
-          ap_status = table->peers[remote_peer_id].ap_status;
-          assert(ap_status != NULL);
-
-	  // update active peers counters (i.e. signal table received)
-	  ap_status->received_pfx_tables_cnt++;
-	}
-    }
-
-  // add this client to the list of clients done
-  bgpstream_str_set_insert(sview->done_clients, client->name);
-
-  int i;
-  for(i = 0; i <= STORE_VIEW_STATE_MAX; i++)
-    {
-      sview->dis_status[i].modified = 1;
-    }
-
-  return 0;
-}
-
 static int store_view_remove(bgpwatcher_store_t *store, store_view_t *sview)
 {
   /* slide the window? */
-  /* only if sview->view->time == first_time */
-  if(sview->view->time == store->sviews_first_time)
+  /* only if SVIEW_TIME(sview) == first_time */
+  if(SVIEW_TIME(sview) == store->sviews_first_time)
     {
       store->sviews_first_time += WDW_ITEM_TIME;
       store->sviews_first_idx = (store->sviews_first_idx+1) % WDW_LEN;
@@ -486,34 +363,35 @@ static int dispatcher_run(bgpwatcher_store_t *store,
 
   /* this metric is the only reason we pass the trigger to this func */
   DUMP_METRIC((uint64_t)trigger,
-              sview->view->time,
+              SVIEW_TIME(sview),
               "%s", "completion_trigger");
 
   DUMP_METRIC((uint64_t)bgpstream_str_set_size(sview->done_clients),
-              sview->view->time,
+              SVIEW_TIME(sview),
               "%s", "done_clients_cnt");
   DUMP_METRIC((uint64_t)kh_size(store->active_clients),
-              sview->view->time,
+              SVIEW_TIME(sview),
               "%s", "active_clients_cnt");
 
-  DUMP_METRIC((uint64_t)kh_size(sview->active_peers_info),
-              sview->view->time,
+  DUMP_METRIC((uint64_t)bgpwatcher_view_peer_cnt(sview->view,
+						 BGPWATCHER_VIEW_FIELD_ACTIVE),
+              SVIEW_TIME(sview),
               "%s", "active_peers_cnt");
-
-  DUMP_METRIC((uint64_t)bgpstream_id_set_size(sview->inactive_peers),
-              sview->view->time,
-              "%s", "inactive_peers_cnt");
+  DUMP_METRIC((uint64_t)bgpwatcher_view_peer_cnt(sview->view,
+						 BGPWATCHER_VIEW_FIELD_INACTIVE),
+              SVIEW_TIME(sview),
+	      "%s", "inactive_peers_cnt");
 
   DUMP_METRIC((uint64_t)bgpstream_peer_sig_map_get_size(store->peersigns),
-              sview->view->time,
+              SVIEW_TIME(sview),
               "%s", "peersigns_hash_size");
 
   DUMP_METRIC((uint64_t)store->sviews_first_idx,
-              sview->view->time,
+              SVIEW_TIME(sview),
               "%s", "view_buffer_head_idx");
 
   DUMP_METRIC((uint64_t)store->sviews_first_time,
-              sview->view->time,
+              SVIEW_TIME(sview),
               "%s", "view_buffer_head_time");
 
   /* count the number of views in each state */
@@ -528,32 +406,25 @@ static int dispatcher_run(bgpwatcher_store_t *store,
   for(i=0; i<=STORE_VIEW_STATE_MAX; i++)
     {
       DUMP_METRIC((uint64_t)states_cnt[i],
-                  sview->view->time,
+                  SVIEW_TIME(sview),
                   "view_state_%s_cnt", store_view_state_names[i]);
     }
 
-  DUMP_METRIC((uint64_t)kh_size(sview->view->v4pfxs),
-              sview->view->time,
-              "views.%d.%s", sview->id, "v4pfxs_hash_size");
-
-  DUMP_METRIC((uint64_t)kh_n_buckets(sview->view->v4pfxs),
-              sview->view->time,
-              "views.%d.%s", sview->id, "v4pfxs_hash_bucket_cnt");
-
-  DUMP_METRIC((uint64_t)kh_size(sview->view->v6pfxs),
-              sview->view->time,
-              "views.%d.%s", sview->id, "v6pfxs_hash_size");
-
-  DUMP_METRIC((uint64_t)kh_n_buckets(sview->view->v6pfxs),
-              sview->view->time,
-              "views.%d.%s", sview->id, "v6pfxs_hash_bucket_cnt");
+  DUMP_METRIC((uint64_t)bgpwatcher_view_v4pfx_cnt(sview->view,
+						  BGPWATCHER_VIEW_FIELD_ACTIVE),
+              SVIEW_TIME(sview),
+              "views.%d.%s", sview->id, "v4pfxs_cnt");
+  DUMP_METRIC((uint64_t)bgpwatcher_view_v6pfx_cnt(sview->view,
+						  BGPWATCHER_VIEW_FIELD_ACTIVE),
+              SVIEW_TIME(sview),
+              "views.%d.%s", sview->id, "v6pfxs_cnt");
 
   DUMP_METRIC((uint64_t)sview->reuse_cnt,
-              sview->view->time,
+              SVIEW_TIME(sview),
               "views.%d.%s", sview->id, "reuse_cnt");
 
-  DUMP_METRIC((uint64_t)sview->view->time_created.tv_sec,
-              sview->view->time,
+  DUMP_METRIC((uint64_t)bgpwatcher_view_get_time_created(sview->view),
+              SVIEW_TIME(sview),
               "views.%d.%s", sview->id, "time_created");
 
   /* now publish the view */
@@ -563,8 +434,10 @@ static int dispatcher_run(bgpwatcher_store_t *store,
       return -1;
     }
 
-  DUMP_METRIC((uint64_t)sview->view->pub_cnt,
-              sview->view->time,
+  sview->pub_cnt++;
+
+  DUMP_METRIC((uint64_t)sview->pub_cnt,
+              SVIEW_TIME(sview),
               "views.%d.%s", sview->id, "publication_cnt");
 
   return 0;
@@ -720,7 +593,7 @@ static int store_view_get(bgpwatcher_store_t *store, uint32_t new_time,
 
  valid:
   sview->state = STORE_VIEW_UNKNOWN;
-  sview->view->time = new_time;
+  bgpwatcher_view_set_time(sview->view, new_time);
   *sview_p = sview;
   return WINDOW_TIME_VALID;
 }
@@ -743,7 +616,8 @@ static void store_views_dump(bgpwatcher_store_t *store)
         }
       else
         {
-          fprintf(stderr, "%d\n", store->sviews[idx]->view->time);
+          fprintf(stderr, "%d\n",
+                  bgpwatcher_view_get_time(store->sviews[idx]->view));
         }
     }
 
@@ -905,18 +779,16 @@ int bgpwatcher_store_client_disconnect(bgpwatcher_store_t *store,
   return 0;
 }
 
-int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
-                                        bgpwatcher_pfx_table_t *table)
+bgpwatcher_view_t * bgpwatcher_store_get_view(bgpwatcher_store_t *store,
+                                              uint32_t time)
 {
-
   store_view_t *sview = NULL;
   int ret;
-
-  uint32_t truncated_time = (table->time / WDW_ITEM_TIME) * WDW_ITEM_TIME;
+  uint32_t truncated_time = (time / WDW_ITEM_TIME) * WDW_ITEM_TIME;
 
   if((ret = store_view_get(store, truncated_time, &sview)) < 0)
     {
-      return -1;
+      return NULL;
     }
 
   store_views_dump(store);
@@ -926,37 +798,43 @@ int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
       fprintf(stderr,
               "BGP Views for time %"PRIu32" have been already processed\n",
               truncated_time);
-      // signal to pfx row func that this table should be ignored
-      table->sview = NULL;
+      // signal to server that this table should be ignored
+      return NULL;
+    }
+
+  sview->state = STORE_VIEW_UNKNOWN;
+
+  return sview->view;
+}
+
+int bgpwatcher_store_view_updated(bgpwatcher_store_t *store,
+                                  bgpwatcher_view_t *view,
+                                  bgpwatcher_server_client_info_t *client)
+{
+  store_view_t * sview;
+  int i;
+
+  if(view == NULL)
+    {
       return 0;
     }
 
-  // cache a pointer to this view in the server's table
-  table->sview = sview;
+  sview = VIEW_GET_SVIEW(store, view);
+  assert(sview);
 
-  // get the list of peers associated with current pfx table
-  int remote_peer_id; // id assigned to (collector,peer) by remote process
-  bgpwatcher_peer_t* peer_info;
+  // add this client to the list of clients done
+  bgpstream_str_set_insert(sview->done_clients, client->name);
 
-  for(remote_peer_id = 0; remote_peer_id < table->peers_cnt; remote_peer_id++)
+  for(i = 0; i <= STORE_VIEW_STATE_MAX; i++)
     {
-      // get address to peer_info structure in current table
-      peer_info = &(table->peers[remote_peer_id]);
-      // set "static" (server) id assigned to (collector,peer) by current process
-      peer_info->server_id =
-        bgpstream_peer_sig_map_get_id(store->peersigns,
-                                      table->collector, &(peer_info->ip), peer_info->asn);
-      // send peer info to the appropriate bgp view
-
-      assert(sview->view->peersigns_shared != 0);
-
-      // add and cache the ap status (NULL if peer is inactive)
-      peer_info->ap_status = store_view_add_peer(sview, peer_info);
+      sview->dis_status[i].modified = 1;
     }
+
+  completion_check(store, sview, COMPLETION_TRIGGER_TABLE_END);
   return 0;
 }
 
-
+#if 0
 int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
                                       bgpwatcher_pfx_table_t *table,
                                       bgpstream_pfx_t *pfx,
@@ -1022,29 +900,7 @@ int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
 
   return 0;
 }
-
-
-int bgpwatcher_store_prefix_table_end(bgpwatcher_store_t *store,
-                                      bgpwatcher_server_client_info_t *client,
-                                      bgpwatcher_pfx_table_t *table)
-{
-  int ret;
-
-  if(table->sview == NULL)
-    {
-      // the view for this ts has been already removed
-      // ignore this message
-      return 0;
-    }
-
-  store_view_t * sview = (store_view_t*)table->sview;
-  if((ret = store_view_table_end(sview, client, table)) == 0)
-    {
-      completion_check(store, sview, COMPLETION_TRIGGER_TABLE_END);
-    }
-  table->sview = NULL; // we are done with this
-  return ret;
-}
+#endif
 
 int bgpwatcher_store_check_timeouts(bgpwatcher_store_t *store)
 {
@@ -1063,7 +919,7 @@ int bgpwatcher_store_check_timeouts(bgpwatcher_store_t *store)
           continue;
         }
 
-      if((time_now.tv_sec - sview->view->time_created.tv_sec)
+      if((time_now.tv_sec - bgpwatcher_view_get_time_created(sview->view))
          > BGPWATCHER_STORE_BGPVIEW_TIMEOUT)
         {
           if(completion_check(store, sview,
