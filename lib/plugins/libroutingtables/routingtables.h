@@ -80,9 +80,10 @@ typedef enum {
 
 /** Create a new routingtables instance
  *
+ * @param timeseries    pointer to an initialized timeseries instance
  * @return a pointer to a routingtables instance if successful, NULL otherwise
  */
-routingtables_t *routingtables_create();
+routingtables_t *routingtables_create(timeseries_t *timeseries);
 
 /** Set the metric prefix to be used for when outpting the time series
  *  variables at the end of the interval
@@ -159,12 +160,10 @@ int routingtables_interval_start(routingtables_t *rt,
  *  
  * @param rt            pointer to a routingtables instance to update
  * @param end_time      end of the interval in epoch time (bgp time)
- * @param timeseries    pointer to an initialized timeseries instance
  * @return 0 if the signal was processed correctly, <0 if an error occurred.
  */
 int routingtables_interval_end(routingtables_t *rt,
-                               int end_time,
-                               timeseries_t *timeseries);
+                               int end_time);
 
 /** Process the bgpstream record, i.e. use the information contained in the
  *  bgpstream record to update the current routing tables

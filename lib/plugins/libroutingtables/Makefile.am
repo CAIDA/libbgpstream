@@ -26,9 +26,10 @@ AM_CPPFLAGS = -I$(top_srcdir)/common
 
 noinst_LTLIBRARIES = libroutingtables.la
 
-libroutingtables_la_SOURCES = 	routingtables.h     \
-				routingtables_int.h  \
-				routingtables.c
+libroutingtables_la_SOURCES = 	routingtables.h         \
+				routingtables_int.h     \
+				routingtables.c         \
+				routingtables_metrics.c      
 
 # libroutingtables_la_LIBADD =
 

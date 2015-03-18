@@ -130,32 +130,60 @@ perpfx_perpeer_info_create(uint32_t bgp_time_last_ts,
   return pfxpeeri;
 }
 
+
+static void
+perpeer_info_destroy(void *p)
+{
+  if(p != NULL)
+    {
+      if(((perpeer_info_t *)p)->kp != NULL)
+        {
+          timeseries_kp_free(&((perpeer_info_t *)p)->kp);
+        }
+    }
+}
+
+
 static perpeer_info_t *
-perpeer_info_create(uint32_t peer_asnumber,
+perpeer_info_create(routingtables_t *rt,
+                    uint32_t peer_asnumber,
                     bgpstream_ip_addr_t *peer_ip,
                     bgpstream_elem_peerstate_t bgp_fsm_state,
                     uint32_t bgp_time_ref_rib_start, uint32_t bgp_time_ref_rib_end,
                     uint32_t bgp_time_uc_rib_start,  uint32_t bgp_time_uc_rib_end)
 {
   char ip_str[INET_ADDRSTRLEN];
-  perpeer_info_t *peeri = (perpeer_info_t *) malloc_zero(sizeof(perpeer_info_t));
-  if(peeri != NULL)
+  perpeer_info_t *peeri;
+  if((peeri = (perpeer_info_t *) malloc_zero(sizeof(perpeer_info_t))) == NULL)
     {
-      bgpstream_addr_ntop(ip_str, INET_ADDRSTRLEN, peer_ip);
-      graphite_safe(ip_str);  
-      if(snprintf(peeri->peer_str, BGPSTREAM_UTILS_STR_NAME_LEN,
-                  "%"PRIu32".%s", peer_asnumber, ip_str) >= BGPSTREAM_UTILS_STR_NAME_LEN)
-        {
-          fprintf(stderr, "Warning: could not print peer signature: truncated output\n");
-        }
-      peeri->bgp_fsm_state = bgp_fsm_state;
-      peeri->bgp_time_ref_rib_start = bgp_time_ref_rib_start;
-      peeri->bgp_time_ref_rib_end = bgp_time_ref_rib_end;
-      peeri->bgp_time_uc_rib_start = bgp_time_uc_rib_start;
-      peeri->bgp_time_uc_rib_end = bgp_time_uc_rib_end;
+      fprintf(stderr, "Error: can't create per-peer info\n");
+      goto err;
     }
+  bgpstream_addr_ntop(ip_str, INET_ADDRSTRLEN, peer_ip);
+  graphite_safe(ip_str);  
+  if(snprintf(peeri->peer_str, BGPSTREAM_UTILS_STR_NAME_LEN,
+              "%"PRIu32".%s", peer_asnumber, ip_str) >= BGPSTREAM_UTILS_STR_NAME_LEN)
+    {
+      fprintf(stderr, "Warning: could not print peer signature: truncated output\n");
+    }
+  peeri->bgp_fsm_state = bgp_fsm_state;
+  peeri->bgp_time_ref_rib_start = bgp_time_ref_rib_start;
+  peeri->bgp_time_ref_rib_end = bgp_time_ref_rib_end;
+  peeri->bgp_time_uc_rib_start = bgp_time_uc_rib_start;
+  peeri->bgp_time_uc_rib_end = bgp_time_uc_rib_end;
+
+  if((peeri->kp = timeseries_kp_init(rt->timeseries, 1)) == NULL)
+    {
+      fprintf(stderr, "Error: Could not create timeseries key package (for peer)\n");
+      goto err;
+    }
+  
   return peeri;
+ err:
+  perpeer_info_destroy(peeri);
+  return NULL;
 }
+
 
 /** @note:
  *  all the xxx_info_create functions do not allocate dynamic
@@ -163,9 +191,27 @@ perpeer_info_create(uint32_t peer_asnumber,
  *  is enough to dealloc safely their memory.
  */
 
+static void
+destroy_collector_data(collector_t * c)
+{
+  if(c != NULL)
+    {
+      if(c->collector_peerids != NULL)
+        {
+          kh_destroy(peer_id_set, c->collector_peerids);
+        }
+      c->collector_peerids = NULL;
+
+      if(c->kp != NULL)
+        {
+          timeseries_kp_free(&c->kp);
+        }
+    }
+}
+
 
 static collector_t *
-get_collector_data(collector_data_t *collectors, char *project, char *collector)
+get_collector_data(routingtables_t *rt, char *project, char *collector)
 {
   khiter_t k;
   int khret;
@@ -173,8 +219,8 @@ get_collector_data(collector_data_t *collectors, char *project, char *collector)
   
   // create new collector-related structures if it is the first time
   // we see it
-  if((k = kh_get(collector_data, collectors, collector))
-     == kh_end(collectors))
+  if((k = kh_get(collector_data, rt->collectors, collector))
+     == kh_end(rt->collectors))
     {
 
       // collector data initialization
@@ -192,10 +238,16 @@ get_collector_data(collector_data_t *collectors, char *project, char *collector)
         {
           fprintf(stderr, "Warning: could not print collector signature: truncated output\n");
         }
+
+      if((c_data.kp = timeseries_kp_init(rt->timeseries, 1)) == NULL)
+        {
+          fprintf(stderr, "Error: Could not create timeseries key package (for collector)\n");
+          goto err;
+        }
       
       if((c_data.collector_peerids = kh_init(peer_id_set)) == NULL)
         {
-          return NULL;
+          goto err;
         }
 
       c_data.bgp_time_last = 0;
@@ -206,11 +258,15 @@ get_collector_data(collector_data_t *collectors, char *project, char *collector)
       c_data.bgp_time_uc_rib_start_time = 0;
       c_data.state = ROUTINGTABLES_COLLECTOR_STATE_UNKNOWN;
       
-      k = kh_put(collector_data, collectors, strdup(collector), &khret);
-      kh_val(collectors,k) = c_data;
+      k = kh_put(collector_data, rt->collectors, strdup(collector), &khret);
+      kh_val(rt->collectors,k) = c_data;
     }
   
-  return &kh_val(collectors,k);
+  return &kh_val(rt->collectors,k);
+  
+ err:
+  destroy_collector_data(&c_data);
+  return NULL;
 }
 
 
@@ -603,7 +659,7 @@ apply_state_update(routingtables_t *rt, bgpstream_peer_id_t peer_id,
     {      
       /* peer does not exist, create */
       sg = bgpstream_peer_sig_map_get_sig(rt->peersigns, peer_id);
-      p = perpeer_info_create(sg->peer_asnumber, (bgpstream_ip_addr_t *) &sg->peer_ip_addr,
+      p = perpeer_info_create(rt, sg->peer_asnumber, (bgpstream_ip_addr_t *) &sg->peer_ip_addr,
                               new_state, ts, ts, 0, 0);
       bgpwatcher_view_add_peer(rt->view, sg->collector_str, (bgpstream_ip_addr_t *) &sg->peer_ip_addr, sg->peer_asnumber);
       bgpwatcher_view_iter_seek_peer(rt->iter, peer_id, BGPWATCHER_VIEW_FIELD_ALL_VALID);
@@ -690,7 +746,7 @@ apply_rib_message(routingtables_t *rt, bgpstream_peer_id_t peer_id,
     {
       /* the peer does not exist, we create it */  
       sg = bgpstream_peer_sig_map_get_sig(rt->peersigns, peer_id);
-      p = perpeer_info_create(sg->peer_asnumber, (bgpstream_ip_addr_t *) &sg->peer_ip_addr,
+      p = perpeer_info_create(rt, sg->peer_asnumber, (bgpstream_ip_addr_t *) &sg->peer_ip_addr,
                               BGPSTREAM_ELEM_PEERSTATE_UNKNOWN, 0, 0, ts, ts);
       bgpwatcher_view_add_peer(rt->view, sg->collector_str,
                                (bgpstream_ip_addr_t *) &sg->peer_ip_addr,
@@ -1026,10 +1082,19 @@ collector_process_corrupted_message(routingtables_t *rt,
 }
 
 
+#ifdef WITH_BGPWATCHER
+int
+routingtables_send_view(routingtables_t *rt)
+{
+  // @todo set view time to interval start!!!!!
+  return 0;
+}
+#endif
+
 
 /* ========== PUBLIC FUNCTIONS ========== */
 
-routingtables_t *routingtables_create()
+routingtables_t *routingtables_create(timeseries_t *timeseries)
 {  
   routingtables_t *rt = (routingtables_t *)malloc_zero(sizeof(routingtables_t));
   if(rt == NULL)
@@ -1045,7 +1110,7 @@ routingtables_t *routingtables_create()
   if((rt->view = bgpwatcher_view_create_shared(rt->peersigns,
                                                NULL /* view user destructor */,
                                                NULL /* pfx destructor */,
-                                               free /* peer user destructor */,
+                                               perpeer_info_destroy /* peer user destructor */,
                                                free /* pfxpeer user destructor */)) == NULL)
     {
       goto err;
@@ -1072,7 +1137,9 @@ routingtables_t *routingtables_create()
   rt->bgp_time_interval_start = 0;
   rt->bgp_time_interval_end = 0;
   rt->wall_time_interval_start = 0;
-    
+
+  rt->timeseries = timeseries;
+  
 #ifdef WITH_BGPWATCHER
   rt->watcher_tx_on = 0;
   rt->watcher_client = NULL;
@@ -1208,18 +1275,20 @@ int routingtables_interval_start(routingtables_t *rt,
 }
 
 int routingtables_interval_end(routingtables_t *rt,
-                               int end_time,
-                               timeseries_t *timeseries)
+                               int end_time)
 {
   rt->bgp_time_interval_end = (uint32_t) end_time;
   uint32_t elapsed_time = get_wall_time_now() - rt->wall_time_interval_start;
   fprintf(stderr, "Interval [%"PRIu32", %"PRIu32"] processed in %"PRIu32"s\n",
           rt->bgp_time_interval_start, rt->bgp_time_interval_end, elapsed_time);
 
-  /** @todo: print statistics and send the view to the watcher if tx is on */
+  // @todo check the return value of these functions
 
-  printf("%d - active peers: %"PRIu32"\n", end_time, bgpwatcher_view_peer_size(rt->view));
+  routingtables_dump_metrics(rt);
 
+#ifdef WITH_BGPWATCHER
+  routingtables_send_view(rt);
+#endif
   return 0;
 }
 
@@ -1231,7 +1300,7 @@ int routingtables_process_record(routingtables_t *rt,
   
   /* get a pointer to the current collector data, if no data
    * exists yet, a new structure will be created */
-  if((c = get_collector_data(rt->collectors,
+  if((c = get_collector_data(rt,
                              record->attributes.dump_project,
                              record->attributes.dump_collector)) == NULL)
     {
@@ -1299,8 +1368,7 @@ void routingtables_destroy(routingtables_t *rt)
               if (kh_exist(rt->collectors, k))
                 {
                   /* deallocating value dynamic memory */
-                  kh_destroy(peer_id_set, kh_val(rt->collectors, k).collector_peerids);
-                  kh_val(rt->collectors, k).collector_peerids = NULL;
+                  destroy_collector_data(&kh_val(rt->collectors, k));
                   /* deallocating string dynamic memory */
                   free(kh_key(rt->collectors, k));
                 }

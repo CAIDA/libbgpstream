@@ -237,7 +237,7 @@ int bgpcorsaro_routingtables_init_output(bgpcorsaro_t *bgpcorsaro)
     }
 
   /** initialize plugin custom variables */
-  if((state->routing_tables = routingtables_create()) == NULL)
+  if((state->routing_tables = routingtables_create(bgpcorsaro->timeseries)) == NULL)
     {
       bgpcorsaro_log(__func__, bgpcorsaro,
 		     "could not create routingtables in routingtables plugin");
@@ -395,7 +395,7 @@ int bgpcorsaro_routingtables_end_interval(bgpcorsaro_t *bgpcorsaro,
 		 int_end->number);
   
   /** plugin end of interval operations */
-  if(routingtables_interval_end(state->routing_tables, int_end->time, bgpcorsaro->timeseries) < 0)
+  if(routingtables_interval_end(state->routing_tables, int_end->time) < 0)
     {
       // an error occurred during the interval_end operations
       bgpcorsaro_log(__func__, bgpcorsaro, "could not end interval for %s plugin",

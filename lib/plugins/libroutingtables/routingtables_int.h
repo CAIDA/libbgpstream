@@ -97,6 +97,34 @@ typedef struct struct_perpfx_perpeer_info_t {
 } __attribute__((packed)) perpfx_perpeer_info_t;
 
 
+/** Indices of the peer metrics for a KP */
+typedef struct peer_metric_idx {
+
+  /* routing tables metrics */  
+
+  /* end of interval metrics */
+  uint32_t status_idx;
+  
+  uint32_t active_v4_pfxs_idx;
+  uint32_t inactive_v4_pfxs_idx;
+  uint32_t active_v6_pfxs_idx;
+  uint32_t inactive_v6_pfxs_idx;
+  uint32_t unique_origin_as_idx;
+  uint32_t avg_aspath_len_idx;
+
+  /* per interval metrics */
+  uint32_t affected_v4_pfxs_idx;
+  uint32_t affected_v6_pfxs_idx;
+  uint32_t announced_origin_as_idx;
+  
+  uint32_t rib_messages_cnt_idx;
+  uint32_t pfx_announcements_cnt_idx;
+  uint32_t pfx_withdrawal_cnt_idx;
+  uint32_t state_messages_cnt_idx;
+  
+} __attribute__((packed)) peer_metric_idx_t;
+
+
 /** Information about the current status 
  *  of a peer */
 typedef struct struct_perpeer_info_t {
@@ -133,9 +161,38 @@ typedef struct struct_perpeer_info_t {
    *  0 when the under construction process is off */
   uint32_t bgp_time_uc_rib_end;
 
+  /** Timeseries Key Package for the peer */
+  timeseries_kp_t *kp;
+
+  /** Indices of the peer metrics in the peer Key Package */
+  peer_metric_idx_t kp_idxs;
+
 } perpeer_info_t;
 
 
+/** Indices of the collector metrics for a KP */
+typedef struct collector_metric_idx {
+  
+  /* performance monitoring metrics */  
+  uint32_t realtime_delay_idx;
+
+  /* routing tables metrics */  
+  uint32_t status_idx;
+  uint32_t active_peers_cnt_idx;
+  
+  uint32_t unique_v4_pfxs_idx;
+  uint32_t unique_v6_pfxs_idx;
+  uint32_t unique_origin_as_idx;
+
+  uint32_t affected_v4_pfxs_idx;
+  uint32_t affected_v6_pfxs_idx;
+  uint32_t announced_origin_as_idx;
+  
+  uint32_t valid_record_cnt_idx;
+  uint32_t corrupted_record_cnt_idx;
+  uint32_t empty_record_cnt_idx;
+  
+} __attribute__((packed)) collector_metric_idx_t;
 
 /** A set that contains a unique set of peer ids */
 KHASH_INIT(peer_id_set, uint32_t, char, 0, kh_int_hash_func, kh_int_hash_equal);
@@ -176,6 +233,12 @@ typedef struct struct_collector_t {
 
   /** Current status of the collector */
   collector_state_t state;
+
+  /** Timeseries Key Package for the collector */
+  timeseries_kp_t *kp;
+
+  /** Indices of the collector metrics in the collector Key Package */
+  collector_metric_idx_t kp_idxs;
 
 } collector_t;
 
@@ -228,6 +291,9 @@ struct struct_routingtables_t {
    *  an interval_start signal */
   uint32_t wall_time_interval_start;
 
+  /** a borrowed pointer for timeseries */
+  timeseries_t *timeseries;
+  
   /** @todo add other state variables here */
   
 #ifdef WITH_BGPWATCHER
@@ -245,6 +311,32 @@ struct struct_routingtables_t {
   
 };
 
+/** Read the view in the current routingtables instance and populate
+ *  the metrics to be sent to the active timeseries back-ends
+ *  
+ * @param rt            pointer to a routingtables instance to read
+ * @param timeseries    pointer to an initialized timeseries instance
+ * @return 0 if the metrics were dumped correctly, <0 if an error occurred.
+ */
+int
+routingtables_dump_metrics(routingtables_t *rt);
+
+
+/** Generate the metrics associated to a specific peer
+ *  
+ * @param p             pointer to a peer user pointer
+ * @return 0 if the metrics were generated correctly, <0 if an error occurred.
+ */
+int
+peer_generate_metrics(perpeer_info_t *p);
+
+/** Generate the metrics associated to a specific collector
+ *  
+ * @param c             pointer to a collector structure
+ * @return 0 if the metrics were generated correctly, <0 if an error occurred.
+ */
+int
+collector_generate_metrics(collector_t *c);
 
 #endif /* __ROUTINGTABLES_INT_H */
 
