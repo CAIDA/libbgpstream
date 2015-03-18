@@ -475,12 +475,20 @@ static int recv_pfxs(void *src, bgpwatcher_view_iter_t *iter,
 	  DESERIALIZE_VAL(orig_asn);
 	  orig_asn = ntohl(orig_asn);
 
+          if(iter == NULL)
+            {
+              continue;
+            }
+          /* all code below here has a valid iter */
+
+          assert(peerid < peerid_map_cnt);
+
           if(j == 0)
             {
               /* we have to use add_pfx_peer */
               if(bgpwatcher_view_iter_add_pfx_peer(iter,
                                                    (bgpstream_pfx_t *)&pfx,
-                                                   peerid,
+                                                   peerid_map[peerid],
                                                    orig_asn) != 0)
                 {
                   fprintf(stderr, "Could not add prefix\n");
@@ -491,7 +499,7 @@ static int recv_pfxs(void *src, bgpwatcher_view_iter_t *iter,
             {
               /* we can use pfx_add_peer for efficiency */
               if(bgpwatcher_view_iter_pfx_add_peer(iter,
-                                                   peerid,
+                                                   peerid_map[peerid],
                                                    orig_asn) != 0)
                 {
                   fprintf(stderr, "Could not add prefix\n");
@@ -656,6 +664,12 @@ static int recv_peers(void *src, bgpwatcher_view_iter_t *iter,
 	}
       ps.peer_asnumber = ntohl(ps.peer_asnumber);
 
+      if(iter == NULL)
+        {
+          continue;
+        }
+      /* all code below here has a valid view */
+
       /* ensure we have enough space in the id map */
       if((peerid_orig+1) > idmap_cnt)
         {
@@ -749,7 +763,7 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
   int peerid_map_cnt = 0;
 
   bgpwatcher_view_iter_t *it = NULL;
-  if((it = bgpwatcher_view_iter_create(view)) == NULL)
+  if(view != NULL && (it = bgpwatcher_view_iter_create(view)) == NULL)
     {
       goto err;
     }
@@ -760,7 +774,10 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
       fprintf(stderr, "Could not receive 'time'\n");
       goto err;
     }
-  bgpwatcher_view_set_time(view, ntohl(u32));
+  if(view != NULL)
+    {
+      bgpwatcher_view_set_time(view, ntohl(u32));
+    }
   ASSERT_MORE;
 
   if((peerid_map_cnt = recv_peers(src, it, &peerid_map)) < 0)
@@ -789,12 +806,6 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
   return 0;
 
  err:
-  return -1;
-}
-
-int bgpwatcher_view_recv_discard(void *src)
-{
-  assert(0);
   return -1;
 }
 

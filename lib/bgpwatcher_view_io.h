@@ -38,14 +38,4 @@ int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view);
  */
 int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view);
 
-/** Receive and immediately discard a view from the given socket
- *
- * @param src           socket to receive on
- * @return 0 if a view was succesfully discarded, -1 otherwise
- *
- * This function will perform better than receiving into a real view and then
- * discarding the view.
- */
-int bgpwatcher_view_recv_discard(void *src);
-
 #endif /* __BGPWATCHER_VIEW_IO_H */

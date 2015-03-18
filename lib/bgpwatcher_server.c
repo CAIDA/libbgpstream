@@ -362,21 +362,12 @@ static int handle_recv_view(bgpwatcher_server_t *server,
 #endif
 
   /* ask the store for a pointer to the view to recieve into */
-  if((view = bgpwatcher_store_get_view(server->store, view_time)) == NULL)
+  view = bgpwatcher_store_get_view(server->store, view_time);
+
+  /* receive the view */
+  if(bgpwatcher_view_recv(server->client_socket, view) != 0)
     {
-      /* means that this view should be discarded */
-      if(bgpwatcher_view_recv_discard(server->client_socket) != 0)
-        {
-          goto err;
-        }
-    }
-  else
-    {
-      /* receive the view */
-      if(bgpwatcher_view_recv(server->client_socket, view) != 0)
-        {
-          goto err;
-        }
+      goto err;
     }
 
   DUMP_METRIC(zclock_time()/1000-view_time,
