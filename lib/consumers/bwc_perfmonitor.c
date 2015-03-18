@@ -182,8 +182,8 @@ int bwc_perfmonitor_process_view(bwc_t *consumer, uint8_t interests,
 {
   // view arrival delay, i.e. now - table ts
   
-  DUMP_METRIC(zclock_time()/1000- bgpwatcher_view_time(view),
-              bgpwatcher_view_time(view),
+  DUMP_METRIC(zclock_time()/1000- bgpwatcher_view_get_time(view),
+              bgpwatcher_view_get_time(view),
 	      "%s", "view_arrival_delay");
 
   
@@ -209,23 +209,29 @@ int bwc_perfmonitor_process_view(bwc_t *consumer, uint8_t interests,
       bgpwatcher_view_iter_next_peer(it))
     {
       /* grab the peer id */
-      sig = bgpwatcher_view_iter_peer_get_sign(it);
+      sig = bgpwatcher_view_iter_peer_get_sig(it);
       assert(sig != NULL);
-      pfx4_cnt = bgpwatcher_view_iter_peer_get_pfx_count(it,BGPSTREAM_ADDR_VERSION_IPV4);
-      pfx6_cnt = bgpwatcher_view_iter_peer_get_pfx_count(it,BGPSTREAM_ADDR_VERSION_IPV6);
+      pfx4_cnt =
+        bgpwatcher_view_iter_peer_get_pfx_cnt(it,
+                                              BGPSTREAM_ADDR_VERSION_IPV4,
+                                              BGPWATCHER_VIEW_FIELD_ACTIVE);
+      pfx6_cnt =
+        bgpwatcher_view_iter_peer_get_pfx_cnt(it,
+                                              BGPSTREAM_ADDR_VERSION_IPV6,
+                                              BGPWATCHER_VIEW_FIELD_ACTIVE);
 
       bgpstream_addr_ntop(addr, INET6_ADDRSTRLEN, &(sig->peer_ip_addr));
       graphite_safe(addr);
       DUMP_METRIC(peer_on,
-		  bgpwatcher_view_time(view),
+		  bgpwatcher_view_get_time(view),
 		  "peers.%s.%s.peer_on", sig->collector_str, addr);
 
       DUMP_METRIC(pfx4_cnt,
-		  bgpwatcher_view_time(view),
+		  bgpwatcher_view_get_time(view),
 		  "peers.%s.%s.ipv4_cnt", sig->collector_str, addr);
 
       DUMP_METRIC(pfx6_cnt,
-		  bgpwatcher_view_time(view),
+		  bgpwatcher_view_get_time(view),
 		  "peers.%s.%s.ipv6_cnt", sig->collector_str, addr);      
     }
 

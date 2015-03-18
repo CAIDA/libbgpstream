@@ -403,7 +403,7 @@ int main(int argc, char **argv)
       if(bw_consumer_manager_process_view(manager, rx_interests, view) != 0)
 	{
 	  fprintf(stderr, "ERROR: Failed to process view at %d\n",
-		  bgpwatcher_view_time(view));
+		  bgpwatcher_view_get_time(view));
 	  goto err;
 	}
 
