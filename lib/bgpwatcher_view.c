@@ -614,6 +614,8 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
     }
   view->peerinfo_cnt[BGPWATCHER_VIEW_FIELD_INACTIVE] = 0;
   view->peerinfo_cnt[BGPWATCHER_VIEW_FIELD_ACTIVE] = 0;
+
+  bgpwatcher_view_iter_destroy(lit);
 }
 
 /* ==================== SIMPLE ACCESSOR FUNCTIONS ==================== */
@@ -1631,6 +1633,7 @@ bgpwatcher_view_iter_deactivate_peer(bgpwatcher_view_iter_t *iter)
               bgpwatcher_view_iter_pfx_deactivate_peer(lit);
             }
         }
+      bgpwatcher_view_iter_destroy(lit);
     }
 
   /* mark as inactive */

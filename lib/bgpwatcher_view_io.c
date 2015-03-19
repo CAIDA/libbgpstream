@@ -803,9 +803,18 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
 
   assert(zsocket_rcvmore(src) == 0);
 
+  if(it != NULL)
+    {
+      bgpwatcher_view_iter_destroy(it);
+    }
+
   return 0;
 
  err:
+  if(it != NULL)
+    {
+      bgpwatcher_view_iter_destroy(it);
+    }
   return -1;
 }
 
