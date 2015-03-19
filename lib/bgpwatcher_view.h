@@ -174,6 +174,19 @@ bgpwatcher_view_destroy(bgpwatcher_view_t *view);
 void
 bgpwatcher_view_clear(bgpwatcher_view_t *view);
 
+/** Garbage collect a view
+ *
+ * @param view          view to garbage collect on
+ *
+ * This function frees memory marked as unused either by the
+ * bgpwatcher_view_clear or the various *_remove_* functions.
+ *
+ * @note at this point, any user data stored in unused portions of the view will
+ * be freed using the appropriate destructor.
+ */
+void
+bgpwatcher_view_gc(bgpwatcher_view_t *view);
+
 /** Dump the given BGP View to stdout
  *
  * @param view        pointer to a view structure

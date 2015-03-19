@@ -659,6 +659,49 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
   bgpwatcher_view_iter_destroy(lit);
 }
 
+void
+bgpwatcher_view_gc(bgpwatcher_view_t *view)
+{
+  int k;
+
+  /* note: in the current implementation we cant free pfx-peers for pfxs that
+     are not invalid as this is just an array of peers. */
+
+  for(k = kh_begin(view->v4pfxs); k < kh_end(view->v4pfxs); ++k)
+    {
+      if(kh_exist(view->v4pfxs, k) &&
+         kh_value(view->v4pfxs, k)->state == BGPWATCHER_VIEW_FIELD_INVALID)
+        {
+          peerid_pfxinfo_destroy(view, kh_value(view->v4pfxs, k));
+          kh_del(bwv_v4pfx_peerid_pfxinfo, view->v4pfxs, k);
+        }
+    }
+
+    for(k = kh_begin(view->v6pfxs); k < kh_end(view->v6pfxs); ++k)
+    {
+      if(kh_exist(view->v6pfxs, k) &&
+         kh_value(view->v6pfxs, k)->state == BGPWATCHER_VIEW_FIELD_INVALID)
+        {
+          peerid_pfxinfo_destroy(view, kh_value(view->v6pfxs, k));
+          kh_del(bwv_v6pfx_peerid_pfxinfo, view->v6pfxs, k);
+        }
+    }
+
+    for(k = kh_begin(view->peerinfo); k < kh_end(view->peerinfo); ++k)
+    {
+      if(kh_exist(view->peerinfo, k) &&
+         kh_value(view->peerinfo, k).state == BGPWATCHER_VIEW_FIELD_INVALID)
+        {
+          if(view->peer_user_destructor != NULL &&
+             kh_value(view->peerinfo, k).user != NULL)
+            {
+              view->peer_user_destructor(kh_value(view->peerinfo, k).user);
+            }
+          kh_del(bwv_peerid_peerinfo, view->peerinfo, k);
+        }
+    }
+}
+
 /* ==================== SIMPLE ACCESSOR FUNCTIONS ==================== */
 
 #define RETURN_CNT_BY_MASK(counter, mask)				\
