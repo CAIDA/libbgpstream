@@ -222,7 +222,6 @@ static void peers_dump(bgpwatcher_view_t *view,
         bgpwatcher_view_iter_peer_get_pfx_cnt(it,
                                               BGPSTREAM_ADDR_VERSION_IPV6,
                                               BGPWATCHER_VIEW_FIELD_ACTIVE);
-      fprintf(stderr, "v6pfxs: %d\n", v6pfx_cnt);
       assert(v6pfx_cnt >= 0);
 
       inet_ntop(ps->peer_ip_addr.version, &(ps->peer_ip_addr.ipv4),
