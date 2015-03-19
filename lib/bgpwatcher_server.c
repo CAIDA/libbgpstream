@@ -219,8 +219,8 @@ static void clients_remove(bgpwatcher_server_t *server,
 			   bgpwatcher_server_client_t *client)
 {
   khiter_t khiter;
-  if((khiter =
-      kh_get(strclient, server->clients, client->id)) == kh_end(server->clients))
+  if((khiter = kh_get(strclient, server->clients, client->hexid)) ==
+     kh_end(server->clients))
     {
       /* already removed? */
       fprintf(stderr, "WARN: Removing non-existent client\n");
