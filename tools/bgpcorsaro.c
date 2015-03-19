@@ -63,6 +63,12 @@ struct window {
   char *end;
 };
 
+/* default gap limit */
+#define GAP_LIMIT_DEFAULT 0
+
+/** Maximum allowed packet inter-arrival time */
+static int gap_limit = GAP_LIMIT_DEFAULT;
+
 /** Indicates that Bgpcorsaro is waiting to shutdown */
 volatile sig_atomic_t bgpcorsaro_shutdown = 0;
 
@@ -165,6 +171,7 @@ static void usage()
   fprintf(stderr,
 	  "   -d datasource  select the bgpstream datasource (default: mysql)\n"
 	  "   -a             align the end time of the first interval\n"
+          "   -g <gap-limit> maximum allowed gap between packets (0 is no limit) (default: %d)\n"
 	  "   -B             make blocking requests for BGP records\n"
 	  "                  allows bgpcorsaro to be used to process data in real-time\n"
 	  "   -C <collector> process records from only the given collector*\n"
@@ -178,7 +185,8 @@ static void usage()
 	  "                   - see man strftime(3) for more options\n"
 	  "   -p <plugin>    enable the given plugin (default: all)*\n"
 	  "                   available plugins:\n",
-	  BGPCORSARO_INTERVAL_DEFAULT);
+	  GAP_LIMIT_DEFAULT,
+          BGPCORSARO_INTERVAL_DEFAULT);
 
   for(i = 0; i < plugin_cnt; i++)
     {
@@ -209,6 +217,8 @@ int main(int argc, char *argv[])
   char *name = NULL;
   int i = 0;
   int interval = -1000;
+  double this_time = 0;
+  double last_time = 0;
   char *plugins[BGPCORSARO_PLUGIN_ID_MAX];
   int plugin_cnt = 0;
   char *plugin_arg_ptr = NULL;
@@ -253,7 +263,7 @@ int main(int argc, char *argv[])
     }
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":b:d:C:i:n:o:p:P:r:R:T:W:aBLv?")) >= 0)
+	(opt = getopt(argc, argv, ":b:g:d:C:i:n:o:p:P:r:R:T:W:aBLv?")) >= 0)
     {
       if (optind == prevoptind + 2 && (optarg == NULL || *optarg == '-') ) {
         opt = ':';
@@ -265,6 +275,10 @@ int main(int argc, char *argv[])
         case 'b':
 	  backends[backends_cnt++] = strdup(optarg);
 	  break;
+
+        case 'g':
+          gap_limit = atoi(optarg);
+          break;
 
 	case 'd':
 	  if(datasource_set == 1)
@@ -631,6 +645,20 @@ int main(int argc, char *argv[])
 	continue;
       }
 
+    /* check the gap limit is not exceeded */
+    this_time = record->attributes.record_time;
+    if(gap_limit > 0 && /* gap limit is enabled */
+       last_time > 0 && /* this is not the first packet */
+       ((this_time-last_time) > 0) && /* packet doesn't go backward */
+       (this_time - last_time) > gap_limit) /* packet exceeds gap */
+      {
+        bgpcorsaro_log(__func__, bgpcorsaro,
+                       "gap limit exceeded (prev: %f this: %f diff: %f)",
+                       last_time, this_time, (this_time - last_time));
+        return -1;
+      }
+    last_time = this_time;
+    
     /*bgpcorsaro_log(__func__, bgpcorsaro, "got a record!");*/
     if(bgpcorsaro_per_record(bgpcorsaro, record) != 0)
       {
