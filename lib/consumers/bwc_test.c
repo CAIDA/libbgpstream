@@ -307,6 +307,72 @@ int bwc_test_process_view(bwc_t *consumer, uint8_t interests,
   // dump view after random peer deactivation
   fprintf(stderr,"Deactivated %d peers\n", d);
   bgpwatcher_view_dump(view);
+
+
+
+  // TEST REMOVE
+    // TEST: check pfx-peers iterator and remove
+  d = 0;
+  for(bgpwatcher_view_iter_first_pfx_peer(it, BGPSTREAM_ADDR_VERSION_IPV4,
+                                          BGPWATCHER_VIEW_FIELD_ACTIVE,
+                                          BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_has_more_pfx_peer(it);
+      bgpwatcher_view_iter_next_pfx_peer(it))
+    {
+      // TEST: memory is correct
+      /* fprintf(stderr, "Peer id: %d, %d\n", */
+      /*         *(int *)bgpwatcher_view_iter_peer_get_user(it), */
+      /*         *(int *)bgpwatcher_view_iter_pfx_peer_get_user(it)); */
+      if(rand()%10 > 5)
+        {
+          bgpwatcher_view_iter_pfx_remove_peer(it);
+          d++;
+        }
+    }
+
+  // dump view after random pfx-peer deactivation
+  fprintf(stderr,"Removed %d pfx-peers\n", d);
+  bgpwatcher_view_dump(view);
+
+  // TEST: check pfx iterator and remove
+  /* d = 0; */
+  /* for(bgpwatcher_view_iter_first_pfx(it, BGPSTREAM_ADDR_VERSION_IPV4, */
+  /*                                    BGPWATCHER_VIEW_FIELD_ALL_VALID); */
+  /*     bgpwatcher_view_iter_has_more_pfx(it); */
+  /*     bgpwatcher_view_iter_next_pfx(it)) */
+  /*   { */
+  /*     if(rand()%10 > 5) */
+  /*       { */
+  /*         bgpwatcher_view_iter_remove_pfx(it); */
+  /*         d++; */
+  /*       } */
+  /*   } */
+
+  /* // dump view after random pfx deactivation */
+  /* fprintf(stderr,"Removed %d pfxs\n", d); */
+  /* bgpwatcher_view_dump(view); */
+
+  // TEST: check peer iterator and remove
+  d = 0;
+  for(bgpwatcher_view_iter_first_peer(it, BGPWATCHER_VIEW_FIELD_ALL_VALID);
+      bgpwatcher_view_iter_has_more_peer(it);
+      bgpwatcher_view_iter_next_peer(it))
+    {
+      if(rand()%10 > 5)
+        {
+          bgpwatcher_view_iter_remove_peer(it);
+          d++;
+        }
+    }
+
+  // dump view after random peer deactivation
+  fprintf(stderr,"Removed %d peers\n", d);
+  bgpwatcher_view_dump(view);
+
+  // garbage collect the view
+  fprintf(stderr, "Running garbage collector\n");
+  bgpwatcher_view_gc(view);
+  bgpwatcher_view_dump(view);
   
   // TEST: bgpview clear
   /* bgpwatcher_view_clear(view); */
