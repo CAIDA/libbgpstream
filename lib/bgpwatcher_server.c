@@ -58,11 +58,10 @@ static void client_free(bgpwatcher_server_client_t **client_p)
 
   zmq_msg_close(&client->identity);
 
-  if(client->id != NULL)
-    {
-      free(client->id);
-      client->id = NULL;
-    }
+  free(client->id);
+  client->id = NULL;
+  free(client->hexid);
+  client->hexid = NULL;
 
   free(client);
 
@@ -152,6 +151,9 @@ static bgpwatcher_server_client_t *client_init(bgpwatcher_server_t *server,
     }
   zmq_msg_close(id_msg);
 
+  client->hexid = msg_strhex(&client->identity);
+  assert(client->hexid);
+
   if(msg_isbinary(&client->identity) != 0)
     {
       client->id = msg_strhex(&client->identity);
@@ -170,7 +172,7 @@ static bgpwatcher_server_client_t *client_init(bgpwatcher_server_t *server,
   client->info.name = client->id;
 
   /* insert client into the hash */
-  khiter = kh_put(strclient, server->clients, client->id, &khret);
+  khiter = kh_put(strclient, server->clients, client->hexid, &khret);
   if(khret == -1)
     {
       goto err;
@@ -217,8 +219,8 @@ static void clients_remove(bgpwatcher_server_t *server,
 			   bgpwatcher_server_client_t *client)
 {
   khiter_t khiter;
-  if((khiter =
-      kh_get(strclient, server->clients, client->id)) == kh_end(server->clients))
+  if((khiter = kh_get(strclient, server->clients, client->hexid)) ==
+     kh_end(server->clients))
     {
       /* already removed? */
       fprintf(stderr, "WARN: Removing non-existent client\n");
