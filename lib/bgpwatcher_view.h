@@ -719,7 +719,7 @@ bgpwatcher_view_iter_pfx_set_user(bgpwatcher_view_iter_t *iter, void *user);
  *         the peers.
  */
 bgpstream_peer_id_t
-bgpwatcher_view_iter_peer_get_peer(bgpwatcher_view_iter_t *iter);
+bgpwatcher_view_iter_peer_get_peer_id(bgpwatcher_view_iter_t *iter);
 
 /** Get the peer signature for the current peer id
  *

@@ -217,7 +217,7 @@ static void find_ff_peers(bwc_t *consumer, bgpwatcher_view_iter_t *it)
       bgpwatcher_view_iter_next_peer(it))
     {
       /* grab the peer id */
-      peerid = bgpwatcher_view_iter_peer_get_peer(it);
+      peerid = bgpwatcher_view_iter_peer_get_peer_id(it);
 
       pfx_cnt =
         bgpwatcher_view_iter_peer_get_pfx_cnt(it,
