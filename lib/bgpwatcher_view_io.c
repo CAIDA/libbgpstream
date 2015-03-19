@@ -807,6 +807,8 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
       bgpwatcher_view_iter_destroy(it);
     }
 
+  free(peerid_map);
+
   return 0;
 
  err:
@@ -814,6 +816,7 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
     {
       bgpwatcher_view_iter_destroy(it);
     }
+  free(peerid_map);
   return -1;
 }
 
