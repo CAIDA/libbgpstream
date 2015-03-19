@@ -449,7 +449,7 @@ static int add_v6pfx(bgpwatcher_view_iter_t *iter,
       return 0;
     }
 
-  kh_value(iter->view->v4pfxs, k)->state = BGPWATCHER_VIEW_FIELD_INACTIVE;
+  kh_value(iter->view->v6pfxs, k)->state = BGPWATCHER_VIEW_FIELD_INACTIVE;
   iter->view->v6pfxs_cnt[BGPWATCHER_VIEW_FIELD_INACTIVE]++;
 
   return 0;

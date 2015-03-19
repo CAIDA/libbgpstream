@@ -331,7 +331,7 @@ static int send_pfxs(void *dest, bgpwatcher_view_iter_t *it)
   int peers_cnt = 0;
 
   /* pfx cnt */
-  u32 = htonl(bgpwatcher_view_v4pfx_cnt(view, BGPWATCHER_VIEW_FIELD_ACTIVE));
+  u32 = htonl(bgpwatcher_view_pfx_cnt(view, BGPWATCHER_VIEW_FIELD_ACTIVE));
   if(zmq_send(dest, &u32, sizeof(u32), ZMQ_SNDMORE) != sizeof(u32))
     {
       goto err;
@@ -789,7 +789,7 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
   /* pfxs */
   if(recv_pfxs(src, it, peerid_map, peerid_map_cnt) != 0)
     {
-      fprintf(stderr, "Could not receive v4 prefixes\n");
+      fprintf(stderr, "Could not receive prefixes\n");
       goto err;
     }
   ASSERT_MORE;
