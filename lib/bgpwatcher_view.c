@@ -1613,7 +1613,7 @@ bgpwatcher_view_iter_deactivate_peer(bgpwatcher_view_iter_t *iter)
   /* only do the massive work of deactivating all pfx-peers if this peer has any
      active pfxs */
   if(bgpwatcher_view_iter_peer_get_pfx_cnt(iter, 0,
-                                           BGPWATCHER_VIEW_FIELD_ALL_VALID) > 0)
+                                           BGPWATCHER_VIEW_FIELD_ACTIVE) > 0)
     {
       lit = bgpwatcher_view_iter_create(iter->view);
       assert(lit != NULL);
