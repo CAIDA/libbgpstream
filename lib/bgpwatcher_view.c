@@ -644,6 +644,14 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
     {
       kh_value(view->peerinfo, lit->peer_it).state =
         BGPWATCHER_VIEW_FIELD_INVALID;
+      kh_value(view->peerinfo, lit->peer_it)
+        .v4_pfx_cnt[BGPWATCHER_VIEW_FIELD_INACTIVE] = 0;
+      kh_value(view->peerinfo, lit->peer_it)
+        .v4_pfx_cnt[BGPWATCHER_VIEW_FIELD_ACTIVE] = 0;
+      kh_value(view->peerinfo, lit->peer_it)
+        .v6_pfx_cnt[BGPWATCHER_VIEW_FIELD_INACTIVE] = 0;
+      kh_value(view->peerinfo, lit->peer_it)
+        .v6_pfx_cnt[BGPWATCHER_VIEW_FIELD_ACTIVE] = 0;
     }
   view->peerinfo_cnt[BGPWATCHER_VIEW_FIELD_INACTIVE] = 0;
   view->peerinfo_cnt[BGPWATCHER_VIEW_FIELD_ACTIVE] = 0;
