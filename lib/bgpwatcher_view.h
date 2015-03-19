@@ -573,7 +573,7 @@ bgpwatcher_view_iter_seek_pfx_peer(bgpwatcher_view_iter_t *iter,
 /** @} */
 
 /**
- * @name View Iterator Create Functions
+ * @name View Iterator Add/Remove Functions
  *
  * @{ */
 
@@ -599,6 +599,24 @@ bgpwatcher_view_iter_add_peer(bgpwatcher_view_iter_t *iter,
                               bgpstream_ip_addr_t *peer_address,
                               uint32_t peer_asnumber);
 
+/** Remove the current peer from the BGP Watcher view
+ *
+ * @param iter             pointer to a view iterator
+ * @return 0 if the peer was removed successfully, -1 otherwise
+ *
+ * @note for efficiency, this function may not actually free the memory
+ * associated with the peer. If memory should be reclaimed, run the
+ * bgpwatcher_view_gc function after removals are complete.
+ *
+ * After removing a peer, the provided iterator will be advanced to the next
+ * peer that matches the current iterator configuration, or will be invalidated
+ * if there are no more peers.
+ *
+ * If the peer is currently active, it will be deactivated prior to removal.
+ */
+int
+bgpwatcher_view_iter_remove_peer(bgpwatcher_view_iter_t *iter);
+
 /** Insert a new pfx-peer information in the BGP Watcher view
  *
  * @param iter             pointer to a view iterator
@@ -620,6 +638,25 @@ bgpwatcher_view_iter_add_pfx_peer(bgpwatcher_view_iter_t *iter,
                                   bgpstream_peer_id_t peer_id,
                                   uint32_t origin_asn);
 
+/** Remove the current pfx currently referenced by the given iterator
+ *
+ * @param iter             pointer to a view iterator
+ * @return 0 if the pfx was removed successfully, -1 otherwise
+ *
+ * @note for efficiency, this function may not actually free the memory
+ * associated with the pfx. If memory should be reclaimed, run the
+ * bgpwatcher_view_gc function after removals are complete.
+ *
+ * After removing a pfx, the provided iterator will be advanced to the next pfx
+ * that matches the current iterator configuration, or will be invalidated if
+ * there are no more pfxs.
+ *
+ * If the pfx is currently active, it will be deactivated prior to removal (thus
+ * deactivating and removing all associated pfx-peers).
+ */
+int
+bgpwatcher_view_iter_remove_pfx(bgpwatcher_view_iter_t *iter);
+
 /** Insert a new peer info into the currently iterated pfx
  *
  * @param iter             pointer to a view iterator
@@ -637,6 +674,29 @@ int
 bgpwatcher_view_iter_pfx_add_peer(bgpwatcher_view_iter_t *iter,
                                   bgpstream_peer_id_t peer_id,
                                   uint32_t origin_asn);
+
+/** Remove the current peer from the current prefix currently referenced by the
+ * given iterator
+ *
+ * @param iter             pointer to a view iterator
+ * @return 0 if the pfx-peer was removed successfully, -1 otherwise
+ *
+ * @note for efficiency, this function may not actually free the memory
+ * associated with the pfx-peer. If memory should be reclaimed, run the
+ * bgpwatcher_view_gc function after removals are complete.
+ *
+ * After removing a pfx-peer, the provided iterator will be advanced to the next
+ * pfx-peer that matches the current iterator configuration, or will be
+ * invalidated if there are no more pfx-peers.
+ *
+ * If the pfx-peer is currently active, it will be deactivated prior to
+ * removal.
+ *
+ * If this is the last pfx-peer for the current pfx, the pfx will also be
+ * removed.
+ */
+int
+bgpwatcher_view_iter_pfx_remove_peer(bgpwatcher_view_iter_t *iter);
 
 /** @} */
 
