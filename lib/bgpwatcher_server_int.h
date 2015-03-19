@@ -73,6 +73,9 @@ typedef struct bgpwatcher_server_client {
   /** Identity frame data that the client sent us */
   zmq_msg_t identity;
 
+  /** Hex id of the client (may be the same as the printable ID */
+  char *hexid;
+
   /** Printable ID of client (for debugging and logging) */
   char *id;
 
