@@ -811,7 +811,6 @@ collector_process_valid_bgpinfo(routingtables_t *rt,
                                 collector_t *c,
                                 bgpstream_record_t *record)
 {
-  int ret;
   bgpstream_elem_t *elem;
   bgpstream_peer_id_t peer_id;
   perpeer_info_t *p;  
@@ -873,21 +872,33 @@ collector_process_valid_bgpinfo(routingtables_t *rt,
       if(elem->type == BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT || elem->type == BGPSTREAM_ELEM_TYPE_WITHDRAWAL)
         {
           /* update involving a single prefix */
-          ret = apply_prefix_update(rt, c, peer_id, elem, record->attributes.record_time);          
+          if(apply_prefix_update(rt, c, peer_id, elem,
+                                 record->attributes.record_time) != 0)
+            {
+              return -1;
+            }
         }
       else
         {
           if(elem->type == BGPSTREAM_ELEM_TYPE_PEERSTATE)
             {
               /* update involving an entire peer */
-              ret = apply_state_update(rt, c, peer_id, elem->new_state, record->attributes.record_time);
+              if(apply_state_update(rt, c, peer_id, elem->new_state,
+                                    record->attributes.record_time) != 0)
+                {
+                  return -1;
+                }
             }
           else
             {
               if(elem->type == BGPSTREAM_ELEM_TYPE_RIB)
                 {
                   /* apply the rib message */
-                  apply_rib_message(rt, c, peer_id, elem, record->attributes.record_time);
+                  if(apply_rib_message(rt, c, peer_id, elem,
+                                       record->attributes.record_time) != 0)
+                    {
+                      return -1;
+                    }
                 }
               else
                 {
