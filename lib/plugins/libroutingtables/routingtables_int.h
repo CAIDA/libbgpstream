@@ -94,6 +94,14 @@ typedef struct struct_perpfx_perpeer_info_t {
    *  construction RIB */
   uint32_t uc_origin_asn;  
 
+  /* number of announcements received for this
+   * prefix during the current interval */
+  uint16_t announcements;
+
+  /* number of withdrawals received for this
+   * prefix during the current interval */
+  uint16_t withdrawals;
+  
 } __attribute__((packed)) perpfx_perpeer_info_t;
 
 
@@ -119,7 +127,7 @@ typedef struct peer_metric_idx {
   
   uint32_t rib_messages_cnt_idx;
   uint32_t pfx_announcements_cnt_idx;
-  uint32_t pfx_withdrawal_cnt_idx;
+  uint32_t pfx_withdrawals_cnt_idx;
   uint32_t state_messages_cnt_idx;
   
 } __attribute__((packed)) peer_metric_idx_t;
@@ -166,6 +174,30 @@ typedef struct struct_perpeer_info_t {
 
   /** Indices of the peer metrics in the peer Key Package */
   peer_metric_idx_t kp_idxs;
+
+  /** Number of rib messages received in the current
+   * interval */  
+  uint32_t rib_messages_cnt;
+
+  /** Number of announcements received in the current
+   * interval */  
+  uint32_t pfx_announcements_cnt;
+
+  /** Number of withdrawals received in the current
+   * interval */  
+  uint32_t pfx_withdrawals_cnt;
+  
+  /** Number of state messages received in the current
+   * interval */  
+  uint32_t state_messages_cnt;
+
+  /** Number of unique ipv4 prefixes involved in an 
+   * announcement (during the current interval) */  
+  uint32_t affected_v4_pfxs;
+  
+  /** Number of unique ipv6 prefixes involved in an 
+   * announcement (during the current interval) */  
+  uint32_t affected_v6_pfxs;
 
 } perpeer_info_t;
 
@@ -241,6 +273,18 @@ typedef struct struct_collector_t {
   /** Indices of the collector metrics in the collector Key Package */
   collector_metric_idx_t kp_idxs;
 
+  /** number of active peers at the end of the interval */
+  uint32_t active_peers_cnt;
+
+  /** number of valid records received in the interval */
+  uint32_t valid_record_cnt;
+
+  /** number of valid records received in the interval */
+  uint32_t corrupted_record_cnt;
+  
+  /** number of valid records received in the interval */
+  uint32_t empty_record_cnt;
+  
 } collector_t;
 
 
