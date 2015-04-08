@@ -35,6 +35,7 @@
 #define TYPE_CMD_CNT    10
 #define COLLECTOR_CMD_CNT 100
 #define WINDOW_CMD_CNT 1024
+#define OPTION_CMD_CNT 1024
 
 struct window {
   uint32_t start;
@@ -141,12 +142,17 @@ int main(int argc, char *argv[])
   char *endp;
   int windows_cnt = 0;
 
+  char *interface_options[OPTION_CMD_CNT];
+  int interface_options_cnt = 0;
+
   int blocking = 0;
   int record_output_on = 0;
   int record_bgpdump_output_on = 0;
   int elem_output_on = 0;
 
   bgpstream_data_interface_option_t *option;
+
+  int i;
 
 
   // required to be created before usage is called
@@ -237,45 +243,15 @@ int main(int argc, char *argv[])
           datasource_name = optarg;
 	  break;
         case 'o':
-          if(datasource_id == 0)
-            {
-              fprintf(stderr, "ERROR: Data interface must first be specified with -d\n");
-              usage();
-              exit(-1);
-            }
-          if(*optarg == '?')
-            {
-              dump_if_options();
-              usage();
-              exit(-1);
-            }
-          else
-            {
-              /* actually set this option */
-              if((endp = strchr(optarg, ',')) == NULL)
-                {
-                  fprintf(stderr,
-                          "ERROR: Malformed data interface option (%s)\n",
-                          optarg);
-                  fprintf(stderr,
-                          "ERROR: Expecting <option-name>,<option-value>\n");
-                  usage();
-                  exit(-1);
-                }
-              *endp = '\0';
-              endp++;
-              if((option =
-                  bgpstream_get_data_interface_option_by_name(bs, datasource_id,
-                                                              optarg)) == NULL)
-                {
-                  fprintf(stderr,
-                          "ERROR: Invalid option '%s' for data interface '%s'\n",
-                          optarg, datasource_name);
-                  usage();
-                  exit(-1);
-                }
-              bgpstream_set_data_interface_option(bs, option, endp);
-            }
+          if(interface_options_cnt == OPTION_CMD_CNT)
+	    {
+	      fprintf(stderr,
+		      "ERROR: A maximum of %d interface options can be specified\n",
+		      OPTION_CMD_CNT);
+	      usage();
+	      exit(-1);
+	    }
+	  interface_options[interface_options_cnt++] = strdup(optarg);
           break;
 
 	case 'b':
@@ -317,6 +293,46 @@ int main(int argc, char *argv[])
       exit(-1);
     }
 
+  for(i=0; i<interface_options_cnt; i++)
+    {
+      if(*interface_options[i] == '?')
+        {
+          dump_if_options();
+          usage();
+          exit(0);
+        }
+      else
+        {
+          /* actually set this option */
+          if((endp = strchr(interface_options[i], ',')) == NULL)
+            {
+              fprintf(stderr,
+                      "ERROR: Malformed data interface option (%s)\n",
+                      interface_options[i]);
+              fprintf(stderr,
+                      "ERROR: Expecting <option-name>,<option-value>\n");
+              usage();
+              exit(-1);
+            }
+          *endp = '\0';
+          endp++;
+          if((option =
+              bgpstream_get_data_interface_option_by_name(bs, datasource_id,
+                                                          interface_options[i])) == NULL)
+            {
+              fprintf(stderr,
+                      "ERROR: Invalid option '%s' for data interface '%s'\n",
+                      interface_options[i], datasource_name);
+              usage();
+              exit(-1);
+            }
+          bgpstream_set_data_interface_option(bs, option, endp);
+        }
+      free(interface_options[i]);
+      interface_options[i] = NULL;
+    }
+  interface_options_cnt = 0;
+
   // if the user did not specify any output format
   // then the default one is per record
   if(record_output_on == 0 && elem_output_on == 0 && record_bgpdump_output_on == 0) {
@@ -326,8 +342,6 @@ int main(int argc, char *argv[])
   // the program can now start
 
   // allocate memory for interface
-
-  int i = 0; // iterator
 
   /* projects */
   for(i=0; i<projects_cnt; i++)
