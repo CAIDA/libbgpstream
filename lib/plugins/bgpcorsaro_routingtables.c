@@ -211,6 +211,7 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
 	}
     }
 
+#ifdef WITH_BGPWATCHER
   /* if ipv4 or ipv6 have not been set, then we pass the default configuration,
    * i.e. all versions full feed only */
   if(state->tables_mask == 0)
@@ -230,6 +231,7 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
           state->tables_mask = state->tables_mask | ROUTINGTABLES_FEED_IPV6_PARTIAL;
         }
     }
+#endif
   
   return 0;
 }
