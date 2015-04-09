@@ -108,27 +108,23 @@ typedef struct struct_perpfx_perpeer_info_t {
 /** Indices of the peer metrics for a KP */
 typedef struct peer_metric_idx {
 
-  /* routing tables metrics */  
-
-  /* end of interval metrics */
+  /* meta metrics */
   uint32_t status_idx;
-  
-  uint32_t active_v4_pfxs_idx;
   uint32_t inactive_v4_pfxs_idx;
-  uint32_t active_v6_pfxs_idx;
   uint32_t inactive_v6_pfxs_idx;
-  uint32_t unique_origin_as_idx;
-  uint32_t avg_aspath_len_idx;
-
-  /* per interval metrics */
-  uint32_t affected_v4_pfxs_idx;
-  uint32_t affected_v6_pfxs_idx;
-  uint32_t announced_origin_as_idx;
-  
   uint32_t rib_messages_cnt_idx;
   uint32_t pfx_announcements_cnt_idx;
   uint32_t pfx_withdrawals_cnt_idx;
   uint32_t state_messages_cnt_idx;
+  
+  /* data metrics */  
+  uint32_t active_v4_pfxs_idx;
+  uint32_t active_v6_pfxs_idx;
+  uint32_t announcing_origin_as_idx;
+  uint32_t announced_v4_pfxs_idx;
+  uint32_t withdrawn_v4_pfxs_idx;
+  uint32_t announced_v6_pfxs_idx;
+  uint32_t withdrawn_v6_pfxs_idx;
   
 } __attribute__((packed)) peer_metric_idx_t;
 
@@ -191,13 +187,25 @@ typedef struct struct_perpeer_info_t {
    * interval */  
   uint32_t state_messages_cnt;
 
-  /** Number of unique ipv4 prefixes involved in an 
-   * announcement (during the current interval) */  
-  uint32_t affected_v4_pfxs;
+  /** Set of ASns that announced at least one prefix
+   *  in the current interval */  
+  bgpstream_id_set_t *announcing_ases;
+
+  /** Set of ipv4 prefixes that have been announced at
+   *  least once in the current interval */
+  bgpstream_ipv4_pfx_set_t *announced_v4_pfxs;
   
-  /** Number of unique ipv6 prefixes involved in an 
-   * announcement (during the current interval) */  
-  uint32_t affected_v6_pfxs;
+  /** Set of ipv4  prefixes that have been withdrawn at
+   *  least once in the current interval */
+  bgpstream_ipv4_pfx_set_t *withdrawn_v4_pfxs;
+
+  /** Set of ipv6 prefixes that have been announced at
+   *  least once in the current interval */
+  bgpstream_ipv6_pfx_set_t *announced_v6_pfxs;
+
+  /** Set of ipv6  prefixes that have been withdrawn at
+   *  least once in the current interval */
+  bgpstream_ipv6_pfx_set_t *withdrawn_v6_pfxs;
 
 } perpeer_info_t;
 
@@ -205,25 +213,16 @@ typedef struct struct_perpeer_info_t {
 /** Indices of the collector metrics for a KP */
 typedef struct collector_metric_idx {
   
-  /* performance monitoring metrics */  
+  /* meta metrics */  
   uint32_t processing_time_idx;
   uint32_t realtime_delay_idx;
-
-  /* routing tables metrics */  
-  uint32_t status_idx;
-  uint32_t active_peers_cnt_idx;
-  
-  uint32_t unique_v4_pfxs_idx;
-  uint32_t unique_v6_pfxs_idx;
-  uint32_t unique_origin_as_idx;
-
-  uint32_t affected_v4_pfxs_idx;
-  uint32_t affected_v6_pfxs_idx;
-  uint32_t announced_origin_as_idx;
-  
   uint32_t valid_record_cnt_idx;
   uint32_t corrupted_record_cnt_idx;
   uint32_t empty_record_cnt_idx;
+
+  uint32_t status_idx;
+  uint32_t active_peers_cnt_idx;
+  uint32_t active_asns_cnt_idx;
   
 } __attribute__((packed)) collector_metric_idx_t;
 
@@ -276,13 +275,16 @@ typedef struct struct_collector_t {
   /** number of active peers at the end of the interval */
   uint32_t active_peers_cnt;
 
+  /** unique set of active ASes at the end of the interval */  
+  bgpstream_id_set_t *active_ases;
+
   /** number of valid records received in the interval */
   uint32_t valid_record_cnt;
 
   /** number of valid records received in the interval */
   uint32_t corrupted_record_cnt;
   
-  /** number of valid records received in the interval */
+  /** number of empty records received in the interval */
   uint32_t empty_record_cnt;
   
 } collector_t;
@@ -338,9 +340,7 @@ struct struct_routingtables_t {
   /** last time (wall time) we received
    *  an interval_start signal */
   uint32_t wall_time_interval_start;
-  
-  /** @todo add other state variables here */
-  
+    
 #ifdef WITH_BGPWATCHER
   /** Flags that indicates whether the tx
    *  to the watcher is on or off */

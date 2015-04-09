@@ -113,7 +113,7 @@ char *routingtables_get_metric_prefix(routingtables_t *rt);
  *                         if NULL, default is chosen
  * @param tables_mask      mask that tells which routing tables should
  *                         populate the view to be sent to the watcher,
- *                         if 0 ALL kind of tables are sent.
+ *                         if 0 ALL kinds of tables are sent.
  * @return 0 if the option was set correctly, <0 if an error occurred.
  *
  * @todo add notes that indicates how to use the mask

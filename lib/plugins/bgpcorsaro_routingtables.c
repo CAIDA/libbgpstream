@@ -161,6 +161,7 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
   
   /* NB: remember to reset optind to 1 before using getopt! */
   optind = 1;
+  int full_and_partial = 0;
   
   /* parsing args */
 
@@ -186,16 +187,14 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
     	case 'w':
 	  state->watcher_tx = 1;
 	  break;
-          /** @todo: set the masks with an OR to set (full feed and partial feed)
-              using the appropriate number ################################################## */
     	case 'a':
-	  state->tables_mask = 1;
+	  full_and_partial = 1;
 	  break;          
     	case '4':
-	  state->tables_mask = 1;
+	  state->tables_mask = state->tables_mask | ROUTINGTABLES_FEED_IPV4_FULL;
 	  break;          
     	case '6':
-	  state->tables_mask = 1;
+	  state->tables_mask = state->tables_mask | ROUTINGTABLES_FEED_IPV6_FULL;
 	  break;
         case 'u':
 	  state->watcher_server_uri = strdup(optarg);
@@ -211,6 +210,27 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
 	  return -1;
 	}
     }
+
+  /* if ipv4 or ipv6 have not been set, then we pass the default configuration,
+   * i.e. all versions full feed only */
+  if(state->tables_mask == 0)
+    {
+      state->tables_mask = state->tables_mask | ROUTINGTABLES_FEED_IPV4_FULL;
+      state->tables_mask = state->tables_mask | ROUTINGTABLES_FEED_IPV6_FULL;
+    }
+  
+  if(full_and_partial)
+    {
+      if(state->tables_mask & ROUTINGTABLES_FEED_IPV4_FULL)
+        {
+          state->tables_mask = state->tables_mask | ROUTINGTABLES_FEED_IPV4_PARTIAL;
+        }
+      if(state->tables_mask & ROUTINGTABLES_FEED_IPV6_FULL)
+        {
+          state->tables_mask = state->tables_mask | ROUTINGTABLES_FEED_IPV6_PARTIAL;
+        }
+    }
+  
   return 0;
 }
 

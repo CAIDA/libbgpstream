@@ -140,6 +140,31 @@ perpeer_info_destroy(void *p)
         {
           timeseries_kp_free(&((perpeer_info_t *)p)->kp);
         }
+      if(((perpeer_info_t *)p)->announcing_ases != NULL)
+        {
+          bgpstream_id_set_destroy(((perpeer_info_t *)p)->announcing_ases);
+          ((perpeer_info_t *)p)->announcing_ases = NULL;
+        }
+      if(((perpeer_info_t *)p)->announced_v4_pfxs != NULL)
+        {
+          bgpstream_ipv4_pfx_set_destroy(((perpeer_info_t *)p)->announced_v4_pfxs);
+          ((perpeer_info_t *)p)->announced_v4_pfxs = NULL;
+        }
+      if(((perpeer_info_t *)p)->withdrawn_v4_pfxs != NULL)
+        {
+          bgpstream_ipv4_pfx_set_destroy(((perpeer_info_t *)p)->withdrawn_v4_pfxs);
+          ((perpeer_info_t *)p)->withdrawn_v4_pfxs = NULL;
+        }
+      if(((perpeer_info_t *)p)->announced_v6_pfxs != NULL)
+        {
+          bgpstream_ipv6_pfx_set_destroy(((perpeer_info_t *)p)->announced_v6_pfxs);
+          ((perpeer_info_t *)p)->announced_v6_pfxs = NULL;
+        }
+      if(((perpeer_info_t *)p)->withdrawn_v6_pfxs != NULL)
+        {
+          bgpstream_ipv6_pfx_set_destroy(((perpeer_info_t *)p)->withdrawn_v6_pfxs);
+          ((perpeer_info_t *)p)->withdrawn_v6_pfxs = NULL;
+        }
     }
 }
 
@@ -174,27 +199,51 @@ perpeer_info_create(routingtables_t *rt, collector_t * c,
   p->bgp_time_ref_rib_end = 0;
   p->bgp_time_uc_rib_start = 0;
   p->bgp_time_uc_rib_end = 0;
-
+  
   if((p->kp = timeseries_kp_init(rt->timeseries, 1)) == NULL)
     {
       fprintf(stderr, "Error: Could not create timeseries key package (for peer)\n");
       goto err;
     }
-
+ 
   peer_generate_metrics(rt, c, p);
-    
+
+  if((p->announcing_ases = bgpstream_id_set_create()) == NULL)
+    {
+      fprintf(stderr, "Error: Could not create announcing ASes (for peer)\n");
+      goto err;
+    }
+  
+  if((p->announced_v4_pfxs = bgpstream_ipv4_pfx_set_create()) == NULL)
+    {
+      fprintf(stderr, "Error: Could not create announced ipv4 prefix (for peer)\n");
+      goto err;
+    }
+
+  if((p->withdrawn_v4_pfxs = bgpstream_ipv4_pfx_set_create()) == NULL)
+    {
+      fprintf(stderr, "Error: Could not create withdrawn ipv4 prefix (for peer)\n");
+      goto err;
+    }
+
+  if((p->announced_v6_pfxs = bgpstream_ipv6_pfx_set_create()) == NULL)
+    {
+      fprintf(stderr, "Error: Could not create announced ipv6 prefix (for peer)\n");
+      goto err;
+    }
+
+  if((p->withdrawn_v6_pfxs = bgpstream_ipv6_pfx_set_create()) == NULL)
+    {
+      fprintf(stderr, "Error: Could not create withdrawn ipv6 prefix (for peer)\n");
+      goto err;
+    }
+  
   return p;
  err:
   perpeer_info_destroy(p);
   return NULL;
 }
 
-
-/** @note:
- *  all the xxx_info_create functions do not allocate dynamic
- *  memory other than the structure itself, therefore free() 
- *  is enough to dealloc safely their memory.
- */
 
 static void
 destroy_collector_data(collector_t * c)
@@ -206,6 +255,12 @@ destroy_collector_data(collector_t * c)
           kh_destroy(peer_id_set, c->collector_peerids);
         }
       c->collector_peerids = NULL;
+
+      if(c->active_ases != NULL)
+        {
+          bgpstream_id_set_destroy(c->active_ases);
+        }
+      c->active_ases = NULL;
 
       if(c->kp != NULL)
         {
@@ -253,6 +308,11 @@ get_collector_data(routingtables_t *rt, char *project, char *collector)
         }
       
       if((c_data.collector_peerids = kh_init(peer_id_set)) == NULL)
+        {
+          goto err;
+        }
+
+      if((c_data.active_ases = bgpstream_id_set_create()) == NULL)
         {
           goto err;
         }
@@ -461,6 +521,37 @@ update_prefix_peer_stats(perpfx_perpeer_info_t *pp, bgpstream_elem_t *elem)
     }
 }
 
+static void
+update_peer_stats(perpeer_info_t *p, bgpstream_elem_t *elem, uint32_t asn)
+{
+  if(elem->type == BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT)
+    {
+      bgpstream_id_set_insert(p->announcing_ases, asn);
+      if(elem->prefix.address.version == BGPSTREAM_ADDR_VERSION_IPV4)
+        {
+          bgpstream_ipv4_pfx_set_insert(p->announced_v4_pfxs, (bgpstream_ipv4_pfx_t *) &elem->prefix);
+          return;
+        }
+      if(elem->prefix.address.version == BGPSTREAM_ADDR_VERSION_IPV6)
+        {
+          bgpstream_ipv6_pfx_set_insert(p->announced_v6_pfxs, (bgpstream_ipv6_pfx_t *) &elem->prefix);
+          return;
+        }        
+    }
+  else
+    {
+      if(elem->prefix.address.version == BGPSTREAM_ADDR_VERSION_IPV4)
+        {
+          bgpstream_ipv4_pfx_set_insert(p->withdrawn_v4_pfxs, (bgpstream_ipv4_pfx_t *) &elem->prefix);
+          return;
+        }
+      if(elem->prefix.address.version == BGPSTREAM_ADDR_VERSION_IPV6)
+        {
+          bgpstream_ipv6_pfx_set_insert(p->withdrawn_v6_pfxs, (bgpstream_ipv6_pfx_t *) &elem->prefix);
+          return;
+        }
+    }
+}
 
 /** Apply an announcement update or a withdrawal update
  *  @param peer_id peer affected by the update
@@ -491,13 +582,14 @@ apply_prefix_update(routingtables_t *rt, collector_t *c, bgpstream_peer_id_t pee
   if(elem->type == BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT)
     {
       asn = get_origin_asn(&elem->aspath);
-      p->pfx_announcements_cnt++;
+      p->pfx_announcements_cnt++;      
     }
   else
     {
       p->pfx_withdrawals_cnt++;
     }
 
+  update_peer_stats(p, elem, asn);
   
   if(bgpwatcher_view_iter_seek_pfx_peer(rt->iter, (bgpstream_pfx_t *) &elem->prefix, peer_id, 
                                         BGPWATCHER_VIEW_FIELD_ALL_VALID,
@@ -1139,7 +1231,8 @@ int routingtables_activate_watcher_tx(routingtables_t *rt,
     }
   
   rt->watcher_tx_on = 1;
-  rt->tables_mask = ROUTINGTABLES_ALL_FEEDS; // default: all feeds 
+  /* default: all feeds */
+  rt->tables_mask = ROUTINGTABLES_ALL_FEEDS;  
   if(tables_mask != 0)
     {
       rt->tables_mask = tables_mask;
