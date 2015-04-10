@@ -174,7 +174,7 @@ routingtables_dump_metrics(routingtables_t *rt, uint32_t time_now)
           c->valid_record_cnt = 0;
           c->corrupted_record_cnt = 0;
           c->empty_record_cnt = 0;
-          c->active_peers_cnt = 0;
+           /* c->active_peers_cnt is updated by every single message */
           bgpstream_id_set_clear(c->active_ases);
           
         }
