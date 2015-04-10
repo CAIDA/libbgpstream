@@ -70,9 +70,10 @@ get_wall_time_now()
 /** @note for the future
  *  In order to save memory we could use the reserved AS numbers
  *  to embed other informations associated with an AS number, i.e.:
- *  - origin as = 0 -> prefix not seen in the RIB (e.g. withdrawal)
+ *  - AS = 0 -> prefix is local....
  *  - AS in [64496-64511] -> AS is actually an AS set
  *  - AS in [64512-65534] -> AS is actually an AS confederation  
+ *  - AS = 65535 -> prefix not seen in the RIB (e.g. withdrawal)
  */
 /* static void asn_mgmt_fun() */
 /* { */
@@ -84,6 +85,12 @@ get_wall_time_now()
   /* 64512-65534   Reserved for Private Use RFC6996 */
   /* 65535	   Reserved RFC7300 */
 /* } */
+
+
+/** @todo */
+#define ROUTINGTABLES_LOCAL_ORIGIN_ASN 0
+#define ROUTINGTABLES_CONFSET_ORIGIN_ASN 65534
+#define ROUTINGTABLES_DOWN_ORIGIN_ASN 65535
 
 
 /** Returns the origin AS when the origin AS number
@@ -109,7 +116,7 @@ get_origin_asn(bgpstream_as_path_t *aspath)
     {
       /* use a reserved AS number to indicate 
        * a set/confederation */
-      asn = 65535; 
+      asn = ROUTINGTABLES_CONFSET_ORIGIN_ASN; 
     }
   bgpstream_as_hop_clear(&as_hop);
   return asn;
@@ -123,7 +130,7 @@ perpfx_perpeer_info_create()
     {
       pfxpeeri->bgp_time_last_ts = 0;
       pfxpeeri->bgp_time_uc_delta_ts = 0;
-      pfxpeeri->uc_origin_asn = 0;
+      pfxpeeri->uc_origin_asn = ROUTINGTABLES_DOWN_ORIGIN_ASN;
       pfxpeeri->announcements = 0;
       pfxpeeri->withdrawals = 0;
     }
@@ -342,6 +349,7 @@ get_collector_data(routingtables_t *rt, char *project, char *collector)
       c_data.valid_record_cnt = 0;
       c_data.corrupted_record_cnt = 0;
       c_data.empty_record_cnt = 0;
+      c_data.rib_mismatches_cnt = 0;
                   
       collector_generate_metrics(rt, &c_data);
 
@@ -383,10 +391,10 @@ stop_uc_process(routingtables_t *rt, collector_t *c)
           /* the peer belongs to the collector's peers */
           pp = bgpwatcher_view_iter_pfx_peer_get_user(rt->iter);
           pp->bgp_time_uc_delta_ts = 0;
-          pp->uc_origin_asn = 0;              
+          pp->uc_origin_asn = ROUTINGTABLES_DOWN_ORIGIN_ASN;              
           if(bgpwatcher_view_iter_peer_get_state(rt->iter) == BGPWATCHER_VIEW_FIELD_INACTIVE)
             {
-              bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, 0);
+              bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, ROUTINGTABLES_DOWN_ORIGIN_ASN);
               pp->bgp_time_last_ts = 0;
             }
         }
@@ -432,13 +440,13 @@ reset_peerpfxdata(routingtables_t *rt,
         {
           if(bgpwatcher_view_iter_peer_get_peer_id(rt->iter) == peer_id)
             {
-              bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, 0);
+              bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, ROUTINGTABLES_DOWN_ORIGIN_ASN);
               pp = bgpwatcher_view_iter_pfx_peer_get_user(rt->iter);
               pp->bgp_time_last_ts = 0;
               if(reset_uc)
                 {
                   pp->bgp_time_uc_delta_ts = 0;
-                  pp->uc_origin_asn = 0;
+                  pp->uc_origin_asn = ROUTINGTABLES_DOWN_ORIGIN_ASN;
                 }
               bgpwatcher_view_iter_pfx_deactivate_peer(rt->iter);
             }
@@ -451,7 +459,7 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
 {
   perpeer_info_t *p;
   perpfx_perpeer_info_t *pp;
-
+  
   for(bgpwatcher_view_iter_first_pfx_peer(rt->iter, 0,
                                           BGPWATCHER_VIEW_FIELD_ALL_VALID,
                                           BGPWATCHER_VIEW_FIELD_ALL_VALID);
@@ -467,34 +475,63 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
         p->bgp_time_uc_rib_start != 0)
         {
           pp = bgpwatcher_view_iter_pfx_peer_get_user(rt->iter);
+          
           if(pp->bgp_time_uc_delta_ts + p->bgp_time_uc_rib_start >
              pp->bgp_time_last_ts)
             {
-              pp->bgp_time_last_ts = pp->bgp_time_uc_delta_ts + p->bgp_time_uc_rib_start;
-              bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, pp->uc_origin_asn);
-              bgpwatcher_view_iter_activate_peer(rt->iter);
-              p->bgp_fsm_state = BGPSTREAM_ELEM_PEERSTATE_ESTABLISHED;
-              p->bgp_time_ref_rib_start = p->bgp_time_uc_rib_start;
-              p->bgp_time_ref_rib_end = p->bgp_time_uc_rib_end;
+              if(pp->uc_origin_asn != ROUTINGTABLES_DOWN_ORIGIN_ASN)
+                {
+
+                  /* if the prefix was set (that's why we look for ts!= 0
+                   * inactive in the previous state and now it is in the rib */
+                  if(pp->bgp_time_last_ts != 0 &&
+                     bgpwatcher_view_iter_pfx_peer_get_state(rt->iter) == BGPWATCHER_VIEW_FIELD_INACTIVE)
+                    {
+                      c->rib_mismatches_cnt++;
+                    }
+
+                  pp->bgp_time_last_ts = pp->bgp_time_uc_delta_ts + p->bgp_time_uc_rib_start;
+                  bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, pp->uc_origin_asn);
               
-              bgpwatcher_view_iter_pfx_activate_peer(rt->iter);
+                  bgpwatcher_view_iter_activate_peer(rt->iter);
+                  p->bgp_fsm_state = BGPSTREAM_ELEM_PEERSTATE_ESTABLISHED;
+                  p->bgp_time_ref_rib_start = p->bgp_time_uc_rib_start;
+                  p->bgp_time_ref_rib_end = p->bgp_time_uc_rib_end;              
+                  bgpwatcher_view_iter_pfx_activate_peer(rt->iter);
+                }
+              else
+                {
+                  /* the last modification of the current pfx is before the current uc rib
+                   * but the prefix is not in the uc rib: therefore we deactivate the field
+                   * (it may be already inactive) */
+                  if(bgpwatcher_view_iter_pfx_peer_get_state(rt->iter) == BGPWATCHER_VIEW_FIELD_ACTIVE)
+                    {
+                      c->rib_mismatches_cnt++;
+                    }
+                  pp->bgp_time_last_ts = 0;
+                  bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, ROUTINGTABLES_DOWN_ORIGIN_ASN);
+                  bgpwatcher_view_iter_pfx_deactivate_peer(rt->iter);
+                }
+               
             }
           else
             {
               /* if an update is more recent than the uc information, then
                * we decide to keep this data and activate the field if it
                * is an announcement */
-              if(bgpwatcher_view_iter_pfx_peer_get_orig_asn(rt->iter) != 0)
+              if(bgpwatcher_view_iter_pfx_peer_get_orig_asn(rt->iter) != ROUTINGTABLES_DOWN_ORIGIN_ASN)
                 {
                   
                   bgpwatcher_view_iter_activate_peer(rt->iter);
                   p->bgp_fsm_state = BGPSTREAM_ELEM_PEERSTATE_ESTABLISHED;
+                  p->bgp_time_ref_rib_start = p->bgp_time_uc_rib_start;
+                  p->bgp_time_ref_rib_end = p->bgp_time_uc_rib_end;
                   bgpwatcher_view_iter_pfx_activate_peer(rt->iter);
                 }
             }
           /* reset uc fields anyway */
           pp->bgp_time_uc_delta_ts = 0;
-          pp->uc_origin_asn = 0;
+          pp->uc_origin_asn = ROUTINGTABLES_DOWN_ORIGIN_ASN;
         }
 
     }
@@ -595,7 +632,7 @@ apply_prefix_update(routingtables_t *rt, collector_t *c, bgpstream_peer_id_t pee
   
   perpfx_perpeer_info_t *pp = NULL;  
 
-  uint32_t asn = 0;            /* 0 for withdrawals, set for announcements */
+  uint32_t asn = 0;            
 
   /* populate correctly the asn if it is an announcement */
   if(elem->type == BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT)
@@ -605,6 +642,7 @@ apply_prefix_update(routingtables_t *rt, collector_t *c, bgpstream_peer_id_t pee
     }
   else
     {
+      asn = ROUTINGTABLES_DOWN_ORIGIN_ASN;
       p->pfx_withdrawals_cnt++;
     }
 
@@ -643,7 +681,7 @@ apply_prefix_update(routingtables_t *rt, collector_t *c, bgpstream_peer_id_t pee
     {
       /* the announcement moved the pfx-peer state from inactive to active */
       if(bgpwatcher_view_iter_pfx_peer_get_state(rt->iter) == BGPWATCHER_VIEW_FIELD_INACTIVE &&
-         asn != 0)
+         elem->type == BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT)
         {      
           bgpwatcher_view_iter_pfx_activate_peer(rt->iter);
           return 0;
@@ -651,7 +689,7 @@ apply_prefix_update(routingtables_t *rt, collector_t *c, bgpstream_peer_id_t pee
 
       /* the withdrawal moved the pfx-peer state from active to inactive */
       if(bgpwatcher_view_iter_pfx_peer_get_state(rt->iter) == BGPWATCHER_VIEW_FIELD_ACTIVE &&
-         asn == 0)
+         elem->type == BGPSTREAM_ELEM_TYPE_WITHDRAWAL)
         {
           bgpwatcher_view_iter_pfx_deactivate_peer(rt->iter);
           return 0;
@@ -688,8 +726,8 @@ apply_prefix_update(routingtables_t *rt, collector_t *c, bgpstream_peer_id_t pee
                    * take into account stats on updates that we apply)
                    * while the pfx-peer remains inactive */                               
                   pp->bgp_time_last_ts = 0;
-                  bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, 0);
-                  if(asn != 0)
+                  bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, ROUTINGTABLES_DOWN_ORIGIN_ASN);
+                  if(elem->type == BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT)
                     {
                       pp->announcements--;
                     }
@@ -702,14 +740,14 @@ apply_prefix_update(routingtables_t *rt, collector_t *c, bgpstream_peer_id_t pee
             }             
           else
             {
-              /* case3: the peer is inactive because its fsm state went down,
+              /* case 3: the peer is inactive because its fsm state went down,
                * if we receive a new update we assume the state is established 
                * and the peer is up again  */              
               bgpwatcher_view_iter_activate_peer(rt->iter);
               p->bgp_fsm_state = BGPSTREAM_ELEM_PEERSTATE_ESTABLISHED;
               p->bgp_time_ref_rib_start = ts;
               p->bgp_time_ref_rib_end = ts;
-              if(asn != 0)
+              if(elem->type == BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT)
                 {
                   /* the pfx-peer goes active only if we received an announcement */
                   bgpwatcher_view_iter_pfx_activate_peer(rt->iter);
@@ -823,7 +861,7 @@ apply_rib_message(routingtables_t *rt, collector_t * c, bgpstream_peer_id_t peer
     {
       /* the prefix-peer does not exist, therefore we 
        * create a new empty structure to populate */
-      bgpwatcher_view_iter_add_pfx_peer(rt->iter, (bgpstream_pfx_t *) &elem->prefix, peer_id, 0);
+      bgpwatcher_view_iter_add_pfx_peer(rt->iter, (bgpstream_pfx_t *) &elem->prefix, peer_id, ROUTINGTABLES_DOWN_ORIGIN_ASN);
       /* when we create a new pfx peer this has to be inactive */
       bgpwatcher_view_iter_pfx_deactivate_peer(rt->iter);
     }
@@ -836,7 +874,7 @@ apply_rib_message(routingtables_t *rt, collector_t * c, bgpstream_peer_id_t peer
 
   /* we update only the uc part of the pfx-peer */
   pp->bgp_time_uc_delta_ts = ts - p->bgp_time_uc_rib_start;
-  pp->uc_origin_asn = get_origin_asn(&elem->aspath);;
+  pp->uc_origin_asn = get_origin_asn(&elem->aspath);
   
   return 0;
 }
@@ -939,11 +977,11 @@ collector_process_valid_bgpinfo(routingtables_t *rt,
         {
           /* if there is already another under construction 
            * process going on, then we have to reset the process */
-          if(c->bgp_time_uc_rib_dump_time)
+          if(c->bgp_time_uc_rib_dump_time != 0)
             {
               stop_uc_process(rt, c);
             }
-          c->bgp_time_uc_rib_dump_time = record->attributes.dump_time;
+          c->bgp_time_uc_rib_dump_time  = record->attributes.dump_time;
           c->bgp_time_uc_rib_start_time = record->attributes.record_time;
         }
       /* we process RIB information (ALL of them: start,middle,end)
@@ -966,6 +1004,7 @@ collector_process_valid_bgpinfo(routingtables_t *rt,
         {
           return -1;                 
         }
+
       if((p = (perpeer_info_t *)bgpwatcher_view_iter_peer_get_user(rt->iter)) == NULL)
         {
           p = perpeer_info_create(rt, c, peer_id);
@@ -1095,7 +1134,7 @@ collector_process_corrupted_message(routingtables_t *rt,
             {
               /* reset the active information if the active state is affected */
               pp->bgp_time_last_ts = 0;
-              bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, 0);
+              bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, ROUTINGTABLES_DOWN_ORIGIN_ASN);
               bgpwatcher_view_iter_pfx_deactivate_peer(rt->iter);
             }
         }
@@ -1104,7 +1143,7 @@ collector_process_corrupted_message(routingtables_t *rt,
         {
           /* reset the uc information if the under construction process is affected */
           pp->bgp_time_uc_delta_ts = 0;
-          pp->uc_origin_asn = 0;          
+          pp->uc_origin_asn = ROUTINGTABLES_DOWN_ORIGIN_ASN;          
         }      
     }
 

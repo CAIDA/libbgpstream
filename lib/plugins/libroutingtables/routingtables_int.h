@@ -219,6 +219,7 @@ typedef struct collector_metric_idx {
   uint32_t valid_record_cnt_idx;
   uint32_t corrupted_record_cnt_idx;
   uint32_t empty_record_cnt_idx;
+  uint32_t rib_mismatches_cnt_idx;
 
   uint32_t status_idx;
   uint32_t active_peers_cnt_idx;
@@ -286,7 +287,10 @@ typedef struct struct_collector_t {
   
   /** number of empty records received in the interval */
   uint32_t empty_record_cnt;
-  
+
+  /** number of mismatches at rib end time */
+  uint32_t rib_mismatches_cnt;
+
 } collector_t;
 
 

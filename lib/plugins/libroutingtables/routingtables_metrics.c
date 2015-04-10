@@ -106,6 +106,8 @@ collector_generate_metrics(routingtables_t *rt, collector_t *c)
     add_c_metric(c->kp, rt->metric_prefix, c->collector_str, "corrupted_record_cnt");
   c->kp_idxs.empty_record_cnt_idx = \
     add_c_metric(c->kp, rt->metric_prefix, c->collector_str, "empty_record_cnt");  
+  c->kp_idxs.rib_mismatches_cnt_idx = \
+    add_c_metric(c->kp, rt->metric_prefix, c->collector_str, "rib_mismatches_cnt");  
   c->kp_idxs.status_idx = \
     add_c_metric(c->kp, rt->metric_prefix, c->collector_str, "status");
   c->kp_idxs.active_peers_cnt_idx = \
@@ -160,6 +162,7 @@ routingtables_dump_metrics(routingtables_t *rt, uint32_t time_now)
               timeseries_kp_set(c->kp, c->kp_idxs.valid_record_cnt_idx, c->valid_record_cnt);              
               timeseries_kp_set(c->kp, c->kp_idxs.corrupted_record_cnt_idx, c->corrupted_record_cnt);              
               timeseries_kp_set(c->kp, c->kp_idxs.empty_record_cnt_idx, c->empty_record_cnt);
+              timeseries_kp_set(c->kp, c->kp_idxs.rib_mismatches_cnt_idx, c->rib_mismatches_cnt);
 
               
               timeseries_kp_set(c->kp, c->kp_idxs.status_idx, c->state);
@@ -174,6 +177,7 @@ routingtables_dump_metrics(routingtables_t *rt, uint32_t time_now)
           c->valid_record_cnt = 0;
           c->corrupted_record_cnt = 0;
           c->empty_record_cnt = 0;
+          c->rib_mismatches_cnt = 0;
            /* c->active_peers_cnt is updated by every single message */
           bgpstream_id_set_clear(c->active_ases);
           
