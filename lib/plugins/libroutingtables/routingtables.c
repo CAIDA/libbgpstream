@@ -48,7 +48,7 @@ graphite_safe(char *p)
     {
       if(*p == '.')
 	{
-	  *p = '_';
+	  *p = '-';
 	}
       if(*p == '*')
 	{
@@ -175,6 +175,7 @@ perpeer_info_create(routingtables_t *rt, collector_t * c,
                     uint32_t peer_id)
 {
   char ip_str[INET6_ADDRSTRLEN];
+  uint8_t v = 0;
   perpeer_info_t *p;
   if((p = (perpeer_info_t *) malloc_zero(sizeof(perpeer_info_t))) == NULL)
     {
@@ -184,13 +185,25 @@ perpeer_info_create(routingtables_t *rt, collector_t * c,
 
   bgpstream_peer_sig_t *sg = bgpstream_peer_sig_map_get_sig(rt->peersigns, peer_id);
 
+  if(sg->peer_ip_addr.version == BGPSTREAM_ADDR_VERSION_IPV4)
+    {
+      v = 4;
+    }
+  else
+    {
+      if(sg->peer_ip_addr.version == BGPSTREAM_ADDR_VERSION_IPV6)
+        {
+          v = 6;
+        }
+    }
+  
   if(bgpstream_addr_ntop(ip_str, INET6_ADDRSTRLEN, (bgpstream_ip_addr_t *) &sg->peer_ip_addr) == NULL)
     {
       fprintf(stderr, "Warning: could not print peer ip address \n");
     }
   graphite_safe(ip_str);  
   if(snprintf(p->peer_str, BGPSTREAM_UTILS_STR_NAME_LEN,
-              "%"PRIu32".%s", sg->peer_asnumber, ip_str) >= BGPSTREAM_UTILS_STR_NAME_LEN)
+              "%"PRIu32".v%"PRIu8".__IP_%s", sg->peer_asnumber, v, ip_str) >= BGPSTREAM_UTILS_STR_NAME_LEN)
     {
       fprintf(stderr, "Warning: could not print peer signature: truncated output\n");
     }
