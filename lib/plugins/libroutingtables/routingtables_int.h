@@ -361,9 +361,8 @@ struct struct_routingtables_t {
  *  
  * @param rt            pointer to a routingtables instance to read
  * @param time_now      wall time at the end of the interval
- * @return 0 if the metrics were dumped correctly, <0 if an error occurred.
  */
-int
+void
 routingtables_dump_metrics(routingtables_t *rt, uint32_t time_now);
 
 
