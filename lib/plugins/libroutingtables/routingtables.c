@@ -291,13 +291,14 @@ get_collector_data(routingtables_t *rt, char *project, char *collector)
   int khret;
   collector_t c_data;
   
-  // create new collector-related structures if it is the first time
-  // we see it
+  /* create new collector-related structures if it is the first time
+   * we see it */
   if((k = kh_get(collector_data, rt->collectors, collector))
      == kh_end(rt->collectors))
     {
 
-      // collector data initialization
+      /* collector data initialization (all the fields needs to be */
+      /* explicitely initialized */
       
       char project_name[BGPSTREAM_UTILS_STR_NAME_LEN];
       strncpy(project_name, project, BGPSTREAM_UTILS_STR_NAME_LEN);
@@ -329,7 +330,7 @@ get_collector_data(routingtables_t *rt, char *project, char *collector)
         {
           goto err;
         }
-
+      
       c_data.bgp_time_last = 0;
       c_data.wall_time_last = 0;
       c_data.bgp_time_ref_rib_dump_time = 0;
@@ -337,6 +338,11 @@ get_collector_data(routingtables_t *rt, char *project, char *collector)
       c_data.bgp_time_uc_rib_dump_time = 0;
       c_data.bgp_time_uc_rib_start_time = 0;
       c_data.state = ROUTINGTABLES_COLLECTOR_STATE_UNKNOWN;
+      c_data.active_peers_cnt = 0;
+      c_data.valid_record_cnt = 0;
+      c_data.corrupted_record_cnt = 0;
+      c_data.empty_record_cnt = 0;
+                  
       collector_generate_metrics(rt, &c_data);
 
       /* insert key,value in map */
