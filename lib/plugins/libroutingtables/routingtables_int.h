@@ -116,6 +116,8 @@ typedef struct peer_metric_idx {
   uint32_t pfx_announcements_cnt_idx;
   uint32_t pfx_withdrawals_cnt_idx;
   uint32_t state_messages_cnt_idx;
+  uint32_t rib_positive_mismatches_cnt_idx;
+  uint32_t rib_negative_mismatches_cnt_idx;
   
   /* data metrics */  
   uint32_t active_v4_pfxs_idx;
@@ -207,6 +209,16 @@ typedef struct struct_perpeer_info_t {
    *  least once in the current interval */
   bgpstream_ipv6_pfx_set_t *withdrawn_v6_pfxs;
 
+  /** number of positive mismatches at rib end time
+   *  i.e. number of active prefixes that are not
+   *  observed in the new rib */
+  uint32_t rib_positive_mismatches_cnt;
+
+  /** number of negative mismatches at rib end time
+   *  i.e. number of inactive prefixes that are
+   *  instead observed in the new rib  */
+  uint32_t rib_negative_mismatches_cnt;
+
 } perpeer_info_t;
 
 
@@ -219,7 +231,6 @@ typedef struct collector_metric_idx {
   uint32_t valid_record_cnt_idx;
   uint32_t corrupted_record_cnt_idx;
   uint32_t empty_record_cnt_idx;
-  uint32_t rib_mismatches_cnt_idx;
 
   uint32_t status_idx;
   uint32_t active_peers_cnt_idx;
@@ -287,9 +298,6 @@ typedef struct struct_collector_t {
   
   /** number of empty records received in the interval */
   uint32_t empty_record_cnt;
-
-  /** number of mismatches at rib end time */
-  uint32_t rib_mismatches_cnt;
 
 } collector_t;
 

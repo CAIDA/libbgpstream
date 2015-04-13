@@ -219,6 +219,8 @@ perpeer_info_create(routingtables_t *rt, collector_t * c,
   p->bgp_time_ref_rib_end = 0;
   p->bgp_time_uc_rib_start = 0;
   p->bgp_time_uc_rib_end = 0;
+  p->rib_positive_mismatches_cnt = 0;
+  p->rib_negative_mismatches_cnt = 0;
   
   if((p->kp = timeseries_kp_init(rt->timeseries, 1)) == NULL)
     {
@@ -349,7 +351,6 @@ get_collector_data(routingtables_t *rt, char *project, char *collector)
       c_data.valid_record_cnt = 0;
       c_data.corrupted_record_cnt = 0;
       c_data.empty_record_cnt = 0;
-      c_data.rib_mismatches_cnt = 0;
                   
       collector_generate_metrics(rt, &c_data);
 
@@ -482,12 +483,12 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
               if(pp->uc_origin_asn != ROUTINGTABLES_DOWN_ORIGIN_ASN)
                 {
 
-                  /* if the prefix was set (that's why we look for ts!= 0
+                  /* if the prefix was set (that's why we look for ts!= 0)
                    * inactive in the previous state and now it is in the rib */
                   if(pp->bgp_time_last_ts != 0 &&
-                     bgpwatcher_view_iter_pfx_peer_get_state(rt->iter) == BGPWATCHER_VIEW_FIELD_INACTIVE)
+                     bgpwatcher_view_iter_pfx_peer_get_orig_asn(rt->iter) == ROUTINGTABLES_DOWN_ORIGIN_ASN)
                     {
-                      c->rib_mismatches_cnt++;
+                      p->rib_negative_mismatches_cnt++;
                     }
 
                   pp->bgp_time_last_ts = pp->bgp_time_uc_delta_ts + p->bgp_time_uc_rib_start;
@@ -506,7 +507,7 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
                    * (it may be already inactive) */
                   if(bgpwatcher_view_iter_pfx_peer_get_state(rt->iter) == BGPWATCHER_VIEW_FIELD_ACTIVE)
                     {
-                      c->rib_mismatches_cnt++;
+                      p->rib_positive_mismatches_cnt++;
                     }
                   pp->bgp_time_last_ts = 0;
                   bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, ROUTINGTABLES_DOWN_ORIGIN_ASN);
