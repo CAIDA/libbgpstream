@@ -77,6 +77,9 @@ typedef struct bwc_chain_state {
   /** Total number of v4 peers in the view */
   int v4_peer_cnt;
 
+  /** Total number of v4 ff peer ASns in the view */
+  int ff_v4_peer_asns_cnt;
+  
   /** Is the v4 table usable? I.e. has enough v6 full-feed peers */
   int v4_usable;
 
@@ -85,6 +88,9 @@ typedef struct bwc_chain_state {
 
   /** Total number of v6 peers in the view */
   int v6_peer_cnt;
+
+  /** Total number of v6 ff peer ASns in the view */
+  int ff_v6_peer_asns_cnt;
 
   /** Is the v6 table usable? I.e. has enough full-feed v6 peers */
   int v6_usable;
