@@ -67,6 +67,17 @@ get_wall_time_now()
   return tv.tv_sec;
 }
 
+/* DEBUG FUNCTION */
+/* static void */
+/* print_peer_state(char *prepend, routingtables_t *rt, perpeer_info_t *p) */
+/* { */
+/*   if(bgpwatcher_view_iter_peer_get_state(rt->iter) == BGPWATCHER_VIEW_FIELD_ACTIVE) */
+/*     fprintf(stderr, "%s ---- %s %d state: ACTIVE (%d)\n", prepend, p->peer_str,  bgpwatcher_view_iter_peer_get_peer_id(rt->iter),  p->bgp_fsm_state); */
+/*   else */
+/*     fprintf(stderr, "%s ---- %s %d state: INACTIVE (%d)\n", prepend, p->peer_str, bgpwatcher_view_iter_peer_get_peer_id(rt->iter),  p->bgp_fsm_state); */
+/* } */
+
+
 /** @note for the future
  *  In order to save memory we could use the reserved AS numbers
  *  to embed other informations associated with an AS number, i.e.:
@@ -452,6 +463,9 @@ reset_peerpfxdata(routingtables_t *rt,
               bgpwatcher_view_iter_pfx_deactivate_peer(rt->iter);
             }
         }
+      bgpwatcher_view_iter_seek_peer(rt->iter,
+                                    peer_id,
+                                     BGPWATCHER_VIEW_FIELD_ALL_VALID);
     }  
 }
 
@@ -633,7 +647,7 @@ apply_prefix_update(routingtables_t *rt, collector_t *c, bgpstream_peer_id_t pee
   
   perpfx_perpeer_info_t *pp = NULL;  
 
-  uint32_t asn = 0;            
+  uint32_t asn = 0;
 
   /* populate correctly the asn if it is an announcement */
   if(elem->type == BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT)
@@ -715,7 +729,7 @@ apply_prefix_update(routingtables_t *rt, collector_t *c, bgpstream_peer_id_t pee
                    * an under construction process going on: 
                    * the peer remains inactive, the information already inserted
                    * in the pfx-peer (pp) will be used when the uc rib becomes active,
-                   * while the pfx-peer remains inactive */             
+                   * while the pfx-peer remains inactive */
                   return 0;
                 }
               else
@@ -752,7 +766,7 @@ apply_prefix_update(routingtables_t *rt, collector_t *c, bgpstream_peer_id_t pee
                 {
                   /* the pfx-peer goes active only if we received an announcement */
                   bgpwatcher_view_iter_pfx_activate_peer(rt->iter);
-                }                  
+                }
               return 0;
             }
                           
@@ -775,16 +789,16 @@ apply_state_update(routingtables_t *rt, collector_t * c, bgpstream_peer_id_t pee
                    bgpstream_elem_peerstate_t new_state, uint32_t ts)
 {
 
-  if(new_state == BGPSTREAM_ELEM_PEERSTATE_UNKNOWN || new_state >= BGPSTREAM_ELEM_PEERSTATE_NULL)
-    {
-      // @todo BGPSTREAM_ELEM_PEERSTATE_NULL occurs, check in bgpstream what is going on!
-      return 0;
-    }
-
   assert(peer_id);
   assert(peer_id == bgpwatcher_view_iter_peer_get_peer_id(rt->iter));
-
   perpeer_info_t *p = bgpwatcher_view_iter_peer_get_user(rt->iter);
+
+  if(new_state < BGPSTREAM_ELEM_PEERSTATE_IDLE || new_state >= BGPSTREAM_ELEM_PEERSTATE_NULL)
+  {
+    // @todo BGPSTREAM_ELEM_PEERSTATE_NULL occurs, check in bgpstream what is going on! */
+    return 0;
+  }
+
   p->state_messages_cnt++;
   
   uint8_t reset_uc = 0;
@@ -831,6 +845,16 @@ apply_state_update(routingtables_t *rt, collector_t * c, bgpstream_peer_id_t pee
               p->bgp_time_ref_rib_end = ts;         
             }
         }
+    }
+
+ 
+   if(p->bgp_fsm_state == BGPSTREAM_ELEM_PEERSTATE_ESTABLISHED)
+    {
+      assert(bgpwatcher_view_iter_peer_get_state(rt->iter) == BGPWATCHER_VIEW_FIELD_ACTIVE);
+    }
+  else
+    {
+      assert(bgpwatcher_view_iter_peer_get_state(rt->iter) == BGPWATCHER_VIEW_FIELD_INACTIVE);
     }
 
   return 0;
