@@ -43,12 +43,6 @@ typedef struct bwv_pfx_peerinfo {
 
   /** @todo add other pfx info fields here (AS path, etc) */
 
-  /** State of the per-pfx per-peer data.
-   *  if ACTIVE the prefix is currently seen by a peer.
-   *  (contains a bgpwatcher_view_field_state_t value)
-   */
-  uint8_t state;
-
 } __attribute__((packed)) bwv_pfx_peerinfo_t;
 
 /** Information about a prefix as seen from a peer */
@@ -58,12 +52,6 @@ typedef struct bwv_pfx_peerinfo_ext {
   uint32_t orig_asn;
 
   /** @todo add other pfx info fields here (AS path, etc) */
-
-  /** State of the per-pfx per-peer data.
-   *  if ACTIVE the prefix is currently seen by a peer.
-   *  (contains a bgpwatcher_view_field_state_t value)
-   */
-  uint8_t state;
 
   /** Generic pointer to store per-pfx-per-peer information
    * This is ONLY usable if the view was created as extended
@@ -102,6 +90,11 @@ typedef struct bwv_peerid_pfxinfo {
    */
   void *peers;
 
+  /** Bit array of peer states. The state of peer N is encoded in bits (N-1)*2,
+   *  and ((N-1)*2)+1 (i.e. every two bits represents a different peer state)
+   */
+  uint8_t *peer_states;
+
   uint16_t peers_alloc_cnt;
 
   /** The number of peers in the peers list that currently observe this
@@ -119,6 +112,19 @@ typedef struct bwv_peerid_pfxinfo {
 
 } __attribute__((packed)) bwv_peerid_pfxinfo_t;
 
+#define BWV_PFX_PEER_STATE_LEN(max_peerid)              \
+  ((max_peerid==0) ? 0 : ((((max_peerid)-1)/4)+1))
+
+#define BWV_PFX_GET_PEER_STATE(pfxinfo, peerid)                         \
+  (((pfxinfo->peer_states[((peerid-1)*2)/8])>>(8-(((peerid-1)%4)*2)-2))&0b11)
+
+#define BWV_PFX_SET_PEER_STATE(pfxinfo, peerid, state)  \
+  do {                                                  \
+    (pfxinfo->peer_states[((peerid-1)*2)/8]) =          \
+      ((pfxinfo->peer_states[((peerid-1)*2)/8]) &       \
+       ~(0b11 << (8-(((peerid-1)%4)*2)-2))) |           \
+      ((state & 0b11)<<(8-(((peerid-1)%4)*2)-2));       \
+  } while(0)
 
 /** @todo: add documentation ? */
 
@@ -327,18 +333,23 @@ static int peerid_pfxinfo_insert(bgpwatcher_view_iter_t *iter,
           return -1;
         }
 
+      /* and we may also need to allocate some more state bits */
+      if(BWV_PFX_PEER_STATE_LEN(v->peers_alloc_cnt) <
+         BWV_PFX_PEER_STATE_LEN(peerid) &&
+         (v->peer_states = realloc(v->peer_states,
+                                   BWV_PFX_PEER_STATE_LEN(peerid))) == NULL)
+        {
+          return -1;
+        }
+
       /* now we have to zero everything between prev_last and the end */
       for(i = v->peers_alloc_cnt+1; i <= peerid; i++)
         {
           if(iter->view->disable_extended == 0)
             {
-              BWV_PFX_GET_PEER_EXT(v, i).state = BGPWATCHER_VIEW_FIELD_INVALID;
               BWV_PFX_GET_PEER_EXT(v, i).user = NULL;
             }
-          else
-            {
-              BWV_PFX_GET_PEER(v, i).state = BGPWATCHER_VIEW_FIELD_INVALID;
-            }
+          BWV_PFX_SET_PEER_STATE(v, i, BGPWATCHER_VIEW_FIELD_INVALID);
         }
 
       v->peers_alloc_cnt = peerid;
@@ -347,13 +358,13 @@ static int peerid_pfxinfo_insert(bgpwatcher_view_iter_t *iter,
   peerinfo = BWV_PFX_GET_PEER_PTR(iter->view, v, peerid);
 
   /* it was already here and active... */
-  if(peerinfo->state != BGPWATCHER_VIEW_FIELD_INVALID)
+  if(BWV_PFX_GET_PEER_STATE(v, peerid) != BGPWATCHER_VIEW_FIELD_INVALID)
     {
       return 0;
     }
 
   peerinfo->orig_asn = origin_asn;
-  peerinfo->state = BGPWATCHER_VIEW_FIELD_INACTIVE;
+  BWV_PFX_SET_PEER_STATE(v, peerid, BGPWATCHER_VIEW_FIELD_INACTIVE);
   /** peerinfo->user remains untouched */
 
   /* and count this as a new inactive peer for this prefix */
@@ -417,6 +428,7 @@ static void peerid_pfxinfo_destroy(bgpwatcher_view_t *view,
             }
         }
         free(v->peers);
+        free(v->peer_states);
     }
   v->peers = NULL;
   v->state = BGPWATCHER_VIEW_FIELD_INVALID;
@@ -701,8 +713,7 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
       pfxinfo->state = BGPWATCHER_VIEW_FIELD_INVALID;
       for(i=1; i <= pfxinfo->peers_alloc_cnt; i++)
 	{
-          BWV_PFX_GET_PEER_PTR(view, pfxinfo, i)->state =
-            BGPWATCHER_VIEW_FIELD_INVALID;
+          BWV_PFX_SET_PEER_STATE(pfxinfo, i, BGPWATCHER_VIEW_FIELD_INVALID);
 	}
     }
   view->v4pfxs_cnt[BGPWATCHER_VIEW_FIELD_INACTIVE] = 0;
@@ -1179,7 +1190,7 @@ bgpwatcher_view_iter_seek_pfx(bgpwatcher_view_iter_t *iter,
   while((iter->pfx_peer_it <=                                            \
          infos->peers_alloc_cnt) &&                                     \
         (!(iter->pfx_peer_state_mask &                                  \
-           BWV_PFX_GET_PEER_PTR(iter->view, infos, iter->pfx_peer_it)->state)))
+           BWV_PFX_GET_PEER_STATE(infos, iter->pfx_peer_it))))
 
 int
 bgpwatcher_view_iter_pfx_first_peer(bgpwatcher_view_iter_t *iter,
@@ -1256,7 +1267,7 @@ bgpwatcher_view_iter_pfx_seek_peer(bgpwatcher_view_iter_t *iter,
 
   if((peerid <= infos->peers_alloc_cnt) &&
      (iter->pfx_peer_state_mask &
-      BWV_PFX_GET_PEER_PTR(iter->view, infos, iter->pfx_peer_it)->state))
+      BWV_PFX_GET_PEER_STATE(infos, iter->pfx_peer_it)))
     {
       iter->pfx_peer_it_valid = 1;
       iter->pfx_peer_it = peerid;
@@ -1634,12 +1645,12 @@ bgpwatcher_view_iter_pfx_remove_peer(bgpwatcher_view_iter_t *iter)
       bgpwatcher_view_iter_pfx_deactivate_peer(iter);
     }
 
-  assert(BWV_PFX_GET_PEER_PTR(iter->view, pfxinfo, iter->pfx_peer_it)->state =
+  assert(BWV_PFX_GET_PEER_STATE(pfxinfo, iter->pfx_peer_it) ==
          BGPWATCHER_VIEW_FIELD_INACTIVE);
 
   /* now, simply set the state to invalid and reset the pfx counters */
-  BWV_PFX_GET_PEER_PTR(iter->view, pfxinfo, iter->pfx_peer_it)->state =
-    BGPWATCHER_VIEW_FIELD_INVALID;
+  BWV_PFX_SET_PEER_STATE(pfxinfo, iter->pfx_peer_it,
+                         BGPWATCHER_VIEW_FIELD_INVALID);
   pfxinfo->peers_cnt[BGPWATCHER_VIEW_FIELD_INACTIVE]--;
 
   /* if there are no peers left in this pfx, the pfx should be removed */
@@ -1862,7 +1873,7 @@ bgpwatcher_view_iter_pfx_peer_get_state(bgpwatcher_view_iter_t *iter)
   assert(infos);
   assert(bgpwatcher_view_iter_pfx_has_more_peer(iter));
 
-  return BWV_PFX_GET_PEER_PTR(iter->view, infos, iter->pfx_peer_it)->state;
+  return BWV_PFX_GET_PEER_STATE(infos, iter->pfx_peer_it);
 }
 
 void *
@@ -2061,11 +2072,9 @@ bgpwatcher_view_iter_pfx_activate_peer(bgpwatcher_view_iter_t *iter)
 
   assert(bgpwatcher_view_iter_pfx_has_more_peer(iter));
 
-  bwv_pfx_peerinfo_t *peerinfo =
-    BWV_PFX_GET_PEER_PTR(iter->view, pfxinfo, iter->pfx_peer_it);
-
-  assert(peerinfo->state > 0);
-  if(peerinfo->state != BGPWATCHER_VIEW_FIELD_INACTIVE)
+  assert(BWV_PFX_GET_PEER_STATE(pfxinfo, iter->pfx_peer_it) > 0);
+  if(BWV_PFX_GET_PEER_STATE(pfxinfo, iter->pfx_peer_it)
+     != BGPWATCHER_VIEW_FIELD_INACTIVE)
     {
       return 0;
     }
@@ -2098,7 +2107,8 @@ bgpwatcher_view_iter_pfx_activate_peer(bgpwatcher_view_iter_t *iter)
       return -1;
     }
 
-  peerinfo->state = BGPWATCHER_VIEW_FIELD_ACTIVE;
+  BWV_PFX_SET_PEER_STATE(pfxinfo, iter->pfx_peer_it,
+                         BGPWATCHER_VIEW_FIELD_ACTIVE);
 
   return 1;
 }
@@ -2111,17 +2121,16 @@ bgpwatcher_view_iter_pfx_deactivate_peer(bgpwatcher_view_iter_t *iter)
 
   assert(bgpwatcher_view_iter_pfx_has_more_peer(iter));
 
-  bwv_pfx_peerinfo_t *peerinfo =
-    BWV_PFX_GET_PEER_PTR(iter->view, pfxinfo, iter->pfx_peer_it);
-
-  assert(peerinfo->state > 0);
-  if(peerinfo->state != BGPWATCHER_VIEW_FIELD_ACTIVE)
+  assert(BWV_PFX_GET_PEER_STATE(pfxinfo, iter->pfx_peer_it) > 0);
+  if(BWV_PFX_GET_PEER_STATE(pfxinfo, iter->pfx_peer_it) !=
+     BGPWATCHER_VIEW_FIELD_ACTIVE)
     {
       return 0;
     }
 
   /* set the state to inactive */
-  peerinfo->state = BGPWATCHER_VIEW_FIELD_INACTIVE;
+  BWV_PFX_SET_PEER_STATE(pfxinfo, iter->pfx_peer_it,
+                         BGPWATCHER_VIEW_FIELD_INACTIVE);
 
   /* update the number of peers that observe the pfx */
   DEACTIVATE_FIELD_CNT(pfxinfo->peers_cnt);
