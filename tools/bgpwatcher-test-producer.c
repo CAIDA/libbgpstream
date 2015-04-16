@@ -351,7 +351,7 @@ int main(int argc, char **argv)
       fprintf(stderr, "TEST: Simulating %d peer(s)\n", test_peer_num);
       for(peer = 0; peer < test_peer_num; peer++)
         {
-          test_peer_ip.ipv4.s_addr += htonl(1);
+          test_peer_ip.ipv4.s_addr = htonl(ntohl(test_peer_ip.ipv4.s_addr) + 1);
           test_peer_asn = test_peer_asn + 1;
 
           // returns number from 0 to 2
