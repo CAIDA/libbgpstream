@@ -234,12 +234,11 @@ static peras_info_t *as_pfxs_get_info(bwc_perasvisibility_state_t *state,
       k = kh_put(as_pfxs, state->as_pfxs, asn, &khret);
 
       info = &kh_value(state->as_pfxs, k);
-
-      memset(&info->v4_visible_pfxs, 0, 4);
-      memset(&info->v6_visible_pfxs, 0, 4);
       
       for(i=0; i<4; i++)
         {
+
+          info->v4_visible_pfxs[i] = 0;
           snprintf(buffer, BUFFER_LEN,
                    METRIC_ASN_V4PFX_PERC_FORMAT,
                    asn, percentage_string(i));
@@ -247,6 +246,7 @@ static peras_info_t *as_pfxs_get_info(bwc_perasvisibility_state_t *state,
             {
               return NULL;
             }
+          info->v6_visible_pfxs[i] = 0;
           snprintf(buffer, BUFFER_LEN,
                    METRIC_ASN_V6PFX_PERC_FORMAT,
                    asn, percentage_string(i));
@@ -489,11 +489,10 @@ static void dump_table(bwc_t *consumer)
             {
               timeseries_kp_set(STATE->kp_v4, info->v4_visible_pfxs_idx[i], info->v4_visible_pfxs[i]);
               timeseries_kp_set(STATE->kp_v6, info->v6_visible_pfxs_idx[i], info->v6_visible_pfxs[i]);
-            }
+              info->v4_visible_pfxs[i] = 0;
+              info->v6_visible_pfxs[i] = 0;
 
-          memset(&info->v4_visible_pfxs, 0, 4);
-          memset(&info->v6_visible_pfxs, 0, 4);
-                    
+            }
           
 	}
     }
