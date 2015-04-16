@@ -57,6 +57,12 @@ typedef struct bwc bwc_t;
  *
  * @{ */
 
+/** Maximum length of the metric prefix string */
+#define BGPWATCHER_METRIC_PREFIX_LEN 1024
+
+/** Maximum length of the metric prefix string */
+#define BGPWATCHER_METRIC_PREFIX_DEFAULT "bgp"
+
 /** Per-view state that allows consumers to make use of the results of
  * processing carried out by previous consumers.
  *
@@ -66,35 +72,28 @@ typedef struct bwc bwc_t;
  */
 typedef struct bwc_chain_state {
 
+  /* Common metric prefix */
+  char metric_prefix[BGPWATCHER_METRIC_PREFIX_LEN];
+
   /* Visibility state */
 
   /** Has the visibility consumer run? */
   int visibility_computed;
 
-  /** Set of v4 full-feed peers */
-  bgpstream_id_set_t *v4ff_peerids;
+  /** Total number of peers in the view */
+  int peer_ids_cnt[BGPSTREAM_MAX_IP_VERSION_IDX];
 
-  /** Total number of v4 peers in the view */
-  int v4_peer_cnt;
+  /* Set of full feed peers */
+  bgpstream_id_set_t *full_feed_peer_ids[BGPSTREAM_MAX_IP_VERSION_IDX];
 
-  /** Total number of v4 ff peer ASns in the view */
-  int ff_v4_peer_asns_cnt;
+  /** Total number of full feed peer ASns in the view */
+  int full_feed_peer_asns_cnt[BGPSTREAM_MAX_IP_VERSION_IDX];
   
-  /** Is the v4 table usable? I.e. has enough v6 full-feed peers */
-  int v4_usable;
+  /** Is the table usable? I.e. has enough full-feed peers */
+  int usable_table_flag[BGPSTREAM_MAX_IP_VERSION_IDX];
 
-  /** Set of v6 full-feed peers */
-  bgpstream_id_set_t *v6ff_peerids;
-
-  /** Total number of v6 peers in the view */
-  int v6_peer_cnt;
-
-  /** Total number of v6 ff peer ASns in the view */
-  int ff_v6_peer_asns_cnt;
-
-  /** Is the v6 table usable? I.e. has enough full-feed v6 peers */
-  int v6_usable;
-
+  /** @todo the next variables will be replaced with percentages */
+  
   /** What is the minimum number of peers before a pfx is considered visible */
   int pfx_vis_peers_threshold;
 
@@ -143,10 +142,13 @@ typedef enum bwc_id
 /** Create a new consumer manager instance
  *
  * @param timeseries    pointer to an initialized timeseries instance
+ * @param metric_prefix pointer to an initialized string containing the
+ *                      metric prefix common among all consumers
  *
  * @return the consumer manager instance created, NULL if an error occurs
  */
-bw_consumer_manager_t *bw_consumer_manager_create(timeseries_t *timeseries);
+bw_consumer_manager_t *bw_consumer_manager_create(timeseries_t *timeseries,
+                                                  char *metric_prefix);
 
 /** Free a consumer manager instance
  *

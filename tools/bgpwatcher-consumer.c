@@ -96,6 +96,10 @@ static void usage(const char *name)
 	  name);
   timeseries_usage();
   fprintf(stderr,
+          "       -m <prefix>           Metric prefix (default: %s)\n",
+          BGPWATCHER_METRIC_PREFIX_DEFAULT
+          );
+  fprintf(stderr,
 	  "       -c <consumer>         Consumer to active (can be used multiple times)\n");
   consumer_usage();
   fprintf(stderr,
@@ -134,6 +138,8 @@ int main(int argc, char **argv)
   int consumer_cmds_cnt = 0;
   int i;
 
+  char *metric_prefix = NULL;
+  
   char *backends[TIMESERIES_BACKEND_ID_LAST];
   int backends_cnt = 0;
   char *backend_arg_ptr = NULL;
@@ -161,16 +167,9 @@ int main(int argc, char **argv)
       return -1;
     }
 
-  /* better just grab a pointer to the manager before anybody goes crazy and
-     starts dumping usage strings */
-  if((manager = bw_consumer_manager_create(timeseries)) == NULL)
-    {
-      fprintf(stderr, "ERROR: Could not initialize consumer manager\n");
-      return -1;
-    }
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":b:c:i:I:l:n:r:R:s:S:v?")) >= 0)
+	(opt = getopt(argc, argv, ":m:b:c:i:I:l:n:r:R:s:S:v?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
@@ -182,6 +181,10 @@ int main(int argc, char **argv)
 	  fprintf(stderr, "ERROR: Missing option argument for -%c\n", optopt);
 	  usage(argv[0]);
 	  return -1;
+	  break;
+
+	case 'm':
+	  metric_prefix = strdup(optarg);
 	  break;
 
 	case 'b':
@@ -271,6 +274,18 @@ int main(int argc, char **argv)
   /* NB: once getopt completes, optind points to the first non-option
      argument */
 
+  if(metric_prefix == NULL)
+    {
+      metric_prefix = strdup(BGPWATCHER_METRIC_PREFIX_DEFAULT);
+    }
+
+  /* better just grab a pointer to the manager */
+  if((manager = bw_consumer_manager_create(timeseries, metric_prefix)) == NULL)
+    {
+      fprintf(stderr, "ERROR: Could not initialize consumer manager\n");
+      return -1;
+    }
+
   if(consumer_cmds_cnt == 0)
     {
       fprintf(stderr,
@@ -279,6 +294,7 @@ int main(int argc, char **argv)
       return -1;
     }
 
+  
   if(backends_cnt == 0)
     {
       fprintf(stderr,
@@ -420,6 +436,10 @@ int main(int argc, char **argv)
   bgpwatcher_view_destroy(view);
   bw_consumer_manager_destroy(&manager);
   timeseries_free(&timeseries);
+  if(metric_prefix !=NULL)
+    {
+      free(metric_prefix);
+    } 
   fprintf(stderr, "INFO: Shutdown complete\n");
 
   /* complete successfully */
@@ -430,6 +450,10 @@ int main(int argc, char **argv)
     bgpwatcher_client_perr(client);
     bgpwatcher_client_free(client);
   }
+  if(metric_prefix !=NULL)
+    {
+      free(metric_prefix);
+    }
   bgpwatcher_view_destroy(view);
   bw_consumer_manager_destroy(&manager);
   timeseries_free(&timeseries);

@@ -455,6 +455,7 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   khiter_t idk;
   uint32_t cck;
   khiter_t setk;
+  int i = bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV4);
 
   for(bgpwatcher_view_iter_first_pfx(it, BGPSTREAM_ADDR_VERSION_IPV4, BGPWATCHER_VIEW_FIELD_ACTIVE);
       bgpwatcher_view_iter_has_more_pfx(it);
@@ -489,7 +490,7 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
         {
            /* only consider peers that are full-feed */
           peerid = bgpwatcher_view_iter_peer_get_peer_id(it);
-          if(bgpstream_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v4ff_peerids,
+          if(bgpstream_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->full_feed_peer_ids[i],
                                      peerid) == 0)
             {
               continue;
@@ -742,7 +743,9 @@ int bwc_pergeovisibility_process_view(bwc_t *consumer, uint8_t interests,
       return -1;
     }
 
-  if(BWC_GET_CHAIN_STATE(consumer)->v4_usable != 0)
+  int i = bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV4);
+
+  if(BWC_GET_CHAIN_STATE(consumer)->usable_table_flag[i] != 0)
     {
       /* analyze v4 table */
       geotag_v4table(consumer, it);

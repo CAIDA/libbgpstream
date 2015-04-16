@@ -355,6 +355,7 @@ static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   khash_t(int_set) *ff_origin_asns = kh_init(int_set);
   
   peras_info_t *info;
+  int i;
   
   for(bgpwatcher_view_iter_first_pfx(it, 0 /* all ip versions*/, BGPWATCHER_VIEW_FIELD_ACTIVE);
       bgpwatcher_view_iter_has_more_pfx(it);
@@ -362,7 +363,8 @@ static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
     {
 
       pfx = bgpwatcher_view_iter_pfx_get_pfx(it);
-
+      i = bgpstream_ipv2idx(pfx->address.version);
+      
       /* only consider ipv4 prefixes whose mask is shorter than a /6 */
       if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4 &&
          pfx->mask_len < BWC_GET_CHAIN_STATE(consumer)->pfx_vis_mask_len_threshold)
@@ -379,30 +381,16 @@ static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
         {
           /* only consider peers that are full-feed */
           peerid = bgpwatcher_view_iter_peer_get_peer_id(it);
-          sg = bgpwatcher_view_iter_peer_get_sig(it);
-
-          if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4)
+          sg = bgpwatcher_view_iter_peer_get_sig(it);          
+          
+            if(bgpstream_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->full_feed_peer_ids[i],
+                                     peerid) == 0)
             {
-              if(bgpstream_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v4ff_peerids,
-                                         peerid) == 0)
-                {
-                  continue;
-                }
-              bgpstream_id_set_insert(ff_asns, sg->peer_asnumber);
-              kh_put(int_set, ff_origin_asns, bgpwatcher_view_iter_pfx_peer_get_orig_asn(it), &khret);
-                            
+              continue;
             }
           
-          if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV6)
-            {
-              if(bgpstream_id_set_exists(BWC_GET_CHAIN_STATE(consumer)->v6ff_peerids,
-                                         peerid) == 0)
-                {
-                  continue;
-                }
-              bgpstream_id_set_insert(ff_asns, sg->peer_asnumber);
-              kh_put(int_set, ff_origin_asns, bgpwatcher_view_iter_pfx_peer_get_orig_asn(it), &khret);
-            }
+          bgpstream_id_set_insert(ff_asns, sg->peer_asnumber);
+          kh_put(int_set, ff_origin_asns, bgpwatcher_view_iter_pfx_peer_get_orig_asn(it), &khret);
           
         }
 
@@ -423,7 +411,7 @@ static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
                   bgpstream_ipv4_pfx_set_insert(info->v4pfxs,
                                                 (bgpstream_ipv4_pfx_t *)pfx);
                   update_visibility_counters(info->v4_visible_pfxs, asns_count,
-                                             BWC_GET_CHAIN_STATE(consumer)->ff_v4_peer_asns_cnt);
+                                             BWC_GET_CHAIN_STATE(consumer)->full_feed_peer_asns_cnt[i]);
                 }
               
               if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV6)
@@ -432,7 +420,7 @@ static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
                   bgpstream_ipv6_pfx_set_insert(info->v6pfxs,
                                                 (bgpstream_ipv6_pfx_t *)pfx);
                   update_visibility_counters(info->v6_visible_pfxs, asns_count,
-                                             BWC_GET_CHAIN_STATE(consumer)->ff_v6_peer_asns_cnt);
+                                             BWC_GET_CHAIN_STATE(consumer)->full_feed_peer_asns_cnt[i]);
                 }
             }
         }
@@ -622,14 +610,14 @@ int bwc_perasvisibility_process_view(bwc_t *consumer, uint8_t interests,
   dump_table(consumer);
 
   /* now flush the v4 kp */
-  if(BWC_GET_CHAIN_STATE(consumer)->v4_usable != 0 &&
+  if(BWC_GET_CHAIN_STATE(consumer)->usable_table_flag[bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV4)] != 0 &&
      timeseries_kp_flush(STATE->kp_v4, bgpwatcher_view_get_time(view)) != 0)
     {
       return -1;
     }
 
   /* now flush the v6 kp */
-  if(BWC_GET_CHAIN_STATE(consumer)->v6_usable != 0 &&
+  if(BWC_GET_CHAIN_STATE(consumer)->usable_table_flag[bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV6)] != 0 &&
      timeseries_kp_flush(STATE->kp_v6, bgpwatcher_view_get_time(view)) != 0)
     {
       return -1;
