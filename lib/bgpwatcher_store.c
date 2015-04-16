@@ -202,6 +202,9 @@ store_view_t *store_view_create(bgpwatcher_store_t *store, int id)
       goto err;
     }
 
+  /* please oh please we don't want user pointers */
+  bgpwatcher_view_disable_user_data(sview->view);
+
   return sview;
 
  err:
