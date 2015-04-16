@@ -83,10 +83,10 @@ typedef struct bwv_pfx_peerinfo_ext {
 
 
 #define BWV_PFX_GET_PEER(pfxinfo, peerid)              \
-  (((bwv_pfx_peerinfo_t*)(pfxinfo->peers))[peerid])
+  (((bwv_pfx_peerinfo_t*)(pfxinfo->peers))[peerid-1])
 
 #define BWV_PFX_GET_PEER_EXT(pfxinfo, peerid)           \
-  (((bwv_pfx_peerinfo_ext_t*)(pfxinfo->peers))[peerid])
+  (((bwv_pfx_peerinfo_ext_t*)(pfxinfo->peers))[peerid-1])
 
 #define ASSERT_BWV_PFX_PEERINFO_EXT(view)       \
   assert(view->disable_extended == 0)
@@ -318,17 +318,17 @@ static int peerid_pfxinfo_insert(bgpwatcher_view_iter_t *iter,
   bwv_pfx_peerinfo_t *peerinfo = NULL;
 
   /* need to realloc the array? */
-  if((peerid+1) > v->peers_alloc_cnt)
+  if(peerid > v->peers_alloc_cnt)
     {
       if((v->peers =
           realloc(v->peers,
-                  BWV_PFX_PEERINFO_SIZE(iter->view) * (peerid+1))) == NULL)
+                  BWV_PFX_PEERINFO_SIZE(iter->view) * peerid)) == NULL)
         {
           return -1;
         }
 
       /* now we have to zero everything between prev_last and the end */
-      for(i = v->peers_alloc_cnt; i <= peerid; i++)
+      for(i = v->peers_alloc_cnt+1; i <= peerid; i++)
         {
           if(iter->view->disable_extended == 0)
             {
@@ -341,7 +341,7 @@ static int peerid_pfxinfo_insert(bgpwatcher_view_iter_t *iter,
             }
         }
 
-      v->peers_alloc_cnt = peerid+1;
+      v->peers_alloc_cnt = peerid;
     }
 
   peerinfo = BWV_PFX_GET_PEER_PTR(iter->view, v, peerid);
@@ -404,13 +404,8 @@ static void peerid_pfxinfo_destroy(bgpwatcher_view_t *view,
   int i = 0;
   if(v->peers!=NULL)
     {
-      /* Warning: the peer id is always equal to the position
-       * of the peer in the peers array. Since there is no
-       * peer with id 0, the array is always 1 elem larger, also
-       * position 0 is to be considered not valid at all times.
-       * We cannot destroy memory that is not valid, so we
-       * destroy just the peer_infos with id >=1  */
-      for(i = 1; i< v->peers_alloc_cnt; i++)
+      /* our macros expect peerids, so we go from 1 to alloc_cnt */
+      for(i = 1; i <= v->peers_alloc_cnt; i++)
         {
           if(view->disable_extended == 0)
             {
@@ -704,7 +699,7 @@ void bgpwatcher_view_clear(bgpwatcher_view_t *view)
       pfxinfo->peers_cnt[BGPWATCHER_VIEW_FIELD_INACTIVE] = 0;
       pfxinfo->peers_cnt[BGPWATCHER_VIEW_FIELD_ACTIVE] = 0;
       pfxinfo->state = BGPWATCHER_VIEW_FIELD_INVALID;
-      for(i=0; i<pfxinfo->peers_alloc_cnt; i++)
+      for(i=1; i <= pfxinfo->peers_alloc_cnt; i++)
 	{
           BWV_PFX_GET_PEER_PTR(view, pfxinfo, i)->state =
             BGPWATCHER_VIEW_FIELD_INVALID;
@@ -1136,7 +1131,7 @@ bgpwatcher_view_iter_seek_pfx(bgpwatcher_view_iter_t *iter,
   iter->version_ptr = pfx->address.version;
   iter->pfx_state_mask = state_mask;
   iter->pfx_peer_it_valid = 0;
-  iter->pfx_peer_it = 0;
+  iter->pfx_peer_it = 1;
 
   switch(pfx->address.version)
     {
@@ -1181,9 +1176,9 @@ bgpwatcher_view_iter_seek_pfx(bgpwatcher_view_iter_t *iter,
 /* ==================== PFX-PEER ITERATORS ==================== */
 
 #define WHILE_NOT_MATCHED_PFX_PEER                                      \
-  while((iter->pfx_peer_it <                                            \
+  while((iter->pfx_peer_it <=                                            \
          infos->peers_alloc_cnt) &&                                     \
-        (!(iter->pfx_peer_state_mask & \
+        (!(iter->pfx_peer_state_mask &                                  \
            BWV_PFX_GET_PEER_PTR(iter->view, infos, iter->pfx_peer_it)->state)))
 
 int
@@ -1194,14 +1189,14 @@ bgpwatcher_view_iter_pfx_first_peer(bgpwatcher_view_iter_t *iter,
   assert(infos != NULL);
 
   iter->pfx_peer_state_mask = state_mask;
-  iter->pfx_peer_it = 0;
+  iter->pfx_peer_it = 1;
   iter->pfx_peer_it_valid = 0;
 
   WHILE_NOT_MATCHED_PFX_PEER
     {
       iter->pfx_peer_it++;
     }
-  if(iter->pfx_peer_it < infos->peers_alloc_cnt)
+  if(iter->pfx_peer_it <= infos->peers_alloc_cnt)
     {
       bgpwatcher_view_iter_seek_peer(iter, iter->pfx_peer_it, state_mask);
       iter->pfx_peer_it_valid = 1;
@@ -1221,7 +1216,7 @@ bgpwatcher_view_iter_pfx_next_peer(bgpwatcher_view_iter_t *iter)
     iter->pfx_peer_it++;
   } WHILE_NOT_MATCHED_PFX_PEER;
 
-  if(iter->pfx_peer_it < infos->peers_alloc_cnt)
+  if(iter->pfx_peer_it <= infos->peers_alloc_cnt)
     {
       bgpwatcher_view_iter_seek_peer(iter, iter->pfx_peer_it,
                                      iter->pfx_peer_state_mask);
@@ -1239,11 +1234,13 @@ bgpwatcher_view_iter_pfx_has_more_peer(bgpwatcher_view_iter_t *iter)
   bwv_peerid_pfxinfo_t *infos = pfx_get_peerinfos(iter);
   assert(infos != NULL);
 
-  if(iter->pfx_peer_it < infos->peers_alloc_cnt)
+  if(iter->pfx_peer_it_valid == 1 &&
+     iter->pfx_peer_it <= infos->peers_alloc_cnt)
     {
+      iter->pfx_peer_it_valid = 1;
       return 1;
     }
-  iter->pfx_peer_it_valid = 1;
+  iter->pfx_peer_it_valid = 0;
   return 0;
 }
 
@@ -1257,7 +1254,7 @@ bgpwatcher_view_iter_pfx_seek_peer(bgpwatcher_view_iter_t *iter,
 
   iter->pfx_peer_state_mask = state_mask;
 
-  if((peerid < infos->peers_alloc_cnt) &&
+  if((peerid <= infos->peers_alloc_cnt) &&
      (iter->pfx_peer_state_mask &
       BWV_PFX_GET_PEER_PTR(iter->view, infos, iter->pfx_peer_it)->state))
     {
@@ -1267,7 +1264,7 @@ bgpwatcher_view_iter_pfx_seek_peer(bgpwatcher_view_iter_t *iter,
       return 1;
     }
 
-  iter->pfx_peer_it = infos->peers_alloc_cnt;
+  iter->pfx_peer_it = infos->peers_alloc_cnt+1;
   iter->pfx_peer_it_valid = 0;
   return 0;
 }
@@ -1379,7 +1376,7 @@ bgpwatcher_view_iter_seek_pfx_peer(bgpwatcher_view_iter_t *iter,
   iter->version_ptr = BGPSTREAM_ADDR_VERSION_IPV4;
   iter->pfx_it = kh_end(iter->view->v4pfxs);
   iter->pfx_peer_it_valid = 0;
-  iter->pfx_peer_it = 0;
+  iter->pfx_peer_it = 1;
 
   return 0;
 }
