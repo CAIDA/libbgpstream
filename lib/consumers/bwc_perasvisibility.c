@@ -220,8 +220,9 @@ char *percentage_string(int i)
   return "ERROR";
 }
 
-static peras_info_t *as_pfxs_get_info(bwc_perasvisibility_state_t *state,
-                                      uint32_t asn)
+static peras_info_t *
+as_pfxs_get_info(bwc_perasvisibility_state_t *state,
+                 uint32_t asn)
 {
   peras_info_t *info = NULL;
   char buffer[BUFFER_LEN];
@@ -299,7 +300,6 @@ static peras_info_t *as_pfxs_get_info(bwc_perasvisibility_state_t *state,
         {
           return NULL;
         }
-
     }
   else
     {
@@ -311,11 +311,12 @@ static peras_info_t *as_pfxs_get_info(bwc_perasvisibility_state_t *state,
 
 void update_visibility_counters(uint32_t *visibility_counters, int asns_count, int vX_ff)
 {
-  double ratio = (double) asns_count / (double) vX_ff;
   if(vX_ff == 0)
     {
       return;
     }
+  double ratio = (double) asns_count / (double) vX_ff;
+
   if(ratio == 1)
     {
       visibility_counters[VIS_100_PERCENT]++;
@@ -335,7 +336,6 @@ void update_visibility_counters(uint32_t *visibility_counters, int asns_count, i
 }
 
 
-
 KHASH_SET_INIT_INT(int_set);
 
 static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
@@ -345,6 +345,7 @@ static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   bgpstream_peer_sig_t *sg;
   khiter_t k;
   int khret;
+  
   /* full feed asns observing a prefix */
   bgpstream_id_set_t *ff_asns = bgpstream_id_set_create();
   int asns_count = 0;
@@ -491,7 +492,6 @@ static void dump_table(bwc_t *consumer)
               timeseries_kp_set(STATE->kp_v6, info->v6_visible_pfxs_idx[i], info->v6_visible_pfxs[i]);
               info->v4_visible_pfxs[i] = 0;
               info->v6_visible_pfxs[i] = 0;
-
             }
           
 	}

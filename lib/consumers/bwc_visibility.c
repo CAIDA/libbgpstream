@@ -468,7 +468,7 @@ int bwc_visibility_process_view(bwc_t *consumer, uint8_t interests,
 
 
   CHAIN_STATE->v4_usable = 1;
- CHAIN_STATE->v6_usable = 1;
+  CHAIN_STATE->v6_usable = 1;
   
   /* if(bgpstream_id_set_size(CHAIN_STATE->v4ff_peerids) >= */
   /*    CHAIN_STATE->pfx_vis_peers_threshold) */
