@@ -1632,6 +1632,7 @@ bgpwatcher_view_iter_pfx_add_peer(bgpwatcher_view_iter_t *iter,
 int
 bgpwatcher_view_iter_pfx_remove_peer(bgpwatcher_view_iter_t *iter)
 {
+  bgpwatcher_view_iter_t lit;
   bwv_peerid_pfxinfo_t *pfxinfo = pfx_get_peerinfos(iter);
   assert(pfxinfo);
 
@@ -1642,7 +1643,8 @@ bgpwatcher_view_iter_pfx_remove_peer(bgpwatcher_view_iter_t *iter)
   if(bgpwatcher_view_iter_pfx_peer_get_state(iter) ==
      BGPWATCHER_VIEW_FIELD_ACTIVE)
     {
-      bgpwatcher_view_iter_pfx_deactivate_peer(iter);
+      lit = *iter;
+      bgpwatcher_view_iter_pfx_deactivate_peer(&lit);
     }
 
   assert(BWV_PFX_GET_PEER_STATE(pfxinfo, iter->pfx_peer_it) ==
@@ -1652,15 +1654,6 @@ bgpwatcher_view_iter_pfx_remove_peer(bgpwatcher_view_iter_t *iter)
   BWV_PFX_SET_PEER_STATE(pfxinfo, iter->pfx_peer_it,
                          BGPWATCHER_VIEW_FIELD_INVALID);
   pfxinfo->peers_cnt[BGPWATCHER_VIEW_FIELD_INACTIVE]--;
-
-  /* if there are no peers left in this pfx, the pfx should be removed */
-  if(pfxinfo->state != BGPWATCHER_VIEW_FIELD_INVALID &&
-     pfxinfo->peers_cnt[BGPWATCHER_VIEW_FIELD_INACTIVE] == 0 &&
-     pfxinfo->peers_cnt[BGPWATCHER_VIEW_FIELD_ACTIVE] == 0)
-    {
-      /* it will update the iterator */
-      return bgpwatcher_view_iter_remove_pfx(iter);
-    }
 
   assert(bgpwatcher_view_iter_has_more_peer(iter));
   switch(iter->version_ptr)
@@ -1677,6 +1670,15 @@ bgpwatcher_view_iter_pfx_remove_peer(bgpwatcher_view_iter_t *iter)
 
     default:
       return -1;
+    }
+
+  /* if there are no peers left in this pfx, the pfx should be removed */
+  if(pfxinfo->state != BGPWATCHER_VIEW_FIELD_INVALID &&
+     pfxinfo->peers_cnt[BGPWATCHER_VIEW_FIELD_INACTIVE] == 0 &&
+     pfxinfo->peers_cnt[BGPWATCHER_VIEW_FIELD_ACTIVE] == 0)
+    {
+      /* it will update the iterator */
+      return bgpwatcher_view_iter_remove_pfx(iter);
     }
 
   /* and now advance the iterator */
