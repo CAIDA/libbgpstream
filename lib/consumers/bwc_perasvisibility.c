@@ -309,7 +309,8 @@ as_pfxs_get_info(bwc_perasvisibility_state_t *state,
   return info;
 }
 
-void update_visibility_counters(uint32_t *visibility_counters, int asns_count, int vX_ff)
+static void
+update_visibility_counters(uint32_t *visibility_counters, int asns_count, int vX_ff)
 {
   if(vX_ff == 0)
     {
