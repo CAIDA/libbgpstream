@@ -254,6 +254,8 @@ static void find_ff_peers(bwc_t *consumer, bgpwatcher_view_iter_t *it)
         }
     }
 
+  fprintf(stderr, "IDS: %"PRIu32"\n", CHAIN_STATE->peer_ids_cnt[0]);              
+
   for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
     {
       CHAIN_STATE->full_feed_peer_asns_cnt[i] = bgpstream_id_set_size(STATE->full_feed_asns[i]);
@@ -288,6 +290,7 @@ static void dump_gen_metrics(bwc_t *consumer)
 static void
 reset_chain_state(bwc_t *consumer)
 {
+  fprintf(stderr, "RESETTING CHAIN STATE\n");        
   int i;
   for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
     {
@@ -327,10 +330,7 @@ int bwc_visibility_init(bwc_t *consumer, int argc, char **argv)
 
   for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
     {
-      /* we asssume chain state data are already allocated by the consumer mgr */
-      assert(CHAIN_STATE->full_feed_peer_ids[i]);
-      bgpstream_id_set_clear(CHAIN_STATE->full_feed_peer_ids[i]);
-      
+      /* we asssume chain state data are already allocated by the consumer mgr */      
       if((state->full_feed_asns[i] = bgpstream_id_set_create()) == NULL)
         {
           fprintf(stderr, "Error: unable to create full-feed ASns set\n");
@@ -401,6 +401,7 @@ int bwc_visibility_process_view(bwc_t *consumer, uint8_t interests,
     {
       bgpstream_id_set_clear(STATE->full_feed_asns[i]);
     }
+  
   reset_chain_state(consumer);
 
   // compute arrival delay

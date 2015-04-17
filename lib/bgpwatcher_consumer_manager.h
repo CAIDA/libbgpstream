@@ -81,13 +81,13 @@ typedef struct bwc_chain_state {
   int visibility_computed;
 
   /** Total number of peers in the view */
-  int peer_ids_cnt[BGPSTREAM_MAX_IP_VERSION_IDX];
+  uint32_t peer_ids_cnt[BGPSTREAM_MAX_IP_VERSION_IDX];
 
   /* Set of full feed peers */
   bgpstream_id_set_t *full_feed_peer_ids[BGPSTREAM_MAX_IP_VERSION_IDX];
 
   /** Total number of full feed peer ASns in the view */
-  int full_feed_peer_asns_cnt[BGPSTREAM_MAX_IP_VERSION_IDX];
+  uint32_t full_feed_peer_asns_cnt[BGPSTREAM_MAX_IP_VERSION_IDX];
   
   /** Is the table usable? I.e. has enough full-feed peers */
   int usable_table_flag[BGPSTREAM_MAX_IP_VERSION_IDX];

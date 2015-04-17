@@ -184,6 +184,9 @@ init_bwc_chain_state(bw_consumer_manager_t *mgr)
   for(int i=0; i< BGPSTREAM_MAX_IP_VERSION_IDX; i++)
     {
       mgr->chain_state.full_feed_peer_ids[i] = bgpstream_id_set_create();
+      mgr->chain_state.peer_ids_cnt[i] = 0;
+      mgr->chain_state.full_feed_peer_asns_cnt[i] = 0;
+      mgr->chain_state.usable_table_flag[i] = 0;
     }
   return 0;
 }
