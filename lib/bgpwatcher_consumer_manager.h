@@ -147,12 +147,19 @@ typedef enum bwc_id
  *
  * @return the consumer manager instance created, NULL if an error occurs
  */
-bw_consumer_manager_t *bw_consumer_manager_create(timeseries_t *timeseries,
-                                                  char *metric_prefix);
+bw_consumer_manager_t *bw_consumer_manager_create(timeseries_t *timeseries);
+
+/** Set the metric prefix to prepend to all consumers' output
+ *
+ * @param  mgr            pointer to consumer manager instance
+ * @param  metric_prefix  metric prefix string
+ */
+void
+bw_consumer_manager_set_metric_prefix(bw_consumer_manager_t *mgr, char *metric_prefix);
 
 /** Free a consumer manager instance
  *
- * @param               Double-pointer to consumer manager instance to free
+ * @param  mgr_p        Double-pointer to consumer manager instance to free
  */
 void bw_consumer_manager_destroy(bw_consumer_manager_t **mgr_p);
 

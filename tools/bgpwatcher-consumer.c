@@ -166,7 +166,13 @@ int main(int argc, char **argv)
       fprintf(stderr, "ERROR: Could not initialize libtimeseries\n");
       return -1;
     }
-
+  
+  /* better just grab a pointer to the manager */
+  if((manager = bw_consumer_manager_create(timeseries)) == NULL)
+    {
+      fprintf(stderr, "ERROR: Could not initialize consumer manager\n");
+      return -1;
+    }
 
   while(prevoptind = optind,
 	(opt = getopt(argc, argv, ":m:b:c:i:I:l:n:r:R:s:S:v?")) >= 0)
@@ -274,16 +280,9 @@ int main(int argc, char **argv)
   /* NB: once getopt completes, optind points to the first non-option
      argument */
 
-  if(metric_prefix == NULL)
+  if(metric_prefix != NULL)
     {
-      metric_prefix = strdup(BGPWATCHER_METRIC_PREFIX_DEFAULT);
-    }
-
-  /* better just grab a pointer to the manager */
-  if((manager = bw_consumer_manager_create(timeseries, metric_prefix)) == NULL)
-    {
-      fprintf(stderr, "ERROR: Could not initialize consumer manager\n");
-      return -1;
+      bw_consumer_manager_set_metric_prefix(manager, metric_prefix);
     }
 
   if(consumer_cmds_cnt == 0)

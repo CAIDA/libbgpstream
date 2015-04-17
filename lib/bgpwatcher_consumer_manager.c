@@ -177,13 +177,10 @@ static void consumer_destroy(bwc_t **consumer_p)
 }
 
 static int
-init_bwc_chain_state(bw_consumer_manager_t *mgr, char *metric_prefix)
+init_bwc_chain_state(bw_consumer_manager_t *mgr)
 {
-  if(metric_prefix == NULL || strlen(metric_prefix) >= BGPWATCHER_METRIC_PREFIX_LEN)
-    {
-      return -1;
-    }
-  strcpy(mgr->chain_state.metric_prefix, metric_prefix);
+  strcpy(mgr->chain_state.metric_prefix, BGPWATCHER_METRIC_PREFIX_DEFAULT);
+
   for(int i=0; i< BGPSTREAM_MAX_IP_VERSION_IDX; i++)
     {
       mgr->chain_state.full_feed_peer_ids[i] = bgpstream_id_set_create();
@@ -207,7 +204,7 @@ destroy_bwc_chain_state(bw_consumer_manager_t *mgr)
 
 /* ==================== PUBLIC MANAGER FUNCTIONS ==================== */
 
-bw_consumer_manager_t *bw_consumer_manager_create(timeseries_t *timeseries, char *metric_prefix)
+bw_consumer_manager_t *bw_consumer_manager_create(timeseries_t *timeseries)
 {
   bw_consumer_manager_t *mgr;
   int id;
@@ -220,7 +217,7 @@ bw_consumer_manager_t *bw_consumer_manager_create(timeseries_t *timeseries, char
 
   mgr->timeseries = timeseries;
 
-  if(init_bwc_chain_state(mgr, metric_prefix) < 0)
+  if(init_bwc_chain_state(mgr) < 0)
     {
       goto err;
     }
@@ -235,6 +232,16 @@ bw_consumer_manager_t *bw_consumer_manager_create(timeseries_t *timeseries, char
  err:
   bw_consumer_manager_destroy(&mgr);
   return NULL;
+}
+
+void
+bw_consumer_manager_set_metric_prefix(bw_consumer_manager_t *mgr, char *metric_prefix)
+{
+  if(metric_prefix == NULL || strlen(metric_prefix) >= BGPWATCHER_METRIC_PREFIX_LEN)
+    {
+      return;
+    }
+  strcpy(mgr->chain_state.metric_prefix, metric_prefix);
 }
 
 void bw_consumer_manager_destroy(bw_consumer_manager_t **mgr_p)
