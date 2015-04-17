@@ -22,6 +22,7 @@
 #define __BGPSTREAM_UTILS_ADDR_H
 
 #include <limits.h>
+#include <assert.h>
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -60,6 +61,9 @@ typedef enum {
   BGPSTREAM_ADDR_VERSION_IPV6          = AF_INET6
 
 } bgpstream_addr_version_t;
+
+/** Maximum number of IP versions */
+#define BGPSTREAM_MAX_IP_VERSION_IDX 2
 
 /** @} */
 
@@ -207,6 +211,38 @@ int bgpstream_ipv6_addr_equal(bgpstream_ipv6_addr_t *addr1,
  */
 int bgpstream_addr_storage_equal(bgpstream_addr_storage_t *addr1,
                                  bgpstream_addr_storage_t *ip2);
+
+
+/** Returns the index associated to an IP version
+ * @param v             enum rapresenting the IP address version
+ * @return the index associated with the IP version, 255 if
+ * there is an error in the translation
+ */
+uint8_t
+bgpstream_ipv2idx(bgpstream_addr_version_t v);
+
+/** Returns the IP version associated with an index
+ * @param i             index associated to the IP address version
+ * @return the IP version associated with an index
+ */
+bgpstream_addr_version_t
+bgpstream_idx2ipv(uint8_t i);
+
+/** Returns the number associated to an IP version
+ * @param v             enum rapresenting the IP address version
+ * @return the IP version number, 255 if there is an error in the
+ * translation
+ */
+uint8_t
+bgpstream_ipv2number(bgpstream_addr_version_t v);
+
+/** Returns the number associated to the index (associated to an IP version)
+ * @param i             index associated to the IP address version
+ * @return the index number, 255 if there is an error in the
+ * translation
+ */
+uint8_t
+bgpstream_idx2number(uint8_t i);
 
 /** @} */
 
