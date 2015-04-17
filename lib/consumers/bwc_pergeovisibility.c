@@ -329,10 +329,12 @@ static int create_per_cc_metrics(bwc_t *consumer)
   int i;
   khiter_t k;
   int khret;
-  pergeo_info_t *geo_info;
+  pergeo_info_t geo_info;
   char buffer[BUFFER_LEN];
 
   int j;
+
+  fprintf(stderr, "Creating data for %d countries\n",num_countries );
 
   for(i=0; i < num_countries; i++)
     {
@@ -342,33 +344,34 @@ static int create_per_cc_metrics(bwc_t *consumer)
       k = kh_put(cc_pfxs, STATE->countrycode_pfxs,
 		 strdup(countries[i]->iso2), &khret);
 
-      geo_info = &kh_value(STATE->countrycode_pfxs, k);
-
       // initialize properly geo_info and create ipvX metrics id for kp
-      geo_info->v4pfxs = bgpstream_ipv4_pfx_set_create();
-      if(geo_info->v4pfxs == NULL)
+      geo_info.v4pfxs = bgpstream_ipv4_pfx_set_create();
+      if(geo_info.v4pfxs == NULL)
         {
 	  fprintf(stderr, "ERROR: Could not create pfx set\n");
         }
 
       snprintf(buffer, BUFFER_LEN, METRIC_CC_V4PFX_FORMAT,
                countries[i]->continent, countries[i]->iso2);
-      if((geo_info->v4_idx = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
+      if((geo_info.v4_idx = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
 	{
 	  fprintf(stderr, "ERROR: Could not create key metric\n");
 	}
 
       for(j=0; j<4; j++)
         {
-          geo_info->v4_visible_pfxs[i] = 0;
+          geo_info.v4_visible_pfxs[j] = 0;
           snprintf(buffer, BUFFER_LEN,
                    METRIC_CC_V4PFX_PERC_FORMAT,
-                   countries[i]->continent, countries[i]->iso2, percentage_string(i));
-          if((geo_info->v4_visible_pfxs_idx[i] = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
+                   countries[i]->continent, countries[i]->iso2, percentage_string(j));
+          if((geo_info.v4_visible_pfxs_idx[j] = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
             {
+              fprintf(stderr, "ERROR: Could not create key metric\n");
               return -1;
             }
         }
+      
+      kh_value(STATE->countrycode_pfxs, k) = geo_info;      
     }
 
   return 0;
@@ -610,7 +613,7 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
                              rec->country_code)) ==
                  kh_end(STATE->countrycode_pfxs))
                 {
-                  fprintf(stderr, "Warning: country (%s) not found",
+                  fprintf(stderr, "Warning: country (%s) not found\n",
                           rec->country_code);
                 }
               else

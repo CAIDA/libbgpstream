@@ -290,7 +290,6 @@ static void dump_gen_metrics(bwc_t *consumer)
 static void
 reset_chain_state(bwc_t *consumer)
 {
-  fprintf(stderr, "RESETTING CHAIN STATE\n");        
   int i;
   for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
     {
