@@ -207,7 +207,7 @@ static int create_gen_metrics(bwc_t *consumer)
   snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
            CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX, "processed_delay");
              
-  if((STATE->gen_metrics.arrival_delay_idx =
+  if((STATE->gen_metrics.processed_delay_idx =
       timeseries_kp_add_key(STATE->kp, buffer)) == -1)
     {
       return -1;
