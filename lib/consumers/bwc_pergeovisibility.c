@@ -360,11 +360,11 @@ static int create_per_cc_metrics(bwc_t *consumer)
 
       for(j=0; j<4; j++)
         {
-          geo_info->v4_visible_pfxs[i] = 0;
+          geo_info->v4_visible_pfxs[j] = 0;
           snprintf(buffer, BUFFER_LEN,
                    METRIC_CC_V4PFX_PERC_FORMAT,
-                   countries[i]->continent, countries[i]->iso2, percentage_string(i));
-          if((geo_info->v4_visible_pfxs_idx[i] = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
+                   countries[i]->continent, countries[i]->iso2, percentage_string(j));
+          if((geo_info->v4_visible_pfxs_idx[j] = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
             {
               return -1;
             }
@@ -519,7 +519,7 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   khiter_t cck;
   khiter_t idk;
   int khret;
-  int i = bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV4);
+  const int i = bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV4);
 
   /* full feed asns observing a prefix */
   bgpstream_id_set_t *ff_asns = bgpstream_id_set_create();
@@ -536,11 +536,11 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
       bgpwatcher_view_iter_next_pfx(it))
     {
 
-      // WARNING we do not geolocate ipv6 prefixes
-      assert(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4);
-
       /* get the current v4 prefix */
       pfx = bgpwatcher_view_iter_pfx_get_pfx(it);
+
+      // WARNING we do not geolocate ipv6 prefixes
+      assert(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4);
 
         /* only consider ipv4 prefixes whose mask is shorter than a /6 */
       if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4 &&
@@ -569,8 +569,9 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
           bgpstream_id_set_insert(ff_asns, sg->peer_asnumber);          
         }
 
+     
       asns_count = bgpstream_id_set_size(ff_asns);
-
+      bgpstream_id_set_clear(ff_asns);          
 
       STATE->num_visible_pfx++;
 
@@ -649,7 +650,6 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
             {
               cck = kh_key(cck_set, idk);
               geo_info = &kh_value(STATE->countrycode_pfxs, cck);
-              // geo_info->v4pfxs_cnt++;
               bgpstream_ipv4_pfx_set_insert(geo_info->v4pfxs, (bgpstream_ipv4_pfx_t *)pfx);
               update_visibility_counters(geo_info->v4_visible_pfxs, asns_count,
                                          BWC_GET_CHAIN_STATE(consumer)->full_feed_peer_asns_cnt[i]);
@@ -665,6 +665,7 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 
     } /* end per-pfx loop */
 
+  bgpstream_id_set_destroy(ff_asns);          
 
 }
   

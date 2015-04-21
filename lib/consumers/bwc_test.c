@@ -176,6 +176,8 @@ int bwc_test_process_view(bwc_t *consumer, uint8_t interests,
 
   state->view_cnt++;
 
+  return 0;
+  
   /** End of old test consumer **/
 
   // TEST: add some memory to the users pointers

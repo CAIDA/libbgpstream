@@ -465,6 +465,8 @@ static int recv_pfxs(void *src, bgpwatcher_view_iter_t *iter,
       DESERIALIZE_VAL(peer_cnt);
       peer_cnt = ntohs(peer_cnt);
 
+      pfx_peers_added = 0;
+      
       for(j=0; j<peer_cnt; j++)
 	{
 	  /* peer id */

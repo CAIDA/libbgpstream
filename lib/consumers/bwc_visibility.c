@@ -254,7 +254,7 @@ static void find_ff_peers(bwc_t *consumer, bgpwatcher_view_iter_t *it)
         }
     }
 
-  fprintf(stderr, "IDS: %"PRIu32"\n", CHAIN_STATE->peer_ids_cnt[0]);              
+  // fprintf(stderr, "IDS: %"PRIu32"\n", CHAIN_STATE->peer_ids_cnt[0]);              
 
   for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
     {
@@ -290,7 +290,7 @@ static void dump_gen_metrics(bwc_t *consumer)
 static void
 reset_chain_state(bwc_t *consumer)
 {
-  fprintf(stderr, "RESETTING CHAIN STATE\n");        
+  // fprintf(stderr, "RESETTING CHAIN STATE\n");        
   int i;
   for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
     {
