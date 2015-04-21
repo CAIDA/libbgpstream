@@ -187,6 +187,17 @@ bgpwatcher_view_clear(bgpwatcher_view_t *view);
 void
 bgpwatcher_view_gc(bgpwatcher_view_t *view);
 
+/** Disable user data for a view
+ *
+ * @param view          view to disable user data for
+ *
+ * Disables the user pointer for per-prefix peer information. This can reduce
+ * memory consumption for applications that do not need the pfx-peer user
+ * pointer. Be careful with use of this mode.
+ */
+void
+bgpwatcher_view_disable_user_data(bgpwatcher_view_t *view);
+
 /** Dump the given BGP View to stdout
  *
  * @param view        pointer to a view structure
