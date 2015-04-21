@@ -41,8 +41,7 @@
 
 #define BUFFER_LEN 1024
 #define METRIC_PREFIX_FORMAT       "%s.%s.v%d.%s"
-
-#define META_METRIC_PREFIX_FORMAT  "%s.meta.bgpwatcher.consumer.%s.%s"
+#define META_METRIC_PREFIX_FORMAT  "%s.meta.bgpwatcher.consumer."NAME".%s"
 
 #define ROUTED_PFX_MIN_PEERCNT    10
 #define ROUTED_PFX_MIN_MASK_LEN   6
@@ -196,7 +195,7 @@ static int create_gen_metrics(bwc_t *consumer)
   /* META Metrics */
 
   snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
-           CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX, "arrival_delay");
+           CHAIN_STATE->metric_prefix, "arrival_delay");
              
   if((STATE->gen_metrics.arrival_delay_idx =
       timeseries_kp_add_key(STATE->kp, buffer)) == -1)
@@ -205,7 +204,7 @@ static int create_gen_metrics(bwc_t *consumer)
     }
 
   snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
-           CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX, "processed_delay");
+           CHAIN_STATE->metric_prefix, "processed_delay");
              
   if((STATE->gen_metrics.processed_delay_idx =
       timeseries_kp_add_key(STATE->kp, buffer)) == -1)
