@@ -96,7 +96,9 @@ static void usage(const char *name)
 	  name);
   timeseries_usage();
   fprintf(stderr,
-          "       -m <prefix>           Metric prefix (default: %s)\n",
+          "       -m <prefix>           Metric prefix (default: %s)\n"
+          "       -N <num-views>        Maximum number of views to process before the consumer stops\n"
+          "                               (default: infinite)\n",
           BGPWATCHER_METRIC_PREFIX_DEFAULT
           );
   fprintf(stderr,
@@ -160,6 +162,8 @@ int main(int argc, char **argv)
 
   int rx_interests;
   bgpwatcher_view_t *view = NULL;
+  int processed_view_limit = -1;
+  int processed_view = 0;
 
   if((timeseries = timeseries_init()) == NULL)
     {
@@ -175,7 +179,7 @@ int main(int argc, char **argv)
     }
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":m:b:c:i:I:l:n:r:R:s:S:v?")) >= 0)
+	(opt = getopt(argc, argv, ":m:N:b:c:i:I:l:n:r:R:s:S:v?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
@@ -193,6 +197,10 @@ int main(int argc, char **argv)
 	  metric_prefix = strdup(optarg);
 	  break;
 
+        case 'N':
+          processed_view_limit = atoi(optarg);
+          break;
+          
 	case 'b':
 	  backends[backends_cnt++] = strdup(optarg);
 	  break;
@@ -423,6 +431,13 @@ int main(int argc, char **argv)
 	}
 
       bgpwatcher_view_clear(view);
+      processed_view++;
+
+      if(processed_view_limit > 0 && processed_view >= processed_view_limit)
+        {
+          fprintf(stderr, "Processed %d view(s).\n", processed_view);
+          break;
+        }
     }
 
   fprintf(stderr, "INFO: Shutting down...\n");
