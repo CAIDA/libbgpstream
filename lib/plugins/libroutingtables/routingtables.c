@@ -74,6 +74,8 @@ get_wall_time_now()
  *  - AS in [64496-64511] -> AS is actually an AS set
  *  - AS in [64512-65534] -> AS is actually an AS confederation  
  *  - AS = 65535 -> prefix not seen in the RIB (e.g. withdrawal)
+ *  4200000000-4294967294	Reserved for Private Use			[RFC6996]	 
+ *  4294967295	Reserved			[RFC7300] 
  */
 /* static void asn_mgmt_fun() */
 /* { */
@@ -88,9 +90,10 @@ get_wall_time_now()
 
 
 /** @todo */
-#define ROUTINGTABLES_LOCAL_ORIGIN_ASN 0
-#define ROUTINGTABLES_CONFSET_ORIGIN_ASN 65534
-#define ROUTINGTABLES_DOWN_ORIGIN_ASN 65535
+#define ROUTINGTABLES_RESERVED_ASN_START BGPWATCHER_VIEW_ASN_NOEXPORT_START
+#define ROUTINGTABLES_LOCAL_ORIGIN_ASN   ROUTINGTABLES_RESERVED_ASN_START + 0
+#define ROUTINGTABLES_CONFSET_ORIGIN_ASN ROUTINGTABLES_RESERVED_ASN_START + 1
+#define ROUTINGTABLES_DOWN_ORIGIN_ASN    ROUTINGTABLES_RESERVED_ASN_START + 2
 
 
 /** Returns the origin AS when the origin AS number
@@ -119,6 +122,11 @@ get_origin_asn(bgpstream_as_path_t *aspath)
       asn = ROUTINGTABLES_CONFSET_ORIGIN_ASN; 
     }
   bgpstream_as_hop_clear(&as_hop);
+
+  if(asn == 0)
+    {
+      asn = ROUTINGTABLES_LOCAL_ORIGIN_ASN;
+    }
   return asn;
 }
 
@@ -146,7 +154,9 @@ perpeer_info_destroy(void *p)
       if(((perpeer_info_t *)p)->kp != NULL)
         {
           timeseries_kp_free(&((perpeer_info_t *)p)->kp);
+          ((perpeer_info_t *)p)->kp = NULL;
         }
+      
       if(((perpeer_info_t *)p)->announcing_ases != NULL)
         {
           bgpstream_id_set_destroy(((perpeer_info_t *)p)->announcing_ases);
@@ -172,6 +182,7 @@ perpeer_info_destroy(void *p)
           bgpstream_ipv6_pfx_set_destroy(((perpeer_info_t *)p)->withdrawn_v6_pfxs);
           ((perpeer_info_t *)p)->withdrawn_v6_pfxs = NULL;
         }
+      free(p);
     }
 }
 
@@ -655,7 +666,13 @@ apply_prefix_update(routingtables_t *rt, collector_t *c, bgpstream_peer_id_t pee
     {
       /* the prefix-peer does not exist, therefore we 
        * create a new empty structure to populate */
-      bgpwatcher_view_iter_add_pfx_peer(rt->iter, (bgpstream_pfx_t *) &elem->prefix, peer_id, asn);
+      if(bgpwatcher_view_iter_add_pfx_peer(rt->iter,
+                                           (bgpstream_pfx_t *) &elem->prefix,
+                                           peer_id, asn) != 0)
+        {
+          fprintf(stderr, "bgpwatcher_view_iter_add_pfx_peer fails\n");
+          return -1;
+        }
       /* when we create a new pfx peer this has to be inactive */
       bgpwatcher_view_iter_pfx_deactivate_peer(rt->iter);
     }
@@ -862,7 +879,14 @@ apply_rib_message(routingtables_t *rt, collector_t * c, bgpstream_peer_id_t peer
     {
       /* the prefix-peer does not exist, therefore we 
        * create a new empty structure to populate */
-      bgpwatcher_view_iter_add_pfx_peer(rt->iter, (bgpstream_pfx_t *) &elem->prefix, peer_id, ROUTINGTABLES_DOWN_ORIGIN_ASN);
+      if(bgpwatcher_view_iter_add_pfx_peer(rt->iter,
+                                           (bgpstream_pfx_t *) &elem->prefix,
+                                           peer_id,
+                                           ROUTINGTABLES_DOWN_ORIGIN_ASN) != 0)
+        {
+          fprintf(stderr, "bgpwatcher_view_iter_add_pfx_peer fails\n");
+          return -1;
+        }
       /* when we create a new pfx peer this has to be inactive */
       bgpwatcher_view_iter_pfx_deactivate_peer(rt->iter);
     }
@@ -1197,9 +1221,9 @@ routingtables_t *routingtables_create(timeseries_t *timeseries)
     }
 
   if((rt->view = bgpwatcher_view_create_shared(rt->peersigns,
-                                               NULL /* view user destructor */,
-                                               NULL /* pfx destructor */,
+                                               NULL /* view user destructor */,                                               
                                                perpeer_info_destroy /* peer user destructor */,
+                                               NULL /* pfx destructor */,
                                                free /* pfxpeer user destructor */)) == NULL)
     {
       goto err;
