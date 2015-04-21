@@ -36,10 +36,22 @@
 
 #define BUFFER_LEN 1024
 
-#define NAME "per-geo-visibility"
+#define NAME                        "per-geo-visibility"
+#define CONSUMER_METRIC_PREFIX      "prefix-visibility.geo.netacuity"
+
+
+#define BUFFER_LEN 1024
+#define METRIC_PREFIX_FORMAT       "%s.%s.%s.%s.v4.%s"
+#define METRIC_PREFIX_PERC_FORMAT  "%s.%s.%s.%s.v4.perc.%s.%s"
+#define META_METRIC_PREFIX_FORMAT  "%s.meta.bgpwatcher.consumer."NAME".%s"
+
+
+#define GEO_PROVIDER_NAME  "netacq-edge"
+
+
+
 
 #define METRIC_PREFIX               "bgp.visibility.geo.netacuity"
-
 #define METRIC_CC_V4PFX_FORMAT      METRIC_PREFIX".%s.%s.ipv4_pfx_cnt"
 #define METRIC_CC_V6PFX_FORMAT      METRIC_PREFIX".%s.%s.ipv6_pfx_cnt"
 #define METRIC_CC_V4PFX_PERC_FORMAT     METRIC_PREFIX".%s.%s.%s.ipv4_pfx_cnt"
@@ -56,11 +68,15 @@
 #define METRIC_VISIBLE_PFXS          META_METRIC_PREFIX".visible_pfxs_cnt"
 #define METRIC_MAXRECS_PERPFXS       META_METRIC_PREFIX".max_records_perpfx"
 
-#define GEO_PROVIDER_NAME  "netacq-edge"
+
 
 
 #define STATE					\
   (BWC_GET_STATE(consumer, pergeovisibility))
+
+#define CHAIN_STATE                             \
+  (BWC_GET_CHAIN_STATE(consumer))
+
 
 /* our 'class' */
 static bwc_t bwc_pergeovisibility = {
@@ -84,23 +100,21 @@ typedef enum {
  */
 typedef struct pergeo_info {
 
-  /** Index of the v4 metric for this CC in the KP */
-  uint32_t v4_idx;
-  uint32_t v4_asn_vis_idx;
-
   /** All v4 prefixes that this CC observed */
   bgpstream_ipv4_pfx_set_t *v4pfxs;
 
   /* sum full feed ASns observing v4 prefixes */
   uint32_t v4_ff_asns_sum;
 
+  /** number of visible v4 prefixes based on a percentage
+   * threshold (25, 50, 75, 100 percent) */
   uint32_t v4_visible_pfxs[4];
+
+  /** Index of the v4 metric for this CC in the KP */
+  uint32_t v4_idx;
+  uint32_t v4_asn_vis_idx;
   uint32_t v4_visible_pfxs_idx[4];
   
-  /* TODO: think about how to manage multiple geo
-   * providers as well as multiple counters
-   */
-
 } pergeo_info_t;
 
 
@@ -329,11 +343,11 @@ static int create_per_cc_metrics(bwc_t *consumer)
   int i;
   khiter_t k;
   int khret;
-  pergeo_info_t *geo_info;
+  pergeo_info_t geo_info;
   char buffer[BUFFER_LEN];
 
   int j;
-
+  
   for(i=0; i < num_countries; i++)
     {
       // Warning: we assume netacq returns a set of unique countries
@@ -342,33 +356,45 @@ static int create_per_cc_metrics(bwc_t *consumer)
       k = kh_put(cc_pfxs, STATE->countrycode_pfxs,
 		 strdup(countries[i]->iso2), &khret);
 
-      geo_info = &kh_value(STATE->countrycode_pfxs, k);
-
-      // initialize properly geo_info and create ipvX metrics id for kp
-      geo_info->v4pfxs = bgpstream_ipv4_pfx_set_create();
-      if(geo_info->v4pfxs == NULL)
+      // initialize properly geo_info and create ipv4 metrics id for kp
+      geo_info.v4pfxs = bgpstream_ipv4_pfx_set_create();
+      if(geo_info.v4pfxs == NULL)
         {
 	  fprintf(stderr, "ERROR: Could not create pfx set\n");
         }
 
-      snprintf(buffer, BUFFER_LEN, METRIC_CC_V4PFX_FORMAT,
-               countries[i]->continent, countries[i]->iso2);
-      if((geo_info->v4_idx = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
+      snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_FORMAT,
+               CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX, 
+               countries[i]->continent, countries[i]->iso2, "prefixes_cnt");
+      if((geo_info.v4_idx = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
 	{
 	  fprintf(stderr, "ERROR: Could not create key metric\n");
 	}
 
+     geo_info.v4_ff_asns_sum = 0;
+      snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_FORMAT,
+               CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX, 
+               countries[i]->continent, countries[i]->iso2, "asns_vis_sum");
+      if((geo_info.v4_asn_vis_idx = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
+	{
+	  fprintf(stderr, "ERROR: Could not create key metric\n");
+	}
+
+      
       for(j=0; j<4; j++)
         {
-          geo_info->v4_visible_pfxs[j] = 0;
-          snprintf(buffer, BUFFER_LEN,
-                   METRIC_CC_V4PFX_PERC_FORMAT,
-                   countries[i]->continent, countries[i]->iso2, percentage_string(j));
-          if((geo_info->v4_visible_pfxs_idx[j] = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
+          geo_info.v4_visible_pfxs[j] = 0;
+          snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_PERC_FORMAT,
+                   CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX, 
+                   countries[i]->continent, countries[i]->iso2, percentage_string(j), "visible_prefixes_cnt");
+          if((geo_info.v4_visible_pfxs_idx[j] = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
             {
-              return -1;
+              fprintf(stderr, "ERROR: Could not create key metric\n");
             }
         }
+  
+      kh_value(STATE->countrycode_pfxs, k) = geo_info;
+      
     }
 
   return 0;
@@ -376,50 +402,68 @@ static int create_per_cc_metrics(bwc_t *consumer)
 
 static int create_gen_metrics(bwc_t *consumer)
 {
+  char buffer[BUFFER_LEN];
+
+  snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
+           CHAIN_STATE->metric_prefix, "cache_miss_cnt");
   if((STATE->gen_metrics.cache_misses_cnt_idx =
-      timeseries_kp_add_key(STATE->kp_gen, METRIC_CACHE_MISS_CNT)) == -1)
+      timeseries_kp_add_key(STATE->kp_gen, buffer)) == -1)
     {
       return -1;
     }
 
+  snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
+           CHAIN_STATE->metric_prefix, "cache_hit_cnt");
   if((STATE->gen_metrics.cache_hits_cnt_idx =
-      timeseries_kp_add_key(STATE->kp_gen, METRIC_CACHE_HITS_CNT)) == -1)
+      timeseries_kp_add_key(STATE->kp_gen, buffer)) == -1)
     {
       return -1;
     }
 
+  snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
+           CHAIN_STATE->metric_prefix, "arrival_delay");
   if((STATE->gen_metrics.arrival_delay_idx =
-      timeseries_kp_add_key(STATE->kp_gen, METRIC_ARRIVAL_DELAY)) == -1)
+      timeseries_kp_add_key(STATE->kp_gen, buffer)) == -1)
     {
       return -1;
     }
 
+  snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
+           CHAIN_STATE->metric_prefix, "processed_delay");
   if((STATE->gen_metrics.processed_delay_idx =
-      timeseries_kp_add_key(STATE->kp_gen, METRIC_PROCESSED_DELAY)) == -1)
+      timeseries_kp_add_key(STATE->kp_gen, buffer)) == -1)
     {
       return -1;
     }
 
+  snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
+           CHAIN_STATE->metric_prefix, "max_numcountries_perpfx");
   if((STATE->gen_metrics.max_numcountries_perpfx_idx =
-      timeseries_kp_add_key(STATE->kp_gen, METRIC_MAXCOUNTRIES_PERPFX)) == -1)
+      timeseries_kp_add_key(STATE->kp_gen, buffer)) == -1)
     {
       return -1;
     }
 
+  snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
+           CHAIN_STATE->metric_prefix, "avg_numcountries_perpfx");
   if((STATE->gen_metrics.avg_numcountries_perpfx_idx =
-      timeseries_kp_add_key(STATE->kp_gen, METRIC_AVGCOUNTRIES_PERPFX)) == -1)
+      timeseries_kp_add_key(STATE->kp_gen, buffer)) == -1)
     {
       return -1;
     }
 
+  snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
+           CHAIN_STATE->metric_prefix, "visible_pfxs_cnt");
     if((STATE->gen_metrics.num_visible_pfx_idx =
-      timeseries_kp_add_key(STATE->kp_gen, METRIC_VISIBLE_PFXS)) == -1)
+      timeseries_kp_add_key(STATE->kp_gen, buffer)) == -1)
     {
       return -1;
     }
 
+  snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
+           CHAIN_STATE->metric_prefix, "max_records_perpfx");
     if((STATE->gen_metrics.max_records_perpfx_idx =
-      timeseries_kp_add_key(STATE->kp_gen, METRIC_MAXRECS_PERPFXS)) == -1)
+      timeseries_kp_add_key(STATE->kp_gen, buffer)) == -1)
     {
       return -1;
     }
@@ -568,10 +612,8 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
           
           bgpstream_id_set_insert(ff_asns, sg->peer_asnumber);          
         }
-
      
       asns_count = bgpstream_id_set_size(ff_asns);
-      bgpstream_id_set_clear(ff_asns);          
 
       STATE->num_visible_pfx++;
 
@@ -611,7 +653,7 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
                              rec->country_code)) ==
                  kh_end(STATE->countrycode_pfxs))
                 {
-                  fprintf(stderr, "Warning: country (%s) not found",
+                  fprintf(stderr, "Warning: country (%s) not found\n",
                           rec->country_code);
                 }
               else
@@ -662,6 +704,8 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
         {
           STATE->max_numcountries_perpfx = kh_size(cck_set);
         }
+
+      bgpstream_id_set_clear(ff_asns);
 
     } /* end per-pfx loop */
 

@@ -32,26 +32,24 @@
 
 #include "bwc_perasvisibility.h"
 
+
+#define NAME                         "per-as-visibility"
+#define CONSUMER_METRIC_PREFIX       "prefix-visibility.asn"
+
+
 #define BUFFER_LEN 1024
+#define METRIC_PREFIX_FORMAT       "%s.%s.%d.v%d.%s"
+#define METRIC_PREFIX_PERC_FORMAT  "%s.%s.%d.v%d.perc.%s.%s"
+#define META_METRIC_PREFIX_FORMAT  "%s.meta.bgpwatcher.consumer."NAME".%s"
 
-#define NAME "per-as-visibility"
 
-#define METRIC_PREFIX               "bgp.visibility.asn"
-
-#define METRIC_ASN_V4PFX_FORMAT     METRIC_PREFIX".%"PRIu32".total_ipv4_pfx_cnt"
-#define METRIC_ASN_V4PFX_PERC_FORMAT     METRIC_PREFIX".%"PRIu32".%s.ipv4_pfx_cnt"
-#define METRIC_ASN_V4VIS_FORMAT     METRIC_PREFIX".%"PRIu32".ipv4_asns_vis_sum"
-#define METRIC_ASN_V6PFX_FORMAT     METRIC_PREFIX".%"PRIu32".total_ipv6_pfx_cnt"
-#define METRIC_ASN_V6PFX_PERC_FORMAT     METRIC_PREFIX".%"PRIu32".%s.ipv4_pfx_cnt"
-#define METRIC_ASN_V6VIS_FORMAT     METRIC_PREFIX".%"PRIu32".ipv6_asns_vis_sum"
-
-#define META_METRIC_PREFIX                              \
-  "bgp.meta.bgpwatcher.consumer.per-as-visibility"
-#define METRIC_ARRIVAL_DELAY        META_METRIC_PREFIX".arrival_delay"
-#define METRIC_PROCESSED_DELAY      META_METRIC_PREFIX".processed_delay"
 
 #define STATE					\
   (BWC_GET_STATE(consumer, perasvisibility))
+
+#define CHAIN_STATE                             \
+  (BWC_GET_CHAIN_STATE(consumer))
+
 
 /* our 'class' */
 static bwc_t bwc_perasvisibility = {
@@ -70,29 +68,23 @@ typedef enum {
 
 typedef struct peras_info {
 
-  /** Index of the v4 metric for this ASN in the KP */
-  uint32_t v4_idx;
-  uint32_t v4_asn_vis_idx;
-  
-  /** Index of the v6 metric for this ASN in the KP */
-  uint32_t v6_idx;
-  uint32_t v6_asn_vis_idx;
-
   /** All v4 prefixes that this AS observed */
   bgpstream_ipv4_pfx_set_t *v4pfxs;
+  
   /** All v6 prefixes that this AS observed */
   bgpstream_ipv6_pfx_set_t *v6pfxs;
 
-  uint32_t v4_visible_pfxs[4];
-  uint32_t v4_visible_pfxs_idx[4];
-  uint32_t v6_visible_pfxs[4];
-  uint32_t v6_visible_pfxs_idx[4];
+  /* sum full feed ASns observing prefixes 
+   * originated by this AS*/
+  uint32_t ff_asns_sum[BGPSTREAM_MAX_IP_VERSION_IDX];
+
+  /** number of visible prefixes based on a percentage
+   * threshold (25, 50, 75, 100 percent) */
+  uint32_t visible_pfxs[4*BGPSTREAM_MAX_IP_VERSION_IDX];
   
-  /* sum full feed ASns observing v4 prefixes */
-  uint32_t v4_ff_asns_sum;
-  
-  /* sum full feed ASns observing v6 prefixes */
-  uint32_t v6_ff_asns_sum;
+  uint32_t all_pfxs_idx[BGPSTREAM_MAX_IP_VERSION_IDX];
+  uint32_t ff_asns_sum_idx[BGPSTREAM_MAX_IP_VERSION_IDX];
+  uint32_t visible_pfxs_idx[4*BGPSTREAM_MAX_IP_VERSION_IDX];  
 
 } peras_info_t;
 
@@ -122,17 +114,14 @@ typedef struct gen_metrics {
 /* our 'instance' */
 typedef struct bwc_perasvisibility_state {
 
-  /** Map from ASN => v4PFX-SET */
+  /** Map from ASN => PFX-SET */
   khash_t(as_pfxs) *as_pfxs;
 
   /** Timeseries Key Package (general) */
   timeseries_kp_t *kp_gen;
 
-  /** Timeseries Key Package (v4) */
-  timeseries_kp_t *kp_v4;
-
-  /** Timeseries Key Package (v6) */
-  timeseries_kp_t *kp_v6;
+  /** Timeseries Key Packages (v4/v6) */
+  timeseries_kp_t *kp[BGPSTREAM_MAX_IP_VERSION_IDX];
 
   /** General metric indexes */
   gen_metrics_t gen_metrics;
@@ -179,15 +168,23 @@ static int parse_args(bwc_t *consumer, int argc, char **argv)
 
 static int create_gen_metrics(bwc_t *consumer)
 {
+  char buffer[BUFFER_LEN];
+
   /* META Metrics */
+  snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
+           CHAIN_STATE->metric_prefix, "arrival_delay");
+             
   if((STATE->gen_metrics.arrival_delay_idx =
-      timeseries_kp_add_key(STATE->kp_gen, METRIC_ARRIVAL_DELAY)) == -1)
+      timeseries_kp_add_key(STATE->kp_gen, buffer)) == -1)
     {
       return -1;
     }
 
+  snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
+           CHAIN_STATE->metric_prefix, "processed_delay");
+             
   if((STATE->gen_metrics.processed_delay_idx =
-      timeseries_kp_add_key(STATE->kp_gen, METRIC_PROCESSED_DELAY)) == -1)
+      timeseries_kp_add_key(STATE->kp_gen, buffer)) == -1)
     {
       return -1;
     }
@@ -221,41 +218,20 @@ char *percentage_string(int i)
 }
 
 static peras_info_t *
-as_pfxs_get_info(bwc_perasvisibility_state_t *state,
+as_pfxs_get_info(bwc_t *consumer,                 
                  uint32_t asn)
 {
   peras_info_t *info = NULL;
   char buffer[BUFFER_LEN];
   khiter_t k;
   int khret;
-  int i;
+  int i,j;
   
-  if((k = kh_get(as_pfxs, state->as_pfxs, asn)) == kh_end(state->as_pfxs))
+  if((k = kh_get(as_pfxs, STATE->as_pfxs, asn)) == kh_end(STATE->as_pfxs))
     {
-      k = kh_put(as_pfxs, state->as_pfxs, asn, &khret);
+      k = kh_put(as_pfxs, STATE->as_pfxs, asn, &khret);
 
-      info = &kh_value(state->as_pfxs, k);
-      
-      for(i=0; i<4; i++)
-        {
-
-          info->v4_visible_pfxs[i] = 0;
-          snprintf(buffer, BUFFER_LEN,
-                   METRIC_ASN_V4PFX_PERC_FORMAT,
-                   asn, percentage_string(i));
-          if((info->v4_visible_pfxs_idx[i] = timeseries_kp_add_key(state->kp_v4, buffer)) == -1)
-            {
-              return NULL;
-            }
-          info->v6_visible_pfxs[i] = 0;
-          snprintf(buffer, BUFFER_LEN,
-                   METRIC_ASN_V6PFX_PERC_FORMAT,
-                   asn, percentage_string(i));
-          if((info->v6_visible_pfxs_idx[i] = timeseries_kp_add_key(state->kp_v6, buffer)) == -1)
-            {
-              return NULL;
-            }
-        }
+      info = &kh_value(STATE->as_pfxs, k);
 
       if((info->v4pfxs = bgpstream_ipv4_pfx_set_create()) == NULL)
         {
@@ -266,44 +242,44 @@ as_pfxs_get_info(bwc_perasvisibility_state_t *state,
           return NULL;
         }
 
-      info->v4_ff_asns_sum = 0;
-      info->v6_ff_asns_sum = 0;
-
-      snprintf(buffer, BUFFER_LEN,
-               METRIC_ASN_V4PFX_FORMAT,
-               asn);
-      if((info->v4_idx = timeseries_kp_add_key(state->kp_v4, buffer)) == -1)
-        {
-          return NULL;
-        }
-
-      snprintf(buffer, BUFFER_LEN,
-               METRIC_ASN_V4VIS_FORMAT,
-               asn);
-      if((info->v4_asn_vis_idx = timeseries_kp_add_key(state->kp_v4, buffer)) == -1)
-        {
-          return NULL;
-        }
       
-      snprintf(buffer, BUFFER_LEN,
-               METRIC_ASN_V6PFX_FORMAT,
-               asn);
-      if((info->v6_idx = timeseries_kp_add_key(state->kp_v6, buffer)) == -1)
+      for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
         {
-          return NULL;
-        }
+          info->ff_asns_sum[i] = 0;
+          
+          snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_FORMAT,
+                   CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX, asn, bgpstream_idx2number(i) , "prefixes_cnt");             
+          if((info->all_pfxs_idx[i] =
+              timeseries_kp_add_key(STATE->kp[i], buffer)) == -1)
+            {
+              return NULL;
+            }
 
-      snprintf(buffer, BUFFER_LEN,
-               METRIC_ASN_V6VIS_FORMAT,
-               asn);
-      if((info->v6_asn_vis_idx = timeseries_kp_add_key(state->kp_v6, buffer)) == -1)
-        {
-          return NULL;
-        }
+          snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_FORMAT,
+                   CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX, asn, bgpstream_idx2number(i) , "asns_vis_sum");             
+          if((info->ff_asns_sum_idx[i] =
+              timeseries_kp_add_key(STATE->kp[i], buffer)) == -1)
+            {
+              return NULL;
+            }
+
+          for(j = 0; j<4; j++)
+            {
+              info->visible_pfxs[i*4+j] = 0;
+              snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_PERC_FORMAT,
+                       CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX,
+                       asn, bgpstream_idx2number(i), percentage_string(j), "visible_prefixes_cnt");             
+              if((info->visible_pfxs_idx[i*4+j] =
+                  timeseries_kp_add_key(STATE->kp[i], buffer)) == -1)
+                {
+                  return NULL;
+                }
+            }             
+        }      
     }
   else
     {
-      info = &kh_value(state->as_pfxs, k);
+      info = &kh_value(STATE->as_pfxs, k);
     }
 
   return info;
@@ -401,28 +377,29 @@ static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
         {
           if(kh_exist(ff_origin_asns, k))
             {
-              if((info = as_pfxs_get_info(STATE, kh_key(ff_origin_asns,k))) == NULL)
+              if((info = as_pfxs_get_info(consumer, kh_key(ff_origin_asns,k))) == NULL)
                 {
                   return -1;
                 }
 
               if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4)
                 {
-                  info->v4_ff_asns_sum += asns_count;
                   bgpstream_ipv4_pfx_set_insert(info->v4pfxs,
                                                 (bgpstream_ipv4_pfx_t *)pfx);
-                  update_visibility_counters(info->v4_visible_pfxs, asns_count,
-                                             BWC_GET_CHAIN_STATE(consumer)->full_feed_peer_asns_cnt[i]);
                 }
-              
-              if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV6)
+              else
                 {
-                  info->v6_ff_asns_sum += asns_count;
-                  bgpstream_ipv6_pfx_set_insert(info->v6pfxs,
-                                                (bgpstream_ipv6_pfx_t *)pfx);
-                  update_visibility_counters(info->v6_visible_pfxs, asns_count,
-                                             BWC_GET_CHAIN_STATE(consumer)->full_feed_peer_asns_cnt[i]);
+                  if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV6)
+                    {
+                      bgpstream_ipv6_pfx_set_insert(info->v6pfxs,
+                                                    (bgpstream_ipv6_pfx_t *)pfx);
+                    }
                 }
+
+              info->ff_asns_sum[bgpstream_ipv2idx(pfx->address.version)] += asns_count;
+              update_visibility_counters(&info->visible_pfxs[bgpstream_ipv2idx(pfx->address.version)*4], asns_count,
+                                         BWC_GET_CHAIN_STATE(consumer)->full_feed_peer_asns_cnt[i]);
+
             }
         }
       
@@ -455,34 +432,38 @@ static void dump_table(bwc_t *consumer)
   khiter_t k;
   peras_info_t *info;
   int i = 0;
+  int j = 0;
   for (k = kh_begin(STATE->as_pfxs); k != kh_end(STATE->as_pfxs); ++k)
     {
       if (kh_exist(STATE->as_pfxs, k))
 	{
           info = &kh_val(STATE->as_pfxs, k);
 
-          timeseries_kp_set(STATE->kp_v4, info->v4_idx,
+          i = bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV4);
+          timeseries_kp_set(STATE->kp[i], info->all_pfxs_idx[i],
                             bgpstream_ipv4_pfx_set_size(info->v4pfxs));
-          timeseries_kp_set(STATE->kp_v4, info->v4_asn_vis_idx, info->v4_ff_asns_sum);
-
-          timeseries_kp_set(STATE->kp_v6, info->v6_idx,
-                            bgpstream_ipv6_pfx_set_size(info->v6pfxs));
-          timeseries_kp_set(STATE->kp_v6, info->v6_asn_vis_idx,
-                            info->v6_ff_asns_sum);
-
           bgpstream_ipv4_pfx_set_clear(info->v4pfxs);
-          info->v4_ff_asns_sum = 0;
+
+          i = bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV6);
+          timeseries_kp_set(STATE->kp[i], info->all_pfxs_idx[i],
+                            bgpstream_ipv6_pfx_set_size(info->v6pfxs));
           bgpstream_ipv6_pfx_set_clear(info->v6pfxs);
-          info->v6_ff_asns_sum = 0;
+
           
-          for(i=0; i<4; i++)
+          for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
             {
-              timeseries_kp_set(STATE->kp_v4, info->v4_visible_pfxs_idx[i], info->v4_visible_pfxs[i]);
-              timeseries_kp_set(STATE->kp_v6, info->v6_visible_pfxs_idx[i], info->v6_visible_pfxs[i]);
-              info->v4_visible_pfxs[i] = 0;
-              info->v6_visible_pfxs[i] = 0;
-            }
-          
+              timeseries_kp_set(STATE->kp[i], info->ff_asns_sum_idx[i],
+                                info->ff_asns_sum[i]);
+              info->ff_asns_sum[i] = 0;
+              
+              for(j=0; j<4; j++)
+                {
+                  timeseries_kp_set(STATE->kp[i], info->visible_pfxs_idx[i*4+j],
+                                    info->visible_pfxs[i*4+j]);
+                  info->visible_pfxs[i*4+j] = 0;
+                  
+                }
+            }       
 	}
     }
 }
@@ -497,6 +478,7 @@ bwc_t *bwc_perasvisibility_alloc()
 int bwc_perasvisibility_init(bwc_t *consumer, int argc, char **argv)
 {
   bwc_perasvisibility_state_t *state = NULL;
+  int i;
 
   if((state = malloc_zero(sizeof(bwc_perasvisibility_state_t))) == NULL)
     {
@@ -519,18 +501,15 @@ int bwc_perasvisibility_init(bwc_t *consumer, int argc, char **argv)
       goto err;
     }
 
-  if((state->kp_v4 =
-      timeseries_kp_init(BWC_GET_TIMESERIES(consumer), 1)) == NULL)
-    {
-      fprintf(stderr, "Error: Could not create timeseries key package (v4)\n");
-      goto err;
-    }
 
-  if((state->kp_v6 =
-      timeseries_kp_init(BWC_GET_TIMESERIES(consumer), 1)) == NULL)
+  for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
     {
-      fprintf(stderr, "Error: Could not create timeseries key package (v6)\n");
-      goto err;
+      if((state->kp[i] =
+          timeseries_kp_init(BWC_GET_TIMESERIES(consumer), 1)) == NULL)
+        {
+          fprintf(stderr, "Error: Could not create timeseries key package\n");
+          goto err;
+        }
     }
 
 
@@ -556,7 +535,8 @@ int bwc_perasvisibility_init(bwc_t *consumer, int argc, char **argv)
 void bwc_perasvisibility_destroy(bwc_t *consumer)
 {
   bwc_perasvisibility_state_t *state = STATE;
-
+  int i;
+  
   if(state == NULL)
     {
       return;
@@ -572,9 +552,10 @@ void bwc_perasvisibility_destroy(bwc_t *consumer)
 
   timeseries_kp_free(&state->kp_gen);
 
-  timeseries_kp_free(&state->kp_v4);
-
-  timeseries_kp_free(&state->kp_v6);
+  for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
+    {
+      timeseries_kp_free(&state->kp[i]);
+    }
 
   free(state);
 
@@ -585,7 +566,8 @@ int bwc_perasvisibility_process_view(bwc_t *consumer, uint8_t interests,
 				     bgpwatcher_view_t *view)
 {
   bgpwatcher_view_iter_t *it;
-
+  int i;
+  
   if(BWC_GET_CHAIN_STATE(consumer)->visibility_computed == 0)
     {
       fprintf(stderr,
@@ -610,18 +592,14 @@ int bwc_perasvisibility_process_view(bwc_t *consumer, uint8_t interests,
   /* now dump the per-as table(s) */
   dump_table(consumer);
 
-  /* now flush the v4 kp */
-  if(BWC_GET_CHAIN_STATE(consumer)->usable_table_flag[bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV4)] != 0 &&
-     timeseries_kp_flush(STATE->kp_v4, bgpwatcher_view_get_time(view)) != 0)
+  /* now flush the kps */
+  for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
     {
-      return -1;
-    }
-
-  /* now flush the v6 kp */
-  if(BWC_GET_CHAIN_STATE(consumer)->usable_table_flag[bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV6)] != 0 &&
-     timeseries_kp_flush(STATE->kp_v6, bgpwatcher_view_get_time(view)) != 0)
-    {
-      return -1;
+      if(BWC_GET_CHAIN_STATE(consumer)->usable_table_flag[i] != 0 &&
+         timeseries_kp_flush(STATE->kp[i], bgpwatcher_view_get_time(view)) != 0)
+        {
+          return -1;
+        }
     }
 
   // compute processed delay
