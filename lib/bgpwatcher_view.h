@@ -84,6 +84,13 @@ typedef enum {
 #define BGPWATCHER_VIEW_FIELD_ALL_VALID  \
   BGPWATCHER_VIEW_FIELD_ACTIVE | BGPWATCHER_VIEW_FIELD_INACTIVE
 
+
+/** if an origin AS number is within this range:
+ *  [BGPWATCHER_VIEW_ASN_NOEXPORT_START,BGPWATCHER_VIEW_ASN_NOEXPORT_END]
+ *  the pfx-peer info will not be exported (i.e. sent through the io channel) */
+#define BGPWATCHER_VIEW_ASN_NOEXPORT_START BGPWATCHER_VIEW_ASN_NOEXPORT_END - 255
+#define BGPWATCHER_VIEW_ASN_NOEXPORT_END   0xffffffff
+
 /** @} */
 
 /**

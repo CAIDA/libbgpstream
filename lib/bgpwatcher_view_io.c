@@ -421,7 +421,8 @@ static int recv_pfxs(void *src, bgpwatcher_view_iter_t *iter,
   size_t len;
   size_t read = 0;
   size_t s = 0;
-
+  int pfx_peers_added = 0;
+    
   ASSERT_MORE;
 
   /* pfx cnt */
@@ -482,7 +483,12 @@ static int recv_pfxs(void *src, bgpwatcher_view_iter_t *iter,
 
           assert(peerid < peerid_map_cnt);
 
-          if(j == 0)
+          if(orig_asn >= BGPWATCHER_VIEW_ASN_NOEXPORT_START)
+            {
+              continue;
+            }
+          
+          if(pfx_peers_added == 0)
             {
               /* we have to use add_pfx_peer */
               if(bgpwatcher_view_iter_add_pfx_peer(iter,
@@ -506,6 +512,8 @@ static int recv_pfxs(void *src, bgpwatcher_view_iter_t *iter,
                 }
             }
 
+          pfx_peers_added++;
+          
           /* now we have to activate it */
           if(bgpwatcher_view_iter_pfx_activate_peer(iter) < 0)
             {
