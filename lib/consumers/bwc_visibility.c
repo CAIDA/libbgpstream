@@ -37,7 +37,7 @@
 #include "bwc_visibility.h"
 
 #define NAME                        "visibility"
-#define CONSUMER_METRIC_PREFIX      "visibility"
+#define CONSUMER_METRIC_PREFIX      "prefix-visibility"
 
 #define BUFFER_LEN 1024
 #define METRIC_PREFIX_FORMAT       "%s.%s.v%d.%s"
@@ -253,7 +253,7 @@ static void find_ff_peers(bwc_t *consumer, bgpwatcher_view_iter_t *it)
         }
     }
 
-  fprintf(stderr, "IDS: %"PRIu32"\n", CHAIN_STATE->peer_ids_cnt[0]);              
+  // fprintf(stderr, "IDS: %"PRIu32"\n", CHAIN_STATE->peer_ids_cnt[0]);              
 
   for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
     {

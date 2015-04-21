@@ -123,7 +123,6 @@ typedef struct bwc_perasvisibility_state {
   /** Timeseries Key Packages (v4/v6) */
   timeseries_kp_t *kp[BGPSTREAM_MAX_IP_VERSION_IDX];
 
-
   /** General metric indexes */
   gen_metrics_t gen_metrics;
 
