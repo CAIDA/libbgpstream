@@ -162,7 +162,7 @@ static void usage()
     }
 
   fprintf(stderr,
-	  "usage: bgpcorsaro -o outfile -B back-end [<options>]\n"
+	  "usage: bgpcorsaro -o outfile -b back-end [<options>]\n"
 	  "\n"
 	  "Available options are:\n"
           "   -b <backend>   enable the given timeseries backend,\n"
