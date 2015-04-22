@@ -366,19 +366,24 @@ static int handle_recv_view(bgpwatcher_server_t *server,
   /* ask the store for a pointer to the view to recieve into */
   view = bgpwatcher_store_get_view(server->store, view_time);
 
-  
   /* temporarily store the truncated time so that we can fix the view after it
      has been rx'd */
-  view_time = bgpwatcher_view_get_time(view);
-  
+  if(view != NULL)
+    {
+      view_time = bgpwatcher_view_get_time(view);
+    }
+
   /* receive the view */
   if(bgpwatcher_view_recv(server->client_socket, view) != 0)
     {
       goto err;
     }
 
-  /* now reset the time to what the store wanted it to be */
-  bgpwatcher_view_set_time(view, view_time);
+  if(view != NULL)
+    {
+      /* now reset the time to what the store wanted it to be */
+      bgpwatcher_view_set_time(view, view_time);
+    }
 
   DUMP_METRIC(zclock_time()/1000-view_time,
               view_time,
