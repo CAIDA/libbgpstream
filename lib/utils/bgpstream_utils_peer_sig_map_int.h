@@ -23,7 +23,7 @@
 
 #include "khash.h"
 
-#include <bgpstream_utils_peer_sig_map.h>
+#include "bgpstream_utils_peer_sig_map.h"
 
 /** @file
  *

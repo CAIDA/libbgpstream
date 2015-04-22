@@ -22,7 +22,7 @@
 
 #include "utils.h"
 
-#include <bgpstream_utils_peer_sig_map_int.h>
+#include "bgpstream_utils_peer_sig_map_int.h"
 
 /* PRIVATE FUNCTIONS (static) */
 
