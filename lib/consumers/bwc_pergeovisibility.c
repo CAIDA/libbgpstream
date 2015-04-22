@@ -103,6 +103,10 @@ typedef struct pergeo_info {
   /** All v4 prefixes that this CC observed */
   bgpstream_ipv4_pfx_set_t *v4pfxs;
 
+  /** All v4 prefixes that this CC observed */
+  bgpstream_id_set_t *asns;
+  uint32_t asns_idx;
+
   /* sum full feed ASns observing v4 prefixes */
   uint32_t v4_ff_asns_sum;
 
@@ -380,7 +384,22 @@ static int create_per_cc_metrics(bwc_t *consumer)
 	  fprintf(stderr, "ERROR: Could not create key metric\n");
 	}
 
-      
+
+      // initialize properly geo_info and create ipv4 metrics id for kp
+      geo_info.asns = bgpstream_id_set_create();
+      if(geo_info.asns == NULL)
+        {
+	  fprintf(stderr, "ERROR: Could not create asns set\n");
+        }
+
+      snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_FORMAT,
+               CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX, 
+               countries[i]->continent, countries[i]->iso2, "asns_cnt");
+      if((geo_info.asns_idx = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
+	{
+	  fprintf(stderr, "ERROR: Could not create key metric\n");
+	}
+
       for(j=0; j<4; j++)
         {
           geo_info.v4_visible_pfxs[j] = 0;
@@ -529,7 +548,11 @@ static void dump_v4table(bwc_t *consumer)
           timeseries_kp_set(STATE->kp_v4, info->v4_idx, bgpstream_ipv4_pfx_set_size(info->v4pfxs));
 	  bgpstream_ipv4_pfx_set_clear(info->v4pfxs);
 
+          timeseries_kp_set(STATE->kp_v4, info->asns_idx, bgpstream_id_set_size(info->asns));
+	  bgpstream_id_set_clear(info->asns);
+
           timeseries_kp_set(STATE->kp_v4, info->v4_asn_vis_idx, info->v4_ff_asns_sum);
+          info->v4_ff_asns_sum = 0;
 
           for(i=0; i<4; i++)
             {
@@ -568,6 +591,11 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   /* full feed asns observing a prefix */
   bgpstream_id_set_t *ff_asns = bgpstream_id_set_create();
   int asns_count = 0;
+
+  /*  origin ases 
+   * (as seen by full feed peers) */
+  bgpstream_id_set_t *ff_origin_asns = bgpstream_id_set_create();
+
 
   khash_t(country_k_set) *cck_set = NULL;
   pergeo_info_t *geo_info;
@@ -610,7 +638,9 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
               continue;
             }
           
-          bgpstream_id_set_insert(ff_asns, sg->peer_asnumber);          
+          bgpstream_id_set_insert(ff_asns, sg->peer_asnumber);
+          bgpstream_id_set_insert(ff_origin_asns, bgpwatcher_view_iter_pfx_peer_get_orig_asn(it));          
+                    
         }
      
       asns_count = bgpstream_id_set_size(ff_asns);
@@ -696,6 +726,7 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
               update_visibility_counters(geo_info->v4_visible_pfxs, asns_count,
                                          BWC_GET_CHAIN_STATE(consumer)->full_feed_peer_asns_cnt[i]);
               geo_info->v4_ff_asns_sum += asns_count;
+              bgpstream_id_set_merge(geo_info->asns, ff_origin_asns);
               STATE->avg_numcountries_perpfx++;
             }
         }
@@ -706,10 +737,12 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
         }
 
       bgpstream_id_set_clear(ff_asns);
+      bgpstream_id_set_clear(ff_origin_asns);
 
     } /* end per-pfx loop */
 
   bgpstream_id_set_destroy(ff_asns);          
+  bgpstream_id_set_destroy(ff_origin_asns);          
 
 }
   
@@ -871,8 +904,6 @@ int bwc_pergeovisibility_process_view(bwc_t *consumer, uint8_t interests,
           return -1;
         }
     }
-
-  // IPV6: also if(bgpstream_id_set_size(kh_STATE->v6ff_peerids) > ROUTED_PFX_PEERCNT)
 
   // compute processed delay (must come prior to dump_gen_metrics)
   STATE->processed_delay = zclock_time()/1000- bgpwatcher_view_get_time(view);
