@@ -112,18 +112,36 @@ typedef struct bwv_peerid_pfxinfo {
 
 } __attribute__((packed)) bwv_peerid_pfxinfo_t;
 
+/* How many bytes are needed to store max_peerid peer states (two bits per
+   state) */
 #define BWV_PFX_PEER_STATE_LEN(max_peerid)              \
   ((max_peerid==0) ? 0 : ((((max_peerid)-1)/4)+1))
 
-#define BWV_PFX_GET_PEER_STATE(pfxinfo, peerid)                         \
-  (((pfxinfo->peer_states[((peerid-1)*2)/8])>>(8-(((peerid-1)%4)*2)-2))&0b11)
+/** What is the byte index of the given state */
+#define _BWV_PFX_PEER_STATE_IDX(peerid)          \
+  ((peerid-1)*2)/8
 
-#define BWV_PFX_SET_PEER_STATE(pfxinfo, peerid, state)  \
-  do {                                                  \
-    (pfxinfo->peer_states[((peerid-1)*2)/8]) =          \
-      ((pfxinfo->peer_states[((peerid-1)*2)/8]) &       \
-       ~(0b11 << (8-(((peerid-1)%4)*2)-2))) |           \
-      ((state & 0b11)<<(8-(((peerid-1)%4)*2)-2));       \
+/** Get the value of the state byte for the given peer id */
+#define _BWV_PFX_PEER_STATE_BYTE(pfxinfo, peerid)        \
+  (pfxinfo->peer_states[_BWV_PFX_PEER_STATE_IDX(peerid)])
+
+/** How much to shift a state by to get a byte, or vice-versa */
+#define _BWV_PFX_PEER_STATE_SHIFT(peerid)        \
+  (8-(((peerid-1)%4)*2)-2)
+
+/** Get the peer state from the given pfxinfo for the given peerid */
+#define BWV_PFX_GET_PEER_STATE(pfxinfo, peerid)                         \
+  ((_BWV_PFX_PEER_STATE_BYTE(pfxinfo, peerid)>>                          \
+     _BWV_PFX_PEER_STATE_SHIFT(peerid))                                  \
+   & 0b11)
+
+/** Set the given state for the given peerid in the given pfxinfo */
+#define BWV_PFX_SET_PEER_STATE(pfxinfo, peerid, state)          \
+  do {                                                          \
+    _BWV_PFX_PEER_STATE_BYTE(pfxinfo, peerid) =                  \
+      (_BWV_PFX_PEER_STATE_BYTE(pfxinfo, peerid) &               \
+       ~(0b11 << _BWV_PFX_PEER_STATE_SHIFT(peerid))) |           \
+      ((state & 0b11)<<_BWV_PFX_PEER_STATE_SHIFT(peerid));       \
   } while(0)
 
 /** @todo: add documentation ? */
