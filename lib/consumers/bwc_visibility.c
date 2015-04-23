@@ -414,6 +414,9 @@ int bwc_visibility_process_view(bwc_t *consumer, uint8_t interests,
   /* find the full-feed peers */
   find_ff_peers(consumer, it);
 
+  bgpwatcher_view_iter_destroy(it);
+  
+
   CHAIN_STATE->usable_table_flag[bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV4)] = 1;
   CHAIN_STATE->usable_table_flag[bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV6)] = 1;
 

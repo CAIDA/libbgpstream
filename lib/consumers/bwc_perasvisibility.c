@@ -588,7 +588,6 @@ int bwc_perasvisibility_process_view(bwc_t *consumer, uint8_t interests,
   /* flip the view into a per-AS table */
   flip_table(consumer, it);
 
-
   /* now dump the per-as table(s) */
   dump_table(consumer);
 

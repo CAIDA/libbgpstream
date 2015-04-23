@@ -177,6 +177,10 @@ static void pergeo_info_destroy(pergeo_info_t info)
     {
       bgpstream_ipv4_pfx_set_destroy(info.v4pfxs);
     }
+  if(info.asns != NULL)
+    {
+      bgpstream_id_set_destroy(info.asns);
+    }
 }
 
 
@@ -714,7 +718,7 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
       // the counters for each country
       // cc_k_set contains the k position of a country in the
       // countrycode_pfxs hash map
-
+   
       for(idk = kh_begin(cck_set);
           idk != kh_end(cck_set); ++idk)
         {
@@ -827,6 +831,15 @@ int bwc_pergeovisibility_init(bwc_t *consumer, int argc, char **argv)
   return -1;
 }
 
+
+static void
+bwc_destroy_pfx_user_ptr(void *user)
+{
+  khash_t(country_k_set) *cck_set = (khash_t(country_k_set) *) user;
+  kh_destroy(country_k_set, cck_set);  
+}
+
+
 void bwc_pergeovisibility_destroy(bwc_t *consumer)
 {
 
@@ -838,9 +851,18 @@ void bwc_pergeovisibility_destroy(bwc_t *consumer)
     }
 
   /* destroy things here */
+  khiter_t idk;
   if(state->countrycode_pfxs != NULL)
     {
-      kh_free_vals(cc_pfxs, state->countrycode_pfxs, pergeo_info_destroy);
+      for(idk = kh_begin(state->countrycode_pfxs);
+          idk != kh_end(state->countrycode_pfxs); ++idk)
+        {
+          if (kh_exist(state->countrycode_pfxs, idk))
+            {
+              free(kh_key(state->countrycode_pfxs, idk));
+              pergeo_info_destroy(kh_value(state->countrycode_pfxs, idk));
+            }
+        }
       kh_destroy(cc_pfxs, state->countrycode_pfxs);
       state->countrycode_pfxs = NULL;
     }
@@ -889,6 +911,8 @@ int bwc_pergeovisibility_process_view(bwc_t *consumer, uint8_t interests,
       return -1;
     }
 
+  bgpwatcher_view_set_pfx_user_destructor(view, bwc_destroy_pfx_user_ptr);
+  
   int i = bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV4);
 
   if(BWC_GET_CHAIN_STATE(consumer)->usable_table_flag[i] != 0)
@@ -904,6 +928,8 @@ int bwc_pergeovisibility_process_view(bwc_t *consumer, uint8_t interests,
           return -1;
         }
     }
+
+  bgpwatcher_view_iter_destroy(it);
 
   // compute processed delay (must come prior to dump_gen_metrics)
   STATE->processed_delay = zclock_time()/1000- bgpwatcher_view_get_time(view);
