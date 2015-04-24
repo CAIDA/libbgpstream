@@ -47,6 +47,10 @@ do {                                                            \
 /* after how many heartbeats should we ask the store to check timeouts */
 #define STORE_HEARTBEATS_PER_TIMEOUT 60
 
+/** Number of zmq I/O threads */
+#define SERVER_ZMQ_IO_THREADS 3
+
+
 static void client_free(bgpwatcher_server_client_t **client_p)
 {
   bgpwatcher_server_client_t *client = *client_p;
@@ -774,6 +778,8 @@ bgpwatcher_server_t *bgpwatcher_server_init()
       goto err;
     }
 
+  zsys_set_io_threads(SERVER_ZMQ_IO_THREADS);
+    
   /* set default config */
 
   if((server->client_uri =

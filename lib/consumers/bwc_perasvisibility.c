@@ -327,6 +327,8 @@ static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   bgpstream_id_set_t *ff_asns = bgpstream_id_set_create();
   int asns_count = 0;
 
+  uint32_t asn;
+
   /*  origin ases 
    * (as seen by full feed peers) */
   khash_t(int_set) *ff_origin_asns = kh_init(int_set);
@@ -367,7 +369,11 @@ static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
             }
           
           bgpstream_id_set_insert(ff_asns, sg->peer_asnumber);
-          kh_put(int_set, ff_origin_asns, bgpwatcher_view_iter_pfx_peer_get_orig_asn(it), &khret);
+          asn = bgpwatcher_view_iter_pfx_peer_get_orig_asn(it);
+
+          assert(asn < BGPWATCHER_VIEW_ASN_NOEXPORT_START);
+          
+          kh_put(int_set, ff_origin_asns, asn, &khret);
           
         }
 
