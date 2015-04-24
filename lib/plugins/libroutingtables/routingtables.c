@@ -1418,14 +1418,6 @@ int routingtables_interval_end(routingtables_t *rt,
                                int end_time)
 {
   rt->bgp_time_interval_end = (uint32_t) end_time;
-  uint32_t time_now = get_wall_time_now();
-  uint32_t elapsed_time = time_now - rt->wall_time_interval_start;
-  fprintf(stderr, "Interval [%"PRIu32", %"PRIu32"] processed in %"PRIu32"s\n",
-          rt->bgp_time_interval_start, rt->bgp_time_interval_end, elapsed_time);
-
-  // @todo check the return value of these functions
-
-  routingtables_dump_metrics(rt, time_now);
 
 #ifdef WITH_BGPWATCHER
   if(rt->watcher_tx_on)
@@ -1433,6 +1425,14 @@ int routingtables_interval_end(routingtables_t *rt,
       routingtables_send_view(rt);
     }
 #endif
+
+  uint32_t time_now = get_wall_time_now();
+  uint32_t elapsed_time = time_now - rt->wall_time_interval_start;
+  fprintf(stderr, "Interval [%"PRIu32", %"PRIu32"] processed in %"PRIu32"s\n",
+          rt->bgp_time_interval_start, rt->bgp_time_interval_end, elapsed_time);
+
+  routingtables_dump_metrics(rt, time_now);
+
   return 0;
 }
 
