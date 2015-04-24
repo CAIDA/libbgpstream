@@ -38,8 +38,8 @@
 
 
 #define BUFFER_LEN 1024
-#define METRIC_PREFIX_FORMAT       "%s.%s.%d.v%d.%s"
-#define METRIC_PREFIX_PERC_FORMAT  "%s.%s.%d.v%d.perc.%s.%s"
+#define METRIC_PREFIX_FORMAT       "%s.%s.%"PRIu32".v%d.%s"
+#define METRIC_PREFIX_PERC_FORMAT  "%s.%s.%"PRIu32".v%d.perc.%s.%s"
 #define META_METRIC_PREFIX_FORMAT  "%s.meta.bgpwatcher.consumer."NAME".%s"
 
 
