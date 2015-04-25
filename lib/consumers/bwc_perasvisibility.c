@@ -42,6 +42,7 @@
 #define METRIC_PREFIX_PERC_FORMAT  "%s.%s.%"PRIu32".v%d.perc.%s.%s"
 #define META_METRIC_PREFIX_FORMAT  "%s.meta.bgpwatcher.consumer."NAME".%s"
 
+#define MAX_NUM_PEERS 1024
 
 
 #define STATE					\
@@ -125,6 +126,11 @@ typedef struct bwc_perasvisibility_state {
 
   /** General metric indexes */
   gen_metrics_t gen_metrics;
+
+
+  /** General metric indexes */
+  uint32_t origin_asns[MAX_NUM_PEERS];
+  uint16_t valid_origins; 
 
   /* META metric values */
   int arrival_delay;
@@ -331,10 +337,13 @@ static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 
   /*  origin ases 
    * (as seen by full feed peers) */
-  khash_t(int_set) *ff_origin_asns = kh_init(int_set);
+  // khash_t(int_set) *ff_origin_asns = kh_init(int_set);
   
   peras_info_t *info;
   int i;
+
+  uint16_t a;
+  uint8_t found;
   
   for(bgpwatcher_view_iter_first_pfx(it, 0 /* all ip versions*/, BGPWATCHER_VIEW_FIELD_ACTIVE);
       bgpwatcher_view_iter_has_more_pfx(it);
@@ -349,7 +358,9 @@ static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
          pfx->mask_len < BWC_GET_CHAIN_STATE(consumer)->pfx_vis_mask_len_threshold)
         {
           continue;
-        }      
+        }
+
+      STATE->valid_origins = 0;
 
       /* iterate over the peers for the current pfx and get the number of unique
        * full feed AS numbers observing this prefix as well as the unique set of
@@ -369,52 +380,57 @@ static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
             }
           
           bgpstream_id_set_insert(ff_asns, sg->peer_asnumber);
-          asn = bgpwatcher_view_iter_pfx_peer_get_orig_asn(it);
-
+          asn = bgpwatcher_view_iter_pfx_peer_get_orig_asn(it);         
           assert(asn < BGPWATCHER_VIEW_ASN_NOEXPORT_START);
           
-          kh_put(int_set, ff_origin_asns, asn, &khret);
-          
+          found = 0;
+          for(a = 0; a < STATE->valid_origins; a++)
+            {
+              if(STATE->origin_asns[a] == asn)
+                {
+                  found = 1;
+                  break;
+                }                
+            }
+          if(!found)
+            {
+              STATE->origin_asns[STATE->valid_origins] = asn;
+              STATE->valid_origins++;
+            }
         }
 
       asns_count = bgpstream_id_set_size(ff_asns);
 
-      for(k = kh_begin(ff_origin_asns); k != kh_end(ff_origin_asns); ++k)
+      for(a = 0; a < STATE->valid_origins; a++)        
         {
-          if(kh_exist(ff_origin_asns, k))
+          if((info = as_pfxs_get_info(consumer, STATE->origin_asns[a])) == NULL)
             {
-              if((info = as_pfxs_get_info(consumer, kh_key(ff_origin_asns,k))) == NULL)
-                {
-                  return -1;
-                }
-
-              if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4)
-                {
-                  bgpstream_ipv4_pfx_set_insert(info->v4pfxs,
-                                                (bgpstream_ipv4_pfx_t *)pfx);
-                }
-              else
-                {
-                  if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV6)
-                    {
-                      bgpstream_ipv6_pfx_set_insert(info->v6pfxs,
-                                                    (bgpstream_ipv6_pfx_t *)pfx);
-                    }
-                }
-
-              info->ff_asns_sum[bgpstream_ipv2idx(pfx->address.version)] += asns_count;
-              update_visibility_counters(&info->visible_pfxs[bgpstream_ipv2idx(pfx->address.version)*4], asns_count,
-                                         BWC_GET_CHAIN_STATE(consumer)->full_feed_peer_asns_cnt[i]);
-
+              return -1;
             }
+
+          if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4)
+            {
+              bgpstream_ipv4_pfx_set_insert(info->v4pfxs,
+                                            (bgpstream_ipv4_pfx_t *)pfx);
+            }
+          else
+            {
+              if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV6)
+                {
+                  bgpstream_ipv6_pfx_set_insert(info->v6pfxs,
+                                                (bgpstream_ipv6_pfx_t *)pfx);
+                }
+            }
+
+          info->ff_asns_sum[bgpstream_ipv2idx(pfx->address.version)] += asns_count;
+          update_visibility_counters(&info->visible_pfxs[bgpstream_ipv2idx(pfx->address.version)*4], asns_count,
+                                     BWC_GET_CHAIN_STATE(consumer)->full_feed_peer_asns_cnt[i]);
         }
       
       bgpstream_id_set_clear(ff_asns);
-      kh_clear(int_set,ff_origin_asns);
     }
   
   bgpstream_id_set_destroy(ff_asns);
-  kh_destroy(int_set, ff_origin_asns);
   
   return 0;     
 }
@@ -518,6 +534,7 @@ int bwc_perasvisibility_init(bwc_t *consumer, int argc, char **argv)
         }
     }
 
+  state->valid_origins = 0;
 
   /* parse the command line args */
   if(parse_args(consumer, argc, argv) != 0)

@@ -28,14 +28,20 @@
 
 #include "bwc_perfmonitor.h"
 
-#define NAME "perfmonitor"
 
-#define METRIC_PREFIX "bgp.meta.bgpwatcher.consumer"
+
+
+#define NAME                        "perfmonitor"
+
+#define BUFFER_LEN 1024
+#define META_METRIC_PREFIX_FORMAT  "%s.meta.bgpwatcher.consumer."NAME
+
+
 
 #define DUMP_METRIC(value, time, fmt, ...)                      \
 do {                                                            \
  char buf[1024];                                                \
- snprintf(buf,1024, METRIC_PREFIX"."fmt, __VA_ARGS__);		\
+ snprintf(buf,1024, META_METRIC_PREFIX_FORMAT"."fmt, __VA_ARGS__);		\
  timeseries_set_single(BWC_GET_TIMESERIES(consumer),		\
                        buf, value, time);                       \
  } while(0)                                                     \
@@ -43,6 +49,9 @@ do {                                                            \
 
 #define STATE					\
   (BWC_GET_STATE(consumer, perfmonitor))
+
+#define CHAIN_STATE                             \
+  (BWC_GET_CHAIN_STATE(consumer))
 
 static bwc_t bwc_perfmonitor = {
   BWC_ID_PERFMONITOR,
@@ -54,6 +63,9 @@ typedef struct bwc_perfmonitor_state {
 
   /** The number of views we have processed */
   int view_cnt;
+
+  /** Timeseries Key Package (general) */
+  timeseries_kp_t *kp_gen;
 
 } bwc_perfmonitor_state_t;
 
@@ -104,29 +116,7 @@ static int parse_args(bwc_t *consumer, int argc, char **argv)
   /* NB: remember to reset optind to 1 before using getopt! */
   optind = 1;
 
-  /* remember the argv strings DO NOT belong to us */
-#if 0
-  while((opt = getopt(argc, argv, ":c:f:?")) >= 0)
-    {
-      switch(opt)
-	{
-	case 'c':
-	  state->compress_level = atoi(optarg);
-	  break;
-
-	case 'f':
-	  state->ascii_file = strdup(optarg);
-	  break;
-
-	case '?':
-	case ':':
-	default:
-	  usage(consumer);
-	  return -1;
-	}
-    }
-#endif
-
+  
   return 0;
 }
 
@@ -147,6 +137,8 @@ int bwc_perfmonitor_init(bwc_t *consumer, int argc, char **argv)
 
   /* set defaults here */
 
+  state->view_cnt = 0;
+
   /* parse the command line args */
   if(parse_args(consumer, argc, argv) != 0)
     {
@@ -162,7 +154,7 @@ void bwc_perfmonitor_destroy(bwc_t *consumer)
 {
   bwc_perfmonitor_state_t *state = STATE;
 
-  fprintf(stdout, "BWC-TEST: %d views processed\n",
+  fprintf(stderr, "BWC-TEST: %d views processed\n",
 	  STATE->view_cnt);
 
   if(state == NULL)
@@ -184,7 +176,7 @@ int bwc_perfmonitor_process_view(bwc_t *consumer, uint8_t interests,
   
   DUMP_METRIC(zclock_time()/1000- bgpwatcher_view_get_time(view),
               bgpwatcher_view_get_time(view),
-	      "%s", "view_arrival_delay");
+	      "%s", CHAIN_STATE->metric_prefix, "view_arrival_delay");
 
   
   // get the number of peers and their table size
@@ -224,15 +216,15 @@ int bwc_perfmonitor_process_view(bwc_t *consumer, uint8_t interests,
       graphite_safe(addr);
       DUMP_METRIC(peer_on,
 		  bgpwatcher_view_get_time(view),
-		  "peers.%s.%s.peer_on", sig->collector_str, addr);
+		  "peers.%s.%s.peer_on", CHAIN_STATE->metric_prefix, sig->collector_str, addr);
 
       DUMP_METRIC(pfx4_cnt,
 		  bgpwatcher_view_get_time(view),
-		  "peers.%s.%s.ipv4_cnt", sig->collector_str, addr);
+		  "peers.%s.%s.ipv4_cnt", CHAIN_STATE->metric_prefix, sig->collector_str, addr);
 
       DUMP_METRIC(pfx6_cnt,
 		  bgpwatcher_view_get_time(view),
-		  "peers.%s.%s.ipv6_cnt", sig->collector_str, addr);      
+		  "peers.%s.%s.ipv6_cnt", CHAIN_STATE->metric_prefix, sig->collector_str, addr);      
     }
 
   /* destroy the view iterator */
