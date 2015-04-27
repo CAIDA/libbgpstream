@@ -88,6 +88,12 @@ static bgpstream_record_t *record = NULL;
 /** A pointer to the instance of bgpcorsaro that we will drive */
 static bgpcorsaro_t *bgpcorsaro = NULL;
 
+/** The id associated with the bgpstream data interface  */
+bgpstream_data_interface_id_t datasource_id = 0;
+
+/** Datasource name string  */
+const char *datasource_name = NULL;
+
 /** Handles SIGINT gracefully and shuts down */
 static void catch_sigint(int sig)
 {
@@ -121,6 +127,60 @@ static void clean()
   if(timeseries != NULL)
     {
       timeseries_free(&timeseries);
+    }
+}
+
+void data_if_usage() {
+  bgpstream_data_interface_id_t *ids = NULL;
+  int id_cnt = 0;
+  int i;
+
+  bgpstream_data_interface_info_t *info = NULL;
+
+  id_cnt = bgpstream_get_data_interfaces(stream, &ids);
+
+  for(i=0; i<id_cnt; i++)
+    {
+      info = bgpstream_get_data_interface_info(stream, ids[i]);
+
+      fprintf(stderr,
+              "                       -%-15s%s\n", info->name, info->description);
+    }
+}
+
+void dump_if_options() {
+
+  bgpstream_data_interface_option_t *options;
+  int opt_cnt = 0;
+  int i;
+
+  if(datasource_id != 0)
+    {
+      opt_cnt = bgpstream_get_data_interface_options(stream, datasource_id, &options);
+
+      fprintf(stderr, " set an option for the current data interface.\n");
+      fprintf(stderr, "                  Data interface options for '%s':\n", datasource_name);
+      if(opt_cnt == 0)
+        {
+          fprintf(stderr, "   [NONE]\n");
+        }
+      else
+        {
+          for(i=0; i<opt_cnt; i++)
+            {
+              fprintf(stderr, "                   - %-15s%s\n",
+                      options[i].name, options[i].description);
+            }
+        }
+    }
+  else
+    {
+      fprintf(stderr, 
+              " set an option for the current data interface.\n"
+              "                    use '-o ?' to get a list of available\n"
+              "                    options for the current data interface.\n"
+              "                    (data interface must be selected using -d)\n");
+
     }
 }
 
@@ -165,18 +225,27 @@ static void usage()
 	  "usage: bgpcorsaro -o outfile -b back-end [<options>]\n"
 	  "\n"
 	  "Available options are:\n"
+          "   -D <interface> use the given bgpstream data interface to find available data\n"
+          "                   available data interfaces are:\n");
+  data_if_usage();
+  fprintf(stderr,
+          "   -O <option-name,option-value> ");
+  dump_if_options();
+  fprintf(stderr,
+	  "   -P <project>   process records from only the given project (routeviews, ris)*\n"
+	  "   -C <collector> process records from only the given collector*\n"
+	  "   -T <type>      process records with only the given type (ribs, updates)*\n"
+	  "   -W <start,end> process records only within the given time window*\n"
+	  "   -B             make blocking requests for BGP records\n"
+	  "                  allows bgpcorsaro to be used to process data in real-time\n"                    
           "   -b <backend>   enable the given timeseries backend,\n"
 	  "                  -b can be used multiple times\n");
   timeseries_usage();
-  fprintf(stderr,
-	  "   -d datasource  select the bgpstream datasource (default: mysql)\n"
+  fprintf(stderr,	  
 	  "   -a             align the end time of the first interval\n"
           "   -g <gap-limit> maximum allowed gap between packets (0 is no limit) (default: %d)\n"
-	  "   -B             make blocking requests for BGP records\n"
-	  "                  allows bgpcorsaro to be used to process data in real-time\n"
-	  "   -C <collector> process records from only the given collector*\n"
 	  "   -i <interval>  distribution interval in seconds (default: %d)\n"
-	  "   -L             disable logging to a file\n"
+	  "   -l             disable logging to a file\n"
 	  "   -n <name>      monitor name (default: "
 	  STR(BGPCORSARO_MONITOR_NAME)")\n"
 	  "   -o <outfile>   use <outfile> as a template for file names.\n"
@@ -194,12 +263,10 @@ static void usage()
     }
   fprintf(stderr,
 	  "                   use -p \"<plugin_name> -?\" to see plugin options\n"
-	  "   -P <project>   process records from only the given project (routeviews, ris)*\n"
 	  "   -r <intervals> rotate output files after n intervals\n"
 	  "   -R <intervals> rotate bgpcorsaro meta files after n intervals\n"
-	  "   -T <type>      process records with only the given type (ribs, updates)*\n"
-	  "   -W <start,end> process records only within the given time window*\n"
 	  "\n"
+          "   -h             print this help menu\n"
 	  "* denotes an option that can be given multiple times\n"
 	  );
 
@@ -235,6 +302,8 @@ int main(int argc, char *argv[])
   char datasource[PROJECT_CMD_CNT];
   int datasource_set = 0;
   
+  bgpstream_data_interface_option_t *option;
+
   char *projects[PROJECT_CMD_CNT];
   int projects_cnt = 0;
 
@@ -254,7 +323,13 @@ int main(int argc, char *argv[])
 
   signal(SIGINT, catch_sigint);
 
-
+  
+  if((stream = bgpstream_create()) == NULL)
+    {
+      fprintf(stderr, "ERROR: Could not create BGPStream instance\n");
+      return -1;
+    }
+  
   /* initialize a timeseries object that will be shared among all plugins */
   if((timeseries = timeseries_init()) == NULL)
     {
@@ -263,7 +338,7 @@ int main(int argc, char *argv[])
     }
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":b:g:d:C:i:n:o:p:P:r:R:T:W:aBLv?")) >= 0)
+    	(opt = getopt(argc, argv, ":D:O:C:P:T:W:b:g:i:n:o:p:r:R:aBlhv?")) >= 0)
     {
       if (optind == prevoptind + 2 && (optarg == NULL || *optarg == '-') ) {
         opt = ':';
@@ -272,15 +347,7 @@ int main(int argc, char *argv[])
       switch(opt)
 	{
 
-        case 'b':
-	  backends[backends_cnt++] = strdup(optarg);
-	  break;
-
-        case 'g':
-          gap_limit = atoi(optarg);
-          break;
-
-	case 'd':
+	case 'D':
 	  if(datasource_set == 1)
 	    {
 	      fprintf(stderr,
@@ -289,49 +356,17 @@ int main(int argc, char *argv[])
 	      usage();
 	      exit(-1);
 	    }
+          if((datasource_id =
+              bgpstream_get_data_interface_id_by_name(stream, optarg)) == 0)
+            {
+              fprintf(stderr, "ERROR: Invalid data interface name '%s'\n",
+                      optarg);
+              usage();
+              exit(-1);
+            }
+          datasource_name = optarg;
+          strcpy(datasource,optarg);
 	  datasource_set = 1;
-	  strcpy(datasource, optarg);
-	  break;
-
-	case 'a':
-	  align = 1;
-	  break;
-
-	case 'B':
-	  blocking = 1;
-	  break;
-
-	case 'C':
-	  if(collectors_cnt == COLLECTOR_CMD_CNT)
-	    {
-	      fprintf(stderr,
-		      "ERROR: A maximum of %d collectors can be specified on "
-		      "the command line\n",
-		      COLLECTOR_CMD_CNT);
-	      usage();
-	      exit(-1);
-	    }
-	  collectors[collectors_cnt++] = strdup(optarg);
-	  break;
-
-	case 'i':
-	  interval = atoi(optarg);
-	  break;
-
-	case 'L':
-	  logfile_disable = 1;
-	  break;
-
-	case 'n':
-	  name = strdup(optarg);
-	  break;
-
-	case 'o':
-	  tmpl = strdup(optarg);
-	  break;
-
-	case 'p':
-	  plugins[plugin_cnt++] = strdup(optarg);
 	  break;
 
 	case 'P':
@@ -347,14 +382,19 @@ int main(int argc, char *argv[])
 	  projects[projects_cnt++] = strdup(optarg);
 	  break;
 
-	case 'r':
-	  rotate = atoi(optarg);
+	case 'C':
+	  if(collectors_cnt == COLLECTOR_CMD_CNT)
+	    {
+	      fprintf(stderr,
+		      "ERROR: A maximum of %d collectors can be specified on "
+		      "the command line\n",
+		      COLLECTOR_CMD_CNT);
+	      usage();
+	      exit(-1);
+	    }
+	  collectors[collectors_cnt++] = strdup(optarg);
 	  break;
-
-	case 'R':
-	  meta_rotate = atoi(optarg);
-	  break;
-
+          
 	case 'T':
 	  if(types_cnt == TYPE_CMD_CNT)
 	    {
@@ -392,6 +432,96 @@ int main(int argc, char *argv[])
 	  windows[windows_cnt].end =  strdup(endp);
 	  windows_cnt++;
 	  break;
+
+        case 'O':
+          if(datasource_id == 0)
+            {
+              fprintf(stderr, "ERROR: Data interface must first be specified with -D\n");
+              usage();
+              exit(-1);
+            }
+          if(*optarg == '?')
+            {
+              usage();
+              exit(-1);
+            }
+          else
+            {
+              /* actually set this option */
+              if((endp = strchr(optarg, ',')) == NULL)
+                {
+                  fprintf(stderr,
+                          "ERROR: Malformed data interface option (%s)\n",
+                          optarg);
+                  fprintf(stderr,
+                          "ERROR: Expecting <option-name>,<option-value>\n");
+                  usage();
+                  exit(-1);
+                }
+              *endp = '\0';
+              endp++;
+              if((option =
+                  bgpstream_get_data_interface_option_by_name(stream, datasource_id,
+                                                              optarg)) == NULL)
+                {
+                  fprintf(stderr,
+                          "ERROR: Invalid option '%s' for data interface '%s'\n",
+                          optarg, datasource_name);
+                  usage();
+                  exit(-1);
+                }
+              bgpstream_set_data_interface_option(stream, option, endp);
+            }
+          break;
+          
+	case 'B':
+	  blocking = 1;
+	  break;
+
+        case 'b':
+	  backends[backends_cnt++] = strdup(optarg);
+	  break;
+
+        case 'g':
+          gap_limit = atoi(optarg);
+          break;
+
+
+	case 'a':
+	  align = 1;
+	  break;
+
+
+
+	case 'i':
+	  interval = atoi(optarg);
+	  break;
+
+	case 'L':
+	  logfile_disable = 1;
+	  break;
+
+	case 'n':
+	  name = strdup(optarg);
+	  break;
+
+	case 'o':
+	  tmpl = strdup(optarg);
+	  break;
+
+	case 'p':
+	  plugins[plugin_cnt++] = strdup(optarg);
+	  break;
+
+
+	case 'r':
+	  rotate = atoi(optarg);
+	  break;
+
+	case 'R':
+	  meta_rotate = atoi(optarg);
+	  break;
+
 
 	case ':':
 	  fprintf(stderr, "ERROR: Missing option argument for -%c\n", optopt);
@@ -555,16 +685,8 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-  if((stream = bgpstream_create()) == NULL)
-    {
-      fprintf(stderr, "ERROR: Could not create BGPStream instance\n");
-      return -1;
-    }
-
 
   /* we support multiple datasources, mysql is the default */
-
-
   bgpstream_data_interface_id_t ds_id = bgpstream_get_data_interface_id_by_name(stream, "mysql");
 
   if(datasource_set == 1)
