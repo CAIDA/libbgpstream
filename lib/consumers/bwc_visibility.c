@@ -76,6 +76,7 @@ typedef struct gen_metrics {
   /* META metrics */
   int arrival_delay_idx;
   int processed_delay_idx;
+  int processing_time_idx;
 } gen_metrics_t;
 
 
@@ -84,6 +85,7 @@ typedef struct bwc_visibility_state {
 
   int arrival_delay;
   int processed_delay;
+  int processing_time;
 
   /** # pfxs in a full-feed table */
   int full_feed_size[BGPSTREAM_MAX_IP_VERSION_IDX];
@@ -212,6 +214,15 @@ static int create_gen_metrics(bwc_t *consumer)
       return -1;
     }
 
+  snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
+           CHAIN_STATE->metric_prefix, "processing_time");
+             
+  if((STATE->gen_metrics.processing_time_idx =
+      timeseries_kp_add_key(STATE->kp, buffer)) == -1)
+    {
+      return -1;
+    }
+
     return 0;
 }
 
@@ -282,8 +293,12 @@ static void dump_gen_metrics(bwc_t *consumer)
   timeseries_kp_set(STATE->kp, STATE->gen_metrics.processed_delay_idx,
                     STATE->processed_delay);
 
+  timeseries_kp_set(STATE->kp, STATE->gen_metrics.processing_time_idx,
+                    STATE->processing_time);
+
   STATE->arrival_delay = 0;
   STATE->processed_delay = 0;
+  STATE->processing_time = 0;
 }
 
 static void
@@ -394,16 +409,17 @@ int bwc_visibility_process_view(bwc_t *consumer, uint8_t interests,
 {
   bgpwatcher_view_iter_t *it;
   int i;
-  /* this MUST come first */
+
+  // compute arrival delay
+  STATE->arrival_delay = zclock_time()/1000 - bgpwatcher_view_get_time(view);
+
+  /* this MUST come before any computation  */
   for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
     {
       bgpstream_id_set_clear(STATE->full_feed_asns[i]);
     }
   
   reset_chain_state(consumer);
-
-  // compute arrival delay
-  STATE->arrival_delay = zclock_time()/1000 - bgpwatcher_view_get_time(view);
 
   /* create a new iterator */
   if((it = bgpwatcher_view_iter_create(view)) == NULL)
@@ -427,6 +443,8 @@ int bwc_visibility_process_view(bwc_t *consumer, uint8_t interests,
   /* compute processed delay (must come prior to dump_gen_metrics) */
   STATE->processed_delay = zclock_time()/1000 - bgpwatcher_view_get_time(view);
 
+  STATE->processing_time = STATE->processed_delay - STATE->arrival_delay;
+  
   /* dump metrics and tables */
   dump_gen_metrics(consumer);
 

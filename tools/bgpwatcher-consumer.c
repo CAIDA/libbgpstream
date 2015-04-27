@@ -417,7 +417,10 @@ int main(int argc, char **argv)
       fprintf(stderr, "ERROR: Could not create view\n");
       goto err;
     }
+  /* disable per-pfx-per-peer user pointer */
+  bgpwatcher_view_disable_user_data(view);
 
+  
   while((rx_interests =
          bgpwatcher_client_recv_view(client,
                                      BGPWATCHER_CLIENT_RECV_MODE_BLOCK,

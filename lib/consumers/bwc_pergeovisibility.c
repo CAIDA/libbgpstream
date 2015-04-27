@@ -204,6 +204,7 @@ typedef struct gen_metrics {
   int cache_hits_cnt_idx;
   int arrival_delay_idx;
   int processed_delay_idx;
+  int processing_time_idx;
   int max_numcountries_perpfx_idx;
   double avg_numcountries_perpfx_idx;
   int num_visible_pfx_idx;
@@ -218,6 +219,7 @@ typedef struct bwc_pergeovisibility_state {
   int cache_hits_cnt;
   int arrival_delay;
   int processed_delay;
+  int processing_time;
   int max_numcountries_perpfx;
   double avg_numcountries_perpfx;
   int num_visible_pfx;
@@ -460,6 +462,14 @@ static int create_gen_metrics(bwc_t *consumer)
     }
 
   snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
+           CHAIN_STATE->metric_prefix, "processing_time");
+  if((STATE->gen_metrics.processing_time_idx =
+      timeseries_kp_add_key(STATE->kp_gen, buffer)) == -1)
+    {
+      return -1;
+    }
+
+  snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
            CHAIN_STATE->metric_prefix, "max_numcountries_perpfx");
   if((STATE->gen_metrics.max_numcountries_perpfx_idx =
       timeseries_kp_add_key(STATE->kp_gen, buffer)) == -1)
@@ -509,6 +519,9 @@ static void dump_gen_metrics(bwc_t *consumer)
   timeseries_kp_set(STATE->kp_gen, STATE->gen_metrics.processed_delay_idx,
                     STATE->processed_delay);
 
+  timeseries_kp_set(STATE->kp_gen, STATE->gen_metrics.processing_time_idx,
+                    STATE->processing_time);
+
   timeseries_kp_set(STATE->kp_gen, STATE->gen_metrics.max_numcountries_perpfx_idx,
                     STATE->max_numcountries_perpfx);
 
@@ -531,6 +544,7 @@ static void dump_gen_metrics(bwc_t *consumer)
   STATE->cache_hits_cnt = 0;
   STATE->arrival_delay = 0;
   STATE->processed_delay = 0;
+  STATE->processing_time = 0;
   STATE->max_numcountries_perpfx = 0;
   STATE->avg_numcountries_perpfx = 0;
   STATE->num_visible_pfx = 0;
@@ -933,6 +947,8 @@ int bwc_pergeovisibility_process_view(bwc_t *consumer, uint8_t interests,
 
   // compute processed delay (must come prior to dump_gen_metrics)
   STATE->processed_delay = zclock_time()/1000- bgpwatcher_view_get_time(view);
+  STATE->processing_time = STATE->processed_delay - STATE->arrival_delay;
+
   /* dump metrics and tables */
   dump_gen_metrics(consumer);
 

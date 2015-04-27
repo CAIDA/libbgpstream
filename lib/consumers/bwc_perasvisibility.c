@@ -109,6 +109,7 @@ typedef struct gen_metrics {
   /* META metrics */
   int arrival_delay_idx;
   int processed_delay_idx;
+  int processing_time_idx;
 
 } gen_metrics_t;
 
@@ -135,7 +136,8 @@ typedef struct bwc_perasvisibility_state {
   /* META metric values */
   int arrival_delay;
   int processed_delay;
-
+  int processing_time;
+  
 } bwc_perasvisibility_state_t;
 
 /** Print usage information to stderr */
@@ -190,6 +192,15 @@ static int create_gen_metrics(bwc_t *consumer)
            CHAIN_STATE->metric_prefix, "processed_delay");
              
   if((STATE->gen_metrics.processed_delay_idx =
+      timeseries_kp_add_key(STATE->kp_gen, buffer)) == -1)
+    {
+      return -1;
+    }
+
+  snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
+           CHAIN_STATE->metric_prefix, "processing_time");
+             
+  if((STATE->gen_metrics.processing_time_idx =
       timeseries_kp_add_key(STATE->kp_gen, buffer)) == -1)
     {
       return -1;
@@ -444,9 +455,12 @@ static void dump_gen_metrics(bwc_t *consumer)
 
   timeseries_kp_set(STATE->kp_gen, STATE->gen_metrics.processed_delay_idx,
                     STATE->processed_delay);
+  timeseries_kp_set(STATE->kp_gen, STATE->gen_metrics.processing_time_idx,
+                    STATE->processing_time);
 
   STATE->arrival_delay = 0;
   STATE->processed_delay = 0;
+  STATE->processing_time = 0;
 }
 
 static void dump_table(bwc_t *consumer)
@@ -626,6 +640,9 @@ int bwc_perasvisibility_process_view(bwc_t *consumer, uint8_t interests,
 
   // compute processed delay
   STATE->processed_delay = zclock_time()/1000 - bgpwatcher_view_get_time(view);
+
+  STATE->processing_time = STATE->processed_delay - STATE->arrival_delay;
+  
   /* dump the general metrics */
   dump_gen_metrics(consumer);
 

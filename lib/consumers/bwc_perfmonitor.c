@@ -173,11 +173,10 @@ int bwc_perfmonitor_process_view(bwc_t *consumer, uint8_t interests,
 				 bgpwatcher_view_t *view)
 {
   // view arrival delay, i.e. now - table ts
-  
-  DUMP_METRIC(zclock_time()/1000- bgpwatcher_view_get_time(view),
+  uint32_t time_begin = zclock_time()/1000;
+  DUMP_METRIC(time_begin - bgpwatcher_view_get_time(view),
               bgpwatcher_view_get_time(view),
 	      "%s", CHAIN_STATE->metric_prefix, "view_arrival_delay");
-
   
   // get the number of peers and their table size
 
@@ -231,6 +230,12 @@ int bwc_perfmonitor_process_view(bwc_t *consumer, uint8_t interests,
   bgpwatcher_view_iter_destroy(it);
 
   STATE->view_cnt++;
+  
+  uint32_t time_end = zclock_time()/1000;
+
+  DUMP_METRIC(time_end-time_begin,
+              bgpwatcher_view_get_time(view),
+	      "%s", CHAIN_STATE->metric_prefix, "processing_time");
 
   return 0;
 }
