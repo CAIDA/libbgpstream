@@ -136,9 +136,10 @@ static void usage(bgpcorsaro_t *bgpcorsaro)
           "       -w                           enables bgpwatcher transmission (default: off)\n"
 	  "       -u <server-uri>              0MQ-style URI to connect to server (default: tcp://*:6300)\n"
 	  "       -c <client-identity>         set client identity name (default: randomly choosen)\n"
-	  "       -4                           send IPv4 prefixes to the watcher\n"
-	  "       -6                           send IPv6 prefixes to the watcher\n"
-	  "       -a                           send full feed and partial tables to the watcher (default: full feed only)\n\n"
+	  "       -4                           send IPv4 prefixes to the watcher (unsupported operation)\n"
+	  "       -6                           send IPv6 prefixes to the watcher (unsupported operation)\n"
+	  "       -a                           send full feed and partial tables to the watcher (default: full feed only)\n"
+          "                                    (unsupported operation)\n\n"
 #endif
           , // end of options
           plugin->argv[0],
@@ -259,7 +260,7 @@ int bgpcorsaro_routingtables_init_output(bgpcorsaro_t *bgpcorsaro)
     }
 
   /** initialize plugin custom variables */
-  if((state->routing_tables = routingtables_create(bgpcorsaro->timeseries)) == NULL)
+  if((state->routing_tables = routingtables_create(PLUGIN(bgpcorsaro)->argv[0], bgpcorsaro->timeseries)) == NULL)
     {
       bgpcorsaro_log(__func__, bgpcorsaro,
 		     "could not create routingtables in routingtables plugin");
@@ -411,7 +412,7 @@ int bgpcorsaro_routingtables_end_interval(bgpcorsaro_t *bgpcorsaro,
                                           bgpcorsaro_interval_t *int_end)
 {
   struct bgpcorsaro_routingtables_state_t *state = STATE(bgpcorsaro);
-
+  
   bgpcorsaro_log(__func__, bgpcorsaro, "Dumping stats for interval %d",
 		 int_end->number);
   

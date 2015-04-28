@@ -80,10 +80,11 @@ typedef enum {
 
 /** Create a new routingtables instance
  *
+ * @param plugin_name   string representing the plugin name
  * @param timeseries    pointer to an initialized timeseries instance
  * @return a pointer to a routingtables instance if successful, NULL otherwise
  */
-routingtables_t *routingtables_create(timeseries_t *timeseries);
+routingtables_t *routingtables_create(char *plugin_name, timeseries_t *timeseries);
 
 /** Set the metric prefix to be used for when outpting the time series
  *  variables at the end of the interval

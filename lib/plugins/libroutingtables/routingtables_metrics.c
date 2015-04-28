@@ -32,19 +32,34 @@
 #include "routingtables.h"
 #include "routingtables_int.h"
 
-/* <metric-prefix>.<collector-signature>.<metric-name> */
-#define RT_COLLECTOR_METRIC_FORMAT "%s.%s.%s"
+/* <metric-prefix>.<plugin-name>.<collector-signature>.<metric-name> */
+#define RT_COLLECTOR_METRIC_FORMAT "%s.%s.%s.%s"
 
-/* <metric-prefix>.<collector-signature>.<peer-signature>.<metric-name> */
-#define RT_PEER_METRIC_FORMAT "%s.%s.%s.%s"
+/* <metric-prefix>.meta.bgpcorsaro.<plugin-name>.<collector-signature>.<metric-name> */
+#define RT_COLLECTOR_META_METRIC_FORMAT "%s.meta.bgpcorsaro.%s.%s.%s"
+
+/* <metric-prefix>.<plugin-name>.<collector-signature>.<peer-signature>.<metric-name> */
+#define RT_PEER_METRIC_FORMAT "%s.%s.%s.%s.%s"
+
+/* <metric-prefix>.meta.bgpcorsaro.<plugin-name>.<collector-signature>.<peer-signature>.<metric-name> */
+#define RT_PEER_META_METRIC_FORMAT "%s.meta.bgpcorsaro.%s.%s.%s.%s"
 
 #define BUFFER_LEN 1024
 static char metric_buffer[BUFFER_LEN];
 
 static uint32_t
-add_p_metric(timeseries_kp_t *kp, char *metric_prefix, char *c_sig, char *p_sig, char *metric_name)
+add_p_metric(timeseries_kp_t *kp, char *metric_prefix, char *plugin_name, char *c_sig, char *p_sig, char *metric_name)
 {
-  snprintf(metric_buffer, BUFFER_LEN, RT_PEER_METRIC_FORMAT, metric_prefix, c_sig, p_sig, metric_name);
+  snprintf(metric_buffer, BUFFER_LEN, RT_PEER_METRIC_FORMAT, metric_prefix, plugin_name, c_sig, p_sig, metric_name);
+  int ret = timeseries_kp_add_key(kp, metric_buffer);
+  assert(ret >= 0);
+  return ret;
+}
+
+static uint32_t
+add_meta_p_metric(timeseries_kp_t *kp, char *metric_prefix, char *plugin_name, char *c_sig, char *p_sig, char *metric_name)
+{
+  snprintf(metric_buffer, BUFFER_LEN, RT_PEER_META_METRIC_FORMAT, metric_prefix, plugin_name, c_sig, p_sig, metric_name);
   int ret = timeseries_kp_add_key(kp, metric_buffer);
   assert(ret >= 0);
   return ret;
@@ -54,43 +69,55 @@ void
 peer_generate_metrics(routingtables_t *rt, collector_t *c, perpeer_info_t *p)
 {
   p->kp_idxs.status_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, c->collector_str, p->peer_str, "status");
+    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "status");
   p->kp_idxs.active_v4_pfxs_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, c->collector_str, p->peer_str, "active_v4_pfxs"); 
-  p->kp_idxs.inactive_v4_pfxs_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, c->collector_str, p->peer_str, "inactive_v4_pfxs");
-  p->kp_idxs.active_v6_pfxs_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, c->collector_str, p->peer_str, "active_v6_pfxs");
-  p->kp_idxs.inactive_v6_pfxs_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, c->collector_str, p->peer_str, "inactive_v6_pfxs");
-  p->kp_idxs.announcing_origin_as_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, c->collector_str, p->peer_str, "announcing_origin_ases");
+    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "active_v4_pfxs_cnt"); 
+  p->kp_idxs.active_v6_pfxs_idx =                                       \
+    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "active_v6_pfxs_cnt");
+   
+  p->kp_idxs.announcing_origin_as_idx =                                 \
+    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "unique_announcing_origin_ases_cnt");
   p->kp_idxs.announced_v4_pfxs_idx =                                    \
-    add_p_metric(p->kp, rt->metric_prefix, c->collector_str, p->peer_str, "announced_v4_unique_pfxs");
+    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "announced_v4_unique_pfxs_cnt");
   p->kp_idxs.withdrawn_v4_pfxs_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, c->collector_str, p->peer_str, "withdrawn_v4_unique_pfxs");
+    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "withdrawn_v4_unique_pfxs_cnt");
   p->kp_idxs.announced_v6_pfxs_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, c->collector_str, p->peer_str, "announced_v6_unique_pfxs");
+    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "announced_v6_unique_pfxs_cnt");
   p->kp_idxs.withdrawn_v6_pfxs_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, c->collector_str, p->peer_str, "withdrawn_v6_unique_pfxs");
-  p->kp_idxs.rib_messages_cnt_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, c->collector_str, p->peer_str, "rib_messages_cnt");
+    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "withdrawn_v6_unique_pfxs_cnt");
+
+  p->kp_idxs.rib_messages_cnt_idx =                                     \
+    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "rib_messages_cnt");
   p->kp_idxs.pfx_announcements_cnt_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, c->collector_str, p->peer_str, "announcements_cnt");
+    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "announcements_cnt");
   p->kp_idxs.pfx_withdrawals_cnt_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, c->collector_str, p->peer_str, "withdrawals_cnt");
+    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "withdrawals_cnt");
   p->kp_idxs.state_messages_cnt_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, c->collector_str, p->peer_str, "state_messages_cnt");
-  p->kp_idxs.rib_positive_mismatches_cnt_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, c->collector_str, p->peer_str, "rib_positive_mismatches_cnt");
+    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "state_messages_cnt");
+
+  p->kp_idxs.inactive_v4_pfxs_idx =                                     \
+    add_meta_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "inactive_v4_pfxs_cnt");
+  p->kp_idxs.inactive_v6_pfxs_idx = \
+    add_meta_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "inactive_v6_pfxs_cnt");
+  p->kp_idxs.rib_positive_mismatches_cnt_idx =                          \
+    add_meta_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "rib_subtracted_pfxs_cnt");
   p->kp_idxs.rib_negative_mismatches_cnt_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, c->collector_str, p->peer_str, "rib_negative_mismatches_cnt");   
+    add_meta_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "rib_added_pfxs_cnt");
 }
 
 static uint32_t
-add_c_metric(timeseries_kp_t *kp, char *metric_prefix, char *sig, char *metric_name)
+add_c_metric(timeseries_kp_t *kp, char *metric_prefix, char *plugin_name, char *sig, char *metric_name)
 {
-  snprintf(metric_buffer, BUFFER_LEN, RT_COLLECTOR_METRIC_FORMAT, metric_prefix, sig, metric_name);
+  snprintf(metric_buffer, BUFFER_LEN, RT_COLLECTOR_METRIC_FORMAT, metric_prefix, plugin_name, sig, metric_name);
+  int ret = timeseries_kp_add_key(kp, metric_buffer);
+  assert(ret >= 0);
+  return ret;
+}
+
+static uint32_t
+add_meta_c_metric(timeseries_kp_t *kp, char *metric_prefix, char *plugin_name, char *sig, char *metric_name)
+{
+  snprintf(metric_buffer, BUFFER_LEN, RT_COLLECTOR_META_METRIC_FORMAT, metric_prefix, plugin_name, sig, metric_name);
   int ret = timeseries_kp_add_key(kp, metric_buffer);
   assert(ret >= 0);
   return ret;
@@ -100,21 +127,22 @@ void
 collector_generate_metrics(routingtables_t *rt, collector_t *c)
 {
   c->kp_idxs.processing_time_idx = \
-    add_c_metric(c->kp, rt->metric_prefix, c->collector_str, "processing_time");  
+    add_meta_c_metric(c->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "processing_time");  
   c->kp_idxs.realtime_delay_idx = \
-    add_c_metric(c->kp, rt->metric_prefix, c->collector_str, "realtime_delay");  
+    add_meta_c_metric(c->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "realtime_delay");  
   c->kp_idxs.valid_record_cnt_idx = \
-    add_c_metric(c->kp, rt->metric_prefix, c->collector_str, "valid_record_cnt");
+    add_meta_c_metric(c->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "valid_record_cnt");
   c->kp_idxs.corrupted_record_cnt_idx = \
-    add_c_metric(c->kp, rt->metric_prefix, c->collector_str, "corrupted_record_cnt");
+    add_meta_c_metric(c->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "corrupted_record_cnt");
   c->kp_idxs.empty_record_cnt_idx = \
-    add_c_metric(c->kp, rt->metric_prefix, c->collector_str, "empty_record_cnt");  
+    add_meta_c_metric(c->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "empty_record_cnt");
+  
   c->kp_idxs.status_idx = \
-    add_c_metric(c->kp, rt->metric_prefix, c->collector_str, "status");
+    add_c_metric(c->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "status");
   c->kp_idxs.active_peers_cnt_idx = \
-    add_c_metric(c->kp, rt->metric_prefix, c->collector_str, "active_peers_cnt");
+    add_c_metric(c->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "active_peers_cnt");
   c->kp_idxs.active_asns_cnt_idx = \
-    add_c_metric(c->kp, rt->metric_prefix, c->collector_str, "active_asns_cnt");
+    add_c_metric(c->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "active_peer_asns_cnt");
 }
 
 void

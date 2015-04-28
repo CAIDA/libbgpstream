@@ -39,7 +39,7 @@
 
 
 /** Default metric prefix */
-#define ROUTINGTABLES_DEFAULT_METRIC_PFX "bgp.routingtables"
+#define ROUTINGTABLES_DEFAULT_METRIC_PFX "bgp"
 
 /** Maximum string length for the metric prefix */
 #define ROUTINGTABLES_METRIC_PFX_LEN 256 
@@ -312,6 +312,9 @@ typedef khash_t(collector_data) collector_data_t;
  *  the bgp stream in input */
 struct struct_routingtables_t {
 
+  /** Plugin name */
+  char plugin_name[ROUTINGTABLES_METRIC_PFX_LEN];
+  
   /** Table of peer id <-> peer signature */
   bgpstream_peer_sig_map_t *peersigns;
   

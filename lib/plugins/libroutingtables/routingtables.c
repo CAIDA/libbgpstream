@@ -232,7 +232,7 @@ perpeer_info_create(routingtables_t *rt, collector_t * c,
     }
   graphite_safe(ip_str);  
   if(snprintf(p->peer_str, BGPSTREAM_UTILS_STR_NAME_LEN,
-              "%"PRIu32".v%"PRIu8".__IP_%s", sg->peer_asnumber, v, ip_str) >= BGPSTREAM_UTILS_STR_NAME_LEN)
+              "peer_asn.%"PRIu32".ipv%"PRIu8"_peer.__IP_%s", sg->peer_asnumber, v, ip_str) >= BGPSTREAM_UTILS_STR_NAME_LEN)
     {
       fprintf(stderr, "Warning: could not print peer signature: truncated output\n");
     }
@@ -1231,7 +1231,7 @@ routingtables_send_view(routingtables_t *rt)
 
 /* ========== PUBLIC FUNCTIONS ========== */
 
-routingtables_t *routingtables_create(timeseries_t *timeseries)
+routingtables_t *routingtables_create(char *plugin_name, timeseries_t *timeseries)
 {  
   routingtables_t *rt = (routingtables_t *)malloc_zero(sizeof(routingtables_t));
   if(rt == NULL)
@@ -1263,6 +1263,8 @@ routingtables_t *routingtables_create(timeseries_t *timeseries)
       goto err;
     }
 
+  strcpy(rt->plugin_name, plugin_name);
+  
   // set the metric prefix string to the default value
   routingtables_set_metric_prefix(rt,
                                   ROUTINGTABLES_DEFAULT_METRIC_PFX);
