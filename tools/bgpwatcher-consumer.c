@@ -29,6 +29,7 @@
 /* this must be all we include from bgpwatcher */
 #include "bgpwatcher_client.h"
 #include "bgpwatcher_view.h"
+#include "bgpwatcher_common.h"
 #include "bgpwatcher_consumer_manager.h"
 
 #include "config.h"

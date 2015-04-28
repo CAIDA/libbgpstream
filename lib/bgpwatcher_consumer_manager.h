@@ -26,6 +26,7 @@
 #include <timeseries.h>
 
 #include "bgpstream_utils_id_set.h"
+#include "bgpwatcher_common.h"
 
 #include "bgpwatcher_view.h"
 
@@ -56,12 +57,6 @@ typedef struct bwc bwc_t;
  * @name Public Data Structures
  *
  * @{ */
-
-/** Maximum length of the metric prefix string */
-#define BGPWATCHER_METRIC_PREFIX_LEN 1024
-
-/** Maximum length of the metric prefix string */
-#define BGPWATCHER_METRIC_PREFIX_DEFAULT "bgp"
 
 /** Per-view state that allows consumers to make use of the results of
  * processing carried out by previous consumers.

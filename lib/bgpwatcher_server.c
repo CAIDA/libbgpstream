@@ -36,13 +36,16 @@ enum {
   POLL_ITEM_CNT    = 1,
 };
 
-#define METRIC_PREFIX "bgp.meta.bgpwatcher.server"
 
-#define DUMP_METRIC(value, time, fmt, ...)                      \
-do {                                                            \
-  fprintf(stdout, METRIC_PREFIX"."fmt" %"PRIu64" %"PRIu32"\n",  \
-          __VA_ARGS__, value, time);                            \
- } while(0)                                                     \
+#define SERVER_METRIC_FORMAT "%s.meta.bgpwatcher.server"
+
+#define DUMP_METRIC(metric_prefix, value, time, fmt, ...)               \
+  do {                                                                  \
+    fprintf(stdout, SERVER_METRIC_FORMAT"."fmt" %"PRIu64" %"PRIu32"\n", \
+            metric_prefix, __VA_ARGS__, value, time);                   \
+  } while(0)                                                            \
+
+
 
 /* after how many heartbeats should we ask the store to check timeouts */
 #define STORE_HEARTBEATS_PER_TIMEOUT 60
@@ -356,7 +359,8 @@ static int handle_recv_view(bgpwatcher_server_t *server,
     }
   view_time = ntohl(view_time);
 
-  DUMP_METRIC(zclock_time()/1000 - view_time,
+  DUMP_METRIC(server->metric_prefix,
+              zclock_time()/1000 - view_time,
               view_time,
               "view_receive.%s.begin_delay", client->id);
 
@@ -389,7 +393,8 @@ static int handle_recv_view(bgpwatcher_server_t *server,
       bgpwatcher_view_set_time(view, view_time);
     }
 
-  DUMP_METRIC(zclock_time()/1000-view_time,
+  DUMP_METRIC(server->metric_prefix,
+              zclock_time()/1000-view_time,
               view_time,
               "view_receive.%s.receive_delay", client->id);
 
@@ -812,6 +817,8 @@ bgpwatcher_server_t *bgpwatcher_server_init()
       goto err;
     }
 
+  strcpy(server->metric_prefix, BGPWATCHER_METRIC_PREFIX_DEFAULT);
+  
   return server;
 
  err:
@@ -820,6 +827,15 @@ bgpwatcher_server_t *bgpwatcher_server_init()
       bgpwatcher_server_free(server);
     }
   return NULL;
+}
+
+
+void bgpwatcher_server_set_metric_prefix(bgpwatcher_server_t *server, char *metric_prefix)
+{
+  if(metric_prefix != NULL && strlen(metric_prefix) < BGPWATCHER_METRIC_PREFIX_LEN-1)
+    {
+      strcpy(server->metric_prefix, metric_prefix);
+    }
 }
 
 int bgpwatcher_server_start(bgpwatcher_server_t *server)
@@ -1003,7 +1019,8 @@ int bgpwatcher_server_publish_view(bgpwatcher_server_t *server,
     }
   pub_len = strlen(pub);
 
-  DUMP_METRIC((uint64_t)interests,
+  DUMP_METRIC(server->metric_prefix,
+              (uint64_t)interests,
               time,
               "%s", "publication.interests");
 
@@ -1019,7 +1036,8 @@ int bgpwatcher_server_publish_view(bgpwatcher_server_t *server,
       return -1;
     }
 
-  DUMP_METRIC(zclock_time()/1000 - time,
+  DUMP_METRIC(server->metric_prefix,
+              zclock_time()/1000 - time,
               time,
               "%s", "publication.delay");
 

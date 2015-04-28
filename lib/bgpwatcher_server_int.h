@@ -25,6 +25,7 @@
 
 #include "bgpwatcher_server.h"
 #include "bgpwatcher_view.h"
+#include "bgpwatcher_common.h"
 #include "bgpwatcher_common_int.h"
 #include "bgpwatcher_store.h"
 
@@ -92,6 +93,9 @@ KHASH_INIT(strclient, char*, bgpwatcher_server_client_t*, 1,
 
 struct bgpwatcher_server {
 
+  /** Metric prefix to output metrics */
+  char metric_prefix[BGPWATCHER_METRIC_PREFIX_LEN];
+  
   /** Error status */
   bgpwatcher_err_t err;
 

@@ -38,6 +38,12 @@
  *
  * @{ */
 
+/** Maximum length of the metric prefix string */
+#define BGPWATCHER_METRIC_PREFIX_LEN 1024
+
+/** Default value of the metric prefix string */
+#define BGPWATCHER_METRIC_PREFIX_DEFAULT "bgp"
+
 /** Default URI for the server to listen for client requests on */
 #define BGPWATCHER_CLIENT_URI_DEFAULT "tcp://*:6300"
 

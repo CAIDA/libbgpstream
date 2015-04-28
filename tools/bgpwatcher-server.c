@@ -29,6 +29,7 @@
 /* include bgpwatcher server's public interface */
 /* @@ never include the _int.h file from tools. */
 #include "bgpwatcher_server.h"
+#include "bgpwatcher_common.h"
 
 /** Indicates that bgpwatcher is waiting to shutdown */
 volatile sig_atomic_t bgpwatcher_shutdown = 0;
@@ -71,13 +72,15 @@ static void usage(const char *name)
 	  "                          (default: %d)\n"
 	  "       -l <beats>         Number of heartbeats that can go by before \n"
 	  "                          a client is declared dead (default: %d)\n"
-	  "       -w <window-len>    number of views in the window (default: %d)\n",
+	  "       -w <window-len>    Number of views in the window (default: %d)\n"
+          "       -m <prefix>        Metric prefix (default: %s)\n",
 	  name,
 	  BGPWATCHER_CLIENT_URI_DEFAULT,
 	  BGPWATCHER_CLIENT_PUB_URI_DEFAULT,
 	  BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT,
 	  BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT,
-	  BGPWATCHER_SERVER_WINDOW_LEN);
+	  BGPWATCHER_SERVER_WINDOW_LEN,
+          BGPWATCHER_METRIC_PREFIX_DEFAULT);
 }
 
 int main(int argc, char **argv)
@@ -92,13 +95,16 @@ int main(int argc, char **argv)
 
   uint64_t heartbeat_interval = BGPWATCHER_HEARTBEAT_INTERVAL_DEFAULT;
   int heartbeat_liveness      = BGPWATCHER_HEARTBEAT_LIVENESS_DEFAULT;
+  char metric_prefix[BGPWATCHER_METRIC_PREFIX_LEN];
+
+  strcpy(metric_prefix, BGPWATCHER_METRIC_PREFIX_DEFAULT);
 
   int window_len = BGPWATCHER_SERVER_WINDOW_LEN;
 
   signal(SIGINT, catch_sigint);
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":c:C:i:l:w:v?")) >= 0)
+	(opt = getopt(argc, argv, ":c:C:i:l:w:m:v?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
@@ -132,6 +138,10 @@ int main(int argc, char **argv)
 	  window_len = atoi(optarg);
 	  break;
 
+        case 'm':
+            strcpy(metric_prefix, optarg);
+            break;
+
 	case '?':
 	case 'v':
 	  fprintf(stderr, "bgpwatcher version %d.%d.%d\n",
@@ -157,6 +167,8 @@ int main(int argc, char **argv)
       fprintf(stderr, "ERROR: could not initialize bgpwatcher server\n");
       goto err;
     }
+
+  bgpwatcher_server_set_metric_prefix(watcher, metric_prefix);
 
   if(client_uri != NULL)
     {

@@ -36,13 +36,16 @@
 #define BGPWATCHER_STORE_BGPVIEW_TIMEOUT 3600
 #define BGPWATCHER_STORE_MAX_PEERS_CNT   1024
 
-#define METRIC_PREFIX "bgp.meta.bgpwatcher.server.store"
 
-#define DUMP_METRIC(value, time, fmt, ...)                      \
-do {                                                            \
-  fprintf(stdout, METRIC_PREFIX"."fmt" %"PRIu64" %"PRIu32"\n",  \
-          __VA_ARGS__, value, time);                            \
- } while(0)
+#define SERVER_STORE_METRIC_FORMAT "%s.meta.bgpwatcher.server.store"
+
+#define DUMP_METRIC(metric_prefix, value, time, fmt, ...)                     \
+  do {                                                                        \
+    fprintf(stdout, SERVER_STORE_METRIC_FORMAT"."fmt" %"PRIu64" %"PRIu32"\n", \
+            metric_prefix, __VA_ARGS__, value, time);                         \
+  } while(0)                                                                  \
+
+
 
 #define VIEW_GET_SVIEW(store, viewp)                                     \
   (store->sviews[                                                       \
@@ -365,35 +368,43 @@ static int dispatcher_run(bgpwatcher_store_t *store,
   /** @todo Chiara we need to build the list of valid peers! */
 
   /* this metric is the only reason we pass the trigger to this func */
-  DUMP_METRIC((uint64_t)trigger,
+  DUMP_METRIC(store->server->metric_prefix,
+              (uint64_t)trigger,
               SVIEW_TIME(sview),
               "%s", "completion_trigger");
 
-  DUMP_METRIC((uint64_t)bgpstream_str_set_size(sview->done_clients),
+  DUMP_METRIC(store->server->metric_prefix,
+              (uint64_t)bgpstream_str_set_size(sview->done_clients),
               SVIEW_TIME(sview),
               "%s", "done_clients_cnt");
-  DUMP_METRIC((uint64_t)kh_size(store->active_clients),
+  DUMP_METRIC(store->server->metric_prefix,
+              (uint64_t)kh_size(store->active_clients),
               SVIEW_TIME(sview),
               "%s", "active_clients_cnt");
 
-  DUMP_METRIC((uint64_t)bgpwatcher_view_peer_cnt(sview->view,
+  DUMP_METRIC(store->server->metric_prefix,
+              (uint64_t)bgpwatcher_view_peer_cnt(sview->view,
 						 BGPWATCHER_VIEW_FIELD_ACTIVE),
               SVIEW_TIME(sview),
               "%s", "active_peers_cnt");
-  DUMP_METRIC((uint64_t)bgpwatcher_view_peer_cnt(sview->view,
+  DUMP_METRIC(store->server->metric_prefix,
+              (uint64_t)bgpwatcher_view_peer_cnt(sview->view,
 						 BGPWATCHER_VIEW_FIELD_INACTIVE),
               SVIEW_TIME(sview),
 	      "%s", "inactive_peers_cnt");
 
-  DUMP_METRIC((uint64_t)bgpstream_peer_sig_map_get_size(store->peersigns),
+  DUMP_METRIC(store->server->metric_prefix,
+              (uint64_t)bgpstream_peer_sig_map_get_size(store->peersigns),
               SVIEW_TIME(sview),
               "%s", "peersigns_hash_size");
 
-  DUMP_METRIC((uint64_t)store->sviews_first_idx,
+  DUMP_METRIC(store->server->metric_prefix,
+              (uint64_t)store->sviews_first_idx,
               SVIEW_TIME(sview),
               "%s", "view_buffer_head_idx");
 
-  DUMP_METRIC((uint64_t)store->sviews_first_time,
+  DUMP_METRIC(store->server->metric_prefix,
+              (uint64_t)store->sviews_first_time,
               SVIEW_TIME(sview),
               "%s", "view_buffer_head_time");
 
@@ -408,25 +419,30 @@ static int dispatcher_run(bgpwatcher_store_t *store,
     }
   for(i=0; i<=STORE_VIEW_STATE_MAX; i++)
     {
-      DUMP_METRIC((uint64_t)states_cnt[i],
+      DUMP_METRIC(store->server->metric_prefix,
+                  (uint64_t)states_cnt[i],
                   SVIEW_TIME(sview),
                   "view_state_%s_cnt", store_view_state_names[i]);
     }
 
-  DUMP_METRIC((uint64_t)bgpwatcher_view_v4pfx_cnt(sview->view,
+  DUMP_METRIC(store->server->metric_prefix,
+              (uint64_t)bgpwatcher_view_v4pfx_cnt(sview->view,
 						  BGPWATCHER_VIEW_FIELD_ACTIVE),
               SVIEW_TIME(sview),
               "views.%d.%s", sview->id, "v4pfxs_cnt");
-  DUMP_METRIC((uint64_t)bgpwatcher_view_v6pfx_cnt(sview->view,
+  DUMP_METRIC(store->server->metric_prefix,
+              (uint64_t)bgpwatcher_view_v6pfx_cnt(sview->view,
 						  BGPWATCHER_VIEW_FIELD_ACTIVE),
               SVIEW_TIME(sview),
               "views.%d.%s", sview->id, "v6pfxs_cnt");
 
-  DUMP_METRIC((uint64_t)sview->reuse_cnt,
+  DUMP_METRIC(store->server->metric_prefix,
+              (uint64_t)sview->reuse_cnt,
               SVIEW_TIME(sview),
               "views.%d.%s", sview->id, "reuse_cnt");
 
-  DUMP_METRIC((uint64_t)bgpwatcher_view_get_time_created(sview->view),
+  DUMP_METRIC(store->server->metric_prefix,
+              (uint64_t)bgpwatcher_view_get_time_created(sview->view),
               SVIEW_TIME(sview),
               "views.%d.%s", sview->id, "time_created");
 
@@ -439,7 +455,8 @@ static int dispatcher_run(bgpwatcher_store_t *store,
 
   sview->pub_cnt++;
 
-  DUMP_METRIC((uint64_t)sview->pub_cnt,
+  DUMP_METRIC(store->server->metric_prefix,
+              (uint64_t)sview->pub_cnt,
               SVIEW_TIME(sview),
               "views.%d.%s", sview->id, "publication_cnt");
 
