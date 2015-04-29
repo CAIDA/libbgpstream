@@ -539,6 +539,8 @@ static int handle_message(bgpwatcher_server_t *server,
   assert(client_p != NULL);
   bgpwatcher_server_client_t *client = *client_p;
   assert(client != NULL);
+  zmq_msg_t msg;
+
 
   /* check each type we support (in descending order of frequency) */
   switch(msg_type)
