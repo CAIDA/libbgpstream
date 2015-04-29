@@ -17,6 +17,7 @@
  *
  */
 
+#include <assert.h>
 #include <limits.h>
 #include <stdint.h>
 
@@ -106,4 +107,67 @@ int bgpstream_ipv6_addr_equal(bgpstream_ipv6_addr_t *addr1,
           (memcmp(&(addr1->ipv6.s6_addr[8]),
                   &(addr2->ipv6.s6_addr[8]),
                   sizeof(uint64_t)) == 0));
+}
+
+uint8_t
+bgpstream_ipv2idx(bgpstream_addr_version_t v)
+{
+  switch(v)
+    {
+    case BGPSTREAM_ADDR_VERSION_IPV4:
+      return 0;
+    case BGPSTREAM_ADDR_VERSION_IPV6:
+      return 1;
+    default:
+      assert(0);
+    }
+  return 255;
+}
+
+bgpstream_addr_version_t
+bgpstream_idx2ipv(uint8_t i)
+{
+  switch(i)
+    {
+    case 0:
+      return BGPSTREAM_ADDR_VERSION_IPV4;
+    case 1:
+      return BGPSTREAM_ADDR_VERSION_IPV6;
+    default:
+      assert(0);
+    }
+  return BGPSTREAM_ADDR_VERSION_UNKNOWN;
+
+}
+
+
+uint8_t
+bgpstream_ipv2number(bgpstream_addr_version_t v)
+{
+  switch(v)
+    {
+    case BGPSTREAM_ADDR_VERSION_IPV4:
+      return 4;
+    case BGPSTREAM_ADDR_VERSION_IPV6:
+      return 6;
+    default:
+      assert(0);
+    }
+  return 255;
+}
+
+
+uint8_t
+bgpstream_idx2number(uint8_t i)
+{
+  switch(i)
+    {
+    case 0:
+      return 4;
+    case 1:
+      return 6;
+    default:
+      assert(0);
+    }
+  return 255;
 }
