@@ -31,8 +31,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libtrace.h"
-
 #include "bgpcorsaro_io.h"
 #include "bgpcorsaro_log.h"
 #include "bgpcorsaro_tag.h"
