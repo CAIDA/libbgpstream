@@ -27,9 +27,10 @@
 #include <time.h>       /* time */
 
 /* this must be all we include from bgpwatcher */
-#include <bgpwatcher_client.h>
-#include <bgpwatcher_view.h>
-#include <bgpwatcher_consumer_manager.h>
+#include "bgpwatcher_client.h"
+#include "bgpwatcher_view.h"
+#include "bgpwatcher_common.h"
+#include "bgpwatcher_consumer_manager.h"
 
 #include "config.h"
 #include "utils.h"
@@ -96,6 +97,12 @@ static void usage(const char *name)
 	  name);
   timeseries_usage();
   fprintf(stderr,
+          "       -m <prefix>           Metric prefix (default: %s)\n"
+          "       -N <num-views>        Maximum number of views to process before the consumer stops\n"
+          "                               (default: infinite)\n",
+          BGPWATCHER_METRIC_PREFIX_DEFAULT
+          );
+  fprintf(stderr,
 	  "       -c <consumer>         Consumer to active (can be used multiple times)\n");
   consumer_usage();
   fprintf(stderr,
@@ -134,6 +141,8 @@ int main(int argc, char **argv)
   int consumer_cmds_cnt = 0;
   int i;
 
+  char *metric_prefix = NULL;
+  
   char *backends[TIMESERIES_BACKEND_ID_LAST];
   int backends_cnt = 0;
   char *backend_arg_ptr = NULL;
@@ -154,15 +163,16 @@ int main(int argc, char **argv)
 
   int rx_interests;
   bgpwatcher_view_t *view = NULL;
+  int processed_view_limit = -1;
+  int processed_view = 0;
 
   if((timeseries = timeseries_init()) == NULL)
     {
       fprintf(stderr, "ERROR: Could not initialize libtimeseries\n");
       return -1;
     }
-
-  /* better just grab a pointer to the manager before anybody goes crazy and
-     starts dumping usage strings */
+  
+  /* better just grab a pointer to the manager */
   if((manager = bw_consumer_manager_create(timeseries)) == NULL)
     {
       fprintf(stderr, "ERROR: Could not initialize consumer manager\n");
@@ -170,7 +180,7 @@ int main(int argc, char **argv)
     }
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":b:c:i:I:l:n:r:R:s:S:v?")) >= 0)
+	(opt = getopt(argc, argv, ":m:N:b:c:i:I:l:n:r:R:s:S:v?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
@@ -184,6 +194,14 @@ int main(int argc, char **argv)
 	  return -1;
 	  break;
 
+	case 'm':
+	  metric_prefix = strdup(optarg);
+	  break;
+
+        case 'N':
+          processed_view_limit = atoi(optarg);
+          break;
+          
 	case 'b':
 	  backends[backends_cnt++] = strdup(optarg);
 	  break;
@@ -271,6 +289,11 @@ int main(int argc, char **argv)
   /* NB: once getopt completes, optind points to the first non-option
      argument */
 
+  if(metric_prefix != NULL)
+    {
+      bw_consumer_manager_set_metric_prefix(manager, metric_prefix);
+    }
+
   if(consumer_cmds_cnt == 0)
     {
       fprintf(stderr,
@@ -279,6 +302,7 @@ int main(int argc, char **argv)
       return -1;
     }
 
+  
   if(backends_cnt == 0)
     {
       fprintf(stderr,
@@ -389,12 +413,15 @@ int main(int argc, char **argv)
     }
   fprintf(stderr, "done\n");
 
-  if((view = bgpwatcher_view_create(NULL)) == NULL)
+  if((view = bgpwatcher_view_create(NULL, NULL, NULL, NULL)) == NULL)
     {
       fprintf(stderr, "ERROR: Could not create view\n");
       goto err;
     }
+  /* disable per-pfx-per-peer user pointer */
+  bgpwatcher_view_disable_user_data(view);
 
+  
   while((rx_interests =
          bgpwatcher_client_recv_view(client,
                                      BGPWATCHER_CLIENT_RECV_MODE_BLOCK,
@@ -403,11 +430,18 @@ int main(int argc, char **argv)
       if(bw_consumer_manager_process_view(manager, rx_interests, view) != 0)
 	{
 	  fprintf(stderr, "ERROR: Failed to process view at %d\n",
-		  bgpwatcher_view_time(view));
+		  bgpwatcher_view_get_time(view));
 	  goto err;
 	}
 
       bgpwatcher_view_clear(view);
+      processed_view++;
+
+      if(processed_view_limit > 0 && processed_view >= processed_view_limit)
+        {
+          fprintf(stderr, "Processed %d view(s).\n", processed_view);
+          break;
+        }
     }
 
   fprintf(stderr, "INFO: Shutting down...\n");
@@ -420,6 +454,10 @@ int main(int argc, char **argv)
   bgpwatcher_view_destroy(view);
   bw_consumer_manager_destroy(&manager);
   timeseries_free(&timeseries);
+  if(metric_prefix !=NULL)
+    {
+      free(metric_prefix);
+    } 
   fprintf(stderr, "INFO: Shutdown complete\n");
 
   /* complete successfully */
@@ -430,6 +468,10 @@ int main(int argc, char **argv)
     bgpwatcher_client_perr(client);
     bgpwatcher_client_free(client);
   }
+  if(metric_prefix !=NULL)
+    {
+      free(metric_prefix);
+    }
   bgpwatcher_view_destroy(view);
   bw_consumer_manager_destroy(&manager);
   timeseries_free(&timeseries);

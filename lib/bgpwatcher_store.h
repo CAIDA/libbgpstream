@@ -21,6 +21,7 @@
 #define __BGPWATCHER_STORE_H
 
 #include "bgpwatcher_server.h"
+#include "bgpwatcher_view.h"
 #include <bgpstream_utils_pfx.h>
 
 /** @file
@@ -76,41 +77,26 @@ int bgpwatcher_store_client_connect(bgpwatcher_store_t *store,
 int bgpwatcher_store_client_disconnect(bgpwatcher_store_t *store,
                                        bgpwatcher_server_client_info_t *client);
 
-
-/** Begin receiving a new table from the server
+/** Retrieve a pointer to the view that represents the given time
  *
  * @param store         pointer to a store instance
- * @param table         pointer to the table to begin
- * @return 0 if successful, -1 otherwise
+ * @param time          time of the view to retrieve
+ * @return borrowed pointer to a view if the given time is inside the current
+ *         window, NULL if it is outside
  */
-int bgpwatcher_store_prefix_table_begin(bgpwatcher_store_t *store,
-                                        bgpwatcher_pfx_table_t *table);
+bgpwatcher_view_t *bgpwatcher_store_get_view(bgpwatcher_store_t *store,
+                                             uint32_t time);
 
-/** Handle a prefix row for an existing table
+/** Notify the store that a view it manages has been updated with new data
  *
  * @param store         pointer to a store instance
- * @param table         pointer to the table the row belongs to
- * @param row           pointer to the row to handle
- * @return 0 if successful, -1 otherwise
+ * @param view          pointer to the view that has been updated
+ * @param client        pointer to info about the client that sent the view
+ * @return 0 if the view was processed successfully, -1 otherwise
  */
-int bgpwatcher_store_prefix_table_row(bgpwatcher_store_t *store,
-                                      bgpwatcher_pfx_table_t *table,
-                                      bgpstream_pfx_storage_t *pfx,
-                                      bgpwatcher_pfx_peer_info_t *peer_infos);
-
-/** Complete the given table
- *
- * @param store         pointer to a store instance
- * @param client        string name of the client that completed the table
- * @param table         pointer to the table to complete
- * @return 0 if successful, -1 otherwise
- *
- * @note every table end triggers a completion check for the table_time
- * associated
- */
-int bgpwatcher_store_prefix_table_end(bgpwatcher_store_t *store,
-                                      bgpwatcher_server_client_info_t *client,
-                                      bgpwatcher_pfx_table_t *table);
+int bgpwatcher_store_view_updated(bgpwatcher_store_t *store,
+                                  bgpwatcher_view_t *view,
+                                  bgpwatcher_server_client_info_t *client);
 
 /** Force a timeout check on the views currently in the store
  *

@@ -23,7 +23,7 @@
 #include <czmq.h>
 #include <stdint.h>
 
-#include <bgpwatcher_common.h>
+#include "bgpwatcher_common.h"
 
 /** @file
  *
@@ -90,6 +90,13 @@ typedef struct bgpwatcher_server_client_info {
  * error occurred.
  */
 bgpwatcher_server_t *bgpwatcher_server_init();
+
+/** Set bgpwatcher prefix metric
+ *
+ * @param server        pointer to a bgpwatcher server instance 
+ * @param metric_prefix string that represents the prefix to prepend to metrics
+ */
+void bgpwatcher_server_set_metric_prefix(bgpwatcher_server_t *server, char *metric_prefix);
 
 /** Start the given bgpwatcher server instance
  *

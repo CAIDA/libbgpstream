@@ -24,7 +24,7 @@
 #include <stdint.h>
 #include <sys/socket.h>
 
-#include <bgpwatcher_common.h>
+#include "bgpwatcher_common.h"
 #include <bgpstream_utils_pfx.h>
 
 /** @file
@@ -93,22 +93,6 @@
  *
  * @{ */
 
-/** Table types */
-typedef enum {
-
-  /** Invalid table */
-  BGPWATCHER_TABLE_TYPE_NONE = 0,
-
-  /** Prefix table */
-  BGPWATCHER_TABLE_TYPE_PREFIX = 1,
-
-  /** Highest table number in use */
-  BGPWATCHER_TABLE_TYPE_MAX = BGPWATCHER_TABLE_TYPE_PREFIX,
-
-} bgpwatcher_table_type_t;
-
-#define bgpwatcher_table_type_size_t sizeof(uint8_t)
-
 /** Enumeration of message types
  *
  * @note these will be cast to a uint8_t, so be sure that there are fewer than
@@ -127,8 +111,8 @@ typedef enum {
   /** Server/Client is still alive */
   BGPWATCHER_MSG_TYPE_HEARTBEAT = 3,
 
-  /** A request for the server to process */
-  BGPWATCHER_MSG_TYPE_DATA   = 4,
+  /** A view for the server to process */
+  BGPWATCHER_MSG_TYPE_VIEW   = 4,
 
   /** Server is sending a response to a client */
   BGPWATCHER_MSG_TYPE_REPLY     = 5,
@@ -140,48 +124,8 @@ typedef enum {
 
 #define bgpwatcher_msg_type_size_t sizeof(uint8_t)
 
-#if 0
-/** Enumeration of request message types
- *
- * @note these will be cast to a uint8_t, so be sure that there are fewer than
- * 2^8 values
- */
-typedef enum {
-  /** Invalid message */
-  BGPWATCHER_DATA_MSG_TYPE_UNKNOWN   = 0,
-
-  /** Client is beginning a new table */
-  BGPWATCHER_DATA_MSG_TYPE_TABLE_BEGIN = 1,
-
-  /* Client has completed a table */
-  BGPWATCHER_DATA_MSG_TYPE_TABLE_END = 2,
-
-  /** Client is sending a prefix record */
-  BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD  = 3,
-
-  /** Highest message number in use */
-  BGPWATCHER_DATA_MSG_TYPE_MAX      = BGPWATCHER_DATA_MSG_TYPE_PREFIX_RECORD,
-} bgpwatcher_data_msg_type_t;
-
-#define bgpwatcher_data_msg_type_size_t sizeof(uint8_t)
-#endif
-
 
 /** @} */
-
-/* ========== UTILITIES ========== */
-
-/** Send the given IP over the given socket */
-int bw_send_ip(void *dest, bgpstream_ip_addr_t *ip, int flags);
-
-/** Receive an IP address on the given socket */
-int bw_recv_ip(void *src, bgpstream_addr_storage_t *ip);
-
-/** Serialize the given IP into the given byte array */
-int bw_serialize_ip(uint8_t *buf, size_t len, bgpstream_ip_addr_t *ip);
-
-/** Deserialize an IP from given byte array */
-int bw_deserialize_ip(uint8_t *buf, size_t len, bgpstream_addr_storage_t *ip);
 
 /* ========== MESSAGE TYPES ========== */
 
@@ -193,96 +137,6 @@ int bw_deserialize_ip(uint8_t *buf, size_t len, bgpstream_addr_storage_t *ip);
  */
 bgpwatcher_msg_type_t bgpwatcher_recv_type(void *src, int flags);
 
-#if 0
-/** Receives one message from the given socket and decodes as data message type
- *
- * @param src           socket to receive on
- * @return the type of the message, or BGPWATCHER_REQ_MSG_TYPE_UNKNOWN if an
- *         error occurred
- */
-bgpwatcher_data_msg_type_t bgpwatcher_recv_data_type(void *src);
-#endif
-
-
-
-/* ========== PREFIX TABLES ========== */
-
-/** Transmit a pfx table begin message from the given pfx table structure
- *
- * @param dest            pointer to socket to send to
- * @param table           pointer to an initialized prefix table
- * @return 0 if the table was sent successfully, -1 otherwise
- */
-int bgpwatcher_pfx_table_begin_send(void *dest, bgpwatcher_pfx_table_t *table);
-
-/** Transmit a pfx table end message from the given pfx table structure
- *
- * @param dest            pointer to socket to send to
- * @param table           pointer to an initialized prefix table
- * @return 0 if the table was sent successfully, -1 otherwise
- *
- * This message can be used for both the table_begin and table_end events
- */
-int bgpwatcher_pfx_table_end_send(void *dest, bgpwatcher_pfx_table_t *table);
-
-/** Receive a prefix table begin message into provided memory
- *
- * @param      src           pointer to socket to receive on
- * @param[out] table         pointer to a prefix table structure to fill
- * @return 0 if the information was deserialized successfully, -1 otherwise
- */
-int bgpwatcher_pfx_table_begin_recv(void *src, bgpwatcher_pfx_table_t *table);
-
-/** Receive a prefix table end message and check it matches the given table
- *
- * @param      src           pointer to socket to receive on
- * @param[out] table         pointer to a prefix table structure to end
- * @return 0 if the information was deserialized successfully, -1 otherwise
- */
-int bgpwatcher_pfx_table_end_recv(void *src, bgpwatcher_pfx_table_t *table);
-
-/** Dump the given prefix row information to stdout
- *
- * @param prefix        pointer to a prefix table structure
- */
-void bgpwatcher_pfx_table_dump(bgpwatcher_pfx_table_t *table);
-
-
-
-/* ========== PREFIX ROWS ========== */
-
-/** Send msgs from the given pfx information on the given socket
- *
- * @param dest            socket to send the prefix to
- * @param row             pointer to the prefix row to send
- * @param peer_cnt        number of peers in the row info array
- * @return 0 if the record was sent successfully, -1 otherwise
- */
-int bgpwatcher_pfx_row_send(void *dest,
-                            bgpstream_pfx_t *pfx,
-                            bgpwatcher_pfx_peer_info_t *peer_infos,
-                            int peer_cnt);
-
-/** Deserialize a prefix message into provided memory
- *
- * @param      src           pointer to socket to receive on
- * @param[out] row_out       pointer to a prefix row structure to fill
- * @param      peer_cnt      number of peer info records expected
- * @return 0 if the information was deserialized successfully, -1 otherwise
- */
-int bgpwatcher_pfx_row_recv(void *src,
-                            bgpstream_pfx_storage_t *pfx,
-                            bgpwatcher_pfx_peer_info_t *peer_infos,
-                            int peer_cnt);
-
-/** Dump the given prefix row information to stdout
- *
- * @param table      pointer to a prefix table (for peer info)
- * @param row        pointer to a prefix row
- */
-void bgpwatcher_pfx_row_dump(bgpwatcher_pfx_table_t *table,
-                             bgpstream_pfx_storage_t *pfx,
-                             bgpwatcher_pfx_peer_info_t *peer_infos);
 
 /* ========== INTERESTS/VIEWS ========== */
 

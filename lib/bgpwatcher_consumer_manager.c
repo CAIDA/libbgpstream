@@ -176,6 +176,35 @@ static void consumer_destroy(bwc_t **consumer_p)
   return;
 }
 
+static int
+init_bwc_chain_state(bw_consumer_manager_t *mgr)
+{
+  strcpy(mgr->chain_state.metric_prefix, BGPWATCHER_METRIC_PREFIX_DEFAULT);
+
+  for(int i=0; i< BGPSTREAM_MAX_IP_VERSION_IDX; i++)
+    {
+      mgr->chain_state.full_feed_peer_ids[i] = bgpstream_id_set_create();
+      mgr->chain_state.peer_ids_cnt[i] = 0;
+      mgr->chain_state.full_feed_peer_asns_cnt[i] = 0;
+      mgr->chain_state.usable_table_flag[i] = 0;
+    }
+  return 0;
+}
+
+static void
+destroy_bwc_chain_state(bw_consumer_manager_t *mgr)
+{
+  for(int i=0; i< BGPSTREAM_MAX_IP_VERSION_IDX; i++)
+    {
+      if(mgr->chain_state.full_feed_peer_ids[i] != NULL)
+        {
+          bgpstream_id_set_destroy(mgr->chain_state.full_feed_peer_ids[i]);
+          mgr->chain_state.full_feed_peer_ids[i] = NULL;
+        }
+    }
+}
+
+
 /* ==================== PUBLIC MANAGER FUNCTIONS ==================== */
 
 bw_consumer_manager_t *bw_consumer_manager_create(timeseries_t *timeseries)
@@ -186,10 +215,15 @@ bw_consumer_manager_t *bw_consumer_manager_create(timeseries_t *timeseries)
   /* allocate some memory for our state */
   if((mgr = malloc_zero(sizeof(bw_consumer_manager_t))) == NULL)
     {
-      return NULL;
+      goto err;
     }
 
   mgr->timeseries = timeseries;
+
+  if(init_bwc_chain_state(mgr) < 0)
+    {
+      goto err;
+    }
 
   /* allocate the consumers (some may/will be NULL) */
   for(id = BWC_ID_FIRST; id <= BWC_ID_LAST; id++)
@@ -198,6 +232,19 @@ bw_consumer_manager_t *bw_consumer_manager_create(timeseries_t *timeseries)
     }
 
   return mgr;
+ err:
+  bw_consumer_manager_destroy(&mgr);
+  return NULL;
+}
+
+void
+bw_consumer_manager_set_metric_prefix(bw_consumer_manager_t *mgr, char *metric_prefix)
+{
+  if(metric_prefix == NULL || strlen(metric_prefix) >= BGPWATCHER_METRIC_PREFIX_LEN)
+    {
+      return;
+    }
+  strcpy(mgr->chain_state.metric_prefix, metric_prefix);
 }
 
 void bw_consumer_manager_destroy(bw_consumer_manager_t **mgr_p)
@@ -206,12 +253,14 @@ void bw_consumer_manager_destroy(bw_consumer_manager_t **mgr_p)
   bw_consumer_manager_t *mgr = *mgr_p;
   *mgr_p = NULL;
   int id;
-
+  
   /* loop across all backends and free each one */
   for(id = BWC_ID_FIRST; id <= BWC_ID_LAST; id++)
   {
     consumer_destroy(&mgr->consumers[id-1]);
   }
+
+  destroy_bwc_chain_state(mgr);
 
   free(mgr);
   return;

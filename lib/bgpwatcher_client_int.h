@@ -47,43 +47,6 @@
  *
  * @{ */
 
-KHASH_INIT(v4pfx_peers,
-           bgpstream_ipv4_pfx_t,
-           bgpwatcher_pfx_peer_info_t*,
-           1,
-           bgpstream_ipv4_pfx_storage_hash_val,
-           bgpstream_ipv4_pfx_storage_equal_val)
-
-KHASH_INIT(v6pfx_peers,
-           bgpstream_ipv6_pfx_t,
-           bgpwatcher_pfx_peer_info_t*,
-           1,
-           bgpstream_ipv6_pfx_storage_hash_val,
-           bgpstream_ipv6_pfx_storage_equal_val)
-  
-struct bgpwatcher_client_pfx_table {
-
-  /** Indicates that a table_start message should not be sent on the next
-      pfx_add */
-  int started;
-
-  /** Table information (partially used) */
-  bgpwatcher_pfx_table_t info;
-
-  /** Count of peers added so far */
-  int peers_added;
-
-  /** Hash table of prefixes being added */
-  kh_v4pfx_peers_t *v4pfx_peers;
-
-  /** Hash table of prefixes being added */
-  kh_v6pfx_peers_t *v6pfx_peers;
-
-  /** The number of times this table has been reused */
-  int reuse_cnt;
-
-};
-
 struct bgpwatcher_client {
 
   /** shared config that we have prepared for our broker(s) */
@@ -100,9 +63,6 @@ struct bgpwatcher_client {
 
   /** Next request sequence number to use */
   seq_num_t seq_num;
-
-  /** State for the current prefix table */
-  bgpwatcher_client_pfx_table_t pfx_table;
 
   /** Indicates that the client has been signaled to shutdown */
   int shutdown;

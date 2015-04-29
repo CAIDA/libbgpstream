@@ -24,7 +24,7 @@
 
 #include "bgpwatcher_common_int.h"
 #include "bgpwatcher_server_int.h"
-#include "bgpwatcher_view_int.h"
+#include "bgpwatcher_view_io.h"
 
 #include "khash.h"
 #include "utils.h"
@@ -36,16 +36,23 @@ enum {
   POLL_ITEM_CNT    = 1,
 };
 
-#define METRIC_PREFIX "bgp.meta.bgpwatcher.server"
 
-#define DUMP_METRIC(value, time, fmt, ...)                      \
-do {                                                            \
-  fprintf(stdout, METRIC_PREFIX"."fmt" %"PRIu64" %"PRIu32"\n",  \
-          __VA_ARGS__, value, time);                            \
- } while(0)                                                     \
+#define SERVER_METRIC_FORMAT "%s.meta.bgpwatcher.server"
+
+#define DUMP_METRIC(metric_prefix, value, time, fmt, ...)               \
+  do {                                                                  \
+    fprintf(stdout, SERVER_METRIC_FORMAT"."fmt" %"PRIu64" %"PRIu32"\n", \
+            metric_prefix, __VA_ARGS__, value, time);                   \
+  } while(0)                                                            \
+
+
 
 /* after how many heartbeats should we ask the store to check timeouts */
 #define STORE_HEARTBEATS_PER_TIMEOUT 60
+
+/** Number of zmq I/O threads */
+#define SERVER_ZMQ_IO_THREADS 3
+
 
 static void client_free(bgpwatcher_server_client_t **client_p)
 {
@@ -58,17 +65,10 @@ static void client_free(bgpwatcher_server_client_t **client_p)
 
   zmq_msg_close(&client->identity);
 
-  if(client->id != NULL)
-    {
-      free(client->id);
-      client->id = NULL;
-    }
-
-  free(client->pfx_table.collector);
-  client->pfx_table.collector = NULL;
-
-  free(client->peer_infos);
-  free(client->pfx_table.peers);
+  free(client->id);
+  client->id = NULL;
+  free(client->hexid);
+  client->hexid = NULL;
 
   free(client);
 
@@ -105,6 +105,40 @@ static char *msg_strhex(zmq_msg_t *msg)
     return hex_str;
 }
 
+static char *msg_str(zmq_msg_t *msg)
+{
+  char *str;
+
+  byte *data = zmq_msg_data(msg);
+  size_t size = zmq_msg_size(msg);
+
+  if((str = malloc(sizeof(char)*(size+1))) == NULL)
+    {
+      return NULL;
+    }
+
+  memcpy(str, data, size);
+  str[size] = '\0';
+
+  return str;
+}
+
+static int msg_isbinary(zmq_msg_t *msg)
+{
+  size_t size = zmq_msg_size(msg);
+  byte *data = zmq_msg_data(msg);
+  size_t i;
+
+  for(i = 0; i < size; i++)
+    {
+      if(data[i] < 9 || data[i] > 127)
+        {
+          return 1;
+        }
+    }
+  return 0;
+}
+
 static bgpwatcher_server_client_t *client_init(bgpwatcher_server_t *server,
 					       zmq_msg_t *id_msg)
 {
@@ -124,14 +158,28 @@ static bgpwatcher_server_client_t *client_init(bgpwatcher_server_t *server,
     }
   zmq_msg_close(id_msg);
 
-  client->id = msg_strhex(&client->identity);
+  client->hexid = msg_strhex(&client->identity);
+  assert(client->hexid);
+
+  if(msg_isbinary(&client->identity) != 0)
+    {
+      client->id = msg_strhex(&client->identity);
+    }
+  else
+    {
+      client->id = msg_str(&client->identity);
+    }
+  if(client->id == NULL)
+    {
+      return NULL;
+    }
   client->expiry = zclock_time() +
     (server->heartbeat_interval * server->heartbeat_liveness);
 
   client->info.name = client->id;
 
   /* insert client into the hash */
-  khiter = kh_put(strclient, server->clients, client->id, &khret);
+  khiter = kh_put(strclient, server->clients, client->hexid, &khret);
   if(khret == -1)
     {
       goto err;
@@ -178,8 +226,8 @@ static void clients_remove(bgpwatcher_server_t *server,
 			   bgpwatcher_server_client_t *client)
 {
   khiter_t khiter;
-  if((khiter =
-      kh_get(strclient, server->clients, client->id)) == kh_end(server->clients))
+  if((khiter = kh_get(strclient, server->clients, client->hexid)) ==
+     kh_end(server->clients))
     {
       /* already removed? */
       fprintf(stderr, "WARN: Removing non-existent client\n");
@@ -295,184 +343,66 @@ static int send_reply(bgpwatcher_server_t *server,
   return -1;
 }
 
-static int handle_table_prefix_begin(bgpwatcher_server_t *server,
-                                     bgpwatcher_server_client_t *client)
+static int handle_recv_view(bgpwatcher_server_t *server,
+                            bgpwatcher_server_client_t *client)
 {
-  /* deserialize the table into the appropriate structure */
-  if(bgpwatcher_pfx_table_begin_recv(server->client_socket,
-                                     &client->pfx_table) != 0)
+  uint32_t view_time;
+  bgpwatcher_view_t *view;
+
+  /* first receive the time of the view */
+  if(zmq_recv(server->client_socket, &view_time, sizeof(view_time), 0)
+     != sizeof(view_time))
     {
       bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-                             "Failed to deserialize prefix table begin");
+			     "Could not recieve view time header");
       goto err;
     }
+  view_time = ntohl(view_time);
 
-  /* has this table already been started? */
-  if(client->pfx_table_started != 0)
+  DUMP_METRIC(server->metric_prefix,
+              zclock_time()/1000 - view_time,
+              view_time,
+              "view_receive.%s.begin_delay", client->id);
+
+#ifdef DEBUG
+  fprintf(stderr, "**************************************\n");
+  fprintf(stderr, "DEBUG: Getting view from client (%"PRIu32"):\n",
+          view_time);
+  fprintf(stderr, "**************************************\n\n");
+#endif
+
+  /* ask the store for a pointer to the view to recieve into */
+  view = bgpwatcher_store_get_view(server->store, view_time);
+
+  /* temporarily store the truncated time so that we can fix the view after it
+     has been rx'd */
+  if(view != NULL)
     {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-                             "Prefix table already started");
-      goto err;
+      view_time = bgpwatcher_view_get_time(view);
     }
 
-  /* set the table number */
-  client->pfx_table.id = server->table_num++;
-
-  /* now the table is started */
-  client->pfx_table_started = 1;
-
-  /* zero out any leftover info from the store */
-  client->pfx_table.sview = NULL;
-
-  /* ensure we have enough peer infos in our buffer */
-  if(client->peer_infos_alloc_cnt < client->pfx_table.peers_cnt)
-    {
-      fprintf(stderr, "DEBUG: Realloc'ing peer_infos to %d for %s\n",
-              client->pfx_table.peers_cnt, client->id);
-      if((client->peer_infos =
-          realloc(client->peer_infos,
-                  sizeof(bgpwatcher_pfx_peer_info_t)*
-                  client->pfx_table.peers_cnt)) == NULL)
-        {
-          return -1;
-        }
-      client->peer_infos_alloc_cnt = client->pfx_table.peers_cnt;
-    }
-
-  if(bgpwatcher_store_prefix_table_begin(server->store,
-                                         &client->pfx_table) != 0)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_STORE,
-                             "Store failed to handle table begin");
-      goto err;
-    }
-
-  return 0;
-
- err:
-  return -1;
-}
-
-static int handle_table_prefix_end(bgpwatcher_server_t *server,
-                                   bgpwatcher_server_client_t *client)
-{
-  /* deserialize the table into the appropriate structure */
-  if(bgpwatcher_pfx_table_end_recv(server->client_socket,
-                                   &client->pfx_table) != 0)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-                             "Failed to receive prefix table end");
-      goto err;
-    }
-
-  /* this table must already be started */
-  if(client->pfx_table_started == 0)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-                             "Prefix table not started");
-      goto err;
-    }
-
-  /* now the table is not started */
-  client->pfx_table_started = 0;
-
-  if(bgpwatcher_store_prefix_table_end(server->store,
-                                       &client->info,
-                                       &client->pfx_table) != 0)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_STORE,
-                             "Store failed to handle table end");
-      goto err;
-    }
-
-  return 0;
-
- err:
-  return -1;
-}
-
-static int handle_pfx_record(bgpwatcher_server_t *server,
-			     bgpwatcher_server_client_t *client)
-{
-  bgpstream_pfx_storage_t pfx;
-
-  if(client->pfx_table_started == 0)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-			     "Received prefix before table start");
-      goto err;
-    }
-
-  assert(client->peer_infos_alloc_cnt >= client->pfx_table.peers_cnt);
-
-  if(bgpwatcher_pfx_row_recv(server->client_socket, &pfx,
-                             client->peer_infos,
-                             client->pfx_table.peers_cnt) != 0)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-			     "Could not receive prefix record");
-      goto err;
-    }
-
-  if(bgpwatcher_store_prefix_table_row(server->store,
-                                       &client->pfx_table,
-                                       &pfx,
-                                       client->peer_infos) != 0)
-    {
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_STORE,
-                             "Store failed to handle pfx record");
-      goto err;
-    }
-
-  return 0;
-
-err:
-  return -1;
-}
-
-static int handle_table(bgpwatcher_server_t *server,
-			bgpwatcher_server_client_t *client)
-{
-  int i;
-
-  if(zsocket_rcvmore(server->client_socket) == 0)
+  /* receive the view */
+  if(bgpwatcher_view_recv(server->client_socket, view) != 0)
     {
       goto err;
     }
 
-  if(handle_table_prefix_begin(server, client) != 0)
+  if(view != NULL)
+    {
+      /* now reset the time to what the store wanted it to be */
+      bgpwatcher_view_set_time(view, view_time);
+    }
+
+  DUMP_METRIC(server->metric_prefix,
+              zclock_time()/1000-view_time,
+              view_time,
+              "view_receive.%s.receive_delay", client->id);
+
+  /* tell the store that the view has been updated */
+  if(bgpwatcher_store_view_updated(server->store, view, &client->info) != 0)
     {
       goto err;
     }
-
-  DUMP_METRIC(zclock_time()/1000-client->pfx_table.time,
-              client->pfx_table.time,
-              "table_processing.%s.begin_delay", client->pfx_table.collector);
-
-  for(i=0; i<client->pfx_table.prefix_cnt; i++)
-    {
-      if(zsocket_rcvmore(server->client_socket) == 0)
-        {
-          goto err;
-        }
-      if(handle_pfx_record(server, client) != 0)
-        {
-          goto err;
-        }
-    }
-
-  DUMP_METRIC(zclock_time()/1000-client->pfx_table.time,
-              client->pfx_table.time,
-              "table_processing.%s.prefix_delay", client->pfx_table.collector);
-
-  if(handle_table_prefix_end(server, client) != 0)
-    {
-      goto err;
-    }
-
-  DUMP_METRIC(zclock_time()/1000-client->pfx_table.time,
-              client->pfx_table.time,
-              "table_processing.%s.end_delay", client->pfx_table.collector);
 
   return 0;
 
@@ -485,12 +415,10 @@ static int handle_table(bgpwatcher_server_t *server,
  * | DATA MSG TYPE |
  * | Payload       |
  */
-static int handle_data_message(bgpwatcher_server_t *server,
+static int handle_view_message(bgpwatcher_server_t *server,
 			       bgpwatcher_server_client_t *client)
 {
   zmq_msg_t seq_msg;
-
-  int rc;
 
   /* grab the seq num and save it for later */
   if(zmq_msg_init(&seq_msg) == -1)
@@ -525,9 +453,12 @@ static int handle_data_message(bgpwatcher_server_t *server,
       goto err;
     }
 
-  rc = handle_table(server, client);
+  if(handle_recv_view(server, client) != 0)
+    {
+      goto err;
+    }
 
-  return rc;
+  return 0;
 
  err:
   zmq_msg_close(&seq_msg);
@@ -608,17 +539,13 @@ static int handle_message(bgpwatcher_server_t *server,
   assert(client_p != NULL);
   bgpwatcher_server_client_t *client = *client_p;
   assert(client != NULL);
+  zmq_msg_t msg;
+
 
   /* check each type we support (in descending order of frequency) */
   switch(msg_type)
     {
-    case BGPWATCHER_MSG_TYPE_DATA:
-#ifdef DEBUG
-      fprintf(stderr, "**************************************\n");
-      fprintf(stderr, "DEBUG: Got data from client:\n");
-      fprintf(stderr, "**************************************\n\n");
-#endif
-
+    case BGPWATCHER_MSG_TYPE_VIEW:
       begin_time = zclock_time();
 
       /* every data now begins with interests and intents */
@@ -628,13 +555,13 @@ static int handle_message(bgpwatcher_server_t *server,
         }
 
       /* parse the request, and then call the appropriate callback */
-      if(handle_data_message(server, client) != 0)
+      if(handle_view_message(server, client) != 0)
 	{
 	  /* err no will already be set */
 	  goto err;
 	}
 
-      fprintf(stderr, "DEBUG: handle_data_message from %s %"PRIu64"\n",
+      fprintf(stderr, "DEBUG: handle_view_message from %s %"PRIu64"\n",
               client->id, zclock_time()-begin_time);
 
       break;
@@ -672,9 +599,25 @@ static int handle_message(bgpwatcher_server_t *server,
       break;
 
     default:
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-			     "Invalid message type (%d) rx'd from client",
-			     msg_type);
+      fprintf(stderr, "Invalid message type (%d) rx'd from client, ignoring",
+              msg_type);
+      /* need to recv remainder of message */
+      while(zsocket_rcvmore(server->client_socket) != 0)
+        {
+          if(zmq_msg_init(&msg) == -1)
+            {
+              bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+                                     "Could not init proxy message");
+              goto err;
+            }
+          if(zmq_msg_recv(&msg, server->client_socket, 0) == -1)
+            {
+              bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+                                     "Failed to clear message from socket");
+              goto err;
+            }
+          zmq_msg_close(&msg);
+        }
       goto err;
       break;
     }
@@ -858,6 +801,8 @@ bgpwatcher_server_t *bgpwatcher_server_init()
       goto err;
     }
 
+  zsys_set_io_threads(SERVER_ZMQ_IO_THREADS);
+    
   /* set default config */
 
   if((server->client_uri =
@@ -890,6 +835,8 @@ bgpwatcher_server_t *bgpwatcher_server_init()
       goto err;
     }
 
+  strcpy(server->metric_prefix, BGPWATCHER_METRIC_PREFIX_DEFAULT);
+  
   return server;
 
  err:
@@ -898,6 +845,15 @@ bgpwatcher_server_t *bgpwatcher_server_init()
       bgpwatcher_server_free(server);
     }
   return NULL;
+}
+
+
+void bgpwatcher_server_set_metric_prefix(bgpwatcher_server_t *server, char *metric_prefix)
+{
+  if(metric_prefix != NULL && strlen(metric_prefix) < BGPWATCHER_METRIC_PREFIX_LEN-1)
+    {
+      strcpy(server->metric_prefix, metric_prefix);
+    }
 }
 
 int bgpwatcher_server_start(bgpwatcher_server_t *server)
@@ -1062,9 +1018,11 @@ int bgpwatcher_server_publish_view(bgpwatcher_server_t *server,
   const char *pub = NULL;
   size_t pub_len = 0;
 
+  uint32_t time = bgpwatcher_view_get_time(view);
+
 #ifdef DEBUG
   fprintf(stderr, "DEBUG: Publishing view:\n");
-  if(bgpwatcher_view_pfx_size(view) < 100)
+  if(bgpwatcher_view_pfx_cnt(view, BGPWATCHER_VIEW_FIELD_ACTIVE) < 100)
     {
       bgpwatcher_view_dump(view);
     }
@@ -1079,8 +1037,9 @@ int bgpwatcher_server_publish_view(bgpwatcher_server_t *server,
     }
   pub_len = strlen(pub);
 
-  DUMP_METRIC((uint64_t)interests,
-              view->time,
+  DUMP_METRIC(server->metric_prefix,
+              (uint64_t)interests,
+              time,
               "%s", "publication.interests");
 
   if(zmq_send(server->client_pub_socket, pub, pub_len, ZMQ_SNDMORE) != pub_len)
@@ -1095,8 +1054,9 @@ int bgpwatcher_server_publish_view(bgpwatcher_server_t *server,
       return -1;
     }
 
-  DUMP_METRIC(zclock_time()/1000-view->time,
-              view->time,
+  DUMP_METRIC(server->metric_prefix,
+              zclock_time()/1000 - time,
+              time,
               "%s", "publication.delay");
 
   return 0;

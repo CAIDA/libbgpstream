@@ -19,7 +19,7 @@
 
 #include <stdint.h>
 
-#include <bgpwatcher_client_int.h>
+#include "bgpwatcher_client_int.h"
 
 #include "khash.h"
 #include "utils.h"
@@ -688,7 +688,7 @@ static int handle_master_msg(zloop_t *loop, zsock_t *reader, void *arg)
   if((msg_type = bgpwatcher_recv_type(broker->master_zocket, 0))
      != BGPWATCHER_MSG_TYPE_UNKNOWN)
     {
-      if(msg_type != BGPWATCHER_MSG_TYPE_DATA)
+      if(msg_type != BGPWATCHER_MSG_TYPE_VIEW)
         {
           bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
                                  "Invalid message type received from master");

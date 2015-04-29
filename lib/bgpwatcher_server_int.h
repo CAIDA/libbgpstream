@@ -25,6 +25,7 @@
 
 #include "bgpwatcher_server.h"
 #include "bgpwatcher_view.h"
+#include "bgpwatcher_common.h"
 #include "bgpwatcher_common_int.h"
 #include "bgpwatcher_store.h"
 
@@ -73,6 +74,9 @@ typedef struct bgpwatcher_server_client {
   /** Identity frame data that the client sent us */
   zmq_msg_t identity;
 
+  /** Hex id of the client (may be the same as the printable ID */
+  char *hexid;
+
   /** Printable ID of client (for debugging and logging) */
   char *id;
 
@@ -82,18 +86,6 @@ typedef struct bgpwatcher_server_client {
   /** info about this client that we will send to the client connect handler */
   bgpwatcher_server_client_info_t info;
 
-  /** Current prefix table */
-  bgpwatcher_pfx_table_t pfx_table;
-
-  /** Array of peer infos used by prefix rx */
-  bgpwatcher_pfx_peer_info_t *peer_infos;
-
-  /** Number of elements allocated in the peer infos array */
-  int peer_infos_alloc_cnt;
-
-  /** Indicates if a table_begin message has been received for the pfx table */
-  int pfx_table_started;
-
 } bgpwatcher_server_client_t;
 
 KHASH_INIT(strclient, char*, bgpwatcher_server_client_t*, 1,
@@ -101,6 +93,9 @@ KHASH_INIT(strclient, char*, bgpwatcher_server_client_t*, 1,
 
 struct bgpwatcher_server {
 
+  /** Metric prefix to output metrics */
+  char metric_prefix[BGPWATCHER_METRIC_PREFIX_LEN];
+  
   /** Error status */
   bgpwatcher_err_t err;
 
@@ -135,8 +130,8 @@ struct bgpwatcher_server {
   /** Indicates that the server should shutdown at the next opportunity */
   int shutdown;
 
-  /** Next table number */
-  uint64_t table_num;
+  /** Next view number */
+  uint64_t view_num;
 
   /** BGP Watcher Store instance */
   bgpwatcher_store_t *store;

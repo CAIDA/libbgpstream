@@ -36,19 +36,12 @@
 
 #include "bwc_visibility.h"
 
+#define NAME                        "visibility"
+#define CONSUMER_METRIC_PREFIX      "prefix-visibility.overall"
+
 #define BUFFER_LEN 1024
-
-#define NAME "visibility"
-
-#define METRIC_PREFIX               "bgp.visibility"
-#define METRIC_V4_PEERS_CNT         METRIC_PREFIX".v4_peers_cnt"
-#define METRIC_V6_PEERS_CNT         METRIC_PREFIX".v6_peers_cnt"
-#define METRIC_V4_FF_PEERS_CNT      METRIC_PREFIX".v4_full_feed_peers_cnt"
-#define METRIC_V6_FF_PEERS_CNT      METRIC_PREFIX".v6_full_feed_peers_cnt"
-
-#define META_METRIC_PREFIX           "bgp.meta.bgpwatcher.consumer.visibility"
-#define METRIC_ARRIVAL_DELAY         META_METRIC_PREFIX".arrival_delay"
-#define METRIC_PROCESSED_DELAY       META_METRIC_PREFIX".processed_delay"
+#define METRIC_PREFIX_FORMAT       "%s."CONSUMER_METRIC_PREFIX".ipv%d_view.%s"
+#define META_METRIC_PREFIX_FORMAT  "%s.meta.bgpwatcher.consumer."NAME".%s"
 
 #define ROUTED_PFX_MIN_PEERCNT    10
 #define ROUTED_PFX_MIN_MASK_LEN   6
@@ -69,18 +62,21 @@ static bwc_t bwc_visibility = {
   BWC_GENERATE_PTRS(visibility)
 };
 
+
+
 /** key package ids related to
  *  generic metrics
  */
 typedef struct gen_metrics {
-  int v4_peers_idx;
-  int v6_peers_idx;
-  int v4_ff_peers_idx;
-  int v6_ff_peers_idx;
+
+  int peers_idx[BGPSTREAM_MAX_IP_VERSION_IDX];
+  int ff_peers_idx[BGPSTREAM_MAX_IP_VERSION_IDX];
+  int ff_asns_idx[BGPSTREAM_MAX_IP_VERSION_IDX];
 
   /* META metrics */
   int arrival_delay_idx;
   int processed_delay_idx;
+  int processing_time_idx;
 } gen_metrics_t;
 
 
@@ -89,12 +85,13 @@ typedef struct bwc_visibility_state {
 
   int arrival_delay;
   int processed_delay;
+  int processing_time;
 
-  /** # pfxs in a v4 full-feed table */
-  int v4_fullfeed_size;
+  /** # pfxs in a full-feed table */
+  int full_feed_size[BGPSTREAM_MAX_IP_VERSION_IDX];
 
-  /** # pfxs in a v6 full-feed table */
-  int v6_fullfeed_size;
+  /** set of ASns providing a full-feed table */
+  bgpstream_id_set_t *full_feed_asns[BGPSTREAM_MAX_IP_VERSION_IDX];  
 
   /** Timeseries Key Package */
   timeseries_kp_t *kp;
@@ -138,11 +135,11 @@ static int parse_args(bwc_t *consumer, int argc, char **argv)
       switch(opt)
 	{
 	case '4':
-	  STATE->v4_fullfeed_size = atoi(optarg);
+	  STATE->full_feed_size[bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV4)] = atoi(optarg);
 	  break;
 
 	case '6':
-	  STATE->v6_fullfeed_size = atoi(optarg);
+	  STATE->full_feed_size[bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV4)] = atoi(optarg);
 	  break;
 
 	case 'm':
@@ -167,39 +164,61 @@ static int parse_args(bwc_t *consumer, int argc, char **argv)
 
 static int create_gen_metrics(bwc_t *consumer)
 {
-  if((STATE->gen_metrics.v4_peers_idx =
-      timeseries_kp_add_key(STATE->kp, METRIC_V4_PEERS_CNT)) == -1)
-    {
-      return -1;
-    }
+  char buffer[BUFFER_LEN];
+  uint8_t i = 0;
 
-  if((STATE->gen_metrics.v6_peers_idx =
-      timeseries_kp_add_key(STATE->kp, METRIC_V6_PEERS_CNT)) == -1)
+ for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
     {
-      return -1;
-    }
+      snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_FORMAT,
+               CHAIN_STATE->metric_prefix, bgpstream_idx2number(i) , "peers_cnt");             
+      if((STATE->gen_metrics.peers_idx[i] =
+          timeseries_kp_add_key(STATE->kp, buffer)) == -1)
+        {
+          return -1;
+        }
 
-  if((STATE->gen_metrics.v4_ff_peers_idx =
-      timeseries_kp_add_key(STATE->kp, METRIC_V4_FF_PEERS_CNT)) == -1)
-    {
-      return -1;
-    }
+      snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_FORMAT,
+               CHAIN_STATE->metric_prefix, bgpstream_idx2number(i) , "ff_peers_cnt");             
+      if((STATE->gen_metrics.ff_peers_idx[i] =
+          timeseries_kp_add_key(STATE->kp, buffer)) == -1)
+        {
+          return -1;
+        }
 
-  if((STATE->gen_metrics.v6_ff_peers_idx =
-      timeseries_kp_add_key(STATE->kp, METRIC_V6_FF_PEERS_CNT)) == -1)
-    {
-      return -1;
+      snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_FORMAT,
+               CHAIN_STATE->metric_prefix, bgpstream_idx2number(i) , "ff_peers_asns_cnt");             
+      if((STATE->gen_metrics.ff_asns_idx[i] =
+          timeseries_kp_add_key(STATE->kp, buffer)) == -1)
+        {
+          return -1;
+        }
     }
 
   /* META Metrics */
+
+  snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
+           CHAIN_STATE->metric_prefix, "arrival_delay");
+             
   if((STATE->gen_metrics.arrival_delay_idx =
-      timeseries_kp_add_key(STATE->kp, METRIC_ARRIVAL_DELAY)) == -1)
+      timeseries_kp_add_key(STATE->kp, buffer)) == -1)
     {
       return -1;
     }
 
+  snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
+           CHAIN_STATE->metric_prefix, "processed_delay");
+             
   if((STATE->gen_metrics.processed_delay_idx =
-      timeseries_kp_add_key(STATE->kp, METRIC_PROCESSED_DELAY)) == -1)
+      timeseries_kp_add_key(STATE->kp, buffer)) == -1)
+    {
+      return -1;
+    }
+
+  snprintf(buffer, BUFFER_LEN, META_METRIC_PREFIX_FORMAT,
+           CHAIN_STATE->metric_prefix, "processing_time");
+             
+  if((STATE->gen_metrics.processing_time_idx =
+      timeseries_kp_add_key(STATE->kp, buffer)) == -1)
     {
       return -1;
     }
@@ -210,56 +229,62 @@ static int create_gen_metrics(bwc_t *consumer)
 static void find_ff_peers(bwc_t *consumer, bgpwatcher_view_iter_t *it)
 {
   bgpstream_peer_id_t peerid;
+  bgpstream_peer_sig_t *sg;
   int pfx_cnt;
-
-  for(bgpwatcher_view_iter_first(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
-      !bgpwatcher_view_iter_is_end(it, BGPWATCHER_VIEW_ITER_FIELD_PEER);
-      bgpwatcher_view_iter_next(it, BGPWATCHER_VIEW_ITER_FIELD_PEER))
+  int i;
+  
+  for(bgpwatcher_view_iter_first_peer(it, BGPWATCHER_VIEW_FIELD_ACTIVE);
+      bgpwatcher_view_iter_has_more_peer(it);
+      bgpwatcher_view_iter_next_peer(it))
     {
-      /* grab the peer id */
-      peerid = bgpwatcher_view_iter_get_peerid(it);
+      /* grab the peer id and its signature */
+      peerid = bgpwatcher_view_iter_peer_get_peer_id(it);
+      sg = bgpwatcher_view_iter_peer_get_sig(it);
 
-      pfx_cnt = bgpwatcher_view_iter_get_peer_v4pfx_cnt(it);
-      /* does this peer have any v4 tables? */
-      if(pfx_cnt > 0)
+      for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
         {
-          CHAIN_STATE->v4_peer_cnt++;
-        }
-      /* does this peer have a full-feed v4 table? */
-      if(pfx_cnt >= STATE->v4_fullfeed_size)
-        {
-          /* add to the v4 fullfeed set */
-	  bgpstream_id_set_insert(CHAIN_STATE->v4ff_peerids, peerid);
-        }
+          pfx_cnt =
+            bgpwatcher_view_iter_peer_get_pfx_cnt(it,
+                                                  bgpstream_idx2ipv(i),
+                                                  BGPWATCHER_VIEW_FIELD_ACTIVE);
+          /* does this peer have any v4 tables? */
+          if(pfx_cnt > 0)
+            {
+              CHAIN_STATE->peer_ids_cnt[i]++;              
+            }
 
-      pfx_cnt = bgpwatcher_view_iter_get_peer_v6pfx_cnt(it);
-      /* does this peer have any v6 tables? */
-      if(pfx_cnt > 0)
-        {
-          CHAIN_STATE->v6_peer_cnt++;
+          /* does this peer have a full-feed table? */
+          if(pfx_cnt >= STATE->full_feed_size[i])
+            {
+              /* add to the  full_feed set */
+              bgpstream_id_set_insert(CHAIN_STATE->full_feed_peer_ids[i], peerid);
+              bgpstream_id_set_insert(STATE->full_feed_asns[i], sg->peer_asnumber);
+            }
+
         }
-      /* does this peer have a full-feed v6 table? */
-      if(pfx_cnt >= STATE->v6_fullfeed_size)
-        {
-          /* add to the v6 fullfeed table */
-	  bgpstream_id_set_insert(CHAIN_STATE->v6ff_peerids, peerid);
-        }
+    }
+
+  // fprintf(stderr, "IDS: %"PRIu32"\n", CHAIN_STATE->peer_ids_cnt[0]);              
+
+  for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
+    {
+      CHAIN_STATE->full_feed_peer_asns_cnt[i] = bgpstream_id_set_size(STATE->full_feed_asns[i]);
     }
 }
 
+
 static void dump_gen_metrics(bwc_t *consumer)
 {
-  timeseries_kp_set(STATE->kp, STATE->gen_metrics.v4_peers_idx,
-                    CHAIN_STATE->v4_peer_cnt);
-
-  timeseries_kp_set(STATE->kp, STATE->gen_metrics.v6_peers_idx,
-                    CHAIN_STATE->v6_peer_cnt);
-
-  timeseries_kp_set(STATE->kp, STATE->gen_metrics.v4_ff_peers_idx,
-                    bgpstream_id_set_size(CHAIN_STATE->v4ff_peerids));
-
-  timeseries_kp_set(STATE->kp, STATE->gen_metrics.v6_ff_peers_idx,
-                    bgpstream_id_set_size(CHAIN_STATE->v6ff_peerids));
+  int i;
+  for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
+    {
+        timeseries_kp_set(STATE->kp, STATE->gen_metrics.peers_idx[i],
+                    CHAIN_STATE->peer_ids_cnt[i]);
+        timeseries_kp_set(STATE->kp, STATE->gen_metrics.ff_peers_idx[i],
+                          bgpstream_id_set_size(CHAIN_STATE->full_feed_peer_ids[i]));
+        timeseries_kp_set(STATE->kp, STATE->gen_metrics.ff_asns_idx[i],
+                          CHAIN_STATE->full_feed_peer_asns_cnt[i]);                
+    }
 
   /* META metrics */
   timeseries_kp_set(STATE->kp, STATE->gen_metrics.arrival_delay_idx,
@@ -268,20 +293,26 @@ static void dump_gen_metrics(bwc_t *consumer)
   timeseries_kp_set(STATE->kp, STATE->gen_metrics.processed_delay_idx,
                     STATE->processed_delay);
 
+  timeseries_kp_set(STATE->kp, STATE->gen_metrics.processing_time_idx,
+                    STATE->processing_time);
+
   STATE->arrival_delay = 0;
   STATE->processed_delay = 0;
+  STATE->processing_time = 0;
 }
 
-static void reset_chain_state(bwc_t *consumer)
+static void
+reset_chain_state(bwc_t *consumer)
 {
-  bgpstream_id_set_clear(CHAIN_STATE->v4ff_peerids);
-  bgpstream_id_set_clear(CHAIN_STATE->v6ff_peerids);
-
-  CHAIN_STATE->v4_peer_cnt = 0;
-  CHAIN_STATE->v6_peer_cnt = 0;
-
-  CHAIN_STATE->v4_usable = 0;
-  CHAIN_STATE->v6_usable = 0;
+  int i;
+  for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
+    {
+      CHAIN_STATE->peer_ids_cnt[i] = 0;
+      bgpstream_id_set_clear(CHAIN_STATE->full_feed_peer_ids[i]);
+      CHAIN_STATE->full_feed_peer_asns_cnt[i] = 0;
+      CHAIN_STATE->usable_table_flag[i] = 0;
+      
+    }
 }
 
 /* ==================== CONSUMER INTERFACE FUNCTIONS ==================== */
@@ -305,18 +336,19 @@ int bwc_visibility_init(bwc_t *consumer, int argc, char **argv)
   CHAIN_STATE->pfx_vis_peers_threshold = ROUTED_PFX_MIN_PEERCNT;
   CHAIN_STATE->pfx_vis_mask_len_threshold = ROUTED_PFX_MIN_MASK_LEN;
 
-  state->v4_fullfeed_size  = IPV4_FULLFEED_SIZE;
-  state->v6_fullfeed_size  = IPV6_FULLFEED_SIZE;
+  state->full_feed_size[bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV4)]  = IPV4_FULLFEED_SIZE;
+  state->full_feed_size[bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV6)]  = IPV6_FULLFEED_SIZE;
 
-  if((CHAIN_STATE->v4ff_peerids = bgpstream_id_set_create()) == NULL)
+  int i;
+
+  for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
     {
-      fprintf(stderr, "Error: unable to create full-feed peers (v4)\n");
-      goto err;
-    }
-  if((CHAIN_STATE->v6ff_peerids = bgpstream_id_set_create()) == NULL)
-    {
-      fprintf(stderr, "Error: unable to create full-feed peers (v6)\n");
-      goto err;
+      /* we asssume chain state data are already allocated by the consumer mgr */      
+      if((state->full_feed_asns[i] = bgpstream_id_set_create()) == NULL)
+        {
+          fprintf(stderr, "Error: unable to create full-feed ASns set\n");
+          goto err;
+        }      
     }
 
   if((state->kp = timeseries_kp_init(BWC_GET_TIMESERIES(consumer), 1)) == NULL)
@@ -353,18 +385,16 @@ void bwc_visibility_destroy(bwc_t *consumer)
       return;
     }
 
-  /* destroy things here */
-  if(CHAIN_STATE->v4ff_peerids != NULL)
-    {
-      bgpstream_id_set_destroy(CHAIN_STATE->v4ff_peerids);
-      CHAIN_STATE->v4ff_peerids = NULL;
-    }
-  if(CHAIN_STATE->v6ff_peerids != NULL)
-    {
-      bgpstream_id_set_destroy(CHAIN_STATE->v6ff_peerids);
-      CHAIN_STATE->v6ff_peerids = NULL;
-    }
+  int i;
 
+  for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
+    {
+      if(state->full_feed_asns[i] != NULL)
+        {
+          bgpstream_id_set_destroy(state->full_feed_asns[i]);
+        }      
+    }
+  
   timeseries_kp_free(&state->kp);
 
   free(state);
@@ -378,14 +408,18 @@ int bwc_visibility_process_view(bwc_t *consumer, uint8_t interests,
                                 bgpwatcher_view_t *view)
 {
   bgpwatcher_view_iter_t *it;
-
-  /* this MUST come first */
-  reset_chain_state(consumer);
-
-  CHAIN_STATE->visibility_computed = 1;
+  int i;
 
   // compute arrival delay
-  STATE->arrival_delay = zclock_time()/1000 - bgpwatcher_view_time(view);
+  STATE->arrival_delay = zclock_time()/1000 - bgpwatcher_view_get_time(view);
+
+  /* this MUST come before any computation  */
+  for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
+    {
+      bgpstream_id_set_clear(STATE->full_feed_asns[i]);
+    }
+  
+  reset_chain_state(consumer);
 
   /* create a new iterator */
   if((it = bgpwatcher_view_iter_create(view)) == NULL)
@@ -396,25 +430,30 @@ int bwc_visibility_process_view(bwc_t *consumer, uint8_t interests,
   /* find the full-feed peers */
   find_ff_peers(consumer, it);
 
-  if(bgpstream_id_set_size(CHAIN_STATE->v4ff_peerids) >=
-     CHAIN_STATE->pfx_vis_peers_threshold)
+  bgpwatcher_view_iter_destroy(it);
+  
+  for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
     {
-      CHAIN_STATE->v4_usable = 1;
+      if(CHAIN_STATE->full_feed_peer_asns_cnt[i] > 0)
+        {  
+          CHAIN_STATE->usable_table_flag[i] = 1;
+        }
     }
+  
+  CHAIN_STATE->visibility_computed = 1;
 
-  if(bgpstream_id_set_size(CHAIN_STATE->v6ff_peerids) >=
-     CHAIN_STATE->pfx_vis_peers_threshold)
-    {
-      CHAIN_STATE->v6_usable = 1;
-    }
+  /* @todo decide later what are the usability rules */
+  
+  /* compute processed delay (must come prior to dump_gen_metrics) */
+  STATE->processed_delay = zclock_time()/1000 - bgpwatcher_view_get_time(view);
 
-  // compute processed delay (must come prior to dump_gen_metrics)
-  STATE->processed_delay = zclock_time()/1000 - bgpwatcher_view_time(view);
+  STATE->processing_time = STATE->processed_delay - STATE->arrival_delay;
+  
   /* dump metrics and tables */
   dump_gen_metrics(consumer);
 
   /* now flush the kp */
-  if(timeseries_kp_flush(STATE->kp, bgpwatcher_view_time(view)) != 0)
+  if(timeseries_kp_flush(STATE->kp, bgpwatcher_view_get_time(view)) != 0)
     {
       return -1;
     }

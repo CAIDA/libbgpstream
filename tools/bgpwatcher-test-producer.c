@@ -27,7 +27,8 @@
 #include <time.h>       /* time */
 
 /* this must be all we include from bgpwatcher */
-#include <bgpwatcher_client.h>
+#include "bgpwatcher_client.h"
+#include "bgpwatcher_view.h"
 
 #include "config.h"
 #include "utils.h"
@@ -43,6 +44,8 @@ static char                     *test_collector_name;
 static uint32_t                  test_time;
 static uint32_t                  test_peer_first_ip;
 static bgpstream_addr_storage_t  test_peer_ip;
+static uint32_t                  test_peer_first_asn;
+static uint32_t                  test_peer_asn;
 static uint8_t                   test_peer_status;
 
 /* pfx row */
@@ -64,6 +67,9 @@ static void create_test_data()
   test_peer_ip.ipv4.s_addr = test_peer_first_ip = 0x00FAD982; /* add one each time */
   test_peer_ip.version = BGPSTREAM_ADDR_VERSION_IPV4;
 
+  /* FIRST PEER ASN */
+  test_peer_asn = test_peer_first_asn = 1;
+  
   /* FIRST PEER STATUS */
   test_peer_status = 0x01;
 
@@ -148,6 +154,9 @@ int main(int argc, char **argv)
   uint8_t interests = 0;
   uint8_t intents = 0;
   bgpwatcher_client_t *client = NULL;
+
+  bgpwatcher_view_t *view = NULL;
+  bgpwatcher_view_iter_t *iter = NULL;
 
   /* initialize test data */
   create_test_data();
@@ -316,6 +325,16 @@ int main(int argc, char **argv)
   /* initialize random seed: */  
   srand(1);
 
+  if((view = bgpwatcher_view_create(NULL, NULL, NULL, NULL)) == NULL)
+    {
+      fprintf(stderr, "Could not create view\n");
+      goto err;
+    }
+  if((iter = bgpwatcher_view_iter_create(view)) == NULL)
+    {
+      fprintf(stderr, "Could not create view iterator\n");
+      goto err;
+    }
 
   for(tbl = 0; tbl < test_table_num; tbl++)
     {
@@ -323,33 +342,34 @@ int main(int argc, char **argv)
               "--------------------[ PREFIX START %03d ]--------------------\n",
               tbl);
 
-      if(bgpwatcher_client_pfx_table_begin(client,
-                                           test_time+(tbl*60),
-                                           test_collector_name,
-                                           test_peer_num) != 0)
-        {
-          fprintf(stderr, "Could not begin pfx table\n");
-          goto err;
-        }
+      bgpwatcher_view_set_time(view, test_time+(tbl*60));
 
       /* reset peer ip */
       test_peer_ip.ipv4.s_addr = test_peer_first_ip;
+      test_peer_asn = test_peer_first_asn;
 
       fprintf(stderr, "TEST: Simulating %d peer(s)\n", test_peer_num);
       for(peer = 0; peer < test_peer_num; peer++)
         {
-          test_peer_ip.ipv4.s_addr += htonl(1);
+          test_peer_ip.ipv4.s_addr = htonl(ntohl(test_peer_ip.ipv4.s_addr) + 1);
+          test_peer_asn = test_peer_asn + 1;
+
           // returns number from 0 to 2
 	  test_peer_status = (use_random_peers) ? rand() % 3 : 2;
-          if((peer_id =
-              bgpwatcher_client_pfx_table_add_peer(client,
-                                                   &test_peer_ip,
-						   test_peer_status)) < 0)
+          if((peer_id = bgpwatcher_view_iter_add_peer(iter,
+                                                      test_collector_name,
+                                                      (bgpstream_ip_addr_t *)&test_peer_ip,
+                                                      test_peer_asn)) == 0)
             {
               fprintf(stderr, "Could not add peer to table\n");
               goto err;
             }
-          fprintf(stderr, "TEST: Added peer %d ", peer_id);
+          if(bgpwatcher_view_iter_activate_peer(iter) != 1)
+            {
+              fprintf(stderr, "Failed to activate peer\n");
+              goto err;
+            }
+          fprintf(stderr, "TEST: Added peer %d (asn: %"PRIu32") ", peer_id, test_peer_asn);
 
 	  if(test_peer_status != 2)
             {
@@ -375,12 +395,17 @@ int main(int argc, char **argv)
                   /* randomly we don't see this prefix */
                   continue;
                 }
-              if(bgpwatcher_client_pfx_table_add(client,
-                                                 peer_id,
-                                                 &test_prefix,
-                                                 test_orig_asn) != 0)
+              if(bgpwatcher_view_iter_add_pfx_peer(iter,
+                                                   (bgpstream_pfx_t *)&test_prefix,
+                                                   peer_id,
+                                                   test_orig_asn) != 0)
                 {
                   fprintf(stderr, "Could not add pfx info to table\n");
+                  goto err;
+                }
+              if(bgpwatcher_view_iter_pfx_activate_peer(iter) != 1)
+                {
+                  fprintf(stderr, "Failed to activate pfx-peer\n");
                   goto err;
                 }
               pfx_cnt++;
@@ -388,11 +413,13 @@ int main(int argc, char **argv)
           fprintf(stderr, "TEST: Added %d prefixes...\n", pfx_cnt);
         }
 
-      if(bgpwatcher_client_pfx_table_end(client) != 0)
+      if(bgpwatcher_client_send_view(client, view) != 0)
         {
           fprintf(stderr, "Could not end table\n");
           goto err;
         }
+
+      bgpwatcher_view_clear(view);
 
       fprintf(stderr,
               "--------------------[ PREFIX DONE %03d ]--------------------\n\n",
@@ -405,7 +432,9 @@ int main(int argc, char **argv)
   bgpwatcher_client_perr(client);
 
   /* cleanup */
-  bgpwatcher_client_free(client);
+bgpwatcher_client_free(client);
+bgpwatcher_view_iter_destroy(iter);
+  bgpwatcher_view_destroy(view);
   fprintf(stderr, "TEST: Shutdown complete\n");
 
   /* complete successfully */
@@ -416,5 +445,9 @@ int main(int argc, char **argv)
   if(client != NULL) {
     bgpwatcher_client_free(client);
   }
+  if(view != NULL) {
+    bgpwatcher_view_destroy(view);
+  }
+
   return -1;
 }
