@@ -17,6 +17,7 @@
  *
  */
 
+#include <assert.h>
 #include <limits.h>
 #include <stdint.h>
 

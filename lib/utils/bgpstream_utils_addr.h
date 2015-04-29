@@ -22,7 +22,6 @@
 #define __BGPSTREAM_UTILS_ADDR_H
 
 #include <limits.h>
-#include <assert.h>
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
