@@ -179,9 +179,10 @@ static void consumer_destroy(bwc_t **consumer_p)
 static int
 init_bwc_chain_state(bw_consumer_manager_t *mgr)
 {
+  int i;
   strcpy(mgr->chain_state.metric_prefix, BGPWATCHER_METRIC_PREFIX_DEFAULT);
 
-  for(int i=0; i< BGPSTREAM_MAX_IP_VERSION_IDX; i++)
+  for(i=0; i< BGPSTREAM_MAX_IP_VERSION_IDX; i++)
     {
       mgr->chain_state.full_feed_peer_ids[i] = bgpstream_id_set_create();
       mgr->chain_state.peer_ids_cnt[i] = 0;
@@ -194,7 +195,8 @@ init_bwc_chain_state(bw_consumer_manager_t *mgr)
 static void
 destroy_bwc_chain_state(bw_consumer_manager_t *mgr)
 {
-  for(int i=0; i< BGPSTREAM_MAX_IP_VERSION_IDX; i++)
+  int i;
+  for(i=0; i< BGPSTREAM_MAX_IP_VERSION_IDX; i++)
     {
       if(mgr->chain_state.full_feed_peer_ids[i] != NULL)
         {
