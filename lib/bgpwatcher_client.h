@@ -120,6 +120,7 @@ void bgpwatcher_client_perr(bgpwatcher_client_t *client);
  *
  * @param client        pointer to a bgpwatcher client instance
  * @param view          pointer to the view to transmit
+ * @param cb            callback function to use to filter peers (may be NULL)
  * @return 0 if the view was transmitted successfully, -1 otherwise
  *
  * This function only sends 'active' fields. Any fields that are 'inactive' in
@@ -129,7 +130,8 @@ void bgpwatcher_client_perr(bgpwatcher_client_t *client);
  * this function simply means that the view was queued for transmission.
  */
 int bgpwatcher_client_send_view(bgpwatcher_client_t *client,
-                                bgpwatcher_view_t *view);
+                                bgpwatcher_view_t *view,
+                                bgpwatcher_view_filter_peer_cb_t *cb);
 
 /** Attempt to receive an BGP View from the bgpwatcher server
  *

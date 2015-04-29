@@ -26,9 +26,11 @@
  *
  * @param dest          socket to send the prefix to
  * @param view          pointer to the view to send
+ * @param cb            callback function to use to filter peers (may be NULL)
  * @return 0 if the view was sent successfully, -1 otherwise
  */
-int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view);
+int bgpwatcher_view_send(void *dest, bgpwatcher_view_t *view,
+                         bgpwatcher_view_filter_peer_cb_t *cb);
 
 /** Receive a view from the given socket
  *

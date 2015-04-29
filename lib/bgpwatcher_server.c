@@ -1049,7 +1049,8 @@ int bgpwatcher_server_publish_view(bgpwatcher_server_t *server,
       goto err;
     }
 
-  if(bgpwatcher_view_send(server->client_pub_socket, view) != 0)
+  /* NULL -> no peer filtering */
+  if(bgpwatcher_view_send(server->client_pub_socket, view, NULL) != 0)
     {
       return -1;
     }
