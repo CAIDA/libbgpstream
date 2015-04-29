@@ -137,11 +137,14 @@ AX_LIB_SOCKET_NSL
 # Checks for libraries.
 AC_CHECK_LIB([bgpstream], [bgpstream_create], ,[AC_MSG_ERROR(
 		      [libbgpstream required])])
-AC_CHECK_LIB([bgpdump], [bgpdump_read_next], ,
-	               [AC_MSG_ERROR( [libbgpdump required ])])
+
 AC_SEARCH_LIBS([wandio_create], [wandio trace], ,[AC_MSG_ERROR(
 		 [libwandio required (included with libtrace since 3.0.15)]
 		 )])
+
+AC_CHECK_LIB([timeseries], [timeseries_init], , [
+    AC_MSG_ERROR([libtimeseries is required for writing stats into dbats])
+])
 
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h inttypes.h limits.h math.h stdlib.h string.h \
@@ -181,6 +184,36 @@ AS_IF([test "x$with_plugin_timing" != xno],
 
 AC_MSG_RESULT([$with_plugin_timing])
 
+# are we going to use the bgpwatcher connection?
+# turn on if people asked for it
+AC_MSG_CHECKING([whether to use bgpwatcher for sending peer/prefix information])
+AC_ARG_WITH([bgpwatcher],
+	[AS_HELP_STRING([--with-bgpwatcher],
+	  [use bgpwatcher for sending peer/prefix information (defaults to no)])],
+	  [],
+	  [with_bgpwatcher=no])
+
+AS_IF([test "x$with_bgpwatcher" != xno],
+	[
+	    AC_DEFINE_UNQUOTED([WITH_BGPWATCHER],[1],
+		[Use bgpwatcher for sending peer/prefix information])
+	])
+
+AC_MSG_RESULT([$with_bgpwatcher])
+
+if test "x$with_bgpwatcher" == xyes; then
+   	AC_SEARCH_LIBS([bgpwatcher_client_start], [bgpwatcher], ,[AC_MSG_ERROR(
+		 [libbgpwatcher required (https://github.com/CAIDA/bgpwatcher)]
+		 )])
+	AC_CHECK_LIB([czmq], [zctx_new], ,[AC_MSG_ERROR(
+		      [CZMQ is required])])
+fi
+
+AM_CONDITIONAL([WITH_BGPWATCHER], [test "x$with_bgpwatcher" == xyes])
+
+
+
+
 # configure options to disable plugins
 #AC_DEFINE([ED_PLUGIN_INIT_ALL_ENABLED],[],[Plugin init functions])
 
@@ -189,7 +222,7 @@ AC_MSG_RESULT([$with_plugin_timing])
 # ---------------------------                                                  #
 #                                                                              #
 # Each ED_WITH_PLUGIN macro defines a plugin which can be compiled into        #
-# Bgpcorsaro.                                                                     #
+# Bgpcorsaro.                                                                  #
 #                                                                              #
 # The order in which these plugins are listed is the _default_ order in which  #
 # they will be run.                                                            #
@@ -208,6 +241,10 @@ ED_WITH_PLUGIN([bgpcorsaro_filterpfx],[filterpfx],[FILTERPFX],[no])
 ED_WITH_PLUGIN([bgpcorsaro_dump],[dump],[DUMP],[yes])
 
 # optional plugins
+ED_WITH_PLUGIN([bgpcorsaro_bgpstats],[bgpstats],[BGPSTATS],[no])
+ED_WITH_PLUGIN([bgpcorsaro_filtervis],[filtervis],[FILTERVIS],[no])
+ED_WITH_PLUGIN([bgpcorsaro_pacifier],[pacifier],[PACIFIER],[no])
+ED_WITH_PLUGIN([bgpcorsaro_routingtables],[routingtables],[ROUTINGTABLES],[no])
 ED_WITH_PLUGIN([bgpcorsaro_tagstats],[tagstats],[TAGSTATS],[no])
 
 # this MUST go after all the ED_WITH_PLUGIN macro calls
@@ -247,7 +284,9 @@ AC_SUBST([BGPCORSARO_MINOR_VERSION])
 AC_HEADER_ASSERT
 
 AC_CONFIG_FILES([Makefile lib/Makefile lib/plugins/Makefile
-			  tools/Makefile common/Makefile
+			  lib/plugins/libroutingtables/Makefile
+			  tools/Makefile
+			  common/Makefile
 			  common/libpatricia/Makefile
 			  common/libcsv/Makefile])
 AC_OUTPUT

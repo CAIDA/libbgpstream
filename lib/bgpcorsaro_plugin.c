@@ -42,6 +42,19 @@
 #include "bgpcorsaro_dump.h"
 #endif
 
+
+#ifdef WITH_PLUGIN_BGPSTATS
+#include "bgpcorsaro_bgpstats.h"
+#endif
+
+#ifdef WITH_PLUGIN_BGPRIBS
+#include "bgpcorsaro_bgpribs.h"
+#endif
+
+#ifdef WITH_PLUGIN_FILTERVIS
+#include "bgpcorsaro_filtervis.h"
+#endif
+
 #ifdef WITH_PLUGIN_IPMETA
 #include "bgpcorsaro_ipmeta.h"
 #endif
@@ -56,6 +69,14 @@
 
 #ifdef WITH_PLUGIN_TAGSTATS
 #include "bgpcorsaro_tagstats.h"
+#endif
+
+#ifdef WITH_PLUGIN_PACIFIER
+#include "bgpcorsaro_pacifier.h"
+#endif
+
+#ifdef WITH_PLUGIN_ROUTINGTABLES
+#include "bgpcorsaro_routingtables.h"
 #endif
 
 /*
@@ -554,3 +575,4 @@ int bgpcorsaro_plugin_enable_plugin(bgpcorsaro_plugin_manager_t *manager,
 
   return 0;
 }
+

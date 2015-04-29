@@ -60,6 +60,7 @@ stamp-h1
 autoscan.log
 config.guess
 config.sub
+INSTALL
 libtool
 ltmain.sh
 m4/libtool.m4

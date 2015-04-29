@@ -1,10 +1,10 @@
 #
 # bgpcorsaro
 #
-# Alistair King, CAIDA, UC San Diego
+# Chiara Orsini, CAIDA, UC San Diego
 # corsaro-info@caida.org
 #
-# Copyright (C) 2012 The Regents of the University of California.
+# Copyright (C) 2015 The Regents of the University of California.
 #
 # This file is part of bgpcorsaro.
 #
@@ -22,12 +22,18 @@
 # along with bgpcorsaro.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-SUBDIRS = common lib tools
-AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/lib -I$(top_srcdir)/common \
-	      -I$(top_srcdir)/lib/plugins
+AM_CPPFLAGS = -I$(top_srcdir)/common
 
-EXTRA_DIST =
+noinst_LTLIBRARIES = libroutingtables.la
+
+libroutingtables_la_SOURCES = 	routingtables.h         \
+				routingtables_int.h     \
+				routingtables.c         \
+				routingtables_metrics.c      
+
+# libroutingtables_la_LIBADD =
 
 ACLOCAL_AMFLAGS = -I m4
 
 CLEANFILES = *~
+

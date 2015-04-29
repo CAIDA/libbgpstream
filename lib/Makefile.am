@@ -45,7 +45,7 @@ libbgpcorsaro_la_SOURCES = 	\
 	bgpcorsaro_tag.h
 
 libbgpcorsaro_la_LIBADD = $(top_builddir)/common/libcccommon.la \
-	$(top_builddir)/lib/plugins/libbgpcorsaroplugins.la
+		          $(top_builddir)/lib/plugins/libbgpcorsaroplugins.la
 
 libbgpcorsaro_la_LDFLAGS = -version-info @BGPCORSARO_MAJOR_VERSION@:@BGPCORSARO_MINOR_VERSION@:@BGPCORSARO_MID_VERSION@
 

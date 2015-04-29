@@ -31,6 +31,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif

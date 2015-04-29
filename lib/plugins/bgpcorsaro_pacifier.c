@@ -1,7 +1,7 @@
 /*
  * bgpcorsaro
  *
- * Alistair King, CAIDA, UC San Diego
+ * Chiara Orsini, CAIDA, UC San Diego
  * corsaro-info@caida.org
  *
  * Copyright (C) 2012 The Regents of the University of California.
@@ -31,9 +31,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "bgpstream.h"
-#include "bgpstream_record.h"
-
 #include "utils.h"
 #include "wandio_utils.h"
 
@@ -41,13 +38,13 @@
 #include "bgpcorsaro_log.h"
 #include "bgpcorsaro_plugin.h"
 
-#include "bgpcorsaro_dump.h"
+#include "bgpcorsaro_pacifier.h"
 
 /** @file
  *
- * @brief Bgpcorsaro Dump plugin implementation
+ * @brief Bgpcorsaro Pacifier plugin implementation
  *
- * @author Alistair King
+ * @author Chiara Orsini
  *
  */
 
@@ -57,23 +54,23 @@
 #define OUTFILE_POINTERS 2
 
 /** The name of this plugin */
-#define PLUGIN_NAME "dump"
+#define PLUGIN_NAME "pacifier"
 
 /** The version of this plugin */
 #define PLUGIN_VERSION "0.1"
 
 /** Common plugin information across all instances */
-static bgpcorsaro_plugin_t bgpcorsaro_dump_plugin = {
+static bgpcorsaro_plugin_t bgpcorsaro_pacifier_plugin = {
   PLUGIN_NAME,                                  /* name */
   PLUGIN_VERSION,                               /* version */
-  BGPCORSARO_PLUGIN_ID_DUMP,                    /* id */
-  BGPCORSARO_PLUGIN_GENERATE_PTRS(bgpcorsaro_dump), /* func ptrs */
+  BGPCORSARO_PLUGIN_ID_PACIFIER,                 /* id */
+  BGPCORSARO_PLUGIN_GENERATE_PTRS(bgpcorsaro_pacifier), /* func ptrs */
   BGPCORSARO_PLUGIN_GENERATE_TAIL,
 };
 
 
 /** Holds the state for an instance of this plugin */
-struct bgpcorsaro_dump_state_t {
+struct bgpcorsaro_pacifier_state_t {
   /** The outfile for the plugin */
   iow_t *outfile;
   /** A set of pointers to outfiles to support non-blocking close */
@@ -81,68 +78,108 @@ struct bgpcorsaro_dump_state_t {
   /** The current outfile */
   int outfile_n;
 
+  // first time
+  int tv_first_time;
+  // interval counter
+  int intervals;
+
+  // start time
+  int tv_start;
+  // interval length
+  uint8_t wait;
+
+  // adaptive behavior
+  uint8_t adaptive;
+  
 };
 
 /** Extends the generic plugin state convenience macro in bgpcorsaro_plugin.h */
 #define STATE(bgpcorsaro)						\
-  (BGPCORSARO_PLUGIN_STATE(bgpcorsaro, dump, BGPCORSARO_PLUGIN_ID_DUMP))
+  (BGPCORSARO_PLUGIN_STATE(bgpcorsaro, pacifier, BGPCORSARO_PLUGIN_ID_PACIFIER))
 /** Extends the generic plugin plugin convenience macro in bgpcorsaro_plugin.h */
 #define PLUGIN(bgpcorsaro)						\
-  (BGPCORSARO_PLUGIN_PLUGIN(bgpcorsaro, BGPCORSARO_PLUGIN_ID_DUMP))
-
+  (BGPCORSARO_PLUGIN_PLUGIN(bgpcorsaro, BGPCORSARO_PLUGIN_ID_PACIFIER))
 
 /** Print usage information to stderr */
 static void usage(bgpcorsaro_plugin_t *plugin)
 {
   fprintf(stderr,
-	  "plugin usage: %s\n",
+	  "plugin usage: %s [-w interval-lenght] -a\n"
+	  "       -w interval-lenght  (default: 30s)\n"
+	  "       -a                  adaptive (default:off) \n",
 	  plugin->argv[0]);
 }
 
 /** Parse the arguments given to the plugin */
 static int parse_args(bgpcorsaro_t *bgpcorsaro)
-{  
-  bgpcorsaro_plugin_t *plugin = PLUGIN(bgpcorsaro);  
+{
+  bgpcorsaro_plugin_t *plugin = PLUGIN(bgpcorsaro);
+  struct bgpcorsaro_pacifier_state_t *state = STATE(bgpcorsaro);
+  int opt;
+
   if(plugin->argc <= 0)
     {
       return 0;
     }
+
   /* NB: remember to reset optind to 1 before using getopt! */
   optind = 1;
-  /* dump doesn't take any arguments */
-  if(optind != plugin->argc)
+
+  while((opt = getopt(plugin->argc, plugin->argv, ":w:a?")) >= 0)
     {
-      usage(plugin);
-      return -1;
+      switch(opt)
+	{
+	case 'w':
+	  state->wait = atoi(optarg);
+	  break;
+	case 'a':
+	  state->adaptive = 1;
+	  break;
+	case '?':
+	case ':':
+	default:
+	  usage(plugin);
+	  return -1;
+	}
     }
+
   return 0;
 }
+
+
+
 
 /* == PUBLIC PLUGIN FUNCS BELOW HERE == */
 
 /** Implements the alloc function of the plugin API */
-bgpcorsaro_plugin_t *bgpcorsaro_dump_alloc(bgpcorsaro_t *bgpcorsaro)
+bgpcorsaro_plugin_t *bgpcorsaro_pacifier_alloc(bgpcorsaro_t *bgpcorsaro)
 {
-  return &bgpcorsaro_dump_plugin;
+  return &bgpcorsaro_pacifier_plugin;
 }
 
 /** Implements the init_output function of the plugin API */
-int bgpcorsaro_dump_init_output(bgpcorsaro_t *bgpcorsaro)
+int bgpcorsaro_pacifier_init_output(bgpcorsaro_t *bgpcorsaro)
 {
-  struct bgpcorsaro_dump_state_t *state;
+  struct bgpcorsaro_pacifier_state_t *state;
   bgpcorsaro_plugin_t *plugin = PLUGIN(bgpcorsaro);
   assert(plugin != NULL);
 
-  if((state = malloc_zero(sizeof(struct bgpcorsaro_dump_state_t))) == NULL)
+  if((state = malloc_zero(sizeof(struct bgpcorsaro_pacifier_state_t))) == NULL)
     {
       bgpcorsaro_log(__func__, bgpcorsaro,
-		     "could not malloc bgpcorsaro_dump_state_t");
+		     "could not malloc bgpcorsaro_pacifier_state_t");
       goto err;
     }
   bgpcorsaro_plugin_register_state(bgpcorsaro->plugin_manager, plugin, state);
 
+
   // initializing state
   state = STATE(bgpcorsaro);
+  state->tv_start = 0;      // 0 means it is the first interval, so the time has to be initialized at interval start
+  state->wait = 30;         // 30 seconds is the default wait time, between start and end
+  state->tv_first_time = 0; // 0 means it is the first interval, so the time has to be initialized at interval start
+  state->intervals = 0;     // number of intervals processed
+  state->adaptive = 0;      // default behavior is not adaptive
   
   /* parse the arguments */
   if(parse_args(bgpcorsaro) != 0)
@@ -155,15 +192,15 @@ int bgpcorsaro_dump_init_output(bgpcorsaro_t *bgpcorsaro)
   return 0;
 
  err:
-  bgpcorsaro_dump_close_output(bgpcorsaro);
+  bgpcorsaro_pacifier_close_output(bgpcorsaro);
   return -1;
 }
 
 /** Implements the close_output function of the plugin API */
-int bgpcorsaro_dump_close_output(bgpcorsaro_t *bgpcorsaro)
+int bgpcorsaro_pacifier_close_output(bgpcorsaro_t *bgpcorsaro)
 {
   int i;
-  struct bgpcorsaro_dump_state_t *state = STATE(bgpcorsaro);
+  struct bgpcorsaro_pacifier_state_t *state = STATE(bgpcorsaro);
 
   if(state != NULL)
     {
@@ -183,10 +220,10 @@ int bgpcorsaro_dump_close_output(bgpcorsaro_t *bgpcorsaro)
 }
 
 /** Implements the start_interval function of the plugin API */
-int bgpcorsaro_dump_start_interval(bgpcorsaro_t *bgpcorsaro,
-				   bgpcorsaro_interval_t *int_start)
+int bgpcorsaro_pacifier_start_interval(bgpcorsaro_t *bgpcorsaro,
+				       bgpcorsaro_interval_t *int_start)
 {
-  struct bgpcorsaro_dump_state_t *state = STATE(bgpcorsaro);
+  struct bgpcorsaro_pacifier_state_t *state = STATE(bgpcorsaro);
 
   if(state->outfile == NULL)
     {
@@ -206,14 +243,28 @@ int bgpcorsaro_dump_start_interval(bgpcorsaro_t *bgpcorsaro,
 
   bgpcorsaro_io_write_interval_start(bgpcorsaro, state->outfile, int_start);
 
+  struct timeval tv;
+
+  if(state->tv_start == 0)
+    {
+      gettimeofday_wrap(&tv);
+      state->tv_start = tv.tv_sec;
+      state->tv_first_time = state->tv_start;
+    }
+
+  // a new interval is starting
+  state->intervals++;
+  
+  // fprintf(stderr, "START INTERVAL TIME: %d \n", state->tv_start);
+
   return 0;
 }
 
 /** Implements the end_interval function of the plugin API */
-int bgpcorsaro_dump_end_interval(bgpcorsaro_t *bgpcorsaro,
+int bgpcorsaro_pacifier_end_interval(bgpcorsaro_t *bgpcorsaro,
 				 bgpcorsaro_interval_t *int_end)
 {
-  struct bgpcorsaro_dump_state_t *state = STATE(bgpcorsaro);
+  struct bgpcorsaro_pacifier_state_t *state = STATE(bgpcorsaro);
 
   bgpcorsaro_io_write_interval_end(bgpcorsaro, state->outfile, int_end);
 
@@ -236,17 +287,41 @@ int bgpcorsaro_dump_end_interval(bgpcorsaro_t *bgpcorsaro,
 
       state->outfile = NULL;
     }
+
+
+  struct timeval tv;
+  gettimeofday_wrap(&tv);
+  
+  int expected_time = 0;
+  int diff = 0;
+
+  if(state->adaptive == 0)
+    {
+      diff = state->wait - (tv.tv_sec - state->tv_start);
+    }
+  else
+    {
+      expected_time = state->tv_first_time + state->intervals *  state->wait;
+      diff = expected_time - tv.tv_sec ;
+    }
+  // if the end interval is faster than "the wait" time
+  // then we wait for the remaining seconds
+  if(diff > 0)
+    {
+      // fprintf(stderr, "\tWaiting: %d s\n", diff);
+      sleep(diff);
+      gettimeofday_wrap(&tv);
+    }  
+  state->tv_start = tv.tv_sec;
+
+  // fprintf(stderr, "END INTERVAL TIME: %d \n", state->tv_start);
   return 0;
 }
 
 /** Implements the process_record function of the plugin API */
-int bgpcorsaro_dump_process_record(bgpcorsaro_t *bgpcorsaro,
-				   bgpcorsaro_record_t *record)
+int bgpcorsaro_pacifier_process_record(bgpcorsaro_t *bgpcorsaro,
+                                       bgpcorsaro_record_t *record)
 {
-  if(BS_REC(record)->status != BGPSTREAM_RECORD_STATUS_VALID_RECORD)
-    {
-      return 0;
-    }
 
   /* no point carrying on if a previous plugin has already decided we should
      ignore this record */
@@ -254,9 +329,6 @@ int bgpcorsaro_dump_process_record(bgpcorsaro_t *bgpcorsaro,
     {
       return 0;
     }
-
-  bgpstream_record_print_mrt_data(BS_REC(record));
-
 
   return 0;
 }

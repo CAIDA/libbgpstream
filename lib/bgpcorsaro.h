@@ -26,7 +26,8 @@
 #ifndef __BGPCORSARO_H
 #define __BGPCORSARO_H
 
-#include "bgpstream_lib.h"
+#include "timeseries.h"
+#include "bgpstream.h"
 #include "wandio.h"
 
 /** @file
@@ -93,6 +94,7 @@ typedef enum bgpcorsaro_interval_align
 /** Allocate an bgpcorsaro object
  *
  * @param template     The string used to generate output files
+ * @param timeseries    pointer to an initialized timeseries instance
  * @return a pointer to an opaque bgpcorsaro structure, or NULL if an error
  * occurs
  *
@@ -103,7 +105,7 @@ typedef enum bgpcorsaro_interval_align
  * calling bgpcorsaro_start_output to write headers to the output files ready
  * to process records.
  */
-bgpcorsaro_t *bgpcorsaro_alloc_output(char *template);
+bgpcorsaro_t *bgpcorsaro_alloc_output(char *template, timeseries_t *timeseries);
 
 /** Initialize an bgpcorsaro object that has already been allocated
  *
