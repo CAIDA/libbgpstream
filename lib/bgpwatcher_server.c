@@ -597,9 +597,25 @@ static int handle_message(bgpwatcher_server_t *server,
       break;
 
     default:
-      bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
-			     "Invalid message type (%d) rx'd from client",
-			     msg_type);
+      fprintf(stderr, "Invalid message type (%d) rx'd from client, ignoring",
+              msg_type);
+      /* need to recv remainder of message */
+      while(zsocket_rcvmore(server->client_socket) != 0)
+        {
+          if(zmq_msg_init(&msg) == -1)
+            {
+              bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_MALLOC,
+                                     "Could not init proxy message");
+              goto err;
+            }
+          if(zmq_msg_recv(&msg, server->client_socket, 0) == -1)
+            {
+              bgpwatcher_err_set_err(ERR, BGPWATCHER_ERR_PROTOCOL,
+                                     "Failed to clear message from socket");
+              goto err;
+            }
+          zmq_msg_close(&msg);
+        }
       goto err;
       break;
     }
