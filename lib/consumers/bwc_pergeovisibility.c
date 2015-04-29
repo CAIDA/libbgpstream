@@ -36,37 +36,22 @@
 
 #define BUFFER_LEN 1024
 
-#define NAME                        "per-geo-visibility"
-#define CONSUMER_METRIC_PREFIX      "prefix-visibility.geo.netacuity"
+#define NAME                       "per-geo-visibility"
+#define CONSUMER_METRIC_PREFIX     "prefix-visibility.geo.netacuity"
 
 
-#define BUFFER_LEN 1024
-#define METRIC_PREFIX_FORMAT       "%s.%s.%s.%s.v4.%s"
-#define METRIC_PREFIX_PERC_FORMAT  "%s.%s.%s.%s.v4.perc.%s.%s"
+#define METRIC_PREFIX_FORMAT       "%s."CONSUMER_METRIC_PREFIX".%s.%s.v%d.%s"
+#define METRIC_PREFIX_TH_FORMAT    "%s."CONSUMER_METRIC_PREFIX".%s.%s.v%d.visibility_threshold.%s.%s"
 #define META_METRIC_PREFIX_FORMAT  "%s.meta.bgpwatcher.consumer."NAME".%s"
+
+
+/* #define METRIC_PREFIX_FORMAT       "%s.%s.%s.%s.v4.%s" */
+/* #define METRIC_PREFIX_PERC_FORMAT  "%s.%s.%s.%s.v4.perc.%s.%s" */
+/* #define META_METRIC_PREFIX_FORMAT  "%s.meta.bgpwatcher.consumer."NAME".%s" */
 
 
 #define GEO_PROVIDER_NAME  "netacq-edge"
 
-
-
-
-#define METRIC_PREFIX               "bgp.visibility.geo.netacuity"
-#define METRIC_CC_V4PFX_FORMAT      METRIC_PREFIX".%s.%s.ipv4_pfx_cnt"
-#define METRIC_CC_V6PFX_FORMAT      METRIC_PREFIX".%s.%s.ipv6_pfx_cnt"
-#define METRIC_CC_V4PFX_PERC_FORMAT     METRIC_PREFIX".%s.%s.%s.ipv4_pfx_cnt"
-
-
-#define META_METRIC_PREFIX           \
-  "bgp.meta.bgpwatcher.consumer.per-geo-visibility"
-#define METRIC_CACHE_MISS_CNT        META_METRIC_PREFIX".cache_miss_cnt"
-#define METRIC_CACHE_HITS_CNT        META_METRIC_PREFIX".cache_hit_cnt"
-#define METRIC_ARRIVAL_DELAY         META_METRIC_PREFIX".arrival_delay"
-#define METRIC_PROCESSED_DELAY       META_METRIC_PREFIX".processed_delay"
-#define METRIC_MAXCOUNTRIES_PERPFX   META_METRIC_PREFIX".max_numcountries_perpfx"
-#define METRIC_AVGCOUNTRIES_PERPFX   META_METRIC_PREFIX".avg_numcountries_perpfx"
-#define METRIC_VISIBLE_PFXS          META_METRIC_PREFIX".visible_pfxs_cnt"
-#define METRIC_MAXRECS_PERPFXS       META_METRIC_PREFIX".max_records_perpfx"
 
 
 
@@ -87,11 +72,20 @@ static bwc_t bwc_pergeovisibility = {
 
 
 typedef enum {
-  VIS_25_PERCENT = 0,
-  VIS_50_PERCENT = 1,
-  VIS_75_PERCENT = 2,
-  VIS_100_PERCENT = 3,
-} vis_percentiles_t;
+  VIS_1_FF_ASN = 0,
+  VIS_25_PERCENT = 1,
+  VIS_50_PERCENT = 2,
+  VIS_75_PERCENT = 3,
+  VIS_100_PERCENT = 4,
+} vis_thresholds_t;
+
+#define VIS_THRESHOLDS_CNT 5
+
+typedef struct visibility_counters {
+  uint32_t visible_pfxs;
+  uint32_t visibile_ips;
+  uint32_t ff_peer_asns_sum;  
+} visibility_counters_t;
 
 
 /** pergeo_info_t
@@ -103,68 +97,83 @@ typedef struct pergeo_info {
   /** All v4 prefixes that this CC observed */
   bgpstream_ipv4_pfx_set_t *v4pfxs;
 
-  /** All v4 prefixes that this CC observed */
+  /** All origin ASns this CC observed */
   bgpstream_id_set_t *asns;
   uint32_t asns_idx;
 
-  /* sum full feed ASns observing v4 prefixes */
-  uint32_t v4_ff_asns_sum;
+  /** number of visible prefixes based on 
+   * thresholds (1 ff, or 25, 50, 75, 100 percent) */
+  visibility_counters_t visibility_counters[VIS_THRESHOLDS_CNT];
 
-  /** number of visible v4 prefixes based on a percentage
-   * threshold (25, 50, 75, 100 percent) */
-  uint32_t v4_visible_pfxs[4];
+  uint32_t visible_pfxs_idx[VIS_THRESHOLDS_CNT];  
+  uint32_t visible_ips_idx[VIS_THRESHOLDS_CNT];
+  uint32_t ff_peer_asns_sum_idx[VIS_THRESHOLDS_CNT];  
 
-  /** Index of the v4 metric for this CC in the KP */
-  uint32_t v4_idx;
-  uint32_t v4_asn_vis_idx;
-  uint32_t v4_visible_pfxs_idx[4];
-  
 } pergeo_info_t;
 
 
 static
-char *percentage_string(int i)
+char *threshold_string(int i)
 {
   switch(i)
     {
-    case 0:
-      return "25";
-    case 1:
-      return "50";
-    case 2:
-      return "75";
-    case 3:
-      return "100";
+    case VIS_1_FF_ASN:
+      return "min_1_ff_peer_asn";
+    case VIS_25_PERCENT:
+      return "min_25%_ff_peer_asns";
+    case VIS_50_PERCENT:
+      return "min_50%_ff_peer_asns";
+    case VIS_75_PERCENT:
+      return "min_75%_ff_peer_asns";
+    case VIS_100_PERCENT:
+      return "min_100%_ff_peer_asns";
     default:
       return "ERROR";
     }
   return "ERROR";
 }
 
+
 static void
-update_visibility_counters(uint32_t *visibility_counters, int asns_count, int vX_ff)
+update_visibility_counters(visibility_counters_t *visibility_counters, uint8_t net_size,
+                           int asns_count, int vX_ff)
 {
-  if(vX_ff == 0)
+  double ratio;
+  uint32_t ips = 1 << net_size;
+  if(vX_ff == 0 || asns_count <= 0)
     {
       return;
     }
-  double ratio = (double) asns_count / (double) vX_ff;
 
+  visibility_counters[VIS_1_FF_ASN].visible_pfxs++;
+  visibility_counters[VIS_1_FF_ASN].visibile_ips += ips;
+  visibility_counters[VIS_1_FF_ASN].ff_peer_asns_sum += asns_count;
+
+  ratio = (double) asns_count / (double) vX_ff;
+  
   if(ratio == 1)
     {
-      visibility_counters[VIS_100_PERCENT]++;
+      visibility_counters[VIS_100_PERCENT].visible_pfxs++;
+      visibility_counters[VIS_100_PERCENT].visibile_ips += ips;
+      visibility_counters[VIS_100_PERCENT].ff_peer_asns_sum += asns_count;
     }
   if(ratio >= 0.75)
     {
-      visibility_counters[VIS_75_PERCENT]++;
+      visibility_counters[VIS_75_PERCENT].visible_pfxs++;
+      visibility_counters[VIS_75_PERCENT].visibile_ips += ips;
+      visibility_counters[VIS_75_PERCENT].ff_peer_asns_sum += asns_count;
     }
   if(ratio >= 0.5)
     {
-      visibility_counters[VIS_50_PERCENT]++;
+      visibility_counters[VIS_50_PERCENT].visible_pfxs++;
+      visibility_counters[VIS_50_PERCENT].visibile_ips += ips;
+      visibility_counters[VIS_50_PERCENT].ff_peer_asns_sum += asns_count;
     }
   if(ratio >= 0.25)
     {
-      visibility_counters[VIS_25_PERCENT]++;
+      visibility_counters[VIS_25_PERCENT].visible_pfxs++;
+      visibility_counters[VIS_25_PERCENT].visibile_ips += ips;
+      visibility_counters[VIS_25_PERCENT].ff_peer_asns_sum += asns_count;
     }                  
 }
 
@@ -373,48 +382,52 @@ static int create_per_cc_metrics(bwc_t *consumer)
 	  fprintf(stderr, "ERROR: Could not create pfx set\n");
         }
 
-      snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_FORMAT,
-               CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX, 
-               countries[i]->continent, countries[i]->iso2, "prefixes_cnt");
-      if((geo_info.v4_idx = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
-	{
-	  fprintf(stderr, "ERROR: Could not create key metric\n");
-	}
-
-     geo_info.v4_ff_asns_sum = 0;
-      snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_FORMAT,
-               CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX, 
-               countries[i]->continent, countries[i]->iso2, "asns_vis_sum");
-      if((geo_info.v4_asn_vis_idx = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
-	{
-	  fprintf(stderr, "ERROR: Could not create key metric\n");
-	}
-
-
-      // initialize properly geo_info and create ipv4 metrics id for kp
       geo_info.asns = bgpstream_id_set_create();
       if(geo_info.asns == NULL)
         {
 	  fprintf(stderr, "ERROR: Could not create asns set\n");
         }
-
+            
       snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_FORMAT,
-               CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX, 
-               countries[i]->continent, countries[i]->iso2, "asns_cnt");
+               CHAIN_STATE->metric_prefix, 
+               countries[i]->continent, countries[i]->iso2, bgpstream_ipv2number(BGPSTREAM_ADDR_VERSION_IPV4),
+               "origin_asns_cnt");
       if((geo_info.asns_idx = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
 	{
 	  fprintf(stderr, "ERROR: Could not create key metric\n");
 	}
 
-      for(j=0; j<4; j++)
+
+      for(j=0; j<VIS_THRESHOLDS_CNT; j++)
         {
-          geo_info.v4_visible_pfxs[j] = 0;
-          snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_PERC_FORMAT,
-                   CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX, 
-                   countries[i]->continent, countries[i]->iso2, percentage_string(j), "visible_prefixes_cnt");
-          if((geo_info.v4_visible_pfxs_idx[j] = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
+          geo_info.visibility_counters[j].visible_pfxs = 0;
+          snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_TH_FORMAT,
+                   CHAIN_STATE->metric_prefix, countries[i]->continent, countries[i]->iso2,
+                   bgpstream_ipv2number(BGPSTREAM_ADDR_VERSION_IPV4),
+                   threshold_string(j), "visible_prefixes_cnt");             
+          if((geo_info.visible_pfxs_idx[j] = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
             {
-              fprintf(stderr, "ERROR: Could not create key metric\n");
+              fprintf(stderr, "ERROR: Could not create key metric\n"); 
+            }
+          
+          geo_info.visibility_counters[j].visibile_ips = 0;
+          snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_TH_FORMAT,
+                   CHAIN_STATE->metric_prefix, countries[i]->continent, countries[i]->iso2,
+                   bgpstream_ipv2number(BGPSTREAM_ADDR_VERSION_IPV4),
+                   threshold_string(j), "visibile_ips_cnt");             
+          if((geo_info.visible_ips_idx[j] = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
+            {
+              fprintf(stderr, "ERROR: Could not create key metric\n"); 
+            }
+          
+          geo_info.visibility_counters[j].ff_peer_asns_sum = 0;
+          snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_TH_FORMAT,
+                   CHAIN_STATE->metric_prefix, countries[i]->continent, countries[i]->iso2,
+                   bgpstream_ipv2number(BGPSTREAM_ADDR_VERSION_IPV4),
+                   threshold_string(j), "ff_peer_asns_sum");             
+          if((geo_info.ff_peer_asns_sum_idx[j] = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
+            {
+              fprintf(stderr, "ERROR: Could not create key metric\n"); 
             }
         }
   
@@ -563,21 +576,24 @@ static void dump_v4table(bwc_t *consumer)
       if (kh_exist(STATE->countrycode_pfxs, k))
 	{
           info = &kh_val(STATE->countrycode_pfxs, k);
-          timeseries_kp_set(STATE->kp_v4, info->v4_idx, bgpstream_ipv4_pfx_set_size(info->v4pfxs));
+
 	  bgpstream_ipv4_pfx_set_clear(info->v4pfxs);
 
           timeseries_kp_set(STATE->kp_v4, info->asns_idx, bgpstream_id_set_size(info->asns));
 	  bgpstream_id_set_clear(info->asns);
 
-          timeseries_kp_set(STATE->kp_v4, info->v4_asn_vis_idx, info->v4_ff_asns_sum);
-          info->v4_ff_asns_sum = 0;
-
-          for(i=0; i<4; i++)
+          for(i=0; i<VIS_THRESHOLDS_CNT; i++)
             {
-              timeseries_kp_set(STATE->kp_v4, info->v4_visible_pfxs_idx[i], info->v4_visible_pfxs[i]);
-              info->v4_visible_pfxs[i] = 0;
-            }
+              timeseries_kp_set(STATE->kp_v4, info->visible_pfxs_idx[i], info->visibility_counters[i].visible_pfxs);
+              info->visibility_counters[i].visible_pfxs = 0;
 
+              timeseries_kp_set(STATE->kp_v4, info->visible_ips_idx[i], info->visibility_counters[i].visibile_ips);
+              info->visibility_counters[i].visibile_ips = 0;
+
+              timeseries_kp_set(STATE->kp_v4, info->ff_peer_asns_sum_idx[i], info->visibility_counters[i].ff_peer_asns_sum);
+              info->visibility_counters[i].ff_peer_asns_sum = 0;
+
+            }
 	}
     }
 }
@@ -732,7 +748,9 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
       // the counters for each country
       // cc_k_set contains the k position of a country in the
       // countrycode_pfxs hash map
-   
+
+      uint8_t net_size = 32 - pfx->mask_len;
+      
       for(idk = kh_begin(cck_set);
           idk != kh_end(cck_set); ++idk)
         {
@@ -741,9 +759,10 @@ static void geotag_v4table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
               cck = kh_key(cck_set, idk);
               geo_info = &kh_value(STATE->countrycode_pfxs, cck);
               bgpstream_ipv4_pfx_set_insert(geo_info->v4pfxs, (bgpstream_ipv4_pfx_t *)pfx);
-              update_visibility_counters(geo_info->v4_visible_pfxs, asns_count,
+              
+              update_visibility_counters(geo_info->visibility_counters, net_size, asns_count,
                                          BWC_GET_CHAIN_STATE(consumer)->full_feed_peer_asns_cnt[i]);
-              geo_info->v4_ff_asns_sum += asns_count;
+
               bgpstream_id_set_merge(geo_info->asns, ff_origin_asns);
               STATE->avg_numcountries_perpfx++;
             }

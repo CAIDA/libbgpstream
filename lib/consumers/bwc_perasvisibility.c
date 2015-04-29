@@ -36,10 +36,8 @@
 #define NAME                         "per-as-visibility"
 #define CONSUMER_METRIC_PREFIX       "prefix-visibility.asn"
 
-
 #define BUFFER_LEN 1024
-#define METRIC_PREFIX_FORMAT       "%s.%s.%"PRIu32".v%d.%s"
-#define METRIC_PREFIX_PERC_FORMAT  "%s.%s.%"PRIu32".v%d.perc.%s.%s"
+#define METRIC_PREFIX_TH_FORMAT    "%s."CONSUMER_METRIC_PREFIX".%"PRIu32".v%d.visibility_threshold.%s.%s"
 #define META_METRIC_PREFIX_FORMAT  "%s.meta.bgpwatcher.consumer."NAME".%s"
 
 #define MAX_NUM_PEERS 1024
@@ -61,11 +59,21 @@ static bwc_t bwc_perasvisibility = {
 
 
 typedef enum {
-  VIS_25_PERCENT = 0,
-  VIS_50_PERCENT = 1,
-  VIS_75_PERCENT = 2,
-  VIS_100_PERCENT = 3,
-} vis_percentiles_t;
+  VIS_1_FF_ASN = 0,
+  VIS_25_PERCENT = 1,
+  VIS_50_PERCENT = 2,
+  VIS_75_PERCENT = 3,
+  VIS_100_PERCENT = 4,
+} vis_thresholds_t;
+
+#define VIS_THRESHOLDS_CNT 5
+
+
+typedef struct visibility_counters {
+  uint32_t visible_pfxs;
+  uint32_t visibile_ips;
+  uint32_t ff_peer_asns_sum;  
+} visibility_counters_t;
 
 typedef struct peras_info {
 
@@ -74,18 +82,14 @@ typedef struct peras_info {
   
   /** All v6 prefixes that this AS observed */
   bgpstream_ipv6_pfx_set_t *v6pfxs;
-
-  /* sum full feed ASns observing prefixes 
-   * originated by this AS*/
-  uint32_t ff_asns_sum[BGPSTREAM_MAX_IP_VERSION_IDX];
-
-  /** number of visible prefixes based on a percentage
-   * threshold (25, 50, 75, 100 percent) */
-  uint32_t visible_pfxs[4*BGPSTREAM_MAX_IP_VERSION_IDX];
+    
+  /** number of visible prefixes based on 
+   * thresholds (1 ff, or 25, 50, 75, 100 percent) */
+  visibility_counters_t visibility_counters[VIS_THRESHOLDS_CNT*BGPSTREAM_MAX_IP_VERSION_IDX];
   
-  uint32_t all_pfxs_idx[BGPSTREAM_MAX_IP_VERSION_IDX];
-  uint32_t ff_asns_sum_idx[BGPSTREAM_MAX_IP_VERSION_IDX];
-  uint32_t visible_pfxs_idx[4*BGPSTREAM_MAX_IP_VERSION_IDX];  
+  uint32_t visible_pfxs_idx[VIS_THRESHOLDS_CNT*BGPSTREAM_MAX_IP_VERSION_IDX];  
+  uint32_t visible_ips_idx[VIS_THRESHOLDS_CNT*BGPSTREAM_MAX_IP_VERSION_IDX];
+  uint32_t ff_peer_asns_sum_idx[VIS_THRESHOLDS_CNT*BGPSTREAM_MAX_IP_VERSION_IDX];  
 
 } peras_info_t;
 
@@ -127,7 +131,6 @@ typedef struct bwc_perasvisibility_state {
 
   /** General metric indexes */
   gen_metrics_t gen_metrics;
-
 
   /** General metric indexes */
   uint32_t origin_asns[MAX_NUM_PEERS];
@@ -216,18 +219,20 @@ static void peras_info_destroy(peras_info_t info)
 }
 
 static
-char *percentage_string(int i)
+char *threshold_string(int i)
 {
   switch(i)
     {
-    case 0:
-      return "25";
-    case 1:
-      return "50";
-    case 2:
-      return "75";
-    case 3:
-      return "100";
+    case VIS_1_FF_ASN:
+      return "min_1_ff_peer_asn";
+    case VIS_25_PERCENT:
+      return "min_25%_ff_peer_asns";
+    case VIS_50_PERCENT:
+      return "min_50%_ff_peer_asns";
+    case VIS_75_PERCENT:
+      return "min_75%_ff_peer_asns";
+    case VIS_100_PERCENT:
+      return "min_100%_ff_peer_asns";
     default:
       return "ERROR";
     }
@@ -259,40 +264,42 @@ as_pfxs_get_info(bwc_t *consumer,
           return NULL;
         }
 
-      
       for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
         {
-          info->ff_asns_sum[i] = 0;
-          
-          snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_FORMAT,
-                   CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX, asn, bgpstream_idx2number(i) , "prefixes_cnt");             
-          if((info->all_pfxs_idx[i] =
-              timeseries_kp_add_key(STATE->kp[i], buffer)) == -1)
+          for(j = 0; j<VIS_THRESHOLDS_CNT; j++)
             {
-              return NULL;
-            }
-
-          snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_FORMAT,
-                   CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX, asn, bgpstream_idx2number(i) , "asns_vis_sum");             
-          if((info->ff_asns_sum_idx[i] =
-              timeseries_kp_add_key(STATE->kp[i], buffer)) == -1)
-            {
-              return NULL;
-            }
-
-          for(j = 0; j<4; j++)
-            {
-              info->visible_pfxs[i*4+j] = 0;
-              snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_PERC_FORMAT,
-                       CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX,
-                       asn, bgpstream_idx2number(i), percentage_string(j), "visible_prefixes_cnt");             
-              if((info->visible_pfxs_idx[i*4+j] =
+              info->visibility_counters[i*VIS_THRESHOLDS_CNT+j].visible_pfxs = 0;
+              snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_TH_FORMAT,
+                       CHAIN_STATE->metric_prefix, asn, bgpstream_idx2number(i), threshold_string(j),
+                       "visible_prefixes_cnt");             
+              if((info->visible_pfxs_idx[i*VIS_THRESHOLDS_CNT+j] =
                   timeseries_kp_add_key(STATE->kp[i], buffer)) == -1)
                 {
                   return NULL;
                 }
+              
+              info->visibility_counters[i*VIS_THRESHOLDS_CNT+j].visibile_ips = 0;
+              snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_TH_FORMAT,
+                       CHAIN_STATE->metric_prefix, asn, bgpstream_idx2number(i), threshold_string(j),
+                       "visibile_ips_cnt");             
+              if((info->visible_ips_idx[i*VIS_THRESHOLDS_CNT+j] =
+                  timeseries_kp_add_key(STATE->kp[i], buffer)) == -1)
+                {
+                  return NULL;
+                }
+              
+              info->visibility_counters[i*VIS_THRESHOLDS_CNT+j].ff_peer_asns_sum = 0;
+              snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_TH_FORMAT,
+                       CHAIN_STATE->metric_prefix, asn, bgpstream_idx2number(i), threshold_string(j),
+                       "ff_peer_asns_sum");             
+              if((info->ff_peer_asns_sum_idx[i*VIS_THRESHOLDS_CNT+j] =
+                  timeseries_kp_add_key(STATE->kp[i], buffer)) == -1)
+                {
+                  return NULL;
+                }
+              
             }             
-        }      
+        }
     }
   else
     {
@@ -303,29 +310,45 @@ as_pfxs_get_info(bwc_t *consumer,
 }
 
 static void
-update_visibility_counters(uint32_t *visibility_counters, int asns_count, int vX_ff)
+update_visibility_counters(visibility_counters_t *visibility_counters, uint8_t net_size,
+                           int asns_count, int vX_ff)
 {
-  if(vX_ff == 0)
+  double ratio;
+  uint32_t ips = 1 << net_size;
+  if(vX_ff == 0 || asns_count <= 0)
     {
       return;
     }
-  double ratio = (double) asns_count / (double) vX_ff;
 
+  visibility_counters[VIS_1_FF_ASN].visible_pfxs++;
+  visibility_counters[VIS_1_FF_ASN].visibile_ips += ips;
+  visibility_counters[VIS_1_FF_ASN].ff_peer_asns_sum += asns_count;
+
+  ratio = (double) asns_count / (double) vX_ff;
+  
   if(ratio == 1)
     {
-      visibility_counters[VIS_100_PERCENT]++;
+      visibility_counters[VIS_100_PERCENT].visible_pfxs++;
+      visibility_counters[VIS_100_PERCENT].visibile_ips += ips;
+      visibility_counters[VIS_100_PERCENT].ff_peer_asns_sum += asns_count;
     }
   if(ratio >= 0.75)
     {
-      visibility_counters[VIS_75_PERCENT]++;
+      visibility_counters[VIS_75_PERCENT].visible_pfxs++;
+      visibility_counters[VIS_75_PERCENT].visibile_ips += ips;
+      visibility_counters[VIS_75_PERCENT].ff_peer_asns_sum += asns_count;
     }
   if(ratio >= 0.5)
     {
-      visibility_counters[VIS_50_PERCENT]++;
+      visibility_counters[VIS_50_PERCENT].visible_pfxs++;
+      visibility_counters[VIS_50_PERCENT].visibile_ips += ips;
+      visibility_counters[VIS_50_PERCENT].ff_peer_asns_sum += asns_count;
     }
   if(ratio >= 0.25)
     {
-      visibility_counters[VIS_25_PERCENT]++;
+      visibility_counters[VIS_25_PERCENT].visible_pfxs++;
+      visibility_counters[VIS_25_PERCENT].visibile_ips += ips;
+      visibility_counters[VIS_25_PERCENT].ff_peer_asns_sum += asns_count;
     }                  
 }
 
@@ -339,16 +362,14 @@ static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
   bgpstream_peer_sig_t *sg;
   khiter_t k;
   int khret;
+  uint8_t net_size;
   
   /* full feed asns observing a prefix */
   bgpstream_id_set_t *ff_asns = bgpstream_id_set_create();
   int asns_count = 0;
 
-  uint32_t asn;
-
-  /*  origin ases 
-   * (as seen by full feed peers) */
-  // khash_t(int_set) *ff_origin_asns = kh_init(int_set);
+  /* origin AS */
+  uint32_t origin_asn;
   
   peras_info_t *info;
   int i;
@@ -391,13 +412,13 @@ static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
             }
           
           bgpstream_id_set_insert(ff_asns, sg->peer_asnumber);
-          asn = bgpwatcher_view_iter_pfx_peer_get_orig_asn(it);         
+          origin_asn = bgpwatcher_view_iter_pfx_peer_get_orig_asn(it);         
           assert(asn < BGPWATCHER_VIEW_ASN_NOEXPORT_START);
           
           found = 0;
           for(a = 0; a < STATE->valid_origins; a++)
             {
-              if(STATE->origin_asns[a] == asn)
+              if(STATE->origin_asns[a] == origin_asn)
                 {
                   found = 1;
                   break;
@@ -405,11 +426,12 @@ static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
             }
           if(!found)
             {
-              STATE->origin_asns[STATE->valid_origins] = asn;
+              STATE->origin_asns[STATE->valid_origins] = origin_asn;
               STATE->valid_origins++;
             }
         }
 
+      net_size = 0; 
       asns_count = bgpstream_id_set_size(ff_asns);
 
       for(a = 0; a < STATE->valid_origins; a++)        
@@ -423,6 +445,7 @@ static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
             {
               bgpstream_ipv4_pfx_set_insert(info->v4pfxs,
                                             (bgpstream_ipv4_pfx_t *)pfx);
+              net_size = 32 - pfx->mask_len;
             }
           else
             {
@@ -430,11 +453,12 @@ static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
                 {
                   bgpstream_ipv6_pfx_set_insert(info->v6pfxs,
                                                 (bgpstream_ipv6_pfx_t *)pfx);
+                  net_size = 128 - pfx->mask_len;                                
                 }
             }
 
-          info->ff_asns_sum[bgpstream_ipv2idx(pfx->address.version)] += asns_count;
-          update_visibility_counters(&info->visible_pfxs[bgpstream_ipv2idx(pfx->address.version)*4], asns_count,
+          update_visibility_counters(&info->visibility_counters[bgpstream_ipv2idx(pfx->address.version)*VIS_THRESHOLDS_CNT],
+                                     net_size, asns_count,
                                      BWC_GET_CHAIN_STATE(consumer)->full_feed_peer_asns_cnt[i]);
         }
       
@@ -469,38 +493,37 @@ static void dump_table(bwc_t *consumer)
   peras_info_t *info;
   int i = 0;
   int j = 0;
+
   for (k = kh_begin(STATE->as_pfxs); k != kh_end(STATE->as_pfxs); ++k)
     {
       if (kh_exist(STATE->as_pfxs, k))
 	{
           info = &kh_val(STATE->as_pfxs, k);
 
-          i = bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV4);
-          timeseries_kp_set(STATE->kp[i], info->all_pfxs_idx[i],
-                            bgpstream_ipv4_pfx_set_size(info->v4pfxs));
           bgpstream_ipv4_pfx_set_clear(info->v4pfxs);
-
-          i = bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV6);
-          timeseries_kp_set(STATE->kp[i], info->all_pfxs_idx[i],
-                            bgpstream_ipv6_pfx_set_size(info->v6pfxs));
           bgpstream_ipv6_pfx_set_clear(info->v6pfxs);
 
           
           for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
             {
-              timeseries_kp_set(STATE->kp[i], info->ff_asns_sum_idx[i],
-                                info->ff_asns_sum[i]);
-              info->ff_asns_sum[i] = 0;
               
-              for(j=0; j<4; j++)
+              for(j=0; j<VIS_THRESHOLDS_CNT; j++)
                 {
-                  timeseries_kp_set(STATE->kp[i], info->visible_pfxs_idx[i*4+j],
-                                    info->visible_pfxs[i*4+j]);
-                  info->visible_pfxs[i*4+j] = 0;
-                  
+                  timeseries_kp_set(STATE->kp[i], info->visible_pfxs_idx[i*VIS_THRESHOLDS_CNT+j],
+                                    info->visibility_counters[i*VIS_THRESHOLDS_CNT+j].visible_pfxs);
+                  info->visibility_counters[i*VIS_THRESHOLDS_CNT+j].visible_pfxs = 0;
+
+                  timeseries_kp_set(STATE->kp[i], info->visible_ips_idx[i*VIS_THRESHOLDS_CNT+j],
+                                    info->visibility_counters[i*VIS_THRESHOLDS_CNT+j].visibile_ips);
+                  info->visibility_counters[i*VIS_THRESHOLDS_CNT+j].visibile_ips = 0;
+
+                  timeseries_kp_set(STATE->kp[i], info->ff_peer_asns_sum_idx[i*VIS_THRESHOLDS_CNT+j],
+                                    info->visibility_counters[i*VIS_THRESHOLDS_CNT+j].ff_peer_asns_sum);
+                  info->visibility_counters[i*VIS_THRESHOLDS_CNT+j].ff_peer_asns_sum = 0;
+
                 }
             }       
-	}
+	}      
     }
 }
 

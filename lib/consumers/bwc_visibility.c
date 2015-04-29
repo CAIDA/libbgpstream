@@ -37,10 +37,10 @@
 #include "bwc_visibility.h"
 
 #define NAME                        "visibility"
-#define CONSUMER_METRIC_PREFIX      "prefix-visibility"
+#define CONSUMER_METRIC_PREFIX      "prefix-visibility.overall"
 
 #define BUFFER_LEN 1024
-#define METRIC_PREFIX_FORMAT       "%s.%s.v%d.%s"
+#define METRIC_PREFIX_FORMAT       "%s."CONSUMER_METRIC_PREFIX".ipv%d_view.%s"
 #define META_METRIC_PREFIX_FORMAT  "%s.meta.bgpwatcher.consumer."NAME".%s"
 
 #define ROUTED_PFX_MIN_PEERCNT    10
@@ -170,7 +170,7 @@ static int create_gen_metrics(bwc_t *consumer)
  for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
     {
       snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_FORMAT,
-               CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX, bgpstream_idx2number(i) , "peers_cnt");             
+               CHAIN_STATE->metric_prefix, bgpstream_idx2number(i) , "peers_cnt");             
       if((STATE->gen_metrics.peers_idx[i] =
           timeseries_kp_add_key(STATE->kp, buffer)) == -1)
         {
@@ -178,7 +178,7 @@ static int create_gen_metrics(bwc_t *consumer)
         }
 
       snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_FORMAT,
-               CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX, bgpstream_idx2number(i) , "ff_peers_cnt");             
+               CHAIN_STATE->metric_prefix, bgpstream_idx2number(i) , "ff_peers_cnt");             
       if((STATE->gen_metrics.ff_peers_idx[i] =
           timeseries_kp_add_key(STATE->kp, buffer)) == -1)
         {
@@ -186,7 +186,7 @@ static int create_gen_metrics(bwc_t *consumer)
         }
 
       snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_FORMAT,
-               CHAIN_STATE->metric_prefix, CONSUMER_METRIC_PREFIX, bgpstream_idx2number(i) , "ff_asns_cnt");             
+               CHAIN_STATE->metric_prefix, bgpstream_idx2number(i) , "ff_peers_asns_cnt");             
       if((STATE->gen_metrics.ff_asns_idx[i] =
           timeseries_kp_add_key(STATE->kp, buffer)) == -1)
         {
@@ -432,10 +432,14 @@ int bwc_visibility_process_view(bwc_t *consumer, uint8_t interests,
 
   bgpwatcher_view_iter_destroy(it);
   
-
-  CHAIN_STATE->usable_table_flag[bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV4)] = 1;
-  CHAIN_STATE->usable_table_flag[bgpstream_ipv2idx(BGPSTREAM_ADDR_VERSION_IPV6)] = 1;
-
+  for(i=0; i<BGPSTREAM_MAX_IP_VERSION_IDX; i++)
+    {
+      if(CHAIN_STATE->full_feed_peer_asns_cnt[i] > 0)
+        {  
+          CHAIN_STATE->usable_table_flag[i] = 1;
+        }
+    }
+  
   CHAIN_STATE->visibility_computed = 1;
 
   /* @todo decide later what are the usability rules */
