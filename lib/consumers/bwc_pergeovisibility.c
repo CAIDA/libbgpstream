@@ -83,7 +83,7 @@ typedef enum {
 
 typedef struct visibility_counters {
   uint32_t visible_pfxs;
-  uint32_t visibile_ips;
+  uint64_t visibile_ips;
   uint32_t ff_peer_asns_sum;  
 } visibility_counters_t;
 
@@ -139,7 +139,7 @@ update_visibility_counters(visibility_counters_t *visibility_counters, uint8_t n
                            int asns_count, int vX_ff)
 {
   double ratio;
-  uint32_t ips = 1 << net_size;
+  uint64_t ips = 1 << net_size;
   if(vX_ff == 0 || asns_count <= 0)
     {
       return;
