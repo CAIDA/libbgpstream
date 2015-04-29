@@ -1201,9 +1201,10 @@ collector_process_corrupted_message(routingtables_t *rt,
       bgpwatcher_view_iter_has_more_peer(rt->iter);
       bgpwatcher_view_iter_next_peer(rt->iter))
     {
+      p = bgpwatcher_view_iter_peer_get_user(rt->iter);
+      
       if(bgpstream_id_set_exists(cor_affected, bgpwatcher_view_iter_peer_get_peer_id(rt->iter)))
-        {
-          p = bgpwatcher_view_iter_peer_get_user(rt->iter);
+        {          
           p->bgp_fsm_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
           p->bgp_time_ref_rib_start = 0;
           p->bgp_time_ref_rib_end = 0;
