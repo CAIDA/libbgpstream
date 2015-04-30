@@ -193,7 +193,8 @@ void bgpwatcher_client_perr(bgpwatcher_client_t *client)
 #define ASSERT_INTENT(intent) assert((BCFG.intents & intent) != 0);
 
 int bgpwatcher_client_send_view(bgpwatcher_client_t *client,
-                                bgpwatcher_view_t *view)
+                                bgpwatcher_view_t *view,
+                                bgpwatcher_view_filter_peer_cb_t *cb)
 {
   if(send_view_hdrs(client, view) != 0)
     {
@@ -201,7 +202,7 @@ int bgpwatcher_client_send_view(bgpwatcher_client_t *client,
     }
 
   /* now just transmit the view */
-  if(bgpwatcher_view_send(client->broker_zocket, view) != 0)
+  if(bgpwatcher_view_send(client->broker_zocket, view, cb) != 0)
     {
       goto err;
     }

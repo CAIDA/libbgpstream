@@ -39,6 +39,8 @@
 
 #define ASN_MAX 50000
 
+static int full_feed_size = -1;
+
 /* pfx table */
 static char                     *test_collector_name;
 static uint32_t                  test_time;
@@ -52,6 +54,14 @@ static uint8_t                   test_peer_status;
 static bgpstream_pfx_storage_t   test_prefix;
 static uint32_t                  test_prefix_first_addr;
 static uint32_t                  test_orig_asn;
+
+static int filter_ff_peers(bgpwatcher_view_iter_t *iter)
+{
+  return bgpwatcher_view_iter_peer_get_pfx_cnt(iter,
+                                               BGPSTREAM_ADDR_VERSION_IPV4,
+                                               BGPWATCHER_VIEW_FIELD_ACTIVE)
+    >= full_feed_size;
+}
 
 static void create_test_data()
 {
@@ -88,6 +98,7 @@ static void usage(const char *name)
 	  "usage: %s [<options>]\n"
           "       -c                    Randomly decide if peers are up or down\n"
           "       -C                    Initial test time (default: %d)\n"
+          "       -f <full-feed-size>   Only send full-feed peers\n"
 	  "       -i <interval-ms>      Time in ms between heartbeats to server\n"
 	  "                               (default: %d)\n"
 	  "       -l <beats>            Number of heartbeats that can go by before the\n"
@@ -168,7 +179,7 @@ int main(int argc, char **argv)
   uint32_t pfx_cnt;
 
   while(prevoptind = optind,
-	(opt = getopt(argc, argv, ":cC:i:l:m:M:n:N:pP:r:R:s:S:t:T:v?")) >= 0)
+	(opt = getopt(argc, argv, ":cC:f:i:l:m:M:n:N:pP:r:R:s:S:t:T:v?")) >= 0)
     {
       if (optind == prevoptind + 2 && *optarg == '-' ) {
         opt = ':';
@@ -188,6 +199,10 @@ int main(int argc, char **argv)
 
         case 'C':
           test_time = atoi(optarg);
+          break;
+
+        case 'f':
+          full_feed_size = atoi(optarg);
           break;
 
 	case 'i':
@@ -388,6 +403,10 @@ int main(int argc, char **argv)
               test_prefix.address.ipv4.s_addr =
                 htonl(ntohl(test_prefix.address.ipv4.s_addr) + 256);
               test_orig_asn = (test_orig_asn+1) % ASN_MAX;
+              if(test_orig_asn == 0)
+                {
+                  test_orig_asn++;
+                }
 
              /* there is a 1/10 chance that we don't observe this prefix */
               if(use_random_pfxs && (rand() % 10) == 0)
@@ -413,7 +432,8 @@ int main(int argc, char **argv)
           fprintf(stderr, "TEST: Added %d prefixes...\n", pfx_cnt);
         }
 
-      if(bgpwatcher_client_send_view(client, view) != 0)
+      if(bgpwatcher_client_send_view(client, view,
+                                     (full_feed_size >= 0) ? filter_ff_peers : NULL) != 0)
         {
           fprintf(stderr, "Could not end table\n");
           goto err;
