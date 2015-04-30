@@ -349,9 +349,6 @@ static int send_pfxs(void *dest, bgpwatcher_view_iter_t *it,
   size_t written = 0;
   size_t s = 0;
 
-  bgpwatcher_view_t *view = bgpwatcher_view_iter_get_view(it);
-  assert(view != NULL);
-
   /* the number of pfxs we actually sent */
   int pfx_cnt = 0;
 
