@@ -107,8 +107,8 @@ struct bgpcorsaro_routingtables_state_t {
   /** Client identity */
   char *watcher_client_id;
 
-  /** Table transmission filter  */
-  uint8_t tables_mask;
+  /** Send partial feed  */
+  uint8_t send_partial_feed;
 #endif
 };
 
@@ -136,10 +136,7 @@ static void usage(bgpcorsaro_t *bgpcorsaro)
           "       -w                           enables bgpwatcher transmission (default: off)\n"
 	  "       -u <server-uri>              0MQ-style URI to connect to server (default: tcp://*:6300)\n"
 	  "       -c <client-identity>         set client identity name (default: randomly choosen)\n"
-	  "       -4                           send IPv4 prefixes to the watcher (unsupported operation)\n"
-	  "       -6                           send IPv6 prefixes to the watcher (unsupported operation)\n"
 	  "       -a                           send full feed and partial tables to the watcher (default: full feed only)\n"
-          "                                    (unsupported operation)\n\n"
 #endif
           , // end of options
           plugin->argv[0],
@@ -162,7 +159,6 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
   
   /* NB: remember to reset optind to 1 before using getopt! */
   optind = 1;
-  int full_and_partial = 0;
   
   /* parsing args */
 
@@ -189,14 +185,8 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
 	  state->watcher_tx = 1;
 	  break;
     	case 'a':
-	  full_and_partial = 1;
+	  state->send_partial_feed = 1;
 	  break;          
-    	case '4':
-	  state->tables_mask = state->tables_mask | ROUTINGTABLES_FEED_IPV4_FULL;
-	  break;          
-    	case '6':
-	  state->tables_mask = state->tables_mask | ROUTINGTABLES_FEED_IPV6_FULL;
-	  break;
         case 'u':
 	  state->watcher_server_uri = strdup(optarg);
 	  break;
@@ -213,25 +203,8 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
     }
 
 #ifdef WITH_BGPWATCHER
-  /* if ipv4 or ipv6 have not been set, then we pass the default configuration,
-   * i.e. all versions full feed only */
-  if(state->tables_mask == 0)
-    {
-      state->tables_mask = state->tables_mask | ROUTINGTABLES_FEED_IPV4_FULL;
-      state->tables_mask = state->tables_mask | ROUTINGTABLES_FEED_IPV6_FULL;
-    }
+
   
-  if(full_and_partial)
-    {
-      if(state->tables_mask & ROUTINGTABLES_FEED_IPV4_FULL)
-        {
-          state->tables_mask = state->tables_mask | ROUTINGTABLES_FEED_IPV4_PARTIAL;
-        }
-      if(state->tables_mask & ROUTINGTABLES_FEED_IPV6_FULL)
-        {
-          state->tables_mask = state->tables_mask | ROUTINGTABLES_FEED_IPV6_PARTIAL;
-        }
-    }
 #endif
   
   return 0;
@@ -267,13 +240,13 @@ int bgpcorsaro_routingtables_init_output(bgpcorsaro_t *bgpcorsaro)
       goto err;      
     }
   state->metric_prefix = NULL;
-  state->ipv4_fullfeed_th = 0; // default: not set
-  state->ipv6_fullfeed_th = 0; // default: not set
+  state->ipv4_fullfeed_th = -1; // default: not set
+  state->ipv6_fullfeed_th = -1; // default: not set
 #ifdef WITH_BGPWATCHER
   state->watcher_tx = 0; // default: don't send data
   state->watcher_server_uri = NULL;
   state->watcher_client_id = NULL;
-  state->tables_mask = 0; // default: all
+  state->send_partial_feed = 0; // default: full feeds only
 #endif
 
   bgpcorsaro_plugin_register_state(bgpcorsaro->plugin_manager, plugin, state);
@@ -289,30 +262,38 @@ int bgpcorsaro_routingtables_init_output(bgpcorsaro_t *bgpcorsaro)
     {
       routingtables_set_metric_prefix(state->routing_tables, state->metric_prefix);
     }
-  if(state->ipv4_fullfeed_th > 0)
+  
+  if(state->ipv4_fullfeed_th != -1)
     {
       routingtables_set_fullfeed_threshold(state->routing_tables,
                                            BGPSTREAM_ADDR_VERSION_IPV4,
                                            state->ipv4_fullfeed_th);
     }
-  if(state->ipv6_fullfeed_th > 0)
+  
+  if(state->ipv6_fullfeed_th != -1)
     {
       routingtables_set_fullfeed_threshold(state->routing_tables,
                                            BGPSTREAM_ADDR_VERSION_IPV6,
                                            state->ipv6_fullfeed_th);
     }
+
+  
 #ifdef WITH_BGPWATCHER
   if(state->watcher_tx)
     {
       if(routingtables_activate_watcher_tx(state->routing_tables,
                                            state->watcher_client_id,
-                                           state->watcher_server_uri,
-                                           state->tables_mask) < 0)
+                                           state->watcher_server_uri) < 0)
         {
           goto err;
         }
       bgpcorsaro_log(__func__, NULL,
                      "BGP watcher connection setup successful");
+
+      if(state->send_partial_feed == 1)
+        {
+          routingtables_activate_partial_feed_tx(state->routing_tables); 
+        }
 
     }
 #endif

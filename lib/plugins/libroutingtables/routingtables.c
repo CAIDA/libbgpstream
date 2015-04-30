@@ -67,15 +67,18 @@ get_wall_time_now()
   return tv.tv_sec;
 }
 
-/* DEBUG FUNCTION */
-/* static void */
-/* print_peer_state(char *prepend, routingtables_t *rt, perpeer_info_t *p) */
-/* { */
-/*   if(bgpwatcher_view_iter_peer_get_state(rt->iter) == BGPWATCHER_VIEW_FIELD_ACTIVE) */
-/*     fprintf(stderr, "%s ---- %s %d state: ACTIVE (%d)\n", prepend, p->peer_str,  bgpwatcher_view_iter_peer_get_peer_id(rt->iter),  p->bgp_fsm_state); */
-/*   else */
-/*     fprintf(stderr, "%s ---- %s %d state: INACTIVE (%d)\n", prepend, p->peer_str, bgpwatcher_view_iter_peer_get_peer_id(rt->iter),  p->bgp_fsm_state); */
-/* } */
+static int filter_ff_peers(bgpwatcher_view_iter_t *iter)
+{
+  return (
+          (bgpwatcher_view_iter_peer_get_pfx_cnt(iter,
+                                                BGPSTREAM_ADDR_VERSION_IPV4,
+                                                BGPWATCHER_VIEW_FIELD_ACTIVE)
+           >= ((rt_view_data_t *)bgpwatcher_view_get_user(bgpwatcher_view_iter_get_view(iter)))->ipv4_fullfeed_th) ||
+          (bgpwatcher_view_iter_peer_get_pfx_cnt(iter,
+                                                 BGPSTREAM_ADDR_VERSION_IPV6,
+                                                 BGPWATCHER_VIEW_FIELD_ACTIVE)
+           >= ((rt_view_data_t *)bgpwatcher_view_get_user(bgpwatcher_view_iter_get_view(iter)))->ipv6_fullfeed_th));
+}
 
 
 /** @note for the future
@@ -1225,7 +1228,7 @@ collector_process_corrupted_message(routingtables_t *rt,
 int
 routingtables_send_view(routingtables_t *rt)
 {
-  return bgpwatcher_client_send_view(rt->watcher_client, rt->view);
+  return bgpwatcher_client_send_view(rt->watcher_client, rt->view, filter_ff_peers);
 }
 #endif
 
@@ -1246,7 +1249,7 @@ routingtables_t *routingtables_create(char *plugin_name, timeseries_t *timeserie
     }
 
   if((rt->view = bgpwatcher_view_create_shared(rt->peersigns,
-                                               NULL /* view user destructor */,                                               
+                                               free /* view user destructor */,                                               
                                                perpeer_info_destroy /* peer user destructor */,
                                                NULL /* pfx destructor */,
                                                free /* pfxpeer user destructor */)) == NULL)
@@ -1274,6 +1277,15 @@ routingtables_t *routingtables_create(char *plugin_name, timeseries_t *timeserie
   rt->ipv4_fullfeed_th = ROUTINGTABLES_DEFAULT_IPV4_FULLFEED_THR;
   rt->ipv6_fullfeed_th = ROUTINGTABLES_DEFAULT_IPV6_FULLFEED_THR;
 
+  rt_view_data_t *view_data = (rt_view_data_t *) malloc_zero(sizeof(rt_view_data_t));
+  if(view_data == NULL)
+    {
+      goto err;
+    }
+  view_data->ipv4_fullfeed_th = rt->ipv4_fullfeed_th;
+  view_data->ipv6_fullfeed_th = rt->ipv6_fullfeed_th;
+  bgpwatcher_view_set_user(rt->view, view_data);
+  
   rt->bgp_time_interval_start = 0;
   rt->bgp_time_interval_end = 0;
   rt->wall_time_interval_start = 0;
@@ -1317,8 +1329,7 @@ char *routingtables_get_metric_prefix(routingtables_t *rt)
 #ifdef WITH_BGPWATCHER
 int routingtables_activate_watcher_tx(routingtables_t *rt,
                                       char *client_name,
-                                      char *server_uri,
-                                      uint8_t tables_mask)
+                                      char *server_uri)
 {
 
   if((rt->watcher_client = bgpwatcher_client_init(0 /* no interests */,
@@ -1352,12 +1363,6 @@ int routingtables_activate_watcher_tx(routingtables_t *rt,
     }
   
   rt->watcher_tx_on = 1;
-  /* default: all feeds */
-  rt->tables_mask = ROUTINGTABLES_ALL_FEEDS;  
-  if(tables_mask != 0)
-    {
-      rt->tables_mask = tables_mask;
-    }
 
   return 0;
 
@@ -1377,18 +1382,28 @@ void routingtables_set_fullfeed_threshold(routingtables_t *rt,
                                          bgpstream_addr_version_t ip_version,
                                          uint32_t threshold)
 {
+  rt_view_data_t *view_data = (rt_view_data_t *)bgpwatcher_view_get_user(rt->view);
   switch(ip_version)
     {
     case BGPSTREAM_ADDR_VERSION_IPV4:
       rt->ipv4_fullfeed_th = threshold;
+      view_data->ipv4_fullfeed_th = rt->ipv4_fullfeed_th;        
       break;
     case BGPSTREAM_ADDR_VERSION_IPV6:
       rt->ipv6_fullfeed_th = threshold;
+      view_data->ipv6_fullfeed_th = rt->ipv6_fullfeed_th;       
       break;
     default:
       /* programming error */
       assert(0);      
     }
+}
+
+void routingtables_activate_partial_feed_tx(routingtables_t *rt)
+{
+  rt_view_data_t *view_data = (rt_view_data_t *)bgpwatcher_view_get_user(rt->view);
+  view_data->ipv4_fullfeed_th = 0;        
+  view_data->ipv6_fullfeed_th = 0;       
 }
 
 int routingtables_get_fullfeed_threshold(routingtables_t *rt,
