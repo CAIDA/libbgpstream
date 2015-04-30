@@ -39,39 +39,6 @@ typedef struct struct_routingtables_t routingtables_t;
 
 /** @} */
 
-/**
- * @name Public Enums
- *
- * @{ */
-
-#ifdef WITH_BGPWATCHER
-/** Type of feed */
-typedef enum {
-
-  ROUTINGTABLES_FEED_IPV4_PARTIAL  = 0b0001,
-
-  ROUTINGTABLES_FEED_IPV4_FULL     = 0b0010,
-
-  ROUTINGTABLES_FEED_IPV6_PARTIAL  = 0b0100,
-
-  ROUTINGTABLES_FEED_IPV6_FULL     = 0b1000,
-
-} routingtables_feed_type_t;
-#endif
-/** @} */
-
-/**
- * @name Public Constants
- *
- * @{ */
-
-/** ROUTINGTABLES_ALL_FEEDS is the expression to use
- *  when we want to select all kinds of peers (ipv4 and
- *  ipv6, full and partial feeds) */
-#define ROUTINGTABLES_ALL_FEEDS  ROUTINGTABLES_FEED_IPV4_PARTIAL | ROUTINGTABLES_FEED_IPV4_FULL | \
-                                 ROUTINGTABLES_FEED_IPV6_PARTIAL | ROUTINGTABLES_FEED_IPV6_FULL
-
-/** @} */
 
 /**
  * @name Public API Functions
@@ -107,24 +74,27 @@ char *routingtables_get_metric_prefix(routingtables_t *rt);
 /** Activate the transmission of bgp views to a bgp watcher server
  *  at the end of every interval
  *  
- * @param rt               pointer to a routingtables instance to update
+ * @param rt               pointer to a routingtables instance
  * @param client_name      name representing this client identity
  *                         if NULL, default is chosen
  * @param server_uri       0MQ-style URI to connect to server
  *                         if NULL, default is chosen
- * @param tables_mask      mask that tells which routing tables should
- *                         populate the view to be sent to the watcher,
- *                         if 0 ALL kinds of tables are sent.
  * @return 0 if the option was set correctly, <0 if an error occurred.
  *
  * @todo add notes that indicates how to use the mask
  */
 int routingtables_activate_watcher_tx(routingtables_t *rt,
                                       char *client_name,
-                                      char *server_uri,
-                                      uint8_t tables_mask);
-#endif
+                                      char *server_uri);
 
+/** Activate the transmission of bgp partial feeds to the
+ *  bgp watcher server
+ *  
+ * @param rt               pointer to a routingtables instance
+ */
+void routingtables_activate_partial_feed_tx(routingtables_t *rt);
+
+#endif
 
 /** Set the value of threshold used to consider a peer a full feed
  *  
@@ -137,7 +107,7 @@ void routingtables_set_fullfeed_threshold(routingtables_t *rt,
                                          bgpstream_addr_version_t ip_version,
                                          uint32_t threshold);
 
-/** get the value of threshold used to consider a peer a full feed
+/** Get the value of threshold used to consider a peer a full feed
  *  
  * @param rt            pointer to a routingtables instance to update
  * @param ip_version    IP version 

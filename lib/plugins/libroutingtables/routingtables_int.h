@@ -302,6 +302,11 @@ typedef struct struct_collector_t {
 } collector_t;
 
 
+typedef struct struct_rt_view_data_t {
+  uint32_t ipv4_fullfeed_th;
+  uint32_t ipv6_fullfeed_th;  
+} rt_view_data_t;
+
 /** A map that associates an a collector_t
  *  structure with each collector */
 KHASH_INIT(collector_data, char *, collector_t, 1, kh_str_hash_func, kh_str_hash_equal);
