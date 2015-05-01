@@ -68,7 +68,8 @@ static int req_list_find(bgpwatcher_client_broker_t *broker, seq_num_t seq_num)
 
   for(i=0; i<MAX_OUTSTANDING_REQ; i++)
     {
-      if(broker->req_list[i].seq_num == seq_num)
+      if(broker->req_list[i].seq_num == seq_num &&
+         broker->req_list[i].in_use != 0)
         {
           return i;
         }
@@ -413,8 +414,7 @@ static int handle_timeouts(bgpwatcher_client_broker_t *broker, uint64_t clock)
 		  "abandoning\n",
 		  req->seq_num);
 
-          req->in_use = 0;
-          broker->req_count--;
+          req_mark_unused(broker, req);
 	  continue;
 	}
 
