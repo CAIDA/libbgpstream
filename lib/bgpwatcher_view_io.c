@@ -851,8 +851,6 @@ int bgpwatcher_view_recv(void *src, bgpwatcher_view_t *view)
 {
   uint32_t u32;
 
-  assert(view != NULL);
-
   bgpstream_peer_id_t *peerid_map = NULL;
   int peerid_map_cnt = 0;
 
