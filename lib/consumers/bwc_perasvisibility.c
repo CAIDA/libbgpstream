@@ -411,7 +411,6 @@ static int flip_table(bwc_t *consumer, bgpwatcher_view_iter_t *it)
           
           bgpstream_id_set_insert(ff_asns, sg->peer_asnumber);
           origin_asn = bgpwatcher_view_iter_pfx_peer_get_orig_asn(it);         
-          assert(origin_asn < BGPWATCHER_VIEW_ASN_NOEXPORT_START);
           
           found = 0;
           for(a = 0; a < STATE->valid_origins; a++)
