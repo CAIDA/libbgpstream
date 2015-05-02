@@ -127,6 +127,9 @@ typedef enum bgpcorsaro_plugin_id
   /** FilterVis plugin */
   BGPCORSARO_PLUGIN_ID_PACIFIER         = 13,
 
+  /** ViewConsumer plugin */
+  BGPCORSARO_PLUGIN_ID_VIEWCONSUMER     = 14,
+
   /** Tag stats plugin */
   BGPCORSARO_PLUGIN_ID_TAGSTATS         = 90,
 

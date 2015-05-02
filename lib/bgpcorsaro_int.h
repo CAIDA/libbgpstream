@@ -38,6 +38,7 @@
 
 #include "bgpcorsaro_plugin.h"
 #include "bgpcorsaro_tag.h"
+#include "bgpwatcher_view.h"
 
 /** @file
  *
@@ -134,6 +135,9 @@ struct bgpcorsaro_record_state
   /** Features of the record that have been identified by earlier plugins */
   uint8_t flags;
 
+  /** Pointer to routingtables views */
+  bgpwatcher_view_t *shared_view_ptr;
+
   /** Tag state */
   bgpcorsaro_tag_state_t tags;
 
@@ -165,6 +169,7 @@ struct bgpcorsaro_record
 
   /** A pointer to the underlying bgpstream record */
   bgpstream_record_t    *bsrecord;
+
 };
 
 /** Convenience macro to get to the bgpstream recprd inside a bgpcorsaro

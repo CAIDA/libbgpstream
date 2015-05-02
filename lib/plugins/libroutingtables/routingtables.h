@@ -27,6 +27,7 @@
 #define __ROUTINGTABLES_H
 
 #include "bgpstream.h"
+#include "bgpwatcher_view.h"
 #include "timeseries.h"
 
 /**
@@ -52,6 +53,14 @@ typedef struct struct_routingtables_t routingtables_t;
  * @return a pointer to a routingtables instance if successful, NULL otherwise
  */
 routingtables_t *routingtables_create(char *plugin_name, timeseries_t *timeseries);
+
+/** Return a pointer to the view used internally in the 
+ *  routingtables code
+ *  
+ * @param rt               pointer to a routingtables instance to update
+ * @return a pointer to the internal bgpwatcher_view
+ */
+bgpwatcher_view_t *routingtables_get_view_ptr(routingtables_t *rt);
 
 /** Set the metric prefix to be used for when outpting the time series
  *  variables at the end of the interval
