@@ -882,6 +882,10 @@ int bgpwatcher_view_set_user(bgpwatcher_view_t *view, void *user)
 void bgpwatcher_view_set_user_destructor(bgpwatcher_view_t *view,
                                          bgpwatcher_view_destroy_user_t *bwv_user_destructor)
 {
+  if(view->user_destructor == bwv_user_destructor)
+    {
+      return;
+    }
   assert(view->user_destructor == NULL);
   view->user_destructor = bwv_user_destructor;
 }
@@ -890,6 +894,10 @@ void
 bgpwatcher_view_set_pfx_user_destructor(bgpwatcher_view_t *view,
                                         bgpwatcher_view_destroy_user_t *bwv_pfx_user_destructor)
 {
+  if(view->pfx_user_destructor == bwv_pfx_user_destructor)
+    {
+      return;
+    }
   assert(view->pfx_user_destructor == NULL);
   view->pfx_user_destructor = bwv_pfx_user_destructor;
 }
@@ -898,6 +906,10 @@ void
 bgpwatcher_view_set_peer_user_destructor(bgpwatcher_view_t *view,
                                          bgpwatcher_view_destroy_user_t *bwv_peer_user_destructor)
 {
+  if(view->peer_user_destructor == bwv_peer_user_destructor)
+    {
+      return;
+    }
   assert(view->peer_user_destructor == NULL);
   view->peer_user_destructor = bwv_peer_user_destructor;
 }
@@ -907,6 +919,10 @@ bgpwatcher_view_set_pfx_peer_user_destructor(bgpwatcher_view_t *view,
                                              bgpwatcher_view_destroy_user_t *bwv_pfx_peer_user_destructor)
 {
   ASSERT_BWV_PFX_PEERINFO_EXT(view);
+  if(view->pfx_peer_user_destructor == bwv_pfx_peer_user_destructor)
+    {
+      return;
+    }
   assert(view->pfx_peer_user_destructor == NULL);
   view->pfx_peer_user_destructor = bwv_pfx_peer_user_destructor;
 }

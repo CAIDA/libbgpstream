@@ -28,6 +28,7 @@ include_HEADERS = 			\
 	bgpwatcher_client.h 		\
 	bgpwatcher_common.h		\
 	bgpwatcher_server.h		\
+	bgpwatcher_consumer_manager.h	\
 	bgpwatcher_view.h
 
 libbgpwatcher_la_SOURCES = 		\
