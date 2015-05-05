@@ -464,6 +464,7 @@ static int recv_pfxs(void *src, bgpwatcher_view_iter_t *iter,
   int pfx_peers_added = 0;
 
   int pfx_rx = 0;
+  int pfx_peer_rx = 0;
 
   ASSERT_MORE;
 
@@ -502,6 +503,7 @@ static int recv_pfxs(void *src, bgpwatcher_view_iter_t *iter,
       ASSERT_MORE;
 
       pfx_peers_added = 0;
+      pfx_peer_rx = 0;
 
       for(j=0; j<UINT16_MAX; j++)
 	{
@@ -514,6 +516,8 @@ static int recv_pfxs(void *src, bgpwatcher_view_iter_t *iter,
               /* end of peers */
               break;
             }
+
+          pfx_peer_rx++;
 
 	  /* orig asn */
 	  DESERIALIZE_VAL(orig_asn);
@@ -564,7 +568,7 @@ static int recv_pfxs(void *src, bgpwatcher_view_iter_t *iter,
       /* peer cnt */
       DESERIALIZE_VAL(peer_cnt);
       peer_cnt = ntohs(peer_cnt);
-      assert(peer_cnt == pfx_peers_added);
+      assert(peer_cnt == pfx_peer_rx);
 
       assert(read == len);
       zmq_msg_close(&msg);
@@ -719,6 +723,9 @@ static int recv_peers(void *src, bgpwatcher_view_iter_t *iter,
       peerid_orig = ntohs(peerid_orig);
       ASSERT_MORE;
 
+      /* by here we have a valid peer to receive */
+      peers_rx++;
+
       /* collector name */
       if((len = zmq_recv(src, ps.collector_str,
                          BGPSTREAM_UTILS_STR_NAME_LEN, 0)) <= 0)
@@ -779,8 +786,6 @@ static int recv_peers(void *src, bgpwatcher_view_iter_t *iter,
       idmap[peerid_orig] = peerid_new;
 
       bgpwatcher_view_iter_activate_peer(iter);
-
-      peers_rx++;
     }
 
   /* receive the number of peers */
