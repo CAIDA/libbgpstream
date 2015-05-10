@@ -26,6 +26,9 @@
 #include "bgpstream_debug.h"
 
 
+#define BUFFER_LEN 1024
+
+
 /* -------------- Reader functions -------------- */
 
 static bool bgpstream_reader_filter_bd_entry(const BGPDUMP_ENTRY * const bd_entry, 
@@ -457,6 +460,55 @@ static void bgpstream_reader_mgr_sorted_insert(bgpstream_reader_mgr_t * const bs
 }
 
 
+static int
+bgpstream_reader_frequency_check(const bgpstream_input_t *in,
+                                 const bgpstream_filter_mgr_t *const filter_mgr)
+{
+  /* consider making this buffer static at the beginning of the file */
+  char buffer[BUFFER_LEN];
+  khiter_t k;
+  int khret;
+
+  if((filter_mgr->update_frequency != 0  &&
+      strcmp(in->filetype, "updates") == 0) ||
+     (filter_mgr->rib_frequency != 0  &&
+      strcmp(in->filetype, "ribs") == 0))      
+    {
+      snprintf(buffer, BUFFER_LEN, "%s.%s.%s",
+               in->fileproject, in->filecollector, in->filetype);             
+      /* first instance */
+      if((k = kh_get(collector_type_ts, filter_mgr->last_processed_ts,
+                     buffer)) == kh_end(filter_mgr->last_processed_ts))
+        {
+          k = kh_put(collector_type_ts, filter_mgr->last_processed_ts,
+                     strdup(buffer), &khret);
+          kh_value(filter_mgr->last_processed_ts, k) = in->epoch_filetime;
+          return 1;
+        }
+
+      /* we have to check the frequency only if we get a new filetime */
+      if(in->epoch_filetime != kh_value(filter_mgr->last_processed_ts, k))
+        {
+          if(strcmp(in->filetype, "ribs") == 0 &&
+             in->epoch_filetime <
+             kh_value(filter_mgr->last_processed_ts, k) + filter_mgr->rib_frequency)
+            {
+              return 0;
+            }
+          if(strcmp(in->filetype, "updates") == 0 &&
+             in->epoch_filetime <
+             kh_value(filter_mgr->last_processed_ts, k) + filter_mgr->update_frequency)
+            {
+              return 0;
+            }      
+          kh_value(filter_mgr->last_processed_ts, k) = in->epoch_filetime;
+        }
+    }
+
+  return 1;
+}
+
+
 void bgpstream_reader_mgr_add(bgpstream_reader_mgr_t * const bs_reader_mgr, 
 			      const bgpstream_input_t * const toprocess_queue,
 			      const bgpstream_filter_mgr_t * const filter_mgr) {
@@ -465,18 +517,21 @@ void bgpstream_reader_mgr_add(bgpstream_reader_mgr_t * const bs_reader_mgr,
   bgpstream_reader_t * bs_reader = NULL;
   // foreach  bgpstream input:
   while(iterator != NULL) {
-    bgpstream_debug("\tBSR_MGR: add input: i");
-    // a) create a new reader (create includes the first read)
-    bs_reader = bgpstream_reader_create(iterator, filter_mgr);
-    // if it creates correctly
-    if(bs_reader != NULL) {
-      // then add the reader to the sorted queue
-      bgpstream_reader_mgr_sorted_insert(bs_reader_mgr, bs_reader);
-    }
-    else{
-      bgpstream_log_err("ERROR\n");
-      return;
-    }
+    if(bgpstream_reader_frequency_check(iterator, filter_mgr))
+      {
+        bgpstream_debug("\tBSR_MGR: add input: i");
+        // a) create a new reader (create includes the first read)
+        bs_reader = bgpstream_reader_create(iterator, filter_mgr);
+        // if it creates correctly
+        if(bs_reader != NULL) {
+          // then add the reader to the sorted queue
+          bgpstream_reader_mgr_sorted_insert(bs_reader_mgr, bs_reader);
+        }
+        else{
+          bgpstream_log_err("ERROR: could not create reader\n");
+          return;
+        }
+      }
     // go to the next input
     iterator = iterator->next;
   }

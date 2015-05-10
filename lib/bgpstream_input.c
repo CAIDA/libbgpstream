@@ -260,55 +260,6 @@ static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * cons
 }
 
 
-/* /\* Set the last input to process   */
-/*  * the function is static: it is not visible outside this file */
-/*  *\/ */
-/* static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * const bs_input_mgr){ */
-/*   bgpstream_debug("\tBSI_MGR: last to process set start"); */
-/*   bs_input_mgr->last_to_process = NULL; */
-/*   bgpstream_input_t *iterator = bs_input_mgr->head; */
-/*   int rv_update = 0; */
-/*   int rv_update_time = 0; */
-/*   // when we parse ribs we return all the ribs at a given filetime */
-/*   // plus all the updates having the same filetime (rv-ris updates rule applies) */
-/*   if(iterator != NULL && strcmp(iterator->filetype,"ribs") == 0) { */
-/*     // 1) collecting all the ribs */
-/*     while( iterator != NULL &&						\ */
-/* 	   strcmp(iterator->filetype,bs_input_mgr->head->filetype) == 0 && \ */
-/* 	   iterator->epoch_filetime == bs_input_mgr->head->epoch_filetime ){ */
-/*       bs_input_mgr->last_to_process = iterator; */
-/*       iterator = iterator->next; */
-/*     } */
-/*   } */
-/*   // if the head (or the iterator after ribs) refers to an update input */
-/*   if(iterator != NULL && strcmp(iterator->filetype,"updates") == 0) { */
-/*     while( iterator != NULL &&						\ */
-/* 	   strcmp(iterator->filetype, "updates") == 0 && \ */
-/* 	   iterator->epoch_filetime == bs_input_mgr->head->epoch_filetime ){    */
-/*       if(strcmp(iterator->fileproject,"routeviews") == 0) { */
-/* 	rv_update = 1; // check if a routeviews update has been read and save its time */
-/* 	rv_update_time = iterator->epoch_filetime; */
-/*       } */
-/*       bs_input_mgr->last_to_process = iterator; */
-/*       iterator = iterator->next; */
-/*     } */
-/*     if(rv_update == 1) { */
-/*       // when a routeviews update is present in the list, we also collect all */
-/*       // the ris updates within the same interval (i.e. rv_time already included, */
-/*       // plus rv_time + 5 mins plus rv_time + 10 mins). In fact, while routeviews */
-/*       // updates provides information related to a 15 mins interval, ris does */
-/*       // that for a 5 mins interval */
-/*       while( iterator != NULL &&					\ */
-/* 	     strcmp(iterator->filetype,"updates") == 0 && \ */
-/* 	     iterator->epoch_filetime <= (rv_update_time + 10 * 60)  ){ */
-/* 	bs_input_mgr->last_to_process = iterator; */
-/* 	iterator = iterator->next; */
-/*       }       */
-/*     }     */
-/*   } */
-/*   bgpstream_debug("\tBSI_MGR: last to process set end"); */
-/* } */
-
 
 /* Remove a sublist-queue of input objects to process 
  * from the FIFO queue managed by the bgpstream input manager 

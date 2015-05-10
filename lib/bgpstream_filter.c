@@ -19,7 +19,7 @@
 
 #include "bgpstream_filter.h"
 #include "bgpstream_debug.h"
-
+#include "assert.h"
 
 /* allocate memory for a new bgpstream filter */
 bgpstream_filter_mgr_t *bgpstream_filter_mgr_create() {
@@ -32,11 +32,12 @@ bgpstream_filter_mgr_t *bgpstream_filter_mgr_create() {
   bs_filter_mgr->collectors = NULL;
   bs_filter_mgr->bgp_types = NULL;
   bs_filter_mgr->time_intervals = NULL;
+  bs_filter_mgr->last_processed_ts = NULL;
+  bs_filter_mgr->rib_frequency = 0;
+  bs_filter_mgr->update_frequency = 0;
   bgpstream_debug("\tBSF_MGR: create end");
   return bs_filter_mgr;
 }
-
-
 
 void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
 				     bgpstream_filter_type_t filter_type,
@@ -77,6 +78,31 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
 }
 
 
+void bgpstream_filter_mgr_frequency_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
+                                               bgpstream_record_dump_type_t type,
+                                               uint32_t frequency)
+{
+  bgpstream_debug("\tBSF_MGR:: add_filter start");
+  assert(bs_filter_mgr != NULL);
+  if(frequency != 0 && bs_filter_mgr->last_processed_ts == NULL)
+    {
+      if((bs_filter_mgr->last_processed_ts = kh_init(collector_type_ts)) == NULL)
+        {
+          bgpstream_log_warn("\tBSF_MGR: can't allocate memory for collectortype map"); 
+        }
+    }
+  if(type == BGPSTREAM_RIB)
+    {
+      bs_filter_mgr->rib_frequency = frequency;
+    }
+  else
+    {
+      bs_filter_mgr->update_frequency = frequency;
+    }
+  bgpstream_debug("\tBSF_MGR:: add_filter end");
+
+}
+
 
 void bgpstream_filter_mgr_interval_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
 					      uint32_t begin_time,
@@ -112,6 +138,7 @@ void bgpstream_filter_mgr_destroy(bgpstream_filter_mgr_t *bs_filter_mgr) {
   // destroying filters
   bgpstream_string_filter_t * sf;
   bgpstream_interval_filter_t * tif;
+  khiter_t k;
   // projects
   sf = NULL;
   while(bs_filter_mgr->projects != NULL) {
@@ -140,6 +167,18 @@ void bgpstream_filter_mgr_destroy(bgpstream_filter_mgr_t *bs_filter_mgr) {
     bs_filter_mgr->time_intervals =  bs_filter_mgr->time_intervals->next;
     free(tif);
   }
+  // rib/update frequency
+  if(bs_filter_mgr->last_processed_ts != NULL)
+    {
+      for(k=kh_begin(bs_filter_mgr->last_processed_ts); k!=kh_end(bs_filter_mgr->last_processed_ts); ++k)
+        {
+          if(kh_exist(bs_filter_mgr->last_processed_ts,k))
+            {
+              free(kh_key(bs_filter_mgr->last_processed_ts,k));
+            }
+        }
+      kh_destroy(collector_type_ts, bs_filter_mgr->last_processed_ts);
+    }
   // free the mgr structure
   free(bs_filter_mgr);
   bs_filter_mgr = NULL;
