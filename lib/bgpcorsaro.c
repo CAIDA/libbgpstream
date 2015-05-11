@@ -170,7 +170,7 @@ static inline void populate_interval(bgpcorsaro_interval_t *interval,
   interval->time = time;
 }
 
-/** Check if the meta output files shuld be rotated */
+/** Check if the meta output files should be rotated */
 static int is_meta_rotate_interval(bgpcorsaro_t *bgpcorsaro)
 {
   assert(bgpcorsaro != NULL);
