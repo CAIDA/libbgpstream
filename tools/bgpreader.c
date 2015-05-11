@@ -104,6 +104,8 @@ void usage() {
 	  "   -C <collector> process records from only the given collector*\n"
 	  "   -T <type>      process records with only the given type (ribs, updates)*\n"
 	  "   -W <start,end> process records only within the given time window*\n"
+          "   -R <freq>      process rib files whose filetime is at least <freq> seconds apart\n"
+          "   -U <freq>      process update files whose filetime is at least <freq> seconds apart\n"
 	  "   -b             make blocking requests for BGP records\n"
 	  "                  allows bgpstream to be used to process data in real-time\n"
 	  "   -r             print info for each BGP record (in bgpstream format) [default]\n"
@@ -145,6 +147,8 @@ int main(int argc, char *argv[])
   char *interface_options[OPTION_CMD_CNT];
   int interface_options_cnt = 0;
 
+  int rib_frequency = 0;
+  int update_frequency = 0;
   int blocking = 0;
   int record_output_on = 0;
   int record_bgpdump_output_on = 0;
@@ -163,7 +167,7 @@ int main(int argc, char *argv[])
   }
 
   while (prevoptind = optind,
-	 (opt = getopt (argc, argv, "P:C:T:W:d:brmeD:U:H:F:o:h?")) >= 0)
+	 (opt = getopt (argc, argv, "P:C:T:W:R:U:d:brmeo:h?")) >= 0)
     {
       if (optind == prevoptind + 2 && (optarg == NULL || *optarg == '-') ) {
         opt = ':';
@@ -231,6 +235,12 @@ int main(int argc, char *argv[])
 	  windows[windows_cnt].end =  atoi(endp);
 	  windows_cnt++;
 	  break;
+        case 'R':
+          rib_frequency = atoi(optarg);
+          break;
+        case 'U':
+          update_frequency = atoi(optarg);
+          break;
 	case 'd':
           if((datasource_id =
               bgpstream_get_data_interface_id_by_name(bs, optarg)) == 0)
@@ -370,6 +380,17 @@ int main(int argc, char *argv[])
       bgpstream_add_interval_filter(bs, windows[i].start, windows[i].end);
     }
 
+  /* frequencies */
+  if(rib_frequency > 0)
+    {
+      bgpstream_add_frequency_filter(bs, BGPSTREAM_RIB, rib_frequency);
+    }
+  
+  if(update_frequency > 0)
+    {
+      bgpstream_add_frequency_filter(bs, BGPSTREAM_UPDATE, update_frequency);
+    }
+  
   /* datasource */
   bgpstream_set_data_interface(bs, datasource_id);
 
