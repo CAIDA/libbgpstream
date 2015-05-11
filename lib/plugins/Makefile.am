@@ -62,6 +62,9 @@ PLUGIN_LIBS += $(top_builddir)/lib/plugins/libroutingtables/libroutingtables.la
 AM_CPPFLAGS += -I$(top_srcdir)/lib/plugins/libroutingtables
 PLUGIN_SRC+=bgpcorsaro_routingtables.c bgpcorsaro_routingtables.h
 endif
+if WITH_PLUGIN_VIEWCONSUMER
+PLUGIN_SRC+=bgpcorsaro_viewconsumer.c bgpcorsaro_viewconsumer.h
+endif
 if WITH_PLUGIN_TAGSTATS
 PLUGIN_SRC+=bgpcorsaro_tagstats.c bgpcorsaro_tagstats.h
 endif

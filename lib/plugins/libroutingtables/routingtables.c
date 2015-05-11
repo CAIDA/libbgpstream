@@ -1306,6 +1306,11 @@ routingtables_t *routingtables_create(char *plugin_name, timeseries_t *timeserie
   return NULL;
 }
 
+bgpwatcher_view_t *routingtables_get_view_ptr(routingtables_t *rt)
+{
+  return rt->view;
+}
+
 void routingtables_set_metric_prefix(routingtables_t *rt,
                                      char *metric_prefix)
 {

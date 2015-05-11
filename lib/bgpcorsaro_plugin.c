@@ -79,6 +79,9 @@
 #include "bgpcorsaro_routingtables.h"
 #endif
 
+#ifdef WITH_PLUGIN_VIEWCONSUMER
+#include "bgpcorsaro_viewconsumer.h"
+#endif
 /*
  * add new plugin includes below using:
  *

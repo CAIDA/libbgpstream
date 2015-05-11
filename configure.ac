@@ -245,6 +245,7 @@ ED_WITH_PLUGIN([bgpcorsaro_bgpstats],[bgpstats],[BGPSTATS],[no])
 ED_WITH_PLUGIN([bgpcorsaro_filtervis],[filtervis],[FILTERVIS],[no])
 ED_WITH_PLUGIN([bgpcorsaro_pacifier],[pacifier],[PACIFIER],[no])
 ED_WITH_PLUGIN([bgpcorsaro_routingtables],[routingtables],[ROUTINGTABLES],[no])
+ED_WITH_PLUGIN([bgpcorsaro_viewconsumer],[viewconsumer],[VIEWCONSUMER],[no])
 ED_WITH_PLUGIN([bgpcorsaro_tagstats],[tagstats],[TAGSTATS],[no])
 
 # this MUST go after all the ED_WITH_PLUGIN macro calls

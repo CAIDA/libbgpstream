@@ -444,6 +444,7 @@ int bgpcorsaro_routingtables_process_record(bgpcorsaro_t *bgpcorsaro,
     {
       return 0;
     }
-
+  record->state.shared_view_ptr = routingtables_get_view_ptr(state->routing_tables);
+    
   return routingtables_process_record(state->routing_tables, bs_record);
 }

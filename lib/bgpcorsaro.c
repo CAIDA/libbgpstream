@@ -56,6 +56,7 @@ static bgpcorsaro_record_t *bgpcorsaro_record_alloc(bgpcorsaro_t *bgpcorsaro)
 		     "could not malloc bgpcorsaro_record");
       return NULL;
     }
+  
   /* this bgpcorsaro record still needs a bgpstream record to be loaded... */
   return rec;
 }
@@ -74,6 +75,8 @@ static inline void bgpcorsaro_record_state_reset(bgpcorsaro_record_t *record)
      cleared. if you add a field to bgpcorsaro_record_state_t, you MUST reset it
      here */
 
+  /* reset the shared view pointer */
+  record->state.shared_view_ptr = NULL;
   /* reset the general flags */
   record->state.flags = 0;
 
@@ -94,7 +97,6 @@ static inline void bgpcorsaro_record_state_reset(bgpcorsaro_record_t *record)
 static void bgpcorsaro_record_free(bgpcorsaro_record_t *record)
 {
   bgpcorsaro_tag_state_free(&record->state);
-
   /* we will assume that somebody else is taking care of the bgpstream record */
   if(record != NULL)
     {
