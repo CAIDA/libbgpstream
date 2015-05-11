@@ -58,11 +58,6 @@
  *
  */
 
-/** The number of output file pointers to support non-blocking close at the end
-    of an interval. If the wandio buffers are large enough that it takes more
-    than 1 interval to drain the buffers, consider increasing this number */
-#define OUTFILE_POINTERS 2
-
 /** The name of this plugin */
 #define PLUGIN_NAME "viewconsumer"
 
@@ -85,16 +80,6 @@ static bgpcorsaro_plugin_t bgpcorsaro_viewconsumer_plugin = {
 
 /** Holds the state for an instance of this plugin */
 struct bgpcorsaro_viewconsumer_state_t {
-  
-  /** The outfile for the plugin */
-  iow_t *outfile;
-
-  /** A set of pointers to outfiles to support non-blocking close */
-  iow_t *outfile_p[OUTFILE_POINTERS];
-
-  /** The current outfile */
-  int outfile_n;
-
   /* plugin custom variables */
   bw_consumer_manager_t *manager;
   bgpwatcher_view_t *shared_view;
@@ -177,10 +162,10 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
     {
       return 0;
     }
-  
+
   /* NB: remember to reset optind to 1 before using getopt! */
   optind = 1;
-  
+
   /* parsing args */
   while(prevoptind = optind,
         (opt = getopt(plugin->argc, plugin->argv, ":c:m:?")) >= 0)
@@ -225,7 +210,7 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
     }
 
   bw_consumer_manager_set_metric_prefix(state->manager, state->metric_prefix);
-  
+
   if(consumer_cmds_cnt == 0)
     {
       fprintf(stderr,
@@ -263,7 +248,8 @@ int bgpcorsaro_viewconsumer_init_output(bgpcorsaro_t *bgpcorsaro)
   bgpcorsaro_plugin_t *plugin = PLUGIN(bgpcorsaro);
   assert(plugin != NULL);
 
-  if((state = malloc_zero(sizeof(struct bgpcorsaro_viewconsumer_state_t))) == NULL)
+  if((state =
+      malloc_zero(sizeof(struct bgpcorsaro_viewconsumer_state_t))) == NULL)
     {
       bgpcorsaro_log(__func__, bgpcorsaro,
 		     "could not malloc bgpcorsaro_viewconsumer_state_t");
@@ -271,9 +257,10 @@ int bgpcorsaro_viewconsumer_init_output(bgpcorsaro_t *bgpcorsaro)
     }
 
   /** initialize plugin custom variables */
-  
+
     /* better just grab a pointer to the manager */
-  if((state->manager = bw_consumer_manager_create(bgpcorsaro->timeseries)) == NULL)
+  if((state->manager =
+      bw_consumer_manager_create(bgpcorsaro->timeseries)) == NULL)
     {
       bgpcorsaro_log(__func__, bgpcorsaro,
 		     "could not initialize consumer manager");
@@ -284,14 +271,12 @@ int bgpcorsaro_viewconsumer_init_output(bgpcorsaro_t *bgpcorsaro)
   state->shared_view = NULL;
 
   bgpcorsaro_plugin_register_state(bgpcorsaro->plugin_manager, plugin, state);
-    
+
   /* parse the arguments and update state */
   if(parse_args(bgpcorsaro) != 0)
     {
       goto err;
     }
-  
-  /* defer opening the output file until we start the first interval */
 
   return 0;
 
@@ -303,26 +288,15 @@ int bgpcorsaro_viewconsumer_init_output(bgpcorsaro_t *bgpcorsaro)
 /** Implements the close_output function of the plugin API */
 int bgpcorsaro_viewconsumer_close_output(bgpcorsaro_t *bgpcorsaro)
 {
-  int i;
   struct bgpcorsaro_viewconsumer_state_t *state = STATE(bgpcorsaro);
 
   if(state != NULL)
     {
-      /* close all the outfile pointers */
-      for(i = 0; i < OUTFILE_POINTERS; i++)
-	{
-	  if(state->outfile_p[i] != NULL)
-	    {
-	      wandio_wdestroy(state->outfile_p[i]);
-	      state->outfile_p[i] = NULL;
-	    }
-	}
-      state->outfile = NULL;
-
       /** destroy plugin custom variables */
       bw_consumer_manager_destroy(&state->manager);
       state->shared_view = NULL;
-      bgpcorsaro_plugin_free_state(bgpcorsaro->plugin_manager, PLUGIN(bgpcorsaro));
+      bgpcorsaro_plugin_free_state(bgpcorsaro->plugin_manager,
+                                   PLUGIN(bgpcorsaro));
     }
   return 0;
 }
@@ -331,29 +305,8 @@ int bgpcorsaro_viewconsumer_close_output(bgpcorsaro_t *bgpcorsaro)
 int bgpcorsaro_viewconsumer_start_interval(bgpcorsaro_t *bgpcorsaro,
                                             bgpcorsaro_interval_t *int_start)
 {
-  struct bgpcorsaro_viewconsumer_state_t *state = STATE(bgpcorsaro);
-
-  if(state->outfile == NULL)
-    {
-      if((
-	  state->outfile_p[state->outfile_n] =
-	  bgpcorsaro_io_prepare_file(bgpcorsaro,
-				     PLUGIN(bgpcorsaro)->name,
-				     int_start)) == NULL)
-	{
-	  bgpcorsaro_log(__func__, bgpcorsaro, "could not open %s output file",
-			 PLUGIN(bgpcorsaro)->name);
-	  return -1;
-	}
-      state->outfile = state->
-	outfile_p[state->outfile_n];
-    }
-
   /* no operation required, this plugin works
    * at the end of the interval  */
-
-  bgpcorsaro_io_write_interval_start(bgpcorsaro, state->outfile, int_start);
-
   return 0;
 }
 
@@ -365,41 +318,23 @@ int bgpcorsaro_viewconsumer_end_interval(bgpcorsaro_t *bgpcorsaro,
 
   bgpcorsaro_log(__func__, bgpcorsaro, "Computing stats for interval %d",
 		 int_end->number);
-  
+
   /** plugin end of interval operations */
-  if(state->shared_view != 0)
+  if(state->shared_view == 0)
     {
-      if(bw_consumer_manager_process_view(state->manager,
-                                          DEFAULT_INTEREST,
-                                          state->shared_view) != 0)
-        {
-          // an error occurred during the interval_end operations
-          bgpcorsaro_log(__func__, bgpcorsaro, "could not end interval for %s plugin, time %d",
-                         PLUGIN(bgpcorsaro)->name, bgpwatcher_view_get_time(state->shared_view));      
-          return -1;
-        }
+      return 0;
     }
-  
-  bgpcorsaro_io_write_interval_end(bgpcorsaro, state->outfile, int_end);
 
-  /* if we are rotating, now is when we should do it */
-  if(bgpcorsaro_is_rotate_interval(bgpcorsaro))
+  if(bw_consumer_manager_process_view(state->manager,
+                                      DEFAULT_INTEREST,
+                                      state->shared_view) != 0)
     {
-      /* leave the current file to finish draining buffers */
-      assert(state->outfile != NULL);
-
-      /* move on to the next output pointer */
-      state->outfile_n = (state->outfile_n+1) %
-	OUTFILE_POINTERS;
-
-      if(state->outfile_p[state->outfile_n] != NULL)
-	{
-	  /* we're gonna have to wait for this to close */
-	  wandio_wdestroy(state->outfile_p[state->outfile_n]);
-	  state->outfile_p[state->outfile_n] =  NULL;
-	}
-
-      state->outfile = NULL;
+      // an error occurred during the interval_end operations
+      bgpcorsaro_log(__func__, bgpcorsaro,
+                     "could not end interval for %s plugin, time %d",
+                     PLUGIN(bgpcorsaro)->name,
+                     bgpwatcher_view_get_time(state->shared_view));
+      return -1;
     }
 
   return 0;
@@ -411,7 +346,7 @@ int bgpcorsaro_viewconsumer_process_record(bgpcorsaro_t *bgpcorsaro,
 {
   struct bgpcorsaro_viewconsumer_state_t *state = STATE(bgpcorsaro);
   state->shared_view = record->state.shared_view_ptr;
-  
+
   /* no other operation required, this plugin works
    * at the end of the interval  */
 
