@@ -56,6 +56,7 @@ typedef struct struct_bgpstream_csvfile_datasource_t {
   char collector[BGPSTREAM_PAR_MAX_LEN];
   char bgp_type[BGPSTREAM_PAR_MAX_LEN];
   int filetime;
+  int time_span;
 } bgpstream_csvfile_datasource_t;
 
 

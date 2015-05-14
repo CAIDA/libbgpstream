@@ -188,32 +188,6 @@ static void bgpstream_set_intervals(bgpstream_input_t *input,
           *current_interval_end = input->epoch_filetime + input->time_span;
         }
     }
-  
-  /*
-  const int rv_update_offset  = 15 * 60; 
-  const int ris_update_offset =  5 * 60; 
-
-  if(strcmp(input->filetype,"ribs") == 0) {
-    if(strcmp(input->fileproject,"routeviews") == 0) {
-      *current_interval_start = input->epoch_filetime - rv_update_offset;
-      *current_interval_end = input->epoch_filetime + rv_update_offset;
-    }
-    if(strcmp(input->fileproject,"ris") == 0) {
-      *current_interval_start = input->epoch_filetime - ris_update_offset;
-      *current_interval_end = input->epoch_filetime + ris_update_offset;
-    }
-  }
-  if(strcmp(input->filetype,"updates") == 0) {
-    if(strcmp(input->fileproject,"routeviews") == 0) {
-      *current_interval_start = input->epoch_filetime;
-      *current_interval_end = input->epoch_filetime + rv_update_offset;
-    }
-    if(strcmp(input->fileproject,"ris") == 0) {
-      *current_interval_start = input->epoch_filetime;
-      *current_interval_end = input->epoch_filetime + ris_update_offset;
-    }
-  }
-  */
 }
 
 
@@ -255,8 +229,8 @@ static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * cons
     readers_counter++;
     // compute current input interval
     bgpstream_set_intervals(iterator, &current_interval_start, &current_interval_end);
-    fprintf(stderr, "intervals: %d -> %d\n", current_interval_start, current_interval_end);
-    fprintf(stderr, "max end: %d \n", to_process_interval_end);
+    /* fprintf(stderr, "intervals: %d -> %d\n", current_interval_start, current_interval_end); */
+    /* fprintf(stderr, "max end: %d \n", to_process_interval_end); */
     // if it does not overlap with the global one, then we reached the end
     if(current_interval_start >= to_process_interval_end) {
       // fprintf(stderr,"\n\n");
@@ -267,14 +241,14 @@ static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * cons
       to_process_interval_end = current_interval_end;    
     } 
 
-    fprintf(stderr,"%s - %s\n", iterator->fileproject, iterator->filetype);
-    fprintf(stderr,"\t%d - %d | %d\n", current_interval_start, current_interval_end, to_process_interval_end);    
+    /* fprintf(stderr,"%s - %s\n", iterator->fileproject, iterator->filetype); */
+    /* fprintf(stderr,"\t%d - %d | %d\n", current_interval_start, current_interval_end, to_process_interval_end);     */
     // and we update the last to process
     bs_input_mgr->last_to_process = iterator;
     // next
     iterator = iterator->next;
   }
-  fprintf(stderr, "End of last to process\n\n");
+  /* fprintf(stderr, "End of last to process\n\n"); */
   bgpstream_debug("\tBSI_MGR: last to process set end");
 }
 

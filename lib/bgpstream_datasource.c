@@ -479,7 +479,7 @@ static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customli
       /* 							     strdup(customlist_ds->project), */
       /* 							     strdup(customlist_ds->collector), */
       /* 							     strdup(customlist_ds->bgp_type), */
-      /* 							     customlist_ds->filetime); */
+      /* 							     customlist_ds->filetime, 120); */
       /* } */
       // file 2:
       strcpy(customlist_ds->filename, "./test-dumps/routeviews.route-views.jinx.updates.1401493500.bz2");
@@ -492,7 +492,7 @@ static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customli
 							     strdup(customlist_ds->project),
 							     strdup(customlist_ds->collector),
 							     strdup(customlist_ds->bgp_type),
-							     customlist_ds->filetime, 0);
+							     customlist_ds->filetime, 900);
       }
       // file 3:
       /* strcpy(customlist_ds->filename, "./test-dumps/ris.rrc06.ribs.1400544000.gz"); */
@@ -505,7 +505,7 @@ static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customli
       /* 							     strdup(customlist_ds->project), */
       /* 							     strdup(customlist_ds->collector), */
       /* 							     strdup(customlist_ds->bgp_type), */
-      /* 							     customlist_ds->filetime); */
+      /* 							     customlist_ds->filetime,120); */
       /* } */
       // file 4:
       strcpy(customlist_ds->filename, "./test-dumps/ris.rrc06.updates.1401488100.gz");
@@ -518,7 +518,7 @@ static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customli
 							     strdup(customlist_ds->project),
 							     strdup(customlist_ds->collector),
 							     strdup(customlist_ds->bgp_type),
-							     customlist_ds->filetime, 0);
+							     customlist_ds->filetime, 300);
       }
       // end of files
     }
@@ -682,6 +682,9 @@ static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_dat
 	  case 4:
 	    csvfile_ds->filetime = atoi(tok);	
 	    break;
+	  case 5:
+	    csvfile_ds->time_span = atoi(tok);	
+	    break;
 	  default:
 	    continue;
 	  }
@@ -694,7 +697,8 @@ static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_dat
 							       strdup(csvfile_ds->project),
 							       strdup(csvfile_ds->collector),
 							       strdup(csvfile_ds->bgp_type),
-							       csvfile_ds->filetime, 0);
+							       csvfile_ds->filetime,
+                                                               csvfile_ds->time_span);
 	}
 	line = realloc(line,1024 * sizeof(char));      	  	
 
