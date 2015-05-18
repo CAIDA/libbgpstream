@@ -479,7 +479,7 @@ static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customli
       /* 							     strdup(customlist_ds->project), */
       /* 							     strdup(customlist_ds->collector), */
       /* 							     strdup(customlist_ds->bgp_type), */
-      /* 							     customlist_ds->filetime); */
+      /* 							     customlist_ds->filetime, 120); */
       /* } */
       // file 2:
       strcpy(customlist_ds->filename, "./test-dumps/routeviews.route-views.jinx.updates.1401493500.bz2");
@@ -492,7 +492,7 @@ static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customli
 							     strdup(customlist_ds->project),
 							     strdup(customlist_ds->collector),
 							     strdup(customlist_ds->bgp_type),
-							     customlist_ds->filetime);
+							     customlist_ds->filetime, 900);
       }
       // file 3:
       /* strcpy(customlist_ds->filename, "./test-dumps/ris.rrc06.ribs.1400544000.gz"); */
@@ -505,7 +505,7 @@ static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customli
       /* 							     strdup(customlist_ds->project), */
       /* 							     strdup(customlist_ds->collector), */
       /* 							     strdup(customlist_ds->bgp_type), */
-      /* 							     customlist_ds->filetime); */
+      /* 							     customlist_ds->filetime,120); */
       /* } */
       // file 4:
       strcpy(customlist_ds->filename, "./test-dumps/ris.rrc06.updates.1401488100.gz");
@@ -518,7 +518,7 @@ static int bgpstream_customlist_datasource_update_input_queue(bgpstream_customli
 							     strdup(customlist_ds->project),
 							     strdup(customlist_ds->collector),
 							     strdup(customlist_ds->bgp_type),
-							     customlist_ds->filetime);
+							     customlist_ds->filetime, 300);
       }
       // end of files
     }
@@ -682,6 +682,9 @@ static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_dat
 	  case 4:
 	    csvfile_ds->filetime = atoi(tok);	
 	    break;
+	  case 5:
+	    csvfile_ds->time_span = atoi(tok);	
+	    break;
 	  default:
 	    continue;
 	  }
@@ -694,7 +697,8 @@ static int bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_dat
 							       strdup(csvfile_ds->project),
 							       strdup(csvfile_ds->collector),
 							       strdup(csvfile_ds->bgp_type),
-							       csvfile_ds->filetime);
+							       csvfile_ds->filetime,
+                                                               csvfile_ds->time_span);
 	}
 	line = realloc(line,1024 * sizeof(char));      	  	
 
@@ -866,7 +870,7 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
 	 "SELECT "
 	 "projects.path, collectors.path, bgp_types.path, "
 	 "projects.name, collectors.name, bgp_types.name, projects.file_ext, "
-	 "file_time "
+	 "file_time, on_web_frequency.offset "
 	 "FROM bgp_data "
 	 "JOIN bgp_types  ON bgp_types.id  = bgp_data.bgp_type_id "
 	 "JOIN collectors ON collectors.id = bgp_data.collector_id "
@@ -1070,7 +1074,14 @@ static bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream
   mysql_ds->results[7].is_unsigned = 0;
   mysql_ds->results[7].is_null = 0;
   mysql_ds->results[7].length = 0;
+  /* FILE TIME SPAN */
+  mysql_ds->results[8].buffer_type = MYSQL_TYPE_LONG;
+  mysql_ds->results[8].buffer = (void *) &(mysql_ds->file_time_span);
+  mysql_ds->results[8].is_unsigned = 0;
+  mysql_ds->results[8].is_null = 0;
+  mysql_ds->results[8].length = 0;
 
+  
   /* Bind the results buffer */
   if (mysql_stmt_bind_result(mysql_ds->stmt, mysql_ds->results) != 0) {
     fprintf(stderr, " mysql_stmt_bind_result() failed\n");
@@ -1249,8 +1260,8 @@ static int bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasou
 					    strdup(mysql_ds->proj_name_res),
 					    strdup(mysql_ds->coll_name_res),
 					    strdup(mysql_ds->type_name_res),
-					    mysql_ds->filetime_res
-					    );
+					    mysql_ds->filetime_res,
+					    mysql_ds->file_time_span);
     //DEBUG printf("%s\n", mysql_ds->filename_res);
     bgpstream_debug("\t\tBSDS_MYSQL: added %d new inputs to input queue", num_results);
     bgpstream_debug("\t\tBSDS_MYSQL: %s - %s - %d", 

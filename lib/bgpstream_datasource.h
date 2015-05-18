@@ -56,6 +56,7 @@ typedef struct struct_bgpstream_csvfile_datasource_t {
   char collector[BGPSTREAM_PAR_MAX_LEN];
   char bgp_type[BGPSTREAM_PAR_MAX_LEN];
   int filetime;
+  int time_span;
 } bgpstream_csvfile_datasource_t;
 
 
@@ -78,7 +79,7 @@ typedef struct struct_bgpstream_mysql_datasource_t {
   // variables to bind to placeholders
   long int last_timestamp;       // parameter to bind I
   long int current_timestamp;     // parameter to bind II
-  MYSQL_BIND results[8];    // query results
+  MYSQL_BIND results[9];    // query results
   // variables to bind to results
   char proj_path_res[BGPSTREAM_PAR_MAX_LEN];
   char coll_path_res[BGPSTREAM_PAR_MAX_LEN];
@@ -88,6 +89,7 @@ typedef struct struct_bgpstream_mysql_datasource_t {
   char type_name_res[BGPSTREAM_PAR_MAX_LEN];
   char file_ext_res[BGPSTREAM_PAR_MAX_LEN];
   int filetime_res;
+  int file_time_span;
   // others
 } bgpstream_mysql_datasource_t;
 

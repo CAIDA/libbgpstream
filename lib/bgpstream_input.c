@@ -82,7 +82,7 @@ bool bgpstream_input_mgr_is_empty(const bgpstream_input_mgr_t * const bs_input_m
 int bgpstream_input_mgr_push_sorted_input(bgpstream_input_mgr_t * const bs_input_mgr, 
 					  char * filename, char * fileproject,
 					  char * filecollector, char * const filetype,
-					  const int epoch_filetime) {
+					  const int epoch_filetime, const int time_span) {
   bgpstream_debug("\t\tBSI: push input start");
   if(bs_input_mgr == NULL) {
     return 0; // if the bs_input_mgr is not initialized, then we cannot insert any new input
@@ -103,6 +103,7 @@ int bgpstream_input_mgr_push_sorted_input(bgpstream_input_mgr_t * const bs_input
   bs_input->filetype = filetype;
 
   bs_input->epoch_filetime = epoch_filetime;
+  bs_input->time_span = time_span;
 
   // update the bs_input_mgr
   if(bs_input_mgr->status == BGPSTREAM_INPUT_MGR_STATUS_EMPTY_INPUT_QUEUE) {
@@ -171,31 +172,22 @@ static void bgpstream_set_intervals(bgpstream_input_t *input,
 				    int *current_interval_start,
 				    int *current_interval_end ){
   assert(input);
-  const int rv_update_offset  = 15 * 60; 
-  const int ris_update_offset =  5 * 60; 
   *current_interval_start = 0;
   *current_interval_end = 0;  
 
-  if(strcmp(input->filetype,"ribs") == 0) {
-    if(strcmp(input->fileproject,"routeviews") == 0) {
-      *current_interval_start = input->epoch_filetime - rv_update_offset;
-      *current_interval_end = input->epoch_filetime + rv_update_offset;
+  if(strcmp(input->filetype,"ribs") == 0)
+    {
+      *current_interval_start = input->epoch_filetime - input->time_span;
+      *current_interval_end = input->epoch_filetime + input->time_span;
     }
-    if(strcmp(input->fileproject,"ris") == 0) {
-      *current_interval_start = input->epoch_filetime - ris_update_offset;
-      *current_interval_end = input->epoch_filetime + ris_update_offset;
+  else
+    {
+      if(strcmp(input->filetype,"updates") == 0)
+        {
+          *current_interval_start = input->epoch_filetime;
+          *current_interval_end = input->epoch_filetime + input->time_span;
+        }
     }
-  }
-  if(strcmp(input->filetype,"updates") == 0) {
-    if(strcmp(input->fileproject,"routeviews") == 0) {
-      *current_interval_start = input->epoch_filetime;
-      *current_interval_end = input->epoch_filetime + rv_update_offset;
-    }
-    if(strcmp(input->fileproject,"ris") == 0) {
-      *current_interval_start = input->epoch_filetime;
-      *current_interval_end = input->epoch_filetime + ris_update_offset;
-    }
-  }
 }
 
 
@@ -237,8 +229,8 @@ static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * cons
     readers_counter++;
     // compute current input interval
     bgpstream_set_intervals(iterator, &current_interval_start, &current_interval_end);
-    // fprintf(stderr, "intervals: %d -> %d\n", current_interval_start, current_interval_end);
-    // fprintf(stderr, "max end: %d \n", to_process_interval_end);
+    /* fprintf(stderr, "intervals: %d -> %d\n", current_interval_start, current_interval_end); */
+    /* fprintf(stderr, "max end: %d \n", to_process_interval_end); */
     // if it does not overlap with the global one, then we reached the end
     if(current_interval_start >= to_process_interval_end) {
       // fprintf(stderr,"\n\n");
@@ -249,13 +241,14 @@ static void bgpstream_input_mgr_set_last_to_process(bgpstream_input_mgr_t * cons
       to_process_interval_end = current_interval_end;    
     } 
 
-    // fprintf(stderr,"%s - %s\n", iterator->fileproject, iterator->filetype);
-    // fprintf(stderr,"\t%d - %d | %d\n", current_interval_start, current_interval_end, to_process_interval_end);    
+    /* fprintf(stderr,"%s - %s\n", iterator->fileproject, iterator->filetype); */
+    /* fprintf(stderr,"\t%d - %d | %d\n", current_interval_start, current_interval_end, to_process_interval_end);     */
     // and we update the last to process
     bs_input_mgr->last_to_process = iterator;
     // next
     iterator = iterator->next;
   }
+  /* fprintf(stderr, "End of last to process\n\n"); */
   bgpstream_debug("\tBSI_MGR: last to process set end");
 }
 

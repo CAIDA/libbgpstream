@@ -32,6 +32,7 @@ typedef struct struct_bgpstream_input_t {
   char *filecollector; // bgpdump collector
   char *filetype; // type of bgpdump (rib or update)
   int epoch_filetime; // timestamp associated to the time the bgp data was generated
+  int time_span;
 } bgpstream_input_t;
 
 
@@ -56,7 +57,7 @@ bool bgpstream_input_mgr_is_empty(const bgpstream_input_mgr_t * const bs_input_m
 int bgpstream_input_mgr_push_sorted_input(bgpstream_input_mgr_t * const bs_input_mgr, 
 					  char * filename, char * fileproject,
 					  char * filecollector, char * const filetype,
-					  const int epoch_filetime);
+					  const int epoch_filetime, const int time_span);
 bgpstream_input_t *bgpstream_input_mgr_get_queue_to_process(bgpstream_input_mgr_t * const bs_input_mgr);
 void bgpstream_input_mgr_destroy_queue(bgpstream_input_t *queue);
 void bgpstream_input_mgr_destroy(bgpstream_input_mgr_t *bs_input_mgr);
