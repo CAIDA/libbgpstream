@@ -16,13 +16,14 @@
 # Report any bugs, questions or comments to bgpstream-info@caida.org
 #
 
-SUBDIRS= bgpdump utils
+SUBDIRS= bgpdump datasources utils
 
 # AM_CPPFLAGS - The contents of this variable are passed to every compilation
 # that invokes the C preprocessor; it is a list of arguments to the
 # preprocessor. For instance, -I and -D options should be listed here.
 AM_CPPFLAGS = 	-I$(top_srcdir) \
 		-I$(top_srcdir)/lib/bgpdump \
+		-I$(top_srcdir)/lib/datasources \
                 -I$(top_srcdir)/lib/utils \
 	 	-I$(top_srcdir)/common
 
@@ -62,6 +63,7 @@ libbgpstream_la_SOURCES = 	\
 libbgpstream_la_CFLAGS = -Wall
 
 libbgpstream_la_LIBADD = $(top_builddir)/lib/bgpdump/libbgpstream-bgpdump.la \
+			 $(top_builddir)/lib/datasources/libbgpstream-datasources.la \
 			 $(top_builddir)/lib/utils/libbgpstream-utils.la \
 			 $(top_builddir)/common/libcccommon.la
 

@@ -26,7 +26,12 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <mysql.h>
+
+#include "bgpstream_datasource_mysql.h"
+#include "bgpstream_datasource_singlefile.h"
+#include "bgpstream_datasource_csvfile.h"
+#include "bgpstream_datasource_sqlite.h"
+
 
 
 typedef enum {
@@ -36,71 +41,15 @@ typedef enum {
 } bgpstream_datasource_status_t;
 
 
-typedef struct struct_bgpstream_customlist_datasource_t {
-  int list_read; // 1 if list has bee read, 0 otherwise
-  bgpstream_filter_mgr_t * filter_mgr;
-  char filename[BGPSTREAM_DUMP_MAX_LEN];
-  char project[BGPSTREAM_PAR_MAX_LEN];
-  char collector[BGPSTREAM_PAR_MAX_LEN];
-  char bgp_type[BGPSTREAM_PAR_MAX_LEN];
-  int filetime;
-} bgpstream_customlist_datasource_t;
-
-
-typedef struct struct_bgpstream_csvfile_datasource_t {
-  char *csvfile_file;
-  int csvfile_read; // 1 if list has bee read, 0 otherwise
-  bgpstream_filter_mgr_t * filter_mgr;
-  char filename[BGPSTREAM_DUMP_MAX_LEN];
-  char project[BGPSTREAM_PAR_MAX_LEN];
-  char collector[BGPSTREAM_PAR_MAX_LEN];
-  char bgp_type[BGPSTREAM_PAR_MAX_LEN];
-  int filetime;
-  int time_span;
-} bgpstream_csvfile_datasource_t;
-
-
-typedef struct struct_bgpstream_mysql_datasource_t {
-  MYSQL * mysql_con;
-  // mysql connection options
-  char *mysql_dbname;
-  char *mysql_user;
-  char *mysql_password;
-  char *mysql_host;
-  unsigned int mysql_port;
-  char *mysql_socket;
-  // command-line options
-  char *mysql_ris_path;
-  char *mysql_rv_path;
-  // query text
-  char sql_query[2048];
-  MYSQL_STMT *stmt;          // mysql statement
-  MYSQL_BIND parameters[2];  // parameters for placeholders
-  // variables to bind to placeholders
-  long int last_timestamp;       // parameter to bind I
-  long int current_timestamp;     // parameter to bind II
-  MYSQL_BIND results[9];    // query results
-  // variables to bind to results
-  char proj_path_res[BGPSTREAM_PAR_MAX_LEN];
-  char coll_path_res[BGPSTREAM_PAR_MAX_LEN];
-  char type_path_res[BGPSTREAM_PAR_MAX_LEN];
-  char proj_name_res[BGPSTREAM_PAR_MAX_LEN];
-  char coll_name_res[BGPSTREAM_PAR_MAX_LEN];
-  char type_name_res[BGPSTREAM_PAR_MAX_LEN];
-  char file_ext_res[BGPSTREAM_PAR_MAX_LEN];
-  int filetime_res;
-  int file_time_span;
-  // others
-} bgpstream_mysql_datasource_t;
-
-
 
 typedef struct struct_bgpstream_datasource_mgr_t {  
   bgpstream_data_interface_id_t datasource;
   // datasources available
   bgpstream_mysql_datasource_t *mysql_ds;
-  bgpstream_customlist_datasource_t *customlist_ds;
+  bgpstream_singlefile_datasource_t *singlefile_ds;
   bgpstream_csvfile_datasource_t *csvfile_ds;
+  bgpstream_sqlite_datasource_t *sqlite_ds;
+  
   // datasource specific_options
   char *mysql_dbname;
   char *mysql_user;
@@ -110,8 +59,11 @@ typedef struct struct_bgpstream_datasource_mgr_t {
   char *mysql_socket;
   char *mysql_ris_path;
   char *mysql_rv_path;
-
+  char *singlefile_rib_mrtfile;
+  char *singlefile_upd_mrtfile;
   char *csvfile_file;
+  char *sqlite_file;
+  
   // blocking options
   int blocking;
   int backoff_time;

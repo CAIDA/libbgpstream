@@ -1,0 +1,162 @@
+/*
+ * This file is part of bgpstream
+ *
+ * Copyright (C) 2015 The Regents of the University of California.
+ * Authors: Alistair King, Chiara Orsini
+ *
+ * All rights reserved.
+ *
+ * This code has been developed by CAIDA at UC San Diego.
+ * For more information, contact bgpstream-info@caida.org
+ *
+ * This source code is proprietary to the CAIDA group at UC San Diego and may
+ * not be redistributed, published or disclosed without prior permission from
+ * CAIDA.
+ *
+ * Report any bugs, questions or comments to bgpstream-info@caida.org
+ *
+ */
+
+#include "bgpstream_datasource_singlefile.h"
+#include "bgpstream_debug.h"
+
+#include <inttypes.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errmsg.h>
+#include <string.h>
+
+/* check for new ribs once every hour */ 
+#define RIB_FREQUENCY_CHECK 3600 
+/* check for new ribs once every 3 minutes */
+#define UPDATE_FREQUENCY_CHECK 180 
+
+struct struct_bgpstream_singlefile_datasource_t {
+  bgpstream_filter_mgr_t * filter_mgr;  
+  char rib_filename[BGPSTREAM_DUMP_MAX_LEN];
+  unsigned char rib_dgst[MD5_DIGEST_LENGTH];
+  uint32_t last_rib_filetime;
+  char update_filename[BGPSTREAM_DUMP_MAX_LEN];
+  unsigned char update_dgst[MD5_DIGEST_LENGTH];
+  uint32_t last_update_filetime;
+};
+
+
+bgpstream_singlefile_datasource_t *
+bgpstream_singlefile_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
+                                       char *singlefile_rib_mrtfile,
+                                       char *singlefile_upd_mrtfile)
+{
+  bgpstream_debug("\t\tBSDS_CLIST: create singlefile_ds start");  
+  bgpstream_singlefile_datasource_t *singlefile_ds = (bgpstream_singlefile_datasource_t*) malloc(sizeof(bgpstream_singlefile_datasource_t));
+  if(singlefile_ds == NULL) {
+    bgpstream_log_err("\t\tBSDS_CLIST: create singlefile_ds can't allocate memory");    
+    return NULL; // can't allocate memory
+  }
+  singlefile_ds->filter_mgr = filter_mgr;
+  singlefile_ds->rib_filename[0] = '\0';
+  singlefile_ds->rib_dgst[0] = '\0';
+  singlefile_ds->last_rib_filetime = 0;
+  if(singlefile_rib_mrtfile != NULL)
+    {
+      strcpy(singlefile_ds->rib_filename, singlefile_rib_mrtfile);
+    }
+  singlefile_ds->update_filename[0] = '\0';
+  singlefile_ds->update_dgst[0] = '\0';
+  singlefile_ds->last_update_filetime = 0;
+  if(singlefile_upd_mrtfile != NULL)
+    {
+      strcpy(singlefile_ds->update_filename, singlefile_upd_mrtfile);
+    }
+  bgpstream_debug("\t\tBSDS_CLIST: create customlist_ds end");
+  return singlefile_ds;
+}
+
+
+
+
+
+static int
+checksum_check(char *mrt_filename, unsigned char *dgst)
+{
+  
+  if(rand() % 100 > 50)
+    {
+      return 0;
+    }
+  return 1;
+
+  /* @todo implement md5 */
+  
+  /* unsigned char new_dgst[MD5_DIGEST_LENGTH];  // = md5(file)  */
+  /* if(strcmp(dgst, new_dgst) == 0) */
+  /*   { */
+  /*     return 0; */
+  /*   } */
+  /* strncpy(dgst, new_dgst, MD5_DIGEST_LENGTH); */
+  /* return 1;       */
+}
+
+
+
+int
+bgpstream_singlefile_datasource_update_input_queue(bgpstream_singlefile_datasource_t* singlefile_ds,
+                                                   bgpstream_input_mgr_t *input_mgr)
+{
+    bgpstream_debug("\t\tBSDS_CLIST: singlefile_ds update input queue start");
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    uint32_t now  = tv.tv_sec;
+    int num_results = 0;
+    
+    /* check digest, if different (or first) then add files to input queue) */
+    if(singlefile_ds->rib_filename[0] != '\0' &&
+       now - singlefile_ds->last_rib_filetime > RIB_FREQUENCY_CHECK  &&
+       checksum_check(singlefile_ds->rib_filename, singlefile_ds->rib_dgst))
+      {
+        singlefile_ds->last_rib_filetime = now;
+        num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, strdup(singlefile_ds->rib_filename),
+							     strdup("singlefile_ds"),
+							     strdup("singlefile_ds"),
+                                                             strdup("ribs"),
+							     singlefile_ds->last_rib_filetime,
+                                                             RIB_FREQUENCY_CHECK);
+      }
+
+    if(singlefile_ds->update_filename[0] != '\0' &&
+       now - singlefile_ds->last_update_filetime > UPDATE_FREQUENCY_CHECK  &&
+       checksum_check(singlefile_ds->update_filename, singlefile_ds->update_dgst))
+      {
+        singlefile_ds->last_update_filetime = now;
+        num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, strdup(singlefile_ds->update_filename),
+							     strdup("singlefile_ds"),
+							     strdup("singlefile_ds"),
+                                                             strdup("updates"),
+							     singlefile_ds->last_update_filetime,
+                                                             UPDATE_FREQUENCY_CHECK);
+      }
+    
+    bgpstream_debug("\t\tBSDS_CLIST: singlefile_ds update input queue end");  
+    return num_results;
+}
+
+
+void
+bgpstream_singlefile_datasource_destroy(bgpstream_singlefile_datasource_t* singlefile_ds)
+{
+  bgpstream_debug("\t\tBSDS_CLIST: destroy singlefile_ds start");  
+  if(singlefile_ds == NULL) {
+    return; // nothing to destroy
+  }
+  singlefile_ds->filter_mgr = NULL;
+  free(singlefile_ds);
+  bgpstream_debug("\t\tBSDS_CLIST: destroy singlefile_ds end");  
+}
+
+

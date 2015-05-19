@@ -140,6 +140,7 @@ AC_HEADER_ASSERT
 AC_CONFIG_FILES([Makefile
 		lib/Makefile
                 lib/bgpdump/Makefile
+                lib/datasources/Makefile
                 lib/utils/Makefile
 		tools/Makefile
 		common/Makefile

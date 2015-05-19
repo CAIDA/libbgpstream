@@ -71,10 +71,13 @@ typedef enum {
   BGPSTREAM_DATA_INTERFACE_MYSQL      = 1,
 
   /** Customlist interface */
-  BGPSTREAM_DATA_INTERFACE_CUSTOMLIST = 2,
+  BGPSTREAM_DATA_INTERFACE_SINGLEFILE = 2,
 
   /** CSV file interface */
   BGPSTREAM_DATA_INTERFACE_CSVFILE    = 3,
+
+  /** SQLITE file interface */
+  BGPSTREAM_DATA_INTERFACE_SQLITE     = 4,
 
 } bgpstream_data_interface_id_t;
 
