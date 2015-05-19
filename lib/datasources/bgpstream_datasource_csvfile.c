@@ -33,7 +33,6 @@
 #include <errmsg.h>
 
 
-
 struct struct_bgpstream_csvfile_datasource_t {
   char *csvfile_file;
   bgpstream_filter_mgr_t * filter_mgr;
@@ -48,8 +47,10 @@ struct struct_bgpstream_csvfile_datasource_t {
 
 
 
-bgpstream_csvfile_datasource_t *bgpstream_csvfile_datasource_create(bgpstream_filter_mgr_t *filter_mgr, 
-                                                                    char *csvfile_file) {
+bgpstream_csvfile_datasource_t *
+bgpstream_csvfile_datasource_create(bgpstream_filter_mgr_t *filter_mgr, 
+                                    char *csvfile_file)
+{
   bgpstream_debug("\t\tBSDS_CSVFILE: create csvfile_ds start");  
   bgpstream_csvfile_datasource_t *csvfile_ds = (bgpstream_csvfile_datasource_t*) malloc_zero(sizeof(bgpstream_csvfile_datasource_t));
   if(csvfile_ds == NULL) {
@@ -62,6 +63,7 @@ bgpstream_csvfile_datasource_t *bgpstream_csvfile_datasource_create(bgpstream_fi
       free(csvfile_ds);
       return NULL;
     }
+  csvfile_ds->csvfile_file = strdup(csvfile_file);
   csvfile_ds->filter_mgr = filter_mgr;
   csvfile_ds->last_ts = 0;
   
@@ -203,6 +205,8 @@ bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_datasource_t* 
 	  ++i;	  
 	}
 
+        /* fprintf(stderr, "%d - %d - %d \n", ts, min_ts, max_ts); */
+        
         if( ts > min_ts && ts <= max_ts)
           {
             if(ts > csvfile_ds->last_ts)

@@ -274,33 +274,34 @@ int bgpstream_datasource_mgr_update_input_queue(bgpstream_datasource_mgr_t *data
     return -1; // no datasource manager
   }
   int results = -1;
-  if(datasource_mgr->datasource == BGPSTREAM_DATA_INTERFACE_MYSQL) {
-    do{
-      results = bgpstream_mysql_datasource_update_input_queue(datasource_mgr->mysql_ds, input_mgr);
-      if(results == 0 && datasource_mgr->blocking) {
+
+  do{
+    switch(datasource_mgr->datasource)
+      {
+      case BGPSTREAM_DATA_INTERFACE_MYSQL:
+        results = bgpstream_mysql_datasource_update_input_queue(datasource_mgr->mysql_ds, input_mgr);
+        break;
+      case BGPSTREAM_DATA_INTERFACE_SINGLEFILE:
+        results = bgpstream_singlefile_datasource_update_input_queue(datasource_mgr->singlefile_ds, input_mgr);
+        break;
+      case BGPSTREAM_DATA_INTERFACE_CSVFILE:
+        results = bgpstream_csvfile_datasource_update_input_queue(datasource_mgr->csvfile_ds, input_mgr);
+        break;
+      case BGPSTREAM_DATA_INTERFACE_SQLITE:
+        results = bgpstream_sqlite_datasource_update_input_queue(datasource_mgr->sqlite_ds, input_mgr);
+        break;
+      }
+    if(results == 0 && datasource_mgr->blocking) {
 	// results = 0 => 2+ time and database did not give any error
 	sleep(datasource_mgr->backoff_time);
 	datasource_mgr->backoff_time = datasource_mgr->backoff_time * 2;
 	if(datasource_mgr->backoff_time > bs_max_wait) {
 	  datasource_mgr->backoff_time = bs_max_wait;
 	}
-      }
-      bgpstream_debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
-    } while(datasource_mgr->blocking && results == 0);
-    // if we received something we reset the backoff time
-    if(datasource_mgr->blocking) {
-      datasource_mgr->backoff_time = bs_min_wait;
     }
-  }
-  if(datasource_mgr->datasource == BGPSTREAM_DATA_INTERFACE_SINGLEFILE) {
-    results = bgpstream_singlefile_datasource_update_input_queue(datasource_mgr->singlefile_ds, input_mgr);
     bgpstream_debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
-  }
-  if(datasource_mgr->datasource == BGPSTREAM_DATA_INTERFACE_CSVFILE) {
-    results = bgpstream_csvfile_datasource_update_input_queue(datasource_mgr->csvfile_ds, input_mgr);
-    bgpstream_debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
-  }
-
+  } while(datasource_mgr->blocking && results == 0);
+  
   bgpstream_debug("\tBSDS_MGR: get data end");
   return results; 
 }

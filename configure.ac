@@ -89,6 +89,9 @@ AC_FUNC_REALLOC
 AC_CHECK_LIB([mysqlclient], [mysql_query], ,
                [AC_MSG_ERROR( [libmysqlclient required ])])
 
+AC_CHECK_LIB([sqlite3], [sqlite3_open_v2], ,
+               [AC_MSG_ERROR( [libsqlite3 required ])])
+
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h inttypes.h limits.h math.h stdlib.h string.h \
 			      time.h sys/time.h])
