@@ -31,11 +31,8 @@
 #include <unistd.h>
 #include <errmsg.h>
 
-/* think about turning this variables into define constants */
-
-// backoff minimum and maximum times
-const static int bs_min_wait = 30;   // 30 seconds
-const static int bs_max_wait = 3600; // 1 hour
+#define DATASOURCE_BLOCKING_MIN_WAIT 30
+#define DATASOURCE_BLOCKING_MAX_WAIT 150
 
 
 /* datasource mgr related functions */
@@ -50,7 +47,7 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
   // default values
   datasource_mgr->datasource = BGPSTREAM_DATA_INTERFACE_MYSQL; // default data source
   datasource_mgr->blocking = 0;
-  datasource_mgr->backoff_time = bs_min_wait;
+  datasource_mgr->backoff_time = DATASOURCE_BLOCKING_MIN_WAIT;
   // datasources (none of them is active at the beginning)
   datasource_mgr->mysql_ds = NULL;
   datasource_mgr->singlefile_ds = NULL;
@@ -295,8 +292,8 @@ int bgpstream_datasource_mgr_update_input_queue(bgpstream_datasource_mgr_t *data
 	// results = 0 => 2+ time and database did not give any error
 	sleep(datasource_mgr->backoff_time);
 	datasource_mgr->backoff_time = datasource_mgr->backoff_time * 2;
-	if(datasource_mgr->backoff_time > bs_max_wait) {
-	  datasource_mgr->backoff_time = bs_max_wait;
+	if(datasource_mgr->backoff_time > DATASOURCE_BLOCKING_MAX_WAIT) {
+	  datasource_mgr->backoff_time = DATASOURCE_BLOCKING_MAX_WAIT;
 	}
     }
     bgpstream_debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);

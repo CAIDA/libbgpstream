@@ -20,6 +20,7 @@
 #include "bgpstream_datasource_singlefile.h"
 #include "bgpstream_debug.h"
 
+
 #include <inttypes.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -31,19 +32,23 @@
 #include <unistd.h>
 #include <errmsg.h>
 #include <string.h>
+#include <wandio.h>
 
-/* check for new ribs once every hour */ 
-#define RIB_FREQUENCY_CHECK 3600 
-/* check for new ribs once every 3 minutes */
-#define UPDATE_FREQUENCY_CHECK 180 
+/* check for new ribs once every 30 mins */ 
+#define RIB_FREQUENCY_CHECK 1800 
+/* check for new updates once every 2 minutes */
+#define UPDATE_FREQUENCY_CHECK 120 
+
+#define MAX_HEADER_READ_BYTES 1024
+static unsigned char buffer[MAX_HEADER_READ_BYTES];
 
 struct struct_bgpstream_singlefile_datasource_t {
   bgpstream_filter_mgr_t * filter_mgr;  
   char rib_filename[BGPSTREAM_DUMP_MAX_LEN];
-  unsigned char rib_dgst[MD5_DIGEST_LENGTH];
+  unsigned char rib_header[MAX_HEADER_READ_BYTES];
   uint32_t last_rib_filetime;
   char update_filename[BGPSTREAM_DUMP_MAX_LEN];
-  unsigned char update_dgst[MD5_DIGEST_LENGTH];
+  unsigned char update_header[MAX_HEADER_READ_BYTES];
   uint32_t last_update_filetime;
 };
 
@@ -61,14 +66,14 @@ bgpstream_singlefile_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
   }
   singlefile_ds->filter_mgr = filter_mgr;
   singlefile_ds->rib_filename[0] = '\0';
-  singlefile_ds->rib_dgst[0] = '\0';
+  singlefile_ds->rib_header[0] = '\0';
   singlefile_ds->last_rib_filetime = 0;
   if(singlefile_rib_mrtfile != NULL)
     {
       strcpy(singlefile_ds->rib_filename, singlefile_rib_mrtfile);
     }
   singlefile_ds->update_filename[0] = '\0';
-  singlefile_ds->update_dgst[0] = '\0';
+  singlefile_ds->update_header[0] = '\0';
   singlefile_ds->last_update_filetime = 0;
   if(singlefile_upd_mrtfile != NULL)
     {
@@ -80,27 +85,35 @@ bgpstream_singlefile_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
 
 
 
-
-
 static int
-checksum_check(char *mrt_filename, unsigned char *dgst)
+same_header(char *mrt_filename, unsigned char *previous_header)
 {
-  
-  if(rand() % 100 > 50)
+  off_t read_bytes;
+  io_t *io_h = wandio_create(mrt_filename);
+  if(io_h == NULL)
     {
-      return 0;
+      bgpstream_log_err("\t\tBSDS_SINGLEFILE: can't open file!");    
+      return -1;
     }
-  return 1;
-
-  /* @todo implement md5 */
   
-  /* unsigned char new_dgst[MD5_DIGEST_LENGTH];  // = md5(file)  */
-  /* if(strcmp(dgst, new_dgst) == 0) */
-  /*   { */
-  /*     return 0; */
-  /*   } */
-  /* strncpy(dgst, new_dgst, MD5_DIGEST_LENGTH); */
-  /* return 1;       */
+  read_bytes = wandio_read(io_h, (void *) &(buffer[0]),  MAX_HEADER_READ_BYTES);
+  if(read_bytes < 0)
+    {
+      bgpstream_log_err("\t\tBSDS_SINGLEFILE: can't read file!");
+      wandio_destroy(io_h);
+      return -1;
+    }
+
+  int ret = memcmp(buffer, previous_header, sizeof(unsigned char) * read_bytes);
+  wandio_destroy(io_h);
+  /* if there is no difference, then they have the same header */
+  if(ret == 0)
+    {
+      /* fprintf(stderr, "same header\n"); */
+      return 1;
+    }
+  memcpy(previous_header, buffer, sizeof(unsigned char) * read_bytes);
+  return 0;
 }
 
 
@@ -118,8 +131,9 @@ bgpstream_singlefile_datasource_update_input_queue(bgpstream_singlefile_datasour
     /* check digest, if different (or first) then add files to input queue) */
     if(singlefile_ds->rib_filename[0] != '\0' &&
        now - singlefile_ds->last_rib_filetime > RIB_FREQUENCY_CHECK  &&
-       checksum_check(singlefile_ds->rib_filename, singlefile_ds->rib_dgst))
+       same_header(singlefile_ds->rib_filename, singlefile_ds->rib_header) == 0)
       {
+        /* fprintf(stderr, "new RIB at: %"PRIu32"\n", now); */
         singlefile_ds->last_rib_filetime = now;
         num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, strdup(singlefile_ds->rib_filename),
 							     strdup("singlefile_ds"),
@@ -131,8 +145,9 @@ bgpstream_singlefile_datasource_update_input_queue(bgpstream_singlefile_datasour
 
     if(singlefile_ds->update_filename[0] != '\0' &&
        now - singlefile_ds->last_update_filetime > UPDATE_FREQUENCY_CHECK  &&
-       checksum_check(singlefile_ds->update_filename, singlefile_ds->update_dgst))
+       same_header(singlefile_ds->update_filename, singlefile_ds->update_header) == 0)
       {
+        /* fprintf(stderr, "new updates at: %"PRIu32"\n", now); */
         singlefile_ds->last_update_filetime = now;
         num_results += bgpstream_input_mgr_push_sorted_input(input_mgr, strdup(singlefile_ds->update_filename),
 							     strdup("singlefile_ds"),
