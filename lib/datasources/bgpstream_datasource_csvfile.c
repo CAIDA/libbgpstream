@@ -152,7 +152,8 @@ bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_datasource_t* 
   bgpstream_debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue start");  
   int num_results = 0;       
   FILE * stream;
-  char * line = NULL;
+  char line[1024];
+  char *line_ptr;
   char * tok;
   int i;
   uint32_t min_ts = csvfile_ds->last_ts;
@@ -171,12 +172,13 @@ bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_datasource_t* 
      */
     flock(fileno(stream),LOCK_EX);
     fseek (stream , 0, SEEK_SET);
-    line = (char *) malloc(1024 * sizeof(char));
-    while (fgets(line, 1024, stream)) {
-      // printf("%s\n", line);
+
+    while (fgets(line, sizeof(line), stream)) {
+      /* fprintf(stderr, "%s\n", line); */
       i = 0;
-	while((tok = strsep(&line, ",")) != NULL) {
-	  // printf("%s\n", tok);	
+      line_ptr = &line[0];
+      while((tok = strsep(&line_ptr, ",")) != NULL) {
+          /* fprintf(stderr, "%s\n", tok);	 */
 	  switch(i) {
 	  case 0:
 	    strcpy(csvfile_ds->filename, tok);	  
@@ -223,9 +225,8 @@ bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_datasource_t* 
                                                                    csvfile_ds->time_span);
             }
           }
-	line = realloc(line,1024 * sizeof(char));      	  	
+	line[0] = '\0';
       }
-      free(line);
       funlockfile(stream);
       fclose(stream);
     }    
