@@ -86,48 +86,23 @@ AC_FUNC_REALLOC
 
 # Checks for libraries
 
+AC_SEARCH_LIBS([wandio_create], [wandio trace], [with_wandio=yes],
+                 [AC_MSG_ERROR(
+		 [libwandio required (included with libtrace since 3.0.15)]
+		 )])
+AM_CONDITIONAL([WITH_WANDIO], [test "x$with_wandio" == xyes])
+
 AC_CHECK_LIB([mysqlclient], [mysql_query], ,
                [AC_MSG_ERROR( [libmysqlclient required ])])
 
 AC_CHECK_LIB([sqlite3], [sqlite3_open_v2], ,
                [AC_MSG_ERROR( [libsqlite3 required ])])
 
+
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h inttypes.h limits.h math.h stdlib.h string.h \
 			      time.h sys/time.h])
 
-
-
-# default to turning on wandio support
-AC_MSG_CHECKING([whether to use wandio for file i/o])
-AC_ARG_WITH([wandio],
-	[AS_HELP_STRING([--with-wandio],
-	  [use libwandio for file i/o (defaults to no)])],
-	  [],
-	  [with_wandio=no])
-
-AS_IF([test "x$with_wandio" != xno],
-	[
-	    AC_DEFINE_UNQUOTED([WITH_WANDIO],[1],
-		[Use libwandio for file i/o])
-	])
-
-AC_MSG_RESULT([$with_wandio])
-
-if test "x$with_wandio" == xyes; then
-   	AC_SEARCH_LIBS([wandio_create], [wandio trace], ,[AC_MSG_ERROR(
-		 [libwandio required (included with libtrace since 3.0.15)]
-		 )])
-else
-	AC_CHECK_LIB(z, gzopen, [],
-		     AC_DEFINE(DONT_HAVE_GZ, 1, Define if libz not present))
-	AC_CHECK_LIB(bz2, BZ2_bzReadOpen, [],
-	             AC_DEFINE(DONT_HAVE_BZ2, 1, Define if libbzip2 not present))
-        AC_DEFINE(WITHOUT_WANDIO, 1, Define if libwandio not present)
-fi
-
-AM_CONDITIONAL([WITH_WANDIO], [test "x$with_wandio" == xyes])
-AM_CONDITIONAL([WITHOUT_WANDIO], [test "x$with_wandio" == xno])
 
 
 # we may want to come back later and add compile-time configuration for things

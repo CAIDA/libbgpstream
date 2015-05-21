@@ -23,11 +23,11 @@ AM_CPPFLAGS= -I$(top_srcdir)
 
 noinst_LTLIBRARIES = libbgpstream-bgpdump.la
 
-if WITH_WANDIO
 IO_SOURCE=bgpdump_cfile_tools_wandio.c
-else
-IO_SOURCE=bgpdump_cfile_tools.c
-endif
+
+# no wandio source
+# IO_SOURCE=bgpdump_cfile_tools.c
+
 
 libbgpstream_bgpdump_la_SOURCES = 	\
 	bgpdump_attr.h    		\
