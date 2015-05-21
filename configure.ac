@@ -86,8 +86,11 @@ AC_FUNC_REALLOC
 
 # Checks for libraries
 
-AC_CHECK_LIB([wandio], [wandio_create], ,
-               [AC_MSG_ERROR( [libwandio required (included with libtrace since 3.0.15)])])
+AC_SEARCH_LIBS([wandio_create], [wandio trace], [with_wandio=yes],
+                 [AC_MSG_ERROR(
+		 [libwandio required (included with libtrace since 3.0.15)]
+		 )])
+AM_CONDITIONAL([WITH_WANDIO], [test "x$with_wandio" == xyes])
 
 AC_CHECK_LIB([mysqlclient], [mysql_query], ,
                [AC_MSG_ERROR( [libmysqlclient required ])])
