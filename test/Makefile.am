@@ -16,15 +16,22 @@
 # Report any bugs, questions or comments to bgpstream-info@caida.org
 #
 
-SUBDIRS = common lib tools test
+AM_CPPFLAGS = 	-I$(top_srcdir) \
+	 	-I$(top_srcdir)/lib \
+	 	-I$(top_srcdir)/lib/utils \
+	 	-I$(top_srcdir)/common
 
-AM_CPPFLAGS =
+TESTS = bgpstream-test
 
-EXTRA_DIST =
+check_PROGRAMS =  bgpstream-test
 
-include_HEADERS =
-
+bgpstream_test_SOURCES = bgpstream-test.c
+bgpstream_test_LDADD   = -lbgpstream
+bgpstream_test_LDFLAGS = -L$(top_builddir)/lib
 
 ACLOCAL_AMFLAGS = -I m4
 
 CLEANFILES = *~
+
+
+

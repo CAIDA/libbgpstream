@@ -121,6 +121,7 @@ AC_CONFIG_FILES([Makefile
                 lib/datasources/Makefile
                 lib/utils/Makefile
 		tools/Makefile
+		test/Makefile
 		common/Makefile
 		common/libpatricia/Makefile
 		common/libinterval3/Makefile

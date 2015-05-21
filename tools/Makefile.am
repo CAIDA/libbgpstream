@@ -21,16 +21,14 @@ AM_CPPFLAGS = 	-I$(top_srcdir) \
 	 	-I$(top_srcdir)/lib/utils \
 	 	-I$(top_srcdir)/common
 
-bin_PROGRAMS =  bgpreader bgpstream-test
+bin_PROGRAMS =  bgpreader
 
 bgpreader_SOURCES = bgpreader.c
 bgpreader_LDADD   = -lbgpstream
 bgpreader_LDFLAGS = -L$(top_builddir)/lib
 
-bgpstream_test_SOURCES = bgpstream-test.c
-bgpstream_test_LDADD   = -lbgpstream
-bgpstream_test_LDFLAGS = -L$(top_builddir)/lib
-
 ACLOCAL_AMFLAGS = -I m4
 
 CLEANFILES = *~
+
+
