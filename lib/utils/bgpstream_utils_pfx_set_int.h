@@ -22,7 +22,7 @@
 
 #include "khash.h"
 
-#include <bgpstream_utils_pfx_set.h>
+#include "bgpstream_utils_pfx_set.h"
 
 /** @file
  *

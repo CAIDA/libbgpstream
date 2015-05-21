@@ -23,7 +23,7 @@
 #include "khash.h"
 #include "utils.h"
 
-#include <bgpstream_utils_pfx_set_int.h>
+#include "bgpstream_utils_pfx_set_int.h"
 
 /* STORAGE */
 

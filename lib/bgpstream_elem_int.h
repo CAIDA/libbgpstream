@@ -20,8 +20,8 @@
 #ifndef __BGPSTREAM_ELEM_INT_H
 #define __BGPSTREAM_ELEM_INT_H
 
-#include <bgpstream_elem.h>
-#include <bgpstream_utils.h>
+#include "bgpstream_elem.h"
+#include "bgpstream_utils.h"
 
 /** @file
  *

@@ -23,7 +23,7 @@
 #include "khash.h"
 #include "utils.h"
 
-#include <bgpstream_utils_str_set.h>
+#include "bgpstream_utils_str_set.h"
 
 /* PRIVATE */
 

@@ -20,8 +20,8 @@
 #ifndef __BGPSTREAM_RECORD_H
 #define __BGPSTREAM_RECORD_H
 
-#include <bgpstream_utils.h>
-#include <bgpstream_elem.h>
+#include "bgpstream_utils.h"
+#include "bgpstream_elem.h"
 
 /** @file
  *

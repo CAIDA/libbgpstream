@@ -21,7 +21,7 @@
 #ifndef __BGPSTREAM_UTILS_ADDR_SET_H
 #define __BGPSTREAM_UTILS_ADDR_SET_H
 
-#include <bgpstream_utils_addr.h>
+#include "bgpstream_utils_addr.h"
 
 /** @file
  *

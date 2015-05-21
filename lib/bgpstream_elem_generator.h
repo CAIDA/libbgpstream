@@ -20,7 +20,7 @@
 #ifndef __BGPSTREAM_ELEM_GENERATOR_H
 #define __BGPSTREAM_ELEM_GENERATOR_H
 
-#include <bgpstream_record.h>
+#include "bgpstream_record.h"
 
 /** @file
  *
