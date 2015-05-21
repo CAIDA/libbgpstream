@@ -23,6 +23,7 @@ TAGS
 ChangeLog
 *.tar.gz
 tools/bgpreader
+tools/bgpstream-test
 
 # Autotools files
 # http://www.gnu.org/software/automake

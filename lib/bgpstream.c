@@ -20,10 +20,10 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <bgpdump_lib.h>
+
 
 #include "utils.h"
-
+#include "bgpdump_lib.h"
 #include "bgpstream_int.h"
 #include "bgpstream_debug.h"
 
@@ -31,39 +31,83 @@
 
 /* this should be the complete list of interface types */
 static bgpstream_data_interface_id_t bgpstream_data_interfaces[] = {
-  BGPSTREAM_DATA_INTERFACE_MYSQL,
-  BGPSTREAM_DATA_INTERFACE_CUSTOMLIST,
+  BGPSTREAM_DATA_INTERFACE_SINGLEFILE,
   BGPSTREAM_DATA_INTERFACE_CSVFILE,
+  BGPSTREAM_DATA_INTERFACE_SQLITE,
+  BGPSTREAM_DATA_INTERFACE_MYSQL,
 };
 
 static bgpstream_data_interface_info_t bgpstream_data_interface_infos[] = {
   { /* NO VALID IF WITH ID 0 */ },
-
   {
-    BGPSTREAM_DATA_INTERFACE_MYSQL,
-    "mysql",
-    "Retrieve metadata information from the bgparchive mysql database",
-  },
-  {
-    BGPSTREAM_DATA_INTERFACE_CUSTOMLIST,
-    "custom-list",
-    "TODO: Mock datasource used to test the library",
+    BGPSTREAM_DATA_INTERFACE_SINGLEFILE,
+    "singlefile",
+    "Read a single mrt data file (a RIB and/or an update)",
   },
   {
     BGPSTREAM_DATA_INTERFACE_CSVFILE,
     "csvfile",
     "Retrieve metadata information from a csv file",
   },
+  {
+    BGPSTREAM_DATA_INTERFACE_SQLITE,
+    "sqlite",
+    "Retrieve metadata information from a sqlite database",
+  },
+  {
+    BGPSTREAM_DATA_INTERFACE_MYSQL,
+    "mysql",
+    "Retrieve metadata information from the bgparchive mysql database",
+  },
+
 };
 
 /* this should be a complete list of per-interface options */
+
+
+static bgpstream_data_interface_option_t bgpstream_singlefile_options[] = {
+  /* RIB MRT file path */
+  {
+    BGPSTREAM_DATA_INTERFACE_SINGLEFILE,
+    0,
+    "rib-file",
+    "rib mrt file to read (default: none)",
+  },
+  {
+    BGPSTREAM_DATA_INTERFACE_SINGLEFILE,
+    1,
+    "upd-file",
+    "updates mrt file to read (default: none)",
+  },
+};
+
+static bgpstream_data_interface_option_t bgpstream_csvfile_options[] = {
+  /* CSV file name */
+  {
+    BGPSTREAM_DATA_INTERFACE_CSVFILE,
+    0,
+    "csv-file",
+    "csv file listing the mrt data to read (default: ./bgp_data.csv)",
+  },
+};
+
+static bgpstream_data_interface_option_t bgpstream_sqlite_options[] = {
+  /* SQLITE database file name */
+  {
+    BGPSTREAM_DATA_INTERFACE_SQLITE,
+    0,
+    "db-file",
+    "sqlite database (default: ./bgp_data.db)",
+  },
+};
+
 static bgpstream_data_interface_option_t bgpstream_mysql_options[] = {
   /* Database Name */
   {
     BGPSTREAM_DATA_INTERFACE_MYSQL,
     0,
     "db-name",
-    "Name of the mysql database to use (default: bgparchive)",
+    "name of the mysql database to use (default: bgparchive)",
   },
 
   /* Database username */
@@ -71,7 +115,7 @@ static bgpstream_data_interface_option_t bgpstream_mysql_options[] = {
     BGPSTREAM_DATA_INTERFACE_MYSQL,
     1,
     "db-user",
-    "Mysql username to use (default: bgpstream)",
+    "mysql username to use (default: bgpstream)",
   },
   /* Database password */
   {
@@ -86,14 +130,14 @@ static bgpstream_data_interface_option_t bgpstream_mysql_options[] = {
     BGPSTREAM_DATA_INTERFACE_MYSQL,
     3,
     "db-host",
-    "Hostname/IP of the mysql server (default: mysql default host)",
+    "hostname/IP of the mysql server (default: mysql default host)",
   },
   /* Database connection port */
   {
     BGPSTREAM_DATA_INTERFACE_MYSQL,
     4,
     "db-port",
-    "Port of the mysql server (default: mysql default port)",
+    "port of the mysql server (default: mysql default port)",
   },
   /* Database Unix socket */
   {
@@ -114,23 +158,9 @@ static bgpstream_data_interface_option_t bgpstream_mysql_options[] = {
     BGPSTREAM_DATA_INTERFACE_MYSQL,
     7,
     "rv-path",
-    "Prefix path of RouteViews data (default: Routeviews path contained in mysql db projects table)",
-  },
-
-};
-
-static bgpstream_data_interface_option_t *bgpstream_customlist_options = NULL;
-
-static bgpstream_data_interface_option_t bgpstream_csvfile_options[] = {
-  /* File name */
-  {
-    BGPSTREAM_DATA_INTERFACE_CSVFILE,
-    0,
-    "filename",
-    "Hostname/IP of the mysql server (default: TODO)",
+    "prefix path of RouteViews data (default: Routeviews path contained in mysql db projects table)",
   },
 };
-
 
 /* allocate memory for a new bgpstream interface
  */
@@ -255,19 +285,25 @@ int bgpstream_get_data_interface_options(bgpstream_t *bs,
 
   switch(if_id)
     {
-    case BGPSTREAM_DATA_INTERFACE_MYSQL:
-      *opts = bgpstream_mysql_options;
-      return ARR_CNT(bgpstream_mysql_options);
-      break;
 
-    case BGPSTREAM_DATA_INTERFACE_CUSTOMLIST:
-      *opts = bgpstream_customlist_options;
-      return ARR_CNT(bgpstream_customlist_options);
+    case BGPSTREAM_DATA_INTERFACE_SINGLEFILE:
+      *opts = bgpstream_singlefile_options;
+      return ARR_CNT(bgpstream_singlefile_options);
       break;
 
     case BGPSTREAM_DATA_INTERFACE_CSVFILE:
       *opts = bgpstream_csvfile_options;
       return ARR_CNT(bgpstream_csvfile_options);
+      break;
+
+    case BGPSTREAM_DATA_INTERFACE_SQLITE:
+      *opts = bgpstream_sqlite_options;
+      return ARR_CNT(bgpstream_sqlite_options);
+      break;
+
+    case BGPSTREAM_DATA_INTERFACE_MYSQL:
+      *opts = bgpstream_mysql_options;
+      return ARR_CNT(bgpstream_mysql_options);
       break;
 
     default:
