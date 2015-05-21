@@ -28,23 +28,8 @@
 #ifndef _CFILE_TOOLS_DEFINES
 #define _CFILE_TOOLS_DEFINES
 
-#ifndef WITH_WANDIO
-#define _GNU_SOURCE
-#define _FILE_OFFSET_BITS 64
-#endif
-
 #include <stdio.h>
 #include <unistd.h>
-
-#ifndef WITH_WANDIO
-#ifndef DONT_HAVE_BZ2
-#include <bzlib.h>
-#endif
-
-#ifndef DONT_HAVE_GZ
-#include <zlib.h>
-#endif
-#endif
 
 // Types
 
@@ -63,38 +48,11 @@ struct _CFRFILE {
 
 typedef struct _CFRFILE CFRFILE;
 
-// Formats
-#ifndef WITH_WANDIO
-#ifndef DONT_HAVE_BZ2
-  #ifndef DONT_HAVE_GZ
-	#define CFR_NUM_FORMATS 4
-  #else
-	#define CFR_NUM_FORMATS 3
-  #endif
-#else
-	#define CFR_NUM_FORMATS 2
-#endif
-#endif
 
 // Functions
 
 CFRFILE    * cfr_open(const char *path); 
 int          cfr_close(CFRFILE *stream);
 size_t       cfr_read_n(CFRFILE *stream, void *ptr, size_t bytes);
-
-#ifndef WITH_WANDIO
-size_t       cfr_read(void *ptr, size_t size, size_t nmemb, CFRFILE *stream);
-ssize_t      cfr_getline(char **lineptr, size_t *n, CFRFILE *stream);
-int          cfr_eof(CFRFILE *stream);
-int          cfr_error(CFRFILE *stream);
-char       * cfr_strerror(CFRFILE *stream);
-const char * cfr_compressor_str(CFRFILE *stream);
-
-
-#ifndef DONT_HAVE_BZ2
-const char * _bz2_strerror(int err);
-#endif
-#endif
-
 
 #endif
