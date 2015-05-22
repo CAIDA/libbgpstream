@@ -21,8 +21,69 @@
 #include <stdio.h>
 
 #include "utils.h"
+#include "khash.h"
 
-#include "bgpstream_utils_peer_sig_map_int.h"
+#include "bgpstream_utils_peer_sig_map.h"
+
+
+/** Hash a peer signature into a 64bit number
+ *
+ * @param               the peer signature to hash
+ * @return 64bit hash of the given peer signature
+ */
+khint64_t bgpstream_peer_sig_hash(bgpstream_peer_sig_t *ps);
+
+/** Check if two peer signatures are equal
+ *
+ * @param ps1           pointer to the first peer signature
+ * @param ps2           pointer to the second peer signature
+ * @return 0 if the signatures are not equal, non-zero if they are equal
+ */
+int bgpstream_peer_sig_equal(bgpstream_peer_sig_t *ps1,
+                             bgpstream_peer_sig_t *ps2);
+
+/** Set the peer ID for the given collector/peer
+ *
+ * @param map           peer sig map to set peer ID for
+ * @param peer_id       peer id to set
+ * @param collector_str name of the collector the peer is associated with
+ * @param peer_ip_addr  pointer to the peer IP address
+ * @param peer_asnumber  AS number of the peer
+ * @return 0 if the ID was associated successfully, -1 otherwise
+ *
+ * @note the peer sig map expects to be able to allocate IDs internally. This
+ * function must be used with care.
+ */
+int bgpstream_peer_sig_map_set(bgpstream_peer_sig_map_t *map,
+                               bgpstream_peer_id_t peer_id,
+                               char *collector_str,
+                               bgpstream_addr_storage_t *peer_ip_addr,
+                               uint32_t peer_asnumber);
+
+
+/** Map from peer signature to peer ID */
+KHASH_INIT(bgpstream_peer_sig_id_map,
+           bgpstream_peer_sig_t*,
+           bgpstream_peer_id_t,
+           1,
+	   bgpstream_peer_sig_hash,
+           bgpstream_peer_sig_equal);
+
+/** Map from peer ID to signature */
+KHASH_INIT(bgpstream_peer_id_sig_map,
+           bgpstream_peer_id_t,
+           bgpstream_peer_sig_t*,
+           1,
+	   kh_int_hash_func,
+           kh_int_hash_equal);
+
+/** Structure representing an instance of a Peer Signature Map */
+struct bgpstream_peer_sig_map {
+  khash_t(bgpstream_peer_sig_id_map) * ps_id;
+  khash_t(bgpstream_peer_id_sig_map) * id_ps;
+};
+
+
 
 /* PRIVATE FUNCTIONS (static) */
 
@@ -77,71 +138,7 @@ int bgpstream_peer_sig_equal(bgpstream_peer_sig_t *ps1,
 	  (strcmp(ps1->collector_str,ps2->collector_str) == 0));
 }
 
-int bgpstream_peer_sig_map_set(bgpstream_peer_sig_map_t *map,
-                               bgpstream_peer_id_t peerid,
-                               char *collector_str,
-                               bgpstream_addr_storage_t *peer_ip_addr,
-                               uint32_t peer_asnumber)
-{
-  khiter_t k;
-  int khret;
-  bgpstream_peer_sig_t ps;
-  bgpstream_peer_sig_t *new_ps;
-  ps.peer_ip_addr = *peer_ip_addr;
-  strcpy(ps.collector_str, collector_str);
-  ps.peer_asnumber = peer_asnumber;
 
-  /* check if this peer id is in the map already */
-  if((k = kh_get(bgpstream_peer_id_sig_map, map->id_ps, peerid)) !=
-     kh_end(map->id_ps))
-    {
-      /* peer id exists */
-      /* check that the signature is the same */
-      if(bgpstream_peer_sig_equal(&ps, kh_val(map->id_ps, k)) != 0)
-	{
-	  /* it was already here... */
-	  return 0;
-	}
-      else
-	{
-	  /* another signature has this same id.. this is a problem */
-	  return -1;
-	}
-    }
-
-  /* check if this signature exists already */
-  if((k = kh_get(bgpstream_peer_sig_id_map, map->ps_id, &ps)) !=
-     kh_end(map->ps_id))
-    {
-      /* signature exists */
-
-      /* check that the peerid is the same */
-      if(peerid == kh_val(map->ps_id, k))
-	{
-	  /* it was already here.. */
-	  return 0;
-	}
-      else
-	{
-	  /* this signature exists, but it has a different id.. this is a
-             problem */
-	  return -1;
-	}
-    }
-
-  /* finally, now we can add it to the map */
-  if((new_ps = malloc(sizeof(bgpstream_peer_sig_t))) == NULL)
-    {
-      return -1;
-    }
-  memcpy(new_ps, &ps, sizeof(bgpstream_peer_sig_t));
-  k = kh_put(bgpstream_peer_sig_id_map, map->ps_id, new_ps, &khret);
-  kh_value(map->ps_id,k) = peerid;
-  k = kh_put(bgpstream_peer_id_sig_map, map->id_ps, peerid, &khret);
-  kh_value(map->id_ps,k) = new_ps;
-
-  return 0;
-}
 
 /* PUBLIC FUNCTIONS */
 

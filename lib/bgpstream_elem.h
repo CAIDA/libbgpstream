@@ -20,7 +20,7 @@
 #ifndef __BGPSTREAM_ELEM_H
 #define __BGPSTREAM_ELEM_H
 
-#include <bgpstream_utils.h>
+#include "bgpstream_utils.h"
 
 /** @file
  *
@@ -42,7 +42,13 @@
  *
  * @{ */
 
-/** Peer states */
+/** Peer state encodes the state of the peer:
+ *  - 0 - the state of the peer is unknown
+ *  - [1-6] - the state encoded is one of the six FSM
+ *            states described in RFC1771
+ *  - [7-8] - inactive state in which all routes are cleared,
+ *            more infor in quagga documentation http://goo.gl/NS9mSv
+ */
 typedef enum {
 
   /** Peer state unknown */
@@ -66,8 +72,11 @@ typedef enum {
   /** Peer state established */
   BGPSTREAM_ELEM_PEERSTATE_ESTABLISHED = 6,
 
-  /** Peer state null */
-  BGPSTREAM_ELEM_PEERSTATE_NULL        = 7,
+  /** Peer state clearing */
+  BGPSTREAM_ELEM_PEERSTATE_CLEARING    = 7,
+
+  /** Peer state clearing */
+  BGPSTREAM_ELEM_PEERSTATE_DELETED     = 8,
 
 } bgpstream_elem_peerstate_t;
 

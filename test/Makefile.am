@@ -16,20 +16,22 @@
 # Report any bugs, questions or comments to bgpstream-info@caida.org
 #
 
-SUBDIRS = common lib tools test
+AM_CPPFLAGS = 	-I$(top_srcdir) \
+	 	-I$(top_srcdir)/lib \
+	 	-I$(top_srcdir)/lib/utils \
+	 	-I$(top_srcdir)/common
 
-AM_CPPFLAGS =
+TESTS = bgpstream-test
 
-EXTRA_DIST = 	test/sqlite_test.db \
-		test/csv_test.csv \
-		test/routeviews.route-views.jinx.ribs.1427846400.bz2 \
-		test/routeviews.route-views.jinx.updates.1427846400.bz2 \
-		test/ris.rrc06.updates.1427846400.gz \
-		test/ris.rrc06.ribs.1427846400.gz
+check_PROGRAMS =  bgpstream-test
 
-include_HEADERS =
-
+bgpstream_test_SOURCES = bgpstream-test.c
+bgpstream_test_LDADD   = -lbgpstream
+bgpstream_test_LDFLAGS = -L$(top_builddir)/lib
 
 ACLOCAL_AMFLAGS = -I m4
 
 CLEANFILES = *~
+
+
+

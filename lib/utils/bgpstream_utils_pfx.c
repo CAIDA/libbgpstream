@@ -22,7 +22,7 @@
 
 #include "khash.h"
 
-#include <bgpstream_utils_pfx.h>
+#include "bgpstream_utils_pfx.h"
 
 char *bgpstream_pfx_snprintf(char *buf, size_t len, bgpstream_pfx_t *pfx)
 {

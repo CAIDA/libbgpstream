@@ -29,7 +29,7 @@
 #include <inttypes.h>
 #include <unistd.h>
 
-#include <bgpstream.h>
+#include "bgpstream.h"
 
 #define PROJECT_CMD_CNT 10
 #define TYPE_CMD_CNT    10

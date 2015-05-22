@@ -66,15 +66,16 @@ int run_bgpstream(char *interface)
     (strcmp(interface, "csvfile")== 0 && counter == CSVFILE_RECORDS) ||
      (strcmp(interface, "sqlite")== 0 && counter == SQLITE_RECORDS))
     {
-      printf("\tinterface is working correctly\n");
+      printf("\tinterface is working correctly\n\n");
+      return 0;
     }
   else
     {
-      printf("\tinterface is NOT working correctly\n");
+      printf("\tinterface is NOT working correctly\n\n");
+      return -1; 
     }
 
-  printf("\n");
-  return 1;
+  return 0;
 }
 
 
@@ -98,7 +99,8 @@ int main()
     }
   bgpstream_destroy(bs);
 
-
+  int res = 0;
+  
   /* Testing singlefile interface */
   printf("Testing singlefile interface...\n");
   bs = bgpstream_create();
@@ -109,12 +111,12 @@ int main()
   option =
     bgpstream_get_data_interface_option_by_name(bs, datasource_id,
                                                 "rib-file");
-  bgpstream_set_data_interface_option(bs, option, "./test/routeviews.route-views.jinx.ribs.1427846400.bz2");
+  bgpstream_set_data_interface_option(bs, option, "./routeviews.route-views.jinx.ribs.1427846400.bz2");
   option =
     bgpstream_get_data_interface_option_by_name(bs, datasource_id,
                                                 "upd-file");
-  bgpstream_set_data_interface_option(bs, option, "./test/ris.rrc06.updates.1427846400.gz");
-  run_bgpstream("singlefile");
+  bgpstream_set_data_interface_option(bs, option, "./ris.rrc06.updates.1427846400.gz");
+  res += run_bgpstream("singlefile");
   bgpstream_destroy(bs);
 
   /* Testing csvfile interface */
@@ -127,9 +129,9 @@ int main()
   option =
     bgpstream_get_data_interface_option_by_name(bs, datasource_id,
                                                 "csv-file");
-  bgpstream_set_data_interface_option(bs, option, "./test/csv_test.csv");
+  bgpstream_set_data_interface_option(bs, option, "csv_test.csv");
   bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_COLLECTOR, "rrc06");
-  run_bgpstream("csvfile");
+  res += run_bgpstream("csvfile");
   bgpstream_destroy(bs);
 
   /* Testing sqlite interface */
@@ -142,11 +144,13 @@ int main()
   option =
     bgpstream_get_data_interface_option_by_name(bs, datasource_id,
                                                 "db-file");
-  bgpstream_set_data_interface_option(bs, option, "./test/sqlite_test.db");
+  bgpstream_set_data_interface_option(bs, option, "sqlite_test.db");
   bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_PROJECT, "routeviews");
-  run_bgpstream("sqlite");
+  res += run_bgpstream("sqlite");
   bgpstream_destroy(bs);
 
-  bgpstream_record_destroy(bs_record);  
-  return 0;
+  bgpstream_record_destroy(bs_record);
+  /* res is going to be zero if everything worked fine, */
+  /* negative if something failed */
+  return res;
 }

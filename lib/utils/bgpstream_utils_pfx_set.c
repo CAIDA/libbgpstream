@@ -23,7 +23,55 @@
 #include "khash.h"
 #include "utils.h"
 
-#include <bgpstream_utils_pfx_set_int.h>
+#include "bgpstream_utils_pfx_set.h"
+
+
+/** set of unique IP prefixes
+ *  this structure maintains a set of unique
+ *  prefixes (ipv4 and ipv6 prefixes, both hashed
+ *  using a int64 type)
+ */
+KHASH_INIT(bgpstream_pfx_storage_set /* name */,
+	   bgpstream_pfx_storage_t /* khkey_t */,
+	   char /* khval_t */,
+	   0  /* kh_is_set */,
+	   bgpstream_pfx_storage_hash_val /*__hash_func */,
+	   bgpstream_pfx_storage_equal_val /* __hash_equal */);
+
+
+struct bgpstream_pfx_storage_set {
+  khash_t(bgpstream_pfx_storage_set) *hash;
+};
+
+/* ipv4 specific set */
+
+KHASH_INIT(bgpstream_ipv4_pfx_set /* name */,
+	   bgpstream_ipv4_pfx_t /* khkey_t */,
+	   char /* khval_t */,
+	   0  /* kh_is_set */,
+	   bgpstream_ipv4_pfx_storage_hash_val /*__hash_func */,
+	   bgpstream_ipv4_pfx_storage_equal_val /* __hash_equal */);
+
+
+struct bgpstream_ipv4_pfx_set {
+  khash_t(bgpstream_ipv4_pfx_set) *hash;
+};
+
+/* ipv6 specific set */
+
+KHASH_INIT(bgpstream_ipv6_pfx_set /* name */,
+	   bgpstream_ipv6_pfx_t /* khkey_t */,
+	   char /* khval_t */,
+	   0  /* kh_is_set */,
+	   bgpstream_ipv6_pfx_storage_hash_val /*__hash_func */,
+	   bgpstream_ipv6_pfx_storage_equal_val /* __hash_equal */);
+
+
+struct bgpstream_ipv6_pfx_set {
+  khash_t(bgpstream_ipv6_pfx_set) *hash;
+};
+
+
 
 /* STORAGE */
 
