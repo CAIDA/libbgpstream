@@ -17,6 +17,8 @@
  *
  */
 
+#include "config.h"
+#include "utils.h"
 #include "bgpstream_datasource.h"
 #include "bgpstream_debug.h"
 
@@ -33,6 +35,31 @@
 
 #define DATASOURCE_BLOCKING_MIN_WAIT 30
 #define DATASOURCE_BLOCKING_MAX_WAIT 150
+
+
+#define GET_DEFAULT_STR_VALUE(var_store, default_value) \
+  do {                                                  \
+    if(strcmp(STR(default_value), "not-set") == 0)      \
+      {                                                 \
+        var_store = NULL;                               \
+      }                                                 \
+    else                                                \
+      {                                                 \
+        var_store = strdup(STR(default_value));         \
+      }                                                 \
+  } while(0)
+
+#define GET_DEFAULT_INT_VALUE(var_store, default_value) \
+  do {                                                  \
+    if(strcmp(STR(default_value), "not-set") == 0)      \
+      {                                                 \
+        var_store = 0;                                  \
+      }                                                 \
+    else                                                \
+      {                                                 \
+        var_store = atoi(STR(default_value));           \
+      }                                                 \
+  } while(0)                                            
 
 
 /* datasource mgr related functions */
@@ -55,18 +82,18 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
   datasource_mgr->sqlite_ds = NULL;
   datasource_mgr->status = BGPSTREAM_DATASOURCE_STATUS_OFF;
   // datasource options
-  datasource_mgr->mysql_dbname = NULL;
-  datasource_mgr->mysql_user = NULL;
-  datasource_mgr->mysql_password = NULL;
-  datasource_mgr->mysql_host = NULL;
-  datasource_mgr->mysql_port = 0; // i.e. not set  => use the default in the system
-  datasource_mgr->mysql_socket = NULL;
-  datasource_mgr->mysql_ris_path = NULL;
-  datasource_mgr->mysql_rv_path = NULL;
-  datasource_mgr->singlefile_rib_mrtfile = NULL;
-  datasource_mgr->singlefile_upd_mrtfile = NULL;
-  datasource_mgr->csvfile_file = NULL;
-  datasource_mgr->sqlite_file = NULL;
+  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_dbname,BGPSTREAM_DS_MYSQL_DB_NAME);
+  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_user, BGPSTREAM_DS_MYSQL_DB_USER);
+  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_password, BGPSTREAM_DS_MYSQL_DB_PASSWORD);
+  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_host, BGPSTREAM_DS_MYSQL_DB_HOST);
+  GET_DEFAULT_INT_VALUE(datasource_mgr->mysql_port, BGPSTREAM_DS_MYSQL_DB_PORT);
+  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_socket, BGPSTREAM_DS_MYSQL_DB_SOCKET);
+  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_ris_path, BGPSTREAM_DS_MYSQL_RIS_PATH);
+  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_rv_path, BGPSTREAM_DS_MYSQL_RV_PATH);
+  GET_DEFAULT_STR_VALUE(datasource_mgr->singlefile_rib_mrtfile, BGPSTREAM_DS_SINGLEFILE_RIB_FILE);
+  GET_DEFAULT_STR_VALUE(datasource_mgr->singlefile_upd_mrtfile, BGPSTREAM_DS_SINGLEFILE_UPDATE_FILE);
+  GET_DEFAULT_STR_VALUE(datasource_mgr->csvfile_file, BGPSTREAM_DS_CSVFILE_CSV_FILE);
+  GET_DEFAULT_STR_VALUE(datasource_mgr->sqlite_file, BGPSTREAM_DS_SQLITE_DB_FILE);
   bgpstream_debug("\tBSDS_MGR: create end");
   return datasource_mgr;
 }

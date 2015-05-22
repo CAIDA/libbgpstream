@@ -292,7 +292,6 @@ bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_datasource_t* 
                                                 bgpstream_input_mgr_t *input_mgr) {
   bgpstream_debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue start");
   
-  int num_results = 0;
   io_t *file_io = NULL;
   char buffer[BUFFER_LEN];
   int read = 0;
