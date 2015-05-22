@@ -145,16 +145,14 @@ void bgpstream_add_filter(bgpstream_t *bs,
                           bgpstream_filter_type_t filter_type,
 			  const char* filter_value);
 
-/** Add a filter to configure the minimum bgp time interval between one file
- *  and another
+/** Add a filter to configure the minimum bgp time interval between RIB
+ *  files that belong to the same collector. This information can be 
+ *  changed at run time.
  *
- * @param bs            pointer to a BGP Stream instance to filter
- * @param type          type of file affected by frequency filtering
- * @param frequency     time period
+ * @param bs        pointer to a BGP Stream instance to filter
+ * @param period    time period (if zero, all available RIBs are processed)
  */
-void bgpstream_add_frequency_filter(bgpstream_t *bs,
-                                    bgpstream_record_dump_type_t type,
-                                    uint32_t frequency);
+void bgpstream_add_rib_period_filter(bgpstream_t *bs, uint32_t period);
 
 /** Add a filter to select a specific time range from the BGP data available
  *

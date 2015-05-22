@@ -35,10 +35,10 @@ typedef struct struct_bgpstream_interval_filter_t {
   struct struct_bgpstream_interval_filter_t * next;
 } bgpstream_interval_filter_t;
 
-KHASH_INIT(collector_type_ts, char*, uint32_t, 1,
+KHASH_INIT(collector_ts, char*, uint32_t, 1,
 	   kh_str_hash_func, kh_str_hash_equal);
 
-typedef khash_t(collector_type_ts) collector_type_ts_t;
+typedef khash_t(collector_ts) collector_ts_t;
                                    
 typedef struct struct_bgpstream_filter_mgr_t {
   
@@ -46,9 +46,8 @@ typedef struct struct_bgpstream_filter_mgr_t {
   bgpstream_string_filter_t * collectors;
   bgpstream_string_filter_t * bgp_types;
   bgpstream_interval_filter_t * time_intervals;
-  collector_type_ts_t *last_processed_ts;
-  uint32_t rib_frequency;
-  uint32_t update_frequency;
+  collector_ts_t *last_processed_ts;
+  uint32_t rib_period;
 } bgpstream_filter_mgr_t;
 
 
@@ -60,9 +59,8 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
 				     bgpstream_filter_type_t filter_type,
 				     const char* filter_value);
 
-void bgpstream_filter_mgr_frequency_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
-                                               bgpstream_record_dump_type_t type,
-                                               uint32_t frequency);
+void bgpstream_filter_mgr_rib_period_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
+                                                uint32_t period);
 
 void bgpstream_filter_mgr_interval_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
 					      uint32_t begin_time,

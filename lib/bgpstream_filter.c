@@ -33,8 +33,7 @@ bgpstream_filter_mgr_t *bgpstream_filter_mgr_create() {
   bs_filter_mgr->bgp_types = NULL;
   bs_filter_mgr->time_intervals = NULL;
   bs_filter_mgr->last_processed_ts = NULL;
-  bs_filter_mgr->rib_frequency = 0;
-  bs_filter_mgr->update_frequency = 0;
+  bs_filter_mgr->rib_period = 0;
   bgpstream_debug("\tBSF_MGR: create end");
   return bs_filter_mgr;
 }
@@ -78,27 +77,19 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
 }
 
 
-void bgpstream_filter_mgr_frequency_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
-                                               bgpstream_record_dump_type_t type,
-                                               uint32_t frequency)
+void bgpstream_filter_mgr_rib_period_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
+                                               uint32_t period)
 {
   bgpstream_debug("\tBSF_MGR:: add_filter start");
   assert(bs_filter_mgr != NULL);
-  if(frequency != 0 && bs_filter_mgr->last_processed_ts == NULL)
+  if(period != 0 && bs_filter_mgr->last_processed_ts == NULL)
     {
-      if((bs_filter_mgr->last_processed_ts = kh_init(collector_type_ts)) == NULL)
+      if((bs_filter_mgr->last_processed_ts = kh_init(collector_ts)) == NULL)
         {
           bgpstream_log_warn("\tBSF_MGR: can't allocate memory for collectortype map"); 
         }
     }
-  if(type == BGPSTREAM_RIB)
-    {
-      bs_filter_mgr->rib_frequency = frequency;
-    }
-  else
-    {
-      bs_filter_mgr->update_frequency = frequency;
-    }
+  bs_filter_mgr->rib_period = period;
   bgpstream_debug("\tBSF_MGR:: add_filter end");
 
 }
@@ -177,7 +168,7 @@ void bgpstream_filter_mgr_destroy(bgpstream_filter_mgr_t *bs_filter_mgr) {
               free(kh_key(bs_filter_mgr->last_processed_ts,k));
             }
         }
-      kh_destroy(collector_type_ts, bs_filter_mgr->last_processed_ts);
+      kh_destroy(collector_ts, bs_filter_mgr->last_processed_ts);
     }
   // free the mgr structure
   free(bs_filter_mgr);

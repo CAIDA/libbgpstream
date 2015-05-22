@@ -83,8 +83,11 @@ AC_TYPE_UINT8_T
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 
+# Checks for header files.
+AC_CHECK_HEADERS([arpa/inet.h inttypes.h limits.h math.h stdlib.h string.h \
+			      time.h sys/time.h])
 
-# Checks for libraries
+# Checks for mandatory libraries
 
 AC_SEARCH_LIBS([wandio_create], [wandio trace], [with_wandio=yes],
                  [AC_MSG_ERROR(
@@ -92,22 +95,59 @@ AC_SEARCH_LIBS([wandio_create], [wandio trace], [with_wandio=yes],
 		 )])
 AM_CONDITIONAL([WITH_WANDIO], [test "x$with_wandio" == xyes])
 
+
+
 AC_CHECK_LIB([mysqlclient], [mysql_query], ,
                [AC_MSG_ERROR( [libmysqlclient required ])])
+
 
 AC_CHECK_LIB([sqlite3], [sqlite3_open_v2], ,
                [AC_MSG_ERROR( [libsqlite3 required ])])
 
 
-# Checks for header files.
-AC_CHECK_HEADERS([arpa/inet.h inttypes.h limits.h math.h stdlib.h string.h \
-			      time.h sys/time.h])
+# set some default options for the datasources
+AC_DEFUN([BS_DS_OPT],
+[
+opt_val=$4
+AC_MSG_CHECKING([data interface option: $3])
+AC_ARG_WITH([$1],
+[AS_HELP_STRING([--with-$1=$opt_val],
+  [$3 (defaults to $opt_val)])],
+  [opt_val=$withval],
+  [])
+
+AC_DEFINE_UNQUOTED([BGPSTREAM_DS_$2],
+                    [$opt_val], [$3])
+
+AC_MSG_RESULT([$opt_val])
+])
+
+
+# singlefile options
+BS_DS_OPT(singlefile-rib-file, SINGLEFILE_RIB_FILE, RIB MRT file to read, not-set)
+BS_DS_OPT(singlefile-upd-file, SINGLEFILE_UPDATE_FILE, CSV file listing the mrt data to read, not-set)
+
+# csvfile options
+BS_DS_OPT(csvfile-csv-file, CSVFILE_CSV_FILE, RIB MRT file to read, bgp_data.csv)
+
+# sqlite options
+BS_DS_OPT(sqlite-db-file, SQLITE_DB_FILE, SQLite database, bgp_data.db)
+
+# MySQL options
+BS_DS_OPT(mysql-db-name, MYSQL_DB_NAME, MySQL Database name, bgparchive)
+BS_DS_OPT(mysql-db-user, MYSQL_DB_USER, MySQL Database username, bgpstream)
+BS_DS_OPT(mysql-db-password, MYSQL_DB_PASSWORD, MySQL Database password, not-set)
+BS_DS_OPT(mysql-db-host, MYSQL_DB_HOST, MySQL server hostname/IP address, not-set)
+BS_DS_OPT(mysql-db-port, MYSQL_DB_PORT, MySQL server port, not-set)
+BS_DS_OPT(mysql-db-socket, MYSQL_DB_SOCKET, MySQL server unix socket, not-set)
+
+BS_DS_OPT(mysql-ris-path, MYSQL_RIS_PATH, Prefix path for RIS data, not-set)
+BS_DS_OPT(mysql-rv-path, MYSQL_RV_PATH, Prefix path for Routeviews data, not-set)
 
 
 
 # we may want to come back later and add compile-time configuration for things
 # like datastructure providers, but for now it will all get compiled
-
 
 AC_SUBST([BGPSTREAM_MAJOR_VERSION])
 AC_SUBST([BGPSTREAM_MID_VERSION])

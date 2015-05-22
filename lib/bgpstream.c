@@ -71,13 +71,13 @@ static bgpstream_data_interface_option_t bgpstream_singlefile_options[] = {
     BGPSTREAM_DATA_INTERFACE_SINGLEFILE,
     0,
     "rib-file",
-    "rib mrt file to read (default: none)",
+    "rib mrt file to read (default: " STR(BGPSTREAM_DS_SINGLEFILE_RIB_FILE) ")",
   },
   {
     BGPSTREAM_DATA_INTERFACE_SINGLEFILE,
     1,
     "upd-file",
-    "updates mrt file to read (default: none)",
+    "updates mrt file to read (default: " STR(BGPSTREAM_DS_SINGLEFILE_UPDATE_FILE) ")",
   },
 };
 
@@ -87,7 +87,7 @@ static bgpstream_data_interface_option_t bgpstream_csvfile_options[] = {
     BGPSTREAM_DATA_INTERFACE_CSVFILE,
     0,
     "csv-file",
-    "csv file listing the mrt data to read (default: ./bgp_data.csv)",
+    "csv file listing the mrt data to read (default: " STR(BGPSTREAM_DS_CSVFILE_CSV_FILE) ")",
   },
 };
 
@@ -97,7 +97,7 @@ static bgpstream_data_interface_option_t bgpstream_sqlite_options[] = {
     BGPSTREAM_DATA_INTERFACE_SQLITE,
     0,
     "db-file",
-    "sqlite database (default: ./bgp_data.db)",
+    "sqlite database (default: " STR(BGPSTREAM_DS_SQLITE_DB_FILE) ")",
   },
 };
 
@@ -107,7 +107,7 @@ static bgpstream_data_interface_option_t bgpstream_mysql_options[] = {
     BGPSTREAM_DATA_INTERFACE_MYSQL,
     0,
     "db-name",
-    "name of the mysql database to use (default: bgparchive)",
+    "name of the mysql database to use (default: " STR(BGPSTREAM_DS_MYSQL_DB_NAME) ")",
   },
 
   /* Database username */
@@ -115,14 +115,14 @@ static bgpstream_data_interface_option_t bgpstream_mysql_options[] = {
     BGPSTREAM_DATA_INTERFACE_MYSQL,
     1,
     "db-user",
-    "mysql username to use (default: bgpstream)",
+    "mysql username to use (default: " STR(BGPSTREAM_DS_MYSQL_DB_USER) ")",
   },
   /* Database password */
   {
     BGPSTREAM_DATA_INTERFACE_MYSQL,
     2,
     "db-password",
-    "mysql password to use (default: none)",
+    "mysql password to use (default: " STR(BGPSTREAM_DS_MYSQL_DB_PASSWORD) ")",
   },
 
   /* Database host */
@@ -130,35 +130,35 @@ static bgpstream_data_interface_option_t bgpstream_mysql_options[] = {
     BGPSTREAM_DATA_INTERFACE_MYSQL,
     3,
     "db-host",
-    "hostname/IP of the mysql server (default: mysql default host)",
+    "hostname/IP of the mysql server (default: " STR(BGPSTREAM_DS_MYSQL_DB_HOST) ")",
   },
   /* Database connection port */
   {
     BGPSTREAM_DATA_INTERFACE_MYSQL,
     4,
     "db-port",
-    "port of the mysql server (default: mysql default port)",
+    "port of the mysql server (default: " STR(BGPSTREAM_DS_MYSQL_DB_PORT) ")",
   },
   /* Database Unix socket */
   {
     BGPSTREAM_DATA_INTERFACE_MYSQL,
     5,
     "db-socket",
-    "Unix socket of the mysql server (default: mysql default socket)",
+    "Unix socket of the mysql server (default: " STR(BGPSTREAM_DS_MYSQL_DB_SOCKET) ")",
   },
   /* RIS data path */
   {
     BGPSTREAM_DATA_INTERFACE_MYSQL,
     6,
     "ris-path",
-    "Prefix path of RIS data (default: RIS path contained in mysql db projects table)",
+    "Prefix path of RIS data (default: " STR(BGPSTREAM_DS_MYSQL_RIS_PATH) ")",
   },
   /* Routeviews data path */
   {
     BGPSTREAM_DATA_INTERFACE_MYSQL,
     7,
     "rv-path",
-    "prefix path of RouteViews data (default: Routeviews path contained in mysql db projects table)",
+    "prefix path of RouteViews data (default: " STR(BGPSTREAM_DS_MYSQL_RV_PATH) ")",
   },
 };
 
@@ -223,15 +223,13 @@ void bgpstream_add_filter(bgpstream_t *bs,
   bgpstream_debug("BS: set_filter end");
 }
 
-void bgpstream_add_frequency_filter(bgpstream_t *bs,
-                                    bgpstream_record_dump_type_t type,
-                                    uint32_t frequency)
+void bgpstream_add_rib_period_filter(bgpstream_t *bs, uint32_t period)
 {
   bgpstream_debug("BS: set_filter start");
   if(bs == NULL || (bs != NULL && bs->status != BGPSTREAM_STATUS_ALLOCATED)) {
     return; // nothing to customize
   }
-  bgpstream_filter_mgr_frequency_filter_add(bs->filter_mgr, type, frequency);
+  bgpstream_filter_mgr_rib_period_filter_add(bs->filter_mgr, period);
   bgpstream_debug("BS: set_filter end");
 }
 
