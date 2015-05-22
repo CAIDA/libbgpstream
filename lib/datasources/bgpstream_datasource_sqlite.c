@@ -34,12 +34,14 @@
 #include <assert.h>
 
 
+#define MAX_QUERY_LEN 2048
+
 struct struct_bgpstream_sqlite_datasource_t {
   bgpstream_filter_mgr_t * filter_mgr;
   /* sqlite connection handler */
   sqlite3 *db;
   sqlite3_stmt *stmt;
-  char sql_query[2048];
+  char sql_query[MAX_QUERY_LEN];
   char * sqlite_file;
   uint32_t current_ts;
   uint32_t last_ts;
@@ -72,6 +74,9 @@ bgpstream_sqlite_datasource_t *
 bgpstream_sqlite_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
                                    char * sqlite_file)
 {
+  /* how many characters can be written in the query buffer */
+  uint32_t rem_buf_space = MAX_QUERY_LEN - 1;
+
   bgpstream_debug("\t\tBSDS_SQLITE: create sqlite_ds start");  
   bgpstream_sqlite_datasource_t *sqlite_ds = (bgpstream_sqlite_datasource_t*) malloc_zero(sizeof(bgpstream_sqlite_datasource_t));
   if(sqlite_ds == NULL) {
@@ -89,16 +94,17 @@ bgpstream_sqlite_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
   sqlite_ds->current_ts = 0;
   sqlite_ds->last_ts = 0;
   
-  strcpy(sqlite_ds->sql_query,
-         "SELECT bgp_data.file_path, collectors.project, collectors.name, "
-         "bgp_types.name, time_span.time_span, bgp_data.file_time, bgp_data.ts "
-         "FROM  collectors JOIN bgp_data JOIN bgp_types JOIN time_span " 
-         "WHERE bgp_data.collector_id = collectors.id  AND "
-         "bgp_data.collector_id = time_span.collector_id AND "
-         "bgp_data.type_id = bgp_types.id AND "
-         "bgp_data.type_id = time_span.bgp_type_id "
-         );
-
+  strncpy(sqlite_ds->sql_query,
+          "SELECT bgp_data.file_path, collectors.project, collectors.name, "
+          "bgp_types.name, time_span.time_span, bgp_data.file_time, bgp_data.ts "
+          "FROM  collectors JOIN bgp_data JOIN bgp_types JOIN time_span " 
+          "WHERE bgp_data.collector_id = collectors.id  AND "
+          "bgp_data.collector_id = time_span.collector_id AND "
+          "bgp_data.type_id = bgp_types.id AND "
+          "bgp_data.type_id = time_span.bgp_type_id ",
+          rem_buf_space);
+  rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
+  
   // projects, collectors, bgp_types, and time_intervals are used as filters
   // only if they are provided by the user
   bgpstream_string_filter_t * sf;
@@ -107,77 +113,105 @@ bgpstream_sqlite_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
   // projects
   if(filter_mgr->projects != NULL) {
     sf = filter_mgr->projects;
-    strcat (sqlite_ds->sql_query," AND collectors.project IN (");
+    strncat(sqlite_ds->sql_query," AND collectors.project IN (", rem_buf_space);
+    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
     while(sf != NULL) {
-      strcat (sqlite_ds->sql_query, "'");
-      strcat (sqlite_ds->sql_query, sf->value);
-      strcat (sqlite_ds->sql_query, "'");
+      strncat(sqlite_ds->sql_query, "'", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
+      strncat(sqlite_ds->sql_query, sf->value, rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
+      strncat(sqlite_ds->sql_query, "'", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
       sf = sf->next;
       if(sf!= NULL) {
-	strcat (sqlite_ds->sql_query, ", ");      
+	strncat(sqlite_ds->sql_query, ", ", rem_buf_space);
+        rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
       }
     }
-    strcat (sqlite_ds->sql_query," )");
+    strncat(sqlite_ds->sql_query," )", rem_buf_space);
+    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
   }
   // collectors
   if(filter_mgr->collectors != NULL) {
     sf = filter_mgr->collectors;
-    strcat (sqlite_ds->sql_query," AND collectors.name IN (");
+    strncat(sqlite_ds->sql_query," AND collectors.name IN (", rem_buf_space);
+    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
     while(sf != NULL) {
-      strcat (sqlite_ds->sql_query, "'");
-      strcat (sqlite_ds->sql_query, sf->value);
-      strcat (sqlite_ds->sql_query, "'");
+      strncat(sqlite_ds->sql_query, "'", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
+      strncat(sqlite_ds->sql_query, sf->value, rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
+      strncat(sqlite_ds->sql_query, "'", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
       sf = sf->next;
       if(sf!= NULL) {
-	strcat (sqlite_ds->sql_query, ", ");      
+	strncat(sqlite_ds->sql_query, ", ", rem_buf_space);
+        rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
       }
     }
-    strcat (sqlite_ds->sql_query," )");
+    strncat(sqlite_ds->sql_query," )", rem_buf_space);
+    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
   }
   // bgp_types
   if(filter_mgr->bgp_types != NULL) {
     sf = filter_mgr->bgp_types;
-    strcat (sqlite_ds->sql_query," AND bgp_types.name IN (");
+    strncat(sqlite_ds->sql_query," AND bgp_types.name IN (", rem_buf_space);
+    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
     while(sf != NULL) {
-      strcat (sqlite_ds->sql_query, "'");
-      strcat (sqlite_ds->sql_query, sf->value);
-      strcat (sqlite_ds->sql_query, "'");
+      strncat(sqlite_ds->sql_query, "'", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
+      strncat(sqlite_ds->sql_query, sf->value, rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
+      strncat(sqlite_ds->sql_query, "'", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
       sf = sf->next;
       if(sf!= NULL) {
-	strcat (sqlite_ds->sql_query, ", ");      
+	strncat(sqlite_ds->sql_query, ", ", rem_buf_space);
+        rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
       }
     }
-    strcat (sqlite_ds->sql_query," )");
+    strncat(sqlite_ds->sql_query," )", rem_buf_space);
+    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
   }
 
   // time_intervals
   if(filter_mgr->time_intervals != NULL) {
     tif = filter_mgr->time_intervals;
-    strcat (sqlite_ds->sql_query," AND ( ");
+    strncat(sqlite_ds->sql_query," AND ( ", rem_buf_space);
+    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
     while(tif != NULL) {
-      strcat (sqlite_ds->sql_query," ( ");
+      strncat(sqlite_ds->sql_query," ( ", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
 
       // BEGIN TIME
-      strcat (sqlite_ds->sql_query," (bgp_data.file_time >=  ");
+      strncat(sqlite_ds->sql_query," (bgp_data.file_time >=  ", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
       sprintf(sqlite_ds->sql_query + strlen(sqlite_ds->sql_query),
-              "%"PRIu32, tif->begin_time);
-      strcat (sqlite_ds->sql_query,"  - time_span.time_span - 120 )");
-
-      strcat (sqlite_ds->sql_query,"  AND  ");
+              "%"PRIu32, tif->begin_time);    
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
+      strncat(sqlite_ds->sql_query,"  - time_span.time_span - 120 )", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
+      strncat(sqlite_ds->sql_query,"  AND  ", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
 
       // END TIME
-      strcat (sqlite_ds->sql_query," (bgp_data.file_time <=  ");
+      strncat(sqlite_ds->sql_query," (bgp_data.file_time <=  ", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
       sprintf(sqlite_ds->sql_query + strlen(sqlite_ds->sql_query),
               "%"PRIu32, tif->end_time);
-      strcat (sqlite_ds->sql_query,") ");
-
-      strcat (sqlite_ds->sql_query," ) ");
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
+      strncat(sqlite_ds->sql_query,") ", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
+      strncat(sqlite_ds->sql_query," ) ", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
       tif = tif->next;
       if(tif!= NULL) {
-	strcat (sqlite_ds->sql_query, " OR ");      
+	strncat(sqlite_ds->sql_query, " OR ", rem_buf_space);
+        rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
       }
     }
-    strcat (sqlite_ds->sql_query," )");
+    strncat(sqlite_ds->sql_query," )", rem_buf_space);
+    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
   }
   
   /*  comment on 120 seconds: */
@@ -188,19 +222,19 @@ bgpstream_sqlite_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
   /*  retrieve data that are 120 seconds older than the requested  */
 
   // minimum timestamp and current timestamp are the two placeholders
-  strcat (sqlite_ds->sql_query," AND bgp_data.ts > ? AND bgp_data.ts <= ?");
-
+  strncat(sqlite_ds->sql_query," AND bgp_data.ts > ? AND bgp_data.ts <= ?", rem_buf_space);
+  rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
   // order by filetime and bgptypes in reverse order: this way the 
   // input insertions are always "head" insertions, i.e. queue insertion is
   // faster
-  strcat(sqlite_ds->sql_query," ORDER BY file_time DESC, bgp_types.name DESC");
-
+  strncat(sqlite_ds->sql_query," ORDER BY file_time DESC, bgp_types.name DESC", rem_buf_space);
+  rem_buf_space = MAX_QUERY_LEN - 1 - strlen(sqlite_ds->sql_query);
   if(prepare_db(sqlite_ds) != 0)
     {
       goto err;
     }
 
-  /* printf("%s\n", sqlite_ds->sql_query); */
+  /* printf("%d \n %s\n", rem_buf_space, sqlite_ds->sql_query); */
   
   bgpstream_debug("\t\tBSDS_SQLITE: create sqlite_ds end");
 

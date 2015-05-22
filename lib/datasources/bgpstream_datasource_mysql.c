@@ -32,6 +32,7 @@
 #include <errmsg.h>
 
 
+#define MAX_QUERY_LEN 2048
 
 struct struct_bgpstream_mysql_datasource_t {
   /* mysql connection handler */
@@ -47,7 +48,7 @@ struct struct_bgpstream_mysql_datasource_t {
   char *mysql_ris_path;
   char *mysql_rv_path;
   /* query text */
-  char sql_query[2048];
+  char sql_query[MAX_QUERY_LEN];
   /* mysql statement */
   MYSQL_STMT *stmt;
   /* parameters for placeholders */
@@ -82,6 +83,10 @@ bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter
                                                                        char * mysql_rv_path)
 {
   bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds start");
+
+  /* how many characters can be written in the query buffer */
+  uint32_t rem_buf_space = MAX_QUERY_LEN - 1;
+
   bgpstream_mysql_datasource_t *mysql_ds = (bgpstream_mysql_datasource_t*) malloc(sizeof(bgpstream_mysql_datasource_t));
   if(mysql_ds == NULL) {
     return NULL; // can't allocate memory
@@ -206,21 +211,23 @@ bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter
     bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds set time_zone something wrong"); 
   }
 
-  strcpy(mysql_ds->sql_query,
-	 "SELECT "
-	 "projects.path, collectors.path, bgp_types.path, "
-	 "projects.name, collectors.name, bgp_types.name, projects.file_ext, "
-	 "file_time, on_web_frequency.offset "
-	 "FROM bgp_data "
-	 "JOIN bgp_types  ON bgp_types.id  = bgp_data.bgp_type_id "
-	 "JOIN collectors ON collectors.id = bgp_data.collector_id "
-	 "JOIN projects   ON projects.id   = collectors.project_id "
-	 "JOIN on_web_frequency "
-	 "     ON on_web_frequency.project_id  = projects.id AND "
-	 "        on_web_frequency.bgp_type_id = bgp_types.id"
+  strncpy(mysql_ds->sql_query,
+          "SELECT "
+          "projects.path, collectors.path, bgp_types.path, "
+          "projects.name, collectors.name, bgp_types.name, projects.file_ext, "
+          "file_time, on_web_frequency.offset "
+          "FROM bgp_data "
+          "JOIN bgp_types  ON bgp_types.id  = bgp_data.bgp_type_id "
+          "JOIN collectors ON collectors.id = bgp_data.collector_id "
+          "JOIN projects   ON projects.id   = collectors.project_id "
+          "JOIN on_web_frequency "
+          "     ON on_web_frequency.project_id  = projects.id AND "
+          "        on_web_frequency.bgp_type_id = bgp_types.id",
+          rem_buf_space
 	 );
 
-
+  rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+  
   // projects, collectors, bgp_types, and time_intervals are used as filters
   // only if they are provided by the user
   bgpstream_string_filter_t * sf;
@@ -229,77 +236,104 @@ bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter
   // projects
   if(filter_mgr->projects != NULL) {
     sf = filter_mgr->projects;
-    strcat (mysql_ds->sql_query," AND projects.name IN (");
+    strncat(mysql_ds->sql_query," AND projects.name IN (", rem_buf_space);
+    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
     while(sf != NULL) {
-      strcat (mysql_ds->sql_query, "'");
-      strcat (mysql_ds->sql_query, sf->value);
-      strcat (mysql_ds->sql_query, "'");
+      strncat(mysql_ds->sql_query, "'", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+      strncat(mysql_ds->sql_query, sf->value, rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+      strncat(mysql_ds->sql_query, "'", rem_buf_space);
       sf = sf->next;
       if(sf!= NULL) {
-	strcat (mysql_ds->sql_query, ", ");      
+	strncat (mysql_ds->sql_query, ", ", rem_buf_space);      
+        rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
       }
     }
-    strcat (mysql_ds->sql_query," )");
+    strncat(mysql_ds->sql_query," )", rem_buf_space);
+    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
   }
   // collectors
   if(filter_mgr->collectors != NULL) {
     sf = filter_mgr->collectors;
-    strcat (mysql_ds->sql_query," AND collectors.name IN (");
+    strncat(mysql_ds->sql_query," AND collectors.name IN (", rem_buf_space);
+    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
     while(sf != NULL) {
-      strcat (mysql_ds->sql_query, "'");
-      strcat (mysql_ds->sql_query, sf->value);
-      strcat (mysql_ds->sql_query, "'");
+      strncat(mysql_ds->sql_query, "'", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+      strncat(mysql_ds->sql_query, sf->value, rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+      strncat(mysql_ds->sql_query, "'", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
       sf = sf->next;
       if(sf!= NULL) {
-	strcat (mysql_ds->sql_query, ", ");      
+	strncat(mysql_ds->sql_query, ", ", rem_buf_space);
+        rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
       }
     }
-    strcat (mysql_ds->sql_query," )");
+    strncat(mysql_ds->sql_query," )", rem_buf_space);
+    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
   }
   // bgp_types
   if(filter_mgr->bgp_types != NULL) {
     sf = filter_mgr->bgp_types;
-    strcat (mysql_ds->sql_query," AND bgp_types.name IN (");
+    strncat(mysql_ds->sql_query," AND bgp_types.name IN (", rem_buf_space);
+    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
     while(sf != NULL) {
-      strcat (mysql_ds->sql_query, "'");
-      strcat (mysql_ds->sql_query, sf->value);
-      strcat (mysql_ds->sql_query, "'");
+      strncat(mysql_ds->sql_query, "'", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+      strncat(mysql_ds->sql_query, sf->value, rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+      strncat(mysql_ds->sql_query, "'", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
       sf = sf->next;
       if(sf!= NULL) {
-	strcat (mysql_ds->sql_query, ", ");      
+	strncat(mysql_ds->sql_query, ", ", rem_buf_space);
+        rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
       }
     }
-    strcat (mysql_ds->sql_query," )");
+    strncat(mysql_ds->sql_query," )", rem_buf_space);
+    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
   }
 
   // time_intervals
   if(filter_mgr->time_intervals != NULL) {
     tif = filter_mgr->time_intervals;
-    strcat (mysql_ds->sql_query," AND ( ");
+    strncat(mysql_ds->sql_query," AND ( ", rem_buf_space);
+    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
     while(tif != NULL) {
-      strcat (mysql_ds->sql_query," ( ");
-
+      strncat(mysql_ds->sql_query," ( ", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+      
       // BEGIN TIME
-      strcat (mysql_ds->sql_query," (file_time >=  ");
+      strncat(mysql_ds->sql_query," (file_time >=  ", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
       sprintf(mysql_ds->sql_query + strlen(mysql_ds->sql_query),
               "%"PRIu32, tif->begin_time);
-      strcat (mysql_ds->sql_query,"  - on_web_frequency.offset - 120 )");
-
-      strcat (mysql_ds->sql_query,"  AND  ");
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+      strncat(mysql_ds->sql_query,"  - on_web_frequency.offset - 120 )", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+      strncat(mysql_ds->sql_query,"  AND  ", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
 
       // END TIME
-      strcat (mysql_ds->sql_query," (file_time <=  ");
+      strncat(mysql_ds->sql_query," (file_time <=  ", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
       sprintf(mysql_ds->sql_query + strlen(mysql_ds->sql_query),
               "%"PRIu32, tif->end_time);
-      strcat (mysql_ds->sql_query,") ");
-
-      strcat (mysql_ds->sql_query," ) ");
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+      strncat(mysql_ds->sql_query,") ", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+      strncat(mysql_ds->sql_query," ) ", rem_buf_space);
+      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
       tif = tif->next;
       if(tif!= NULL) {
-	strcat (mysql_ds->sql_query, " OR ");      
+	strncat(mysql_ds->sql_query, " OR ", rem_buf_space);
+        rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
       }
     }
-    strcat (mysql_ds->sql_query," )");
+    strncat(mysql_ds->sql_query," )", rem_buf_space);
+    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
   }
   /*  comment on 120 seconds: */
   /*  sometimes it happens that ribs or updates carry a filetime which is not */
@@ -309,13 +343,15 @@ bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter
   /*  retrieve data that are 120 seconds older than the requested  */
 
   // minimum timestamp and current timestamp are the two placeholders
-  strcat (mysql_ds->sql_query," AND UNIX_TIMESTAMP(ts) > ? AND UNIX_TIMESTAMP(ts) <= ?");
-
+  strncat(mysql_ds->sql_query," AND UNIX_TIMESTAMP(ts) > ? AND UNIX_TIMESTAMP(ts) <= ?", rem_buf_space);
+  rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+  
   // order by filetime and bgptypes in reverse order: this way the 
   // input insertions are always "head" insertions, i.e. queue insertion is
   // faster
-  strcat (mysql_ds->sql_query," ORDER BY file_time DESC, bgp_types.name DESC");
-
+  strncat(mysql_ds->sql_query," ORDER BY file_time DESC, bgp_types.name DESC", rem_buf_space);
+  rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+  
   // printf("%s\n",mysql_ds->sql_query);
   bgpstream_debug("\t\tBSDS_MYSQL:  mysql query created");
 
