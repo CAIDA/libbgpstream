@@ -19,6 +19,7 @@
 
 #include "bgpstream_datasource_csvfile.h"
 #include "bgpstream_debug.h"
+#include "libcsv/csv.h"
 #include "utils.h"
 
 #include <inttypes.h>
@@ -31,18 +32,49 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <errmsg.h>
+#include <stdlib.h>
+#include <wandio.h>
+#include <assert.h>
+
+#define BUFFER_LEN  1024
+
+typedef enum {
+  
+  CSVFILE_PATH      = 0,
+  CSVFILE_PROJECT   = 1,
+  CSVFILE_BGPTYPE   = 2,
+  CSVFILE_COLLECTOR = 3,
+  CSVFILE_FILETIME  = 4,
+  CSVFILE_TIMESPAN  = 5,
+  CSVFILE_TIMESTAMP = 6,
+  
+  CSVFILE_FIELDCNT  = 7
+} csvfile_field_t;
 
 
-struct struct_bgpstream_csvfile_datasource_t {
+struct struct_bgpstream_csvfile_datasource_t {  
   char *csvfile_file;
+  struct csv_parser parser;
+  int current_field;
+  int num_results;
   bgpstream_filter_mgr_t * filter_mgr;
+  bgpstream_input_mgr_t *input_mgr;
+  
+  /* bgp record metadata */
   char filename[BGPSTREAM_DUMP_MAX_LEN];
   char project[BGPSTREAM_PAR_MAX_LEN];
-  char collector[BGPSTREAM_PAR_MAX_LEN];
   char bgp_type[BGPSTREAM_PAR_MAX_LEN];
+  char collector[BGPSTREAM_PAR_MAX_LEN];
   uint32_t filetime;
-  uint32_t last_ts;
   uint32_t time_span;
+  uint32_t timestamp;
+
+  /* maximum timestamp processed in the current file */
+  uint32_t max_ts_infile;
+  /* maximum timestamp processed in the past file */
+  uint32_t last_processed_ts;
+  /* maximum timestamp accepted in the current round */
+  uint32_t max_accepted_ts;
 };
 
 
@@ -55,26 +87,56 @@ bgpstream_csvfile_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
   bgpstream_csvfile_datasource_t *csvfile_ds = (bgpstream_csvfile_datasource_t*) malloc_zero(sizeof(bgpstream_csvfile_datasource_t));
   if(csvfile_ds == NULL) {
     bgpstream_log_err("\t\tBSDS_CSVFILE: create csvfile_ds can't allocate memory");    
-    return NULL; // can't allocate memory
+    goto err;
   }  
   if(csvfile_file == NULL)
     {
       bgpstream_log_err("\t\tBSDS_CSVFILE: create csvfile_ds no file provided");    
-      free(csvfile_ds);
-      return NULL;
+      goto err;
     }
-  csvfile_ds->csvfile_file = strdup(csvfile_file);
-  csvfile_ds->filter_mgr = filter_mgr;
-  csvfile_ds->last_ts = 0;
+  if((csvfile_ds->csvfile_file = strdup(csvfile_file)) == NULL)
+    {
+      bgpstream_log_err("\t\tBSDS_CSVFILE: can't allocate memory for filename");    
+      goto err;
+    }
   
+  /* cvs file parser options */
+  unsigned char options = CSV_STRICT | CSV_REPALL_NL | CSV_STRICT_FINI |
+                CSV_APPEND_NULL | CSV_EMPTY_IS_NULL;
+
+  if(csv_init(&(csvfile_ds->parser), options) !=0)
+    {
+      bgpstream_log_err("\t\tBSDS_CSVFILE: can't initialize csv parser");    
+      goto err;
+    }
+
+  csvfile_ds->current_field = CSVFILE_PATH;
+  
+  csvfile_ds->filter_mgr = filter_mgr;
+  csvfile_ds->input_mgr = NULL;
+
+  csvfile_ds->num_results = 0;
+
+  csvfile_ds->max_ts_infile = 0;
+  csvfile_ds->last_processed_ts = 0;
+  csvfile_ds->max_accepted_ts = 0;
+
   bgpstream_debug("\t\tBSDS_CSVFILE: create csvfile_ds end");
   return csvfile_ds;
+  
+ err:
+  bgpstream_csvfile_datasource_destroy(csvfile_ds);
+  return NULL;
 }
 
 
 static bool
 bgpstream_csvfile_datasource_filter_ok(bgpstream_csvfile_datasource_t* csvfile_ds) {
-  bgpstream_debug("\t\tBSDS_CSVFILE: csvfile_ds apply filter start");  
+  bgpstream_debug("\t\tBSDS_CSVFILE: csvfile_ds apply filter start");
+
+  /* fprintf(stderr, "%s %s %s %s\n", */
+  /*         csvfile_ds->filename, csvfile_ds->project, csvfile_ds->collector, csvfile_ds->bgp_type); */
+
   bgpstream_string_filter_t * sf;
   bgpstream_interval_filter_t * tif;
   bool all_false;
@@ -146,93 +208,140 @@ bgpstream_csvfile_datasource_filter_ok(bgpstream_csvfile_datasource_t* csvfile_d
 }
 
 
+static void
+parse_csvfile_field(void *field, size_t i, void *user_data)
+{
+  
+  char *field_str = (char *) field;
+  bgpstream_csvfile_datasource_t *csvfile_ds = (bgpstream_csvfile_datasource_t *) user_data;
+
+  /* fprintf(stderr, "%s\n", field_str); */
+
+  switch(csvfile_ds->current_field)
+    {
+    case CSVFILE_PATH:
+      assert(i < BGPSTREAM_DUMP_MAX_LEN-1);
+      strncpy(csvfile_ds->filename, field_str, i);
+      csvfile_ds->filename[i] = '\0';
+      break;
+    case CSVFILE_PROJECT:
+      assert(i < BGPSTREAM_PAR_MAX_LEN-1);
+      strncpy(csvfile_ds->project, field_str, i);     
+      csvfile_ds->project[i] = '\0';
+      break;
+    case CSVFILE_BGPTYPE:
+      assert(i < BGPSTREAM_PAR_MAX_LEN-1);
+      strncpy(csvfile_ds->bgp_type, field_str, i);     
+      csvfile_ds->bgp_type[i] = '\0';
+      break;
+    case CSVFILE_COLLECTOR:
+      assert(i < BGPSTREAM_PAR_MAX_LEN-1);
+      strncpy(csvfile_ds->collector, field_str, i);     
+      csvfile_ds->collector[i] = '\0';
+      break;
+    case CSVFILE_FILETIME:
+      csvfile_ds->filetime = atoi(field_str);
+      break;
+    case CSVFILE_TIMESPAN:
+      csvfile_ds->time_span = atoi(field_str);
+      break;
+    case CSVFILE_TIMESTAMP:
+      csvfile_ds->timestamp = atoi(field_str);
+      break;      
+    }
+
+  /* one more field read */
+  csvfile_ds->current_field++;
+}
+
+static void
+parse_csvfile_rowend(int c, void *user_data)
+{
+  bgpstream_csvfile_datasource_t *csvfile_ds = (bgpstream_csvfile_datasource_t *) user_data;
+
+  /* if the number of fields read is compliant with the expected file format */
+  if(csvfile_ds->current_field == CSVFILE_FIELDCNT)
+    {
+      /* check if the timestamp is acceptable */
+      if(csvfile_ds->timestamp > csvfile_ds->last_processed_ts && 
+         csvfile_ds->timestamp <= csvfile_ds->max_accepted_ts)
+        {
+          /* update max in file timestamp */
+          if(csvfile_ds->timestamp > csvfile_ds->max_ts_infile)
+            {
+              csvfile_ds->max_ts_infile = csvfile_ds->timestamp;
+            }
+            if(bgpstream_csvfile_datasource_filter_ok(csvfile_ds))
+              {
+              csvfile_ds->num_results += bgpstream_input_mgr_push_sorted_input(csvfile_ds->input_mgr,
+                                                                               strdup(csvfile_ds->filename),
+                                                                               strdup(csvfile_ds->project),
+                                                                               strdup(csvfile_ds->collector),
+                                                                               strdup(csvfile_ds->bgp_type),
+                                                                               csvfile_ds->filetime,
+                                                                               csvfile_ds->time_span);
+            }          
+        }      
+    }
+  csvfile_ds->current_field = 0;
+}
+
+
 int
 bgpstream_csvfile_datasource_update_input_queue(bgpstream_csvfile_datasource_t* csvfile_ds,
                                                 bgpstream_input_mgr_t *input_mgr) {
-  bgpstream_debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue start");  
-  int num_results = 0;       
-  FILE * stream;
-  char line[1024];
-  char *line_ptr;
-  char * tok;
-  int i;
-  uint32_t min_ts = csvfile_ds->last_ts;
+  bgpstream_debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue start");
+  
+  int num_results = 0;
+  io_t *file_io = NULL;
+  char buffer[BUFFER_LEN];
+  int read = 0;
+
   struct timeval tv;
   gettimeofday(&tv, NULL);
-  uint32_t max_ts  = tv.tv_sec - 1;
-  uint32_t ts;
-  /* every time we read the entire file and check for lines with a timestamp not */
-  /* processed yet */
-  stream = fopen(csvfile_ds->csvfile_file, "r");
-  if(stream != NULL) {
-    /* The flockfile function acquires the internal locking object associated
-     * with the stream stream. This ensures that no other thread can explicitly
-     * through flockfile/ftrylockfile or implicit through a call of a stream 
-     * function lock the stream. The thread will block until the lock is acquired. 
-     */
-    flock(fileno(stream),LOCK_EX);
-    fseek (stream , 0, SEEK_SET);
+  
+  /* we accept all timestamp earlier than now() - 1 second */
+  csvfile_ds->max_accepted_ts = tv.tv_sec - 1;
 
-    while (fgets(line, sizeof(line), stream)) {
-      /* fprintf(stderr, "%s\n", line); */
-      i = 0;
-      line_ptr = &line[0];
-      while((tok = strsep(&line_ptr, ",")) != NULL) {
-          /* fprintf(stderr, "%s\n", tok);	 */
-	  switch(i) {
-	  case 0:
-	    strcpy(csvfile_ds->filename, tok);	  
-	    break;
-	  case 1:
-	    strcpy(csvfile_ds->project, tok);	  
-	    break;
-	  case 2:
-	    strcpy(csvfile_ds->bgp_type, tok);	  
-	    break;
-	  case 3:
-	    strcpy(csvfile_ds->collector, tok);	  
-	    break;
-	  case 4:
-	    csvfile_ds->filetime = atoi(tok);	
-	    break;
-	  case 5:
-	    csvfile_ds->time_span = atoi(tok);	
-	    break;
-	  case 6:
-	    ts = atoi(tok);	
-	    break;
-	  default:
-	    continue;
-	  }
-	  ++i;	  
+  csvfile_ds->num_results = 0;
+  csvfile_ds->max_ts_infile = 0;
+  csvfile_ds->input_mgr = input_mgr;
+  
+  if((file_io = wandio_create(csvfile_ds->csvfile_file)) == NULL)
+    {
+      bgpstream_log_err("\t\tBSDS_CSVFILE: create csvfile_ds can't open file %s", csvfile_ds->csvfile_file);    
+      return -1;
+    }
+
+    while((read = wandio_read(file_io, &buffer, BUFFER_LEN)) > 0)
+    {
+      if(csv_parse(&(csvfile_ds->parser), buffer, read,
+		   parse_csvfile_field,
+		   parse_csvfile_rowend,
+		   csvfile_ds) != read)
+	{
+          bgpstream_log_err("\t\tBSDS_CSVFILE: CSV error %s", csv_strerror(csv_error(&(csvfile_ds->parser))));         
+	  return -1;
 	}
+    }
 
-        /* fprintf(stderr, "%d - %d - %d \n", ts, min_ts, max_ts); */
-        
-        if( ts > min_ts && ts <= max_ts)
-          {
-            if(ts > csvfile_ds->last_ts)
-              {
-                csvfile_ds->last_ts = ts;
-              }
-            if(bgpstream_csvfile_datasource_filter_ok(csvfile_ds)){
-              num_results += bgpstream_input_mgr_push_sorted_input(input_mgr,
-                                                                   strdup(csvfile_ds->filename),
-                                                                   strdup(csvfile_ds->project),
-                                                                   strdup(csvfile_ds->collector),
-                                                                   strdup(csvfile_ds->bgp_type),
-                                                                   csvfile_ds->filetime,
-                                                                   csvfile_ds->time_span);
-            }
-          }
-	line[0] = '\0';
-      }
-      funlockfile(stream);
-      fclose(stream);
-    }    
-  bgpstream_debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue end");  
-  return num_results;
+  if(csv_fini(&(csvfile_ds->parser),
+	      parse_csvfile_field,
+	      parse_csvfile_rowend,
+	      csvfile_ds) != 0)
+    {
+      bgpstream_log_err("\t\tBSDS_CSVFILE: CSV error %s", csv_strerror(csv_error(&(csvfile_ds->parser))));         
+      return -1;
+    }
+  
+  wandio_destroy(file_io);
+  csvfile_ds->input_mgr = NULL;
+  csvfile_ds->last_processed_ts = csvfile_ds->max_ts_infile;
+  
+  bgpstream_debug("\t\tBSDS_CSVFILE: csvfile_ds update input queue end");
+  return csvfile_ds->num_results;
 }
+
 
 
 void
@@ -245,6 +354,10 @@ bgpstream_csvfile_datasource_destroy(bgpstream_csvfile_datasource_t* csvfile_ds)
   if(csvfile_ds->csvfile_file !=NULL)
     {
       free(csvfile_ds->csvfile_file);
+    }
+  if(&(csvfile_ds->parser) != NULL)
+    {
+      csv_free(&(csvfile_ds->parser));
     }
   free(csvfile_ds);
   bgpstream_debug("\t\tBSDS_CSVFILE: destroy csvfile_ds end");  
