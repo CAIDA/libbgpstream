@@ -223,15 +223,13 @@ void bgpstream_add_filter(bgpstream_t *bs,
   bgpstream_debug("BS: set_filter end");
 }
 
-void bgpstream_add_frequency_filter(bgpstream_t *bs,
-                                    bgpstream_record_dump_type_t type,
-                                    uint32_t frequency)
+void bgpstream_add_rib_period_filter(bgpstream_t *bs, uint32_t period)
 {
   bgpstream_debug("BS: set_filter start");
   if(bs == NULL || (bs != NULL && bs->status != BGPSTREAM_STATUS_ALLOCATED)) {
     return; // nothing to customize
   }
-  bgpstream_filter_mgr_frequency_filter_add(bs->filter_mgr, type, frequency);
+  bgpstream_filter_mgr_rib_period_filter_add(bs->filter_mgr, period);
   bgpstream_debug("BS: set_filter end");
 }
 
