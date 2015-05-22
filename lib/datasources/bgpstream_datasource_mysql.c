@@ -33,6 +33,21 @@
 
 
 #define MAX_QUERY_LEN 2048
+#define MAX_INTERVAL_LEN 16
+
+
+#define APPEND_STR(str)                                                 \
+  do {                                                                  \
+    size_t len = strlen(str);                                           \
+    if(rem_buf_space < len+1)                                           \
+      {                                                                 \
+        return NULL;                                                    \
+      }                                                                 \
+    strncat(mysql_ds->sql_query, str, rem_buf_space);                  \
+    rem_buf_space -= len;                                               \
+  } while(0)
+
+
 
 struct struct_bgpstream_mysql_datasource_t {
   /* mysql connection handler */
@@ -83,10 +98,7 @@ bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter
                                                                        char * mysql_rv_path)
 {
   bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds start");
-
-  /* how many characters can be written in the query buffer */
-  uint32_t rem_buf_space = MAX_QUERY_LEN - 1;
-
+  
   bgpstream_mysql_datasource_t *mysql_ds = (bgpstream_mysql_datasource_t*) malloc(sizeof(bgpstream_mysql_datasource_t));
   if(mysql_ds == NULL) {
     return NULL; // can't allocate memory
@@ -211,8 +223,12 @@ bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter
     bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds set time_zone something wrong"); 
   }
 
-  strncpy(mysql_ds->sql_query,
-          "SELECT "
+  /* how many characters can be written in the query buffer */
+  size_t rem_buf_space = MAX_QUERY_LEN;
+  mysql_ds->sql_query[0] = '\0';
+  char interval_str[MAX_INTERVAL_LEN];
+
+  APPEND_STR("SELECT "
           "projects.path, collectors.path, bgp_types.path, "
           "projects.name, collectors.name, bgp_types.name, projects.file_ext, "
           "file_time, on_web_frequency.offset "
@@ -222,119 +238,98 @@ bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter
           "JOIN projects   ON projects.id   = collectors.project_id "
           "JOIN on_web_frequency "
           "     ON on_web_frequency.project_id  = projects.id AND "
-          "        on_web_frequency.bgp_type_id = bgp_types.id",
-          rem_buf_space
-	 );
+          "        on_web_frequency.bgp_type_id = bgp_types.id");
 
-  rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
   
   // projects, collectors, bgp_types, and time_intervals are used as filters
   // only if they are provided by the user
   bgpstream_string_filter_t * sf;
   bgpstream_interval_filter_t * tif;
   
-  // projects
+  // projects   
   if(filter_mgr->projects != NULL) {
     sf = filter_mgr->projects;
-    strncat(mysql_ds->sql_query," AND projects.name IN (", rem_buf_space);
-    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+    APPEND_STR(" AND projects.name IN (");
     while(sf != NULL) {
-      strncat(mysql_ds->sql_query, "'", rem_buf_space);
-      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
-      strncat(mysql_ds->sql_query, sf->value, rem_buf_space);
-      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
-      strncat(mysql_ds->sql_query, "'", rem_buf_space);
+      APPEND_STR("'");
+      APPEND_STR(sf->value);
+      APPEND_STR("'");
       sf = sf->next;
       if(sf!= NULL) {
-	strncat (mysql_ds->sql_query, ", ", rem_buf_space);      
-        rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+        APPEND_STR(", ");
       }
     }
-    strncat(mysql_ds->sql_query," )", rem_buf_space);
-    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+    APPEND_STR(" ) ");
   }
   // collectors
   if(filter_mgr->collectors != NULL) {
     sf = filter_mgr->collectors;
-    strncat(mysql_ds->sql_query," AND collectors.name IN (", rem_buf_space);
-    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+    APPEND_STR(" AND collectors.name IN (");
     while(sf != NULL) {
-      strncat(mysql_ds->sql_query, "'", rem_buf_space);
-      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
-      strncat(mysql_ds->sql_query, sf->value, rem_buf_space);
-      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
-      strncat(mysql_ds->sql_query, "'", rem_buf_space);
-      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+      APPEND_STR("'");
+      APPEND_STR(sf->value);
+      APPEND_STR("'");
       sf = sf->next;
       if(sf!= NULL) {
-	strncat(mysql_ds->sql_query, ", ", rem_buf_space);
-        rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+        APPEND_STR(", ");
       }
     }
-    strncat(mysql_ds->sql_query," )", rem_buf_space);
-    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+    APPEND_STR(" ) ");
   }
   // bgp_types
   if(filter_mgr->bgp_types != NULL) {
     sf = filter_mgr->bgp_types;
-    strncat(mysql_ds->sql_query," AND bgp_types.name IN (", rem_buf_space);
-    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+    APPEND_STR(" AND bgp_types.name IN (");
     while(sf != NULL) {
-      strncat(mysql_ds->sql_query, "'", rem_buf_space);
-      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
-      strncat(mysql_ds->sql_query, sf->value, rem_buf_space);
-      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
-      strncat(mysql_ds->sql_query, "'", rem_buf_space);
-      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+      APPEND_STR("'");
+      APPEND_STR(sf->value);
+      APPEND_STR("'");
       sf = sf->next;
       if(sf!= NULL) {
-	strncat(mysql_ds->sql_query, ", ", rem_buf_space);
-        rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+        APPEND_STR(", ");
       }
     }
-    strncat(mysql_ds->sql_query," )", rem_buf_space);
-    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+    APPEND_STR(" ) ");
   }
-
+  
   // time_intervals
+  int written = 0;
   if(filter_mgr->time_intervals != NULL) {
     tif = filter_mgr->time_intervals;
-    strncat(mysql_ds->sql_query," AND ( ", rem_buf_space);
-    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+    APPEND_STR(" AND ( ");
+
     while(tif != NULL) {
-      strncat(mysql_ds->sql_query," ( ", rem_buf_space);
-      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
-      
+      APPEND_STR(" ( ");
+
       // BEGIN TIME
-      strncat(mysql_ds->sql_query," (file_time >=  ", rem_buf_space);
-      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
-      sprintf(mysql_ds->sql_query + strlen(mysql_ds->sql_query),
-              "%"PRIu32, tif->begin_time);
-      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
-      strncat(mysql_ds->sql_query,"  - on_web_frequency.offset - 120 )", rem_buf_space);
-      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
-      strncat(mysql_ds->sql_query,"  AND  ", rem_buf_space);
-      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+      APPEND_STR(" (bgp_data.file_time >=  ");     
+      interval_str[0] = '\0';
+      if((written = snprintf(interval_str, MAX_INTERVAL_LEN, "%"PRIu32, tif->begin_time)) < MAX_INTERVAL_LEN)
+        {
+          APPEND_STR(interval_str);
+        }                      
+      APPEND_STR("  - on_web_frequency.offset - 120 )");
+      APPEND_STR("  AND  ");
 
       // END TIME
-      strncat(mysql_ds->sql_query," (file_time <=  ", rem_buf_space);
-      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
-      sprintf(mysql_ds->sql_query + strlen(mysql_ds->sql_query),
-              "%"PRIu32, tif->end_time);
-      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
-      strncat(mysql_ds->sql_query,") ", rem_buf_space);
-      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
-      strncat(mysql_ds->sql_query," ) ", rem_buf_space);
-      rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+      APPEND_STR(" (bgp_data.file_time <=  ");
+      interval_str[0] = '\0';
+      if((written = snprintf(interval_str, MAX_INTERVAL_LEN, "%"PRIu32, tif->end_time)) < MAX_INTERVAL_LEN)
+        {
+          APPEND_STR(interval_str);
+        }                      
+      APPEND_STR(") ");
+      APPEND_STR(" ) ");
+
       tif = tif->next;
       if(tif!= NULL) {
-	strncat(mysql_ds->sql_query, " OR ", rem_buf_space);
-        rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+        APPEND_STR(" OR ");
       }
     }
-    strncat(mysql_ds->sql_query," )", rem_buf_space);
-    rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+      APPEND_STR(" )");
   }
+
+ 
   /*  comment on 120 seconds: */
   /*  sometimes it happens that ribs or updates carry a filetime which is not */
   /*  compliant with the expected filetime (e.g. : */
@@ -343,16 +338,16 @@ bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter
   /*  retrieve data that are 120 seconds older than the requested  */
 
   // minimum timestamp and current timestamp are the two placeholders
-  strncat(mysql_ds->sql_query," AND UNIX_TIMESTAMP(ts) > ? AND UNIX_TIMESTAMP(ts) <= ?", rem_buf_space);
-  rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+  APPEND_STR(" AND UNIX_TIMESTAMP(ts) > ? AND UNIX_TIMESTAMP(ts) <= ?");
   
   // order by filetime and bgptypes in reverse order: this way the 
   // input insertions are always "head" insertions, i.e. queue insertion is
   // faster
-  strncat(mysql_ds->sql_query," ORDER BY file_time DESC, bgp_types.name DESC", rem_buf_space);
-  rem_buf_space = MAX_QUERY_LEN - 1 - strlen(mysql_ds->sql_query);
+  APPEND_STR(" ORDER BY file_time DESC, bgp_types.name DESC");
+
   
-  // printf("%s\n",mysql_ds->sql_query);
+  //fprintf(stderr, "%zu \n %s\n", rem_buf_space, mysql_ds->sql_query);
+
   bgpstream_debug("\t\tBSDS_MYSQL:  mysql query created");
 
   // the first last_timestamp is 0
