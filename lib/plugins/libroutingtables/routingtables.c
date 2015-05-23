@@ -813,12 +813,6 @@ apply_state_update(routingtables_t *rt, collector_t * c, bgpstream_peer_id_t pee
   assert(peer_id == bgpwatcher_view_iter_peer_get_peer_id(rt->iter));
   perpeer_info_t *p = bgpwatcher_view_iter_peer_get_user(rt->iter);
 
-  if(new_state < BGPSTREAM_ELEM_PEERSTATE_IDLE || new_state >= BGPSTREAM_ELEM_PEERSTATE_NULL)
-  {
-    // @todo BGPSTREAM_ELEM_PEERSTATE_NULL occurs, check in bgpstream what is going on! */
-    return 0;
-  }
-
   p->state_messages_cnt++;
   
   uint8_t reset_uc = 0;
