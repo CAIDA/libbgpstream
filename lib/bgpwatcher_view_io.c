@@ -23,9 +23,6 @@
 
 #include <czmq.h>
 
-/* for bgpstream_peer_sig_map_set */
-#include <bgpstream_utils_peer_sig_map_int.h>
-
 #include "bgpwatcher_common_int.h"
 #include "bgpwatcher_view_io.h"
 

@@ -1440,39 +1440,20 @@ bgpwatcher_view_iter_add_peer(bgpwatcher_view_iter_t *iter,
                               uint32_t peer_asnumber)
 {
   bgpstream_peer_id_t peer_id;
-  bgpstream_addr_storage_t peer_addr_storage;
   khiter_t k;
   int khret;
-
-  peer_addr_storage.version = peer_address->version;
-  switch(peer_address->version)
-    {
-    case BGPSTREAM_ADDR_VERSION_IPV4:
-      memcpy(&peer_addr_storage.ipv4.s_addr,
-             &((bgpstream_ipv4_addr_t *)peer_address)->ipv4.s_addr,
-             sizeof(uint32_t));
-      break;
-    case BGPSTREAM_ADDR_VERSION_IPV6:
-      memcpy(&peer_addr_storage.ipv6.s6_addr,
-             &((bgpstream_ipv6_addr_t *)peer_address)->ipv6.s6_addr,
-             sizeof(uint8_t)*16);
-      break;
-    default:
-      /* programming error */
-      assert(0);
-    }
 
   /* add peer to signatures' map */
   if((peer_id = bgpstream_peer_sig_map_get_id(iter->view->peersigns,
                                              collector_str,
-                                             &peer_addr_storage,
-                                             peer_asnumber)) == 0)
-	{
-          fprintf(stderr, "Could not add peer to peersigns\n");
-	  fprintf(stderr,
-                  "Consider making bgpstream_peer_sig_map_set more robust\n");
-	  return 0;
-	}
+                                              peer_address,
+                                              peer_asnumber)) == 0)
+    {
+      fprintf(stderr, "Could not add peer to peersigns\n");
+      fprintf(stderr,
+              "Consider making bgpstream_peer_sig_map_set more robust\n");
+      return 0;
+    }
 
   /* populate peer information in peerinfo */
 
