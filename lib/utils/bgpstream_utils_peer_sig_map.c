@@ -171,7 +171,7 @@ bgpstream_peer_sig_map_t *bgpstream_peer_sig_map_create()
 
 bgpstream_peer_id_t bgpstream_peer_sig_map_get_id(bgpstream_peer_sig_map_t *map,
                                                   char *collector_str,
-                                                  bgpstream_addr_storage_t *peer_ip_addr,
+                                                  bgpstream_ip_addr_t *peer_ip_addr,
                                                   uint32_t peer_asnumber)
 {
   bgpstream_peer_sig_t *new_ps;
@@ -180,7 +180,17 @@ bgpstream_peer_id_t bgpstream_peer_sig_map_get_id(bgpstream_peer_sig_map_t *map,
       return -1;
     }
 
-  new_ps->peer_ip_addr = *peer_ip_addr;
+  
+  new_ps->peer_ip_addr.version = peer_ip_addr->version;
+  if(peer_ip_addr->version == BGPSTREAM_ADDR_VERSION_IPV4)
+    {
+      new_ps->peer_ip_addr.ipv4 = ((bgpstream_ipv4_addr_t *) peer_ip_addr)->ipv4;
+    }
+  if(peer_ip_addr->version == BGPSTREAM_ADDR_VERSION_IPV6)
+    {
+      new_ps->peer_ip_addr.ipv6 = ((bgpstream_ipv6_addr_t *) peer_ip_addr)->ipv6;
+    }
+  
   strcpy(new_ps->collector_str, collector_str);
   new_ps->peer_asnumber = peer_asnumber;
 
