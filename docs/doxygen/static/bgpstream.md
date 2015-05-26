@@ -8,14 +8,14 @@ features will likely change between versions.
 Introduction        {#intro}
 ============
 
-@todo
+@todo write intro
 
 Download            {#download}
 ========
 
 The latest version of BGP Stream is
-[$(BGPSTREAM_VERSION)](TODO),
-released on XXX.
+[$(BGPSTREAM_VERSION)](http://www.caida.org/tools/XXX/bgpstream-1.0.0.tar.gz),
+released on @todo add release date and update download link.
 
 We also maintain a detailed \ref changelog.
 
@@ -39,7 +39,7 @@ higher.
 Usage               {#usage}
 =====
 
-@todo
+@todo add usage
 
 
 Documentation       {#docs}

@@ -185,6 +185,5 @@ AC_CONFIG_FILES([Makefile
 		common/libinterval3/rb_tree/Makefile
 		common/libcsv/Makefile
                 docs/Makefile
-	        docs/bgpstream.doxygen
-		docs/bgpstream.caida.doxygen])
+	        docs/bgpstream.doxygen])
 AC_OUTPUT

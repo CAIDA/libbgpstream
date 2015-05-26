@@ -17,9 +17,7 @@
 #
 
 DOXYGEN_CONF = bgpstream.doxygen
-DOXYGEN_CAIDA_CONF = bgpstream.caida.doxygen
 DOXYGEN_FOLDERS = doxygen/html doxygen/man doxygen/latex
-DOXYGEN_CAIDA_FOLDERS = doxygen/caida-html
 DOXYGEN_BIB_FILES = doxygen/bib*.aux doxygen/citelist.doc*
 
 EXTRA_DIST = doxygen/static
@@ -28,8 +26,6 @@ if HAS_DOXYGEN
 EXTRA_DIST += $(DOXYGEN_FOLDERS)
 bgpstream_doxygen=yes
 endif
-
-doxygen/caida-html: doxy-caida
 
 doxygen/html: doxy
 
@@ -66,27 +62,6 @@ doxy:
 	  fi \
 	done
 
-doxy-caida:
-	@for folder in $(DOXYGEN_CAIDA_FOLDERS) ; do \
-	  if test -d $$folder ; then \
-	    break ; \
-	  else \
-	    if test x"$(bgpstream_doxygen)" = xyes ; then \
-	      if test -f $(DOXYGEN_CAIDA_CONF) ; then \
-	        BGPSTREAM_VERSION=@BGPSTREAM_MAJOR_VERSION@.@BGPSTREAM_MID_VERSION@.@BGPSTREAM_MINOR_VERSION@ doxygen $(DOXYGEN_CAIDA_CONF) ; \
-	      else \
-	        echo "Sorry, doxygen conf file $(DOXYGEN_CAIDA_CONF) does not exist" ; \
-	      fi ; \
-	    else \
-	      echo "Sorry, you do not have doxygen in your PATH." ; \
-	    fi ; \
-	  fi \
-	done
-
 doxyclean:
-	rm -rf $(DOXYGEN_FOLDERS) $(DOXYGEN_CAIDA_FOLDERS) $(DOXYGEN_BIB_FILES)
-#	@for folder in $(DOXYGEN_FOLDERS) ; do \
-#	  if test -d $$folder ; then \
-#	    rm -rf $$folder ; \
-#	  fi \
-#	done
+	rm -rf $(DOXYGEN_FOLDERS) $(DOXYGEN_BIB_FILES)
+

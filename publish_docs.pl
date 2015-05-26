@@ -21,7 +21,7 @@ use strict;
 
 unless (@ARGV == 1 || @ARGV == 2)
 {
-    print STDERR "usage: $0 [caida|test|dist] [ssh location]\n";
+    print STDERR "usage: $0 [caida|test] [ssh location]\n";
     exit -1;
 }
 
@@ -29,38 +29,16 @@ my $type = $ARGV[0];
 my $location = $ARGV[1];
 
 my $caida_host = "cider.caida.org";
-my $caida_dir = "/home/alistair/public_html/bgpstream";
+my $caida_dir = "public_html/bgpstream";
 
 print STDERR "ensuring docs are built...\n";
-my $target;
-if($type =~ /caida/ || $type =~ /test/)
-{
-    $target = "doxy-caida";
-}
-
-my $make_docs = "cd docs; make clean; make $target; cd ..";
+my $make_docs = "cd docs; make clean; make; cd ..";
 print STDERR "$make_docs\n";
 `$make_docs`;
 
 print STDERR "publishing docs...\n";
 my $src_dir = "docs/doxygen/html/";
-my $dst_dir;
-
-if($type =~ /caida/ || $type =~ /test/)
-{
-    $dst_dir = "$caida_host:$caida_dir/";
-    $src_dir = "docs/doxygen/caida-html/";
-}
-else
-{
-    unless($location)
-    {
-	print STDERR "a location must be specified when using "
-	    ."the 'test' and 'dist' types\n";
-	exit -1;
-    }
-    $dst_dir = $ARGV[1];
-}
+my $dst_dir = "$caida_host:$caida_dir/";
 
 my $rsync = "rsync --delete -av $src_dir $dst_dir";
 print STDERR "$rsync\n";

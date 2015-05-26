@@ -26,11 +26,9 @@ tools/bgpreader
 test/bgpstream-test
 
 # doxygen files
-docs/doxygen/caida-html
 docs/doxygen/html
 docs/doxygen/latex
 docs/doxygen/man
-docs/bgpstream.caida.doxygen
 docs/bgpstream.doxygen
 
 # Autotools files
