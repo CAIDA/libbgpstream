@@ -1248,6 +1248,7 @@ bgpwatcher_view_iter_pfx_first_peer(bgpwatcher_view_iter_t *iter,
   if(iter->pfx_peer_it <= infos->peers_alloc_cnt)
     {
       bgpwatcher_view_iter_seek_peer(iter, iter->pfx_peer_it, state_mask);
+      assert(bgpwatcher_view_iter_has_more_peer(iter));
       iter->pfx_peer_it_valid = 1;
       return 1;
     }
@@ -1269,6 +1270,7 @@ bgpwatcher_view_iter_pfx_next_peer(bgpwatcher_view_iter_t *iter)
     {
       bgpwatcher_view_iter_seek_peer(iter, iter->pfx_peer_it,
                                      iter->pfx_peer_state_mask);
+      assert(bgpwatcher_view_iter_has_more_peer(iter));
       iter->pfx_peer_it_valid = 1;
       return 1;
     }
