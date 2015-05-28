@@ -2054,6 +2054,9 @@ bgpwatcher_view_iter_deactivate_pfx(bgpwatcher_view_iter_t *iter)
       return 0;
     }
 
+  /* now mark the pfx as inactive */
+  pfxinfo->state = BGPWATCHER_VIEW_FIELD_INACTIVE;
+
   /* deactivate all pfx-peers for this prefix */
   for(bgpwatcher_view_iter_pfx_first_peer(iter,
                                           BGPWATCHER_VIEW_FIELD_ACTIVE);
@@ -2063,8 +2066,6 @@ bgpwatcher_view_iter_deactivate_pfx(bgpwatcher_view_iter_t *iter)
       bgpwatcher_view_iter_pfx_deactivate_peer(iter);
     }
 
-  /* now mark the pfx as inactive */
-  pfxinfo->state = BGPWATCHER_VIEW_FIELD_INACTIVE;
 
   /* now update the counters */
   switch(iter->version_ptr)
