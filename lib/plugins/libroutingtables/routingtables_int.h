@@ -278,6 +278,9 @@ typedef struct struct_collector_t {
   /** Current status of the collector */
   collector_state_t state;
 
+  /** Decide whether stats should be published */
+  uint8_t publish_flag;
+
   /** Timeseries Key Package for the collector */
   timeseries_kp_t *kp;
 

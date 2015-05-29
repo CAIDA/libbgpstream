@@ -195,7 +195,10 @@ routingtables_dump_metrics(routingtables_t *rt, uint32_t time_now)
           timeseries_kp_set(c->kp, c->kp_idxs.active_asns_cnt_idx, bgpstream_id_set_size(c->active_ases));
                             
           /* flush metrics */
-          timeseries_kp_flush(c->kp, rt->bgp_time_interval_start);
+          if(c->publish_flag)
+            {
+              timeseries_kp_flush(c->kp, rt->bgp_time_interval_start);
+            }
 
 
           /* in all cases we have to reset the metrics */
