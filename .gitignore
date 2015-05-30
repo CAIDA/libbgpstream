@@ -25,6 +25,12 @@ ChangeLog
 tools/bgpreader
 test/bgpstream-test
 
+# doxygen files
+docs/doxygen/html
+docs/doxygen/latex
+docs/doxygen/man
+docs/bgpstream.doxygen
+
 # Autotools files
 # http://www.gnu.org/software/automake
 

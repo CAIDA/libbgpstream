@@ -104,6 +104,23 @@ AC_CHECK_LIB([mysqlclient], [mysql_query], ,
 AC_CHECK_LIB([sqlite3], [sqlite3_open_v2], ,
                [AC_MSG_ERROR( [libsqlite3 required ])])
 
+# Checks for doxygen
+AC_CHECK_PROG([bgpstream_doxygen_avail], [doxygen], [yes], [no])
+AC_MSG_CHECKING([whether to compile the docs])
+AC_ARG_WITH([doxygen],
+	[AS_HELP_STRING([--without-doxygen],
+	  [do not compile the doxygen generated docs])],
+	  [bgpstream_doxygen=no],
+	  [if test "x$bgpstream_doxygen_avail" == xyes; then
+	      bgpstream_doxygen=yes
+	  else
+		bgpstream_doxygen=no
+	  fi
+	  ])
+AC_MSG_RESULT([$bgpstream_doxygen])
+AM_CONDITIONAL(HAS_DOXYGEN, [test x"$bgpstream_doxygen" = xyes])
+
+
 
 # set some default options for the datasources
 AC_DEFUN([BS_DS_OPT],
@@ -166,5 +183,7 @@ AC_CONFIG_FILES([Makefile
 		common/libpatricia/Makefile
 		common/libinterval3/Makefile
 		common/libinterval3/rb_tree/Makefile
-		common/libcsv/Makefile])
+		common/libcsv/Makefile
+                docs/Makefile
+	        docs/bgpstream.doxygen])
 AC_OUTPUT
