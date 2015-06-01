@@ -50,6 +50,12 @@ The procedure above builds and installs:
 If you are interested in installing the python bindings, then continue
 the installation following the instructions [here](http://www.caida.org/~chiara/bgpstream-doc/pybgpstream/install.html).
 
+The distribution contains a python tool for the rapid
+creation/population of an sqlite database. The script is located in
+the *tools* folder, for more information run:
+
+    python tools/bgpstream_sqlite_mgmt.py -h
+
 
 Dependencies        {#dependencies}
 ============
