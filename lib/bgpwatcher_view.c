@@ -1124,7 +1124,7 @@ bgpwatcher_view_iter_next_pfx(bgpwatcher_view_iter_t *iter)
         }
 
       /* here either the iter points at a valid v6 pfx, or we are done */
-      return 0;
+      return bgpwatcher_view_iter_has_more_pfx(iter);
     }
 
   if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV6)
@@ -1147,19 +1147,7 @@ bgpwatcher_view_iter_has_more_pfx(bgpwatcher_view_iter_t *iter)
   if(iter->version_ptr == BGPSTREAM_ADDR_VERSION_IPV4)
     {
       // if there are more ipv4 prefixes
-      if(iter->pfx_it < kh_end(iter->view->v4pfxs))
-        {
-          return 1;
-        }
-      // if there are no more ipv4 prefixes and we filter
-      if(iter->version_filter)
-        {
-          return 0;
-        }
-      // continue to the next IP version
-      bgpwatcher_view_iter_first_pfx(iter, BGPSTREAM_ADDR_VERSION_IPV6,
-                                     iter->pfx_state_mask);
-      // fall through to next check
+      return iter->pfx_it < kh_end(iter->view->v4pfxs);
     }
 
   // if the version is ipv6, return 1 if there are more ipv6 prefixes
@@ -1248,6 +1236,7 @@ bgpwatcher_view_iter_pfx_first_peer(bgpwatcher_view_iter_t *iter,
   if(iter->pfx_peer_it <= infos->peers_alloc_cnt)
     {
       bgpwatcher_view_iter_seek_peer(iter, iter->pfx_peer_it, state_mask);
+      assert(bgpwatcher_view_iter_has_more_peer(iter));
       iter->pfx_peer_it_valid = 1;
       return 1;
     }
@@ -1269,6 +1258,7 @@ bgpwatcher_view_iter_pfx_next_peer(bgpwatcher_view_iter_t *iter)
     {
       bgpwatcher_view_iter_seek_peer(iter, iter->pfx_peer_it,
                                      iter->pfx_peer_state_mask);
+      assert(bgpwatcher_view_iter_has_more_peer(iter));
       iter->pfx_peer_it_valid = 1;
       return 1;
     }
@@ -1386,19 +1376,7 @@ bgpwatcher_view_iter_next_pfx_peer(bgpwatcher_view_iter_t *iter)
 int
 bgpwatcher_view_iter_has_more_pfx_peer(bgpwatcher_view_iter_t *iter)
 {
-    while(bgpwatcher_view_iter_has_more_pfx(iter))
-    {
-      // look for the next matching peer within the prefix
-      if(bgpwatcher_view_iter_pfx_has_more_peer(iter))
-        {
-          return 1;
-        }
-      if(bgpwatcher_view_iter_next_pfx(iter))
-        {
-          bgpwatcher_view_iter_pfx_first_peer(iter, iter->pfx_peer_state_mask);
-        }
-    }
-    return 0;
+  return bgpwatcher_view_iter_has_more_pfx(iter) && bgpwatcher_view_iter_pfx_has_more_peer(iter);
 }
 
 int
@@ -1440,39 +1418,20 @@ bgpwatcher_view_iter_add_peer(bgpwatcher_view_iter_t *iter,
                               uint32_t peer_asnumber)
 {
   bgpstream_peer_id_t peer_id;
-  bgpstream_addr_storage_t peer_addr_storage;
   khiter_t k;
   int khret;
-
-  peer_addr_storage.version = peer_address->version;
-  switch(peer_address->version)
-    {
-    case BGPSTREAM_ADDR_VERSION_IPV4:
-      memcpy(&peer_addr_storage.ipv4.s_addr,
-             &((bgpstream_ipv4_addr_t *)peer_address)->ipv4.s_addr,
-             sizeof(uint32_t));
-      break;
-    case BGPSTREAM_ADDR_VERSION_IPV6:
-      memcpy(&peer_addr_storage.ipv6.s6_addr,
-             &((bgpstream_ipv6_addr_t *)peer_address)->ipv6.s6_addr,
-             sizeof(uint8_t)*16);
-      break;
-    default:
-      /* programming error */
-      assert(0);
-    }
 
   /* add peer to signatures' map */
   if((peer_id = bgpstream_peer_sig_map_get_id(iter->view->peersigns,
                                              collector_str,
-                                             &peer_addr_storage,
-                                             peer_asnumber)) == 0)
-	{
-          fprintf(stderr, "Could not add peer to peersigns\n");
-	  fprintf(stderr,
-                  "Consider making bgpstream_peer_sig_map_set more robust\n");
-	  return 0;
-	}
+                                              peer_address,
+                                              peer_asnumber)) == 0)
+    {
+      fprintf(stderr, "Could not add peer to peersigns\n");
+      fprintf(stderr,
+              "Consider making bgpstream_peer_sig_map_set more robust\n");
+      return 0;
+    }
 
   /* populate peer information in peerinfo */
 
@@ -1988,9 +1947,11 @@ int
 bgpwatcher_view_iter_deactivate_peer(bgpwatcher_view_iter_t *iter)
 {
   assert(bgpwatcher_view_iter_has_more_peer(iter) != 0);
-  bgpwatcher_view_iter_t *lit;
-
   assert(bgpwatcher_view_iter_peer_get_state(iter) > 0);
+
+  bgpwatcher_view_iter_t *lit;
+  bgpstream_peer_id_t current_id;
+  
   if(bgpwatcher_view_iter_peer_get_state(iter) != BGPWATCHER_VIEW_FIELD_ACTIVE)
     {
       return 0;
@@ -2001,8 +1962,9 @@ bgpwatcher_view_iter_deactivate_peer(bgpwatcher_view_iter_t *iter)
   if(bgpwatcher_view_iter_peer_get_pfx_cnt(iter, 0,
                                            BGPWATCHER_VIEW_FIELD_ACTIVE) > 0)
     {
-      lit = bgpwatcher_view_iter_create(iter->view);
+      lit = bgpwatcher_view_iter_create(iter->view);      
       assert(lit != NULL);
+      current_id = bgpwatcher_view_iter_peer_get_peer_id(iter);
       for(bgpwatcher_view_iter_first_pfx_peer(lit,
                                               0,
                                               BGPWATCHER_VIEW_FIELD_ACTIVE,
@@ -2011,8 +1973,7 @@ bgpwatcher_view_iter_deactivate_peer(bgpwatcher_view_iter_t *iter)
           bgpwatcher_view_iter_next_pfx_peer(lit))
         {
           // deactivate all the peer-pfx associated with the peer
-          if(bgpwatcher_view_iter_peer_get_peer_id(iter) ==
-             bgpwatcher_view_iter_peer_get_peer_id(lit))
+          if(bgpwatcher_view_iter_peer_get_peer_id(lit) == current_id)
             {
               bgpwatcher_view_iter_pfx_deactivate_peer(lit);
             }
@@ -2073,6 +2034,9 @@ bgpwatcher_view_iter_deactivate_pfx(bgpwatcher_view_iter_t *iter)
       return 0;
     }
 
+  /* now mark the pfx as inactive */
+  pfxinfo->state = BGPWATCHER_VIEW_FIELD_INACTIVE;
+
   /* deactivate all pfx-peers for this prefix */
   for(bgpwatcher_view_iter_pfx_first_peer(iter,
                                           BGPWATCHER_VIEW_FIELD_ACTIVE);
@@ -2082,8 +2046,6 @@ bgpwatcher_view_iter_deactivate_pfx(bgpwatcher_view_iter_t *iter)
       bgpwatcher_view_iter_pfx_deactivate_peer(iter);
     }
 
-  /* now mark the pfx as inactive */
-  pfxinfo->state = BGPWATCHER_VIEW_FIELD_INACTIVE;
 
   /* now update the counters */
   switch(iter->version_ptr)
