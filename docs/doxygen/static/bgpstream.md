@@ -17,6 +17,13 @@ released on @todo add release date and update download link.
 We also maintain a detailed \ref changelog.
 -->
 
+
+Download            {#download}
+========
+bgpstream 1.0.0 can be downloaded [here](http://www.caida.org/~chiara/bgpstream-doc/bgpstream-1.0.0.tar.gz).
+
+
+
 Quick Start               {#qstart}
 ===========
 
@@ -27,18 +34,27 @@ the \ref quickstart "Quick Start" guide.
 
 In order to install bgpstream  you need to follow the list of instructions below:
 
-~~~~~~~~~~~~~~~~~~~~~
-$ sh ./autogen.sh 
-$ ./configure
-$ make
-$ make check
-$ (sudo) make install
-~~~~~~~~~~~~~~~~~~~~~
+
+    $ ./configure
+    $ make
+    $ make check
+    $ (sudo) make install
+
+
+Use the --prefix option to install bgpstream and bgpreader in a local directory.
 
 The procedure above builds and installs:
 - the *bgpstream* library
 - the *bgpreader* tool
 
+If you are interested in installing the python bindings, then continue
+the installation following the instructions [here](http://www.caida.org/~chiara/bgpstream-doc/pybgpstream/install.html).
+
+The distribution contains a python tool for the rapid
+creation/population of an sqlite database. The script is located in
+the *tools* folder, for more information run:
+
+    python tools/bgpstream_sqlite_mgmt.py -h
 
 
 Dependencies        {#dependencies}
@@ -59,15 +75,12 @@ version 3.0.14 or higher
 - [mysql](https://www.mysql.com/) c library, version 5.5  or higher
   - a working version of mysql is available at http://downloads.mysql.com/archives/get/file/mysql-connector-c-6.1.5-src.tar.gz
 
-
 If the above libraries are not in the system library paths, then you
 can specify their paths at configuration time:
 
-~~~~~~~~~~~~~~~~~~~~~
-$ ./configure CPPFLAGS='-I/path_to_libs/include' LDFLAGS='-L/path_to_libs/lib'
-~~~~~~~~~~~~~~~~~~~~~
+    $ ./configure CPPFLAGS='-I/path_to_libs/include' LDFLAGS='-L/path_to_libs/lib'
+    
 
-Use the --prefix option to install bgpstream and bgpreader in a local directory.
 
 bgpreader tool usage               {#usage}
 ===============
@@ -121,21 +134,44 @@ information about a bgp stream.
                   rv-path        prefix path of RouteViews data (default: not-set)
 
 
+Example:
+
+print out all the bgp elems observed in the
+*routeviews.route-views.jinx.updates.1427846400.bz2* file from
+00:00:15 to 00:01:30
+
+
+    $ bgpreader -dsinglefile -oupd-file,./test/routeviews.route-views.jinx.updates.1427846400.bz2 -W1427846415,1427846490 -e
+
+    1427846430|196.223.14.55|30844|W|185.75.149.0/24|||||
+    1427846430|196.223.14.55|30844|W|103.47.62.0/23|||||
+    1427846430|196.223.14.55|30844|W|132.8.48.0/20|||||
+    1427846430|196.223.14.55|30844|W|132.8.64.0/18|||||
+    1427846430|196.223.14.55|30844|W|132.22.0.0/16|||||
+    1427846430|196.223.14.55|30844|W|131.34.0.0/16|||||
+    1427846430|196.223.14.55|30844|W|129.54.0.0/16|||||
+    1427846430|196.223.14.55|30844|A|41.159.135.0/24|196.223.14.55|30844 6939 12956 6713 16058|16058||
+    1427846430|196.223.14.55|30844|A|84.205.73.0/24|196.223.14.55|30844 6939 12654|12654||
+
+
 
 bgpstream C library tutorial               {#tutorial}
 =====================
 
 Below is a simple example that shows how to use most of the C library
-API functions.
-This example is fully functioning and it can be run within the *test*
+API functions. The example is fully functioning and it can be run within the *test*
 folder included in the distribution.
 
-~~~~~~~~~~~~~~~
-$ cd bgpstream-1.0.0/test
-$ gcc ./tutorial.c -lbgpstream -I/path_to_bgpstream/include -L/-I/path_to_bgpstream/lib -lbgpstream -o ./tutorial
-$ ./tutorial
-	Read 1544 elems
-~~~~~~~~~~~~~~~
+    $ cd bgpstream-1.0.0/test
+    $ gcc ./tutorial.c  -lbgpstream -o ./tutorial
+    $ ./tutorial
+     Read 1544 elems
+
+
+The program reads information from the example sqlite
+database provided with the distribution and it counts the elems that match
+the filters (collectors, record type, and time).
+
 
 ~~~~~~~~~~~~~~~~~~~~~{.c}
 #include <stdio.h>
