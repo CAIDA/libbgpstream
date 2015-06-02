@@ -50,7 +50,6 @@
  *
  */
 
-#define DATASOURCE_CMD_CNT 10
 #define PROJECT_CMD_CNT 10
 #define TYPE_CMD_CNT    10
 #define COLLECTOR_CMD_CNT 100
@@ -87,10 +86,10 @@ static bgpstream_record_t *record = NULL;
 static bgpcorsaro_t *bgpcorsaro = NULL;
 
 /** The id associated with the bgpstream data interface  */
-bgpstream_data_interface_id_t datasource_id = 0;
+static bgpstream_data_interface_id_t datasource_id = 0;
 
 /** Datasource name string  */
-const char *datasource_name = NULL;
+static char *datasource_name = NULL;
 
 /** Handles SIGINT gracefully and shuts down */
 static void catch_sigint(int sig)
@@ -125,6 +124,11 @@ static void clean()
   if(timeseries != NULL)
     {
       timeseries_free(&timeseries);
+    }
+
+  if(datasource_name != NULL)
+    {
+      free(datasource_name);
     }
 }
 
@@ -234,6 +238,7 @@ static void usage()
 	  "   -C <collector> process records from only the given collector*\n"
 	  "   -T <type>      process records with only the given type (ribs, updates)*\n"
 	  "   -W <start,end> process records only within the given time window*\n"
+          "   -E <period>    process a rib files every <period> seconds (bgp time)\n"
 	  "   -B             make blocking requests for BGP records\n"
 	  "                  allows bgpcorsaro to be used to process data in real-time\n"                    
           "   -b <backend>   enable the given timeseries backend,\n"
@@ -297,7 +302,6 @@ int main(int argc, char *argv[])
   char *backend_arg_ptr = NULL;
   timeseries_backend_t *backend = NULL;
 
-  char datasource[PROJECT_CMD_CNT];
   int datasource_set = 0;
   
   bgpstream_data_interface_option_t *option;
@@ -315,6 +319,7 @@ int main(int argc, char *argv[])
   struct window windows[WINDOW_CMD_CNT];
   int windows_cnt = 0;
 
+  int rib_period = 0;
   int blocking = 0;
 
   int rc = 0;
@@ -336,7 +341,7 @@ int main(int argc, char *argv[])
     }
 
   while(prevoptind = optind,
-    	(opt = getopt(argc, argv, ":D:O:C:P:T:W:b:g:i:n:o:p:r:R:aBlhv?")) >= 0)
+    	(opt = getopt(argc, argv, ":D:O:C:P:T:W:E:b:g:i:n:o:p:r:R:aBlhv?")) >= 0)
     {
       if (optind == prevoptind + 2 && (optarg == NULL || *optarg == '-') ) {
         opt = ':';
@@ -362,8 +367,7 @@ int main(int argc, char *argv[])
               usage();
               exit(-1);
             }
-          datasource_name = optarg;
-          strcpy(datasource,optarg);
+          datasource_name = strdup(optarg);
 	  datasource_set = 1;
 	  break;
 
@@ -472,6 +476,10 @@ int main(int argc, char *argv[])
             }
           break;
           
+	case 'E':
+	  rib_period = atoi(optarg);
+	  break;
+
 	case 'B':
 	  blocking = 1;
 	  break;
@@ -488,7 +496,6 @@ int main(int argc, char *argv[])
 	case 'a':
 	  align = 1;
 	  break;
-
 
 
 	case 'i':
@@ -511,7 +518,6 @@ int main(int argc, char *argv[])
 	  plugins[plugin_cnt++] = strdup(optarg);
 	  break;
 
-
 	case 'r':
 	  rotate = atoi(optarg);
 	  break;
@@ -519,7 +525,6 @@ int main(int argc, char *argv[])
 	case 'R':
 	  meta_rotate = atoi(optarg);
 	  break;
-
 
 	case ':':
 	  fprintf(stderr, "ERROR: Missing option argument for -%c\n", optopt);
@@ -689,10 +694,10 @@ int main(int argc, char *argv[])
 
   if(datasource_set == 1)
     {
-      ds_id = bgpstream_get_data_interface_id_by_name(stream, datasource);
+      ds_id = bgpstream_get_data_interface_id_by_name(stream, datasource_name);
       if (ds_id == 0)
         {
-          fprintf(stderr, "ERROR: Datasource %s is not valid.\n", datasource);
+          fprintf(stderr, "ERROR: Datasource %s is not valid.\n", datasource_name);
           usage();
           exit(-1);
         }	 
@@ -736,6 +741,12 @@ int main(int argc, char *argv[])
 	}
       free(windows[i].start);
       free(windows[i].end);
+    }
+
+  /* frequencies */
+  if(rib_period > 0)
+    {
+      bgpstream_add_rib_period_filter(stream, rib_period);
     }
 
   /* blocking */

@@ -376,6 +376,7 @@ get_collector_data(routingtables_t *rt, char *project, char *collector)
       c_data.valid_record_cnt = 0;
       c_data.corrupted_record_cnt = 0;
       c_data.empty_record_cnt = 0;
+      c_data.publish_flag = 0;
                   
       collector_generate_metrics(rt, &c_data);
 
@@ -581,6 +582,8 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
     }
 
   /* @todo here is where we have information about "untouched" peers */
+
+  c->publish_flag = 1;
   
   /* reset all the uc information for the  collector */
   c->bgp_time_ref_rib_dump_time = c->bgp_time_uc_rib_dump_time;
@@ -812,12 +815,6 @@ apply_state_update(routingtables_t *rt, collector_t * c, bgpstream_peer_id_t pee
   assert(peer_id);
   assert(peer_id == bgpwatcher_view_iter_peer_get_peer_id(rt->iter));
   perpeer_info_t *p = bgpwatcher_view_iter_peer_get_user(rt->iter);
-
-  if(new_state < BGPSTREAM_ELEM_PEERSTATE_IDLE || new_state >= BGPSTREAM_ELEM_PEERSTATE_NULL)
-  {
-    // @todo BGPSTREAM_ELEM_PEERSTATE_NULL occurs, check in bgpstream what is going on! */
-    return 0;
-  }
 
   p->state_messages_cnt++;
   

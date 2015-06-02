@@ -163,42 +163,43 @@ routingtables_dump_metrics(routingtables_t *rt, uint32_t time_now)
       if (kh_exist(rt->collectors, k))
         {
           c = &kh_val(rt->collectors, k);
-          if(c->state != ROUTINGTABLES_COLLECTOR_STATE_UNKNOWN)
-            {
               
-              /* compute metrics that requires peers aggregation */
-              /* get all the peers that belong to the current collector */    
-              for(kp = kh_begin(c->collector_peerids); kp != kh_end(c->collector_peerids); ++kp)
+          /* compute metrics that requires peers aggregation */
+          /* get all the peers that belong to the current collector */    
+          for(kp = kh_begin(c->collector_peerids); kp != kh_end(c->collector_peerids); ++kp)
+            {
+              if(kh_exist(c->collector_peerids, kp))
                 {
-                  if(kh_exist(c->collector_peerids, kp))
+                  peer_id = kh_key(c->collector_peerids, kp);
+                  bgpwatcher_view_iter_seek_peer(rt->iter, peer_id, BGPWATCHER_VIEW_FIELD_ALL_VALID);
+                  p = bgpwatcher_view_iter_peer_get_user(rt->iter);
+                  assert(p);
+                  if(bgpwatcher_view_iter_peer_get_state(rt->iter) == BGPWATCHER_VIEW_FIELD_ACTIVE)
                     {
-                      peer_id = kh_key(c->collector_peerids, kp);
-                      bgpwatcher_view_iter_seek_peer(rt->iter, peer_id, BGPWATCHER_VIEW_FIELD_ALL_VALID);
-                      p = bgpwatcher_view_iter_peer_get_user(rt->iter);
-                      assert(p);
-                      if(bgpwatcher_view_iter_peer_get_state(rt->iter) == BGPWATCHER_VIEW_FIELD_ACTIVE)
-                        {
-                          sg = bgpstream_peer_sig_map_get_sig(rt->peersigns, peer_id);
-                          bgpstream_id_set_insert(c->active_ases, sg->peer_asnumber);                          
-                        }
+                      sg = bgpstream_peer_sig_map_get_sig(rt->peersigns, peer_id);
+                      bgpstream_id_set_insert(c->active_ases, sg->peer_asnumber);                          
                     }
                 }
+            }
 
-              /* set statistics here */              
-              timeseries_kp_set(c->kp, c->kp_idxs.processing_time_idx, processing_time);
-              timeseries_kp_set(c->kp, c->kp_idxs.realtime_delay_idx, real_time_delay);
+          /* set statistics here */              
+          timeseries_kp_set(c->kp, c->kp_idxs.processing_time_idx, processing_time);
+          timeseries_kp_set(c->kp, c->kp_idxs.realtime_delay_idx, real_time_delay);
 
-              timeseries_kp_set(c->kp, c->kp_idxs.valid_record_cnt_idx, c->valid_record_cnt);              
-              timeseries_kp_set(c->kp, c->kp_idxs.corrupted_record_cnt_idx, c->corrupted_record_cnt);              
-              timeseries_kp_set(c->kp, c->kp_idxs.empty_record_cnt_idx, c->empty_record_cnt);
+          timeseries_kp_set(c->kp, c->kp_idxs.valid_record_cnt_idx, c->valid_record_cnt);              
+          timeseries_kp_set(c->kp, c->kp_idxs.corrupted_record_cnt_idx, c->corrupted_record_cnt);              
+          timeseries_kp_set(c->kp, c->kp_idxs.empty_record_cnt_idx, c->empty_record_cnt);
               
-              timeseries_kp_set(c->kp, c->kp_idxs.status_idx, c->state);
-              timeseries_kp_set(c->kp, c->kp_idxs.active_peers_cnt_idx, c->active_peers_cnt);
-              timeseries_kp_set(c->kp, c->kp_idxs.active_asns_cnt_idx, bgpstream_id_set_size(c->active_ases));
+          timeseries_kp_set(c->kp, c->kp_idxs.status_idx, c->state);
+          timeseries_kp_set(c->kp, c->kp_idxs.active_peers_cnt_idx, c->active_peers_cnt);
+          timeseries_kp_set(c->kp, c->kp_idxs.active_asns_cnt_idx, bgpstream_id_set_size(c->active_ases));
                             
-              /* flush metrics */
+          /* flush metrics */
+          if(c->publish_flag)
+            {
               timeseries_kp_flush(c->kp, rt->bgp_time_interval_start);
             }
+
 
           /* in all cases we have to reset the metrics */
           c->valid_record_cnt = 0;
