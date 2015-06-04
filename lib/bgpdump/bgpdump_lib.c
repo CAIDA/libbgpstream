@@ -157,7 +157,9 @@ BGPDUMP_ENTRY*	bgpdump_read_next(BGPDUMP *dump) {
   
   // initialize corrupted_read
   dump->corrupted_read = false;
-	
+
+  assert(this_entry);
+  
   bytes_read = cfr_read_n(dump->f, &(this_entry->time), 4);
   bytes_read += cfr_read_n(dump->f, &(this_entry->type), 2);
   bytes_read += cfr_read_n(dump->f, &(this_entry->subtype), 2);
@@ -172,6 +174,7 @@ BGPDUMP_ENTRY*	bgpdump_read_next(BGPDUMP *dump) {
     }
     /* Nothing more to read, quit */
     bgpdump_free_mem(this_entry);
+    this_entry = NULL;
     dump->eof=1;
     //printf("case 1\n");
     return(NULL);
@@ -193,6 +196,7 @@ BGPDUMP_ENTRY*	bgpdump_read_next(BGPDUMP *dump) {
     dump->corrupted_read = true;
     //printf("case 2\n");
     bgpdump_free_mem(this_entry);
+    this_entry = NULL;
     free(buffer);
     dump->eof=1;
     return(NULL);
@@ -221,6 +225,7 @@ BGPDUMP_ENTRY*	bgpdump_read_next(BGPDUMP *dump) {
   } else {
     //printf("case 3 - not corrupted, just empty beginning\n");
     bgpdump_free_mem(this_entry);
+    this_entry = NULL;
     return NULL;
   }
   return this_entry;
@@ -251,6 +256,7 @@ void bgpdump_free_mem(BGPDUMP_ENTRY *entry) {
 
   if(entry!=NULL) {
     bgpdump_free_attr(entry->attr);
+    entry->attr = NULL;
     switch(entry->type) {
     case BGPDUMP_TYPE_ZEBRA_BGP:
       switch(entry->subtype) {
@@ -278,6 +284,7 @@ void bgpdump_free_mem(BGPDUMP_ENTRY *entry) {
 
 	for(i = 0; i < e->entry_count; i++){
 	  bgpdump_free_attr(e->entries[i].attr);
+          e->entries[i].attr = NULL;
 	}
 	free(e->entries);
       }
@@ -308,12 +315,19 @@ void bgpdump_free_attr(attributes_t *attr){
 
     if(attr->community != NULL) {
       if(attr->community->val != NULL)
-	free(attr->community->val);
+        {
+          free(attr->community->val);
+          attr->community->val = NULL;
+        }
 
       if(attr->community->str != NULL)
-	free(attr->community->str);
+        {
+          free(attr->community->str);
+          attr->community->str = NULL;
+        }
 
       free(attr->community);
+      attr->community = NULL;
     }
 
     if(attr->data != NULL)
@@ -970,7 +984,7 @@ void aspath_error(struct aspath *as) {
 }
 
 void process_attr_aspath_string(struct aspath *as) {
- 
+
   const int MAX_ASPATH_LEN = 8000;  
   as->str = malloc(MAX_ASPATH_LEN);
     
@@ -987,12 +1001,13 @@ void process_attr_aspath_string(struct aspath *as) {
   u_int16_t tmp16;
   u_int32_t tmp32;
     
+  int i;
   while (pnt < end) {
-    int i;
-
+    
     /* For fetch value. */
     segment = (struct assegment *) pnt;
 
+    
     /* Check AS type validity. */
     if ((segment->type != AS_SET) &&
 	(segment->type != AS_SEQUENCE) &&
@@ -1014,6 +1029,7 @@ void process_attr_aspath_string(struct aspath *as) {
        character. */
     if (type != AS_SEQUENCE)
       as->str[pos++] = aspath_delimiter_char (type, AS_SEG_END);
+    
     if (space)
       as->str[pos++] = ' ';
 

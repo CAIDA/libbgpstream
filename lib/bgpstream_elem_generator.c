@@ -163,6 +163,11 @@ static void get_aspath_struct(struct aspath *ap,
 
       next = c = strdup(ap->str);
       while((tok = strsep(&next, " ")) != NULL) {
+        if(it == bs_ap->hop_count)
+          {            
+            fprintf(stderr, "Wrong hop count %d - %s\n", bs_ap->hop_count, ap->str);
+            assert(0);
+          }
 	// strcpy(origin_copy, tok);
 	bs_ap->numeric_aspath[it] = strtoul(tok, NULL, 10);
 	it++;
