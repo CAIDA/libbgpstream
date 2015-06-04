@@ -984,7 +984,7 @@ void aspath_error(struct aspath *as) {
 }
 
 void process_attr_aspath_string(struct aspath *as) {
- 
+
   const int MAX_ASPATH_LEN = 8000;  
   as->str = malloc(MAX_ASPATH_LEN);
     
@@ -1001,12 +1001,13 @@ void process_attr_aspath_string(struct aspath *as) {
   u_int16_t tmp16;
   u_int32_t tmp32;
     
+  int i;
   while (pnt < end) {
-    int i;
-
+    
     /* For fetch value. */
     segment = (struct assegment *) pnt;
 
+    
     /* Check AS type validity. */
     if ((segment->type != AS_SET) &&
 	(segment->type != AS_SEQUENCE) &&
@@ -1028,6 +1029,7 @@ void process_attr_aspath_string(struct aspath *as) {
        character. */
     if (type != AS_SEQUENCE)
       as->str[pos++] = aspath_delimiter_char (type, AS_SEG_END);
+    
     if (space)
       as->str[pos++] = ' ';
 

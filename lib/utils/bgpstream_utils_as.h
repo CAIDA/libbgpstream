@@ -68,7 +68,7 @@ typedef struct struct_bgpstream_as_path_t {
   bgpstream_as_type_t type;
 
   /** Number of hops in the AS path */
-  uint8_t hop_count;
+  uint32_t hop_count;
 
   /** AS Path
    *
