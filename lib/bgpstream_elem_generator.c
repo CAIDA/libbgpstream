@@ -114,7 +114,7 @@ static void get_aspath_struct(struct aspath *ap,
 {
   const char *invalid_characters = "([{}])";
   // char origin_copy[16];
-  uint8_t it;
+  uint32_t it;
   char * tok = NULL;
   char *c = ap->str;
   char *next;
