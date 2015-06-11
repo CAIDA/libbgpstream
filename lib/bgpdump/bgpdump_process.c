@@ -745,6 +745,10 @@ static void show_attr(attributes_t *attr) {
 		   
       }
 
+    if (!attr->aspath->str) {
+      process_attr_aspath_string(attr->aspath);
+    }
+
     if( (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) ) !=0)		
       printf("ASPATH: %s\n",attr->aspath->str);
 
@@ -1432,6 +1436,9 @@ static void table_line_dump_v2_prefix(BGPDUMP_TABLE_DUMP_V2_PREFIX *e,BGPDUMP_EN
       continue;
         
     char *origin = describe_origin(attr->origin);
+    if (attr->aspath && !attr->aspath->str) { // AK HAX
+      process_attr_aspath_string(attr->aspath);
+    }
     char *aspath_str = (attr->aspath) ? attr->aspath->str: "";
     char *aggregate = attr->flag & ATTR_FLAG_BIT(BGP_ATTR_ATOMIC_AGGREGATE) ? "AG" : "NAG";
         

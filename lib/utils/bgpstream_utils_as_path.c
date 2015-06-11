@@ -524,6 +524,7 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
 #ifdef PATH_DEBUG
   char buffer[8000];
   size_t written = bgpstream_as_path_snprintf(buffer, 8000, path);
+  process_attr_aspath_string(bd_path);
   if(written >= 8000 || strcmp(buffer, bd_path->str) != 0)
     {
       fprintf(stderr, "Written: %lu\n", written);
