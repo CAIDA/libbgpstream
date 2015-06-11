@@ -31,6 +31,9 @@ docs/doxygen/latex
 docs/doxygen/man
 docs/bgpstream.doxygen
 
+# Test results
+test/*.log
+
 # Autotools files
 # http://www.gnu.org/software/automake
 
