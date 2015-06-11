@@ -48,26 +48,28 @@ bgpstream_elem_t *bgpstream_elem_create() {
   }
   // all fields are initialized to zero
 
-  // need to init as path
-  bgpstream_as_path_init(&ri->aspath);
+  // need to create as path
+  if((ri->aspath = bgpstream_as_path_create()) == NULL) {
+    return NULL;
+  }
 
   return ri;
 }
 
 void bgpstream_elem_destroy(bgpstream_elem_t *elem) {
+
   if(elem == NULL) {
     return;
   }
 
-  // need to clear as path
-  bgpstream_as_path_clear(&elem->aspath);
+  bgpstream_as_path_destroy(elem->aspath);
+  elem->aspath = NULL;
 
   free(elem);
 }
 
 void bgpstream_elem_clear(bgpstream_elem_t *elem) {
-  /* just need to clear the as path */
-  bgpstream_as_path_clear(&elem->aspath);
+
 }
 
 bgpstream_elem_t *bgpstream_elem_copy(bgpstream_elem_t *dst,
@@ -76,10 +78,7 @@ bgpstream_elem_t *bgpstream_elem_copy(bgpstream_elem_t *dst,
   /* do a memcpy and then manually copy the as path */
   memcpy(dst, src, sizeof(bgpstream_elem_t));
 
-  /* ignore whatever crap is in there right now */
-  bgpstream_as_path_init(&dst->aspath);
-
-  if(bgpstream_as_path_copy(&dst->aspath, &src->aspath) != 0)
+  if(bgpstream_as_path_copy(dst->aspath, src->aspath) != 0)
     {
       return NULL;
     }
@@ -213,8 +212,7 @@ char *bgpstream_elem_snprintf(char *buf, size_t len,
   size_t c = 0; /* < how many chars were written */
   char *buf_p = buf;
 
-  bgpstream_as_hop_t as_hop;
-  bgpstream_as_hop_init(&as_hop);
+  bgpstream_as_path_seg_t *seg;
 
   /* common fields */
 
@@ -275,7 +273,7 @@ char *bgpstream_elem_snprintf(char *buf, size_t len,
       ADD_PIPE;
 
       /* AS PATH */
-      c = bgpstream_as_path_snprintf(buf_p, B_REMAIN, &elem->aspath);
+      c = bgpstream_as_path_snprintf(buf_p, B_REMAIN, elem->aspath);
       written += c;
       buf_p += c;
 
@@ -285,14 +283,12 @@ char *bgpstream_elem_snprintf(char *buf, size_t len,
       ADD_PIPE;
 
       /* ORIGIN AS */
-      if(bgpstream_as_path_get_origin_as(&elem->aspath, &as_hop) != 0)
+      if((seg = bgpstream_as_path_get_origin_as(elem->aspath)) != NULL)
         {
-          return NULL;
+          c = bgpstream_as_path_seg_snprintf(buf_p, B_REMAIN, seg);
+          written += c;
+          buf_p += c;
         }
-      c = bgpstream_as_hop_snprintf(buf_p, B_REMAIN, &as_hop);
-      bgpstream_as_hop_clear(&as_hop);
-      written += c;
-      buf_p += c;
 
       ADD_PIPE;
 
@@ -300,7 +296,6 @@ char *bgpstream_elem_snprintf(char *buf, size_t len,
       ADD_PIPE;
 
       /* NEW STATE (empty) */
-      
       if(B_FULL)
         return NULL;
 
@@ -317,7 +312,7 @@ char *bgpstream_elem_snprintf(char *buf, size_t len,
         }
       SEEK_STR_END;
       ADD_PIPE;
-      /* NEXT HOP (empty) */      
+      /* NEXT HOP (empty) */
       ADD_PIPE;
       /* AS PATH (empty) */
       ADD_PIPE;
@@ -335,7 +330,7 @@ char *bgpstream_elem_snprintf(char *buf, size_t len,
 
       /* PREFIX (empty) */
       ADD_PIPE;
-      /* NEXT HOP (empty) */      
+      /* NEXT HOP (empty) */
       ADD_PIPE;
       /* AS PATH (empty) */
       ADD_PIPE;
@@ -352,7 +347,7 @@ char *bgpstream_elem_snprintf(char *buf, size_t len,
         return NULL;
 
       ADD_PIPE;
-      
+
       /* NEW STATE (empty) */
       c = bgpstream_elem_peerstate_snprintf(buf_p, B_REMAIN, elem->new_state);
       written += c;

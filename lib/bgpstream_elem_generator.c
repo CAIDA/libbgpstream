@@ -53,10 +53,10 @@
 #include "bgpdump_lib.h"
 #include "utils.h"
 
+#include "bgpstream_utils_as_path_int.h"
+
 #include "bgpstream_debug.h"
-
 #include "bgpstream_elem_int.h"
-
 #include "bgpstream_elem_generator.h"
 
 struct bgpstream_elem_generator {
@@ -108,6 +108,7 @@ static bgpstream_elem_t *get_new_elem(bgpstream_elem_generator_t *self)
 
 /* ==================== BGPDUMP JUNK ==================== */
 
+#if 0
 /** @todo consider moving this code into bgpstream_utils_as */
 static void get_aspath_struct(struct aspath *ap,
                               bgpstream_as_path_t *bs_ap)
@@ -176,6 +177,7 @@ static void get_aspath_struct(struct aspath *ap,
     }
 
 }
+#endif
 
 /* ribs related functions */
 static int table_line_mrtd_route(bgpstream_elem_generator_t *self,
@@ -213,7 +215,7 @@ static int table_line_mrtd_route(bgpstream_elem_generator_t *self,
   if(entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) &&
      entry->attr->aspath && entry->attr->aspath->str)
     {
-      get_aspath_struct(entry->attr->aspath, &ri->aspath);
+      bgpstream_as_path_populate(ri->aspath, entry->attr->aspath);
     }
 
   // nextop
@@ -284,7 +286,7 @@ int table_line_dump_v2_prefix(bgpstream_elem_generator_t *self,
     ri->prefix.mask_len = e->prefix_length;
     // as path
     if (attr->aspath) {
-      get_aspath_struct(attr->aspath, &ri->aspath);
+      bgpstream_as_path_populate(ri->aspath, attr->aspath);
     }
     // next hop
     if ((attr->flag & ATTR_FLAG_BIT(BGP_ATTR_MP_REACH_NLRI)) &&
@@ -336,7 +338,7 @@ static int table_line_announce(bgpstream_elem_generator_t *self,
     // as path
     if(entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) &&
        entry->attr->aspath && entry->attr->aspath->str) {
-      get_aspath_struct(entry->attr->aspath, &ri->aspath);
+      bgpstream_as_path_populate(ri->aspath, entry->attr->aspath);
     }
   }
   return 0;
@@ -377,7 +379,7 @@ static int table_line_announce_1(bgpstream_elem_generator_t *self,
     // as path
     if(entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) &&
        entry->attr->aspath && entry->attr->aspath->str) {
-      get_aspath_struct(entry->attr->aspath, &ri->aspath);
+      bgpstream_as_path_populate(ri->aspath, entry->attr->aspath);
     }
   }
   return 0;
@@ -418,7 +420,7 @@ static int table_line_announce6(bgpstream_elem_generator_t *self,
     // aspath
     if(entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) &&
        entry->attr->aspath && entry->attr->aspath->str) {
-      get_aspath_struct(entry->attr->aspath, &ri->aspath);
+      bgpstream_as_path_populate(ri->aspath, entry->attr->aspath);
     }
   }
   return 0;

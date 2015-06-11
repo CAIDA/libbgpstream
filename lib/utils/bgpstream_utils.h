@@ -42,7 +42,7 @@
 /* Include all utility headers */
 #include "bgpstream_utils_addr.h"         /** < IP Address utilities */
 #include "bgpstream_utils_addr_set.h"     /** < IP Address Set utilities */
-#include "bgpstream_utils_as.h"           /** < AS/AS Path utilities */
+#include "bgpstream_utils_as_path.h"      /** < AS Path utilities */
 #include "bgpstream_utils_id_set.h"       /** < ID Set utilities */
 #include "bgpstream_utils_peer_sig_map.h" /** < Peer Signature utilities */
 #include "bgpstream_utils_pfx.h"          /** < Prefix utilities */

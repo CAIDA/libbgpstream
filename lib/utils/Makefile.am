@@ -18,7 +18,8 @@
 
 SUBDIRS =
 
-AM_CPPFLAGS = -I$(top_srcdir)  \
+AM_CPPFLAGS = -I$(top_srcdir)             \
+	      -I$(top_srcdir)/lib/bgpdump \
 	      -I$(top_srcdir)/common
 
 
@@ -29,12 +30,12 @@ CONDITIONAL_LIBS=
 include_HEADERS= bgpstream_utils.h 		     \
 		 bgpstream_utils_addr.h 	     \
 		 bgpstream_utils_addr_set.h	     \
-		 bgpstream_utils_as.h		     \
+		 bgpstream_utils_as_path.h	     \
 		 bgpstream_utils_id_set.h     	     \
 		 bgpstream_utils_peer_sig_map.h      \
 		 bgpstream_utils_pfx.h		     \
 		 bgpstream_utils_pfx_set.h	     \
-		 bgpstream_utils_str_set.h	     
+		 bgpstream_utils_str_set.h
 
 libbgpstream_utils_la_SOURCES =             \
 	bgpstream_utils.h                   \
@@ -42,8 +43,9 @@ libbgpstream_utils_la_SOURCES =             \
 	bgpstream_utils_addr.h              \
 	bgpstream_utils_addr_set.c 	    \
 	bgpstream_utils_addr_set.h	    \
-	bgpstream_utils_as.c		    \
-	bgpstream_utils_as.h		    \
+	bgpstream_utils_as_path.c	    \
+	bgpstream_utils_as_path.h	    \
+	bgpstream_utils_as_path_int.h	    \
 	bgpstream_utils_id_set.c     	    \
 	bgpstream_utils_id_set.h     	    \
 	bgpstream_utils_peer_sig_map.c      \

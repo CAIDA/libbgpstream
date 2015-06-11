@@ -141,7 +141,7 @@ typedef struct struct_bgpstream_elem_t {
    *
    * Available only for RIB and Announcement elem types
    */
-  bgpstream_as_path_t aspath;
+  bgpstream_as_path_t *aspath;
 
   /** Old peer state
    *
