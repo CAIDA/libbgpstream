@@ -97,14 +97,6 @@ static bgpstream_as_path_seg_set_t *seg_set_dup(bgpstream_as_path_seg_set_t *src
   return seg;
 }
 
-static void path_clear(bgpstream_as_path_t *path)
-{
-  path->data_len = 0;
-  path->seg_cnt = 0;
-  path->cur_offset = 0;
-  path->origin_offset = -1;
-}
-
 /* ========== PUBLIC FUNCTIONS ========== */
 
 /* AS HOP FUNCTIONS */
@@ -293,12 +285,20 @@ bgpstream_as_path_t *bgpstream_as_path_create()
   return path;
 }
 
+void bgpstream_as_path_clear(bgpstream_as_path_t *path)
+{
+  path->data_len = 0;
+  path->seg_cnt = 0;
+  path->cur_offset = 0;
+  path->origin_offset = -1;
+}
+
 void bgpstream_as_path_destroy(bgpstream_as_path_t *path)
 {
   free(path->data);
   path->data = NULL;
   path->data_alloc_len = 0;
-  path_clear(path);
+  bgpstream_as_path_clear(path);
   free(path);
 }
 
@@ -393,7 +393,7 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
   end = ptr + bd_path->length;
 
   /* we are going to overwrite the current path */
-  path_clear(path);
+  bgpstream_as_path_clear(path);
 
   bgpstream_as_path_seg_type_t last_type = BGPSTREAM_AS_PATH_SEG_ASN;
 

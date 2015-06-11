@@ -69,7 +69,7 @@ void bgpstream_elem_destroy(bgpstream_elem_t *elem) {
 }
 
 void bgpstream_elem_clear(bgpstream_elem_t *elem) {
-
+  bgpstream_as_path_clear(elem->aspath);
 }
 
 bgpstream_elem_t *bgpstream_elem_copy(bgpstream_elem_t *dst,

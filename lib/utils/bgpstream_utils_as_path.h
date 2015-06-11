@@ -208,6 +208,12 @@ int bgpstream_as_path_snprintf(char *buf, size_t len,
  */
 bgpstream_as_path_t *bgpstream_as_path_create();
 
+/** Clear the given AS path structure
+ *
+ * @param               pointer to the AS path to clear
+ */
+void bgpstream_as_path_clear(bgpstream_as_path_t *path);
+
 /** Destroy the given AS path structure
  *
  * @param path        pointer to the AS path structure to destroy
