@@ -118,7 +118,7 @@ void usage() {
 // print functions
 
 static void print_bs_record(bgpstream_record_t * bs_record);
-static void print_elem(bgpstream_elem_t *elem);
+static int print_elem(bgpstream_elem_t *elem);
 
 
 int main(int argc, char *argv[])
@@ -426,7 +426,10 @@ int main(int argc, char *argv[])
 	      while((bs_elem =
                      bgpstream_record_get_next_elem(bs_record)) != NULL)
 		{
-		  print_elem(bs_elem);
+		  if(print_elem(bs_elem) != 0)
+                    {
+                      goto err;
+                    }
 		}
 	    }
 	}
@@ -443,6 +446,12 @@ int main(int argc, char *argv[])
   bgpstream_destroy(bs);
 
   return 0;
+
+ err:
+  bgpstream_record_destroy(bs_record);
+  bgpstream_stop(bs);
+  bgpstream_destroy(bs);
+  return -1;
 }
 
 // print utility functions
@@ -506,16 +515,18 @@ static void print_bs_record(bgpstream_record_t * bs_record)
 
 }
 
-
-static void print_elem(bgpstream_elem_t * elem)
+static char elem_buf[65536];
+static int print_elem(bgpstream_elem_t *elem)
 {
-  assert(bs_elem);
-  char buf[4096];
+  assert(elem);
 
-  if(bgpstream_elem_snprintf(buf, 4096, elem) == NULL)
+  if(bgpstream_elem_snprintf(elem_buf, 65536, elem) == NULL)
     {
-      fprintf(stderr, "Elem longer than 4096 bytes\n");
-      assert(0);
+      fprintf(stderr, "Failed to construct elem string\n");
+      elem_buf[65535] = '\0';
+      fprintf(stderr, "Elem string: %s\n", elem_buf);
+      return -1;
     }
-  printf("%s\n", buf);
+  printf("%s\n", elem_buf);
+  return 0;
 }
