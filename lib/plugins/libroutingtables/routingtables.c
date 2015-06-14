@@ -1269,7 +1269,7 @@ routingtables_t *routingtables_create(char *plugin_name, timeseries_t *timeserie
   // set the metric prefix string to the default value
   routingtables_set_metric_prefix(rt,
                                   ROUTINGTABLES_DEFAULT_METRIC_PFX);
-
+  rt->metrics_output_on = 1;
   // set the ff thresholds to their default values
   rt->ipv4_fullfeed_th = ROUTINGTABLES_DEFAULT_IPV4_FULLFEED_THR;
   rt->ipv6_fullfeed_th = ROUTINGTABLES_DEFAULT_IPV6_FULLFEED_THR;
@@ -1327,6 +1327,12 @@ char *routingtables_get_metric_prefix(routingtables_t *rt)
 {
   return &rt->metric_prefix[0];
 }
+
+void routingtables_turn_metric_output_off(routingtables_t *rt)
+{
+  rt->metrics_output_on = 0;
+}
+
 
 #ifdef WITH_BGPWATCHER
 int routingtables_activate_watcher_tx(routingtables_t *rt,
@@ -1451,7 +1457,10 @@ int routingtables_interval_end(routingtables_t *rt,
   fprintf(stderr, "Interval [%"PRIu32", %"PRIu32"] processed in %"PRIu32"s\n",
           rt->bgp_time_interval_start, rt->bgp_time_interval_end, elapsed_time);
 
-  routingtables_dump_metrics(rt, time_now);
+  if(rt->metrics_output_on)
+    {
+      routingtables_dump_metrics(rt, time_now);
+    }
 
   return 0;
 }

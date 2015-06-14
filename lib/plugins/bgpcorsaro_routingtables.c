@@ -88,9 +88,13 @@ struct bgpcorsaro_routingtables_state_t {
   /** routing tables instance */
   routingtables_t *routing_tables;
 
+  /** decides whether metrics should be
+   *  printed or not */
+  uint8_t metrics_output_on;
+
   /** prefix used for outputed metrics */
   char *metric_prefix;
-
+  
   /** ipv4 full feed size threshold */
   int ipv4_fullfeed_th;
 
@@ -132,6 +136,7 @@ static void usage(bgpcorsaro_t *bgpcorsaro)
 	  "       -m <prefix>                  metric prefix (default: %s)\n"
 	  "       -f <fullfeed-ipv4-th>        set the IPv4 full feed threshold  (default: %d)\n"
 	  "       -F <fullfeed-ipv6-th>        set the IPv6 full feed threshold  (default: %d)\n"
+	  "       -q                           turn off metrics output  (default: on)\n"
 #ifdef WITH_BGPWATCHER
           "       -w                           enables bgpwatcher transmission (default: off)\n"
 	  "       -u <server-uri>              0MQ-style URI to connect to server (default: tcp://*:6300)\n"
@@ -163,7 +168,7 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
   /* parsing args */
 
   while((opt = getopt(plugin->argc, plugin->argv,
-                      ":m:f:F:"
+                      ":m:f:F:q"
 #ifdef WITH_BGPWATCHER
                       "wa46u:c:"
 #endif
@@ -179,6 +184,9 @@ static int parse_args(bgpcorsaro_t *bgpcorsaro)
 	  break;
     	case 'F':
 	  state->ipv6_fullfeed_th = atoi(optarg);
+	  break;
+    	case 'q':
+	  state->metrics_output_on = 0;
 	  break;
 #ifdef WITH_BGPWATCHER
     	case 'w':
@@ -242,6 +250,7 @@ int bgpcorsaro_routingtables_init_output(bgpcorsaro_t *bgpcorsaro)
   state->metric_prefix = NULL;
   state->ipv4_fullfeed_th = -1; // default: not set
   state->ipv6_fullfeed_th = -1; // default: not set
+  state->metrics_output_on = 1; // default: on
 #ifdef WITH_BGPWATCHER
   state->watcher_tx = 0; // default: don't send data
   state->watcher_server_uri = NULL;
@@ -261,6 +270,11 @@ int bgpcorsaro_routingtables_init_output(bgpcorsaro_t *bgpcorsaro)
   if(state->metric_prefix != NULL)
     {
       routingtables_set_metric_prefix(state->routing_tables, state->metric_prefix);
+    }
+
+  if(!state->metrics_output_on)
+    {
+      routingtables_turn_metric_output_off(state->routing_tables);
     }
   
   if(state->ipv4_fullfeed_th != -1)
