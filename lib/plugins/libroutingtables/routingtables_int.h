@@ -360,7 +360,11 @@ struct struct_routingtables_t {
   /** last time (wall time) we received
    *  an interval_start signal */
   uint32_t wall_time_interval_start;
-    
+
+  /** flag that tells whether metrics 
+   *  should be outputed or not */
+  uint8_t metrics_output_on;
+
 #ifdef WITH_BGPWATCHER
   /** Flags that indicates whether the tx
    *  to the watcher is on or off */

@@ -79,6 +79,9 @@ void routingtables_set_metric_prefix(routingtables_t *rt,
  */
 char *routingtables_get_metric_prefix(routingtables_t *rt);
 
+/** turn off metric output */
+void routingtables_turn_metric_output_off(routingtables_t *rt);
+
 #ifdef WITH_BGPWATCHER
 /** Activate the transmission of bgp views to a bgp watcher server
  *  at the end of every interval
