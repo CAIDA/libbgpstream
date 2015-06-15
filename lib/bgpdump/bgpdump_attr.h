@@ -175,7 +175,7 @@ struct assegment
 {
   u_char type;
   u_char length;
-  char   data;
+  char   data[0];
 };
 
 struct mp_info {
