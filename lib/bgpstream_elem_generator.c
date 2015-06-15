@@ -213,7 +213,7 @@ static int table_line_mrtd_route(bgpstream_elem_generator_t *self,
 
   // as path
   if(entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) &&
-     entry->attr->aspath && entry->attr->aspath->str)
+     entry->attr->aspath)
     {
       bgpstream_as_path_populate(ri->aspath, entry->attr->aspath);
     }
@@ -337,7 +337,7 @@ static int table_line_announce(bgpstream_elem_generator_t *self,
     ri->nexthop.ipv4 = entry->attr->nexthop;
     // as path
     if(entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) &&
-       entry->attr->aspath && entry->attr->aspath->str) {
+       entry->attr->aspath) {
       bgpstream_as_path_populate(ri->aspath, entry->attr->aspath);
     }
   }
@@ -378,7 +378,7 @@ static int table_line_announce_1(bgpstream_elem_generator_t *self,
     ri->nexthop.ipv4 = entry->attr->nexthop;
     // as path
     if(entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) &&
-       entry->attr->aspath && entry->attr->aspath->str) {
+       entry->attr->aspath) {
       bgpstream_as_path_populate(ri->aspath, entry->attr->aspath);
     }
   }
@@ -419,7 +419,7 @@ static int table_line_announce6(bgpstream_elem_generator_t *self,
     ri->nexthop.ipv6 = prefix->nexthop.v6_addr;
     // aspath
     if(entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) &&
-       entry->attr->aspath && entry->attr->aspath->str) {
+       entry->attr->aspath) {
       bgpstream_as_path_populate(ri->aspath, entry->attr->aspath);
     }
   }

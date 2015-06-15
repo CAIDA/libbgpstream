@@ -55,7 +55,10 @@ static void table_line_announce6(struct mp_nlri *prefix,int count,BGPDUMP_ENTRY 
 /* If no aspath was present as a string in the packet, return an empty string
  * so everything stays machine parsable */
 static char *attr_aspath(attributes_t *a) {
-  if(a->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) && a->aspath && a->aspath->str) {
+  if(a->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) && a->aspath) {
+    if(!a->aspath->str) {
+      process_attr_aspath_string(a->aspath);
+    }
     return a->aspath->str;
   }
   return "";

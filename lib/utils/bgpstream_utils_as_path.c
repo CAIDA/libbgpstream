@@ -407,12 +407,14 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
          (bd_seg->type != AS_CONFED_SET) &&
          (bd_seg->type != AS_CONFED_SEQUENCE))
         {
+          fprintf(stderr, "WARN: AS_PATH with segment type %d\n", bd_seg->type);
           return -1;
         }
 
       /* Check AS length. */
       if ((ptr + (bd_seg->length * bd_path->asn_len) + AS_HEADER_SIZE) > end)
       {
+        fprintf(stderr, "ERROR: Corrupted AS_PATH\n");
         return -1;
       }
 
@@ -524,6 +526,10 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
 #ifdef PATH_DEBUG
   char buffer[8000];
   size_t written = bgpstream_as_path_snprintf(buffer, 8000, path);
+  if(bd_path->str != NULL)
+    {
+      fprintf(stdout, "warn: as path string populated\n");
+    }
   process_attr_aspath_string(bd_path);
   if(written >= 8000 || strcmp(buffer, bd_path->str) != 0)
     {
