@@ -987,7 +987,8 @@ void process_attr_aspath_string(struct aspath *as) {
 
   const int MAX_ASPATH_LEN = 8000;  
   as->str = malloc(MAX_ASPATH_LEN);
-  
+  as->count = 0;
+
   /* Set default values */
   int space = 0;
   u_char type = AS_SEQUENCE;
