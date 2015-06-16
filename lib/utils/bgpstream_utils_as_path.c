@@ -337,7 +337,7 @@ int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src,
   /* check that there is enough space in the destination data array */
   if(dst->data_alloc_len < dst_len)
     {
-      if((dst->data = malloc(dst_len)) == NULL)
+      if((dst->data = realloc(dst->data, dst_len)) == NULL)
         {
           return -1;
         }
