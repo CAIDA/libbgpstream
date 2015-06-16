@@ -383,7 +383,8 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
 
   int i;
 
-  uint16_t tmp16;
+  uint16_t *ptr16;
+  uint32_t *ptr32;
   uint32_t asn;
 
   assert(path != NULL);
@@ -482,14 +483,12 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
           switch(bd_path->asn_len)
             {
             case ASN16_LEN:
-              memcpy(&tmp16, &bd_seg->data+(i*bd_path->asn_len),
-                     sizeof(uint16_t));
-              asn = ntohs(tmp16);
+              ptr16 = (uint16_t*) (bd_seg->data+(i*bd_path->asn_len));
+              asn = ntohs(*ptr16);
               break;
             case ASN32_LEN:
-              memcpy(&asn, &bd_seg->data+(i*bd_path->asn_len),
-                     sizeof(uint32_t));
-              asn = ntohl(asn);
+              ptr32 = (uint32_t*) (bd_seg->data+(i*bd_path->asn_len));
+              asn = ntohl(*ptr32);
               break;
             }
 
