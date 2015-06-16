@@ -224,12 +224,21 @@ void bgpstream_as_path_destroy(bgpstream_as_path_t *path);
  *
  * @param dst           pointer to the AS path structure to copy into
  * @param src           pointer to the AS path structure to copy from
+ * @param first_seg_idx index of the segment to start the copy at
+ * @param excl_last_seg whether to exclude the origin ASN from the copy
  * @return 0 if the copy was successful, -1 otherwise
  *
  * @note this function will overwrite any data currently in dst. If there are
  * existing borrowed segment pointers into the path they will become garbage.
+ *
+ * The first_seg parameter can be set to 1 to omit the peer ASN from the
+ * beginning of the path. To copy the entire path, use a value of 0.
+ *
+ * If the excl_origin parameter is set, the last segment in the path will not be
+ * copied.
  */
-int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src);
+int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src,
+                           int first_seg_idx, int excl_last_seg);
 
 /** Get the origin AS segment from the given path
  *

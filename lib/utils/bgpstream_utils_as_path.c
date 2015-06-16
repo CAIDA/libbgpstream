@@ -302,24 +302,48 @@ void bgpstream_as_path_destroy(bgpstream_as_path_t *path)
   free(path);
 }
 
-int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src)
+int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src,
+                           int first_seg_idx, int excl_last_seg)
 {
+  size_t start_offset = 0;
+  int current_seg = 0;
+  bgpstream_as_path_seg_t *seg;
+  size_t dst_len;
+  /* find the offset of the first_seg'th segment */
+  if(first_seg_idx > src->seg_cnt)
+    {
+      return -1;
+    }
+  for(current_seg=0; current_seg<first_seg_idx; current_seg++)
+    {
+      seg = (bgpstream_as_path_seg_t *)(src->data+start_offset);
+      start_offset += SIZEOF_SEG(seg);
+    }
+
+  if(excl_last_seg == 0)
+    {
+      dst_len = src->data_len - start_offset;
+    }
+  else
+    {
+      dst_len = src->origin_offset - start_offset;
+    }
 
   /* check that there is enough space in the destination data array */
-  if(dst->data_alloc_len < src->data_len)
+  if(dst->data_alloc_len < dst_len)
     {
-      if((dst->data = malloc(src->data_len)) == NULL)
+      if((dst->data = malloc(dst_len)) == NULL)
         {
           return -1;
         }
-      dst->data_alloc_len = src->data_alloc_len;
+      dst->data_alloc_len = dst_len;
     }
 
   /* copy the data */
-  memcpy(dst->data, src->data, src->data_len);
+  memcpy(dst->data, src->data+start_offset, dst_len);
 
-  dst->data_len = src->data_len;
-  dst->seg_cnt = src->seg_cnt;
+  dst->data_len = dst_len;
+  dst->seg_cnt = src->seg_cnt - first_seg_idx;
   bgpstream_as_path_reset_iter(dst);
 
   return 0;
