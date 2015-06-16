@@ -564,6 +564,38 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
     }
 #endif
 
+#ifdef PATH_COPY_DEBUG
+  /* DEBUG */
+  bgpstream_as_path_t *newpath = bgpstream_as_path_create();
+  assert(newpath != NULL);
+  bgpstream_as_path_t *corepath = bgpstream_as_path_create();
+  assert(corepath != NULL);
+
+  assert(bgpstream_as_path_equal(newpath, corepath));
+
+  bgpstream_as_path_copy(newpath, path, 0, 0);
+  assert(bgpstream_as_path_equal(path, newpath));
+
+  char buf1[8000];
+  bgpstream_as_path_snprintf(buf1, 8000, path);
+  char buf2[8000];
+  bgpstream_as_path_snprintf(buf2, 8000, newpath);
+  assert(strcmp(buf1, buf2) == 0);
+
+  // core path
+  bgpstream_as_path_copy(corepath, path, 1, 1);
+  assert(bgpstream_as_path_equal(path, corepath) == 0);
+
+  char buf3[8000];
+  bgpstream_as_path_snprintf(buf3, 8000, corepath);
+
+  // orig, copy, core
+  fprintf(stdout, "DEBUG|%s|%s|%s\n", buf1, buf2, buf3);
+
+  bgpstream_as_path_destroy(newpath);
+  bgpstream_as_path_destroy(corepath);
+#endif
+
   return 0;
 }
 
