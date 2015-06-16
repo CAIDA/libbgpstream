@@ -324,8 +324,13 @@ int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src,
     {
       dst_len = src->data_len - start_offset;
     }
+  else if(start_offset == src->data_len) /* all segments already removed */
+    {
+      dst_len = 0;
+    }
   else
     {
+      assert(start_offset <= src->origin_offset);
       dst_len = src->origin_offset - start_offset;
     }
 
@@ -344,6 +349,10 @@ int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src,
 
   dst->data_len = dst_len;
   dst->seg_cnt = src->seg_cnt - first_seg_idx;
+  if(excl_last_seg != 0 && dst->seg_cnt > 0)
+    {
+      dst->seg_cnt--;
+    }
   bgpstream_as_path_reset_iter(dst);
 
   return 0;
