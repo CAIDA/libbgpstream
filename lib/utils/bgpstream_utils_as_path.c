@@ -305,55 +305,87 @@ void bgpstream_as_path_destroy(bgpstream_as_path_t *path)
 int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src,
                            int first_seg_idx, int excl_last_seg)
 {
-  size_t start_offset = 0;
-  int current_seg = 0;
+  size_t new_len = src->data_len;
+  int new_seg_cnt = src->seg_cnt;
+  int i;
   bgpstream_as_path_seg_t *seg;
-  size_t dst_len;
-  /* find the offset of the first_seg'th segment */
-  if(first_seg_idx > src->seg_cnt)
+  size_t seg_size = 0;
+  size_t new_begin_offset = 0;
+  size_t new_origin_offset = 0;
+
+  /* set dst to the empty path */
+  dst->data_len = 0;
+  dst->seg_cnt = 0;
+  dst->cur_offset = 0;
+  dst->origin_offset = -1;
+
+  if(new_len == 0 || new_seg_cnt == 0)
     {
-      return -1;
-    }
-  for(current_seg=0; current_seg<first_seg_idx; current_seg++)
-    {
-      seg = (bgpstream_as_path_seg_t *)(src->data+start_offset);
-      start_offset += SIZEOF_SEG(seg);
+      /* copy nothing, dst is already empty */
+      return 0;
     }
 
-  if(excl_last_seg == 0)
+  assert(src->origin_offset >= 0);
+
+  if(excl_last_seg != 0)
     {
-      dst_len = src->data_len - start_offset;
-    }
-  else if(start_offset == src->data_len) /* all segments already removed */
-    {
-      dst_len = 0;
-    }
-  else
-    {
-      assert(start_offset <= src->origin_offset);
-      dst_len = src->origin_offset - start_offset;
+      /* subtract the origin from the end of the path */
+      new_len = src->origin_offset;
+      new_seg_cnt--;
+
+      /* is the path now empty? */
+      if(new_len == 0 || new_seg_cnt == 0)
+        {
+          /* copy nothing */
+          return 0;
+        }
     }
 
-  /* check that there is enough space in the destination data array */
-  if(dst->data_alloc_len < dst_len)
+  /* is there enough segments to satisfy the first_seg_idx requirement? */
+  if(new_seg_cnt < (first_seg_idx+1))
     {
-      if((dst->data = realloc(dst->data, dst_len)) == NULL)
+      /* copy nothing */
+      return 0;
+    }
+
+  for(i=0; i<new_seg_cnt; i++)
+    {
+      seg = (bgpstream_as_path_seg_t*)(src->data+new_begin_offset);
+      seg_size = SIZEOF_SEG(seg);
+      if(i < first_seg_idx)
+        {
+          new_begin_offset += seg_size;
+        }
+
+      /* we're also looking for the new origin offset */
+      if(i < new_seg_cnt-1)
+        {
+          new_origin_offset += seg_size;
+        }
+    }
+  new_len -= new_begin_offset;
+  new_seg_cnt -= first_seg_idx;
+
+  /* ensure we have enough space */
+  if(dst->data_alloc_len < new_len)
+    {
+      if((dst->data = realloc(dst->data, new_len)) == NULL)
         {
           return -1;
         }
-      dst->data_alloc_len = dst_len;
+      dst->data_alloc_len = new_len;
     }
 
-  /* copy the data */
-  memcpy(dst->data, src->data+start_offset, dst_len);
+  /* copy the subpath into dst */
+  memcpy(dst->data, src->data+new_begin_offset, new_len);
 
-  dst->data_len = dst_len;
-  dst->seg_cnt = src->seg_cnt - first_seg_idx;
-  if(excl_last_seg != 0 && dst->seg_cnt > 0)
-    {
-      dst->seg_cnt--;
-    }
+  /* update dst info */
+  dst->data_len = new_len;
+  dst->seg_cnt = new_seg_cnt;
+
   bgpstream_as_path_reset_iter(dst);
+
+  dst->origin_offset = new_origin_offset - new_begin_offset;
 
   return 0;
 }
@@ -471,6 +503,19 @@ static void test_path_copy(bgpstream_as_path_t *path)
 
   // orig, copy, core
   fprintf(stdout, "PATH_COPY|%s|%s|%s\n", buf1, buf2, buf3);
+
+  // core origin
+  char buf4[8000];
+  bgpstream_as_path_seg_snprintf(buf4, 8000,
+                                 bgpstream_as_path_get_origin_seg(path));
+  char buf5[8000];
+  bgpstream_as_path_seg_snprintf(buf5, 8000,
+                                 bgpstream_as_path_get_origin_seg(newpath));
+  char buf6[8000];
+  bgpstream_as_path_seg_snprintf(buf6, 8000,
+                                 bgpstream_as_path_get_origin_seg(corepath));
+  fprintf(stdout, "PATH_ORIGIN|%s:%s|%s:%s|%s:%s\n",
+          buf1, buf4, buf2, buf5, buf3, buf6);
 
 #if 0
   // hashing
