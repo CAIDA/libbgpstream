@@ -542,3 +542,8 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
 
   return 0;
 }
+
+int bgpstream_as_path_get_len(bgpstream_as_path_t *path)
+{
+  return path->seg_cnt;
+}

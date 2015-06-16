@@ -262,6 +262,17 @@ void bgpstream_as_path_reset_iter(bgpstream_as_path_t *path);
 bgpstream_as_path_seg_t *
 bgpstream_as_path_get_next_seg(bgpstream_as_path_t *path);
 
+/** Get the number of segments in the AS Path
+ *
+ * @param path          pointer to the path to get the length of
+ * @return the number of segments in the given path
+ *
+ * @note that this returns the number of BGPStream segments. This may not be the
+ * same as the number of segments in the original MRT message as BGPStream
+ * expands AS_SEQUENCE segments into a series of individual ASN segments.
+ */
+int bgpstream_as_path_get_len(bgpstream_as_path_t *path);
+
 
 /** @} */
 
