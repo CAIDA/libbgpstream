@@ -437,6 +437,53 @@ int bgpstream_as_path_equal(bgpstream_as_path_t *path1,
 
 /* ========== PRIVATE FUNCTIONS ========== */
 
+#ifdef PATH_COPY_DEBUG
+static void test_path_copy(bgpstream_as_path_t *path)
+{
+  /* DEBUG */
+  bgpstream_as_path_t *newpath = bgpstream_as_path_create();
+  assert(newpath != NULL);
+  bgpstream_as_path_t *corepath = bgpstream_as_path_create();
+  assert(corepath != NULL);
+
+  assert(bgpstream_as_path_equal(newpath, corepath));
+
+  bgpstream_as_path_copy(newpath, path, 0, 0);
+  assert(bgpstream_as_path_equal(path, newpath));
+
+  char buf1[8000];
+  bgpstream_as_path_snprintf(buf1, 8000, path);
+  char buf2[8000];
+  bgpstream_as_path_snprintf(buf2, 8000, newpath);
+  assert(strcmp(buf1, buf2) == 0);
+
+  // core path
+  bgpstream_as_path_copy(corepath, path, 1, 1);
+  char buf3[8000];
+  bgpstream_as_path_snprintf(buf3, 8000, corepath);
+
+  if(bgpstream_as_path_get_len(path) > 0 &&
+     bgpstream_as_path_equal(path, corepath) != 0)
+    {
+      fprintf(stderr, "ERROR: %s|%s\n", buf1, buf3);
+      assert(0);
+    }
+
+  // orig, copy, core
+  fprintf(stdout, "PATH_COPY|%s|%s|%s\n", buf1, buf2, buf3);
+
+#if 0
+  // hashing
+  fprintf(stdout, "PATH_HASH|%s:%"PRIu32"|%s:%"PRIu32"\n",
+          buf1, bgpstream_as_path_hash(path),
+          buf3, bgpstream_as_path_hash(corepath));
+#endif
+
+  bgpstream_as_path_destroy(newpath);
+  bgpstream_as_path_destroy(corepath);
+}
+#endif
+
 int bgpstream_as_path_populate(bgpstream_as_path_t *path,
                                struct aspath *bd_path)
 {
@@ -608,35 +655,7 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
 #endif
 
 #ifdef PATH_COPY_DEBUG
-  /* DEBUG */
-  bgpstream_as_path_t *newpath = bgpstream_as_path_create();
-  assert(newpath != NULL);
-  bgpstream_as_path_t *corepath = bgpstream_as_path_create();
-  assert(corepath != NULL);
-
-  assert(bgpstream_as_path_equal(newpath, corepath));
-
-  bgpstream_as_path_copy(newpath, path, 0, 0);
-  assert(bgpstream_as_path_equal(path, newpath));
-
-  char buf1[8000];
-  bgpstream_as_path_snprintf(buf1, 8000, path);
-  char buf2[8000];
-  bgpstream_as_path_snprintf(buf2, 8000, newpath);
-  assert(strcmp(buf1, buf2) == 0);
-
-  // core path
-  bgpstream_as_path_copy(corepath, path, 1, 1);
-  assert(bgpstream_as_path_equal(path, corepath) == 0);
-
-  char buf3[8000];
-  bgpstream_as_path_snprintf(buf3, 8000, corepath);
-
-  // orig, copy, core
-  fprintf(stdout, "DEBUG|%s|%s|%s\n", buf1, buf2, buf3);
-
-  bgpstream_as_path_destroy(newpath);
-  bgpstream_as_path_destroy(corepath);
+  test_path_copy(path);
 #endif
 
   return 0;
