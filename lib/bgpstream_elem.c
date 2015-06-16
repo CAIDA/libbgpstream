@@ -289,7 +289,7 @@ char *bgpstream_elem_snprintf(char *buf, size_t len,
       ADD_PIPE;
 
       /* ORIGIN AS */
-      if((seg = bgpstream_as_path_get_origin_as(elem->aspath)) != NULL)
+      if((seg = bgpstream_as_path_get_origin_seg(elem->aspath)) != NULL)
         {
           c = bgpstream_as_path_seg_snprintf(buf_p, B_REMAIN, seg);
           written += c;

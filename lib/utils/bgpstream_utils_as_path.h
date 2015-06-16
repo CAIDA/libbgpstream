@@ -250,7 +250,7 @@ int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src,
  * path is valid.
  */
 bgpstream_as_path_seg_t *
-bgpstream_as_path_get_origin_as(bgpstream_as_path_t *path);
+bgpstream_as_path_get_origin_seg(bgpstream_as_path_t *path);
 
 /** Reset the segment iterator for the given path
  *
