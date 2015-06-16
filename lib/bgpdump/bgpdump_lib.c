@@ -1363,6 +1363,11 @@ void process_asn32_trans(attributes_t *attr, u_int8_t asn_len) {
   if(! (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_NEW_AS_PATH)))
     return;
 
+  // AK HAX: This code requries the aspath->count field to be populated. This is
+  // (unfortunately) computed by the process_attr_aspath_string function, so we
+  // call it here.
+  process_attr_aspath_string(attr->aspath);
+
   // attr->aspath may be NULL, at least in case of MP_UNREACH_NLRI
   if(attr->aspath == NULL) return;
   if(attr->aspath->count < attr->new_aspath->count) {
