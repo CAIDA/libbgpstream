@@ -571,3 +571,31 @@ int bgpstream_as_path_get_len(bgpstream_as_path_t *path)
 {
   return path->seg_cnt;
 }
+
+#if UINT_MAX == 0xffffffffu
+unsigned int
+#elif ULONG_MAX == 0xffffffffu
+unsigned long
+#endif
+bgpstream_as_path_hash(bgpstream_as_path_t *path)
+{
+  return bgpstream_as_path_seg_hash(bgpstream_as_path_get_origin_seg(path));
+}
+
+int bgpstream_as_path_equal(bgpstream_as_path_t *path1,
+                            bgpstream_as_path_t *path2)
+{
+  if(path1->data_len != path2->data_len)
+    {
+      return 0;
+    }
+  if(path1->seg_cnt != path2->seg_cnt)
+    {
+      return 0;
+    }
+  if(memcmp(path1->data, path2->data, path1->data_len) != 0)
+    {
+      return 0;
+    }
+  return 1;
+}

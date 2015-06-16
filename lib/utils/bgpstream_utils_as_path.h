@@ -282,6 +282,30 @@ bgpstream_as_path_get_next_seg(bgpstream_as_path_t *path);
  */
 int bgpstream_as_path_get_len(bgpstream_as_path_t *path);
 
+/** Hash the given AS path into a 32bit number
+ *
+ * @param path          pointer to the AS path to hash
+ * @return 32bit hash of the AS path
+ */
+#if UINT_MAX == 0xffffffffu
+unsigned int
+#elif ULONG_MAX == 0xffffffffu
+unsigned long
+#endif
+bgpstream_as_path_hash(bgpstream_as_path_t *path);
+
+/** Compare two AS path for equality
+ *
+ * @param path1          pointer to the first AS path to compare
+ * @param path2          pointer to the second AS path to compare
+ * @return 0 if the paths are not equal, non-zero if they are equal
+ *
+ * @note for this function to return true, the paths must be identical. If ASN
+ * ordering within sets is not consistent, this will return false.
+ */
+int bgpstream_as_path_equal(bgpstream_as_path_t *path1,
+                            bgpstream_as_path_t *path2);
+
 
 /** @} */
 
