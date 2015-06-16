@@ -75,8 +75,14 @@ void bgpstream_elem_clear(bgpstream_elem_t *elem) {
 bgpstream_elem_t *bgpstream_elem_copy(bgpstream_elem_t *dst,
                                       bgpstream_elem_t *src)
 {
+  /* save all ptrs before memcpy */
+  bgpstream_as_path_t *dst_aspath = dst->aspath;
+
   /* do a memcpy and then manually copy the as path */
   memcpy(dst, src, sizeof(bgpstream_elem_t));
+
+  /* restore all ptrs */
+  dst->aspath = dst_aspath;
 
   if(bgpstream_as_path_copy(dst->aspath, src->aspath) != 0)
     {
