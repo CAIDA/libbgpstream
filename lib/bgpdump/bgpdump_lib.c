@@ -60,7 +60,7 @@ static    int process_zebra_bgp_entry(struct mstream *s,BGPDUMP_ENTRY *entry);
 static    int process_zebra_bgp_snapshot(struct mstream *s,BGPDUMP_ENTRY *entry);
 
 static    attributes_t *process_attributes(struct mstream *s, u_int8_t asn_len, struct zebra_incomplete *incomplete);
-static    void process_attr_aspath_string(struct aspath *as);
+
 static    char aspath_delimiter_char (u_char type, u_char which);
 static    void process_attr_community_string(struct community *com);
 
@@ -875,7 +875,7 @@ static void process_one_attr(struct mstream *outer_stream, attributes_t *attr, u
     assert(! attr->aspath);
     attr->aspath = create_aspath(len, asn_len);
     mstream_get(s, attr->aspath->data, len);
-    process_attr_aspath_string(attr->aspath);
+    /*process_attr_aspath_string(attr->aspath);*/
     break;
   case BGP_ATTR_NEXT_HOP:
     assert(INADDR_NONE == attr->nexthop.s_addr);
@@ -910,7 +910,7 @@ static void process_one_attr(struct mstream *outer_stream, attributes_t *attr, u
     assert(! attr->new_aspath);
     attr->new_aspath = create_aspath(len, ASN32_LEN);
     mstream_get(s,attr->new_aspath->data, len);
-    process_attr_aspath_string(attr->new_aspath);
+    /*process_attr_aspath_string(attr->new_aspath);*/
     /* AS_CONFED_SEQUENCE and AS_CONFED_SET segments invalid in NEW_AS_PATH */
     check_new_aspath(attr->new_aspath);
     break;
@@ -1363,6 +1363,11 @@ void process_asn32_trans(attributes_t *attr, u_int8_t asn_len) {
   if(! (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_NEW_AS_PATH)))
     return;
 
+  // AK HAX: This code requries the aspath->count field to be populated. This is
+  // (unfortunately) computed by the process_attr_aspath_string function, so we
+  // call it here.
+  process_attr_aspath_string(attr->aspath);
+
   // attr->aspath may be NULL, at least in case of MP_UNREACH_NLRI
   if(attr->aspath == NULL) return;
   if(attr->aspath->count < attr->new_aspath->count) {
@@ -1372,9 +1377,9 @@ void process_asn32_trans(attributes_t *attr, u_int8_t asn_len) {
   /* Merge paths */
   attr->old_aspath = attr->aspath;
   attr->aspath = asn32_merge_paths(attr->old_aspath, attr->new_aspath);
-  if(attr->aspath) {
-    process_attr_aspath_string(attr->aspath);
-  }
+  //if(attr->aspath) {
+  //  process_attr_aspath_string(attr->aspath);
+  //}
 }
 
 struct aspath *asn32_merge_paths(struct aspath *path, struct aspath *newpath) {

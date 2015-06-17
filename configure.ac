@@ -68,8 +68,6 @@ AC_MSG_RESULT([$debugit])
 
 if test x"$debugit" = x"yes"; then
     AC_DEFINE([DEBUG],[],[Debug Mode])
-else
-    AC_DEFINE([NDEBUG],[],[No-debug Mode])
 fi
 
 # Checks for typedefs, structures, and compiler characteristics.
