@@ -438,6 +438,57 @@ int bgpstream_as_path_get_len(bgpstream_as_path_t *path)
   return path->seg_cnt;
 }
 
+size_t bgpstream_as_path_get_data(bgpstream_as_path_t *path, uint8_t **data)
+{
+  assert(data != NULL);
+  if(path == NULL)
+    {
+      *data = NULL;
+      return 0;
+    }
+  else
+    {
+      *data = path->data;
+      return path->data_len;
+    }
+}
+
+/** @todo consider making a populate_zero_copy function that refs external
+    memory */
+int bgpstream_as_path_populate_from_data(bgpstream_as_path_t *path,
+                                         uint8_t *data, size_t data_len)
+{
+  size_t offset = 0;
+  bgpstream_as_path_seg_t *seg;
+
+  assert(path != NULL);
+
+  if(path->data_alloc_len < data_len)
+    {
+      if((path->data = realloc(path->data, data_len)) == NULL)
+        {
+          return -1;
+        }
+      path->data_alloc_len = data_len;
+    }
+
+  memcpy(path->data, data, data_len);
+  path->data_len = data_len;
+
+  /* walk the path to find the seg_cnt and origin_offset */
+  bgpstream_as_path_reset_iter(path);
+  path->seg_cnt = 0;
+
+  while((seg = bgpstream_as_path_get_next_seg(path)) != NULL)
+    {
+      path->origin_offset = offset;
+      path->seg_cnt++;
+      offset += SIZEOF_SEG(seg);
+    }
+
+  return 0;
+}
+
 #if UINT_MAX == 0xffffffffu
 unsigned int
 #elif ULONG_MAX == 0xffffffffu

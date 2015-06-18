@@ -202,7 +202,7 @@ int bgpstream_as_path_seg_equal(bgpstream_as_path_seg_t *seg1,
 int bgpstream_as_path_snprintf(char *buf, size_t len,
                                bgpstream_as_path_t *as_path);
 
-/** Create the given AS path structure.
+/** Create an empty AS path structure.
  *
  * @return pointer to the created AS path object if successful, NULL otherwise
  */
@@ -281,6 +281,27 @@ bgpstream_as_path_get_next_seg(bgpstream_as_path_t *path);
  * expands AS_SEQUENCE segments into a series of individual ASN segments.
  */
 int bgpstream_as_path_get_len(bgpstream_as_path_t *path);
+
+/** Provides access to the internal byte array that stores the path segments
+ *
+ * @param path          pointer to the path
+ * @param[out] data     set to point to the path's internal byte array
+ * @return the number of bytes in the data array
+ *
+ * This function is to be used when serializing a path. The returned data array
+ * belongs to the path and must not be modified or freed.
+ */
+size_t bgpstream_as_path_get_data(bgpstream_as_path_t *path, uint8_t **data);
+
+/** Populate the given AS Path from the given byte array
+ *
+ * @param path          pointer to the path to populate
+ * @param data          pointer to the data array
+ * @param data_len      number of bytes in the data array
+ * @return 0 if the path was populated successfully, -1 otherwise
+ */
+int bgpstream_as_path_populate_from_data(bgpstream_as_path_t *path,
+                                         uint8_t *data, size_t data_len);
 
 /** Hash the given AS path into a 32bit number
  *
