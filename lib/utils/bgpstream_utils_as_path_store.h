@@ -113,21 +113,19 @@ uint32_t bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
  */
 bgpstream_as_path_store_path_t *
 bgpstream_as_path_store_get_store_path(bgpstream_as_path_store_t *store,
-                                       bgpstream_as_path_t *path);
+                                       uint32_t path_id);
 
 /* STORE PATH FUNCTIONS */
 
 /** Convert the given store path to a native BGPStream AS Path
  *
- * @param spath         pointer to a store path to convert
- * @return pointer to a **new** BGPStream AS Path object if successful, NULL
- * otherwise
+ * @param store_path    pointer to a store path to convert
+ * @return a borrowed pointer to an AS Path object
  *
- * The returned path is owned by the caller and must be destroyed with
- * bgpstream_as_path_destroy
+ * The returned pointer is valid as long as the store path is valid.
  */
 bgpstream_as_path_t *
-bgpstream_as_path_store_path_get_path(bgpstream_as_path_store_path_t *spath);
+bgpstream_as_path_store_path_get_path(bgpstream_as_path_store_path_t *store_path);
 
 /** @} */
 

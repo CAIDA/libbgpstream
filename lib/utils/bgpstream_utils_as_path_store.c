@@ -59,6 +59,8 @@ static void store_path_destroy(bgpstream_as_path_store_path_t *spath)
 
   bgpstream_as_path_destroy(spath->path);
   spath->path = NULL;
+
+  free(spath);
 }
 
 static bgpstream_as_path_store_path_t *
@@ -124,6 +126,8 @@ void bgpstream_as_path_store_destroy(bgpstream_as_path_store_t *store)
       kh_destroy(pathset, store->paths);
       store->paths = NULL;
     }
+
+  free(store);
 }
 
 uint32_t bgpstream_as_path_store_get_size(bgpstream_as_path_store_t *store)
@@ -167,34 +171,15 @@ uint32_t bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
 
 bgpstream_as_path_store_path_t *
 bgpstream_as_path_store_get_store_path(bgpstream_as_path_store_t *store,
-                                       bgpstream_as_path_t *path)
+                                       uint32_t path_id)
 {
-  bgpstream_as_path_store_path_t findme;
-  findme.path = path;
-  khiter_t k;
-
-  if((k = kh_get(pathset, store->paths, &findme)) == kh_end(store->paths))
-    {
-      return NULL;
-    }
-
+  khiter_t k = (khiter_t)(path_id-1);
   return kh_key(store->paths, k);
 }
 
 bgpstream_as_path_t *
-bgpstream_as_path_store_path_get_path(bgpstream_as_path_store_path_t *spath)
+bgpstream_as_path_store_path_get_path(bgpstream_as_path_store_path_t *store_path)
 {
-  bgpstream_as_path_t *newpath;
-
-  if((newpath = bgpstream_as_path_create()) == NULL ||
-     bgpstream_as_path_copy(newpath, spath->path, 0, 0) != 0)
-    {
-      goto err;
-    }
-
-  return newpath;
-
-  err:
-  bgpstream_as_path_destroy(newpath);
-  return NULL;
+  assert(store_path != NULL);
+  return store_path->path;
 }
