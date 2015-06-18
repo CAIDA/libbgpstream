@@ -203,6 +203,11 @@ unsigned long
 #endif
 bgpstream_as_path_seg_hash(bgpstream_as_path_seg_t *seg)
 {
+  if(seg == NULL)
+    {
+      return -1;
+    }
+
   if(seg->type == BGPSTREAM_AS_PATH_SEG_ASN)
     {
       return __ac_Wang_hash(((bgpstream_as_path_seg_asn_t*)seg)->asn);
@@ -496,7 +501,8 @@ unsigned long
 #endif
 bgpstream_as_path_hash(bgpstream_as_path_t *path)
 {
-  return bgpstream_as_path_seg_hash(bgpstream_as_path_get_origin_seg(path));
+  bgpstream_as_path_seg_t *orig_seg = bgpstream_as_path_get_origin_seg(path);
+  return bgpstream_as_path_seg_hash(orig_seg);
 }
 
 int bgpstream_as_path_equal(bgpstream_as_path_t *path1,
