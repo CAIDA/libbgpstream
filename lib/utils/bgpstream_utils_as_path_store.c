@@ -104,6 +104,8 @@ bgpstream_as_path_store_t *bgpstream_as_path_store_create()
       goto err;
     }
 
+  return store;
+
  err:
   bgpstream_as_path_store_destroy(store);
   return NULL;
@@ -122,6 +124,11 @@ void bgpstream_as_path_store_destroy(bgpstream_as_path_store_t *store)
       kh_destroy(pathset, store->paths);
       store->paths = NULL;
     }
+}
+
+uint32_t bgpstream_as_path_store_get_size(bgpstream_as_path_store_t *store)
+{
+  return kh_size(store->paths);
 }
 
 uint32_t bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,

@@ -84,6 +84,13 @@ bgpstream_as_path_store_t *bgpstream_as_path_store_create();
  */
 void bgpstream_as_path_store_destroy(bgpstream_as_path_store_t *store);
 
+/** Get the number of paths in the store
+ *
+ * @param store         pointer to the store
+ * @return the number of paths in the store
+ */
+uint32_t bgpstream_as_path_store_get_size(bgpstream_as_path_store_t *store);
+
 /** Get the ID of the given path from the store
  *
  * @param store         pointer to the store
