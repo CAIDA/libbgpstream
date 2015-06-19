@@ -65,6 +65,20 @@ typedef struct bgpstream_as_path_store_path bgpstream_as_path_store_path_t;
  *
  * @{ */
 
+/** Represents a single path in the store
+ *
+ * A path ID should be treated as an opaque identifier.
+ */
+typedef struct bgpstream_as_path_store_path_id {
+
+  /** An internal hash of the origin ASN segment of the path */
+  uint32_t origin_id;
+
+  /** ID of the path within the origin pathset */
+  uint16_t path_id;
+
+} __attribute__((packed)) bgpstream_as_path_store_path_id_t;
+
 /** @} */
 
 /**
@@ -95,12 +109,15 @@ uint32_t bgpstream_as_path_store_get_size(bgpstream_as_path_store_t *store);
  *
  * @param store         pointer to the store
  * @param path          pointer to the path to get the ID for
- * @return ID of the given path, 0 if an error occurred
+ * @param[out] path_id  pointer to a path ID structure to store the ID into
+ * @return 0 if the ID was populated correctly, -1 otherwise
  *
  * If the path is not already in the store, it will be added
  */
-uint32_t bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
-                                             bgpstream_as_path_t *path);
+int
+bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
+                                    bgpstream_as_path_t *path,
+                                    bgpstream_as_path_store_path_id_t *id);
 
 /** Get a (borrowed) pointer to the Store Path for the given Path ID
  *
@@ -113,7 +130,7 @@ uint32_t bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
  */
 bgpstream_as_path_store_path_t *
 bgpstream_as_path_store_get_store_path(bgpstream_as_path_store_t *store,
-                                       uint32_t path_id);
+                                       bgpstream_as_path_store_path_id_t id);
 
 /* STORE PATH FUNCTIONS */
 

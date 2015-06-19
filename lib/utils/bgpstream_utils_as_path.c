@@ -210,10 +210,10 @@ bgpstream_as_path_seg_hash(bgpstream_as_path_seg_t *seg)
 
   if(seg->type == BGPSTREAM_AS_PATH_SEG_ASN)
     {
-      return __ac_Wang_hash(((bgpstream_as_path_seg_asn_t*)seg)->asn);
+      return ((bgpstream_as_path_seg_asn_t*)seg)->asn;
     }
 
-  return __ac_Wang_hash(((bgpstream_as_path_seg_set_t*)seg)->asn[0]);
+  return ((bgpstream_as_path_seg_set_t*)seg)->asn[0];
 }
 
 int bgpstream_as_path_seg_equal(bgpstream_as_path_seg_t *seg1,
@@ -238,10 +238,10 @@ int bgpstream_as_path_seg_equal(bgpstream_as_path_seg_t *seg1,
         {
           return 0;
         }
-      return memcmp(((bgpstream_as_path_seg_set_t*)seg1)->asn,
-                    ((bgpstream_as_path_seg_set_t*)seg2)->asn,
-                    sizeof(uint32_t) *
-                    ((bgpstream_as_path_seg_set_t*)seg2)->asn_cnt);
+      return bcmp(((bgpstream_as_path_seg_set_t*)seg1)->asn,
+                  ((bgpstream_as_path_seg_set_t*)seg2)->asn,
+                  sizeof(uint32_t) *
+                  ((bgpstream_as_path_seg_set_t*)seg2)->asn_cnt) == 0;
     }
 }
 
@@ -516,7 +516,7 @@ int bgpstream_as_path_equal(bgpstream_as_path_t *path1,
     {
       return 0;
     }
-  if(memcmp(path1->data, path2->data, path1->data_len) != 0)
+  if(bcmp(path1->data, path2->data, path1->data_len) != 0)
     {
       return 0;
     }
