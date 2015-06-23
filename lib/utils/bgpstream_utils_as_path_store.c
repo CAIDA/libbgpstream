@@ -228,23 +228,22 @@ bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
           buf, id->path_hash);
 #endif
 
-  if((k = kh_get(pathset, store->path_set, id->path_hash)) ==
-     kh_end(store->path_set))
+  k = kh_put(pathset, store->path_set, id->path_hash, &khret);
+  if(khret == 1)
     {
-      /* need to add this origin */
-      k = kh_put(pathset, store->path_set, id->path_hash, &khret);
-      if(khret == -1)
-        {
-          fprintf(stderr, "ERROR: Could not add origin set to the store\n");
-          goto err;
-        }
-      /* and clear the pathset fields */
+      /* just added this origin */
+      /* clear the pathset fields */
       kh_val(store->path_set, k).paths = NULL;
       kh_val(store->path_set, k).paths_cnt = 0;
 
 #if 0
       fprintf(stderr, "INFO: Created new pathset at k=%d\n", k);
 #endif
+    }
+  else if(khret != 0)
+    {
+      fprintf(stderr, "ERROR: Could not add origin set to the store\n");
+      goto err;
     }
 
   /* now get the path id from the origin set */
