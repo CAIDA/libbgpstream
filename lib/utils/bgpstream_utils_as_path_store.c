@@ -46,12 +46,12 @@ typedef struct pathset {
 
 } __attribute__((packed)) pathset_t;
 
-KHASH_INIT(origset, uint32_t, pathset_t, 1,
+KHASH_INIT(pathset, uint32_t, pathset_t, 1,
            kh_int_hash_func, kh_int_hash_equal);
 
 struct bgpstream_as_path_store {
 
-  khash_t(origset) *origin_set;
+  khash_t(pathset) *path_set;
 
   /** The total number of paths in the store */
   uint32_t paths_cnt;
@@ -135,7 +135,7 @@ pathset_get_path_id(bgpstream_as_path_store_t *store,
   /* check if it is already in the set */
   for(i=0; i<ps->paths_cnt; i++)
     {
-      if(store_path_equal(ps->paths[i], &findme) == 0)
+      if(store_path_equal(ps->paths[i], &findme) != 0)
         {
           path_id = i;
           break;
@@ -149,10 +149,12 @@ pathset_get_path_id(bgpstream_as_path_store_t *store,
                               sizeof(bgpstream_as_path_store_path_t*) *
                               (ps->paths_cnt+1))) == NULL)
         {
+          fprintf(stderr, "ERROR: Could not realloc paths\n");
           return UINT16_MAX;
         }
       if((ps->paths[ps->paths_cnt] = store_path_create(path)) == NULL)
         {
+          fprintf(stderr, "ERROR: Could not create store path\n");
           return UINT16_MAX;
         }
       path_id = ps->paths_cnt++;
@@ -174,7 +176,7 @@ bgpstream_as_path_store_t *bgpstream_as_path_store_create()
       return NULL;
     }
 
-  if((store->origin_set = kh_init(origset)) == NULL)
+  if((store->path_set = kh_init(pathset)) == NULL)
     {
       goto err;
     }
@@ -193,11 +195,11 @@ void bgpstream_as_path_store_destroy(bgpstream_as_path_store_t *store)
       return;
     }
 
-  if(store->origin_set != NULL)
+  if(store->path_set != NULL)
     {
-      kh_free_vals(origset, store->origin_set, pathset_destroy);
-      kh_destroy(origset, store->origin_set);
-      store->origin_set = NULL;
+      kh_free_vals(pathset, store->path_set, pathset_destroy);
+      kh_destroy(pathset, store->path_set);
+      store->path_set = NULL;
     }
 
   free(store);
@@ -217,31 +219,47 @@ bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
   int khret;
 
   assert(id != NULL);
-  id->origin_id = bgpstream_as_path_hash(path);
+  id->path_hash = bgpstream_as_path_hash(path);
 
-  if((k = kh_get(origset, store->origin_set, id->origin_id)) ==
-     kh_end(store->origin_set))
+#if 0
+  char buf[1024];
+  bgpstream_as_path_snprintf(buf, 1024, path);
+  fprintf(stderr, "----\nINFO: Hashed |%s| to %"PRIu32"\n",
+          buf, id->path_hash);
+#endif
+
+  if((k = kh_get(pathset, store->path_set, id->path_hash)) ==
+     kh_end(store->path_set))
     {
       /* need to add this origin */
-      k = kh_put(origset, store->origin_set, id->origin_id, &khret);
+      k = kh_put(pathset, store->path_set, id->path_hash, &khret);
       if(khret == -1)
         {
           fprintf(stderr, "ERROR: Could not add origin set to the store\n");
           goto err;
         }
       /* and clear the pathset fields */
-      kh_val(store->origin_set, k).paths = NULL;
-      kh_val(store->origin_set, k).paths_cnt = 0;
+      kh_val(store->path_set, k).paths = NULL;
+      kh_val(store->path_set, k).paths_cnt = 0;
+
+#if 0
+      fprintf(stderr, "INFO: Created new pathset at k=%d\n", k);
+#endif
     }
 
   /* now get the path id from the origin set */
   if((id->path_id =
-      pathset_get_path_id(store, &kh_val(store->origin_set, k), path))
+      pathset_get_path_id(store, &kh_val(store->path_set, k), path))
      == UINT16_MAX)
     {
       fprintf(stderr, "ERROR: Could not add path to origin set\n");
       goto err;
     }
+
+#if 0
+  fprintf(stderr, "INFO: Added path at %"PRIu32":%"PRIu16"\n",
+          k, id->path_id);
+#endif
 
   return 0;
 
@@ -255,18 +273,18 @@ bgpstream_as_path_store_get_store_path(bgpstream_as_path_store_t *store,
 {
   khiter_t k;
 
-  if((k = kh_get(origset, store->origin_set, id.origin_id)) ==
-     kh_end(store->origin_set))
+  if((k = kh_get(pathset, store->path_set, id.path_hash)) ==
+     kh_end(store->path_set))
     {
       return NULL;
     }
 
-  if(id.path_id > kh_val(store->origin_set, k).paths_cnt-1)
+  if(id.path_id > kh_val(store->path_set, k).paths_cnt-1)
     {
       return NULL;
     }
 
-  return kh_val(store->origin_set, k).paths[id.path_id];
+  return kh_val(store->path_set, k).paths[id.path_id];
 }
 
 bgpstream_as_path_t *

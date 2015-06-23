@@ -72,7 +72,7 @@ typedef struct bgpstream_as_path_store_path bgpstream_as_path_store_path_t;
 typedef struct bgpstream_as_path_store_path_id {
 
   /** An internal hash of the origin ASN segment of the path */
-  uint32_t origin_id;
+  uint32_t path_hash;
 
   /** ID of the path within the origin pathset */
   uint16_t path_id;
