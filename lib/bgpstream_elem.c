@@ -168,6 +168,16 @@ int bgpstream_elem_peerstate_snprintf(char *buf, size_t len,
       written = strlen("ESTABLISHED");
       break;
 
+    case BGPSTREAM_ELEM_PEERSTATE_CLEARING:
+      strncpy(buf, "CLEARING", len);
+      written = strlen("CLEARING");
+      break;
+
+    case BGPSTREAM_ELEM_PEERSTATE_DELETED:
+      strncpy(buf, "DELETED", len);
+      written = strlen("DELETED");
+      break;
+
     default:
       if(len > 0) {
         buf[0] = '\0';
