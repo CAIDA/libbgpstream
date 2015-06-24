@@ -731,6 +731,10 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
               ptr32 = (uint32_t*) (bd_seg->data+(i*bd_path->asn_len));
               asn = ntohl(*ptr32);
               break;
+            default:
+              asn = 0;
+              assert(0);
+              return -1;
             }
 
           if(bd_seg->type == AS_SEQUENCE)
