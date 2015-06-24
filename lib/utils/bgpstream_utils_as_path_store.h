@@ -65,6 +65,20 @@ typedef struct bgpstream_as_path_store_path bgpstream_as_path_store_path_t;
  *
  * @{ */
 
+/** Represents a single path in the store
+ *
+ * A path ID should be treated as an opaque identifier.
+ */
+typedef struct bgpstream_as_path_store_path_id {
+
+  /** An internal hash of the origin ASN segment of the path */
+  uint32_t path_hash;
+
+  /** ID of the path within the origin pathset */
+  uint16_t path_id;
+
+} __attribute__((packed)) bgpstream_as_path_store_path_id_t;
+
 /** @} */
 
 /**
@@ -84,16 +98,26 @@ bgpstream_as_path_store_t *bgpstream_as_path_store_create();
  */
 void bgpstream_as_path_store_destroy(bgpstream_as_path_store_t *store);
 
+/** Get the number of paths in the store
+ *
+ * @param store         pointer to the store
+ * @return the number of paths in the store
+ */
+uint32_t bgpstream_as_path_store_get_size(bgpstream_as_path_store_t *store);
+
 /** Get the ID of the given path from the store
  *
  * @param store         pointer to the store
  * @param path          pointer to the path to get the ID for
- * @return ID of the given path, 0 if an error occurred
+ * @param[out] path_id  pointer to a path ID structure to store the ID into
+ * @return 0 if the ID was populated correctly, -1 otherwise
  *
  * If the path is not already in the store, it will be added
  */
-uint32_t bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
-                                             bgpstream_as_path_t *path);
+int
+bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
+                                    bgpstream_as_path_t *path,
+                                    bgpstream_as_path_store_path_id_t *id);
 
 /** Get a (borrowed) pointer to the Store Path for the given Path ID
  *
@@ -106,21 +130,19 @@ uint32_t bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
  */
 bgpstream_as_path_store_path_t *
 bgpstream_as_path_store_get_store_path(bgpstream_as_path_store_t *store,
-                                       bgpstream_as_path_t *path);
+                                       bgpstream_as_path_store_path_id_t id);
 
 /* STORE PATH FUNCTIONS */
 
 /** Convert the given store path to a native BGPStream AS Path
  *
- * @param spath         pointer to a store path to convert
- * @return pointer to a **new** BGPStream AS Path object if successful, NULL
- * otherwise
+ * @param store_path    pointer to a store path to convert
+ * @return a borrowed pointer to an AS Path object
  *
- * The returned path is owned by the caller and must be destroyed with
- * bgpstream_as_path_destroy
+ * The returned pointer is valid as long as the store path is valid.
  */
 bgpstream_as_path_t *
-bgpstream_as_path_store_path_get_path(bgpstream_as_path_store_path_t *spath);
+bgpstream_as_path_store_path_get_path(bgpstream_as_path_store_path_t *store_path);
 
 /** @} */
 

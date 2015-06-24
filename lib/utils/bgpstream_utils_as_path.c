@@ -135,6 +135,15 @@ int bgpstream_as_path_seg_snprintf(char *buf, size_t len,
 {
   size_t written = 0;
 
+  if(seg == NULL)
+    {
+      if(len > 0)
+        {
+          *buf = '\0';
+        }
+      return 0;
+    }
+
   switch(seg->type)
     {
     case BGPSTREAM_AS_PATH_SEG_ASN:
@@ -203,12 +212,17 @@ unsigned long
 #endif
 bgpstream_as_path_seg_hash(bgpstream_as_path_seg_t *seg)
 {
-  if(seg->type == BGPSTREAM_AS_PATH_SEG_ASN)
+  if(seg == NULL)
     {
-      return __ac_Wang_hash(((bgpstream_as_path_seg_asn_t*)seg)->asn);
+      return -1;
     }
 
-  return __ac_Wang_hash(((bgpstream_as_path_seg_set_t*)seg)->asn[0]);
+  if(seg->type == BGPSTREAM_AS_PATH_SEG_ASN)
+    {
+      return ((bgpstream_as_path_seg_asn_t*)seg)->asn;
+    }
+
+  return ((bgpstream_as_path_seg_set_t*)seg)->asn[0];
 }
 
 int bgpstream_as_path_seg_equal(bgpstream_as_path_seg_t *seg1,
@@ -233,10 +247,10 @@ int bgpstream_as_path_seg_equal(bgpstream_as_path_seg_t *seg1,
         {
           return 0;
         }
-      return memcmp(((bgpstream_as_path_seg_set_t*)seg1)->asn,
-                    ((bgpstream_as_path_seg_set_t*)seg2)->asn,
-                    sizeof(uint32_t) *
-                    ((bgpstream_as_path_seg_set_t*)seg2)->asn_cnt);
+      return bcmp(((bgpstream_as_path_seg_set_t*)seg1)->asn,
+                  ((bgpstream_as_path_seg_set_t*)seg2)->asn,
+                  sizeof(uint32_t) *
+                  ((bgpstream_as_path_seg_set_t*)seg2)->asn_cnt) == 0;
     }
 }
 
@@ -314,10 +328,7 @@ int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src,
   size_t new_origin_offset = 0;
 
   /* set dst to the empty path */
-  dst->data_len = 0;
-  dst->seg_cnt = 0;
-  dst->cur_offset = 0;
-  dst->origin_offset = -1;
+  bgpstream_as_path_clear(dst);
 
   if(new_len == 0 || new_seg_cnt == 0)
     {
@@ -463,6 +474,8 @@ int bgpstream_as_path_populate_from_data(bgpstream_as_path_t *path,
 
   assert(path != NULL);
 
+  bgpstream_as_path_clear(path);
+
   if(path->data_alloc_len < data_len)
     {
       if((path->data = realloc(path->data, data_len)) == NULL)
@@ -496,7 +509,25 @@ unsigned long
 #endif
 bgpstream_as_path_hash(bgpstream_as_path_t *path)
 {
-  return bgpstream_as_path_seg_hash(bgpstream_as_path_get_origin_seg(path));
+  uint32_t hash;
+  bgpstream_as_path_seg_t *seg;
+
+  if(path->data_len > 0)
+    {
+      /* put the peer (ish) hash into the top bits */
+      seg = (bgpstream_as_path_seg_t*)path->data;
+      hash = (bgpstream_as_path_seg_hash(seg) & 0xFFFF) << 16;
+
+      /* put the origin hash into the bottom bits */
+      seg = bgpstream_as_path_get_origin_seg(path);
+      hash |= bgpstream_as_path_seg_hash(seg) & 0xFFFF;
+    }
+  else
+    {
+      hash = 0;
+    }
+
+  return hash;
 }
 
 int bgpstream_as_path_equal(bgpstream_as_path_t *path1,
@@ -510,7 +541,7 @@ int bgpstream_as_path_equal(bgpstream_as_path_t *path1,
     {
       return 0;
     }
-  if(memcmp(path1->data, path2->data, path1->data_len) != 0)
+  if(bcmp(path1->data, path2->data, path1->data_len) != 0)
     {
       return 0;
     }
