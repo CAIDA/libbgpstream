@@ -291,7 +291,7 @@ int bgpstream_as_path_get_len(bgpstream_as_path_t *path);
  * This function is to be used when serializing a path. The returned data array
  * belongs to the path and must not be modified or freed.
  */
-size_t bgpstream_as_path_get_data(bgpstream_as_path_t *path, uint8_t **data);
+uint16_t bgpstream_as_path_get_data(bgpstream_as_path_t *path, uint8_t **data);
 
 /** Populate the given AS Path from the given byte array
  *
@@ -301,7 +301,7 @@ size_t bgpstream_as_path_get_data(bgpstream_as_path_t *path, uint8_t **data);
  * @return 0 if the path was populated successfully, -1 otherwise
  */
 int bgpstream_as_path_populate_from_data(bgpstream_as_path_t *path,
-                                         uint8_t *data, size_t data_len);
+                                         uint8_t *data, uint16_t data_len);
 
 /** Hash the given AS path into a 32bit number
  *

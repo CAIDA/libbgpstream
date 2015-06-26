@@ -47,19 +47,19 @@ struct bgpstream_as_path {
   uint8_t *data;
 
   /* length of the byte array in use */
-  size_t data_len;
+  uint16_t data_len;
 
   /* allocated length of the byte array */
-  size_t data_alloc_len;
+  uint16_t data_alloc_len;
 
   /** The number of segments in the path */
-  int seg_cnt;
+  uint16_t seg_cnt;
 
   /* current offset into the data buffer (for iterating) */
-  size_t cur_offset;
+  uint16_t cur_offset;
 
   /* offset of the origin segment */
-  ssize_t origin_offset;
+  uint16_t origin_offset;
 
 };
 
@@ -294,7 +294,7 @@ bgpstream_as_path_t *bgpstream_as_path_create()
       return NULL;
     }
 
-  path->origin_offset = -1;
+  path->origin_offset = UINT16_MAX;
 
   return path;
 }
@@ -304,7 +304,7 @@ void bgpstream_as_path_clear(bgpstream_as_path_t *path)
   path->data_len = 0;
   path->seg_cnt = 0;
   path->cur_offset = 0;
-  path->origin_offset = -1;
+  path->origin_offset = UINT16_MAX;
 }
 
 void bgpstream_as_path_destroy(bgpstream_as_path_t *path)
@@ -319,13 +319,13 @@ void bgpstream_as_path_destroy(bgpstream_as_path_t *path)
 int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src,
                            int first_seg_idx, int excl_last_seg)
 {
-  size_t new_len = src->data_len;
-  int new_seg_cnt = src->seg_cnt;
+  uint16_t new_len = src->data_len;
+  uint16_t new_seg_cnt = src->seg_cnt;
   int i;
   bgpstream_as_path_seg_t *seg;
-  size_t seg_size = 0;
-  size_t new_begin_offset = 0;
-  size_t new_origin_offset = 0;
+  uint16_t seg_size = 0;
+  uint16_t new_begin_offset = 0;
+  uint16_t new_origin_offset = 0;
 
   /* set dst to the empty path */
   bgpstream_as_path_clear(dst);
@@ -336,7 +336,7 @@ int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src,
       return 0;
     }
 
-  assert(src->origin_offset >= 0);
+  assert(src->origin_offset != UINT16_MAX);
 
   if(excl_last_seg != 0)
     {
@@ -412,6 +412,7 @@ bgpstream_as_path_get_origin_seg(bgpstream_as_path_t *path)
     }
 
   assert(path->data != NULL);
+  assert(path->origin_offset != UINT16_MAX);
 
   return (bgpstream_as_path_seg_t*)(path->data+path->origin_offset);
 }
@@ -449,7 +450,7 @@ int bgpstream_as_path_get_len(bgpstream_as_path_t *path)
   return path->seg_cnt;
 }
 
-size_t bgpstream_as_path_get_data(bgpstream_as_path_t *path, uint8_t **data)
+uint16_t bgpstream_as_path_get_data(bgpstream_as_path_t *path, uint8_t **data)
 {
   assert(data != NULL);
   if(path == NULL)
@@ -467,9 +468,9 @@ size_t bgpstream_as_path_get_data(bgpstream_as_path_t *path, uint8_t **data)
 /** @todo consider making a populate_zero_copy function that refs external
     memory */
 int bgpstream_as_path_populate_from_data(bgpstream_as_path_t *path,
-                                         uint8_t *data, size_t data_len)
+                                         uint8_t *data, uint16_t data_len)
 {
-  size_t offset = 0;
+  uint16_t offset = 0;
   bgpstream_as_path_seg_t *seg;
 
   assert(path != NULL);
@@ -620,6 +621,7 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
   struct assegment *bd_seg;
   bgpstream_as_path_seg_t *seg;
 
+  /* careful, this is stored into a uint16_t */
   size_t new_len;
 
   int i;
@@ -665,12 +667,14 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
         {
           new_len = path->data_len +
             (sizeof(bgpstream_as_path_seg_asn_t) * bd_seg->length);
+          assert(new_len <= UINT16_MAX);
         }
       else
         {
           /* a set */
           new_len = path->data_len + sizeof(bgpstream_as_path_seg_set_t) +
             (sizeof(uint32_t) * bd_seg->length);
+          assert(new_len <= UINT16_MAX);
         }
 
       if(path->data_alloc_len < new_len)
@@ -774,7 +778,10 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
     {
       fprintf(stdout, "warn: as path string populated\n");
     }
-  process_attr_aspath_string(bd_path);
+  else
+    {
+      process_attr_aspath_string(bd_path);
+    }
   if(written >= 8000 || strcmp(buffer, bd_path->str) != 0)
     {
       fprintf(stderr, "Written: %lu\n", written);
