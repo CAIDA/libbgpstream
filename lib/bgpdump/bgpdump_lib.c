@@ -985,7 +985,13 @@ void aspath_error(struct aspath *as) {
 
 void process_attr_aspath_string(struct aspath *as) {
 
-  const int MAX_ASPATH_LEN = 8000;  
+  const int MAX_ASPATH_LEN = 8000;
+
+  /* We could probably just skip processing, but lets play it safe  --AK */
+  if (as->str != NULL) {
+    free(as->str);
+    as->str = NULL;
+  }
   as->str = malloc(MAX_ASPATH_LEN);
   as->count = 0;
 
