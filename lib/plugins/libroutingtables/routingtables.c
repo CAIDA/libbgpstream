@@ -121,22 +121,23 @@ static uint32_t
 get_origin_asn(bgpstream_as_path_t *aspath)
 {
   uint32_t asn = 0;
-  bgpstream_as_hop_t as_hop;
-  /* populate correctly the asn */
-  bgpstream_as_hop_init(&as_hop);
-  bgpstream_as_path_get_origin_as(aspath, &as_hop);
-  if(as_hop.type == BGPSTREAM_AS_TYPE_NUMERIC)
+  bgpstream_as_path_seg_t *seg =
+    bgpstream_as_path_get_origin_seg(aspath);
+
+  if(seg == NULL)
     {
-      asn = as_hop.as_number;
+      asn = 0; /* empty path */
+    }
+  else if(seg->type == BGPSTREAM_AS_PATH_SEG_ASN)
+    {
+      asn = ((bgpstream_as_path_seg_asn_t*)seg)->asn;
     }
   else
     {
-      /* use a reserved AS number to indicate 
+      /* use a reserved AS number to indicate
        * a set/confederation */
-      asn = ROUTINGTABLES_CONFSET_ORIGIN_ASN; 
+      asn = ROUTINGTABLES_CONFSET_ORIGIN_ASN;
     }
-  bgpstream_as_hop_clear(&as_hop);
-
   if(asn == 0)
     {
       asn = ROUTINGTABLES_LOCAL_ORIGIN_ASN;
@@ -669,7 +670,7 @@ apply_prefix_update(routingtables_t *rt, collector_t *c, bgpstream_peer_id_t pee
   /* populate correctly the asn if it is an announcement */
   if(elem->type == BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT)
     {
-      asn = get_origin_asn(&elem->aspath);
+      asn = get_origin_asn(elem->aspath);
       p->pfx_announcements_cnt++;      
     }
   else
@@ -923,7 +924,7 @@ apply_rib_message(routingtables_t *rt, collector_t * c, bgpstream_peer_id_t peer
 
   /* we update only the uc part of the pfx-peer */
   pp->bgp_time_uc_delta_ts = ts - p->bgp_time_uc_rib_start;
-  pp->uc_origin_asn = get_origin_asn(&elem->aspath);
+  pp->uc_origin_asn = get_origin_asn(elem->aspath);
   
   return 0;
 }
