@@ -378,7 +378,7 @@ get_collector_data(routingtables_t *rt, char *project, char *collector)
       c_data.corrupted_record_cnt = 0;
       c_data.empty_record_cnt = 0;
       c_data.publish_flag = 0;
-                  
+      
       collector_generate_metrics(rt, &c_data);
 
       /* insert key,value in map */
@@ -1217,6 +1217,9 @@ collector_process_corrupted_message(routingtables_t *rt,
           p->bgp_time_uc_rib_end = 0;
         }
     }
+
+  bgpstream_id_set_destroy(cor_affected);
+  bgpstream_id_set_destroy(cor_uc_affected);
   
   return 0;
 }
