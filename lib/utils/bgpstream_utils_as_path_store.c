@@ -56,6 +56,12 @@ struct bgpstream_as_path_store {
   /** The total number of paths in the store */
   uint32_t paths_cnt;
 
+  /** The currently iterated pathset */
+  khiter_t cur_pathset;
+
+  /** The current path within the current pathset */
+  int cur_path;
+
 };
 
 static void store_path_destroy(bgpstream_as_path_store_path_t *spath)
@@ -264,6 +270,47 @@ bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
 
  err:
   return -1;
+}
+
+void
+bgpstream_as_path_store_iter_reset(bgpstream_as_path_store_t *store)
+{
+  store->cur_pathset = kh_begin(store->path_set);
+
+  while(!kh_exist(store->path_set, store->cur_pathset) &&
+        store->cur_pathset <= kh_end(store->path_set))
+    {
+      store->cur_pathset++;
+    }
+
+  store->cur_path = 0;
+}
+
+bgpstream_as_path_store_path_t *
+bgpstream_as_path_store_iter_next(bgpstream_as_path_store_t *store)
+{
+  pathset_t * pathset;
+
+  if(store->cur_pathset >= kh_end(store->path_set))
+    {
+      return NULL;
+    }
+
+  pathset = &kh_val(store->path_set, store->cur_pathset);
+
+  if(store->cur_path >= pathset->paths_cnt)
+    {
+      /* move to the next pathset */
+      store->cur_pathset++;
+      if(store->cur_pathset >= kh_end(store->path_set))
+        {
+          /* we're all done */
+          return NULL;
+        }
+      store->cur_path = 0;
+    }
+
+  return pathset->paths[store->cur_path++];
 }
 
 bgpstream_as_path_store_path_t *
