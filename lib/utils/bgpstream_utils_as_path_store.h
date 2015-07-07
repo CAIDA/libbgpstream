@@ -137,7 +137,7 @@ bgpstream_as_path_store_get_store_path(bgpstream_as_path_store_t *store,
  * @param store         pointer to the store
  */
 void
-bgpstream_as_path_store_iter_reset(bgpstream_as_path_store_t *store);
+bgpstream_as_path_store_reset_iter(bgpstream_as_path_store_t *store);
 
 /** Get the next path from the iterator (and advance the iterator)
  *
@@ -145,7 +145,7 @@ bgpstream_as_path_store_iter_reset(bgpstream_as_path_store_t *store);
  * @return pointer to the next path, or NULL if there are no more paths
  */
 bgpstream_as_path_store_path_t *
-bgpstream_as_path_store_iter_next(bgpstream_as_path_store_t *store);
+bgpstream_as_path_store_get_next_path(bgpstream_as_path_store_t *store);
 
 /* STORE PATH FUNCTIONS */
 

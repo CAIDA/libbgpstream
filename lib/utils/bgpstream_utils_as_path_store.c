@@ -273,7 +273,7 @@ bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
 }
 
 void
-bgpstream_as_path_store_iter_reset(bgpstream_as_path_store_t *store)
+bgpstream_as_path_store_reset_iter(bgpstream_as_path_store_t *store)
 {
   store->cur_pathset = kh_begin(store->path_set);
 
@@ -287,7 +287,7 @@ bgpstream_as_path_store_iter_reset(bgpstream_as_path_store_t *store)
 }
 
 bgpstream_as_path_store_path_t *
-bgpstream_as_path_store_iter_next(bgpstream_as_path_store_t *store)
+bgpstream_as_path_store_get_next_path(bgpstream_as_path_store_t *store)
 {
   pathset_t * pathset;
 
