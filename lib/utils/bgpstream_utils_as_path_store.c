@@ -111,7 +111,7 @@ store_path_create(uint32_t idx, bgpstream_as_path_t *path)
   return NULL;
 }
 
-static int
+static inline int
 store_path_equal(bgpstream_as_path_store_path_t *sp1,
                  bgpstream_as_path_store_path_t *sp2)
 {

@@ -29,6 +29,13 @@
 
 #include "bgpstream_utils_as_path.h"
 
+#ifndef likely
+#define likely(x)       __builtin_expect((x),1)
+#endif
+#ifndef unlikely
+#define unlikely(x)     __builtin_expect((x),0)
+#endif
+
 #define SIZEOF_SEG_SET(segp)                                            \
   (sizeof(bgpstream_as_path_seg_set_t) +                                \
    (sizeof(uint32_t)*((bgpstream_as_path_seg_set_t*)(segp))->asn_cnt))
@@ -205,6 +212,7 @@ void bgpstream_as_path_seg_destroy(bgpstream_as_path_seg_t *seg)
   return;
 }
 
+inline
 #if UINT_MAX == 0xffffffffu
 unsigned int
 #elif ULONG_MAX == 0xffffffffu
@@ -212,12 +220,12 @@ unsigned long
 #endif
 bgpstream_as_path_seg_hash(bgpstream_as_path_seg_t *seg)
 {
-  if(seg == NULL)
+  if(unlikely(seg == NULL))
     {
       return -1;
     }
 
-  if(seg->type == BGPSTREAM_AS_PATH_SEG_ASN)
+  if(likely(seg->type == BGPSTREAM_AS_PATH_SEG_ASN))
     {
       return ((bgpstream_as_path_seg_asn_t*)seg)->asn;
     }
@@ -547,43 +555,31 @@ unsigned long
 #endif
 bgpstream_as_path_hash(bgpstream_as_path_t *path)
 {
-  uint32_t hash;
-  bgpstream_as_path_seg_t *seg;
-
-  if(path->data_len > 0)
+  if(likely(path->data_len > 0))
     {
       /* put the peer (ish) hash into the top bits */
-      seg = (bgpstream_as_path_seg_t*)path->data;
-      hash = (bgpstream_as_path_seg_hash(seg) & 0xFFFF) << 16;
-
-      /* put the origin hash into the bottom bits */
-      seg = bgpstream_as_path_get_origin_seg(path);
-      hash |= bgpstream_as_path_seg_hash(seg) & 0xFFFF;
+      /* and put the origin hash into the bottom bits */
+      return
+        (bgpstream_as_path_seg_hash((bgpstream_as_path_seg_t*)path->data) << 16)
+        |
+        (bgpstream_as_path_seg_hash(
+             (bgpstream_as_path_seg_t*)(path->data+path->origin_offset))
+         & 0xFFFF);
     }
   else
     {
-      hash = 0;
+      return 0;
     }
-
-  return hash;
 }
 
-int bgpstream_as_path_equal(bgpstream_as_path_t *path1,
-                            bgpstream_as_path_t *path2)
+inline int bgpstream_as_path_equal(bgpstream_as_path_t *path1,
+                                   bgpstream_as_path_t *path2)
 {
   if(path1->data_len != path2->data_len)
     {
       return 0;
     }
-  if(path1->seg_cnt != path2->seg_cnt)
-    {
-      return 0;
-    }
-  if(bcmp(path1->data, path2->data, path1->data_len) != 0)
-    {
-      return 0;
-    }
-  return 1;
+  return !bcmp(path1->data, path2->data, path1->data_len);
 }
 
 
