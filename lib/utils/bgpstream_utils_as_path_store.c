@@ -30,6 +30,11 @@
 
 /* wrapper around an AS path */
 struct bgpstream_as_path_store_path {
+
+  /** Internal index of this path within the store */
+  uint32_t idx;
+
+  /** Pointer to the underlying AS Path */
   bgpstream_as_path_t *path;
 
   /** @todo add flag for Core Paths */
@@ -78,7 +83,7 @@ static void store_path_destroy(bgpstream_as_path_store_path_t *spath)
 }
 
 static bgpstream_as_path_store_path_t *
-store_path_create(bgpstream_as_path_t *path)
+store_path_create(uint32_t idx, bgpstream_as_path_t *path)
 {
   bgpstream_as_path_store_path_t *spath;
 
@@ -96,6 +101,8 @@ store_path_create(bgpstream_as_path_t *path)
     {
       goto err;
     }
+
+  spath->idx = idx;
 
   return spath;
 
@@ -158,7 +165,8 @@ pathset_get_path_id(bgpstream_as_path_store_t *store,
           fprintf(stderr, "ERROR: Could not realloc paths\n");
           return UINT16_MAX;
         }
-      if((ps->paths[ps->paths_cnt] = store_path_create(path)) == NULL)
+      if((ps->paths[ps->paths_cnt] =
+          store_path_create(store->paths_cnt, path)) == NULL)
         {
           fprintf(stderr, "ERROR: Could not create store path\n");
           return UINT16_MAX;
@@ -273,12 +281,12 @@ bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
 }
 
 void
-bgpstream_as_path_store_reset_iter(bgpstream_as_path_store_t *store)
+bgpstream_as_path_store_iter_first_path(bgpstream_as_path_store_t *store)
 {
   store->cur_pathset = kh_begin(store->path_set);
 
   while(!kh_exist(store->path_set, store->cur_pathset) &&
-        store->cur_pathset <= kh_end(store->path_set))
+        store->cur_pathset < kh_end(store->path_set))
     {
       store->cur_pathset++;
     }
@@ -286,31 +294,50 @@ bgpstream_as_path_store_reset_iter(bgpstream_as_path_store_t *store)
   store->cur_path = 0;
 }
 
-bgpstream_as_path_store_path_t *
-bgpstream_as_path_store_get_next_path(bgpstream_as_path_store_t *store)
+void
+bgpstream_as_path_store_iter_next_path(bgpstream_as_path_store_t *store)
 {
   pathset_t * pathset;
 
   if(store->cur_pathset >= kh_end(store->path_set))
     {
-      return NULL;
+      return;
     }
 
   pathset = &kh_val(store->path_set, store->cur_pathset);
-
   if(store->cur_path >= pathset->paths_cnt)
     {
       /* move to the next pathset */
-      store->cur_pathset++;
-      if(store->cur_pathset >= kh_end(store->path_set))
-        {
-          /* we're all done */
-          return NULL;
-        }
+      do {
+        store->cur_pathset++;
+      } while(!kh_exist(store->path_set, store->cur_pathset) &&
+              store->cur_pathset < kh_end(store->path_set));
       store->cur_path = 0;
     }
+}
 
-  return pathset->paths[store->cur_path++];
+int
+bgpstream_as_path_store_iter_has_more_path(bgpstream_as_path_store_t *store)
+{
+  return (store->cur_pathset < kh_end(store->path_set)) &&
+    (store->cur_path < kh_val(store->path_set, store->cur_pathset).paths_cnt);
+}
+
+bgpstream_as_path_store_path_t *
+bgpstream_as_path_store_iter_get_path(bgpstream_as_path_store_t *store)
+{
+  return kh_val(store->path_set, store->cur_pathset).paths[store->cur_path++];
+}
+
+bgpstream_as_path_store_path_id_t
+bgpstream_as_path_store_iter_get_path_id(bgpstream_as_path_store_t *store)
+{
+  bgpstream_as_path_store_path_id_t id;
+
+  id.path_hash = kh_key(store->path_set, store->cur_pathset);
+  id.path_id = store->cur_path;
+
+  return id;
 }
 
 bgpstream_as_path_store_path_t *
@@ -336,6 +363,11 @@ bgpstream_as_path_store_get_store_path(bgpstream_as_path_store_t *store,
 bgpstream_as_path_t *
 bgpstream_as_path_store_path_get_path(bgpstream_as_path_store_path_t *store_path)
 {
-  assert(store_path != NULL);
   return store_path->path;
+}
+
+uint32_t
+bgpstream_as_path_store_path_get_idx(bgpstream_as_path_store_path_t *store_path)
+{
+  return store_path->idx;
 }

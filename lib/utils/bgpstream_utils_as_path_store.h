@@ -137,15 +137,38 @@ bgpstream_as_path_store_get_store_path(bgpstream_as_path_store_t *store,
  * @param store         pointer to the store
  */
 void
-bgpstream_as_path_store_reset_iter(bgpstream_as_path_store_t *store);
+bgpstream_as_path_store_iter_first_path(bgpstream_as_path_store_t *store);
 
-/** Get the next path from the iterator (and advance the iterator)
+/** Advance the internal iterator to the next Path in the store
  *
- * @param store         pointer to the store to get the next path from
- * @return pointer to the next path, or NULL if there are no more paths
+ * @param store         pointer to the store
+ */
+void
+bgpstream_as_path_store_iter_next_path(bgpstream_as_path_store_t *store);
+
+/** Check if the internal iterator is pointing to a valid path
+ *
+ * @param store         pointer to the store
+ * @return 1 if the iterator is valid, 0 otherwise
+ */
+int
+bgpstream_as_path_store_iter_has_more_path(bgpstream_as_path_store_t *store);
+
+/** Get the current path from the iterator
+ *
+ * @param store         pointer to the store to get the current path from
+ * @return pointer to the path
  */
 bgpstream_as_path_store_path_t *
-bgpstream_as_path_store_get_next_path(bgpstream_as_path_store_t *store);
+bgpstream_as_path_store_iter_get_path(bgpstream_as_path_store_t *store);
+
+/** Get the path ID of the current path from the iterator
+ *
+ * @param store         pointer to the store to get the current path ID from
+ * @return path ID structure for the current path
+ */
+bgpstream_as_path_store_path_id_t
+bgpstream_as_path_store_iter_get_path_id(bgpstream_as_path_store_t *store);
 
 /* STORE PATH FUNCTIONS */
 
@@ -158,6 +181,18 @@ bgpstream_as_path_store_get_next_path(bgpstream_as_path_store_t *store);
  */
 bgpstream_as_path_t *
 bgpstream_as_path_store_path_get_path(bgpstream_as_path_store_path_t *store_path);
+
+/** Get the internal index of the given store path
+ *
+ * @param store_path    pointer to the store path to get the index of
+ * @return index of the given path within the store
+ *
+ * This function is designed to be used when serializing the entire store, and
+ * should be considered internal. The returned index is guaranteed to be in the
+ * range [0 -> bgpstream_as_path_store_get_size).
+ */
+uint32_t
+bgpstream_as_path_store_path_get_idx(bgpstream_as_path_store_path_t *store_path);
 
 /** @} */
 
