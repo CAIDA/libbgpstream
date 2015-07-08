@@ -303,6 +303,19 @@ uint16_t bgpstream_as_path_get_data(bgpstream_as_path_t *path, uint8_t **data);
 int bgpstream_as_path_populate_from_data(bgpstream_as_path_t *path,
                                          uint8_t *data, uint16_t data_len);
 
+/** Populate the given AS Path from the given byte array (Zero Copy)
+ *
+ * @param path          pointer to the path to populate
+ * @param data          pointer to the data array
+ * @param data_len      number of bytes in the data array
+ * @return 0 if the path was populated successfully, -1 otherwise
+ *
+ * @note this function **does not** copy the data into the path. The path is
+ * only valid as long as the data array passed to this function is valid.
+ */
+int bgpstream_as_path_populate_from_data_zc(bgpstream_as_path_t *path,
+                                            uint8_t *data, uint16_t data_len);
+
 /** Hash the given AS path into a 32bit number
  *
  * @param path          pointer to the AS path to hash

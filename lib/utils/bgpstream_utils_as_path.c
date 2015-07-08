@@ -309,7 +309,10 @@ void bgpstream_as_path_clear(bgpstream_as_path_t *path)
 
 void bgpstream_as_path_destroy(bgpstream_as_path_t *path)
 {
-  free(path->data);
+  if(path->data_alloc_len != UINT16_MAX)
+    {
+      free(path->data);
+    }
   path->data = NULL;
   path->data_alloc_len = 0;
   bgpstream_as_path_clear(path);
@@ -465,8 +468,6 @@ uint16_t bgpstream_as_path_get_data(bgpstream_as_path_t *path, uint8_t **data)
     }
 }
 
-/** @todo consider making a populate_zero_copy function that refs external
-    memory */
 int bgpstream_as_path_populate_from_data(bgpstream_as_path_t *path,
                                          uint8_t *data, uint16_t data_len)
 {
@@ -476,6 +477,13 @@ int bgpstream_as_path_populate_from_data(bgpstream_as_path_t *path,
   assert(path != NULL);
 
   bgpstream_as_path_clear(path);
+
+  if(path->data_alloc_len == UINT16_MAX)
+    {
+      /* the data is not owned by us */
+      path->data_alloc_len = 0;
+      path->data = NULL;
+    }
 
   if(path->data_alloc_len < data_len)
     {
@@ -487,6 +495,35 @@ int bgpstream_as_path_populate_from_data(bgpstream_as_path_t *path,
     }
 
   memcpy(path->data, data, data_len);
+  path->data_len = data_len;
+
+  /* walk the path to find the seg_cnt and origin_offset */
+  bgpstream_as_path_reset_iter(path);
+  path->seg_cnt = 0;
+
+  while((seg = bgpstream_as_path_get_next_seg(path)) != NULL)
+    {
+      path->origin_offset = offset;
+      path->seg_cnt++;
+      offset += SIZEOF_SEG(seg);
+    }
+
+  return 0;
+}
+
+int bgpstream_as_path_populate_from_data_zc(bgpstream_as_path_t *path,
+                                            uint8_t *data, uint16_t data_len)
+{
+  uint16_t offset = 0;
+  bgpstream_as_path_seg_t *seg;
+
+  assert(path != NULL);
+
+  bgpstream_as_path_clear(path);
+
+  /* signal that this is external data */
+  path->data_alloc_len = UINT16_MAX;
+  path->data = data;
   path->data_len = data_len;
 
   /* walk the path to find the seg_cnt and origin_offset */
@@ -667,14 +704,14 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
         {
           new_len = path->data_len +
             (sizeof(bgpstream_as_path_seg_asn_t) * bd_seg->length);
-          assert(new_len <= UINT16_MAX);
+          assert(new_len < UINT16_MAX);
         }
       else
         {
           /* a set */
           new_len = path->data_len + sizeof(bgpstream_as_path_seg_set_t) +
             (sizeof(uint32_t) * bd_seg->length);
-          assert(new_len <= UINT16_MAX);
+          assert(new_len < UINT16_MAX);
         }
 
       if(path->data_alloc_len < new_len)
