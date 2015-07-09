@@ -29,13 +29,6 @@
 
 #include "bgpstream_utils_as_path.h"
 
-#ifndef likely
-#define likely(x)       __builtin_expect((x),1)
-#endif
-#ifndef unlikely
-#define unlikely(x)     __builtin_expect((x),0)
-#endif
-
 #define SIZEOF_SEG_SET(segp)                                            \
   (sizeof(bgpstream_as_path_seg_set_t) +                                \
    (sizeof(uint32_t)*((bgpstream_as_path_seg_set_t*)(segp))->asn_cnt))
@@ -220,12 +213,12 @@ unsigned long
 #endif
 bgpstream_as_path_seg_hash(bgpstream_as_path_seg_t *seg)
 {
-  if(unlikely(seg == NULL))
+  if(seg == NULL)
     {
       return -1;
     }
 
-  if(likely(seg->type == BGPSTREAM_AS_PATH_SEG_ASN))
+  if(seg->type == BGPSTREAM_AS_PATH_SEG_ASN)
     {
       return ((bgpstream_as_path_seg_asn_t*)seg)->asn;
     }
@@ -555,7 +548,7 @@ unsigned long
 #endif
 bgpstream_as_path_hash(bgpstream_as_path_t *path)
 {
-  if(likely(path->data_len > 0))
+  if(path->data_len > 0)
     {
       /* put the peer (ish) hash into the top bits */
       /* and put the origin hash into the bottom bits */
