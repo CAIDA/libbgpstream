@@ -44,7 +44,7 @@ struct bgpstream_as_path_store_path {
 typedef struct pathset {
 
   /** Array of AS Paths in the set */
-  bgpstream_as_path_store_path_t **paths;
+  bgpstream_as_path_store_path_t *paths;
 
   /** Number of AS paths in the set */
   uint16_t paths_cnt;
@@ -78,20 +78,12 @@ static void store_path_destroy(bgpstream_as_path_store_path_t *spath)
 
   bgpstream_as_path_destroy(spath->path);
   spath->path = NULL;
-
-  free(spath);
 }
 
-static bgpstream_as_path_store_path_t *
-store_path_create(uint32_t idx, bgpstream_as_path_t *path)
+int
+store_path_create(bgpstream_as_path_store_path_t *spath,
+                  uint32_t idx, bgpstream_as_path_t *path)
 {
-  bgpstream_as_path_store_path_t *spath;
-
-  if((spath = malloc(sizeof(bgpstream_as_path_store_path_t))) == NULL)
-    {
-      goto err;
-    }
-
   if((spath->path = bgpstream_as_path_create()) == NULL)
     {
       goto err;
@@ -104,11 +96,11 @@ store_path_create(uint32_t idx, bgpstream_as_path_t *path)
 
   spath->idx = idx;
 
-  return spath;
+  return 0;
 
  err:
   store_path_destroy(spath);
-  return NULL;
+  return -1;
 }
 
 static inline int
@@ -126,8 +118,7 @@ pathset_destroy(pathset_t ps)
   /* destroy each store path */
   for(i=0; i<ps.paths_cnt; i++)
     {
-      store_path_destroy(ps.paths[i]);
-      ps.paths[i] = NULL;
+      store_path_destroy(&ps.paths[i]);
     }
 
   /* destroy the array of paths */
@@ -148,33 +139,28 @@ pathset_get_path_id(bgpstream_as_path_store_t *store,
   /* check if it is already in the set */
   for(i=0; i<ps->paths_cnt; i++)
     {
-      if(store_path_equal(ps->paths[i], &findme) != 0)
+      if(store_path_equal(&ps->paths[i], &findme) != 0)
         {
-          path_id = i;
-          break;
+          return i;
         }
     }
 
-  if(path_id == UINT16_MAX)
+  /* need to append this path */
+  if((ps->paths = realloc(ps->paths,
+                          sizeof(bgpstream_as_path_store_path_t) *
+                          (ps->paths_cnt+1))) == NULL)
     {
-      /* need to append this path */
-      if((ps->paths = realloc(ps->paths,
-                              sizeof(bgpstream_as_path_store_path_t*) *
-                              (ps->paths_cnt+1))) == NULL)
-        {
-          fprintf(stderr, "ERROR: Could not realloc paths\n");
-          return UINT16_MAX;
-        }
-      if((ps->paths[ps->paths_cnt] =
-          store_path_create(store->paths_cnt, path)) == NULL)
-        {
-          fprintf(stderr, "ERROR: Could not create store path\n");
-          return UINT16_MAX;
-        }
-      path_id = ps->paths_cnt++;
-      assert(ps->paths_cnt <= UINT16_MAX);
-      store->paths_cnt++;
+      fprintf(stderr, "ERROR: Could not realloc paths\n");
+      return UINT16_MAX;
     }
+  if(store_path_create(&ps->paths[ps->paths_cnt], store->paths_cnt, path) != 0)
+    {
+      fprintf(stderr, "ERROR: Could not create store path\n");
+      return UINT16_MAX;
+    }
+  path_id = ps->paths_cnt++;
+  assert(ps->paths_cnt <= UINT16_MAX);
+  store->paths_cnt++;
 
   return path_id;
 }
@@ -194,6 +180,8 @@ bgpstream_as_path_store_t *bgpstream_as_path_store_create()
     {
       goto err;
     }
+  /* pre-allocate to minimize resize events */
+  kh_resize(pathset, store->path_set, 1<<24); /* 2^24 = 16.8M buckets */
 
   return store;
 
@@ -232,31 +220,19 @@ bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
   khiter_t k;
   int khret;
 
-  assert(id != NULL);
   id->path_hash = bgpstream_as_path_hash(path);
-
-#if 0
-  char buf[1024];
-  bgpstream_as_path_snprintf(buf, 1024, path);
-  fprintf(stderr, "----\nINFO: Hashed |%s| to %"PRIu32"\n",
-          buf, id->path_hash);
-#endif
 
   k = kh_put(pathset, store->path_set, id->path_hash, &khret);
   if(khret == 1)
     {
-      /* just added this origin */
+      /* just added this pathset */
       /* clear the pathset fields */
       kh_val(store->path_set, k).paths = NULL;
       kh_val(store->path_set, k).paths_cnt = 0;
-
-#if 0
-      fprintf(stderr, "INFO: Created new pathset at k=%d\n", k);
-#endif
     }
   else if(khret != 0)
     {
-      fprintf(stderr, "ERROR: Could not add origin set to the store\n");
+      fprintf(stderr, "ERROR: Could not add path set to the store\n");
       goto err;
     }
 
@@ -268,11 +244,6 @@ bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
       fprintf(stderr, "ERROR: Could not add path to origin set\n");
       goto err;
     }
-
-#if 0
-  fprintf(stderr, "INFO: Added path at %"PRIu32":%"PRIu16"\n",
-          k, id->path_id);
-#endif
 
   return 0;
 
@@ -310,8 +281,8 @@ bgpstream_as_path_store_iter_next_path(bgpstream_as_path_store_t *store)
       /* move to the next pathset */
       do {
         store->cur_pathset++;
-      } while(!kh_exist(store->path_set, store->cur_pathset) &&
-              store->cur_pathset < kh_end(store->path_set));
+      } while(store->cur_pathset < kh_end(store->path_set) &&
+              !kh_exist(store->path_set, store->cur_pathset));
       store->cur_path = 0;
     }
 }
@@ -326,7 +297,7 @@ bgpstream_as_path_store_iter_has_more_path(bgpstream_as_path_store_t *store)
 bgpstream_as_path_store_path_t *
 bgpstream_as_path_store_iter_get_path(bgpstream_as_path_store_t *store)
 {
-  return kh_val(store->path_set, store->cur_pathset).paths[store->cur_path++];
+  return &kh_val(store->path_set, store->cur_pathset).paths[store->cur_path++];
 }
 
 bgpstream_as_path_store_path_id_t
@@ -357,7 +328,7 @@ bgpstream_as_path_store_get_store_path(bgpstream_as_path_store_t *store,
       return NULL;
     }
 
-  return kh_val(store->path_set, k).paths[id.path_id];
+  return &kh_val(store->path_set, k).paths[id.path_id];
 }
 
 bgpstream_as_path_t *
