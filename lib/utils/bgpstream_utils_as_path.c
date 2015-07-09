@@ -541,6 +541,16 @@ int bgpstream_as_path_populate_from_data_zc(bgpstream_as_path_t *path,
   return 0;
 }
 
+/* from http://burtleburtle.net/bob/hash/integer.html */
+static inline uint32_t
+mixbits(uint32_t a)
+{
+    a = a ^ (a>>4);
+    a = (a^0xdeadbeef) + (a<<5);
+    a = a ^ (a>>11);
+    return a;
+}
+
 #if UINT_MAX == 0xffffffffu
 unsigned int
 #elif ULONG_MAX == 0xffffffffu
@@ -553,7 +563,7 @@ bgpstream_as_path_hash(bgpstream_as_path_t *path)
       /* put the peer (ish) hash into the top bits */
       /* and put the origin hash into the bottom bits */
       return
-        __ac_Wang_hash(
+        mixbits(
           ((bgpstream_as_path_seg_hash((bgpstream_as_path_seg_t*)path->data)
             & 0xFFFF) << 8)
           |
