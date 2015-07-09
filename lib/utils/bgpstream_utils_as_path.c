@@ -553,11 +553,14 @@ bgpstream_as_path_hash(bgpstream_as_path_t *path)
       /* put the peer (ish) hash into the top bits */
       /* and put the origin hash into the bottom bits */
       return
-        (bgpstream_as_path_seg_hash((bgpstream_as_path_seg_t*)path->data) << 16)
-        |
-        (bgpstream_as_path_seg_hash(
-             (bgpstream_as_path_seg_t*)(path->data+path->origin_offset))
-         & 0xFFFF);
+        __ac_Wang_hash(
+          ((bgpstream_as_path_seg_hash((bgpstream_as_path_seg_t*)path->data)
+            & 0xFFFF) << 8)
+          |
+          (bgpstream_as_path_seg_hash(
+                     (bgpstream_as_path_seg_t*)(path->data+path->origin_offset))
+           & 0xFFFF)
+        );
     }
   else
     {
