@@ -571,11 +571,8 @@ bgpstream_as_path_hash(bgpstream_as_path_t *path)
 inline int bgpstream_as_path_equal(bgpstream_as_path_t *path1,
                                    bgpstream_as_path_t *path2)
 {
-  if(path1->data_len != path2->data_len)
-    {
-      return 0;
-    }
-  return !bcmp(path1->data, path2->data, path1->data_len);
+  return (path1->data_len == path2->data_len) &&
+    !bcmp(path1->data, path2->data, path1->data_len);
 }
 
 
