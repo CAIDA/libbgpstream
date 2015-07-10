@@ -105,10 +105,36 @@ void bgpstream_as_path_store_destroy(bgpstream_as_path_store_t *store);
  */
 uint32_t bgpstream_as_path_store_get_size(bgpstream_as_path_store_t *store);
 
+/** Directly add the given path to the store and return the path ID
+ *
+ * @param store         pointer to the store
+ * @param path_data     pointer to the (core) path data byte array
+ * @param path_len      the number of bytes in the path_data array
+ * @param is_core       indicates whether the path is a core path
+ * @paran[out] path_id  pointer to a path ID structure to store the ID into
+ * @return 0 if the ID was populated correctly, -1 otherwise
+ *
+ * @note this function is designed to be used when deserializing a path
+ * store. The bgpstream_as_path_store_get_path_id function should be preferred
+ * over this function wherever possible.
+ * @note unlike the bgpstream_as_path_store_get_path_id function, the path
+ * passed to this function **will not** be altered in any when on
+ * insertion. That is, if the is_core flag is set, the path is assumed to
+ * already have had the peer segment removed.
+ */
+int
+bgpstream_as_path_store_insert_path(bgpstream_as_path_store_t *store,
+                                    uint8_t *path_data,
+                                    uint16_t path_len,
+                                    int is_core,
+                                    bgpstream_as_path_store_path_id_t *id);
+
+
 /** Get the ID of the given path from the store
  *
  * @param store         pointer to the store
  * @param path          pointer to the path to get the ID for
+ * @param peer_asn      ASN of the peer that observed this path
  * @param[out] path_id  pointer to a path ID structure to store the ID into
  * @return 0 if the ID was populated correctly, -1 otherwise
  *
@@ -117,12 +143,14 @@ uint32_t bgpstream_as_path_store_get_size(bgpstream_as_path_store_t *store);
 int
 bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
                                     bgpstream_as_path_t *path,
+                                    uint32_t peer_asn,
                                     bgpstream_as_path_store_path_id_t *id);
 
 /** Get a (borrowed) pointer to the Store Path for the given Path ID
  *
  * @param store         pointer to the store
- * @param path_id       ID of the path to retrieve
+ * @param peer_asn      ASN of the peer that observed the path being retrieved
+ * @param id            ID of the path to retrieve
  * @return borrowed pointer to the Store Path, NULL if no path exists
  *
  * If a native BGPStream path is required, use the
@@ -130,6 +158,7 @@ bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
  */
 bgpstream_as_path_store_path_t *
 bgpstream_as_path_store_get_store_path(bgpstream_as_path_store_t *store,
+                                       uint32_t peer_asn,
                                        bgpstream_as_path_store_path_id_t id);
 
 /** Reset the internal iterator to the first Path in the store
@@ -193,6 +222,18 @@ bgpstream_as_path_store_path_get_path(bgpstream_as_path_store_path_t *store_path
  */
 uint32_t
 bgpstream_as_path_store_path_get_idx(bgpstream_as_path_store_path_t *store_path);
+
+/** Check if the given store path is a core path (i.e. the peer segment has been
+ * removed)
+ *
+ * @param store_path    pointer to the store path to get the index of
+ * @return 1 if the path is a core path, 0 otherwise
+ *
+ * This function is designed to be used when serializing the entire store, and
+ * should be considered internal.
+ */
+int
+bgpstream_as_path_store_path_is_core(bgpstream_as_path_store_path_t *store_path);
 
 /** @} */
 

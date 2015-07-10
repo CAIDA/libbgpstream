@@ -27,7 +27,7 @@
 #include "khash.h"
 #include "utils.h"
 
-#include "bgpstream_utils_as_path.h"
+#include "bgpstream_utils_as_path_int.h"
 
 #define SIZEOF_SEG_SET(segp)                                            \
   (sizeof(bgpstream_as_path_seg_set_t) +                                \
@@ -40,28 +40,6 @@
 
 #define CUR_SEG(path)                           \
   ((bgpstream_as_path_seg_t *)(path->data+path->cur_offset))
-
-struct bgpstream_as_path {
-
-  /* byte array of segments */
-  uint8_t *data;
-
-  /* length of the byte array in use */
-  uint16_t data_len;
-
-  /* allocated length of the byte array */
-  uint16_t data_alloc_len;
-
-  /** The number of segments in the path */
-  uint16_t seg_cnt;
-
-  /* current offset into the data buffer (for iterating) */
-  uint16_t cur_offset;
-
-  /* offset of the origin segment */
-  uint16_t origin_offset;
-
-};
 
 static bgpstream_as_path_seg_asn_t *seg_asn_dup(bgpstream_as_path_seg_asn_t *src)
 {

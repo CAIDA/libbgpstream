@@ -26,18 +26,21 @@
 #include "khash.h"
 #include "utils.h"
 
+#include "bgpstream_utils_as_path_int.h"
+
 #include "bgpstream_utils_as_path_store.h"
 
 /* wrapper around an AS path */
 struct bgpstream_as_path_store_path {
 
+  /** Is this a core path? */
+  uint8_t is_core;
+
   /** Internal index of this path within the store */
   uint32_t idx;
 
-  /** Pointer to the underlying AS Path */
-  bgpstream_as_path_t *path;
-
-  /** @todo add flag for Core Paths */
+  /** Underlying AS Path structure */
+  bgpstream_as_path_t path;
 };
 
 /** A per-origin set of AS Paths */
@@ -76,30 +79,33 @@ static void store_path_destroy(bgpstream_as_path_store_path_t *spath)
       return;
     }
 
-  bgpstream_as_path_destroy(spath->path);
-  spath->path = NULL;
+  /* destroy the path's data */
+  assert(spath->path.data_alloc_len != UINT16_MAX);
+  free(spath->path.data);
+  spath->path.data = NULL;
+  spath->path.data_alloc_len = 0;
 }
 
 int
-store_path_create(bgpstream_as_path_store_path_t *spath,
-                  uint32_t idx, bgpstream_as_path_t *path)
+store_path_dup(bgpstream_as_path_store_path_t *dst,
+               bgpstream_as_path_store_path_t *src)
 {
-  if((spath->path = bgpstream_as_path_create()) == NULL)
+  *dst = *src;
+
+  /* copy the path data */
+  dst->path.data_alloc_len = 0;
+  if((dst->path.data = malloc(src->path.data_len)) == NULL)
     {
       goto err;
     }
-
-  if(bgpstream_as_path_copy(spath->path, path, 0, 0) != 0)
-    {
-      goto err;
-    }
-
-  spath->idx = idx;
+  dst->path.data_alloc_len = src->path.data_len;
+  dst->path.data_len = src->path.data_len;
+  memcpy(dst->path.data, src->path.data, src->path.data_len);
 
   return 0;
 
  err:
-  store_path_destroy(spath);
+  store_path_destroy(dst);
   return -1;
 }
 
@@ -107,7 +113,8 @@ static inline int
 store_path_equal(bgpstream_as_path_store_path_t *sp1,
                  bgpstream_as_path_store_path_t *sp2)
 {
-  return bgpstream_as_path_equal(sp1->path, sp2->path);
+  return (sp1->is_core == sp2->is_core) &&
+    bgpstream_as_path_equal(&sp1->path, &sp2->path);
 }
 
 static void
@@ -129,21 +136,22 @@ pathset_destroy(pathset_t ps)
 
 static uint16_t
 pathset_get_path_id(bgpstream_as_path_store_t *store,
-                    pathset_t *ps, bgpstream_as_path_t *path)
+                    pathset_t *ps,
+                    bgpstream_as_path_store_path_t *findme)
 {
-  bgpstream_as_path_store_path_t findme;
-  findme.path = path;
   int i;
-  uint32_t path_id = UINT16_MAX;
+  uint32_t path_id;
 
   /* check if it is already in the set */
   for(i=0; i<ps->paths_cnt; i++)
     {
-      if(store_path_equal(&ps->paths[i], &findme) != 0)
+      if(store_path_equal(&ps->paths[i], findme) != 0)
         {
           return i;
         }
     }
+
+  findme->idx = store->paths_cnt++;
 
   /* need to append this path */
   if((ps->paths = realloc(ps->paths,
@@ -153,14 +161,13 @@ pathset_get_path_id(bgpstream_as_path_store_t *store,
       fprintf(stderr, "ERROR: Could not realloc paths\n");
       return UINT16_MAX;
     }
-  if(store_path_create(&ps->paths[ps->paths_cnt], store->paths_cnt, path) != 0)
+  if(store_path_dup(&ps->paths[ps->paths_cnt], findme) != 0)
     {
       fprintf(stderr, "ERROR: Could not create store path\n");
       return UINT16_MAX;
     }
   path_id = ps->paths_cnt++;
   assert(ps->paths_cnt <= UINT16_MAX);
-  store->paths_cnt++;
 
   return path_id;
 }
@@ -212,15 +219,15 @@ uint32_t bgpstream_as_path_store_get_size(bgpstream_as_path_store_t *store)
   return store->paths_cnt;
 }
 
-int
-bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
-                                    bgpstream_as_path_t *path,
-                                    bgpstream_as_path_store_path_id_t *id)
+static int
+get_path_id(bgpstream_as_path_store_t *store,
+            bgpstream_as_path_store_path_t *findme,
+            bgpstream_as_path_store_path_id_t *id)
 {
   khiter_t k;
   int khret;
 
-  id->path_hash = bgpstream_as_path_hash(path);
+  id->path_hash = bgpstream_as_path_hash(&findme->path);
 
   k = kh_put(pathset, store->path_set, id->path_hash, &khret);
   if(khret == 1)
@@ -238,7 +245,7 @@ bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
 
   /* now get the path id from the origin set */
   if((id->path_id =
-      pathset_get_path_id(store, &kh_val(store->path_set, k), path))
+      pathset_get_path_id(store, &kh_val(store->path_set, k), findme))
      == UINT16_MAX)
     {
       fprintf(stderr, "ERROR: Could not add path to origin set\n");
@@ -249,6 +256,58 @@ bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
 
  err:
   return -1;
+}
+
+int
+bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
+                                    bgpstream_as_path_t *path,
+                                    uint32_t peer_asn,
+                                    bgpstream_as_path_store_path_id_t *id)
+{
+  /* shallow copy of the provided path, possibly with the peer segment removed */
+  bgpstream_as_path_store_path_t findme;
+  bgpstream_as_path_seg_t *seg = (bgpstream_as_path_seg_t*)path->data;
+
+  /* perform a shallow copy of the path, only extracting the core path if
+     needed */
+  if(path->data_len > 0 && /* empty path */
+     path->seg_cnt > 1 && /* peer seg != origin seg */
+     seg->type == BGPSTREAM_AS_PATH_SEG_ASN && /* simple ASN */
+     ((bgpstream_as_path_seg_asn_t*)seg)->asn == peer_asn) /* peer prepended */
+    {
+      /* just point to the core path */
+      findme.path.data = path->data+sizeof(bgpstream_as_path_seg_asn_t);
+      findme.path.data_len = path->data_len-sizeof(bgpstream_as_path_seg_asn_t);
+      findme.path.data_alloc_len = UINT16_MAX;
+      findme.path.seg_cnt = path->seg_cnt-1;
+      findme.path.cur_offset = 0;
+      findme.path.origin_offset =
+        path->origin_offset-sizeof(bgpstream_as_path_seg_asn_t);
+      findme.is_core = 1;
+    }
+  else
+    {
+      /* empty path or no peer ASN */
+      findme.path = *path;
+      findme.is_core = 0;
+    }
+
+  return get_path_id(store, &findme, id);
+}
+
+int
+bgpstream_as_path_store_insert_path(bgpstream_as_path_store_t *store,
+                                    uint8_t *path_data,
+                                    uint16_t path_len,
+                                    int is_core,
+                                    bgpstream_as_path_store_path_id_t *id)
+{
+  bgpstream_as_path_store_path_t findme;
+  findme.is_core = is_core;
+
+  bgpstream_as_path_populate_from_data_zc(&findme.path, path_data, path_len);
+
+  return get_path_id(store, &findme, id);
 }
 
 void
@@ -313,9 +372,13 @@ bgpstream_as_path_store_iter_get_path_id(bgpstream_as_path_store_t *store)
 
 bgpstream_as_path_store_path_t *
 bgpstream_as_path_store_get_store_path(bgpstream_as_path_store_t *store,
+                                       uint32_t peer_asn,
                                        bgpstream_as_path_store_path_id_t id)
 {
   khiter_t k;
+
+  /** @todo use the peer ASN to do things */
+  assert(0);
 
   if((k = kh_get(pathset, store->path_set, id.path_hash)) ==
      kh_end(store->path_set))
@@ -334,11 +397,21 @@ bgpstream_as_path_store_get_store_path(bgpstream_as_path_store_t *store,
 bgpstream_as_path_t *
 bgpstream_as_path_store_path_get_path(bgpstream_as_path_store_path_t *store_path)
 {
-  return store_path->path;
+  /** @todo fixme! */
+  assert(0);
+  return &store_path->path;
 }
+
+/** @todo add a get_core_path function */
 
 uint32_t
 bgpstream_as_path_store_path_get_idx(bgpstream_as_path_store_path_t *store_path)
 {
   return store_path->idx;
+}
+
+int
+bgpstream_as_path_store_path_is_core(bgpstream_as_path_store_path_t *store_path)
+{
+  return store_path->is_core;
 }
