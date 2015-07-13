@@ -298,6 +298,33 @@ void bgpstream_as_path_destroy(bgpstream_as_path_t *path)
   free(path);
 }
 
+int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src)
+{
+  if(dst->data_alloc_len == UINT16_MAX)
+    {
+      /* no longer points to external memory */
+      dst->data_alloc_len = 0;
+    }
+  if(dst->data_alloc_len < src->data_len)
+    {
+      if((dst->data = realloc(dst->data, src->data_len)) == NULL)
+        {
+          return -1;
+        }
+      dst->data_alloc_len = src->data_len;
+    }
+
+  memcpy(dst->data, src->data, src->data_len);
+  dst->data_len = src->data_len;
+
+  dst->seg_cnt = src->seg_cnt;
+  dst->origin_offset = src->origin_offset;
+
+  return 0;
+}
+
+#if 0
+/* AK deprecates this version of the copy as it is unused and overly complex */
 int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src,
                            int first_seg_idx, int excl_last_seg)
 {
@@ -380,6 +407,7 @@ int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src,
 
   return 0;
 }
+#endif
 
 bgpstream_as_path_seg_t *
 bgpstream_as_path_get_origin_seg(bgpstream_as_path_t *path)

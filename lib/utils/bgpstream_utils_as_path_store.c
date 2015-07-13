@@ -403,7 +403,7 @@ bgpstream_as_path_store_path_get_path(bgpstream_as_path_store_path_t *store_path
   /* if it is not a core path, just use the native copy */
   if(store_path->is_core == 0)
     {
-      if(bgpstream_as_path_copy(pc, &store_path->path, 0, 0) != 0)
+      if(bgpstream_as_path_copy(pc, &store_path->path) != 0)
         {
           goto err;
         }
