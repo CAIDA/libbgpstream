@@ -280,7 +280,6 @@ bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
       findme.path.data_len = path->data_len-sizeof(bgpstream_as_path_seg_asn_t);
       findme.path.data_alloc_len = UINT16_MAX;
       findme.path.seg_cnt = path->seg_cnt-1;
-      findme.path.cur_offset = 0;
       findme.path.origin_offset =
         path->origin_offset-sizeof(bgpstream_as_path_seg_asn_t);
       findme.is_core = 1;
@@ -372,13 +371,9 @@ bgpstream_as_path_store_iter_get_path_id(bgpstream_as_path_store_t *store)
 
 bgpstream_as_path_store_path_t *
 bgpstream_as_path_store_get_store_path(bgpstream_as_path_store_t *store,
-                                       uint32_t peer_asn,
                                        bgpstream_as_path_store_path_id_t id)
 {
   khiter_t k;
-
-  /** @todo use the peer ASN to do things */
-  assert(0);
 
   if((k = kh_get(pathset, store->path_set, id.path_hash)) ==
      kh_end(store->path_set))
@@ -395,14 +390,81 @@ bgpstream_as_path_store_get_store_path(bgpstream_as_path_store_t *store,
 }
 
 bgpstream_as_path_t *
-bgpstream_as_path_store_path_get_path(bgpstream_as_path_store_path_t *store_path)
+bgpstream_as_path_store_path_get_path(bgpstream_as_path_store_path_t *store_path,
+                                      uint32_t peer_asn)
 {
-  /** @todo fixme! */
-  assert(0);
-  return &store_path->path;
+  bgpstream_as_path_t *pc = NULL;
+
+  if((pc = bgpstream_as_path_create()) == NULL)
+    {
+      goto err;
+    }
+
+  /* if it is not a core path, just use the native copy */
+  if(store_path->is_core == 0)
+    {
+      if(bgpstream_as_path_copy(pc, &store_path->path, 0, 0) != 0)
+        {
+          goto err;
+        }
+      return pc;
+    }
+
+  /* otherwise, do some manual copying */
+  bgpstream_as_path_clear(pc);
+
+  pc->data_alloc_len = pc->data_len =
+    store_path->path.data_len + sizeof(bgpstream_as_path_seg_asn_t);
+  if((pc->data = malloc(pc->data_len)) == NULL)
+    {
+      goto err;
+    }
+
+  ((bgpstream_as_path_seg_asn_t*)pc->data)->type = BGPSTREAM_AS_PATH_SEG_ASN;
+  ((bgpstream_as_path_seg_asn_t*)pc->data)->asn = peer_asn;
+
+  memcpy(pc->data+sizeof(bgpstream_as_path_seg_asn_t),
+         store_path->path.data,
+         store_path->path.data_len);
+
+  bgpstream_as_path_update_fields(pc);
+
+  return pc;
+
+ err:
+  bgpstream_as_path_destroy(pc);
+  return NULL;
 }
 
-/** @todo add a get_core_path function */
+void
+bgpstream_as_path_store_path_iter_reset(bgpstream_as_path_store_path_t *store_path,
+                                        bgpstream_as_path_store_path_iter_t *iter)
+{
+  if(store_path->is_core == 0)
+    {
+      bgpstream_as_path_iter_reset(&iter->pi);
+    }
+  else
+    {
+      /* return fake peer seg next */
+      iter->pi.cur_offset = UINT16_MAX;
+    }
+  iter->peerseg.type = BGPSTREAM_AS_PATH_SEG_ASN;
+}
+
+bgpstream_as_path_seg_t *
+bgpstream_as_path_store_path_get_next_seg(bgpstream_as_path_store_path_t *store_path,
+                                          bgpstream_as_path_store_path_iter_t *iter,
+                                          uint32_t peer_asn)
+{
+  if(iter->pi.cur_offset == UINT16_MAX)
+    {
+      iter->peerseg.asn = peer_asn;
+      bgpstream_as_path_iter_reset(&iter->pi);
+      return (bgpstream_as_path_seg_t*)&iter->peerseg;
+    }
+  return bgpstream_as_path_get_next_seg(&store_path->path, &iter->pi);
+}
 
 uint32_t
 bgpstream_as_path_store_path_get_idx(bgpstream_as_path_store_path_t *store_path)
@@ -414,4 +476,10 @@ int
 bgpstream_as_path_store_path_is_core(bgpstream_as_path_store_path_t *store_path)
 {
   return store_path->is_core;
+}
+
+bgpstream_as_path_t *
+bgpstream_as_path_store_path_get_int_path(bgpstream_as_path_store_path_t *store_path)
+{
+  return &store_path->path;
 }

@@ -126,6 +126,14 @@ typedef struct bgpstream_as_path_seg_set {
 
 } __attribute__((packed)) bgpstream_as_path_seg_set_t;
 
+/** Path iterator structure */
+typedef struct bgpstream_as_path_iter {
+
+  /* current offset into the data buffer */
+  uint16_t cur_offset;
+
+} bgpstream_as_path_iter_t;
+
 /** @} */
 
 /**
@@ -254,13 +262,14 @@ bgpstream_as_path_get_origin_seg(bgpstream_as_path_t *path);
 
 /** Reset the segment iterator for the given path
  *
- * @param path          pointer to the AS path to reset segment iterator for
+ * @param iter          pointer to the AS path iterator to reset
  */
-void bgpstream_as_path_reset_iter(bgpstream_as_path_t *path);
+void bgpstream_as_path_iter_reset(bgpstream_as_path_iter_t *iter);
 
 /** Get the next segment from the given path
  *
  * @param path          pointer to the AS path to get the segment from
+ * @param iter          pointer to an AS path iterator
  * @return **borrowed** pointer to the next segment, NULL if the path has no
  *         more segments
  *
@@ -269,7 +278,8 @@ void bgpstream_as_path_reset_iter(bgpstream_as_path_t *path);
  * path is valid.
  */
 bgpstream_as_path_seg_t *
-bgpstream_as_path_get_next_seg(bgpstream_as_path_t *path);
+bgpstream_as_path_get_next_seg(bgpstream_as_path_t *path,
+                               bgpstream_as_path_iter_t *iter);
 
 /** Get the number of segments in the AS Path
  *
@@ -296,7 +306,7 @@ uint16_t bgpstream_as_path_get_data(bgpstream_as_path_t *path, uint8_t **data);
 /** Populate the given AS Path from the given byte array
  *
  * @param path          pointer to the path to populate
- * @param data          pointer to the data array
+ * @param data          pointer to the data arrayg
  * @param data_len      number of bytes in the data array
  * @return 0 if the path was populated successfully, -1 otherwise
  */

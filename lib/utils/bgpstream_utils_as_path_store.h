@@ -79,6 +79,17 @@ typedef struct bgpstream_as_path_store_path_id {
 
 } __attribute__((packed)) bgpstream_as_path_store_path_id_t;
 
+/** Store path iterator structure */
+typedef struct bgpstream_as_path_store_path_iter {
+
+  /** Internal AS Path Iterator */
+  bgpstream_as_path_iter_t pi;
+
+  /** Storage for Peer ASN segment */
+  bgpstream_as_path_seg_asn_t peerseg;
+
+} bgpstream_as_path_store_path_iter_t;
+
 /** @} */
 
 /**
@@ -149,7 +160,6 @@ bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
 /** Get a (borrowed) pointer to the Store Path for the given Path ID
  *
  * @param store         pointer to the store
- * @param peer_asn      ASN of the peer that observed the path being retrieved
  * @param id            ID of the path to retrieve
  * @return borrowed pointer to the Store Path, NULL if no path exists
  *
@@ -158,7 +168,6 @@ bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
  */
 bgpstream_as_path_store_path_t *
 bgpstream_as_path_store_get_store_path(bgpstream_as_path_store_t *store,
-                                       uint32_t peer_asn,
                                        bgpstream_as_path_store_path_id_t id);
 
 /** Reset the internal iterator to the first Path in the store
@@ -204,12 +213,42 @@ bgpstream_as_path_store_iter_get_path_id(bgpstream_as_path_store_t *store);
 /** Convert the given store path to a native BGPStream AS Path
  *
  * @param store_path    pointer to a store path to convert
- * @return a borrowed pointer to an AS Path object
+ * @param peer_asn      ASN of the peer that observed the path being retrieved
+ * @return a pointer to a new AS Path object
  *
- * The returned pointer is valid as long as the store path is valid.
+ * The user must destroy the returned path using
+ * bgpstream_as_path_destroy. Because this function creates a new path object
+ * every time, it should be used sparingly. Consider using the store path
+ * iterator functions wherever possible.
  */
 bgpstream_as_path_t *
-bgpstream_as_path_store_path_get_path(bgpstream_as_path_store_path_t *store_path);
+bgpstream_as_path_store_path_get_path(bgpstream_as_path_store_path_t *store_path,
+                                      uint32_t peer_asn);
+
+/** Reset the given store path iterator
+ *
+ * @param iter          pointer to the store path iterator to reset
+ */
+void
+bgpstream_as_path_store_path_iter_reset(bgpstream_as_path_store_path_t *store_path,
+                                        bgpstream_as_path_store_path_iter_t *iter);
+
+/** Get the next segment from the given store path
+ *
+ * @param store_path    pointer to the store path to get the next segment from
+ * @param iter          pointer to a valid store path iterator
+ * @param peer_asn      ASN of the peer that observed the path being iterated over
+ * @return **borrowed** pointer to the next segment, NULL if the path has no
+ *         more segments
+ *
+ * @note the returned pointer is owned **by the path**. It MUST NOT be destroyed
+ * using bgpstream_as_path_seg_destroy. Also, it is only valid as long as the
+ * store path is valid.
+ */
+bgpstream_as_path_seg_t *
+bgpstream_as_path_store_path_get_next_seg(bgpstream_as_path_store_path_t *store_path,
+                                          bgpstream_as_path_store_path_iter_t *iter,
+                                          uint32_t peer_asn);
 
 /** Get the internal index of the given store path
  *
@@ -234,6 +273,17 @@ bgpstream_as_path_store_path_get_idx(bgpstream_as_path_store_path_t *store_path)
  */
 int
 bgpstream_as_path_store_path_is_core(bgpstream_as_path_store_path_t *store_path);
+
+/** Get a pointer to the internal path structure from the store path
+ *
+ * @param store_path    pointer to the store path
+ * @return a borrowed pointer to the internal AS Path structure
+ *
+ * This function is designed to be used when serializing the entire store, and
+ * should be considered internal.
+ */
+bgpstream_as_path_t *
+bgpstream_as_path_store_path_get_int_path(bgpstream_as_path_store_path_t *store_path);
 
 /** @} */
 

@@ -75,9 +75,6 @@ struct bgpstream_as_path {
   /** The number of segments in the path */
   uint16_t seg_cnt;
 
-  /* current offset into the data buffer (for iterating) */
-  uint16_t cur_offset;
-
   /* offset of the origin segment */
   uint16_t origin_offset;
 
@@ -99,6 +96,11 @@ struct bgpstream_as_path {
 int bgpstream_as_path_populate(bgpstream_as_path_t *path,
                                struct aspath *bd_path);
 
+/** Update the internal fields once the data array has been changed
+ *
+ * @param path          pointer to the AS Path to update
+ */
+void bgpstream_as_path_update_fields(bgpstream_as_path_t *path);
 
 /** @} */
 

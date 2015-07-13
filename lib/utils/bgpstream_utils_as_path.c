@@ -38,8 +38,8 @@
    sizeof(bgpstream_as_path_seg_asn_t) :                \
    SIZEOF_SEG_SET(segp))
 
-#define CUR_SEG(path)                           \
-  ((bgpstream_as_path_seg_t *)(path->data+path->cur_offset))
+#define CUR_SEG(path, iter)                                     \
+  ((bgpstream_as_path_seg_t *)((path)->data+(iter)->cur_offset))
 
 static bgpstream_as_path_seg_asn_t *seg_asn_dup(bgpstream_as_path_seg_asn_t *src)
 {
@@ -238,14 +238,15 @@ int bgpstream_as_path_seg_equal(bgpstream_as_path_seg_t *seg1,
 int bgpstream_as_path_snprintf(char *buf, size_t len,
                                bgpstream_as_path_t *path)
 {
+  bgpstream_as_path_iter_t iter;
   size_t written = 0;
   bgpstream_as_path_seg_t *seg;
   int need_sep = 0;
   char *bufp = buf;
 
   /* iterate through the path and print each segment */
-  bgpstream_as_path_reset_iter(path);
-  while((seg = bgpstream_as_path_get_next_seg(path)) != NULL)
+  bgpstream_as_path_iter_reset(&iter);
+  while((seg = bgpstream_as_path_get_next_seg(path, &iter)) != NULL)
     {
       if(need_sep != 0)
         {
@@ -282,7 +283,6 @@ void bgpstream_as_path_clear(bgpstream_as_path_t *path)
 {
   path->data_len = 0;
   path->seg_cnt = 0;
-  path->cur_offset = 0;
   path->origin_offset = UINT16_MAX;
 }
 
@@ -376,8 +376,6 @@ int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src,
   dst->data_len = new_len;
   dst->seg_cnt = new_seg_cnt;
 
-  bgpstream_as_path_reset_iter(dst);
-
   dst->origin_offset = new_origin_offset - new_begin_offset;
 
   return 0;
@@ -399,30 +397,31 @@ bgpstream_as_path_get_origin_seg(bgpstream_as_path_t *path)
   return (bgpstream_as_path_seg_t*)(path->data+path->origin_offset);
 }
 
-void bgpstream_as_path_reset_iter(bgpstream_as_path_t *path)
+void bgpstream_as_path_iter_reset(bgpstream_as_path_iter_t *iter)
 {
-  path->cur_offset = 0;
+  iter->cur_offset = 0;
 }
 
 bgpstream_as_path_seg_t *
-bgpstream_as_path_get_next_seg(bgpstream_as_path_t *path)
+bgpstream_as_path_get_next_seg(bgpstream_as_path_t *path,
+                               bgpstream_as_path_iter_t *iter)
 {
   bgpstream_as_path_seg_t *cur_seg;
 
   /* end of path */
-  if(path->data_len == 0 || path->cur_offset >= path->data_len)
+  if(path->data_len == 0 || iter->cur_offset >= path->data_len)
     {
       return NULL;
     }
 
-  cur_seg = CUR_SEG(path);
+  cur_seg = CUR_SEG(path, iter);
 
   /* be sure that this segment is not corrupt */
-  assert((path->cur_offset + SIZEOF_SEG(cur_seg)) <= path->data_len);
+  assert((iter->cur_offset + SIZEOF_SEG(cur_seg)) <= path->data_len);
   assert(cur_seg->type != BGPSTREAM_AS_PATH_SEG_INVALID);
 
   /* calculate the size of the current segment and skip over it*/
-  path->cur_offset += SIZEOF_SEG(cur_seg);
+  iter->cur_offset += SIZEOF_SEG(cur_seg);
 
   return cur_seg;
 }
@@ -450,9 +449,6 @@ uint16_t bgpstream_as_path_get_data(bgpstream_as_path_t *path, uint8_t **data)
 int bgpstream_as_path_populate_from_data(bgpstream_as_path_t *path,
                                          uint8_t *data, uint16_t data_len)
 {
-  uint16_t offset = 0;
-  bgpstream_as_path_seg_t *seg;
-
   assert(path != NULL);
 
   bgpstream_as_path_clear(path);
@@ -476,16 +472,7 @@ int bgpstream_as_path_populate_from_data(bgpstream_as_path_t *path,
   memcpy(path->data, data, data_len);
   path->data_len = data_len;
 
-  /* walk the path to find the seg_cnt and origin_offset */
-  bgpstream_as_path_reset_iter(path);
-  path->seg_cnt = 0;
-
-  while((seg = bgpstream_as_path_get_next_seg(path)) != NULL)
-    {
-      path->origin_offset = offset;
-      path->seg_cnt++;
-      offset += SIZEOF_SEG(seg);
-    }
+  bgpstream_as_path_update_fields(path);
 
   return 0;
 }
@@ -493,9 +480,6 @@ int bgpstream_as_path_populate_from_data(bgpstream_as_path_t *path,
 int bgpstream_as_path_populate_from_data_zc(bgpstream_as_path_t *path,
                                             uint8_t *data, uint16_t data_len)
 {
-  uint16_t offset = 0;
-  bgpstream_as_path_seg_t *seg;
-
   assert(path != NULL);
 
   bgpstream_as_path_clear(path);
@@ -505,16 +489,7 @@ int bgpstream_as_path_populate_from_data_zc(bgpstream_as_path_t *path,
   path->data = data;
   path->data_len = data_len;
 
-  /* walk the path to find the seg_cnt and origin_offset */
-  bgpstream_as_path_reset_iter(path);
-  path->seg_cnt = 0;
-
-  while((seg = bgpstream_as_path_get_next_seg(path)) != NULL)
-    {
-      path->origin_offset = offset;
-      path->seg_cnt++;
-      offset += SIZEOF_SEG(seg);
-    }
+  bgpstream_as_path_update_fields(path);
 
   return 0;
 }
@@ -634,6 +609,7 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
 
   struct assegment *bd_seg;
   bgpstream_as_path_seg_t *seg;
+  bgpstream_as_path_iter_t iter;
 
   /* careful, this is stored into a uint16_t */
   size_t new_len;
@@ -652,6 +628,7 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
 
   /* we are going to overwrite the current path */
   bgpstream_as_path_clear(path);
+  bgpstream_as_path_iter_reset(&iter);
 
   bgpstream_as_path_seg_type_t last_type = BGPSTREAM_AS_PATH_SEG_ASN;
 
@@ -701,7 +678,7 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
         }
       path->data_len = new_len;
 
-      seg = CUR_SEG(path);
+      seg = CUR_SEG(path, &iter);
       switch(bd_seg->type)
         {
         case AS_SET:
@@ -733,7 +710,7 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
 
       if(bd_seg->type != AS_SEQUENCE)
         {
-          path->origin_offset = path->cur_offset;
+          path->origin_offset = iter.cur_offset;
           ((bgpstream_as_path_seg_set_t*)seg)->asn_cnt = bd_seg->length;
         }
 
@@ -761,10 +738,10 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
               ((bgpstream_as_path_seg_asn_t*)seg)->asn = asn;
 
               /* move on */
-              path->origin_offset = path->cur_offset;
-              path->cur_offset += sizeof(bgpstream_as_path_seg_asn_t);
+              path->origin_offset = iter.cur_offset;
+              iter.cur_offset += sizeof(bgpstream_as_path_seg_asn_t);
               path->seg_cnt++;
-              seg = CUR_SEG(path);
+              seg = CUR_SEG(path, &iter);
             }
           else
             {
@@ -774,14 +751,12 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
 
       if(bd_seg->type != AS_SEQUENCE)
         {
-          path->cur_offset = new_len;
+          iter.cur_offset = new_len;
           path->seg_cnt++;
         }
 
       ptr += (bd_seg->length * bd_path->asn_len) + AS_HEADER_SIZE;
     }
-
-  bgpstream_as_path_reset_iter(path);
 
   /* the following will cause a performance hit. only enable if debugging path
      parsing */
@@ -811,4 +786,22 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
 #endif
 
   return 0;
+}
+
+void bgpstream_as_path_update_fields(bgpstream_as_path_t *path)
+{
+  bgpstream_as_path_iter_t iter;
+  uint16_t offset = 0;
+  bgpstream_as_path_seg_t *seg;
+
+  /* walk the path to find the seg_cnt and origin_offset */
+  bgpstream_as_path_iter_reset(&iter);
+  path->seg_cnt = 0;
+
+  while((seg = bgpstream_as_path_get_next_seg(path, &iter)) != NULL)
+    {
+      path->origin_offset = offset;
+      path->seg_cnt++;
+      offset += SIZEOF_SEG(seg);
+    }
 }
