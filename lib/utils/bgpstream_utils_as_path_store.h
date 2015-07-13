@@ -82,6 +82,9 @@ typedef struct bgpstream_as_path_store_path_id {
 /** Store path iterator structure */
 typedef struct bgpstream_as_path_store_path_iter {
 
+  /** Pointer to the store path currently being iterated over */
+  bgpstream_as_path_store_path_t *spath;
+
   /** Internal AS Path Iterator */
   bgpstream_as_path_iter_t pi;
 
@@ -227,17 +230,18 @@ bgpstream_as_path_store_path_get_path(bgpstream_as_path_store_path_t *store_path
 
 /** Reset the given store path iterator
  *
+ * @param store_path    pointer to the store path to iterate over
  * @param iter          pointer to the store path iterator to reset
+ * @param peer_asn      ASN of the peer that this path was observed by
  */
 void
 bgpstream_as_path_store_path_iter_reset(bgpstream_as_path_store_path_t *store_path,
-                                        bgpstream_as_path_store_path_iter_t *iter);
+                                        bgpstream_as_path_store_path_iter_t *iter,
+                                        uint32_t peer_asn);
 
 /** Get the next segment from the given store path
  *
- * @param store_path    pointer to the store path to get the next segment from
  * @param iter          pointer to a valid store path iterator
- * @param peer_asn      ASN of the peer that observed the path being iterated over
  * @return **borrowed** pointer to the next segment, NULL if the path has no
  *         more segments
  *
@@ -246,9 +250,7 @@ bgpstream_as_path_store_path_iter_reset(bgpstream_as_path_store_path_t *store_pa
  * store path is valid.
  */
 bgpstream_as_path_seg_t *
-bgpstream_as_path_store_path_get_next_seg(bgpstream_as_path_store_path_t *store_path,
-                                          bgpstream_as_path_store_path_iter_t *iter,
-                                          uint32_t peer_asn);
+bgpstream_as_path_store_path_get_next_seg(bgpstream_as_path_store_path_iter_t *iter);
 
 /** Get the internal index of the given store path
  *

@@ -438,8 +438,11 @@ bgpstream_as_path_store_path_get_path(bgpstream_as_path_store_path_t *store_path
 
 void
 bgpstream_as_path_store_path_iter_reset(bgpstream_as_path_store_path_t *store_path,
-                                        bgpstream_as_path_store_path_iter_t *iter)
+                                        bgpstream_as_path_store_path_iter_t *iter,
+                                        uint32_t peer_asn)
 {
+  iter->spath = store_path;
+
   if(store_path->is_core == 0)
     {
       bgpstream_as_path_iter_reset(&iter->pi);
@@ -448,22 +451,20 @@ bgpstream_as_path_store_path_iter_reset(bgpstream_as_path_store_path_t *store_pa
     {
       /* return fake peer seg next */
       iter->pi.cur_offset = UINT16_MAX;
+      iter->peerseg.type = BGPSTREAM_AS_PATH_SEG_ASN;
+      iter->peerseg.asn = peer_asn;
     }
-  iter->peerseg.type = BGPSTREAM_AS_PATH_SEG_ASN;
 }
 
 bgpstream_as_path_seg_t *
-bgpstream_as_path_store_path_get_next_seg(bgpstream_as_path_store_path_t *store_path,
-                                          bgpstream_as_path_store_path_iter_t *iter,
-                                          uint32_t peer_asn)
+bgpstream_as_path_store_path_get_next_seg(bgpstream_as_path_store_path_iter_t *iter)
 {
   if(iter->pi.cur_offset == UINT16_MAX)
     {
-      iter->peerseg.asn = peer_asn;
       bgpstream_as_path_iter_reset(&iter->pi);
       return (bgpstream_as_path_seg_t*)&iter->peerseg;
     }
-  return bgpstream_as_path_get_next_seg(&store_path->path, &iter->pi);
+  return bgpstream_as_path_get_next_seg(&iter->spath->path, &iter->pi);
 }
 
 uint32_t
