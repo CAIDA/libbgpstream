@@ -165,13 +165,7 @@ static void
 perpeer_info_destroy(void *p)
 {
   if(p != NULL)
-    {
-      if(((perpeer_info_t *)p)->kp != NULL)
-        {
-          timeseries_kp_free(&((perpeer_info_t *)p)->kp);
-          ((perpeer_info_t *)p)->kp = NULL;
-        }
-      
+    {      
       if(((perpeer_info_t *)p)->announcing_ases != NULL)
         {
           bgpstream_id_set_destroy(((perpeer_info_t *)p)->announcing_ases);
@@ -247,13 +241,7 @@ perpeer_info_create(routingtables_t *rt, collector_t * c,
   p->bgp_time_uc_rib_end = 0;
   p->rib_positive_mismatches_cnt = 0;
   p->rib_negative_mismatches_cnt = 0;
-  
-  if((p->kp = timeseries_kp_init(rt->timeseries, 1)) == NULL)
-    {
-      fprintf(stderr, "Error: Could not create timeseries key package (for peer)\n");
-      goto err;
-    }
- 
+   
   peer_generate_metrics(rt, c, p);
 
   if((p->announcing_ases = bgpstream_id_set_create()) == NULL)
@@ -310,11 +298,6 @@ destroy_collector_data(collector_t * c)
         }
       c->active_ases = NULL;
 
-      if(c->kp != NULL)
-        {
-          timeseries_kp_free(&c->kp);
-        }
-      c->kp = NULL;
     }
 }
 
@@ -347,13 +330,6 @@ get_collector_data(routingtables_t *rt, char *project, char *collector)
                   "%s.%s", project_name, collector_name) >= BGPSTREAM_UTILS_STR_NAME_LEN)
         {
           fprintf(stderr, "Warning: could not print collector signature: truncated output\n");
-        }
-
-      if((c_data.kp = timeseries_kp_init(rt->timeseries, 1)) == NULL)
-        {
-          fprintf(stderr, "Error: Could not create timeseries key package (for collector %s)\n",
-                  c_data.collector_str);
-          goto err;
         }
       
       if((c_data.collector_peerids = kh_init(peer_id_set)) == NULL)
@@ -1262,7 +1238,15 @@ routingtables_t *routingtables_create(char *plugin_name, timeseries_t *timeserie
    {
       goto err;
     }
-  
+
+  rt->timeseries = timeseries;
+
+  if((rt->kp = timeseries_kp_init(rt->timeseries, 1)) == NULL)
+    {
+      fprintf(stderr, "Error: Could not create timeseries key package\n");
+      goto err;
+    }
+
   if((rt->collectors = kh_init(collector_data)) == NULL)
     {
       goto err;
@@ -1291,7 +1275,6 @@ routingtables_t *routingtables_create(char *plugin_name, timeseries_t *timeserie
   rt->bgp_time_interval_end = 0;
   rt->wall_time_interval_start = 0;
 
-  rt->timeseries = timeseries;
   
 #ifdef WITH_BGPWATCHER
   rt->watcher_tx_on = 0;
@@ -1564,7 +1547,13 @@ void routingtables_destroy(routingtables_t *rt)
         {
           bgpstream_peer_sig_map_destroy(rt->peersigns);
           rt->peersigns = NULL;
-        }      
+        }
+
+      if(rt->kp != NULL)
+        {
+          timeseries_kp_free(&rt->kp);
+          rt->kp = NULL;
+        }
 
 #ifdef WITH_BGPWATCHER
       if(rt->watcher_client != NULL)
