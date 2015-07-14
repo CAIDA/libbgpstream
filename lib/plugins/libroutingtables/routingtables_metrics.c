@@ -69,40 +69,40 @@ void
 peer_generate_metrics(routingtables_t *rt, collector_t *c, perpeer_info_t *p)
 {
   p->kp_idxs.status_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "status");
+    add_p_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "status");
   p->kp_idxs.active_v4_pfxs_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "active_v4_pfxs_cnt"); 
+    add_p_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "active_v4_pfxs_cnt"); 
   p->kp_idxs.active_v6_pfxs_idx =                                       \
-    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "active_v6_pfxs_cnt");
+    add_p_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "active_v6_pfxs_cnt");
    
   p->kp_idxs.announcing_origin_as_idx =                                 \
-    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "unique_announcing_origin_ases_cnt");
+    add_p_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "unique_announcing_origin_ases_cnt");
   p->kp_idxs.announced_v4_pfxs_idx =                                    \
-    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "announced_v4_unique_pfxs_cnt");
+    add_p_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "announced_v4_unique_pfxs_cnt");
   p->kp_idxs.withdrawn_v4_pfxs_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "withdrawn_v4_unique_pfxs_cnt");
+    add_p_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "withdrawn_v4_unique_pfxs_cnt");
   p->kp_idxs.announced_v6_pfxs_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "announced_v6_unique_pfxs_cnt");
+    add_p_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "announced_v6_unique_pfxs_cnt");
   p->kp_idxs.withdrawn_v6_pfxs_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "withdrawn_v6_unique_pfxs_cnt");
+    add_p_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "withdrawn_v6_unique_pfxs_cnt");
 
   p->kp_idxs.rib_messages_cnt_idx =                                     \
-    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "rib_messages_cnt");
+    add_p_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "rib_messages_cnt");
   p->kp_idxs.pfx_announcements_cnt_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "announcements_cnt");
+    add_p_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "announcements_cnt");
   p->kp_idxs.pfx_withdrawals_cnt_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "withdrawals_cnt");
+    add_p_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "withdrawals_cnt");
   p->kp_idxs.state_messages_cnt_idx = \
-    add_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "state_messages_cnt");
+    add_p_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "state_messages_cnt");
 
   p->kp_idxs.inactive_v4_pfxs_idx =                                     \
-    add_meta_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "inactive_v4_pfxs_cnt");
+    add_meta_p_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "inactive_v4_pfxs_cnt");
   p->kp_idxs.inactive_v6_pfxs_idx = \
-    add_meta_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "inactive_v6_pfxs_cnt");
+    add_meta_p_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "inactive_v6_pfxs_cnt");
   p->kp_idxs.rib_positive_mismatches_cnt_idx =                          \
-    add_meta_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "rib_subtracted_pfxs_cnt");
+    add_meta_p_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "rib_subtracted_pfxs_cnt");
   p->kp_idxs.rib_negative_mismatches_cnt_idx = \
-    add_meta_p_metric(p->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "rib_added_pfxs_cnt");
+    add_meta_p_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, p->peer_str, "rib_added_pfxs_cnt");
 }
 
 static uint32_t
@@ -127,23 +127,101 @@ void
 collector_generate_metrics(routingtables_t *rt, collector_t *c)
 {
   c->kp_idxs.processing_time_idx = \
-    add_meta_c_metric(c->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "processing_time");  
+    add_meta_c_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "processing_time");  
   c->kp_idxs.realtime_delay_idx = \
-    add_meta_c_metric(c->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "realtime_delay");  
+    add_meta_c_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "realtime_delay");  
   c->kp_idxs.valid_record_cnt_idx = \
-    add_meta_c_metric(c->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "valid_record_cnt");
+    add_meta_c_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "valid_record_cnt");
   c->kp_idxs.corrupted_record_cnt_idx = \
-    add_meta_c_metric(c->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "corrupted_record_cnt");
+    add_meta_c_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "corrupted_record_cnt");
   c->kp_idxs.empty_record_cnt_idx = \
-    add_meta_c_metric(c->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "empty_record_cnt");
+    add_meta_c_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "empty_record_cnt");
   
   c->kp_idxs.status_idx = \
-    add_c_metric(c->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "status");
+    add_c_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "status");
   c->kp_idxs.active_peers_cnt_idx = \
-    add_c_metric(c->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "active_peers_cnt");
+    add_c_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "active_peers_cnt");
   c->kp_idxs.active_asns_cnt_idx = \
-    add_c_metric(c->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "active_peer_asns_cnt");
+    add_c_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "active_peer_asns_cnt");
 }
+
+static void
+enable_peer_metrics(timeseries_kp_t *kp, perpeer_info_t *p)
+{
+  timeseries_kp_enable_key(kp, p->kp_idxs.status_idx);
+  timeseries_kp_enable_key(kp, p->kp_idxs.active_v4_pfxs_idx);
+  timeseries_kp_enable_key(kp, p->kp_idxs.active_v6_pfxs_idx);
+
+  timeseries_kp_enable_key(kp, p->kp_idxs.announcing_origin_as_idx);
+  timeseries_kp_enable_key(kp, p->kp_idxs.announced_v4_pfxs_idx);
+  timeseries_kp_enable_key(kp, p->kp_idxs.withdrawn_v4_pfxs_idx);
+  timeseries_kp_enable_key(kp, p->kp_idxs.announced_v6_pfxs_idx);
+  timeseries_kp_enable_key(kp, p->kp_idxs.withdrawn_v6_pfxs_idx);
+
+  timeseries_kp_enable_key(kp, p->kp_idxs.rib_messages_cnt_idx);
+  timeseries_kp_enable_key(kp, p->kp_idxs.pfx_announcements_cnt_idx);
+  timeseries_kp_enable_key(kp, p->kp_idxs.pfx_withdrawals_cnt_idx);
+  timeseries_kp_enable_key(kp, p->kp_idxs.state_messages_cnt_idx);
+              
+  timeseries_kp_enable_key(kp, p->kp_idxs.inactive_v4_pfxs_idx);
+  timeseries_kp_enable_key(kp, p->kp_idxs.inactive_v6_pfxs_idx);
+  timeseries_kp_enable_key(kp, p->kp_idxs.rib_positive_mismatches_cnt_idx);
+  timeseries_kp_enable_key(kp, p->kp_idxs.rib_negative_mismatches_cnt_idx);
+}
+
+static void
+disable_peer_metrics(timeseries_kp_t *kp, perpeer_info_t *p)
+{
+  timeseries_kp_disable_key(kp, p->kp_idxs.status_idx);
+  timeseries_kp_disable_key(kp, p->kp_idxs.active_v4_pfxs_idx);
+  timeseries_kp_disable_key(kp, p->kp_idxs.active_v6_pfxs_idx);
+
+  timeseries_kp_disable_key(kp, p->kp_idxs.announcing_origin_as_idx);
+  timeseries_kp_disable_key(kp, p->kp_idxs.announced_v4_pfxs_idx);
+  timeseries_kp_disable_key(kp, p->kp_idxs.withdrawn_v4_pfxs_idx);
+  timeseries_kp_disable_key(kp, p->kp_idxs.announced_v6_pfxs_idx);
+  timeseries_kp_disable_key(kp, p->kp_idxs.withdrawn_v6_pfxs_idx);
+
+  timeseries_kp_disable_key(kp, p->kp_idxs.rib_messages_cnt_idx);
+  timeseries_kp_disable_key(kp, p->kp_idxs.pfx_announcements_cnt_idx);
+  timeseries_kp_disable_key(kp, p->kp_idxs.pfx_withdrawals_cnt_idx);
+  timeseries_kp_disable_key(kp, p->kp_idxs.state_messages_cnt_idx);
+              
+  timeseries_kp_disable_key(kp, p->kp_idxs.inactive_v4_pfxs_idx);
+  timeseries_kp_disable_key(kp, p->kp_idxs.inactive_v6_pfxs_idx);
+  timeseries_kp_disable_key(kp, p->kp_idxs.rib_positive_mismatches_cnt_idx);
+  timeseries_kp_disable_key(kp, p->kp_idxs.rib_negative_mismatches_cnt_idx);
+}
+
+static void
+enable_collector_metrics(timeseries_kp_t *kp, collector_t *c)
+{
+  timeseries_kp_enable_key(kp, c->kp_idxs.processing_time_idx);
+  timeseries_kp_enable_key(kp, c->kp_idxs.realtime_delay_idx);
+  timeseries_kp_enable_key(kp, c->kp_idxs.valid_record_cnt_idx);
+  timeseries_kp_enable_key(kp, c->kp_idxs.corrupted_record_cnt_idx);
+    
+  timeseries_kp_enable_key(kp, c->kp_idxs.empty_record_cnt_idx);
+  timeseries_kp_enable_key(kp, c->kp_idxs.status_idx);
+  timeseries_kp_enable_key(kp, c->kp_idxs.active_peers_cnt_idx);
+  timeseries_kp_enable_key(kp, c->kp_idxs.active_asns_cnt_idx);    
+}
+
+static void
+disable_collector_metrics(timeseries_kp_t *kp, collector_t *c)
+{
+  timeseries_kp_disable_key(kp, c->kp_idxs.processing_time_idx);
+  timeseries_kp_disable_key(kp, c->kp_idxs.realtime_delay_idx);
+  timeseries_kp_disable_key(kp, c->kp_idxs.valid_record_cnt_idx);
+  timeseries_kp_disable_key(kp, c->kp_idxs.corrupted_record_cnt_idx);
+    
+  timeseries_kp_disable_key(kp, c->kp_idxs.empty_record_cnt_idx);
+  timeseries_kp_disable_key(kp, c->kp_idxs.status_idx);
+  timeseries_kp_disable_key(kp, c->kp_idxs.active_peers_cnt_idx);
+  timeseries_kp_disable_key(kp, c->kp_idxs.active_asns_cnt_idx);    
+}
+
+
 
 void
 routingtables_dump_metrics(routingtables_t *rt, uint32_t time_now)
@@ -183,21 +261,25 @@ routingtables_dump_metrics(routingtables_t *rt, uint32_t time_now)
             }
 
           /* set statistics here */              
-          timeseries_kp_set(c->kp, c->kp_idxs.processing_time_idx, processing_time);
-          timeseries_kp_set(c->kp, c->kp_idxs.realtime_delay_idx, real_time_delay);
+          timeseries_kp_set(rt->kp, c->kp_idxs.processing_time_idx, processing_time);
+          timeseries_kp_set(rt->kp, c->kp_idxs.realtime_delay_idx, real_time_delay);
 
-          timeseries_kp_set(c->kp, c->kp_idxs.valid_record_cnt_idx, c->valid_record_cnt);              
-          timeseries_kp_set(c->kp, c->kp_idxs.corrupted_record_cnt_idx, c->corrupted_record_cnt);              
-          timeseries_kp_set(c->kp, c->kp_idxs.empty_record_cnt_idx, c->empty_record_cnt);
+          timeseries_kp_set(rt->kp, c->kp_idxs.valid_record_cnt_idx, c->valid_record_cnt);              
+          timeseries_kp_set(rt->kp, c->kp_idxs.corrupted_record_cnt_idx, c->corrupted_record_cnt);              
+          timeseries_kp_set(rt->kp, c->kp_idxs.empty_record_cnt_idx, c->empty_record_cnt);
               
-          timeseries_kp_set(c->kp, c->kp_idxs.status_idx, c->state);
-          timeseries_kp_set(c->kp, c->kp_idxs.active_peers_cnt_idx, c->active_peers_cnt);
-          timeseries_kp_set(c->kp, c->kp_idxs.active_asns_cnt_idx, bgpstream_id_set_size(c->active_ases));
+          timeseries_kp_set(rt->kp, c->kp_idxs.status_idx, c->state);
+          timeseries_kp_set(rt->kp, c->kp_idxs.active_peers_cnt_idx, c->active_peers_cnt);
+          timeseries_kp_set(rt->kp, c->kp_idxs.active_asns_cnt_idx, bgpstream_id_set_size(c->active_ases));
                             
-          /* flush metrics */
+          /* flush metrics ? */
           if(c->publish_flag)
             {
-              timeseries_kp_flush(c->kp, rt->bgp_time_interval_start);
+              enable_collector_metrics(rt->kp, c);
+            }
+          else
+            {
+              disable_collector_metrics(rt->kp, c);
             }
 
 
@@ -219,49 +301,53 @@ routingtables_dump_metrics(routingtables_t *rt, uint32_t time_now)
       p = bgpwatcher_view_iter_peer_get_user(rt->iter);
       if(p->bgp_fsm_state != BGPSTREAM_ELEM_PEERSTATE_UNKNOWN)
         {
-          timeseries_kp_set(p->kp, p->kp_idxs.status_idx, p->bgp_fsm_state);
-          timeseries_kp_set(p->kp, p->kp_idxs.active_v4_pfxs_idx,
+          timeseries_kp_set(rt->kp, p->kp_idxs.status_idx, p->bgp_fsm_state);
+          timeseries_kp_set(rt->kp, p->kp_idxs.active_v4_pfxs_idx,
                             bgpwatcher_view_iter_peer_get_pfx_cnt(rt->iter,
                                                                   BGPSTREAM_ADDR_VERSION_IPV4,
                                                                   BGPWATCHER_VIEW_FIELD_ACTIVE));
-          timeseries_kp_set(p->kp, p->kp_idxs.inactive_v4_pfxs_idx,
+          timeseries_kp_set(rt->kp, p->kp_idxs.inactive_v4_pfxs_idx,
                             bgpwatcher_view_iter_peer_get_pfx_cnt(rt->iter,
                                                                   BGPSTREAM_ADDR_VERSION_IPV4,
                                                                   BGPWATCHER_VIEW_FIELD_INACTIVE));
-          timeseries_kp_set(p->kp, p->kp_idxs.active_v6_pfxs_idx,
+          timeseries_kp_set(rt->kp, p->kp_idxs.active_v6_pfxs_idx,
                             bgpwatcher_view_iter_peer_get_pfx_cnt(rt->iter,
                                                                   BGPSTREAM_ADDR_VERSION_IPV6,
                                                                   BGPWATCHER_VIEW_FIELD_ACTIVE));
-          timeseries_kp_set(p->kp, p->kp_idxs.inactive_v6_pfxs_idx,
+          timeseries_kp_set(rt->kp, p->kp_idxs.inactive_v6_pfxs_idx,
                             bgpwatcher_view_iter_peer_get_pfx_cnt(rt->iter,
                                                                   BGPSTREAM_ADDR_VERSION_IPV6,
                                                                   BGPWATCHER_VIEW_FIELD_INACTIVE));
                               
-          timeseries_kp_set(p->kp, p->kp_idxs.announcing_origin_as_idx,
+          timeseries_kp_set(rt->kp, p->kp_idxs.announcing_origin_as_idx,
                             bgpstream_id_set_size(p->announcing_ases));
           
-          timeseries_kp_set(p->kp, p->kp_idxs.announced_v4_pfxs_idx,
+          timeseries_kp_set(rt->kp, p->kp_idxs.announced_v4_pfxs_idx,
                             bgpstream_ipv4_pfx_set_size(p->announced_v4_pfxs));
 
-          timeseries_kp_set(p->kp, p->kp_idxs.withdrawn_v4_pfxs_idx,
+          timeseries_kp_set(rt->kp, p->kp_idxs.withdrawn_v4_pfxs_idx,
                             bgpstream_ipv4_pfx_set_size(p->withdrawn_v4_pfxs));
 
-          timeseries_kp_set(p->kp, p->kp_idxs.announced_v6_pfxs_idx,
+          timeseries_kp_set(rt->kp, p->kp_idxs.announced_v6_pfxs_idx,
                             bgpstream_ipv6_pfx_set_size(p->announced_v6_pfxs));
 
-          timeseries_kp_set(p->kp, p->kp_idxs.withdrawn_v6_pfxs_idx,
+          timeseries_kp_set(rt->kp, p->kp_idxs.withdrawn_v6_pfxs_idx,
                             bgpstream_ipv6_pfx_set_size(p->withdrawn_v6_pfxs));
           
-          timeseries_kp_set(p->kp, p->kp_idxs.rib_messages_cnt_idx, p->rib_messages_cnt);
-          timeseries_kp_set(p->kp, p->kp_idxs.pfx_announcements_cnt_idx, p->pfx_announcements_cnt);
-          timeseries_kp_set(p->kp, p->kp_idxs.pfx_withdrawals_cnt_idx, p->pfx_withdrawals_cnt);          
-          timeseries_kp_set(p->kp, p->kp_idxs.state_messages_cnt_idx, p->state_messages_cnt);
-          timeseries_kp_set(p->kp, p->kp_idxs.rib_positive_mismatches_cnt_idx, p->rib_positive_mismatches_cnt);
-          timeseries_kp_set(p->kp, p->kp_idxs.rib_negative_mismatches_cnt_idx, p->rib_negative_mismatches_cnt);
+          timeseries_kp_set(rt->kp, p->kp_idxs.rib_messages_cnt_idx, p->rib_messages_cnt);
+          timeseries_kp_set(rt->kp, p->kp_idxs.pfx_announcements_cnt_idx, p->pfx_announcements_cnt);
+          timeseries_kp_set(rt->kp, p->kp_idxs.pfx_withdrawals_cnt_idx, p->pfx_withdrawals_cnt);          
+          timeseries_kp_set(rt->kp, p->kp_idxs.state_messages_cnt_idx, p->state_messages_cnt);
+          timeseries_kp_set(rt->kp, p->kp_idxs.rib_positive_mismatches_cnt_idx, p->rib_positive_mismatches_cnt);
+          timeseries_kp_set(rt->kp, p->kp_idxs.rib_negative_mismatches_cnt_idx, p->rib_negative_mismatches_cnt);
 
-          timeseries_kp_flush(p->kp, rt->bgp_time_interval_start);          
+          enable_peer_metrics(rt->kp, p);
         }
-      
+      else
+        {
+          disable_peer_metrics(rt->kp, p);
+        }
+        
       /* in all cases we have to reset the metrics */
       bgpstream_id_set_clear(p->announcing_ases);
       bgpstream_ipv4_pfx_set_clear(p->announced_v4_pfxs);
@@ -275,5 +361,7 @@ routingtables_dump_metrics(routingtables_t *rt, uint32_t time_now)
       p->rib_positive_mismatches_cnt = 0;
       p->rib_negative_mismatches_cnt = 0;
     }
+
+  timeseries_kp_flush(rt->kp, rt->bgp_time_interval_start);
 
 }

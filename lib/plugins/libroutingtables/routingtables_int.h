@@ -167,9 +167,6 @@ typedef struct struct_perpeer_info_t {
    *  0 when the under construction process is off */
   uint32_t bgp_time_uc_rib_end;
 
-  /** Timeseries Key Package for the peer */
-  timeseries_kp_t *kp;
-
   /** Indices of the peer metrics in the peer Key Package */
   peer_metric_idx_t kp_idxs;
 
@@ -281,9 +278,6 @@ typedef struct struct_collector_t {
   /** Decide whether stats should be published */
   uint8_t publish_flag;
 
-  /** Timeseries Key Package for the collector */
-  timeseries_kp_t *kp;
-
   /** Indices of the collector metrics in the collector Key Package */
   collector_metric_idx_t kp_idxs;
 
@@ -335,6 +329,9 @@ struct struct_routingtables_t {
 
   /** iterator associated with the view*/
   bgpwatcher_view_iter_t *iter;
+
+  /** Timeseries Key Package */
+  timeseries_kp_t *kp;
   
   /** per collector information: name, peers and
    *  current state */
