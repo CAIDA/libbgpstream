@@ -466,6 +466,7 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
 {
   perpeer_info_t *p;
   perpfx_perpeer_info_t *pp;
+  bgpstream_pfx_t *pfx;
   
   for(bgpwatcher_view_iter_first_pfx_peer(rt->iter, 0,
                                           BGPWATCHER_VIEW_FIELD_ALL_VALID,
@@ -474,6 +475,7 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
       bgpwatcher_view_iter_next_pfx_peer(rt->iter))
     {
       p = bgpwatcher_view_iter_peer_get_user(rt->iter);
+      pfx = bgpwatcher_view_iter_pfx_get_pfx(rt->iter);
       
       /* check if the current field refers to a peer involved
        * in the rib process  */
@@ -988,7 +990,8 @@ collector_process_valid_bgpinfo(routingtables_t *rt,
 {
   bgpstream_elem_t *elem;
   bgpstream_peer_id_t peer_id;
-  perpeer_info_t *p;  
+  perpeer_info_t *p;
+  bgpstream_as_path_seg_t *seg;
 
   int khret;
   khiter_t k;
@@ -1021,6 +1024,28 @@ collector_process_valid_bgpinfo(routingtables_t *rt,
 
   while((elem = bgpstream_record_get_next_elem(record)) != NULL)
     {
+
+      /* see https://trac.caida.org/hijacks/wiki/ASpaths for more details */
+      
+      if(elem->type == BGPSTREAM_ELEM_TYPE_RIB || elem->type == BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT)
+        {
+          /* we do not maintain status for prefixes announced locally by the collector */
+          if(bgpstream_as_path_get_len(elem->aspath) == 0)
+            {
+              continue;
+            }
+
+          /* in order to avoid to maintain status for route servers, we only accept 
+           * reachability information from external BGP sessions that do prepend their
+           * peer AS number */
+          bgpstream_as_path_reset_iter(elem->aspath);          
+          seg = bgpstream_as_path_get_next_seg(elem->aspath);
+          if(seg->type == BGPSTREAM_AS_PATH_SEG_ASN && ((bgpstream_as_path_seg_asn_t *) seg)->asn != elem->peer_asnumber)
+            {
+              continue;
+            }
+        }
+      
       /* get the peer id or create a new peer with state inactive
        * (if it did not exist already) */
       if((peer_id = bgpwatcher_view_iter_add_peer(rt->iter,
