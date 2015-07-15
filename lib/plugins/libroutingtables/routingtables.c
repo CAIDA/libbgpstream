@@ -543,7 +543,8 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
 
     }
   
-  /* reset all the uc information for the peers */
+  /* reset all the uc information for the peers and check if
+   * some peers disappeared from the routing table */
   for(bgpwatcher_view_iter_first_peer(rt->iter, BGPWATCHER_VIEW_FIELD_ALL_VALID);
       bgpwatcher_view_iter_has_more_peer(rt->iter);
       bgpwatcher_view_iter_next_peer(rt->iter))
@@ -553,12 +554,24 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
          kh_end(c->collector_peerids))        
         {
           p = bgpwatcher_view_iter_peer_get_user(rt->iter);
-          p->bgp_time_uc_rib_start = 0;
-          p->bgp_time_uc_rib_end = 0;
+
+          /* if the uc rib start was never touched it means
+           * that this peer was not part of the RIB and therefore
+           * we deactivate it */
+          if(p->bgp_time_uc_rib_start == 0)
+            {
+              p->bgp_fsm_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
+              reset_peerpfxdata(rt, bgpwatcher_view_iter_peer_get_peer_id(rt->iter), 0);
+            }
+          else
+            {
+              /* if the peer was actively involved in the uc process
+               * we reset its variables */
+              p->bgp_time_uc_rib_start = 0;
+              p->bgp_time_uc_rib_end = 0;
+            }
         }
     }
-
-  /* @todo here is where we have information about "untouched" peers */
 
   c->publish_flag = 1;
   
