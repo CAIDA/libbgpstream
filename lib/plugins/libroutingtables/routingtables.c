@@ -988,7 +988,8 @@ collector_process_valid_bgpinfo(routingtables_t *rt,
 {
   bgpstream_elem_t *elem;
   bgpstream_peer_id_t peer_id;
-  perpeer_info_t *p;  
+  perpeer_info_t *p;
+  bgpstream_as_path_seg_t *seg;
 
   int khret;
   khiter_t k;
@@ -1021,6 +1022,28 @@ collector_process_valid_bgpinfo(routingtables_t *rt,
 
   while((elem = bgpstream_record_get_next_elem(record)) != NULL)
     {
+
+      /* see https://trac.caida.org/hijacks/wiki/ASpaths for more details */
+      
+      if(elem->type == BGPSTREAM_ELEM_TYPE_RIB || elem->type == BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT)
+        {
+          /* we do not maintain status for prefixes announced locally by the collector */
+          if(bgpstream_as_path_get_len(elem->aspath) == 0)
+            {
+              continue;
+            }
+
+          /* in order to avoid to maintain status for route servers, we only accept 
+           * reachability information from external BGP sessions that do prepend their
+           * peer AS number */
+          bgpstream_as_path_reset_iter(elem->aspath);          
+          seg = bgpstream_as_path_get_next_seg(elem->aspath);
+          if(seg->type == BGPSTREAM_AS_PATH_SEG_ASN && ((bgpstream_as_path_seg_asn_t *) seg)->asn != elem->peer_asnumber)
+            {
+              continue;
+            }
+        }
+      
       /* get the peer id or create a new peer with state inactive
        * (if it did not exist already) */
       if((peer_id = bgpwatcher_view_iter_add_peer(rt->iter,
