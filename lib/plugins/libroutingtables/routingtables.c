@@ -466,7 +466,6 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
 {
   perpeer_info_t *p;
   perpfx_perpeer_info_t *pp;
-  bgpstream_pfx_t *pfx;
   
   for(bgpwatcher_view_iter_first_pfx_peer(rt->iter, 0,
                                           BGPWATCHER_VIEW_FIELD_ALL_VALID,
@@ -475,7 +474,6 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
       bgpwatcher_view_iter_next_pfx_peer(rt->iter))
     {
       p = bgpwatcher_view_iter_peer_get_user(rt->iter);
-      pfx = bgpwatcher_view_iter_pfx_get_pfx(rt->iter);
       
       /* check if the current field refers to a peer involved
        * in the rib process  */
