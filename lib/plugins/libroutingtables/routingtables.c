@@ -461,11 +461,16 @@ reset_peerpfxdata(routingtables_t *rt,
     }  
 }
 
+static char buffer[INET6_ADDRSTRLEN+3];
+
+#define RIB_BACKLOG_TIME 60
+
 static int
 end_of_valid_rib(routingtables_t *rt, collector_t *c)
 {
   perpeer_info_t *p;
   perpfx_perpeer_info_t *pp;
+  bgpstream_pfx_t *pfx;
   
   for(bgpwatcher_view_iter_first_pfx_peer(rt->iter, 0,
                                           BGPWATCHER_VIEW_FIELD_ALL_VALID,
@@ -474,6 +479,7 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
       bgpwatcher_view_iter_next_pfx_peer(rt->iter))
     {
       p = bgpwatcher_view_iter_peer_get_user(rt->iter);
+      pfx = bgpwatcher_view_iter_pfx_get_pfx(rt->iter);
       
       /* check if the current field refers to a peer involved
        * in the rib process  */
@@ -482,9 +488,13 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
         p->bgp_time_uc_rib_start != 0)
         {
           pp = bgpwatcher_view_iter_pfx_peer_get_user(rt->iter);
-          
-          if(pp->bgp_time_uc_delta_ts + p->bgp_time_uc_rib_start >
-             pp->bgp_time_last_ts)
+
+          /* if the RIB timestamp is greater than the last updated time in the current
+           * state, AND  the update did not happen within RIB_BACKLOG_TIME seconds before
+           * the beginning of the RIB (if that is so, the update message may be still buffered
+           * in the quagga process), then the RIB has more updated data than our state */
+          if(pp->bgp_time_uc_delta_ts + p->bgp_time_uc_rib_start > pp->bgp_time_last_ts &&
+              pp->bgp_time_last_ts > p->bgp_time_uc_rib_start - RIB_BACKLOG_TIME)
             {
               if(pp->uc_origin_asn != ROUTINGTABLES_DOWN_ORIGIN_ASN)
                 {
@@ -495,6 +505,11 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
                      bgpwatcher_view_iter_pfx_peer_get_orig_asn(rt->iter) == ROUTINGTABLES_DOWN_ORIGIN_ASN)
                     {
                       p->rib_negative_mismatches_cnt++;
+                      fprintf(stderr, "Missed announcement: %s @ %s  last state: %"PRIu32" rib: %"PRIu32" \n",
+                              bgpstream_pfx_snprintf(buffer, INET6_ADDRSTRLEN+3, pfx),
+                              p->peer_str,
+                              pp->bgp_time_last_ts, pp->bgp_time_uc_delta_ts + p->bgp_time_uc_rib_start);
+
                     }
 
                   pp->bgp_time_last_ts = pp->bgp_time_uc_delta_ts + p->bgp_time_uc_rib_start;
@@ -514,6 +529,10 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
                   if(bgpwatcher_view_iter_pfx_peer_get_state(rt->iter) == BGPWATCHER_VIEW_FIELD_ACTIVE)
                     {
                       p->rib_positive_mismatches_cnt++;
+                      fprintf(stderr, "Missed withdrawal: %s  last state: %"PRIu32" rib: %"PRIu32" \n",
+                              bgpstream_pfx_snprintf(buffer, INET6_ADDRSTRLEN+3, pfx),
+                              pp->bgp_time_last_ts, pp->bgp_time_uc_delta_ts + p->bgp_time_uc_rib_start);
+
                     }
                   pp->bgp_time_last_ts = 0;
                   bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, ROUTINGTABLES_DOWN_ORIGIN_ASN);
