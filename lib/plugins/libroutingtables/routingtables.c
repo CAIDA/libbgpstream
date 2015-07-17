@@ -33,6 +33,41 @@
 #include "routingtables_int.h"
 
 
+/** When the Quagga process starts dumping the 
+ *  RIB (at time t0), not all of the previous update
+ *  messages have been processed, in other words
+ *  there is a backlog queue of update that has not
+ *  been processed yet, when the updates in this queue 
+ *  refer to timestamps before the RIB, then considering
+ *  the RIB state as the most updated leads to wrong conclusions,
+ *  as well as the installation of stale routes in the routing table.
+ *  To prevent this case, we say that: if an update message applied
+ *  to our routing table is older than the timestamp of the UC RIB
+ *  and the update happened within ROUTINGTABLES_RIB_BACKLOG_TIME from
+ *  the RIB start, then the update message is the one which is
+ *  considered the more consistent (and therefore it should remain
+ *  in the routing table after the end_of_rib process). */
+#define ROUTINGTABLES_RIB_BACKLOG_TIME 60
+
+/** ROUTINGTABLES_LOCAL_*_ASN is a set of constants 
+ *  that is used to give special meaning to the origin
+ *  AS field, all the values above ROUTINGTABLES_RESERVED_ASN_START
+ *  are part of IANA reserved space for AS numbers, therefore
+ *  no valid origin should be confused with these constants
+ *  (unless an attacker actually uses them to forge the path).
+ *  Ref: http://www.iana.org/assignments/as-numbers/as-numbers.xhtml
+ */
+#define ROUTINGTABLES_RESERVED_ASN_START BGPWATCHER_VIEW_ASN_NOEXPORT_START
+#define ROUTINGTABLES_LOCAL_ORIGIN_ASN   ROUTINGTABLES_RESERVED_ASN_START + 0
+#define ROUTINGTABLES_CONFSET_ORIGIN_ASN ROUTINGTABLES_RESERVED_ASN_START + 1
+#define ROUTINGTABLES_DOWN_ORIGIN_ASN    ROUTINGTABLES_RESERVED_ASN_START + 2
+
+
+/** string buffer to contain prefixes and ip addresses 
+ *  used for debugging purposes only */
+static char buffer[INET6_ADDRSTRLEN+3];
+
+
 /* ========== PRIVATE FUNCTIONS ========== */
 
 static char *
@@ -79,35 +114,6 @@ static int filter_ff_peers(bgpwatcher_view_iter_t *iter)
                                                  BGPWATCHER_VIEW_FIELD_ACTIVE)
            >= ((rt_view_data_t *)bgpwatcher_view_get_user(bgpwatcher_view_iter_get_view(iter)))->ipv6_fullfeed_th));
 }
-
-
-/** @note for the future
- *  In order to save memory we could use the reserved AS numbers
- *  to embed other informations associated with an AS number, i.e.:
- *  - AS = 0 -> prefix is local....
- *  - AS in [64496-64511] -> AS is actually an AS set
- *  - AS in [64512-65534] -> AS is actually an AS confederation  
- *  - AS = 65535 -> prefix not seen in the RIB (e.g. withdrawal)
- *  4200000000-4294967294	Reserved for Private Use			[RFC6996]	 
- *  4294967295	Reserved			[RFC7300] 
- */
-/* static void asn_mgmt_fun() */
-/* { */
-  /* http://www.iana.org/assignments/as-numbers/as-numbers.xhtml */
-  /* 0	           Reserved */
-  /* 64198-64495   Reserved by the IANA */ 
-  /* 23456	   AS_TRANS RFC6793 */
-  /* 64496-64511   Reserved for use in documentation and sample code RFC5398 */
-  /* 64512-65534   Reserved for Private Use RFC6996 */
-  /* 65535	   Reserved RFC7300 */
-/* } */
-
-
-/** @todo */
-#define ROUTINGTABLES_RESERVED_ASN_START BGPWATCHER_VIEW_ASN_NOEXPORT_START
-#define ROUTINGTABLES_LOCAL_ORIGIN_ASN   ROUTINGTABLES_RESERVED_ASN_START + 0
-#define ROUTINGTABLES_CONFSET_ORIGIN_ASN ROUTINGTABLES_RESERVED_ASN_START + 1
-#define ROUTINGTABLES_DOWN_ORIGIN_ASN    ROUTINGTABLES_RESERVED_ASN_START + 2
 
 
 /** Returns the origin AS when the origin AS number
@@ -461,10 +467,6 @@ reset_peerpfxdata(routingtables_t *rt,
     }  
 }
 
-static char buffer[INET6_ADDRSTRLEN+3];
-
-#define RIB_BACKLOG_TIME 60
-
 static int
 end_of_valid_rib(routingtables_t *rt, collector_t *c)
 {
@@ -490,11 +492,11 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
           pp = bgpwatcher_view_iter_pfx_peer_get_user(rt->iter);
 
           /* if the RIB timestamp is greater than the last updated time in the current
-           * state, AND  the update did not happen within RIB_BACKLOG_TIME seconds before
+           * state, AND  the update did not happen within ROUTINGTABLES_RIB_BACKLOG_TIME seconds before
            * the beginning of the RIB (if that is so, the update message may be still buffered
            * in the quagga process), then the RIB has more updated data than our state */
           if(pp->bgp_time_uc_delta_ts + p->bgp_time_uc_rib_start > pp->bgp_time_last_ts &&
-              pp->bgp_time_last_ts > p->bgp_time_uc_rib_start - RIB_BACKLOG_TIME)
+             !(pp->bgp_time_last_ts > p->bgp_time_uc_rib_start - ROUTINGTABLES_RIB_BACKLOG_TIME))
             {
               if(pp->uc_origin_asn != ROUTINGTABLES_DOWN_ORIGIN_ASN)
                 {
@@ -505,7 +507,7 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
                      bgpwatcher_view_iter_pfx_peer_get_orig_asn(rt->iter) == ROUTINGTABLES_DOWN_ORIGIN_ASN)
                     {
                       p->rib_negative_mismatches_cnt++;
-                      fprintf(stderr, "Missed announcement: %s @ %s  last state: %"PRIu32" rib: %"PRIu32" \n",
+                      fprintf(stderr, "Warning - missed announcement: %s @ %s  last state: %"PRIu32" rib: %"PRIu32" \n",
                               bgpstream_pfx_snprintf(buffer, INET6_ADDRSTRLEN+3, pfx),
                               p->peer_str,
                               pp->bgp_time_last_ts, pp->bgp_time_uc_delta_ts + p->bgp_time_uc_rib_start);
@@ -529,7 +531,7 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
                   if(bgpwatcher_view_iter_pfx_peer_get_state(rt->iter) == BGPWATCHER_VIEW_FIELD_ACTIVE)
                     {
                       p->rib_positive_mismatches_cnt++;
-                      fprintf(stderr, "Missed withdrawal: %s  last state: %"PRIu32" rib: %"PRIu32" \n",
+                      fprintf(stderr, "Warning - missed withdrawal: %s  last state: %"PRIu32" rib: %"PRIu32" \n",
                               bgpstream_pfx_snprintf(buffer, INET6_ADDRSTRLEN+3, pfx),
                               pp->bgp_time_last_ts, pp->bgp_time_uc_delta_ts + p->bgp_time_uc_rib_start);
 
@@ -542,7 +544,9 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
             }
           else
             {
-              /* if an update is more recent than the uc information, then
+              /* if an update is more recent than the uc information, or if 
+               * the last update message was applied just ROUTINGTABLES_RIB_BACKLOG_TIME 
+               * before the RIB dumping process startedm then
                * we decide to keep this data and activate the field if it
                * is an announcement */
               if(bgpwatcher_view_iter_pfx_peer_get_orig_asn(rt->iter) != ROUTINGTABLES_DOWN_ORIGIN_ASN)
