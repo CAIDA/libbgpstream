@@ -473,7 +473,10 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
   perpeer_info_t *p;
   perpfx_perpeer_info_t *pp;
   bgpstream_pfx_t *pfx;
-  
+
+  /** Read the entire collector RIB and update the items according to
+   *  timestamps (either promoting the RIB UC data, or maintaining 
+   *  (the current state) based on the comparison with the UC RIB */
   for(bgpwatcher_view_iter_first_pfx_peer(rt->iter, 0,
                                           BGPWATCHER_VIEW_FIELD_ALL_VALID,
                                           BGPWATCHER_VIEW_FIELD_ALL_VALID);
@@ -565,26 +568,33 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
         }
 
     }
+
   
   /* reset all the uc information for the peers and check if
-   * some peers disappeared from the routing table */
+   * some peers disappeared from the routing table (i.e., if some active
+   * peers are not in this RIB, then it means they went down in between
+   * the previous RIB and this RIB  and we have to deactivate them */
   for(bgpwatcher_view_iter_first_peer(rt->iter, BGPWATCHER_VIEW_FIELD_ALL_VALID);
       bgpwatcher_view_iter_has_more_peer(rt->iter);
       bgpwatcher_view_iter_next_peer(rt->iter))
     {
-      /* check if the current field refers to a peer to reset */
+      /* check if the current field refers to a peer that belongs to
+       * the current collector */
       if(kh_get(peer_id_set, c->collector_peerids, bgpwatcher_view_iter_peer_get_peer_id(rt->iter)) !=
-         kh_end(c->collector_peerids))        
+         kh_end(c->collector_peerids))
         {
           p = bgpwatcher_view_iter_peer_get_user(rt->iter);
 
           /* if the uc rib start was never touched it means
-           * that this peer was not part of the RIB and therefore
-           * we deactivate it */
+           * that this peer was not part of the RIB and, therefore,
+           * if it claims to be active, we deactivate it */
           if(p->bgp_time_uc_rib_start == 0)
             {
-              p->bgp_fsm_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
-              reset_peerpfxdata(rt, bgpwatcher_view_iter_peer_get_peer_id(rt->iter), 0);
+              if(p->bgp_fsm_state == BGPSTREAM_ELEM_PEERSTATE_ESTABLISHED)
+                {
+                  p->bgp_fsm_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
+                  reset_peerpfxdata(rt, bgpwatcher_view_iter_peer_get_peer_id(rt->iter), 0);
+                }
             }
           else
             {
