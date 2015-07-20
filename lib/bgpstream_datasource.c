@@ -88,8 +88,7 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
   GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_host, BGPSTREAM_DS_MYSQL_DB_HOST);
   GET_DEFAULT_INT_VALUE(datasource_mgr->mysql_port, BGPSTREAM_DS_MYSQL_DB_PORT);
   GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_socket, BGPSTREAM_DS_MYSQL_DB_SOCKET);
-  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_ris_path, BGPSTREAM_DS_MYSQL_RIS_PATH);
-  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_rv_path, BGPSTREAM_DS_MYSQL_RV_PATH);
+  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_dump_path, BGPSTREAM_DS_MYSQL_DUMP_PATH);
   GET_DEFAULT_STR_VALUE(datasource_mgr->singlefile_rib_mrtfile, BGPSTREAM_DS_SINGLEFILE_RIB_FILE);
   GET_DEFAULT_STR_VALUE(datasource_mgr->singlefile_upd_mrtfile, BGPSTREAM_DS_SINGLEFILE_UPDATE_FILE);
   GET_DEFAULT_STR_VALUE(datasource_mgr->csvfile_file, BGPSTREAM_DS_CSVFILE_CSV_FILE);
@@ -158,18 +157,11 @@ void bgpstream_datasource_mgr_set_data_interface_option(bgpstream_datasource_mgr
           datasource_mgr->mysql_socket = strdup(option_value);
           break;
         case 6: 
-          if(datasource_mgr->mysql_ris_path!=NULL)
+          if(datasource_mgr->mysql_dump_path!=NULL)
             {
-              free(datasource_mgr->mysql_ris_path);
+              free(datasource_mgr->mysql_dump_path);
             }
-          datasource_mgr->mysql_ris_path = strdup(option_value);
-          break;
-        case 7: 
-          if(datasource_mgr->mysql_rv_path!=NULL)
-            {
-              free(datasource_mgr->mysql_rv_path);
-            }
-          datasource_mgr->mysql_rv_path = strdup(option_value);
+          datasource_mgr->mysql_dump_path = strdup(option_value);
           break;
         }
       break;
@@ -262,8 +254,7 @@ void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
                                                                    datasource_mgr->mysql_host,
                                                                    datasource_mgr->mysql_port,
                                                                    datasource_mgr->mysql_socket,
-                                                                   datasource_mgr->mysql_ris_path,
-                                                                   datasource_mgr->mysql_rv_path);
+                                                                   datasource_mgr->mysql_dump_path);
       ds = (void *) datasource_mgr->mysql_ds;
       break;
 
@@ -422,13 +413,9 @@ void bgpstream_datasource_mgr_destroy(bgpstream_datasource_mgr_t *datasource_mgr
     {
       free(datasource_mgr->mysql_socket);
     }
-  if(datasource_mgr->mysql_ris_path!=NULL)
+  if(datasource_mgr->mysql_dump_path!=NULL)
     {
-      free(datasource_mgr->mysql_ris_path);
-    }
-  if(datasource_mgr->mysql_rv_path!=NULL)
-    {
-      free(datasource_mgr->mysql_rv_path);
+      free(datasource_mgr->mysql_dump_path);
     }
   free(datasource_mgr);  
   bgpstream_debug("\tBSDS_MGR: destroy end");

@@ -43,7 +43,7 @@
       {                                                                 \
         return NULL;                                                    \
       }                                                                 \
-    strncat(mysql_ds->sql_query, str, rem_buf_space);                  \
+    strncat(mysql_ds->sql_query, str, rem_buf_space);                   \
     rem_buf_space -= len;                                               \
   } while(0)
 
@@ -60,8 +60,8 @@ struct struct_bgpstream_mysql_datasource_t {
   unsigned int mysql_port;
   char *mysql_socket;
   /* command-line options */
-  char *mysql_ris_path;
-  char *mysql_rv_path;
+  char *mysql_dump_path;
+
   /* query text */
   char sql_query[MAX_QUERY_LEN];
   /* mysql statement */
@@ -94,8 +94,7 @@ bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter
 								       char * mysql_host,
                                                                        unsigned int mysql_port,
 								       char * mysql_socket,
-                                                                       char * mysql_ris_path,
-                                                                       char * mysql_rv_path)
+                                                                       char * mysql_dump_path)
 {
   bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds start");
   
@@ -103,6 +102,10 @@ bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter
   if(mysql_ds == NULL) {
     return NULL; // can't allocate memory
   }
+
+  MYSQL_RES *path_result;
+  MYSQL_ROW path_row;
+  
   // set up options or provide defaults
   // default: bgparchive
   if(mysql_dbname == NULL)
@@ -155,22 +158,13 @@ bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter
       mysql_ds->mysql_port = mysql_port;      
     }
   // default: NULL (data is taken from db)
-  if(mysql_ris_path == NULL)
+  if(mysql_dump_path == NULL)
     {
-      mysql_ds->mysql_ris_path = NULL;      
+      mysql_ds->mysql_dump_path = NULL;      
     }
   else 
     {
-      mysql_ds->mysql_ris_path = strdup(mysql_ris_path);
-    }
-  // default: NULL (data is taken from db)
-  if(mysql_rv_path == NULL)
-    {
-      mysql_ds->mysql_rv_path = NULL;      
-    }
-  else 
-    {
-      mysql_ds->mysql_rv_path = strdup(mysql_rv_path);
+      mysql_ds->mysql_dump_path = strdup(mysql_dump_path);
     }
 
   
@@ -193,13 +187,12 @@ bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter
   /*         "db: %s " */
   /*         "port: %u " */
   /*         "socket: %s\n" */
-  /*         "RIS path: %s \n" */
-  /*         "RV path: %s \n", */
+  /*         "dump path: %s \n", */
   /*         mysql_ds->mysql_host, */
   /*         mysql_ds->mysql_user, mysql_ds->mysql_password,  */
   /*         mysql_ds->mysql_dbname, mysql_ds->mysql_port, */
   /*         mysql_ds->mysql_socket, */
-  /*         mysql_ds->mysql_ris_path, mysql_ds->mysql_rv_path); */
+  /*         mysql_ds->mysql_dump_path); */
           
   // Establish a connection to the database
   bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds mysql connection establishment");
@@ -222,6 +215,27 @@ bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter
   else{
     bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds set time_zone something wrong"); 
   }
+
+  /* if the user did not provide a path, we extract it from the db */
+  if(mysql_ds->mysql_dump_path == NULL)
+    {
+      if (mysql_query(mysql_ds->mysql_con, "SELECT path FROM info") == 0) 
+        {
+          path_result = mysql_store_result(mysql_ds->mysql_con);
+          if (path_result != NULL)
+            {
+                if((path_row = mysql_fetch_row(path_result)))
+                {
+                  mysql_ds->mysql_dump_path = strdup(path_row[0]);
+                }
+            }
+          mysql_free_result(path_result);
+        }
+      else
+        {
+          bgpstream_debug("\t\tBSDS_MYSQL: can't query the database"); 
+        }     
+    }
 
   /* how many characters can be written in the query buffer */
   size_t rem_buf_space = MAX_QUERY_LEN;
@@ -483,32 +497,18 @@ build_filename(bgpstream_mysql_datasource_t *ds) {
   }
 
   // default path
-  char *path_string = ds->proj_path_res;
-  
-  // project is r[o]uteviews and rv path is set
-  if(ds->mysql_rv_path != NULL && ds->proj_name_res[1] == 'o')
-    {
-      path_string = ds->mysql_rv_path;
-    }
-  
-  // project is r[i]s and ris path is set
-  if(ds->mysql_ris_path != NULL && ds->proj_name_res[1] == 'i')
-    {
-      path_string = ds->mysql_ris_path;
-    }
-
-  if(sprintf(filename, "%s/%s/%s/%s/%s.%s.%s.%d.%s",
-	   path_string, ds->coll_path_res,
-	   ds->type_path_res, date,
-	   ds->proj_name_res, ds->coll_name_res,
-	   ds->type_name_res, ds->filetime_res,
-	   ds->file_ext_res
+  if(sprintf(filename, "%s/%s/%s/%s/%s/%s.%s.%s.%d.%s",
+             ds->mysql_dump_path, ds->proj_path_res, ds->coll_path_res,
+             ds->type_path_res, date,
+             ds->proj_name_res, ds->coll_name_res,
+             ds->type_name_res, ds->filetime_res,
+             ds->file_ext_res
              ) -1 > 4095)
     {
       fprintf(stderr, "Error, trying to write a file name larger than 4095 characters!\n");
       return NULL;
     }
-
+  
   return strdup(filename);
 }
 
@@ -694,14 +694,11 @@ bgpstream_mysql_datasource_destroy(bgpstream_mysql_datasource_t* mysql_ds) {
     {
       free(mysql_ds->mysql_socket);
     }
-  if(mysql_ds->mysql_ris_path != NULL)
+  if(mysql_ds->mysql_dump_path != NULL)
     {
-      free(mysql_ds->mysql_ris_path);
+      free(mysql_ds->mysql_dump_path);
     }
-  if(mysql_ds->mysql_rv_path != NULL)
-    {
-      free(mysql_ds->mysql_rv_path);
-    }
+
   free(mysql_ds);
   bgpstream_debug("\t\tBSDS_MYSQL: destroy mysql_ds end");
   return;

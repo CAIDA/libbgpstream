@@ -146,19 +146,12 @@ static bgpstream_data_interface_option_t bgpstream_mysql_options[] = {
     "db-socket",
     "Unix socket of the mysql server (default: " STR(BGPSTREAM_DS_MYSQL_DB_SOCKET) ")",
   },
-  /* RIS data path */
+  /* Common MRT data path */
   {
     BGPSTREAM_DATA_INTERFACE_MYSQL,
     6,
-    "ris-path",
-    "Prefix path of RIS data (default: " STR(BGPSTREAM_DS_MYSQL_RIS_PATH) ")",
-  },
-  /* Routeviews data path */
-  {
-    BGPSTREAM_DATA_INTERFACE_MYSQL,
-    7,
-    "rv-path",
-    "prefix path of RouteViews data (default: " STR(BGPSTREAM_DS_MYSQL_RV_PATH) ")",
+    "dump-path",
+    "Common prefix path for MRT data (default:  " STR(BGPSTREAM_DS_MYSQL_DUMP_PATH) ")",
   },
 };
 
