@@ -57,8 +57,7 @@ typedef struct struct_bgpstream_datasource_mgr_t {
   char *mysql_host;
   unsigned int mysql_port;
   char *mysql_socket;
-  char *mysql_ris_path;
-  char *mysql_rv_path;
+  char *mysql_dump_path;
   char *singlefile_rib_mrtfile;
   char *singlefile_upd_mrtfile;
   char *csvfile_file;

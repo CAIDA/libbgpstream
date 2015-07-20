@@ -40,8 +40,7 @@ bgpstream_mysql_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
                                   char * mysql_host,
                                   unsigned int mysql_port,
                                   char * mysql_socket,
-                                  char * mysql_ris_path,
-                                  char * mysql_rv_path);
+                                  char * mysql_dump_path);
 
 
 int

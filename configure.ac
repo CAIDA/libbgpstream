@@ -156,8 +156,8 @@ BS_DS_OPT(mysql-db-host, MYSQL_DB_HOST, MySQL server hostname/IP address, not-se
 BS_DS_OPT(mysql-db-port, MYSQL_DB_PORT, MySQL server port, not-set)
 BS_DS_OPT(mysql-db-socket, MYSQL_DB_SOCKET, MySQL server unix socket, not-set)
 
-BS_DS_OPT(mysql-ris-path, MYSQL_RIS_PATH, Prefix path for RIS data, not-set)
-BS_DS_OPT(mysql-rv-path, MYSQL_RV_PATH, Prefix path for Routeviews data, not-set)
+BS_DS_OPT(mysql-dump-path, MYSQL_DUMP_PATH, Common prefix path for MRT data, not-set)
+
 
 
 
