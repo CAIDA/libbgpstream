@@ -126,6 +126,14 @@ typedef struct bgpstream_as_path_seg_set {
 
 } __attribute__((packed)) bgpstream_as_path_seg_set_t;
 
+/** Path iterator structure */
+typedef struct bgpstream_as_path_iter {
+
+  /* current offset into the data buffer */
+  uint16_t cur_offset;
+
+} bgpstream_as_path_iter_t;
+
 /** @} */
 
 /**
@@ -224,21 +232,12 @@ void bgpstream_as_path_destroy(bgpstream_as_path_t *path);
  *
  * @param dst           pointer to the AS path structure to copy into
  * @param src           pointer to the AS path structure to copy from
- * @param first_seg_idx index of the segment to start the copy at
- * @param excl_last_seg whether to exclude the origin ASN from the copy
  * @return 0 if the copy was successful, -1 otherwise
  *
  * @note this function will overwrite any data currently in dst. If there are
  * existing borrowed segment pointers into the path they will become garbage.
- *
- * The first_seg parameter can be set to 1 to omit the peer ASN from the
- * beginning of the path. To copy the entire path, use a value of 0.
- *
- * If the excl_origin parameter is set, the last segment in the path will not be
- * copied.
  */
-int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src,
-                           int first_seg_idx, int excl_last_seg);
+int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src);
 
 /** Get the origin AS segment from the given path
  *
@@ -254,13 +253,14 @@ bgpstream_as_path_get_origin_seg(bgpstream_as_path_t *path);
 
 /** Reset the segment iterator for the given path
  *
- * @param path          pointer to the AS path to reset segment iterator for
+ * @param iter          pointer to the AS path iterator to reset
  */
-void bgpstream_as_path_reset_iter(bgpstream_as_path_t *path);
+void bgpstream_as_path_iter_reset(bgpstream_as_path_iter_t *iter);
 
 /** Get the next segment from the given path
  *
  * @param path          pointer to the AS path to get the segment from
+ * @param iter          pointer to an AS path iterator
  * @return **borrowed** pointer to the next segment, NULL if the path has no
  *         more segments
  *
@@ -269,7 +269,8 @@ void bgpstream_as_path_reset_iter(bgpstream_as_path_t *path);
  * path is valid.
  */
 bgpstream_as_path_seg_t *
-bgpstream_as_path_get_next_seg(bgpstream_as_path_t *path);
+bgpstream_as_path_get_next_seg(bgpstream_as_path_t *path,
+                               bgpstream_as_path_iter_t *iter);
 
 /** Get the number of segments in the AS Path
  *
@@ -291,17 +292,30 @@ int bgpstream_as_path_get_len(bgpstream_as_path_t *path);
  * This function is to be used when serializing a path. The returned data array
  * belongs to the path and must not be modified or freed.
  */
-size_t bgpstream_as_path_get_data(bgpstream_as_path_t *path, uint8_t **data);
+uint16_t bgpstream_as_path_get_data(bgpstream_as_path_t *path, uint8_t **data);
 
 /** Populate the given AS Path from the given byte array
+ *
+ * @param path          pointer to the path to populate
+ * @param data          pointer to the data arrayg
+ * @param data_len      number of bytes in the data array
+ * @return 0 if the path was populated successfully, -1 otherwise
+ */
+int bgpstream_as_path_populate_from_data(bgpstream_as_path_t *path,
+                                         uint8_t *data, uint16_t data_len);
+
+/** Populate the given AS Path from the given byte array (Zero Copy)
  *
  * @param path          pointer to the path to populate
  * @param data          pointer to the data array
  * @param data_len      number of bytes in the data array
  * @return 0 if the path was populated successfully, -1 otherwise
+ *
+ * @note this function **does not** copy the data into the path. The path is
+ * only valid as long as the data array passed to this function is valid.
  */
-int bgpstream_as_path_populate_from_data(bgpstream_as_path_t *path,
-                                         uint8_t *data, size_t data_len);
+int bgpstream_as_path_populate_from_data_zc(bgpstream_as_path_t *path,
+                                            uint8_t *data, uint16_t data_len);
 
 /** Hash the given AS path into a 32bit number
  *

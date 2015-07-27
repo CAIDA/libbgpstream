@@ -23,6 +23,8 @@
 
 #include "bgpstream_utils_as_path.h"
 
+#include "bgpdump_lib.h"
+
 /** @file
  *
  * @brief Header file that exposes the private interface of BGP Stream AS
@@ -59,6 +61,24 @@
  *
  * @{ */
 
+struct bgpstream_as_path {
+
+  /* byte array of segments */
+  uint8_t *data;
+
+  /* length of the byte array in use */
+  uint16_t data_len;
+
+  /* allocated length of the byte array */
+  uint16_t data_alloc_len;
+
+  /** The number of segments in the path */
+  uint16_t seg_cnt;
+
+  /* offset of the origin segment */
+  uint16_t origin_offset;
+
+};
 
 /** @} */
 
@@ -76,6 +96,11 @@
 int bgpstream_as_path_populate(bgpstream_as_path_t *path,
                                struct aspath *bd_path);
 
+/** Update the internal fields once the data array has been changed
+ *
+ * @param path          pointer to the AS Path to update
+ */
+void bgpstream_as_path_update_fields(bgpstream_as_path_t *path);
 
 /** @} */
 

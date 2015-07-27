@@ -84,7 +84,7 @@ bgpstream_elem_t *bgpstream_elem_copy(bgpstream_elem_t *dst,
   /* restore all ptrs */
   dst->aspath = dst_aspath;
 
-  if(bgpstream_as_path_copy(dst->aspath, src->aspath, 0, 0) != 0)
+  if(bgpstream_as_path_copy(dst->aspath, src->aspath) != 0)
     {
       return NULL;
     }

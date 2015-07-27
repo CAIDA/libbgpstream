@@ -27,7 +27,7 @@
 #include "khash.h"
 #include "utils.h"
 
-#include "bgpstream_utils_as_path.h"
+#include "bgpstream_utils_as_path_int.h"
 
 #define SIZEOF_SEG_SET(segp)                                            \
   (sizeof(bgpstream_as_path_seg_set_t) +                                \
@@ -38,30 +38,8 @@
    sizeof(bgpstream_as_path_seg_asn_t) :                \
    SIZEOF_SEG_SET(segp))
 
-#define CUR_SEG(path)                           \
-  ((bgpstream_as_path_seg_t *)(path->data+path->cur_offset))
-
-struct bgpstream_as_path {
-
-  /* byte array of segments */
-  uint8_t *data;
-
-  /* length of the byte array in use */
-  size_t data_len;
-
-  /* allocated length of the byte array */
-  size_t data_alloc_len;
-
-  /** The number of segments in the path */
-  int seg_cnt;
-
-  /* current offset into the data buffer (for iterating) */
-  size_t cur_offset;
-
-  /* offset of the origin segment */
-  ssize_t origin_offset;
-
-};
+#define CUR_SEG(path, iter)                                     \
+  ((bgpstream_as_path_seg_t *)((path)->data+(iter)->cur_offset))
 
 static bgpstream_as_path_seg_asn_t *seg_asn_dup(bgpstream_as_path_seg_asn_t *src)
 {
@@ -205,6 +183,7 @@ void bgpstream_as_path_seg_destroy(bgpstream_as_path_seg_t *seg)
   return;
 }
 
+inline
 #if UINT_MAX == 0xffffffffu
 unsigned int
 #elif ULONG_MAX == 0xffffffffu
@@ -259,14 +238,15 @@ int bgpstream_as_path_seg_equal(bgpstream_as_path_seg_t *seg1,
 int bgpstream_as_path_snprintf(char *buf, size_t len,
                                bgpstream_as_path_t *path)
 {
+  bgpstream_as_path_iter_t iter;
   size_t written = 0;
   bgpstream_as_path_seg_t *seg;
   int need_sep = 0;
   char *bufp = buf;
 
   /* iterate through the path and print each segment */
-  bgpstream_as_path_reset_iter(path);
-  while((seg = bgpstream_as_path_get_next_seg(path)) != NULL)
+  bgpstream_as_path_iter_reset(&iter);
+  while((seg = bgpstream_as_path_get_next_seg(path, &iter)) != NULL)
     {
       if(need_sep != 0)
         {
@@ -294,7 +274,7 @@ bgpstream_as_path_t *bgpstream_as_path_create()
       return NULL;
     }
 
-  path->origin_offset = -1;
+  path->origin_offset = UINT16_MAX;
 
   return path;
 }
@@ -303,29 +283,58 @@ void bgpstream_as_path_clear(bgpstream_as_path_t *path)
 {
   path->data_len = 0;
   path->seg_cnt = 0;
-  path->cur_offset = 0;
-  path->origin_offset = -1;
+  path->origin_offset = UINT16_MAX;
 }
 
 void bgpstream_as_path_destroy(bgpstream_as_path_t *path)
 {
-  free(path->data);
+  if(path->data_alloc_len != UINT16_MAX)
+    {
+      free(path->data);
+    }
   path->data = NULL;
   path->data_alloc_len = 0;
   bgpstream_as_path_clear(path);
   free(path);
 }
 
+int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src)
+{
+  if(dst->data_alloc_len == UINT16_MAX)
+    {
+      /* no longer points to external memory */
+      dst->data_alloc_len = 0;
+    }
+  if(dst->data_alloc_len < src->data_len)
+    {
+      if((dst->data = realloc(dst->data, src->data_len)) == NULL)
+        {
+          return -1;
+        }
+      dst->data_alloc_len = src->data_len;
+    }
+
+  memcpy(dst->data, src->data, src->data_len);
+  dst->data_len = src->data_len;
+
+  dst->seg_cnt = src->seg_cnt;
+  dst->origin_offset = src->origin_offset;
+
+  return 0;
+}
+
+#if 0
+/* AK deprecates this version of the copy as it is unused and overly complex */
 int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src,
                            int first_seg_idx, int excl_last_seg)
 {
-  size_t new_len = src->data_len;
-  int new_seg_cnt = src->seg_cnt;
+  uint16_t new_len = src->data_len;
+  uint16_t new_seg_cnt = src->seg_cnt;
   int i;
   bgpstream_as_path_seg_t *seg;
-  size_t seg_size = 0;
-  size_t new_begin_offset = 0;
-  size_t new_origin_offset = 0;
+  uint16_t seg_size = 0;
+  uint16_t new_begin_offset = 0;
+  uint16_t new_origin_offset = 0;
 
   /* set dst to the empty path */
   bgpstream_as_path_clear(dst);
@@ -336,7 +345,7 @@ int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src,
       return 0;
     }
 
-  assert(src->origin_offset >= 0);
+  assert(src->origin_offset != UINT16_MAX);
 
   if(excl_last_seg != 0)
     {
@@ -394,12 +403,11 @@ int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src,
   dst->data_len = new_len;
   dst->seg_cnt = new_seg_cnt;
 
-  bgpstream_as_path_reset_iter(dst);
-
   dst->origin_offset = new_origin_offset - new_begin_offset;
 
   return 0;
 }
+#endif
 
 bgpstream_as_path_seg_t *
 bgpstream_as_path_get_origin_seg(bgpstream_as_path_t *path)
@@ -412,34 +420,36 @@ bgpstream_as_path_get_origin_seg(bgpstream_as_path_t *path)
     }
 
   assert(path->data != NULL);
+  assert(path->origin_offset != UINT16_MAX);
 
   return (bgpstream_as_path_seg_t*)(path->data+path->origin_offset);
 }
 
-void bgpstream_as_path_reset_iter(bgpstream_as_path_t *path)
+void bgpstream_as_path_iter_reset(bgpstream_as_path_iter_t *iter)
 {
-  path->cur_offset = 0;
+  iter->cur_offset = 0;
 }
 
 bgpstream_as_path_seg_t *
-bgpstream_as_path_get_next_seg(bgpstream_as_path_t *path)
+bgpstream_as_path_get_next_seg(bgpstream_as_path_t *path,
+                               bgpstream_as_path_iter_t *iter)
 {
   bgpstream_as_path_seg_t *cur_seg;
 
   /* end of path */
-  if(path->data_len == 0 || path->cur_offset >= path->data_len)
+  if(path->data_len == 0 || iter->cur_offset >= path->data_len)
     {
       return NULL;
     }
 
-  cur_seg = CUR_SEG(path);
+  cur_seg = CUR_SEG(path, iter);
 
   /* be sure that this segment is not corrupt */
-  assert((path->cur_offset + SIZEOF_SEG(cur_seg)) <= path->data_len);
+  assert((iter->cur_offset + SIZEOF_SEG(cur_seg)) <= path->data_len);
   assert(cur_seg->type != BGPSTREAM_AS_PATH_SEG_INVALID);
 
   /* calculate the size of the current segment and skip over it*/
-  path->cur_offset += SIZEOF_SEG(cur_seg);
+  iter->cur_offset += SIZEOF_SEG(cur_seg);
 
   return cur_seg;
 }
@@ -449,7 +459,7 @@ int bgpstream_as_path_get_len(bgpstream_as_path_t *path)
   return path->seg_cnt;
 }
 
-size_t bgpstream_as_path_get_data(bgpstream_as_path_t *path, uint8_t **data)
+uint16_t bgpstream_as_path_get_data(bgpstream_as_path_t *path, uint8_t **data)
 {
   assert(data != NULL);
   if(path == NULL)
@@ -464,17 +474,19 @@ size_t bgpstream_as_path_get_data(bgpstream_as_path_t *path, uint8_t **data)
     }
 }
 
-/** @todo consider making a populate_zero_copy function that refs external
-    memory */
 int bgpstream_as_path_populate_from_data(bgpstream_as_path_t *path,
-                                         uint8_t *data, size_t data_len)
+                                         uint8_t *data, uint16_t data_len)
 {
-  size_t offset = 0;
-  bgpstream_as_path_seg_t *seg;
-
   assert(path != NULL);
 
   bgpstream_as_path_clear(path);
+
+  if(path->data_alloc_len == UINT16_MAX)
+    {
+      /* the data is not owned by us */
+      path->data_alloc_len = 0;
+      path->data = NULL;
+    }
 
   if(path->data_alloc_len < data_len)
     {
@@ -488,18 +500,36 @@ int bgpstream_as_path_populate_from_data(bgpstream_as_path_t *path,
   memcpy(path->data, data, data_len);
   path->data_len = data_len;
 
-  /* walk the path to find the seg_cnt and origin_offset */
-  bgpstream_as_path_reset_iter(path);
-  path->seg_cnt = 0;
-
-  while((seg = bgpstream_as_path_get_next_seg(path)) != NULL)
-    {
-      path->origin_offset = offset;
-      path->seg_cnt++;
-      offset += SIZEOF_SEG(seg);
-    }
+  bgpstream_as_path_update_fields(path);
 
   return 0;
+}
+
+int bgpstream_as_path_populate_from_data_zc(bgpstream_as_path_t *path,
+                                            uint8_t *data, uint16_t data_len)
+{
+  assert(path != NULL);
+
+  bgpstream_as_path_clear(path);
+
+  /* signal that this is external data */
+  path->data_alloc_len = UINT16_MAX;
+  path->data = data;
+  path->data_len = data_len;
+
+  bgpstream_as_path_update_fields(path);
+
+  return 0;
+}
+
+/* from http://burtleburtle.net/bob/hash/integer.html */
+static inline uint32_t
+mixbits(uint32_t a)
+{
+    a = a ^ (a>>4);
+    a = (a^0xdeadbeef) + (a<<5);
+    a = a ^ (a>>11);
+    return a;
 }
 
 #if UINT_MAX == 0xffffffffu
@@ -509,43 +539,31 @@ unsigned long
 #endif
 bgpstream_as_path_hash(bgpstream_as_path_t *path)
 {
-  uint32_t hash;
-  bgpstream_as_path_seg_t *seg;
-
   if(path->data_len > 0)
     {
       /* put the peer (ish) hash into the top bits */
-      seg = (bgpstream_as_path_seg_t*)path->data;
-      hash = (bgpstream_as_path_seg_hash(seg) & 0xFFFF) << 16;
-
-      /* put the origin hash into the bottom bits */
-      seg = bgpstream_as_path_get_origin_seg(path);
-      hash |= bgpstream_as_path_seg_hash(seg) & 0xFFFF;
+      /* and put the origin hash into the bottom bits */
+      return
+        mixbits(
+          ((bgpstream_as_path_seg_hash((bgpstream_as_path_seg_t*)path->data)
+            & 0xFFFF) << 8)
+          |
+          (bgpstream_as_path_seg_hash(
+                     (bgpstream_as_path_seg_t*)(path->data+path->origin_offset))
+           & 0xFFFF)
+        );
     }
   else
     {
-      hash = 0;
+      return 0;
     }
-
-  return hash;
 }
 
-int bgpstream_as_path_equal(bgpstream_as_path_t *path1,
-                            bgpstream_as_path_t *path2)
+inline int bgpstream_as_path_equal(bgpstream_as_path_t *path1,
+                                   bgpstream_as_path_t *path2)
 {
-  if(path1->data_len != path2->data_len)
-    {
-      return 0;
-    }
-  if(path1->seg_cnt != path2->seg_cnt)
-    {
-      return 0;
-    }
-  if(bcmp(path1->data, path2->data, path1->data_len) != 0)
-    {
-      return 0;
-    }
-  return 1;
+  return (path1->data_len == path2->data_len) &&
+    !bcmp(path1->data, path2->data, path1->data_len);
 }
 
 
@@ -619,7 +637,9 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
 
   struct assegment *bd_seg;
   bgpstream_as_path_seg_t *seg;
+  bgpstream_as_path_iter_t iter;
 
+  /* careful, this is stored into a uint16_t */
   size_t new_len;
 
   int i;
@@ -636,6 +656,7 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
 
   /* we are going to overwrite the current path */
   bgpstream_as_path_clear(path);
+  bgpstream_as_path_iter_reset(&iter);
 
   bgpstream_as_path_seg_type_t last_type = BGPSTREAM_AS_PATH_SEG_ASN;
 
@@ -665,12 +686,14 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
         {
           new_len = path->data_len +
             (sizeof(bgpstream_as_path_seg_asn_t) * bd_seg->length);
+          assert(new_len < UINT16_MAX);
         }
       else
         {
           /* a set */
           new_len = path->data_len + sizeof(bgpstream_as_path_seg_set_t) +
             (sizeof(uint32_t) * bd_seg->length);
+          assert(new_len < UINT16_MAX);
         }
 
       if(path->data_alloc_len < new_len)
@@ -683,7 +706,7 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
         }
       path->data_len = new_len;
 
-      seg = CUR_SEG(path);
+      seg = CUR_SEG(path, &iter);
       switch(bd_seg->type)
         {
         case AS_SET:
@@ -715,7 +738,7 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
 
       if(bd_seg->type != AS_SEQUENCE)
         {
-          path->origin_offset = path->cur_offset;
+          path->origin_offset = iter.cur_offset;
           ((bgpstream_as_path_seg_set_t*)seg)->asn_cnt = bd_seg->length;
         }
 
@@ -743,10 +766,10 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
               ((bgpstream_as_path_seg_asn_t*)seg)->asn = asn;
 
               /* move on */
-              path->origin_offset = path->cur_offset;
-              path->cur_offset += sizeof(bgpstream_as_path_seg_asn_t);
+              path->origin_offset = iter.cur_offset;
+              iter.cur_offset += sizeof(bgpstream_as_path_seg_asn_t);
               path->seg_cnt++;
-              seg = CUR_SEG(path);
+              seg = CUR_SEG(path, &iter);
             }
           else
             {
@@ -756,14 +779,12 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
 
       if(bd_seg->type != AS_SEQUENCE)
         {
-          path->cur_offset = new_len;
+          iter.cur_offset = new_len;
           path->seg_cnt++;
         }
 
       ptr += (bd_seg->length * bd_path->asn_len) + AS_HEADER_SIZE;
     }
-
-  bgpstream_as_path_reset_iter(path);
 
   /* the following will cause a performance hit. only enable if debugging path
      parsing */
@@ -774,7 +795,10 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
     {
       fprintf(stdout, "warn: as path string populated\n");
     }
-  process_attr_aspath_string(bd_path);
+  else
+    {
+      process_attr_aspath_string(bd_path);
+    }
   if(written >= 8000 || strcmp(buffer, bd_path->str) != 0)
     {
       fprintf(stderr, "Written: %lu\n", written);
@@ -790,4 +814,22 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
 #endif
 
   return 0;
+}
+
+void bgpstream_as_path_update_fields(bgpstream_as_path_t *path)
+{
+  bgpstream_as_path_iter_t iter;
+  uint16_t offset = 0;
+  bgpstream_as_path_seg_t *seg;
+
+  /* walk the path to find the seg_cnt and origin_offset */
+  bgpstream_as_path_iter_reset(&iter);
+  path->seg_cnt = 0;
+
+  while((seg = bgpstream_as_path_get_next_seg(path, &iter)) != NULL)
+    {
+      path->origin_offset = offset;
+      path->seg_cnt++;
+      offset += SIZEOF_SEG(seg);
+    }
 }
