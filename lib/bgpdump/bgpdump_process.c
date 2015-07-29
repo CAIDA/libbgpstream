@@ -57,7 +57,7 @@ static void table_line_announce6(struct mp_nlri *prefix,int count,BGPDUMP_ENTRY 
 static char *attr_aspath(attributes_t *a) {
   if(a->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) && a->aspath) {
     if(!a->aspath->str) {
-      process_attr_aspath_string(a->aspath);
+      process_attr_aspath_string(a->aspath, 1);
     }
     return a->aspath->str;
   }
@@ -749,7 +749,7 @@ static void show_attr(attributes_t *attr) {
       }
 
     if (!attr->aspath->str) {
-      process_attr_aspath_string(attr->aspath);
+      process_attr_aspath_string(attr->aspath, 1);
     }
 
     if( (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_AS_PATH) ) !=0)		
@@ -1440,7 +1440,7 @@ static void table_line_dump_v2_prefix(BGPDUMP_TABLE_DUMP_V2_PREFIX *e,BGPDUMP_EN
         
     char *origin = describe_origin(attr->origin);
     if (attr->aspath && !attr->aspath->str) { // AK HAX
-      process_attr_aspath_string(attr->aspath);
+      process_attr_aspath_string(attr->aspath, 1);
     }
     char *aspath_str = (attr->aspath) ? attr->aspath->str: "";
     char *aggregate = attr->flag & ATTR_FLAG_BIT(BGP_ATTR_ATOMIC_AGGREGATE) ? "AG" : "NAG";
