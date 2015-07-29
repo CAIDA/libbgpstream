@@ -66,7 +66,7 @@ void	bgpdump_close_dump(BGPDUMP *dump);
 BGPDUMP_ENTRY*	bgpdump_read_next(BGPDUMP *dump);
 void	bgpdump_free_mem(BGPDUMP_ENTRY *entry);
 
-void process_attr_aspath_string(struct aspath *as);
+void process_attr_aspath_string(struct aspath *as, int buildstring);
 
 char *bgpdump_version(void);
 

@@ -983,16 +983,21 @@ void aspath_error(struct aspath *as) {
   strcpy(as->str, ASPATH_STR_ERROR);
 }
 
-void process_attr_aspath_string(struct aspath *as) {
+/* AK adds buildstring flag as this func is used by bgpdump just to get the
+   number of hops (as->count) */
+void process_attr_aspath_string(struct aspath *as, int buildstring) {
 
   const int MAX_ASPATH_LEN = 8000;
 
-  /* We could probably just skip processing, but lets play it safe  --AK */
-  if (as->str != NULL) {
-    free(as->str);
-    as->str = NULL;
+  if (buildstring) {
+    /* We could probably just skip processing, but lets play it safe  --AK */
+    if (as->str != NULL) {
+      free(as->str);
+      as->str = NULL;
+    }
+    as->str = malloc(MAX_ASPATH_LEN);
   }
-  as->str = malloc(MAX_ASPATH_LEN);
+
   as->count = 0;
 
   /* Set default values */
@@ -1032,18 +1037,20 @@ void process_attr_aspath_string(struct aspath *as) {
 	return;
       }
 
-    /* If segment type is changed, print previous type's end
-       character. */
-    if (type != AS_SEQUENCE)
-      as->str[pos++] = aspath_delimiter_char (type, AS_SEG_END);
-    
-    if (space)
-      as->str[pos++] = ' ';
+    if (buildstring) {
+      /* If segment type is changed, print previous type's end
+         character. */
+      if (type != AS_SEQUENCE)
+        as->str[pos++] = aspath_delimiter_char (type, AS_SEG_END);
 
-    if (segment->type != AS_SEQUENCE)
-      as->str[pos++] = aspath_delimiter_char (segment->type, AS_SEG_START);
+      if (space)
+        as->str[pos++] = ' ';
 
-    space = 0;
+      if (segment->type != AS_SEQUENCE)
+        as->str[pos++] = aspath_delimiter_char (segment->type, AS_SEG_START);
+
+      space = 0;
+    }
 
     /* Increment as->count - NOT ignoring CONFED_SETS/SEQUENCES any more.
        I doubt anybody was relying on this behaviour anyway. */
@@ -1058,51 +1065,55 @@ void process_attr_aspath_string(struct aspath *as) {
       break;
     }
 
-    for (i = 0; i < segment->length; i++)
-      {
-	as_t asn;
+    if (buildstring) {
+      for (i = 0; i < segment->length; i++)
+        {
+          as_t asn;
 
-	if (space)
-	  {
-	    if (segment->type == AS_SET
-		|| segment->type == AS_CONFED_SET)
-	      as->str[pos++] = ',';
-	    else
-	      as->str[pos++] = ' ';
-	  }
-	else
-	  space = 1;
+          if (space)
+            {
+              if (segment->type == AS_SET
+                  || segment->type == AS_CONFED_SET)
+                as->str[pos++] = ',';
+              else
+                as->str[pos++] = ' ';
+            }
+          else
+            space = 1;
 
-	int asn_pos = i * as->asn_len;
-	switch(as->asn_len) {
-	case ASN16_LEN:
-	  memcpy(&tmp16, segment->data+asn_pos, sizeof(u_int16_t));
-	  asn = ntohs (tmp16);
-	  break;
-	case ASN32_LEN:
-	  memcpy(&tmp32, segment->data+asn_pos, sizeof(u_int32_t));
-	  asn = ntohl (tmp32);
-	  break;
-	default:
-	  assert("invalid asn_len" && false);
-          return;
-	}
+          int asn_pos = i * as->asn_len;
+          switch(as->asn_len) {
+          case ASN16_LEN:
+            memcpy(&tmp16, segment->data+asn_pos, sizeof(u_int16_t));
+            asn = ntohs (tmp16);
+            break;
+          case ASN32_LEN:
+            memcpy(&tmp32, segment->data+asn_pos, sizeof(u_int32_t));
+            asn = ntohl (tmp32);
+            break;
+          default:
+            assert("invalid asn_len" && false);
+            return;
+          }
 
-	pos += bgpdump_int2str(asn, as->str + pos);
-	if(pos > MAX_ASPATH_LEN - 100) {
-	  strcpy(as->str + pos, "...");
-	  return;
-	};
-      }
+          pos += bgpdump_int2str(asn, as->str + pos);
+          if(pos > MAX_ASPATH_LEN - 100) {
+            strcpy(as->str + pos, "...");
+            return;
+          };
+        }
+    }
 
     type = segment->type;
     pnt += (segment->length * as->asn_len) + AS_HEADER_SIZE;
   }
 
-  if (segment && segment->type != AS_SEQUENCE)
-    as->str[pos++] = aspath_delimiter_char (segment->type, AS_SEG_END);
+  if (buildstring) {
+    if (segment && segment->type != AS_SEQUENCE)
+      as->str[pos++] = aspath_delimiter_char (segment->type, AS_SEG_END);
 
-  as->str[pos] = '\0';
+    as->str[pos] = '\0';
+  }
 }
 
 char aspath_delimiter_char (u_char type, u_char which) {
@@ -1372,7 +1383,8 @@ void process_asn32_trans(attributes_t *attr, u_int8_t asn_len) {
   // AK HAX: This code requries the aspath->count field to be populated. This is
   // (unfortunately) computed by the process_attr_aspath_string function, so we
   // call it here.
-  process_attr_aspath_string(attr->aspath);
+  process_attr_aspath_string(attr->aspath, 0);
+  process_attr_aspath_string(attr->new_aspath, 0);
 
   // attr->aspath may be NULL, at least in case of MP_UNREACH_NLRI
   if(attr->aspath == NULL) return;
