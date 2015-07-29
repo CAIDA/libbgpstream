@@ -1035,6 +1035,7 @@ collector_process_valid_bgpinfo(routingtables_t *rt,
   bgpstream_elem_t *elem;
   bgpstream_peer_id_t peer_id;
   perpeer_info_t *p;
+  bgpstream_as_path_iter_t pi;
   bgpstream_as_path_seg_t *seg;
 
   int khret;
@@ -1082,8 +1083,8 @@ collector_process_valid_bgpinfo(routingtables_t *rt,
           /* in order to avoid to maintain status for route servers, we only accept 
            * reachability information from external BGP sessions that do prepend their
            * peer AS number */
-          bgpstream_as_path_reset_iter(elem->aspath);          
-          seg = bgpstream_as_path_get_next_seg(elem->aspath);
+          bgpstream_as_path_iter_reset(&pi);
+          seg = bgpstream_as_path_get_next_seg(elem->aspath, &pi);
           if(seg->type == BGPSTREAM_AS_PATH_SEG_ASN && ((bgpstream_as_path_seg_asn_t *) seg)->asn != elem->peer_asnumber)
             {
               continue;
