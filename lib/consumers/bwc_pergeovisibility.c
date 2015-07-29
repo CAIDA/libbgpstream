@@ -83,7 +83,7 @@ typedef enum {
 
 typedef struct visibility_counters {
   uint32_t visible_pfxs;
-  uint64_t visibile_ips;
+  uint64_t visible_ips;
   uint32_t ff_peer_asns_sum;  
 } visibility_counters_t;
 
@@ -146,7 +146,7 @@ update_visibility_counters(visibility_counters_t *visibility_counters, uint8_t n
     }
 
   visibility_counters[VIS_1_FF_ASN].visible_pfxs++;
-  visibility_counters[VIS_1_FF_ASN].visibile_ips += ips;
+  visibility_counters[VIS_1_FF_ASN].visible_ips += ips;
   visibility_counters[VIS_1_FF_ASN].ff_peer_asns_sum += asns_count;
 
   ratio = (double) asns_count / (double) vX_ff;
@@ -154,25 +154,25 @@ update_visibility_counters(visibility_counters_t *visibility_counters, uint8_t n
   if(ratio == 1)
     {
       visibility_counters[VIS_100_PERCENT].visible_pfxs++;
-      visibility_counters[VIS_100_PERCENT].visibile_ips += ips;
+      visibility_counters[VIS_100_PERCENT].visible_ips += ips;
       visibility_counters[VIS_100_PERCENT].ff_peer_asns_sum += asns_count;
     }
   if(ratio >= 0.75)
     {
       visibility_counters[VIS_75_PERCENT].visible_pfxs++;
-      visibility_counters[VIS_75_PERCENT].visibile_ips += ips;
+      visibility_counters[VIS_75_PERCENT].visible_ips += ips;
       visibility_counters[VIS_75_PERCENT].ff_peer_asns_sum += asns_count;
     }
   if(ratio >= 0.5)
     {
       visibility_counters[VIS_50_PERCENT].visible_pfxs++;
-      visibility_counters[VIS_50_PERCENT].visibile_ips += ips;
+      visibility_counters[VIS_50_PERCENT].visible_ips += ips;
       visibility_counters[VIS_50_PERCENT].ff_peer_asns_sum += asns_count;
     }
   if(ratio >= 0.25)
     {
       visibility_counters[VIS_25_PERCENT].visible_pfxs++;
-      visibility_counters[VIS_25_PERCENT].visibile_ips += ips;
+      visibility_counters[VIS_25_PERCENT].visible_ips += ips;
       visibility_counters[VIS_25_PERCENT].ff_peer_asns_sum += asns_count;
     }                  
 }
@@ -410,11 +410,11 @@ static int create_per_cc_metrics(bwc_t *consumer)
               fprintf(stderr, "ERROR: Could not create key metric\n"); 
             }
           
-          geo_info.visibility_counters[j].visibile_ips = 0;
+          geo_info.visibility_counters[j].visible_ips = 0;
           snprintf(buffer, BUFFER_LEN, METRIC_PREFIX_TH_FORMAT,
                    CHAIN_STATE->metric_prefix, countries[i]->continent, countries[i]->iso2,
                    bgpstream_ipv2number(BGPSTREAM_ADDR_VERSION_IPV4),
-                   threshold_string(j), "visibile_ips_cnt");             
+                   threshold_string(j), "visible_ips_cnt");
           if((geo_info.visible_ips_idx[j] = timeseries_kp_add_key(STATE->kp_v4, buffer)) == -1)
             {
               fprintf(stderr, "ERROR: Could not create key metric\n"); 
@@ -587,8 +587,8 @@ static void dump_v4table(bwc_t *consumer)
               timeseries_kp_set(STATE->kp_v4, info->visible_pfxs_idx[i], info->visibility_counters[i].visible_pfxs);
               info->visibility_counters[i].visible_pfxs = 0;
 
-              timeseries_kp_set(STATE->kp_v4, info->visible_ips_idx[i], info->visibility_counters[i].visibile_ips);
-              info->visibility_counters[i].visibile_ips = 0;
+              timeseries_kp_set(STATE->kp_v4, info->visible_ips_idx[i], info->visibility_counters[i].visible_ips);
+              info->visibility_counters[i].visible_ips = 0;
 
               timeseries_kp_set(STATE->kp_v4, info->ff_peer_asns_sum_idx[i], info->visibility_counters[i].ff_peer_asns_sum);
               info->visibility_counters[i].ff_peer_asns_sum = 0;
