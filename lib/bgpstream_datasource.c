@@ -39,27 +39,27 @@
 
 #define GET_DEFAULT_STR_VALUE(var_store, default_value) \
   do {                                                  \
-    if(strcmp(STR(default_value), "not-set") == 0)      \
+    if(strcmp(default_value, "not-set") == 0)           \
       {                                                 \
         var_store = NULL;                               \
       }                                                 \
     else                                                \
       {                                                 \
-        var_store = strdup(STR(default_value));         \
+        var_store = strdup(default_value);              \
       }                                                 \
   } while(0)
 
 #define GET_DEFAULT_INT_VALUE(var_store, default_value) \
   do {                                                  \
-    if(strcmp(STR(default_value), "not-set") == 0)      \
+    if(strcmp(default_value, "not-set") == 0)           \
       {                                                 \
         var_store = 0;                                  \
       }                                                 \
     else                                                \
       {                                                 \
-        var_store = atoi(STR(default_value));           \
+        var_store = atoi(default_value);                \
       }                                                 \
-  } while(0)                                            
+  } while(0)
 
 
 /* datasource mgr related functions */

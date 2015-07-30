@@ -132,7 +132,7 @@ AC_ARG_WITH([$1],
   [])
 
 AC_DEFINE_UNQUOTED([BGPSTREAM_DS_$2],
-                    [$opt_val], [$3])
+                    ["$opt_val"], [$3])
 
 AC_MSG_RESULT([$opt_val])
 ])
