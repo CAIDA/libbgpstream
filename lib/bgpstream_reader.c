@@ -210,7 +210,8 @@ static bgpstream_reader_t * bgpstream_reader_create(const bgpstream_input_t * co
 
 
 static void bgpstream_reader_export_record(bgpstream_reader_t * const bs_reader, 
-					   bgpstream_record_t * const bs_record) {
+					   bgpstream_record_t * const bs_record,
+                                           const bgpstream_filter_mgr_t *const filter_mgr) {
   bgpstream_debug("\t\tBSR: export record: start");    
   if(bs_reader == NULL) {
     bgpstream_debug("\t\tBSR: export record: invalid reader provided");    
@@ -279,6 +280,26 @@ static void bgpstream_reader_export_record(bgpstream_reader_t * const bs_reader,
 		   bs_record->attributes.dump_type, 
 		   bs_record->attributes.dump_collector,
 		   bs_record->status);
+
+  /** safe option for rib period filter*/
+  char buffer[BUFFER_LEN];
+  khiter_t k;
+  int khret;
+  if(filter_mgr->rib_period != 0 &&
+     (bs_record->status == BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE ||
+      bs_record->status == BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD))
+    {
+      snprintf(buffer, BUFFER_LEN, "%s.%s",
+               bs_record->attributes.dump_project, bs_record->attributes.dump_collector);
+      if((k = kh_get(collector_ts, filter_mgr->last_processed_ts,
+                     buffer)) == kh_end(filter_mgr->last_processed_ts))
+        {
+          k = kh_put(collector_ts, filter_mgr->last_processed_ts,
+                     strdup(buffer), &khret);
+        }
+      kh_value(filter_mgr->last_processed_ts, k) = 0;
+    }
+
   bgpstream_debug("\t\tBSR: export record: end");    
 }
 
@@ -557,7 +578,7 @@ int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reade
   // disconnect reader from the queue
   bs_reader->next = NULL;
   // bgpstream_reader_export
-  bgpstream_reader_export_record(bs_reader, bs_record);
+  bgpstream_reader_export_record(bs_reader, bs_record, filter_mgr);
   // we save the difference between successful read
   // and valid read, so we can check if some valid data
   // have been discarded during the last read_new_data
