@@ -30,7 +30,7 @@
 #include "utils.h"
 
 #define WDW_LEN         (store->sviews_cnt)
-#define WDW_ITEM_TIME   60*5
+#define WDW_ITEM_TIME   (60*5)
 #define WDW_DURATION    WDW_LEN * WDW_ITEM_TIME
 
 #define BGPWATCHER_STORE_BGPVIEW_TIMEOUT 3600
