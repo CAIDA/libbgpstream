@@ -42,7 +42,7 @@
 /* shared constants are in bgpwatcher_common.h */
 
 /** The default number of views in the window */
-#define BGPWATCHER_SERVER_WINDOW_LEN 30
+#define BGPWATCHER_SERVER_WINDOW_LEN 6
 
 /** @} */
 
