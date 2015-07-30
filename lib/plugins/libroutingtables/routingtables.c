@@ -171,7 +171,7 @@ static void
 perpeer_info_destroy(void *p)
 {
   if(p != NULL)
-    {      
+    {
       if(((perpeer_info_t *)p)->announcing_ases != NULL)
         {
           bgpstream_id_set_destroy(((perpeer_info_t *)p)->announcing_ases);
@@ -216,6 +216,8 @@ perpeer_info_create(routingtables_t *rt, collector_t * c,
       goto err;
     }
 
+  p->collector_str_ptr = c->collector_str;
+
   bgpstream_peer_sig_t *sg = bgpstream_peer_sig_map_get_sig(rt->peersigns, peer_id);
 
   if(sg->peer_ip_addr.version == BGPSTREAM_ADDR_VERSION_IPV4)
@@ -247,8 +249,7 @@ perpeer_info_create(routingtables_t *rt, collector_t * c,
   p->bgp_time_uc_rib_end = 0;
   p->rib_positive_mismatches_cnt = 0;
   p->rib_negative_mismatches_cnt = 0;
-   
-  peer_generate_metrics(rt, c, p);
+  p->metrics_generated = 0;
 
   if((p->announcing_ases = bgpstream_id_set_create()) == NULL)
     {
