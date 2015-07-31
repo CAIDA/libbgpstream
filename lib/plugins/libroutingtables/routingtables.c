@@ -49,6 +49,12 @@
  *  in the routing table after the end_of_rib process). */
 #define ROUTINGTABLES_RIB_BACKLOG_TIME 60
 
+/** If a peer does not receive any data for
+ *  ROUTINGTABLES_MAX_INACTIVE_TIME and it is not
+ *  in the RIB, then it is considered UNKNOWN */ 
+#define ROUTINGTABLES_MAX_INACTIVE_TIME 3600
+
+
 /** ROUTINGTABLES_LOCAL_*_ASN is a set of constants 
  *  that is used to give special meaning to the origin
  *  AS field, all the values above ROUTINGTABLES_RESERVED_ASN_START
@@ -247,6 +253,7 @@ perpeer_info_create(routingtables_t *rt, collector_t * c,
   p->bgp_time_ref_rib_end = 0;
   p->bgp_time_uc_rib_start = 0;
   p->bgp_time_uc_rib_end = 0;
+  p->last_ts = 0;
   p->rib_positive_mismatches_cnt = 0;
   p->rib_negative_mismatches_cnt = 0;
   p->metrics_generated = 0;
@@ -589,12 +596,14 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
           /* if the uc rib start was never touched it means
            * that this peer was not part of the RIB and, therefore,
            * if it claims to be active, we deactivate it */
-          if(p->bgp_time_uc_rib_start == 0)
+          if(p->bgp_time_uc_rib_start == 0 &&
+             p->last_ts < c->bgp_time_last - ROUTINGTABLES_MAX_INACTIVE_TIME)
             {
               if(p->bgp_fsm_state == BGPSTREAM_ELEM_PEERSTATE_ESTABLISHED)
                 {
                   p->bgp_fsm_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
                   reset_peerpfxdata(rt, bgpwatcher_view_iter_peer_get_peer_id(rt->iter), 0);
+                  bgpwatcher_view_iter_pfx_deactivate_peer(rt->iter);
                 }
             }
           else
@@ -1107,7 +1116,7 @@ collector_process_valid_bgpinfo(routingtables_t *rt,
           p = perpeer_info_create(rt, c, peer_id);
           bgpwatcher_view_iter_peer_set_user(rt->iter,p);
         }
-
+      p->last_ts = record->attributes.record_time;
       
       /* insert the peer id in the collector peer ids set */
       if((k = kh_get(peer_id_set, c->collector_peerids, peer_id)) == kh_end(c->collector_peerids))
