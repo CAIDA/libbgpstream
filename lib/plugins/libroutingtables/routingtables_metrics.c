@@ -140,6 +140,8 @@ collector_generate_metrics(routingtables_t *rt, collector_t *c)
   
   c->kp_idxs.status_idx = \
     add_c_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "status");
+  c->kp_idxs.peers_cnt_idx = \
+    add_c_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "peers_cnt");
   c->kp_idxs.active_peers_cnt_idx = \
     add_c_metric(rt->kp, rt->metric_prefix, rt->plugin_name, c->collector_str, "active_peers_cnt");
   c->kp_idxs.active_asns_cnt_idx = \
@@ -208,6 +210,7 @@ enable_collector_metrics(timeseries_kp_t *kp, collector_t *c)
     
   timeseries_kp_enable_key(kp, c->kp_idxs.empty_record_cnt_idx);
   timeseries_kp_enable_key(kp, c->kp_idxs.status_idx);
+  timeseries_kp_enable_key(kp, c->kp_idxs.peers_cnt_idx);
   timeseries_kp_enable_key(kp, c->kp_idxs.active_peers_cnt_idx);
   timeseries_kp_enable_key(kp, c->kp_idxs.active_asns_cnt_idx);    
 }
@@ -222,6 +225,7 @@ disable_collector_metrics(timeseries_kp_t *kp, collector_t *c)
     
   timeseries_kp_disable_key(kp, c->kp_idxs.empty_record_cnt_idx);
   timeseries_kp_disable_key(kp, c->kp_idxs.status_idx);
+  timeseries_kp_disable_key(kp, c->kp_idxs.peers_cnt_idx);
   timeseries_kp_disable_key(kp, c->kp_idxs.active_peers_cnt_idx);
   timeseries_kp_disable_key(kp, c->kp_idxs.active_asns_cnt_idx);    
 
@@ -275,6 +279,7 @@ routingtables_dump_metrics(routingtables_t *rt, uint32_t time_now)
           timeseries_kp_set(rt->kp, c->kp_idxs.empty_record_cnt_idx, c->empty_record_cnt);
               
           timeseries_kp_set(rt->kp, c->kp_idxs.status_idx, c->state);
+          timeseries_kp_set(rt->kp, c->kp_idxs.peers_cnt_idx, kh_size(c->collector_peerids));
           timeseries_kp_set(rt->kp, c->kp_idxs.active_peers_cnt_idx, c->active_peers_cnt);
           timeseries_kp_set(rt->kp, c->kp_idxs.active_asns_cnt_idx, bgpstream_id_set_size(c->active_ases));
                             
