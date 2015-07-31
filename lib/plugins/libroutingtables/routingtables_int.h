@@ -135,9 +135,8 @@ typedef struct peer_metric_idx {
  *  of a peer */
 typedef struct struct_perpeer_info_t {
 
-  /** Pointer to the graphite-safe collector string 
-   *  (borrowed memory) */
-  char *collector_str_ptr;
+  /** Graphite-safe collector string */
+  char collector_str[BGPSTREAM_UTILS_STR_NAME_LEN];
 
   /** Graphite-safe peer string: peer_ASn.peer_IP */
   char peer_str[BGPSTREAM_UTILS_STR_NAME_LEN];
