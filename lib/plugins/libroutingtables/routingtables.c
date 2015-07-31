@@ -216,7 +216,7 @@ perpeer_info_create(routingtables_t *rt, collector_t * c,
       goto err;
     }
 
-  p->collector_str_ptr = c->collector_str;
+  strcpy(p->collector_str,c->collector_str);
 
   bgpstream_peer_sig_t *sg = bgpstream_peer_sig_map_get_sig(rt->peersigns, peer_id);
 
