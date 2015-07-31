@@ -238,6 +238,7 @@ typedef struct collector_metric_idx {
   uint32_t empty_record_cnt_idx;
 
   uint32_t status_idx;
+  uint32_t peers_cnt_idx;
   uint32_t active_peers_cnt_idx;
   uint32_t active_asns_cnt_idx;
   
