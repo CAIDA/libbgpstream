@@ -108,6 +108,7 @@ get_wall_time_now()
   return tv.tv_sec;
 }
 
+#ifdef WITH_BGPWATCHER
 static int filter_ff_peers(bgpwatcher_view_iter_t *iter)
 {
   return (
@@ -120,6 +121,7 @@ static int filter_ff_peers(bgpwatcher_view_iter_t *iter)
                                                  BGPWATCHER_VIEW_FIELD_ACTIVE)
            >= ((rt_view_data_t *)bgpwatcher_view_get_user(bgpwatcher_view_iter_get_view(iter)))->ipv6_fullfeed_th));
 }
+#endif
 
 
 /** Returns the origin AS when the origin AS number
@@ -438,6 +440,37 @@ stop_uc_process(routingtables_t *rt, collector_t *c)
   c->bgp_time_uc_rib_start_time = 0;
 }
 
+static void reset_peerpfxdata_version(routingtables_t *rt,
+                                      bgpstream_peer_id_t peer_id,
+                                      uint8_t reset_uc,
+                                      int pfx_version)
+{
+  perpfx_perpeer_info_t *pp;
+  for(bgpwatcher_view_iter_first_pfx(rt->iter,
+                                     pfx_version,
+                                     BGPWATCHER_VIEW_FIELD_ALL_VALID);
+      bgpwatcher_view_iter_has_more_pfx(rt->iter);
+      bgpwatcher_view_iter_next_pfx(rt->iter))
+    {
+      if(bgpwatcher_view_iter_pfx_seek_peer(rt->iter, peer_id,
+                                            BGPWATCHER_VIEW_FIELD_ALL_VALID)
+         == 0)
+        {
+          continue;
+        }
+      bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter,
+                                                 ROUTINGTABLES_DOWN_ORIGIN_ASN);
+      pp = bgpwatcher_view_iter_pfx_peer_get_user(rt->iter);
+      pp->bgp_time_last_ts = 0;
+      if(reset_uc)
+        {
+          pp->bgp_time_uc_delta_ts = 0;
+          pp->uc_origin_asn = ROUTINGTABLES_DOWN_ORIGIN_ASN;
+        }
+      bgpwatcher_view_iter_pfx_deactivate_peer(rt->iter);
+    }
+}
+
 /** Reset all the pfxpeer data associated with the
  *  provided peer id 
  *  @note: this is the function to call when putting a peer down*/
@@ -445,34 +478,38 @@ static void
 reset_peerpfxdata(routingtables_t *rt,
                   bgpstream_peer_id_t peer_id, uint8_t reset_uc)
 {
-  perpfx_perpeer_info_t *pp;
+  /* is this a real peer? */
   if(bgpwatcher_view_iter_seek_peer(rt->iter,
                                     peer_id,
-                                    BGPWATCHER_VIEW_FIELD_ALL_VALID) == 1)
+                                    BGPWATCHER_VIEW_FIELD_ALL_VALID) == 0)
     {
-      for(bgpwatcher_view_iter_first_pfx_peer(rt->iter, 0,
-                                              BGPWATCHER_VIEW_FIELD_ALL_VALID,
-                                              BGPWATCHER_VIEW_FIELD_ALL_VALID);
-          bgpwatcher_view_iter_has_more_pfx_peer(rt->iter);
-          bgpwatcher_view_iter_next_pfx_peer(rt->iter))
-        {
-          if(bgpwatcher_view_iter_peer_get_peer_id(rt->iter) == peer_id)
-            {
-              bgpwatcher_view_iter_pfx_peer_set_orig_asn(rt->iter, ROUTINGTABLES_DOWN_ORIGIN_ASN);
-              pp = bgpwatcher_view_iter_pfx_peer_get_user(rt->iter);
-              pp->bgp_time_last_ts = 0;
-              if(reset_uc)
-                {
-                  pp->bgp_time_uc_delta_ts = 0;
-                  pp->uc_origin_asn = ROUTINGTABLES_DOWN_ORIGIN_ASN;
-                }
-              bgpwatcher_view_iter_pfx_deactivate_peer(rt->iter);
-            }
-        }
-      bgpwatcher_view_iter_seek_peer(rt->iter,
-                                    peer_id,
-                                     BGPWATCHER_VIEW_FIELD_ALL_VALID);
-    }  
+      return;
+    }
+
+  /* disable v4 pfxs if there are any */
+  if(bgpwatcher_view_iter_peer_get_pfx_cnt(rt->iter,
+                                           BGPSTREAM_ADDR_VERSION_IPV4,
+                                           BGPWATCHER_VIEW_FIELD_ALL_VALID)
+     > 0)
+    {
+      reset_peerpfxdata_version(rt, peer_id, reset_uc,
+                                BGPSTREAM_ADDR_VERSION_IPV4);
+    }
+
+  /* disable v6 pfxs if there are any */
+  if(bgpwatcher_view_iter_peer_get_pfx_cnt(rt->iter,
+                                           BGPSTREAM_ADDR_VERSION_IPV6,
+                                           BGPWATCHER_VIEW_FIELD_ALL_VALID)
+     > 0)
+    {
+      reset_peerpfxdata_version(rt, peer_id, reset_uc,
+                                BGPSTREAM_ADDR_VERSION_IPV6);
+    }
+
+  /* reset the iterator to point to the peer */
+  bgpwatcher_view_iter_seek_peer(rt->iter,
+                                 peer_id,
+                                 BGPWATCHER_VIEW_FIELD_ALL_VALID);
 }
 
 static int
