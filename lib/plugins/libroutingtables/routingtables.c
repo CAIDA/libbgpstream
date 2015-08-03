@@ -603,7 +603,7 @@ end_of_valid_rib(routingtables_t *rt, collector_t *c)
                 {
                   p->bgp_fsm_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
                   reset_peerpfxdata(rt, bgpwatcher_view_iter_peer_get_peer_id(rt->iter), 0);
-                  bgpwatcher_view_iter_pfx_deactivate_peer(rt->iter);
+                  bgpwatcher_view_iter_deactivate_peer(rt->iter);
                 }
             }
           else
