@@ -319,7 +319,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
         // file obj has been completely read
         if (url_set == 0 || project_set == 0 || collector_set == 0 ||
             type_set == 0 || initial_time_set == 0 || duration == 0) {
-          fprintf(stderr, "Invalid dumpFile record\n");
+          fprintf(stderr, "ERROR: Invalid dumpFile record\n");
           return -1;
         }
         fprintf(stderr, "----------\n");
@@ -378,8 +378,6 @@ static int read_json(bgpstream_broker_datasource_t *broker_ds,
   size_t jslen = 0;
   #define BUFSIZE 1024
   char buf[BUFSIZE];
-
-  fprintf(stderr, "INFO: reading json...\n");
 
   // prepare parser
   jsmn_init(&p);
@@ -525,8 +523,6 @@ bgpstream_broker_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
   broker_ds->query_url_end =
     broker_ds->query_url_buf + strlen(broker_ds->query_url_buf);
   assert(broker_ds->query_url_end == '\0');
-
-  fprintf(stderr, "Query URL: \"%s\"\n", broker_ds->query_url_buf);
 
   bgpstream_debug("\t\tBSDS_BROKER: create broker_ds end");
 
