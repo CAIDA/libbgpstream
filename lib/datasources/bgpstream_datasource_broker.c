@@ -318,7 +318,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
         }
         // file obj has been completely read
         if (url_set == 0 || project_set == 0 || collector_set == 0 ||
-            type_set == 0 || initial_time_set == 0 || duration == 0) {
+            type_set == 0 || initial_time_set == 0 || duration_set == 0) {
           fprintf(stderr, "ERROR: Invalid dumpFile record\n");
           return -1;
         }
