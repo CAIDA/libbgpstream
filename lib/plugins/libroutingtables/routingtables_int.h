@@ -93,14 +93,6 @@ typedef struct struct_perpfx_perpeer_info_t {
    *  prefix is not observed in the under 
    *  construction RIB */
   uint32_t uc_origin_asn;  
-
-  /* number of announcements received for this
-   * prefix during the current interval */
-  uint16_t announcements;
-
-  /* number of withdrawals received for this
-   * prefix during the current interval */
-  uint16_t withdrawals;
   
 } __attribute__((packed)) perpfx_perpeer_info_t;
 
