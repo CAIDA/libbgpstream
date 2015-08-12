@@ -31,6 +31,7 @@
 #include "bgpstream_datasource_singlefile.h"
 #include "bgpstream_datasource_csvfile.h"
 #include "bgpstream_datasource_sqlite.h"
+#include "bgpstream_datasource_broker.h"
 
 
 
@@ -49,6 +50,7 @@ typedef struct struct_bgpstream_datasource_mgr_t {
   bgpstream_singlefile_datasource_t *singlefile_ds;
   bgpstream_csvfile_datasource_t *csvfile_ds;
   bgpstream_sqlite_datasource_t *sqlite_ds;
+  bgpstream_broker_datasource_t *broker_ds;
   
   // datasource specific_options
   char *mysql_dbname;
@@ -62,6 +64,7 @@ typedef struct struct_bgpstream_datasource_mgr_t {
   char *singlefile_upd_mrtfile;
   char *csvfile_file;
   char *sqlite_file;
+  char *broker_url;
   
   // blocking options
   int blocking;

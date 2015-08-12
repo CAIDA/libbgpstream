@@ -79,6 +79,9 @@ typedef enum {
   /** MySQL data interface */
   BGPSTREAM_DATA_INTERFACE_MYSQL      = 4,
 
+  /** Broker data interface */
+  BGPSTREAM_DATA_INTERFACE_BROKER     = 5,
+
 } bgpstream_data_interface_id_t;
 
 

@@ -80,6 +80,7 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
   datasource_mgr->singlefile_ds = NULL;
   datasource_mgr->csvfile_ds = NULL;
   datasource_mgr->sqlite_ds = NULL;
+  datasource_mgr->broker_ds = NULL;
   datasource_mgr->status = BGPSTREAM_DATASOURCE_STATUS_OFF;
   // datasource options
   GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_dbname,BGPSTREAM_DS_MYSQL_DB_NAME);
@@ -93,6 +94,7 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
   GET_DEFAULT_STR_VALUE(datasource_mgr->singlefile_upd_mrtfile, BGPSTREAM_DS_SINGLEFILE_UPDATE_FILE);
   GET_DEFAULT_STR_VALUE(datasource_mgr->csvfile_file, BGPSTREAM_DS_CSVFILE_CSV_FILE);
   GET_DEFAULT_STR_VALUE(datasource_mgr->sqlite_file, BGPSTREAM_DS_SQLITE_DB_FILE);
+  GET_DEFAULT_STR_VALUE(datasource_mgr->broker_url, BGPSTREAM_DS_BROKER_URL);
   bgpstream_debug("\tBSDS_MGR: create end");
   return datasource_mgr;
 }
@@ -210,6 +212,18 @@ void bgpstream_datasource_mgr_set_data_interface_option(bgpstream_datasource_mgr
           datasource_mgr->sqlite_file = strdup(option_value);
           break;
         }
+
+    case BGPSTREAM_DATA_INTERFACE_BROKER:
+      switch(option_type->id)
+        {
+        case 0:
+          if(datasource_mgr->broker_url!=NULL)
+            {
+              free(datasource_mgr->broker_url);
+            }
+          datasource_mgr->broker_url = strdup(option_value);
+          break;
+        }
       break;
     }
 }
@@ -244,6 +258,13 @@ void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
       datasource_mgr->sqlite_ds = bgpstream_sqlite_datasource_create(filter_mgr,
                                                                      datasource_mgr->sqlite_file);
       ds = (void *) datasource_mgr->sqlite_ds;
+      break;
+
+    case BGPSTREAM_DATA_INTERFACE_BROKER:
+      datasource_mgr->broker_ds =
+        bgpstream_broker_datasource_create(filter_mgr,
+                                           datasource_mgr->broker_url);
+      ds = (void *) datasource_mgr->broker_ds;
       break;
 
     case BGPSTREAM_DATA_INTERFACE_MYSQL:
@@ -303,6 +324,9 @@ int bgpstream_datasource_mgr_update_input_queue(bgpstream_datasource_mgr_t *data
       case BGPSTREAM_DATA_INTERFACE_SQLITE:
         results = bgpstream_sqlite_datasource_update_input_queue(datasource_mgr->sqlite_ds, input_mgr);
         break;
+      case BGPSTREAM_DATA_INTERFACE_BROKER:
+        results = bgpstream_broker_datasource_update_input_queue(datasource_mgr->broker_ds, input_mgr);
+        break;
       case BGPSTREAM_DATA_INTERFACE_MYSQL:
         results = bgpstream_mysql_datasource_update_input_queue(datasource_mgr->mysql_ds, input_mgr);
         break;
@@ -342,6 +366,10 @@ void bgpstream_datasource_mgr_close(bgpstream_datasource_mgr_t *datasource_mgr) 
       bgpstream_sqlite_datasource_destroy(datasource_mgr->sqlite_ds);
       datasource_mgr->sqlite_ds = NULL;
       break;
+    case BGPSTREAM_DATA_INTERFACE_BROKER:
+      bgpstream_broker_datasource_destroy(datasource_mgr->broker_ds);
+      datasource_mgr->broker_ds = NULL;
+      break;
     case BGPSTREAM_DATA_INTERFACE_MYSQL:
       bgpstream_mysql_datasource_destroy(datasource_mgr->mysql_ds);
       datasource_mgr->mysql_ds = NULL;
@@ -370,6 +398,10 @@ void bgpstream_datasource_mgr_destroy(bgpstream_datasource_mgr_t *datasource_mgr
     bgpstream_sqlite_datasource_destroy(datasource_mgr->sqlite_ds);
     datasource_mgr->sqlite_ds = NULL;
   }
+  if(datasource_mgr->broker_ds != NULL) {
+    bgpstream_broker_datasource_destroy(datasource_mgr->broker_ds);
+    datasource_mgr->broker_ds = NULL;
+  }
   if(datasource_mgr->mysql_ds != NULL) {
     bgpstream_mysql_datasource_destroy(datasource_mgr->mysql_ds);
     datasource_mgr->mysql_ds = NULL;
@@ -392,6 +424,10 @@ void bgpstream_datasource_mgr_destroy(bgpstream_datasource_mgr_t *datasource_mgr
   if(datasource_mgr->sqlite_file != NULL)
     {
       free(datasource_mgr->sqlite_file);
+    }
+  if(datasource_mgr->broker_url != NULL)
+    {
+      free(datasource_mgr->broker_url);
     }
   if(datasource_mgr->mysql_dbname!=NULL)
     {
