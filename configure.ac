@@ -184,21 +184,23 @@ AC_SUBST([BGPSTREAM_MINOR_VERSION])
 AC_HEADER_ASSERT
 
 AC_CONFIG_FILES([Makefile
-		lib/Makefile
-                lib/bgpdump/Makefile
-                lib/datasources/Makefile
-                lib/utils/Makefile
                 bgpview/Makefile
                 bgpview/lib/Makefile
                 bgpview/lib/consumers/Makefile
+                bgpview/lib/io/Makefile
                 bgpview/tools/Makefile
-		tools/Makefile
-		test/Makefile
+                bgpview/tools/io/Makefile
 		common/Makefile
 		common/libpatricia/Makefile
 		common/libinterval3/Makefile
 		common/libinterval3/rb_tree/Makefile
 		common/libcsv/Makefile
                 docs/Makefile
-	        docs/bgpstream.doxygen])
+	        docs/bgpstream.doxygen
+		lib/Makefile
+                lib/bgpdump/Makefile
+                lib/datasources/Makefile
+                lib/utils/Makefile
+		tools/Makefile
+		test/Makefile])
 AC_OUTPUT
