@@ -2,7 +2,7 @@
 # bgpcorsaro
 #
 # Alistair King, CAIDA, UC San Diego
-# corsaro-info@caida.org
+# bgpstream-info@caida.org
 #
 # Copyright (C) 2012 The Regents of the University of California.
 #
@@ -22,7 +22,7 @@
 # along with bgpcorsaro.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-AC_INIT([bgpcorsaro], [1.0.0], [corsaro-info@caida.org])
+AC_INIT([bgpcorsaro], [1.0.0], [bgpstream-info@caida.org])
 
 # Corsaro versions...
 # this may need some re-thinking
@@ -68,23 +68,6 @@ AH_VERBATIM([_GNU_SOURCE],
 #define _GNU_SOURCE
 #endif])
 
-AC_CHECK_PROG([bgpcorsaro_doxygen_avail], [doxygen], [yes], [no])
-
-AC_MSG_CHECKING([whether to compile the docs])
-AC_ARG_WITH([doxygen],
-	[AS_HELP_STRING([--without-doxygen],
-	  [do not compile the doxygen generated docs])],
-	  [bgpcorsaro_doxygen=no],
-	  [if test "x$bgpcorsaro_doxygen_avail" == xyes; then
-	      bgpcorsaro_doxygen=yes
-	  else
-		bgpcorsaro_doxygen=no
-	  fi
-	  ])
-AC_MSG_RESULT([$bgpcorsaro_doxygen])
-
-AM_CONDITIONAL(HAS_DOXYGEN, [test x"$bgpcorsaro_doxygen" = xyes])
-
 AC_CHECK_FUNCS([gettimeofday memset strdup strstr strsep strlcpy vasprintf])
 
 # OSX Mavericks has replaced strlcpy with a macro that is not found by
@@ -103,20 +86,7 @@ AC_MSG_RESULT([$debugit])
 
 if test x"$debugit" = x"yes"; then
     AC_DEFINE([DEBUG],[],[Debug Mode])
-else
-    AC_DEFINE([NDEBUG],[],[No-debug Mode])
 fi
-
-# Configure options for man pages
-AC_ARG_WITH(man,
-	    AS_HELP_STRING(--with-man,install man pages by default),[
-	     if test "$withval" = yes
-	     then
-		     MANPAGES="docs/man/man3/[a-zA-Z]*.3"
-	     else
-		     MANPAGES=""
-	     fi
-])
 
 # Checks for typedefs, structures, and compiler characteristics.
 #AC_C_INLINE # 2014-04-14 AK removes because it causes problems with clang3.4
@@ -142,6 +112,7 @@ AC_SEARCH_LIBS([wandio_create], [wandio trace], ,[AC_MSG_ERROR(
 		 [libwandio required (included with libtrace since 3.0.15)]
 		 )])
 
+## todo make this optional
 AC_CHECK_LIB([timeseries], [timeseries_init], , [
     AC_MSG_ERROR([libtimeseries is required for writing stats into dbats])
 ])
@@ -212,8 +183,6 @@ fi
 AM_CONDITIONAL([WITH_BGPWATCHER], [test "x$with_bgpwatcher" == xyes])
 
 
-
-
 # configure options to disable plugins
 #AC_DEFINE([ED_PLUGIN_INIT_ALL_ENABLED],[],[Plugin init functions])
 
@@ -228,25 +197,9 @@ AM_CONDITIONAL([WITH_BGPWATCHER], [test "x$with_bgpwatcher" == xyes])
 # they will be run.                                                            #
 ################################################################################
 
-## meta plugins. these do not write output, they add metadata to the packet
-## seems that the most common use-case will be to run them first
-ED_WITH_PLUGIN([bgpcorsaro_ipmeta],[ipmeta],[IPMETA],[no])
-
-# filter plugins. these do not write output, they indicate which packets
-# should [not] be written out
-ED_WITH_PLUGIN([bgpcorsaro_filtergeo],[filtergeo],[FILTERGEO],[no])
-ED_WITH_PLUGIN([bgpcorsaro_filterpfx],[filterpfx],[FILTERPFX],[no])
-
-# default plugins
-ED_WITH_PLUGIN([bgpcorsaro_dump],[dump],[DUMP],[yes])
-
-# optional plugins
-ED_WITH_PLUGIN([bgpcorsaro_bgpstats],[bgpstats],[BGPSTATS],[no])
-ED_WITH_PLUGIN([bgpcorsaro_filtervis],[filtervis],[FILTERVIS],[no])
-ED_WITH_PLUGIN([bgpcorsaro_pacifier],[pacifier],[PACIFIER],[no])
-ED_WITH_PLUGIN([bgpcorsaro_routingtables],[routingtables],[ROUTINGTABLES],[no])
-ED_WITH_PLUGIN([bgpcorsaro_viewconsumer],[viewconsumer],[VIEWCONSUMER],[no])
-ED_WITH_PLUGIN([bgpcorsaro_tagstats],[tagstats],[TAGSTATS],[no])
+ED_WITH_PLUGIN([bgpcorsaro_routingtables],[routingtables],[ROUTINGTABLES],[yes])
+ED_WITH_PLUGIN([bgpcorsaro_pacifier],[pacifier],[PACIFIER],[yes])
+ED_WITH_PLUGIN([bgpcorsaro_viewconsumer],[viewconsumer],[VIEWCONSUMER],[yes])
 
 # this MUST go after all the ED_WITH_PLUGIN macro calls
 AC_DEFINE_UNQUOTED([ED_PLUGIN_INIT_ALL_ENABLED], $ED_PLUGIN_INIT_ALL_ENABLED,
@@ -256,17 +209,17 @@ AC_DEFINE_UNQUOTED([ED_PLUGIN_INIT_ALL_ENABLED], $ED_PLUGIN_INIT_ALL_ENABLED,
 # Extra tests or config needed for plugins should go below here                #
 #------------------------------------------------------------------------------#
 
-# the ipmeta plugin requires libipmeta
-if test "x$with_plugin_ipmeta" == xyes; then
-   AC_CHECK_LIB([ipmeta], [ipmeta_init], ,[
-   	AC_MSG_ERROR([libipmeta is required by the bgpcorsaro_ipmeta plugin])
-		      ])
-fi
+# TODO: the routingtables plugin requires bgpwatcher
+#if test "x$with_plugin_routingtables" == xyes; then
+#   AC_CHECK_LIB([ipmeta], [ipmeta_init], ,[
+#   	AC_MSG_ERROR([libipmeta is required by the bgpcorsaro_ipmeta plugin])
+#		      ])
+#fi
 
-# the filtergeo plugin requires the ipmeta plugin
-if test "x$with_plugin_filtergeo" == xyes &&
-   test "x$with_plugin_ipmeta" != xyes; then
-   AC_MSG_ERROR([bgpcorsaro_filtergeo plugin requires bgpcorsaro_ipmeta plugin])
+# the viewconsumer plugin requires the routingtables plugin
+if test "x$with_plugin_viewconsumer" == xyes &&
+   test "x$with_plugin_routingtables" != xyes; then
+   AC_MSG_ERROR([the viewconsumer plugin requires the routingtables plugin])
 fi
 
 # unfortunately we have to generate all of these Makefiles because of make dist

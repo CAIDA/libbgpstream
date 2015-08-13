@@ -2,7 +2,7 @@
  * bgpcorsaro
  *
  * Alistair King, CAIDA, UC San Diego
- * corsaro-info@caida.org
+ * bgpstream-info@caida.org
  *
  * bgpcorsaro_log and timestamp_str functions adapted from scamper:
  *   http://www.wand.net.nz/scamper

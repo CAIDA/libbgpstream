@@ -2,7 +2,7 @@
 # bgpcorsaro
 #
 # Chiara Orsini, CAIDA, UC San Diego
-# corsaro-info@caida.org
+# bgpstream-info@caida.org
 #
 # Copyright (C) 2015 The Regents of the University of California.
 #
