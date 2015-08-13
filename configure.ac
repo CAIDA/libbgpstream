@@ -2,7 +2,7 @@
 # bgpcorsaro
 #
 # Alistair King, CAIDA, UC San Diego
-# corsaro-info@caida.org
+# bgpstream-info@caida.org
 #
 # Copyright (C) 2012 The Regents of the University of California.
 #
@@ -22,7 +22,7 @@
 # along with bgpcorsaro.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-AC_INIT([bgpcorsaro], [1.0.0], [corsaro-info@caida.org])
+AC_INIT([bgpcorsaro], [1.0.0], [bgpstream-info@caida.org])
 
 # Corsaro versions...
 # this may need some re-thinking

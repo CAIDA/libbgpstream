@@ -2,7 +2,7 @@
 # bgpcorsaro
 #
 # Alistair King, CAIDA, UC San Diego
-# corsaro-info@caida.org
+# bgpstream-info@caida.org
 #
 # Copyright (C) 2012 The Regents of the University of California.
 #
