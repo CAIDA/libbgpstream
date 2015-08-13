@@ -35,12 +35,6 @@ include_HEADERS =
 PLUGIN_SRC=
 PLUGIN_LIBS=
 
-if WITH_PLUGIN_BGPSTATS
-PLUGIN_SRC+=bgpcorsaro_bgpstats.c bgpcorsaro_bgpstats.h
-endif
-if WITH_PLUGIN_FILTERVIS
-PLUGIN_SRC+=bgpcorsaro_filtervis.c bgpcorsaro_filtervis.h
-endif
 if WITH_PLUGIN_PACIFIER
 PLUGIN_SRC+=bgpcorsaro_pacifier.c bgpcorsaro_pacifier.h
 endif
