@@ -159,6 +159,19 @@ BS_DS_OPT(mysql-db-socket, MYSQL_DB_SOCKET, MySQL server unix socket, not-set)
 BS_DS_OPT(mysql-dump-path, MYSQL_DUMP_PATH, Common prefix path for MRT data, not-set)
 
 
+# TODO: make BGPView optional
+
+# TODO: Make BGPView Consumers optional
+AC_CHECK_LIB([timeseries], [timeseries_init], , [
+    AC_MSG_ERROR([libtimeseries is required for the Per-AS Visibility plugin])
+])
+AC_CHECK_LIB([ipmeta], [ipmeta_lookup], ,[AC_MSG_ERROR([ipmeta is required])])
+
+# BGPView IO dependencies
+# TODO: make view IO optional
+AC_CHECK_LIB([czmq], [zctx_new], ,[AC_MSG_ERROR(
+		      [CZMQ is required])])
+
 
 
 # we may want to come back later and add compile-time configuration for things
@@ -175,6 +188,10 @@ AC_CONFIG_FILES([Makefile
                 lib/bgpdump/Makefile
                 lib/datasources/Makefile
                 lib/utils/Makefile
+                bgpview/Makefile
+                bgpview/lib/Makefile
+                bgpview/lib/consumers/Makefile
+                bgpview/tools/Makefile
 		tools/Makefile
 		test/Makefile
 		common/Makefile
