@@ -41,20 +41,8 @@ endif
 if WITH_PLUGIN_FILTERVIS
 PLUGIN_SRC+=bgpcorsaro_filtervis.c bgpcorsaro_filtervis.h
 endif
-if WITH_PLUGIN_DUMP
-PLUGIN_SRC+=bgpcorsaro_dump.c bgpcorsaro_dump.h
-endif
 if WITH_PLUGIN_PACIFIER
 PLUGIN_SRC+=bgpcorsaro_pacifier.c bgpcorsaro_pacifier.h
-endif
-if WITH_PLUGIN_IPMETA
-PLUGIN_SRC+=bgpcorsaro_ipmeta.c bgpcorsaro_ipmeta.h
-endif
-if WITH_PLUGIN_FILTERGEO
-PLUGIN_SRC+=bgpcorsaro_filtergeo.c bgpcorsaro_filtergeo.h
-endif
-if WITH_PLUGIN_FILTERPFX
-PLUGIN_SRC+=bgpcorsaro_filterpfx.c bgpcorsaro_filterpfx.h
 endif
 if WITH_PLUGIN_ROUTINGTABLES
 SUBDIRS += libroutingtables
@@ -64,9 +52,6 @@ PLUGIN_SRC+=bgpcorsaro_routingtables.c bgpcorsaro_routingtables.h
 endif
 if WITH_PLUGIN_VIEWCONSUMER
 PLUGIN_SRC+=bgpcorsaro_viewconsumer.c bgpcorsaro_viewconsumer.h
-endif
-if WITH_PLUGIN_TAGSTATS
-PLUGIN_SRC+=bgpcorsaro_tagstats.c bgpcorsaro_tagstats.h
 endif
 
 ################################################################################
