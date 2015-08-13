@@ -37,6 +37,9 @@
 
 #define URL_BUFLEN 4096
 
+// the max time we will wait between retries to the broker
+#define MAX_WAIT_TIME 900
+
 #define APPEND_STR(str)                                                 \
   do {                                                                  \
     size_t len = strlen(str);                                           \
@@ -548,6 +551,9 @@ bgpstream_broker_datasource_update_input_queue(bgpstream_broker_datasource_t* br
 
   int num_results;
 
+  int attempts = 0;
+  int wait_time = 1;
+
   if (broker_ds->last_response_time > 0) {
     // need to add dataAddedSince
     if (snprintf(buf, BUFLEN, "%"PRIu32, broker_ds->last_response_time)
@@ -570,16 +576,28 @@ bgpstream_broker_datasource_update_input_queue(bgpstream_broker_datasource_t* br
     APPEND_STR(buf);
   }
 
+ retry:
+  if (attempts > 0) {
+    fprintf(stderr,
+            "WARN: Broker request failed, waiting %ds before retry\n",
+            wait_time);
+    sleep(wait_time);
+    if (wait_time < MAX_WAIT_TIME) {
+      wait_time *= 2;
+    }
+  }
+  attempts++;
+
   fprintf(stderr, "Query URL: \"%s\"\n", broker_ds->query_url_buf);
 
   if ((jsonfile = wandio_create(broker_ds->query_url_buf)) == NULL) {
     fprintf(stderr, "ERROR: Could not open %s for reading\n",
             broker_ds->query_url_buf);
-    goto err;
+    goto retry;
   }
 
   if ((num_results = read_json(broker_ds, input_mgr, jsonfile)) < 0) {
-    goto err;
+    goto retry;
   }
 
   wandio_destroy(jsonfile);
