@@ -159,7 +159,7 @@ BS_DS_OPT(mysql-db-socket, MYSQL_DB_SOCKET, MySQL server unix socket, not-set)
 BS_DS_OPT(mysql-dump-path, MYSQL_DUMP_PATH, Common prefix path for MRT data, not-set)
 
 # broker options
-BS_DS_OPT(broker-url, BROKER_URL, Broker URL, http://bgpstream.caida.org/broker)
+BS_DS_OPT(broker-url, BROKER_URL, Broker URL, https://bgpstream.caida.org/broker)
 
 
 
