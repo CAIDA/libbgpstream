@@ -35,7 +35,9 @@ libbgpstream_datasources_la_SOURCES = 	\
 	bgpstream_datasource_csvfile.h		\
 	bgpstream_datasource_csvfile.c		\
 	bgpstream_datasource_sqlite.h		\
-	bgpstream_datasource_sqlite.c	
+	bgpstream_datasource_sqlite.c		\
+	bgpstream_datasource_broker.h		\
+	bgpstream_datasource_broker.c
 
 ACLOCAL_AMFLAGS = -I m4
 
