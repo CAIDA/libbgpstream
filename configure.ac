@@ -118,7 +118,8 @@ AC_ARG_WITH([doxygen],
 AC_MSG_RESULT([$bgpstream_doxygen])
 AM_CONDITIONAL(HAS_DOXYGEN, [test x"$bgpstream_doxygen" = xyes])
 
-
+AC_MSG_NOTICE([])
+AC_MSG_NOTICE([---- BGPStream configuration ----])
 
 # set some default options for the datasources
 AC_DEFUN([BS_DS_OPT],
@@ -158,8 +159,105 @@ BS_DS_OPT(mysql-db-socket, MYSQL_DB_SOCKET, MySQL server unix socket, not-set)
 
 BS_DS_OPT(mysql-dump-path, MYSQL_DUMP_PATH, Common prefix path for MRT data, not-set)
 
+# broker options
+BS_DS_OPT(broker-url, BROKER_URL, Broker URL, https://bgpstream.caida.org/broker)
 
+AC_MSG_NOTICE([---------------------------------])
 
+# TODO: make BGPView optional
+AC_MSG_NOTICE([])
+AC_MSG_NOTICE([---- BGPView configuration ----])
+
+# TODO: Make BGPView Consumers optional
+# TODO: also needed by bgpcorsaro
+AC_CHECK_LIB([timeseries], [timeseries_init], , [
+    AC_MSG_ERROR([libtimeseries is required for the Per-AS Visibility plugin])
+])
+AC_CHECK_LIB([ipmeta], [ipmeta_lookup], ,[AC_MSG_ERROR([ipmeta is required])])
+
+# BGPView IO dependencies
+# TODO: make view IO optional
+AC_CHECK_LIB([czmq], [zctx_new], ,[AC_MSG_ERROR(
+		      [CZMQ is required])])
+
+AC_MSG_NOTICE([-------------------------------])
+
+# BGPCorsaro configuration
+AC_MSG_NOTICE([])
+AC_MSG_NOTICE([---- BGPCorsaro configuration ----])
+# monitor name
+AC_MSG_CHECKING([for the monitor name to use])
+AC_ARG_WITH([bgpcorsaro-monitorname],
+	[AS_HELP_STRING([--with-bgpcorsaro-monitorname=NAME],
+	  [explicitly define the monitor name (defaults to system hostname)])],
+	  [if test "x$withval" == xyes || test "x$withval" == ""; then
+	  with_monitorname=`hostname`
+	  else
+	  with_monitorname=$withval
+	  fi],
+	  [with_monitorname=`hostname`])
+AC_MSG_RESULT([$with_monitorname])
+
+AC_DEFINE_UNQUOTED([BGPCORSARO_MONITOR_NAME],[$with_monitorname],[Monitor Name])
+
+# are we going to dump some plugin timing information? (useful for debugging
+# where bgpcorsaro spends its time given a complicated plugin chain)
+AC_MSG_CHECKING([whether to monitor plugin runtimes])
+AC_ARG_WITH([bgpcorsaro-plugin-timing],
+	[AS_HELP_STRING([--with-bgpcorsaro-plugin-timing],
+	  [time how long each plugin takes to process packets (defaults to no)])],
+	  [],
+	  [with_plugin_timing=no])
+
+AS_IF([test "x$with_plugin_timing" != xno],
+	[
+	    AC_DEFINE_UNQUOTED([WITH_PLUGIN_TIMING],[1],
+		[Monitor plugin timing])
+	])
+
+AC_MSG_RESULT([$with_plugin_timing])
+
+# are we going to use the bgpwatcher connection?
+# turn on if people asked for it
+# TODO: make corsaro conditionally build depending on whether BGPView IO is built
+
+# configure options to disable plugins
+#AC_DEFINE([ED_PLUGIN_INIT_ALL_ENABLED],[],[Plugin init functions])
+
+################################################################################
+# Plugin Configuration Macros                                                  #
+# ---------------------------                                                  #
+#                                                                              #
+# Each ED_WITH_PLUGIN macro defines a plugin which can be compiled into        #
+# Bgpcorsaro.                                                                  #
+#                                                                              #
+# The order in which these plugins are listed is the _default_ order in which  #
+# they will be run.                                                            #
+################################################################################
+
+ED_WITH_PLUGIN([bgpcorsaro_routingtables],[routingtables],[ROUTINGTABLES],[yes])
+ED_WITH_PLUGIN([bgpcorsaro_pacifier],[pacifier],[PACIFIER],[yes])
+ED_WITH_PLUGIN([bgpcorsaro_viewconsumer],[viewconsumer],[VIEWCONSUMER],[yes])
+
+# this MUST go after all the ED_WITH_PLUGIN macro calls
+AC_DEFINE_UNQUOTED([ED_PLUGIN_INIT_ALL_ENABLED], $ED_PLUGIN_INIT_ALL_ENABLED,
+		   [plugins to call the init macro for in bgpcorsaro_plugin.c])
+
+#------------------------------------------------------------------------------#
+# Extra tests or config needed for plugins should go below here                #
+#------------------------------------------------------------------------------#
+
+# TODO: the routingtables plugin requires BGPView
+#if test "x$with_plugin_routingtables" == xyes; then
+#fi
+
+# the viewconsumer plugin requires the routingtables plugin
+if test "x$with_plugin_viewconsumer" == xyes &&
+   test "x$with_plugin_routingtables" != xyes; then
+   AC_MSG_ERROR([the viewconsumer plugin requires the routingtables plugin])
+fi
+
+AC_MSG_NOTICE([----------------------------------])
 
 # we may want to come back later and add compile-time configuration for things
 # like datastructure providers, but for now it will all get compiled
@@ -171,17 +269,29 @@ AC_SUBST([BGPSTREAM_MINOR_VERSION])
 AC_HEADER_ASSERT
 
 AC_CONFIG_FILES([Makefile
-		lib/Makefile
-                lib/bgpdump/Makefile
-                lib/datasources/Makefile
-                lib/utils/Makefile
-		tools/Makefile
-		test/Makefile
+                bgpcorsaro/Makefile
+                bgpcorsaro/lib/Makefile
+                bgpcorsaro/lib/plugins/Makefile
+                bgpcorsaro/lib/plugins/libroutingtables/Makefile
+                bgpcorsaro/tools/Makefile
+                bgpview/Makefile
+                bgpview/lib/Makefile
+                bgpview/lib/consumers/Makefile
+                bgpview/lib/io/Makefile
+                bgpview/tools/Makefile
+                bgpview/tools/io/Makefile
 		common/Makefile
 		common/libpatricia/Makefile
 		common/libinterval3/Makefile
 		common/libinterval3/rb_tree/Makefile
 		common/libcsv/Makefile
+                common/libjsmn/Makefile
                 docs/Makefile
-	        docs/bgpstream.doxygen])
+	        docs/bgpstream.doxygen
+		lib/Makefile
+                lib/bgpdump/Makefile
+                lib/datasources/Makefile
+                lib/utils/Makefile
+		tools/Makefile
+		test/Makefile])
 AC_OUTPUT

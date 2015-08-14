@@ -35,6 +35,7 @@ static bgpstream_data_interface_id_t bgpstream_data_interfaces[] = {
   BGPSTREAM_DATA_INTERFACE_CSVFILE,
   BGPSTREAM_DATA_INTERFACE_SQLITE,
   BGPSTREAM_DATA_INTERFACE_MYSQL,
+  BGPSTREAM_DATA_INTERFACE_BROKER,
 };
 
 static bgpstream_data_interface_info_t bgpstream_data_interface_infos[] = {
@@ -58,6 +59,11 @@ static bgpstream_data_interface_info_t bgpstream_data_interface_infos[] = {
     BGPSTREAM_DATA_INTERFACE_MYSQL,
     "mysql",
     "Retrieve metadata information from the bgparchive mysql database",
+  },
+  {
+    BGPSTREAM_DATA_INTERFACE_BROKER,
+    "broker",
+    "Retrieve metadata information from the BGPStream Broker service",
   },
 
 };
@@ -98,6 +104,16 @@ static bgpstream_data_interface_option_t bgpstream_sqlite_options[] = {
     0,
     "db-file",
     "sqlite database (default: " STR(BGPSTREAM_DS_SQLITE_DB_FILE) ")",
+  },
+};
+
+static bgpstream_data_interface_option_t bgpstream_broker_options[] = {
+  /* Broker URL */
+  {
+    BGPSTREAM_DATA_INTERFACE_BROKER,
+    0,
+    "url",
+    "Broker URL (default: " STR(BGPSTREAM_DS_BROKER_URL) ")",
   },
 };
 
@@ -290,6 +306,11 @@ int bgpstream_get_data_interface_options(bgpstream_t *bs,
     case BGPSTREAM_DATA_INTERFACE_SQLITE:
       *opts = bgpstream_sqlite_options;
       return ARR_CNT(bgpstream_sqlite_options);
+      break;
+
+    case BGPSTREAM_DATA_INTERFACE_BROKER:
+      *opts = bgpstream_broker_options;
+      return ARR_CNT(bgpstream_broker_options);
       break;
 
     case BGPSTREAM_DATA_INTERFACE_MYSQL:
