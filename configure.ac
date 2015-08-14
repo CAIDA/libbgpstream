@@ -158,6 +158,8 @@ BS_DS_OPT(mysql-db-socket, MYSQL_DB_SOCKET, MySQL server unix socket, not-set)
 
 BS_DS_OPT(mysql-dump-path, MYSQL_DUMP_PATH, Common prefix path for MRT data, not-set)
 
+# broker options
+BS_DS_OPT(broker-url, BROKER_URL, Broker URL, https://bgpstream.caida.org/broker)
 
 
 
@@ -182,6 +184,7 @@ AC_CONFIG_FILES([Makefile
 		common/libinterval3/Makefile
 		common/libinterval3/rb_tree/Makefile
 		common/libcsv/Makefile
+                common/libjsmn/Makefile
                 docs/Makefile
 	        docs/bgpstream.doxygen])
 AC_OUTPUT
