@@ -27,17 +27,37 @@ AM_CPPFLAGS= 	-I$(top_srcdir) \
 
 noinst_LTLIBRARIES = libbgpstream-datasources.la
 
-libbgpstream_datasources_la_SOURCES = 	\
-	bgpstream_datasource_mysql.h	\
-	bgpstream_datasource_mysql.c	\
-	bgpstream_datasource_singlefile.h	\
-	bgpstream_datasource_singlefile.c	\
-	bgpstream_datasource_csvfile.h		\
-	bgpstream_datasource_csvfile.c		\
-	bgpstream_datasource_sqlite.h		\
-	bgpstream_datasource_sqlite.c		\
-	bgpstream_datasource_broker.h		\
-	bgpstream_datasource_broker.c
+DI_SOURCES=
+DI_LIBS=
+
+if WITH_DATA_INTERFACE_BROKER
+DI_SOURCES+=bgpstream_datasource_broker.c \
+	    bgpstream_datasource_broker.h
+endif
+
+if WITH_DATA_INTERFACE_SINGLEFILE
+DI_SOURCES+=bgpstream_datasource_singlefile.c \
+	    bgpstream_datasource_singlefile.h
+endif
+
+if WITH_DATA_INTERFACE_CSVFILE
+DI_SOURCES+=bgpstream_datasource_csvfile.c \
+	    bgpstream_datasource_csvfile.h
+endif
+
+if WITH_DATA_INTERFACE_SQLITE
+DI_SOURCES+=bgpstream_datasource_sqlite.c \
+	    bgpstream_datasource_sqlite.h
+endif
+
+if WITH_DATA_INTERFACE_MYSQL
+DI_SOURCES+=bgpstream_datasource_mysql.c \
+	    bgpstream_datasource_mysql.h
+endif
+
+libbgpstream_datasources_la_SOURCES = $(DI_SOURCES)
+
+libbgpstream_datasources_la_LIBADD = $(DI_LIBS)
 
 ACLOCAL_AMFLAGS = -I m4
 
