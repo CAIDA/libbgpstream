@@ -24,9 +24,9 @@ ChangeLog
 *.tar.gz
 tools/bgpreader
 test/bgpstream-test
-bgpview/tools/io/bgpwatcher-consumer
-bgpview/tools/io/bgpwatcher-server
-bgpview/tools/io/bgpwatcher-test-producer
+bgpview/tools/io/bgpview-consumer
+bgpview/tools/io/bgpview-server
+bgpview/tools/io/bgpview-test-producer
 
 # doxygen files
 docs/doxygen/html
