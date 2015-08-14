@@ -32,6 +32,7 @@
 #define SINGLEFILE_RECORDS 537347
 #define CSVFILE_RECORDS    559424
 #define SQLITE_RECORDS     538308
+#define BROKER_RECORDS     2153
 
 bgpstream_t *bs;
 bgpstream_record_t *bs_record;
@@ -63,8 +64,9 @@ int run_bgpstream(char *interface)
   bgpstream_stop(bs);
 
   if((strcmp(interface, "singlefile")== 0 && counter == SINGLEFILE_RECORDS) ||
-    (strcmp(interface, "csvfile")== 0 && counter == CSVFILE_RECORDS) ||
-     (strcmp(interface, "sqlite")== 0 && counter == SQLITE_RECORDS))
+     (strcmp(interface, "csvfile")== 0 && counter == CSVFILE_RECORDS) ||
+     (strcmp(interface, "sqlite")== 0 && counter == SQLITE_RECORDS) ||
+     (strcmp(interface, "broker")== 0 && counter == BROKER_RECORDS) )
     {
       printf("\tinterface is working correctly\n\n");
       return 0;
@@ -147,6 +149,18 @@ int main()
   bgpstream_set_data_interface_option(bs, option, "sqlite_test.db");
   bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_PROJECT, "routeviews");
   res += run_bgpstream("sqlite");
+  bgpstream_destroy(bs);
+
+  /* Testing broker interface */
+  printf("Testing broker interface...\n");
+  bs = bgpstream_create();
+  datasource_id =
+    bgpstream_get_data_interface_id_by_name(bs, "broker");
+  bgpstream_set_data_interface(bs, datasource_id);
+  bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_COLLECTOR, "route-views6");
+  bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_RECORD_TYPE, "updates");
+  bgpstream_add_interval_filter(bs,1427846550,1427846700);
+  res += run_bgpstream("broker");
   bgpstream_destroy(bs);
 
   bgpstream_record_destroy(bs_record);
