@@ -1,3 +1,12 @@
+# SYNOPSIS
+#
+#   BS_DI_OPT
+#
+# DESCRIPTION
+#
+#   This macro
+#
+# LICENSE
 #
 # This file is part of bgpstream
 #
@@ -15,28 +24,18 @@
 #
 # Report any bugs, questions or comments to bgpstream-info@caida.org
 #
+AC_DEFUN([BS_DI_OPT],
+[
+opt_val=$4
+AC_MSG_CHECKING([data interface option: $3])
+AC_ARG_WITH([$1],
+[AS_HELP_STRING([--with-$1=$opt_val],
+  [$3 (defaults to $opt_val)])],
+  [opt_val=$withval],
+  [])
 
-SUBDIRS = common	\
-	  lib		\
-	  tools		\
-	  bgpview 	\
-	  bgpcorsaro	\
-	  test		\
-	  docs
+AC_DEFINE_UNQUOTED([BGPSTREAM_DS_$2],
+                    ["$opt_val"], [$3])
 
-AM_CPPFLAGS =
-
-EXTRA_DIST = 	test/sqlite_test.db \
-		test/csv_test.csv \
-		test/tutorial.c \
-		test/routeviews.route-views.jinx.ribs.1427846400.bz2 \
-		test/routeviews.route-views.jinx.updates.1427846400.bz2 \
-		test/ris.rrc06.updates.1427846400.gz \
-		test/ris.rrc06.ribs.1427846400.gz
-
-include_HEADERS =
-
-
-ACLOCAL_AMFLAGS = -I m4
-
-CLEANFILES = *~
+AC_MSG_RESULT([$opt_val])
+])

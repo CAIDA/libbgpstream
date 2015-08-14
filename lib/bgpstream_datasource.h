@@ -27,11 +27,25 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#ifdef WITH_DATA_INTERFACE_MYSQL
 #include "bgpstream_datasource_mysql.h"
+#endif
+
+#ifdef WITH_DATA_INTERFACE_SINGLEFILE
 #include "bgpstream_datasource_singlefile.h"
+#endif
+
+#ifdef WITH_DATA_INTERFACE_CSVFILE
 #include "bgpstream_datasource_csvfile.h"
+#endif
+
+#ifdef WITH_DATA_INTERFACE_SQLITE
 #include "bgpstream_datasource_sqlite.h"
+#endif
+
+#ifdef WITH_DATA_INTERFACE_BROKER
 #include "bgpstream_datasource_broker.h"
+#endif
 
 
 
@@ -46,13 +60,8 @@ typedef enum {
 typedef struct struct_bgpstream_datasource_mgr_t {  
   bgpstream_data_interface_id_t datasource;
   // datasources available
+#ifdef WITH_DATA_INTERFACE_MYSQL
   bgpstream_mysql_datasource_t *mysql_ds;
-  bgpstream_singlefile_datasource_t *singlefile_ds;
-  bgpstream_csvfile_datasource_t *csvfile_ds;
-  bgpstream_sqlite_datasource_t *sqlite_ds;
-  bgpstream_broker_datasource_t *broker_ds;
-  
-  // datasource specific_options
   char *mysql_dbname;
   char *mysql_user;
   char *mysql_password;
@@ -60,12 +69,29 @@ typedef struct struct_bgpstream_datasource_mgr_t {
   unsigned int mysql_port;
   char *mysql_socket;
   char *mysql_dump_path;
+#endif
+
+#ifdef WITH_DATA_INTERFACE_SINGLEFILE
+  bgpstream_singlefile_datasource_t *singlefile_ds;
   char *singlefile_rib_mrtfile;
   char *singlefile_upd_mrtfile;
+#endif
+
+#ifdef WITH_DATA_INTERFACE_CSVFILE
+  bgpstream_csvfile_datasource_t *csvfile_ds;
   char *csvfile_file;
+#endif
+
+#ifdef WITH_DATA_INTERFACE_SQLITE
+  bgpstream_sqlite_datasource_t *sqlite_ds;
   char *sqlite_file;
+#endif
+
+#ifdef WITH_DATA_INTERFACE_BROKER
+  bgpstream_broker_datasource_t *broker_ds;
   char *broker_url;
-  
+#endif
+
   // blocking options
   int blocking;
   int backoff_time;
@@ -79,7 +105,7 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create();
 void bgpstream_datasource_mgr_set_data_interface(bgpstream_datasource_mgr_t *datasource_mgr,
 						 const bgpstream_data_interface_id_t datasource);
 
-void bgpstream_datasource_mgr_set_data_interface_option(bgpstream_datasource_mgr_t *datasource_mgr,
+int bgpstream_datasource_mgr_set_data_interface_option(bgpstream_datasource_mgr_t *datasource_mgr,
 							const bgpstream_data_interface_option_t *option_type,
 							const char *option_value);
 
