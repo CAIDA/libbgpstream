@@ -86,21 +86,11 @@ AC_CHECK_HEADERS([arpa/inet.h inttypes.h limits.h math.h stdlib.h string.h \
 			      time.h sys/time.h])
 
 # Checks for mandatory libraries
-
 AC_SEARCH_LIBS([wandio_create], [wandio trace], [with_wandio=yes],
                  [AC_MSG_ERROR(
 		 [libwandio required (included with libtrace since 3.0.15)]
 		 )])
 AM_CONDITIONAL([WITH_WANDIO], [test "x$with_wandio" == xyes])
-
-
-
-AC_CHECK_LIB([mysqlclient], [mysql_query], ,
-               [AC_MSG_ERROR( [libmysqlclient required ])])
-
-
-AC_CHECK_LIB([sqlite3], [sqlite3_open_v2], ,
-               [AC_MSG_ERROR( [libsqlite3 required ])])
 
 # Checks for doxygen
 AC_CHECK_PROG([bgpstream_doxygen_avail], [doxygen], [yes], [no])
@@ -121,46 +111,65 @@ AM_CONDITIONAL(HAS_DOXYGEN, [test x"$bgpstream_doxygen" = xyes])
 AC_MSG_NOTICE([])
 AC_MSG_NOTICE([---- BGPStream configuration ----])
 
-# set some default options for the datasources
-AC_DEFUN([BS_DS_OPT],
-[
-opt_val=$4
-AC_MSG_CHECKING([data interface option: $3])
-AC_ARG_WITH([$1],
-[AS_HELP_STRING([--with-$1=$opt_val],
-  [$3 (defaults to $opt_val)])],
-  [opt_val=$withval],
-  [])
+BS_WITH_DI([bgpstream_broker],[broker],[BROKER],[yes])
+BS_WITH_DI([bgpstream_singlefile],[singlefile],[SINGLEFILE],[yes])
+BS_WITH_DI([bgpstream_csvfile],[csvfile],[CSVFILE],[yes])
+BS_WITH_DI([bgpstream_sqlite],[sqlite],[SQLITE],[no])
+# TODO: remove the mysql data interface
+BS_WITH_DI([bgpstream_mysql],[mysql],[MYSQL],[no])
 
-AC_DEFINE_UNQUOTED([BGPSTREAM_DS_$2],
-                    ["$opt_val"], [$3])
+if test "x$bs_di_valid" != xyes; then
+   AC_MSG_ERROR([At least one data interface must be enabled])
+fi
 
-AC_MSG_RESULT([$opt_val])
-])
+# check for data interface dependencies
+AC_MSG_NOTICE([checking data interface dependencies...])
 
+if test "x$with_di_sqlite" == xyes; then
+   # check for sqlite library
+   AC_CHECK_LIB([sqlite3], [sqlite3_open_v2], ,
+               [AC_MSG_ERROR( [libsqlite3 required for sqlite data interface])])
+fi
 
-# singlefile options
-BS_DS_OPT(singlefile-rib-file, SINGLEFILE_RIB_FILE, RIB MRT file to read, not-set)
-BS_DS_OPT(singlefile-upd-file, SINGLEFILE_UPDATE_FILE, CSV file listing the mrt data to read, not-set)
+if test "x$with_di_mysql" == xyes; then
+   AC_CHECK_LIB([mysqlclient], [mysql_query], ,
+               [AC_MSG_ERROR( [libmysqlclient required for mysql data interface])])
+fi
 
-# csvfile options
-BS_DS_OPT(csvfile-csv-file, CSVFILE_CSV_FILE, RIB MRT file to read, bgp_data.csv)
-
-# sqlite options
-BS_DS_OPT(sqlite-db-file, SQLITE_DB_FILE, SQLite database, bgp_data.db)
-
-# MySQL options
-BS_DS_OPT(mysql-db-name, MYSQL_DB_NAME, MySQL Database name, bgparchive)
-BS_DS_OPT(mysql-db-user, MYSQL_DB_USER, MySQL Database username, bgpstream)
-BS_DS_OPT(mysql-db-password, MYSQL_DB_PASSWORD, MySQL Database password, not-set)
-BS_DS_OPT(mysql-db-host, MYSQL_DB_HOST, MySQL server hostname/IP address, not-set)
-BS_DS_OPT(mysql-db-port, MYSQL_DB_PORT, MySQL server port, not-set)
-BS_DS_OPT(mysql-db-socket, MYSQL_DB_SOCKET, MySQL server unix socket, not-set)
-
-BS_DS_OPT(mysql-dump-path, MYSQL_DUMP_PATH, Common prefix path for MRT data, not-set)
+# configure enabled data interfaces
+AC_MSG_NOTICE([configuring data interface parameters...])
 
 # broker options
-BS_DS_OPT(broker-url, BROKER_URL, Broker URL, https://bgpstream.caida.org/broker)
+if test "x$with_di_broker" == xyes; then
+   BS_DI_OPT(broker-url, BROKER_URL, Broker URL, https://bgpstream.caida.org/broker)
+fi
+
+# singlefile options
+if test "x$with_di_singlefile" == xyes; then
+   BS_DI_OPT(singlefile-rib-file, SINGLEFILE_RIB_FILE, RIB MRT file to read, not-set)
+   BS_DI_OPT(singlefile-upd-file, SINGLEFILE_UPDATE_FILE, Updates MRT to read, not-set)
+fi
+
+# sqlite options
+if test "x$with_di_sqlite" == xyes; then
+   BS_DI_OPT(sqlite-db-file, SQLITE_DB_FILE, SQLite database, bgp_data.db)
+fi
+
+# csvfile options
+if test "x$with_di_csvfile" == xyes; then
+   BS_DI_OPT(csvfile-csv-file, CSVFILE_CSV_FILE, CSV file listing the MRT data to read, bgp_data.csv)
+fi
+
+# MySQL options
+if test "x$with_di_mysql" == xyes; then
+   BS_DI_OPT(mysql-db-name, MYSQL_DB_NAME, MySQL Database name, bgparchive)
+   BS_DI_OPT(mysql-db-user, MYSQL_DB_USER, MySQL Database username, bgpstream)
+   BS_DI_OPT(mysql-db-password, MYSQL_DB_PASSWORD, MySQL Database password, not-set)
+   BS_DI_OPT(mysql-db-host, MYSQL_DB_HOST, MySQL server hostname/IP address, not-set)
+   BS_DI_OPT(mysql-db-port, MYSQL_DB_PORT, MySQL server port, not-set)
+   BS_DI_OPT(mysql-db-socket, MYSQL_DB_SOCKET, MySQL server unix socket, not-set)
+   BS_DI_OPT(mysql-dump-path, MYSQL_DUMP_PATH, Common prefix path for MRT data, not-set)
+fi
 
 AC_MSG_NOTICE([---------------------------------])
 

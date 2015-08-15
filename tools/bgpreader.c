@@ -59,8 +59,11 @@ void data_if_usage() {
     {
       info = bgpstream_get_data_interface_info(bs, ids[i]);
 
-      fprintf(stderr,
-              "       %-15s%s\n", info->name, info->description);
+      if(info != NULL)
+        {
+          fprintf(stderr,
+                  "       %-15s%s\n", info->name, info->description);
+        }
     }
 }
 
