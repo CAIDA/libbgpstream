@@ -86,21 +86,11 @@ AC_CHECK_HEADERS([arpa/inet.h inttypes.h limits.h math.h stdlib.h string.h \
 			      time.h sys/time.h])
 
 # Checks for mandatory libraries
-
 AC_SEARCH_LIBS([wandio_create], [wandio trace], [with_wandio=yes],
                  [AC_MSG_ERROR(
 		 [libwandio required (included with libtrace since 3.0.15)]
 		 )])
 AM_CONDITIONAL([WITH_WANDIO], [test "x$with_wandio" == xyes])
-
-
-
-AC_CHECK_LIB([mysqlclient], [mysql_query], ,
-               [AC_MSG_ERROR( [libmysqlclient required ])])
-
-
-AC_CHECK_LIB([sqlite3], [sqlite3_open_v2], ,
-               [AC_MSG_ERROR( [libsqlite3 required ])])
 
 # Checks for doxygen
 AC_CHECK_PROG([bgpstream_doxygen_avail], [doxygen], [yes], [no])
@@ -118,50 +108,165 @@ AC_ARG_WITH([doxygen],
 AC_MSG_RESULT([$bgpstream_doxygen])
 AM_CONDITIONAL(HAS_DOXYGEN, [test x"$bgpstream_doxygen" = xyes])
 
+AC_MSG_NOTICE([])
+AC_MSG_NOTICE([---- BGPStream configuration ----])
 
+BS_WITH_DI([bgpstream_broker],[broker],[BROKER],[yes])
+BS_WITH_DI([bgpstream_singlefile],[singlefile],[SINGLEFILE],[yes])
+BS_WITH_DI([bgpstream_csvfile],[csvfile],[CSVFILE],[yes])
+BS_WITH_DI([bgpstream_sqlite],[sqlite],[SQLITE],[no])
+# TODO: remove the mysql data interface
+BS_WITH_DI([bgpstream_mysql],[mysql],[MYSQL],[no])
 
-# set some default options for the datasources
-AC_DEFUN([BS_DS_OPT],
-[
-opt_val=$4
-AC_MSG_CHECKING([data interface option: $3])
-AC_ARG_WITH([$1],
-[AS_HELP_STRING([--with-$1=$opt_val],
-  [$3 (defaults to $opt_val)])],
-  [opt_val=$withval],
-  [])
+if test "x$bs_di_valid" != xyes; then
+   AC_MSG_ERROR([At least one data interface must be enabled])
+fi
 
-AC_DEFINE_UNQUOTED([BGPSTREAM_DS_$2],
-                    ["$opt_val"], [$3])
+# check for data interface dependencies
+AC_MSG_NOTICE([checking data interface dependencies...])
 
-AC_MSG_RESULT([$opt_val])
-])
+if test "x$with_di_sqlite" == xyes; then
+   # check for sqlite library
+   AC_CHECK_LIB([sqlite3], [sqlite3_open_v2], ,
+               [AC_MSG_ERROR( [libsqlite3 required for sqlite data interface])])
+fi
 
+if test "x$with_di_mysql" == xyes; then
+   AC_CHECK_LIB([mysqlclient], [mysql_query], ,
+               [AC_MSG_ERROR( [libmysqlclient required for mysql data interface])])
+fi
 
-# singlefile options
-BS_DS_OPT(singlefile-rib-file, SINGLEFILE_RIB_FILE, RIB MRT file to read, not-set)
-BS_DS_OPT(singlefile-upd-file, SINGLEFILE_UPDATE_FILE, CSV file listing the mrt data to read, not-set)
-
-# csvfile options
-BS_DS_OPT(csvfile-csv-file, CSVFILE_CSV_FILE, RIB MRT file to read, bgp_data.csv)
-
-# sqlite options
-BS_DS_OPT(sqlite-db-file, SQLITE_DB_FILE, SQLite database, bgp_data.db)
-
-# MySQL options
-BS_DS_OPT(mysql-db-name, MYSQL_DB_NAME, MySQL Database name, bgparchive)
-BS_DS_OPT(mysql-db-user, MYSQL_DB_USER, MySQL Database username, bgpstream)
-BS_DS_OPT(mysql-db-password, MYSQL_DB_PASSWORD, MySQL Database password, not-set)
-BS_DS_OPT(mysql-db-host, MYSQL_DB_HOST, MySQL server hostname/IP address, not-set)
-BS_DS_OPT(mysql-db-port, MYSQL_DB_PORT, MySQL server port, not-set)
-BS_DS_OPT(mysql-db-socket, MYSQL_DB_SOCKET, MySQL server unix socket, not-set)
-
-BS_DS_OPT(mysql-dump-path, MYSQL_DUMP_PATH, Common prefix path for MRT data, not-set)
+# configure enabled data interfaces
+AC_MSG_NOTICE([configuring data interface parameters...])
 
 # broker options
-BS_DS_OPT(broker-url, BROKER_URL, Broker URL, https://bgpstream.caida.org/broker)
+if test "x$with_di_broker" == xyes; then
+   BS_DI_OPT(broker-url, BROKER_URL, Broker URL, https://bgpstream.caida.org/broker)
+fi
 
+# singlefile options
+if test "x$with_di_singlefile" == xyes; then
+   BS_DI_OPT(singlefile-rib-file, SINGLEFILE_RIB_FILE, RIB MRT file to read, not-set)
+   BS_DI_OPT(singlefile-upd-file, SINGLEFILE_UPDATE_FILE, Updates MRT to read, not-set)
+fi
 
+# sqlite options
+if test "x$with_di_sqlite" == xyes; then
+   BS_DI_OPT(sqlite-db-file, SQLITE_DB_FILE, SQLite database, bgp_data.db)
+fi
+
+# csvfile options
+if test "x$with_di_csvfile" == xyes; then
+   BS_DI_OPT(csvfile-csv-file, CSVFILE_CSV_FILE, CSV file listing the MRT data to read, bgp_data.csv)
+fi
+
+# MySQL options
+if test "x$with_di_mysql" == xyes; then
+   BS_DI_OPT(mysql-db-name, MYSQL_DB_NAME, MySQL Database name, bgparchive)
+   BS_DI_OPT(mysql-db-user, MYSQL_DB_USER, MySQL Database username, bgpstream)
+   BS_DI_OPT(mysql-db-password, MYSQL_DB_PASSWORD, MySQL Database password, not-set)
+   BS_DI_OPT(mysql-db-host, MYSQL_DB_HOST, MySQL server hostname/IP address, not-set)
+   BS_DI_OPT(mysql-db-port, MYSQL_DB_PORT, MySQL server port, not-set)
+   BS_DI_OPT(mysql-db-socket, MYSQL_DB_SOCKET, MySQL server unix socket, not-set)
+   BS_DI_OPT(mysql-dump-path, MYSQL_DUMP_PATH, Common prefix path for MRT data, not-set)
+fi
+
+AC_MSG_NOTICE([---------------------------------])
+
+# TODO: make BGPView optional
+AC_MSG_NOTICE([])
+AC_MSG_NOTICE([---- BGPView configuration ----])
+
+# TODO: Make BGPView Consumers optional
+# TODO: also needed by bgpcorsaro
+AC_CHECK_LIB([timeseries], [timeseries_init], , [
+    AC_MSG_ERROR([libtimeseries is required for the Per-AS Visibility plugin])
+])
+AC_CHECK_LIB([ipmeta], [ipmeta_lookup], ,[AC_MSG_ERROR([ipmeta is required])])
+
+# BGPView IO dependencies
+# TODO: make view IO optional
+AC_CHECK_LIB([czmq], [zctx_new], ,[AC_MSG_ERROR(
+		      [CZMQ is required])])
+
+AC_MSG_NOTICE([-------------------------------])
+
+# BGPCorsaro configuration
+AC_MSG_NOTICE([])
+AC_MSG_NOTICE([---- BGPCorsaro configuration ----])
+# monitor name
+AC_MSG_CHECKING([for the monitor name to use])
+AC_ARG_WITH([bgpcorsaro-monitorname],
+	[AS_HELP_STRING([--with-bgpcorsaro-monitorname=NAME],
+	  [explicitly define the monitor name (defaults to system hostname)])],
+	  [if test "x$withval" == xyes || test "x$withval" == ""; then
+	  with_monitorname=`hostname`
+	  else
+	  with_monitorname=$withval
+	  fi],
+	  [with_monitorname=`hostname`])
+AC_MSG_RESULT([$with_monitorname])
+
+AC_DEFINE_UNQUOTED([BGPCORSARO_MONITOR_NAME],[$with_monitorname],[Monitor Name])
+
+# are we going to dump some plugin timing information? (useful for debugging
+# where bgpcorsaro spends its time given a complicated plugin chain)
+AC_MSG_CHECKING([whether to monitor plugin runtimes])
+AC_ARG_WITH([bgpcorsaro-plugin-timing],
+	[AS_HELP_STRING([--with-bgpcorsaro-plugin-timing],
+	  [time how long each plugin takes to process packets (defaults to no)])],
+	  [],
+	  [with_plugin_timing=no])
+
+AS_IF([test "x$with_plugin_timing" != xno],
+	[
+	    AC_DEFINE_UNQUOTED([WITH_PLUGIN_TIMING],[1],
+		[Monitor plugin timing])
+	])
+
+AC_MSG_RESULT([$with_plugin_timing])
+
+# are we going to use the bgpwatcher connection?
+# turn on if people asked for it
+# TODO: make corsaro conditionally build depending on whether BGPView IO is built
+
+# configure options to disable plugins
+#AC_DEFINE([ED_PLUGIN_INIT_ALL_ENABLED],[],[Plugin init functions])
+
+################################################################################
+# Plugin Configuration Macros                                                  #
+# ---------------------------                                                  #
+#                                                                              #
+# Each ED_WITH_PLUGIN macro defines a plugin which can be compiled into        #
+# Bgpcorsaro.                                                                  #
+#                                                                              #
+# The order in which these plugins are listed is the _default_ order in which  #
+# they will be run.                                                            #
+################################################################################
+
+ED_WITH_PLUGIN([bgpcorsaro_routingtables],[routingtables],[ROUTINGTABLES],[yes])
+ED_WITH_PLUGIN([bgpcorsaro_pacifier],[pacifier],[PACIFIER],[yes])
+ED_WITH_PLUGIN([bgpcorsaro_viewconsumer],[viewconsumer],[VIEWCONSUMER],[yes])
+
+# this MUST go after all the ED_WITH_PLUGIN macro calls
+AC_DEFINE_UNQUOTED([ED_PLUGIN_INIT_ALL_ENABLED], $ED_PLUGIN_INIT_ALL_ENABLED,
+		   [plugins to call the init macro for in bgpcorsaro_plugin.c])
+
+#------------------------------------------------------------------------------#
+# Extra tests or config needed for plugins should go below here                #
+#------------------------------------------------------------------------------#
+
+# TODO: the routingtables plugin requires BGPView
+#if test "x$with_plugin_routingtables" == xyes; then
+#fi
+
+# the viewconsumer plugin requires the routingtables plugin
+if test "x$with_plugin_viewconsumer" == xyes &&
+   test "x$with_plugin_routingtables" != xyes; then
+   AC_MSG_ERROR([the viewconsumer plugin requires the routingtables plugin])
+fi
+
+AC_MSG_NOTICE([----------------------------------])
 
 # we may want to come back later and add compile-time configuration for things
 # like datastructure providers, but for now it will all get compiled
@@ -173,12 +278,17 @@ AC_SUBST([BGPSTREAM_MINOR_VERSION])
 AC_HEADER_ASSERT
 
 AC_CONFIG_FILES([Makefile
-		lib/Makefile
-                lib/bgpdump/Makefile
-                lib/datasources/Makefile
-                lib/utils/Makefile
-		tools/Makefile
-		test/Makefile
+                bgpcorsaro/Makefile
+                bgpcorsaro/lib/Makefile
+                bgpcorsaro/lib/plugins/Makefile
+                bgpcorsaro/lib/plugins/libroutingtables/Makefile
+                bgpcorsaro/tools/Makefile
+                bgpview/Makefile
+                bgpview/lib/Makefile
+                bgpview/lib/consumers/Makefile
+                bgpview/lib/io/Makefile
+                bgpview/tools/Makefile
+                bgpview/tools/io/Makefile
 		common/Makefile
 		common/libpatricia/Makefile
 		common/libinterval3/Makefile
@@ -186,5 +296,11 @@ AC_CONFIG_FILES([Makefile
 		common/libcsv/Makefile
                 common/libjsmn/Makefile
                 docs/Makefile
-	        docs/bgpstream.doxygen])
+	        docs/bgpstream.doxygen
+		lib/Makefile
+                lib/bgpdump/Makefile
+                lib/datasources/Makefile
+                lib/utils/Makefile
+		tools/Makefile
+		test/Makefile])
 AC_OUTPUT

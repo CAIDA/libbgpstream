@@ -38,39 +38,83 @@ static bgpstream_data_interface_id_t bgpstream_data_interfaces[] = {
   BGPSTREAM_DATA_INTERFACE_BROKER,
 };
 
-static bgpstream_data_interface_info_t bgpstream_data_interface_infos[] = {
-  { /* NO VALID IF WITH ID 0 */ },
-  {
+#ifdef WITH_DATA_INTERFACE_SINGLEFILE
+static bgpstream_data_interface_info_t bgpstream_singlefile_info = {
     BGPSTREAM_DATA_INTERFACE_SINGLEFILE,
     "singlefile",
     "Read a single mrt data file (a RIB and/or an update)",
-  },
-  {
+};
+#endif
+
+#ifdef WITH_DATA_INTERFACE_CSVFILE
+static bgpstream_data_interface_info_t bgpstream_csvfile_info = {
     BGPSTREAM_DATA_INTERFACE_CSVFILE,
     "csvfile",
     "Retrieve metadata information from a csv file",
-  },
-  {
-    BGPSTREAM_DATA_INTERFACE_SQLITE,
-    "sqlite",
-    "Retrieve metadata information from a sqlite database",
-  },
-  {
-    BGPSTREAM_DATA_INTERFACE_MYSQL,
-    "mysql",
-    "Retrieve metadata information from the bgparchive mysql database",
-  },
-  {
+};
+#endif
+
+#ifdef WITH_DATA_INTERFACE_SQLITE
+static bgpstream_data_interface_info_t bgpstream_sqlite_info = {
+  BGPSTREAM_DATA_INTERFACE_SQLITE,
+  "sqlite",
+  "Retrieve metadata information from a sqlite database",
+};
+#endif
+
+#ifdef WITH_DATA_INTERFACE_MYSQL
+static bgpstream_data_interface_info_t bgpstream_mysql_info = {
+  BGPSTREAM_DATA_INTERFACE_MYSQL,
+  "mysql",
+  "Retrieve metadata information from the bgparchive mysql database",
+};
+#endif
+
+#ifdef WITH_DATA_INTERFACE_BROKER
+static bgpstream_data_interface_info_t bgpstream_broker_info = {
     BGPSTREAM_DATA_INTERFACE_BROKER,
     "broker",
     "Retrieve metadata information from the BGPStream Broker service",
-  },
+};
+#endif
 
+static bgpstream_data_interface_info_t *bgpstream_data_interface_infos[] = {
+  NULL, /* NO VALID IF WITH ID 0 */
+
+#ifdef WITH_DATA_INTERFACE_SINGLEFILE
+  &bgpstream_singlefile_info,
+#else
+  NULL,
+#endif
+
+#ifdef WITH_DATA_INTERFACE_CSVFILE
+  &bgpstream_csvfile_info,
+#else
+  NULL,
+#endif
+
+#ifdef WITH_DATA_INTERFACE_SQLITE
+  &bgpstream_sqlite_info,
+#else
+  NULL,
+#endif
+
+#ifdef WITH_DATA_INTERFACE_MYSQL
+  &bgpstream_mysql_info,
+#else
+  NULL,
+#endif
+
+#ifdef WITH_DATA_INTERFACE_BROKER
+  &bgpstream_broker_info,
+#else
+  NULL,
+#endif
 };
 
 /* this should be a complete list of per-interface options */
 
-
+#ifdef WITH_DATA_INTERFACE_SINGLEFILE
 static bgpstream_data_interface_option_t bgpstream_singlefile_options[] = {
   /* RIB MRT file path */
   {
@@ -86,7 +130,9 @@ static bgpstream_data_interface_option_t bgpstream_singlefile_options[] = {
     "updates mrt file to read (default: " STR(BGPSTREAM_DS_SINGLEFILE_UPDATE_FILE) ")",
   },
 };
+#endif
 
+#ifdef WITH_DATA_INTERFACE_CSVFILE
 static bgpstream_data_interface_option_t bgpstream_csvfile_options[] = {
   /* CSV file name */
   {
@@ -96,7 +142,9 @@ static bgpstream_data_interface_option_t bgpstream_csvfile_options[] = {
     "csv file listing the mrt data to read (default: " STR(BGPSTREAM_DS_CSVFILE_CSV_FILE) ")",
   },
 };
+#endif
 
+#ifdef WITH_DATA_INTERFACE_SQLITE
 static bgpstream_data_interface_option_t bgpstream_sqlite_options[] = {
   /* SQLITE database file name */
   {
@@ -106,7 +154,9 @@ static bgpstream_data_interface_option_t bgpstream_sqlite_options[] = {
     "sqlite database (default: " STR(BGPSTREAM_DS_SQLITE_DB_FILE) ")",
   },
 };
+#endif
 
+#ifdef WITH_DATA_INTERFACE_BROKER
 static bgpstream_data_interface_option_t bgpstream_broker_options[] = {
   /* Broker URL */
   {
@@ -116,7 +166,9 @@ static bgpstream_data_interface_option_t bgpstream_broker_options[] = {
     "Broker URL (default: " STR(BGPSTREAM_DS_BROKER_URL) ")",
   },
 };
+#endif
 
+#ifdef WITH_DATA_INTERFACE_MYSQL
 static bgpstream_data_interface_option_t bgpstream_mysql_options[] = {
   /* Database Name */
   {
@@ -170,6 +222,7 @@ static bgpstream_data_interface_option_t bgpstream_mysql_options[] = {
     "Common prefix path for MRT data (default:  " STR(BGPSTREAM_DS_MYSQL_DUMP_PATH) ")",
   },
 };
+#endif
 
 /* allocate memory for a new bgpstream interface
  */
@@ -268,9 +321,10 @@ bgpstream_get_data_interface_id_by_name(bgpstream_t *bs, const char *name)
 
   for(i=1; i<ARR_CNT(bgpstream_data_interface_infos); i++)
     {
-      if(strcmp(bgpstream_data_interface_infos[i].name, name) == 0)
+      if(bgpstream_data_interface_infos[i] != NULL &&
+         strcmp(bgpstream_data_interface_infos[i]->name, name) == 0)
         {
-          return bgpstream_data_interface_infos[i].id;
+          return bgpstream_data_interface_infos[i]->id;
         }
     }
 
@@ -281,7 +335,7 @@ bgpstream_data_interface_info_t *
 bgpstream_get_data_interface_info(bgpstream_t *bs,
                                   bgpstream_data_interface_id_t if_id)
 {
-  return &bgpstream_data_interface_infos[if_id];
+  return bgpstream_data_interface_infos[if_id];
 }
 
 int bgpstream_get_data_interface_options(bgpstream_t *bs,
@@ -293,30 +347,40 @@ int bgpstream_get_data_interface_options(bgpstream_t *bs,
   switch(if_id)
     {
 
+#ifdef WITH_DATA_INTERFACE_SINGLEFILE
     case BGPSTREAM_DATA_INTERFACE_SINGLEFILE:
       *opts = bgpstream_singlefile_options;
       return ARR_CNT(bgpstream_singlefile_options);
       break;
+#endif
 
+#ifdef WITH_DATA_INTERFACE_CSVFILE
     case BGPSTREAM_DATA_INTERFACE_CSVFILE:
       *opts = bgpstream_csvfile_options;
       return ARR_CNT(bgpstream_csvfile_options);
       break;
+#endif
 
+#ifdef WITH_DATA_INTERFACE_SQLITE
     case BGPSTREAM_DATA_INTERFACE_SQLITE:
       *opts = bgpstream_sqlite_options;
       return ARR_CNT(bgpstream_sqlite_options);
       break;
+#endif
 
+#ifdef WITH_DATA_INTERFACE_BROKER
     case BGPSTREAM_DATA_INTERFACE_BROKER:
       *opts = bgpstream_broker_options;
       return ARR_CNT(bgpstream_broker_options);
       break;
+#endif
 
+#ifdef WITH_DATA_INTERFACE_MYSQL
     case BGPSTREAM_DATA_INTERFACE_MYSQL:
       *opts = bgpstream_mysql_options;
       return ARR_CNT(bgpstream_mysql_options);
       break;
+#endif
 
     default:
       *opts = NULL;

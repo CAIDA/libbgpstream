@@ -22,6 +22,7 @@
 #include "bgpstream_datasource.h"
 #include "bgpstream_debug.h"
 
+#include <assert.h>
 #include <inttypes.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -72,29 +73,57 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
     return NULL; // can't allocate memory
   }
   // default values
-  datasource_mgr->datasource = BGPSTREAM_DATA_INTERFACE_MYSQL; // default data source
+  datasource_mgr->datasource = BGPSTREAM_DATA_INTERFACE_BROKER; // default data source
   datasource_mgr->blocking = 0;
   datasource_mgr->backoff_time = DATASOURCE_BLOCKING_MIN_WAIT;
   // datasources (none of them is active at the beginning)
+
+#ifdef WITH_DATA_INTERFACE_MYSQL
   datasource_mgr->mysql_ds = NULL;
+  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_dbname,
+                        BGPSTREAM_DS_MYSQL_DB_NAME);
+  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_user,
+                        BGPSTREAM_DS_MYSQL_DB_USER);
+  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_password,
+                        BGPSTREAM_DS_MYSQL_DB_PASSWORD);
+  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_host,
+                        BGPSTREAM_DS_MYSQL_DB_HOST);
+  GET_DEFAULT_INT_VALUE(datasource_mgr->mysql_port,
+                        BGPSTREAM_DS_MYSQL_DB_PORT);
+  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_socket,
+                        BGPSTREAM_DS_MYSQL_DB_SOCKET);
+  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_dump_path,
+                        BGPSTREAM_DS_MYSQL_DUMP_PATH);
+#endif
+
+#ifdef WITH_DATA_INTERFACE_SINGLEFILE
   datasource_mgr->singlefile_ds = NULL;
+  GET_DEFAULT_STR_VALUE(datasource_mgr->singlefile_rib_mrtfile,
+                        BGPSTREAM_DS_SINGLEFILE_RIB_FILE);
+  GET_DEFAULT_STR_VALUE(datasource_mgr->singlefile_upd_mrtfile,
+                        BGPSTREAM_DS_SINGLEFILE_UPDATE_FILE);
+#endif
+
+#ifdef WITH_DATA_INTERFACE_CSVFILE
   datasource_mgr->csvfile_ds = NULL;
+  GET_DEFAULT_STR_VALUE(datasource_mgr->csvfile_file,
+                        BGPSTREAM_DS_CSVFILE_CSV_FILE);
+#endif
+
+#ifdef WITH_DATA_INTERFACE_SQLITE
   datasource_mgr->sqlite_ds = NULL;
+  GET_DEFAULT_STR_VALUE(datasource_mgr->sqlite_file,
+                        BGPSTREAM_DS_SQLITE_DB_FILE);
+#endif
+
+#ifdef WITH_DATA_INTERFACE_BROKER
   datasource_mgr->broker_ds = NULL;
+  GET_DEFAULT_STR_VALUE(datasource_mgr->broker_url,
+                        BGPSTREAM_DS_BROKER_URL);
+#endif
+
   datasource_mgr->status = BGPSTREAM_DATASOURCE_STATUS_OFF;
-  // datasource options
-  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_dbname,BGPSTREAM_DS_MYSQL_DB_NAME);
-  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_user, BGPSTREAM_DS_MYSQL_DB_USER);
-  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_password, BGPSTREAM_DS_MYSQL_DB_PASSWORD);
-  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_host, BGPSTREAM_DS_MYSQL_DB_HOST);
-  GET_DEFAULT_INT_VALUE(datasource_mgr->mysql_port, BGPSTREAM_DS_MYSQL_DB_PORT);
-  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_socket, BGPSTREAM_DS_MYSQL_DB_SOCKET);
-  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_dump_path, BGPSTREAM_DS_MYSQL_DUMP_PATH);
-  GET_DEFAULT_STR_VALUE(datasource_mgr->singlefile_rib_mrtfile, BGPSTREAM_DS_SINGLEFILE_RIB_FILE);
-  GET_DEFAULT_STR_VALUE(datasource_mgr->singlefile_upd_mrtfile, BGPSTREAM_DS_SINGLEFILE_UPDATE_FILE);
-  GET_DEFAULT_STR_VALUE(datasource_mgr->csvfile_file, BGPSTREAM_DS_CSVFILE_CSV_FILE);
-  GET_DEFAULT_STR_VALUE(datasource_mgr->sqlite_file, BGPSTREAM_DS_SQLITE_DB_FILE);
-  GET_DEFAULT_STR_VALUE(datasource_mgr->broker_url, BGPSTREAM_DS_BROKER_URL);
+
   bgpstream_debug("\tBSDS_MGR: create end");
   return datasource_mgr;
 }
@@ -110,13 +139,14 @@ void bgpstream_datasource_mgr_set_data_interface(bgpstream_datasource_mgr_t *dat
 }
 
 
-void bgpstream_datasource_mgr_set_data_interface_option(bgpstream_datasource_mgr_t *datasource_mgr,
+int bgpstream_datasource_mgr_set_data_interface_option(bgpstream_datasource_mgr_t *datasource_mgr,
                                                         const bgpstream_data_interface_option_t *option_type,
 							const char *option_value) {
   // this option has no effect if the datasource selected is not
   // using this option
   switch(option_type->if_id)
     {
+#ifdef WITH_DATA_INTERFACE_MYSQL
     case BGPSTREAM_DATA_INTERFACE_MYSQL:
       switch(option_type->id)
         {
@@ -167,7 +197,9 @@ void bgpstream_datasource_mgr_set_data_interface_option(bgpstream_datasource_mgr
           break;
         }
       break;
+#endif
 
+#ifdef WITH_DATA_INTERFACE_SINGLEFILE
     case BGPSTREAM_DATA_INTERFACE_SINGLEFILE:
       switch(option_type->id)
         {
@@ -187,7 +219,9 @@ void bgpstream_datasource_mgr_set_data_interface_option(bgpstream_datasource_mgr
           break;
         }
       break;
+#endif
 
+#ifdef WITH_DATA_INTERFACE_CSVFILE
     case BGPSTREAM_DATA_INTERFACE_CSVFILE:
       switch(option_type->id)
         {
@@ -200,7 +234,9 @@ void bgpstream_datasource_mgr_set_data_interface_option(bgpstream_datasource_mgr
           break;
         }
       break;
+#endif
 
+#ifdef WITH_DATA_INTERFACE_SQLITE
       case BGPSTREAM_DATA_INTERFACE_SQLITE:
       switch(option_type->id)
         {
@@ -212,7 +248,9 @@ void bgpstream_datasource_mgr_set_data_interface_option(bgpstream_datasource_mgr
           datasource_mgr->sqlite_file = strdup(option_value);
           break;
         }
+#endif
 
+#ifdef WITH_DATA_INTERFACE_BROKER
     case BGPSTREAM_DATA_INTERFACE_BROKER:
       switch(option_type->id)
         {
@@ -225,7 +263,13 @@ void bgpstream_datasource_mgr_set_data_interface_option(bgpstream_datasource_mgr
           break;
         }
       break;
+#endif
+
+    default:
+      fprintf(stderr, "Invalid data interface (are all interfaces built?\n");
+      return -1;
     }
+  return 0;
 }
 
 
@@ -240,53 +284,66 @@ void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
   
   switch(datasource_mgr->datasource)
     {
-   
+#ifdef WITH_DATA_INTERFACE_SINGLEFILE
     case BGPSTREAM_DATA_INTERFACE_SINGLEFILE:
-      datasource_mgr->singlefile_ds = bgpstream_singlefile_datasource_create(filter_mgr,
-                                                                             datasource_mgr->singlefile_rib_mrtfile,
-                                                                             datasource_mgr->singlefile_upd_mrtfile);
+      datasource_mgr->singlefile_ds =
+        bgpstream_singlefile_datasource_create(filter_mgr,
+                                               datasource_mgr->singlefile_rib_mrtfile,
+                                               datasource_mgr->singlefile_upd_mrtfile);
       ds = (void *) datasource_mgr->singlefile_ds;
       break;
+#endif
 
+#ifdef WITH_DATA_INTERFACE_CSVFILE
     case BGPSTREAM_DATA_INTERFACE_CSVFILE:
-      datasource_mgr->csvfile_ds = bgpstream_csvfile_datasource_create(filter_mgr,
-                                                                       datasource_mgr->csvfile_file);
+      datasource_mgr->csvfile_ds =
+        bgpstream_csvfile_datasource_create(filter_mgr,
+                                            datasource_mgr->csvfile_file);
       ds = (void *) datasource_mgr->csvfile_ds;
       break;
+#endif
 
+#ifdef WITH_DATA_INTERFACE_SQLITE
     case BGPSTREAM_DATA_INTERFACE_SQLITE:
-      datasource_mgr->sqlite_ds = bgpstream_sqlite_datasource_create(filter_mgr,
-                                                                     datasource_mgr->sqlite_file);
+      datasource_mgr->sqlite_ds =
+        bgpstream_sqlite_datasource_create(filter_mgr,
+                                           datasource_mgr->sqlite_file);
       ds = (void *) datasource_mgr->sqlite_ds;
       break;
+#endif
 
+#ifdef WITH_DATA_INTERFACE_BROKER
     case BGPSTREAM_DATA_INTERFACE_BROKER:
       datasource_mgr->broker_ds =
         bgpstream_broker_datasource_create(filter_mgr,
                                            datasource_mgr->broker_url);
       ds = (void *) datasource_mgr->broker_ds;
       break;
+#endif
 
+#ifdef WITH_DATA_INTERFACE_MYSQL
     case BGPSTREAM_DATA_INTERFACE_MYSQL:
-      datasource_mgr->mysql_ds = bgpstream_mysql_datasource_create(filter_mgr, 
-                                                                   datasource_mgr->mysql_dbname,
-                                                                   datasource_mgr->mysql_user,
-                                                                   datasource_mgr->mysql_password,
-                                                                   datasource_mgr->mysql_host,
-                                                                   datasource_mgr->mysql_port,
-                                                                   datasource_mgr->mysql_socket,
-                                                                   datasource_mgr->mysql_dump_path);
+      datasource_mgr->mysql_ds =
+        bgpstream_mysql_datasource_create(filter_mgr,
+                                          datasource_mgr->mysql_dbname,
+                                          datasource_mgr->mysql_user,
+                                          datasource_mgr->mysql_password,
+                                          datasource_mgr->mysql_host,
+                                          datasource_mgr->mysql_port,
+                                          datasource_mgr->mysql_socket,
+                                          datasource_mgr->mysql_dump_path);
       ds = (void *) datasource_mgr->mysql_ds;
       break;
+#endif
 
     default:
-      ds = NULL;      
+      ds = NULL;
     }
 
   if(ds == NULL)
     {
       datasource_mgr->status = BGPSTREAM_DATASOURCE_STATUS_ERROR;
-    } 
+    }
     else {
       datasource_mgr->status = BGPSTREAM_DATASOURCE_STATUS_ON;
     }
@@ -315,20 +372,38 @@ int bgpstream_datasource_mgr_update_input_queue(bgpstream_datasource_mgr_t *data
   do{
     switch(datasource_mgr->datasource)
       {
+#ifdef WITH_DATA_INTERFACE_SINGLEFILE
       case BGPSTREAM_DATA_INTERFACE_SINGLEFILE:
         results = bgpstream_singlefile_datasource_update_input_queue(datasource_mgr->singlefile_ds, input_mgr);
         break;
+#endif
+
+#ifdef WITH_DATA_INTERFACE_CSVFILE
       case BGPSTREAM_DATA_INTERFACE_CSVFILE:
         results = bgpstream_csvfile_datasource_update_input_queue(datasource_mgr->csvfile_ds, input_mgr);
         break;
+#endif
+
+#ifdef WITH_DATA_INTERFACE_SQLITE
       case BGPSTREAM_DATA_INTERFACE_SQLITE:
         results = bgpstream_sqlite_datasource_update_input_queue(datasource_mgr->sqlite_ds, input_mgr);
         break;
+#endif
+
+#ifdef WITH_DATA_INTERFACE_BROKER
       case BGPSTREAM_DATA_INTERFACE_BROKER:
         results = bgpstream_broker_datasource_update_input_queue(datasource_mgr->broker_ds, input_mgr);
         break;
+#endif
+
+#ifdef WITH_DATA_INTERFACE_MYSQL
       case BGPSTREAM_DATA_INTERFACE_MYSQL:
         results = bgpstream_mysql_datasource_update_input_queue(datasource_mgr->mysql_ds, input_mgr);
+        break;
+#endif
+
+      default:
+        fprintf(stderr, "Invalid data interface\n");
         break;
       }
     if(results == 0 && datasource_mgr->blocking) {
@@ -339,8 +414,9 @@ int bgpstream_datasource_mgr_update_input_queue(bgpstream_datasource_mgr_t *data
 	  datasource_mgr->backoff_time = DATASOURCE_BLOCKING_MAX_WAIT;
 	}
     }
-    bgpstream_debug("\tBSDS_MGR: got %d (blocking: %d)", results, datasource_mgr->blocking);
-  } while(datasource_mgr->blocking && results == 0);
+    bgpstream_debug("\tBSDS_MGR: got %d (blocking: %d)", results,
+                    datasource_mgr->blocking);
+  } while(datasource_mgr->blocking && results >= 0);
   
   bgpstream_debug("\tBSDS_MGR: get data end");
   return results; 
@@ -354,25 +430,43 @@ void bgpstream_datasource_mgr_close(bgpstream_datasource_mgr_t *datasource_mgr) 
   }
   switch(datasource_mgr->datasource)
     {
+#ifdef WITH_DATA_INTERFACE_SINGLEFILE
     case BGPSTREAM_DATA_INTERFACE_SINGLEFILE:
       bgpstream_singlefile_datasource_destroy(datasource_mgr->singlefile_ds);
       datasource_mgr->singlefile_ds = NULL;
       break;
+#endif
+
+#ifdef WITH_DATA_INTERFACE_CSVFILE
     case BGPSTREAM_DATA_INTERFACE_CSVFILE:
       bgpstream_csvfile_datasource_destroy(datasource_mgr->csvfile_ds);
       datasource_mgr->csvfile_ds = NULL;
       break;
+#endif
+
+#ifdef WITH_DATA_INTERFACE_SQLITE
     case BGPSTREAM_DATA_INTERFACE_SQLITE:
       bgpstream_sqlite_datasource_destroy(datasource_mgr->sqlite_ds);
       datasource_mgr->sqlite_ds = NULL;
       break;
+#endif
+
+#ifdef WITH_DATA_INTERFACE_BROKER
     case BGPSTREAM_DATA_INTERFACE_BROKER:
       bgpstream_broker_datasource_destroy(datasource_mgr->broker_ds);
       datasource_mgr->broker_ds = NULL;
       break;
+#endif
+
+#ifdef WITH_DATA_INTERFACE_MYSQL
     case BGPSTREAM_DATA_INTERFACE_MYSQL:
       bgpstream_mysql_datasource_destroy(datasource_mgr->mysql_ds);
       datasource_mgr->mysql_ds = NULL;
+      break;
+#endif
+
+    default:
+      assert(0);
       break;
     }
   datasource_mgr->status = BGPSTREAM_DATASOURCE_STATUS_OFF;
@@ -386,74 +480,44 @@ void bgpstream_datasource_mgr_destroy(bgpstream_datasource_mgr_t *datasource_mgr
     return; // no manager to destroy
   }
   // destroy any active datasource (if they have not been destroyed before)
-  if(datasource_mgr->singlefile_ds != NULL) {
-    bgpstream_singlefile_datasource_destroy(datasource_mgr->singlefile_ds);
-    datasource_mgr->singlefile_ds = NULL;
-  }
-  if(datasource_mgr->csvfile_ds != NULL) {
-    bgpstream_csvfile_datasource_destroy(datasource_mgr->csvfile_ds);
-    datasource_mgr->csvfile_ds = NULL;
-  }
-  if(datasource_mgr->sqlite_ds != NULL) {
-    bgpstream_sqlite_datasource_destroy(datasource_mgr->sqlite_ds);
-    datasource_mgr->sqlite_ds = NULL;
-  }
-  if(datasource_mgr->broker_ds != NULL) {
-    bgpstream_broker_datasource_destroy(datasource_mgr->broker_ds);
-    datasource_mgr->broker_ds = NULL;
-  }
-  if(datasource_mgr->mysql_ds != NULL) {
-    bgpstream_mysql_datasource_destroy(datasource_mgr->mysql_ds);
-    datasource_mgr->mysql_ds = NULL;
-  }
+#ifdef WITH_DATA_INTERFACE_SINGLEFILE
+  bgpstream_singlefile_datasource_destroy(datasource_mgr->singlefile_ds);
+  datasource_mgr->singlefile_ds = NULL;
+  free(datasource_mgr->singlefile_rib_mrtfile);
+  free(datasource_mgr->singlefile_upd_mrtfile);
+#endif
 
+#ifdef WITH_DATA_INTERFACE_CSVFILE
+  bgpstream_csvfile_datasource_destroy(datasource_mgr->csvfile_ds);
+  datasource_mgr->csvfile_ds = NULL;
+  free(datasource_mgr->csvfile_file);
+#endif
 
-  // destroy memory allocated for options
-  if(datasource_mgr->singlefile_rib_mrtfile != NULL)
-    {
-      free(datasource_mgr->singlefile_rib_mrtfile);
-    }
-  if(datasource_mgr->singlefile_upd_mrtfile != NULL)
-    {
-      free(datasource_mgr->singlefile_upd_mrtfile);
-    }
-  if(datasource_mgr->csvfile_file!=NULL)
-    {
-      free(datasource_mgr->csvfile_file);
-    }
-  if(datasource_mgr->sqlite_file != NULL)
-    {
-      free(datasource_mgr->sqlite_file);
-    }
-  if(datasource_mgr->broker_url != NULL)
-    {
-      free(datasource_mgr->broker_url);
-    }
-  if(datasource_mgr->mysql_dbname!=NULL)
-    {
-      free(datasource_mgr->mysql_dbname);
-    }
-  if(datasource_mgr->mysql_user!=NULL)
-    {
-      free(datasource_mgr->mysql_user);
-    }
-  if(datasource_mgr->mysql_password!=NULL)
-    {
-      free(datasource_mgr->mysql_password);
-    }
-  if(datasource_mgr->mysql_host!=NULL)
-    {
-      free(datasource_mgr->mysql_host);
-    }
-  if(datasource_mgr->mysql_socket!=NULL)
-    {
-      free(datasource_mgr->mysql_socket);
-    }
-  if(datasource_mgr->mysql_dump_path!=NULL)
-    {
-      free(datasource_mgr->mysql_dump_path);
-    }
-  free(datasource_mgr);  
+#ifdef WITH_DATA_INTERFACE_SQLITE
+  bgpstream_sqlite_datasource_destroy(datasource_mgr->sqlite_ds);
+  datasource_mgr->sqlite_ds = NULL;
+  free(datasource_mgr->sqlite_file);
+#endif
+
+#ifdef WITH_DATA_INTERFACE_BROKER
+  bgpstream_broker_datasource_destroy(datasource_mgr->broker_ds);
+  datasource_mgr->broker_ds = NULL;
+  free(datasource_mgr->broker_url);
+#endif
+
+#ifdef WITH_DATA_INTERFACE_MYSQL
+  bgpstream_mysql_datasource_destroy(datasource_mgr->mysql_ds);
+  datasource_mgr->mysql_ds = NULL;
+
+  free(datasource_mgr->mysql_dbname);
+  free(datasource_mgr->mysql_user);
+  free(datasource_mgr->mysql_password);
+  free(datasource_mgr->mysql_host);
+  free(datasource_mgr->mysql_socket);
+  free(datasource_mgr->mysql_dump_path);
+#endif
+
+  free(datasource_mgr);
   bgpstream_debug("\tBSDS_MGR: destroy end");
 }
 
