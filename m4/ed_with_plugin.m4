@@ -8,29 +8,21 @@
 #
 # LICENSE
 #
-# bgpcorsaro
+# This file is part of bgpstream
 #
-# Alistair King, CAIDA, UC San Diego
-# bgpstream-info@caida.org
+# Copyright (C) 2015 The Regents of the University of California.
+# Authors: Alistair King, Chiara Orsini
 #
-# Copyright (C) 2012 The Regents of the University of California.
+# All rights reserved.
 #
-# This file is part of bgpcorsaro.
+# This code has been developed by CAIDA at UC San Diego.
+# For more information, contact bgpstream-info@caida.org
 #
-# bgpcorsaro is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# This source code is proprietary to the CAIDA group at UC San Diego and may
+# not be redistributed, published or disclosed without prior permission from
+# CAIDA.
 #
-# bgpcorsaro is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with bgpcorsaro.  If not, see <http://www.gnu.org/licenses/>.
-#
-# ED_WITH_PLUGIN([plugin_name], [short_name], [CAPS_name], [enabled_by_default])
+# Report any bugs, questions or comments to bgpstream-info@caida.org
 #
 AC_DEFUN([ED_WITH_PLUGIN],
 [
