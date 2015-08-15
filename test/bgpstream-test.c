@@ -16,6 +16,7 @@
  * Report any bugs, questions or comments to bgpstream-info@caida.org
  */
 
+#include "config.h"
 #include "bgpstream.h"
 
 #include <stdio.h>
@@ -102,14 +103,14 @@ int main()
   bgpstream_destroy(bs);
 
   int res = 0;
-  
+
   /* Testing singlefile interface */
   printf("Testing singlefile interface...\n");
   bs = bgpstream_create();
   datasource_id =
     bgpstream_get_data_interface_id_by_name(bs, "singlefile");
+#ifdef WITH_DATA_INTERFACE_SINGLEFILE
   bgpstream_set_data_interface(bs, datasource_id);
-
   option =
     bgpstream_get_data_interface_option_by_name(bs, datasource_id,
                                                 "rib-file");
@@ -120,12 +121,19 @@ int main()
   bgpstream_set_data_interface_option(bs, option, "./ris.rrc06.updates.1427846400.gz");
   res += run_bgpstream("singlefile");
   bgpstream_destroy(bs);
+#else
+  if(datasource_id != 0)
+    {
+      return -1;
+    }
+#endif
 
   /* Testing csvfile interface */
   printf("Testing csvfile interface...\n");
   bs = bgpstream_create();
   datasource_id =
     bgpstream_get_data_interface_id_by_name(bs, "csvfile");
+#ifdef WITH_DATA_INTERFACE_CSVFILE
   bgpstream_set_data_interface(bs, datasource_id);
 
   option =
@@ -135,12 +143,19 @@ int main()
   bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_COLLECTOR, "rrc06");
   res += run_bgpstream("csvfile");
   bgpstream_destroy(bs);
+#else
+  if(datasource_id != 0)
+    {
+      return -1;
+    }
+#endif
 
   /* Testing sqlite interface */
   printf("Testing sqlite interface...\n");
   bs = bgpstream_create();
   datasource_id =
     bgpstream_get_data_interface_id_by_name(bs, "sqlite");
+#ifdef WITH_DATA_INTERFACE_SQLITE
   bgpstream_set_data_interface(bs, datasource_id);
 
   option =
@@ -150,18 +165,31 @@ int main()
   bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_PROJECT, "routeviews");
   res += run_bgpstream("sqlite");
   bgpstream_destroy(bs);
+#else
+  if(datasource_id != 0)
+    {
+      return -1;
+    }
+#endif
 
   /* Testing broker interface */
   printf("Testing broker interface...\n");
   bs = bgpstream_create();
   datasource_id =
     bgpstream_get_data_interface_id_by_name(bs, "broker");
+#ifdef WITH_DATA_INTERFACE_BROKER
   bgpstream_set_data_interface(bs, datasource_id);
   bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_COLLECTOR, "route-views6");
   bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_RECORD_TYPE, "updates");
   bgpstream_add_interval_filter(bs,1427846550,1427846700);
   res += run_bgpstream("broker");
   bgpstream_destroy(bs);
+#else
+  if(datasource_id != 0)
+    {
+      return -1;
+    }
+#endif
 
   bgpstream_record_destroy(bs_record);
   /* res is going to be zero if everything worked fine, */
