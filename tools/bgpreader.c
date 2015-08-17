@@ -166,6 +166,8 @@ int main(int argc, char *argv[])
     fprintf(stderr, "ERROR: Could not create BGPStream instance\n");
     return -1;
   }
+  datasource_id = bgpstream_get_data_interface_id(bs);
+  assert(datasource_id != 0);
 
   while (prevoptind = optind,
 	 (opt = getopt (argc, argv, "P:C:T:W:R:d:brmeo:h?")) >= 0)
@@ -294,9 +296,10 @@ int main(int argc, char *argv[])
 	}
     }
 
-  if(datasource_id == 0)
+  if(windows_cnt == 0)
     {
-      fprintf(stderr, "ERROR: Data interface must be specified with -d\n");
+      fprintf(stderr,
+              "ERROR: At least one time window must be specified using -W\n");
       usage();
       exit(-1);
     }
