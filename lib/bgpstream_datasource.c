@@ -28,11 +28,9 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <errmsg.h>
 
 #define DATASOURCE_BLOCKING_MIN_WAIT 30
 #define DATASOURCE_BLOCKING_MAX_WAIT 150
