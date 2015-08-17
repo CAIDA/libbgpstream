@@ -23,14 +23,10 @@
 
 #include <inttypes.h>
 #include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/stat.h>
 #include <sys/time.h>
-#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <errmsg.h>
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
