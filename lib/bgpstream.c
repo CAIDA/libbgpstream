@@ -446,6 +446,11 @@ void bgpstream_set_data_interface(bgpstream_t *bs,
   bgpstream_debug("BS: set_data_interface stop");
 }
 
+bgpstream_data_interface_id_t
+bgpstream_get_data_interface_id(bgpstream_t *bs)
+{
+  return bs->datasource_mgr->datasource;
+}
 
 /* configure the interface so that it blocks
  * waiting for new data
