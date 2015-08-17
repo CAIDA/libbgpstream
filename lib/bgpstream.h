@@ -241,6 +241,17 @@ void bgpstream_set_data_interface_option(bgpstream_t *bs,
                                 bgpstream_data_interface_option_t *option_type,
                                 const char *option_value);
 
+/** Get the ID of the currently active data interface
+ *
+ * @param bs            pointer to a BGP Stream instance
+ * @return the ID of the currently active data interface
+ *
+ * If no data interface has been explicitly set, this function will return the
+ * ID of the default data interface.
+ */
+bgpstream_data_interface_id_t
+bgpstream_get_data_interface_id(bgpstream_t *bs);
+
 /** Set the data interface that BGP Stream uses to find BGP data
  *
  * @param bs            pointer to a BGP Stream instance to configure
