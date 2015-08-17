@@ -378,7 +378,7 @@ static int read_json(bgpstream_broker_datasource_t *broker_ds,
                      io_t *jsonfile)
 {
   jsmn_parser p;
-  jsmntok_t *tok;
+  jsmntok_t *tok = NULL;
   size_t tokcount = 128;
 
   int ret;
@@ -392,7 +392,7 @@ static int read_json(bgpstream_broker_datasource_t *broker_ds,
 
   // allocate some tokens to start
   if ((tok = malloc(sizeof(jsmntok_t) * tokcount)) == NULL) {
-    return -1;
+    goto err;
   }
 
   // slurp the whole file into a buffer
@@ -401,14 +401,14 @@ static int read_json(bgpstream_broker_datasource_t *broker_ds,
     ret = wandio_read(jsonfile, buf, BUFSIZE);
     if (ret < 0) {
       fprintf(stderr, "ERROR: Reading from broker failed\n");
-      return -1;
+      goto err;
     }
     if (ret == 0) {
       // we're done
       break;
     }
     if ((js = realloc(js, jslen + ret + 1)) == NULL) {
-      return -1;
+      goto err;
     }
     strncpy(js+jslen, buf, ret);
     jslen += ret;
@@ -428,9 +428,18 @@ static int read_json(bgpstream_broker_datasource_t *broker_ds,
       return -1;
     }
     fprintf(stderr, "ERROR: JSON parser returned %d\n", ret);
-    return -1;
+    goto err;
   }
-  return process_json(broker_ds, input_mgr, js, tok, p.toknext);
+  ret = process_json(broker_ds, input_mgr, js, tok, p.toknext);
+
+  free(js);
+  free(tok);
+  return ret;
+
+ err:
+  free(js);
+  free(tok);
+  return ERR_FATAL;
 }
 
 bgpstream_broker_datasource_t *
