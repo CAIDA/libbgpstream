@@ -40,6 +40,11 @@
 // the max time we will wait between retries to the broker
 #define MAX_WAIT_TIME 900
 
+//indicates a fatal error
+#define ERR_FATAL -1
+// indicates a non-fatal error
+#define ERR_RETRY -2
+
 #define APPEND_STR(str)                                                 \
   do {                                                                  \
     size_t len = strlen(str);                                           \
@@ -203,7 +208,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
 
   if (count == 0) {
     fprintf(stderr, "ERROR: Empty JSON response from broker\n");
-    return -1;
+    return ERR_RETRY;
   }
 
   if (root_tok->type != JSMN_OBJECT) {
@@ -231,7 +236,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
       if (json_isnull(js, t) == 0) {  // i.e. there is an error set
         fprintf(stderr, "ERROR: Broker reported an error: %.*s\n",
                 t->end - t->start, js+t->start);
-        return -1;
+        return ERR_FATAL;
       }
       NEXT_TOK;
     } else if (json_strcmp(js, t, "queryParameters") == 0) {
@@ -267,7 +272,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
               // not yet supported?
               fprintf(stderr, "ERROR: Unsupported URL type '%.*s'\n",
                       t->end - t->start, js+t->start);
-              return -1;
+              return ERR_FATAL;
             }
             NEXT_TOK;
           } else if (json_strcmp(js, t, "url") == 0) {
@@ -323,7 +328,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
         if (url_set == 0 || project_set == 0 || collector_set == 0 ||
             type_set == 0 || initial_time_set == 0 || duration_set == 0) {
           fprintf(stderr, "ERROR: Invalid dumpFile record\n");
-          return -1;
+          return ERR_RETRY;
         }
         fprintf(stderr, "----------\n");
         fprintf(stderr, "URL: %s\n", url);
@@ -365,7 +370,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
  err:
   fprintf(stderr, "ERROR: Invalid JSON response received from broker\n");
   free(url);
-  return -1;
+  return ERR_RETRY;
 }
 
 static int read_json(bgpstream_broker_datasource_t *broker_ds,
@@ -596,8 +601,10 @@ bgpstream_broker_datasource_update_input_queue(bgpstream_broker_datasource_t* br
     goto retry;
   }
 
-  if ((num_results = read_json(broker_ds, input_mgr, jsonfile)) < 0) {
+  if ((num_results = read_json(broker_ds, input_mgr, jsonfile)) == ERR_RETRY) {
     goto retry;
+  } else if (num_results == ERR_FATAL) {
+    goto err;
   }
 
   wandio_destroy(jsonfile);
