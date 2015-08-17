@@ -416,7 +416,9 @@ int bgpstream_datasource_mgr_update_input_queue(bgpstream_datasource_mgr_t *data
     }
     bgpstream_debug("\tBSDS_MGR: got %d (blocking: %d)", results,
                     datasource_mgr->blocking);
-  } while(datasource_mgr->blocking && results >= 0);
+  } while(datasource_mgr->blocking && results == 0);
+
+  datasource_mgr->backoff_time = DATASOURCE_BLOCKING_MIN_WAIT;
   
   bgpstream_debug("\tBSDS_MGR: get data end");
   return results; 

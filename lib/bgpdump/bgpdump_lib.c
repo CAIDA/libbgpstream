@@ -1310,6 +1310,7 @@ static int read_prefix_list(struct mstream *s, u_int16_t afi, struct prefix *pre
     
   if(count > MAX_PREFIXES) {
     bgpdump_err("too many prefixes (%i > %i)", count, MAX_PREFIXES);
+    assert(0); // AK adds to force a fatal error
     return MAX_PREFIXES;
   }
     

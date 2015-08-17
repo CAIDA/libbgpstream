@@ -336,7 +336,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
         fprintf(stderr, "Collector: %s\n", collector);
         fprintf(stderr, "Type: %s\n", type);
         fprintf(stderr, "InitialTime: %"PRIu32"\n", initial_time);
-        fprintf(stderr, "Type: %"PRIu32"\n", duration);
+        fprintf(stderr, "Duration: %"PRIu32"\n", duration);
 
         // do we need to update our current_window_end?
         if (initial_time+duration > broker_ds->current_window_end) {
@@ -614,6 +614,7 @@ bgpstream_broker_datasource_update_input_queue(bgpstream_broker_datasource_t* br
   return num_results;
 
  err:
+  fprintf(stderr, "ERROR: Fatal error in broker data source\n");
   return -1;
 }
 
