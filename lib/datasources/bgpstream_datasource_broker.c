@@ -209,7 +209,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
 
   if (count == 0) {
     fprintf(stderr, "ERROR: Empty JSON response from broker\n");
-    return ERR_RETRY;
+    goto retry;
   }
 
   if (root_tok->type != JSMN_OBJECT) {
@@ -241,7 +241,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
       if (json_isnull(js, t) == 0) {  // i.e. there is an error set
         fprintf(stderr, "ERROR: Broker reported an error: %.*s\n",
                 t->end - t->start, js+t->start);
-        return ERR_FATAL;
+        goto err;
       }
       NEXT_TOK;
     } else if (json_strcmp(js, t, "queryParameters") == 0) {
@@ -277,7 +277,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
               // not yet supported?
               fprintf(stderr, "ERROR: Unsupported URL type '%.*s'\n",
                       t->end - t->start, js+t->start);
-              return ERR_FATAL;
+              goto err;
             }
             NEXT_TOK;
           } else if (json_strcmp(js, t, "url") == 0) {
@@ -334,7 +334,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
         if (url_set == 0 || project_set == 0 || collector_set == 0 ||
             type_set == 0 || initial_time_set == 0 || duration_set == 0) {
           fprintf(stderr, "ERROR: Invalid dumpFile record\n");
-          return ERR_RETRY;
+          goto retry;
         }
         fprintf(stderr, "----------\n");
         fprintf(stderr, "URL: %s\n", url);
@@ -370,8 +370,11 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
   }
 
   free(url);
-
   return num_results;
+
+ retry:
+  free(url);
+  return ERR_RETRY;
 
  err:
   fprintf(stderr, "ERROR: Invalid JSON response received from broker\n");
