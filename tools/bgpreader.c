@@ -42,11 +42,11 @@ struct window {
   uint32_t end;
 };
 
-bgpstream_t *bs;
-bgpstream_data_interface_id_t datasource_id = 0;
-const char *datasource_name = NULL;
+static bgpstream_t *bs;
+static bgpstream_data_interface_id_t datasource_id = 0;
+static bgpstream_data_interface_info_t *datasource_info = NULL;
 
-void data_if_usage() {
+static void data_if_usage() {
   bgpstream_data_interface_id_t *ids = NULL;
   int id_cnt = 0;
   int i;
@@ -67,7 +67,7 @@ void data_if_usage() {
     }
 }
 
-void dump_if_options() {
+static void dump_if_options() {
   assert(datasource_id != 0);
 
   bgpstream_data_interface_option_t *options;
@@ -76,7 +76,7 @@ void dump_if_options() {
 
   opt_cnt = bgpstream_get_data_interface_options(bs, datasource_id, &options);
 
-  fprintf(stderr, "Data interface options for '%s':\n", datasource_name);
+  fprintf(stderr, "Data interface options for '%s':\n", datasource_info->name);
   if(opt_cnt == 0)
     {
       fprintf(stderr, "   [NONE]\n");
@@ -89,9 +89,10 @@ void dump_if_options() {
                   options[i].name, options[i].description);
         }
     }
+  fprintf(stderr, "\n");
 }
 
-void usage() {
+static void usage() {
   fprintf(stderr,
 	  "usage: bgpreader -d <interface> [<options>]\n"
           "   -d <interface> use the given data interface to find available data\n"
@@ -102,7 +103,7 @@ void usage() {
           "                  set an option for the current data interface.\n"
           "                    use '-o ?' to get a list of available\n"
           "                    options for the current data interface.\n"
-          "                    (data interface must be selected using -d)\n"
+          "                    (data interface can be selected using -d)\n"
 	  "   -P <project>   process records from only the given project (routeviews, ris)*\n"
 	  "   -C <collector> process records from only the given collector*\n"
 	  "   -T <type>      process records with only the given type (ribs, updates)*\n"
@@ -167,6 +168,7 @@ int main(int argc, char *argv[])
     return -1;
   }
   datasource_id = bgpstream_get_data_interface_id(bs);
+  datasource_info = bgpstream_get_data_interface_info(bs, datasource_id);
   assert(datasource_id != 0);
 
   while (prevoptind = optind,
@@ -250,7 +252,8 @@ int main(int argc, char *argv[])
               usage();
               exit(-1);
             }
-          datasource_name = optarg;
+          datasource_info =
+            bgpstream_get_data_interface_info(bs, datasource_id);
 	  break;
         case 'o':
           if(interface_options_cnt == OPTION_CMD_CNT)
@@ -296,14 +299,6 @@ int main(int argc, char *argv[])
 	}
     }
 
-  if(windows_cnt == 0)
-    {
-      fprintf(stderr,
-              "ERROR: At least one time window must be specified using -W\n");
-      usage();
-      exit(-1);
-    }
-
   for(i=0; i<interface_options_cnt; i++)
     {
       if(*interface_options[i] == '?')
@@ -333,7 +328,7 @@ int main(int argc, char *argv[])
             {
               fprintf(stderr,
                       "ERROR: Invalid option '%s' for data interface '%s'\n",
-                      interface_options[i], datasource_name);
+                      interface_options[i], datasource_info->name);
               usage();
               exit(-1);
             }
@@ -343,6 +338,14 @@ int main(int argc, char *argv[])
       interface_options[i] = NULL;
     }
   interface_options_cnt = 0;
+
+  if(windows_cnt == 0)
+    {
+      fprintf(stderr,
+              "ERROR: At least one time window must be specified using -W\n");
+      usage();
+      exit(-1);
+    }
 
   // if the user did not specify any output format
   // then the default one is per record
