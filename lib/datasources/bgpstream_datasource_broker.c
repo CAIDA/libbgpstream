@@ -196,15 +196,15 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
   char *url = NULL;
   size_t url_len = 0;
   int url_set = 0;
-  char collector[BGPSTREAM_UTILS_STR_NAME_LEN];
+  char collector[BGPSTREAM_UTILS_STR_NAME_LEN] = "";
   int collector_set = 0;
-  char project[BGPSTREAM_UTILS_STR_NAME_LEN];
+  char project[BGPSTREAM_UTILS_STR_NAME_LEN] = "";
   int project_set = 0;
-  char type[BGPSTREAM_UTILS_STR_NAME_LEN];
+  char type[BGPSTREAM_UTILS_STR_NAME_LEN] = "";
   int type_set = 0;
-  uint32_t initial_time;
+  uint32_t initial_time = 0;
   int initial_time_set = 0;
-  uint32_t duration;
+  uint32_t duration = 0;
   int duration_set = 0;
 
   if (count == 0) {
