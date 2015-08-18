@@ -226,7 +226,7 @@ AS_IF([test "x$with_plugin_timing" != xno],
 
 AC_MSG_RESULT([$with_plugin_timing])
 
-# are we going to use the bgpwatcher connection?
+# are we going to use the bgpview connection?
 # turn on if people asked for it
 # TODO: make corsaro conditionally build depending on whether BGPView IO is built
 
@@ -259,6 +259,7 @@ AC_DEFINE_UNQUOTED([ED_PLUGIN_INIT_ALL_ENABLED], $ED_PLUGIN_INIT_ALL_ENABLED,
 # TODO: the routingtables plugin requires BGPView
 #if test "x$with_plugin_routingtables" == xyes; then
 #fi
+AC_DEFINE(WITH_BGPVIEW, 1, "TODO: fixme!")
 
 # the viewconsumer plugin requires the routingtables plugin
 if test "x$with_plugin_viewconsumer" == xyes &&
