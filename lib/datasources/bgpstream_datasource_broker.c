@@ -636,6 +636,8 @@ bgpstream_broker_datasource_update_input_queue(bgpstream_broker_datasource_t* br
 
   // reset the variable params
   *broker_ds->query_url_end = '\0';
+  broker_ds->query_url_remaining =
+    URL_BUFLEN - strlen(broker_ds->query_url_end);
   return num_results;
 
  err:
