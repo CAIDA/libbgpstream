@@ -574,7 +574,7 @@ bgpstream_broker_datasource_update_input_queue(bgpstream_broker_datasource_t* br
   #define BUFLEN 20
   char buf[BUFLEN];
 
-  io_t *jsonfile;
+  io_t *jsonfile = NULL;;
 
   int num_results;
 
@@ -605,34 +605,42 @@ bgpstream_broker_datasource_update_input_queue(bgpstream_broker_datasource_t* br
     APPEND_STR(buf);
   }
 
- retry:
-  if (attempts > 0) {
-    fprintf(stderr,
-            "WARN: Broker request failed, waiting %ds before retry\n",
-            wait_time);
-    sleep(wait_time);
-    if (wait_time < MAX_WAIT_TIME) {
-      wait_time *= 2;
+  while(1) {
+    if (jsonfile != NULL) {
+      wandio_destroy(jsonfile);
+      jsonfile = NULL;
     }
+
+    if (attempts > 0) {
+      fprintf(stderr,
+              "WARN: Broker request failed, waiting %ds before retry\n",
+              wait_time);
+      sleep(wait_time);
+      if (wait_time < MAX_WAIT_TIME) {
+        wait_time *= 2;
+      }
+    }
+    attempts++;
+
+    fprintf(stderr, "\nQuery URL: \"%s\"\n", broker_ds->query_url_buf);
+
+    if ((jsonfile = wandio_create(broker_ds->query_url_buf)) == NULL) {
+      fprintf(stderr, "ERROR: Could not open %s for reading\n",
+              broker_ds->query_url_buf);
+      continue;
+    }
+
+    if ((num_results = read_json(broker_ds, input_mgr, jsonfile)) == ERR_FATAL) {
+      fprintf(stderr, "ERROR: Received fatal error code from read_json\n");
+      goto err;
+    } else if (num_results == ERR_RETRY) {
+      continue;
+    } else { // success!
+      break;
+    }
+
+    assert(0);
   }
-  attempts++;
-
-  fprintf(stderr, "Query URL: \"%s\"\n", broker_ds->query_url_buf);
-
-  if ((jsonfile = wandio_create(broker_ds->query_url_buf)) == NULL) {
-    fprintf(stderr, "ERROR: Could not open %s for reading\n",
-            broker_ds->query_url_buf);
-    goto retry;
-  }
-
-  if ((num_results = read_json(broker_ds, input_mgr, jsonfile)) == ERR_RETRY) {
-    goto retry;
-  } else if (num_results == ERR_FATAL) {
-    fprintf(stderr, "ERROR: Received fatal error code from read_json\n");
-    goto err;
-  }
-
-  wandio_destroy(jsonfile);
 
   // reset the variable params
   *broker_ds->query_url_end = '\0';
@@ -642,6 +650,9 @@ bgpstream_broker_datasource_update_input_queue(bgpstream_broker_datasource_t* br
 
  err:
   fprintf(stderr, "ERROR: Fatal error in broker data source\n");
+  if (jsonfile != NULL) {
+    wandio_destroy(jsonfile);
+  }
   return -1;
 }
 
