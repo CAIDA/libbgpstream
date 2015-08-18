@@ -584,6 +584,8 @@ bgpstream_broker_datasource_update_input_queue(bgpstream_broker_datasource_t* br
   int attempts = 0;
   int wait_time = 1;
 
+  int success = 0;
+
   if (broker_ds->last_response_time > 0) {
     // need to add dataAddedSince
     if (snprintf(buf, BUFLEN, "%"PRIu32, broker_ds->last_response_time)
@@ -608,12 +610,7 @@ bgpstream_broker_datasource_update_input_queue(bgpstream_broker_datasource_t* br
     APPEND_STR(buf);
   }
 
-  while(1) {
-    if (jsonfile != NULL) {
-      wandio_destroy(jsonfile);
-      jsonfile = NULL;
-    }
-
+  do {
     if (attempts > 0) {
       fprintf(stderr,
               "WARN: Broker request failed, waiting %ds before retry\n",
@@ -630,20 +627,25 @@ bgpstream_broker_datasource_update_input_queue(bgpstream_broker_datasource_t* br
     if ((jsonfile = wandio_create(broker_ds->query_url_buf)) == NULL) {
       fprintf(stderr, "ERROR: Could not open %s for reading\n",
               broker_ds->query_url_buf);
-      continue;
+      goto retry;
     }
 
     if ((num_results = read_json(broker_ds, input_mgr, jsonfile)) == ERR_FATAL) {
       fprintf(stderr, "ERROR: Received fatal error code from read_json\n");
       goto err;
     } else if (num_results == ERR_RETRY) {
-      continue;
-    } else { // success!
-      break;
+      goto retry;
+    } else {
+      // success!
+      success = 1;
     }
 
-    assert(0);
-  }
+  retry:
+    if (jsonfile != NULL) {
+      wandio_destroy(jsonfile);
+      jsonfile = NULL;
+    }
+  } while(success == 0);
 
   // reset the variable params
   *broker_ds->query_url_end = '\0';
