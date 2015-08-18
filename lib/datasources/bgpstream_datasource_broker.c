@@ -98,11 +98,12 @@ static int json_isnull(const char *json, jsmntok_t *tok) {
 }
 
 static int json_strcmp(const char *json, jsmntok_t *tok, const char *s) {
-	if (tok->type == JSMN_STRING && (int) strlen(s) == tok->end - tok->start &&
-			strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
-		return 0;
-	}
-	return -1;
+  if (tok->type == JSMN_STRING &&
+      (int) strlen(s) == tok->end - tok->start &&
+      strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
+    return 0;
+  }
+  return -1;
 }
 
 // NB: this ONLY replaces \/ with /
@@ -172,7 +173,7 @@ static jsmntok_t *json_skip(jsmntok_t *t)
     assert(t->end - t->start < 20);                                     \
     strncpy(intbuf, js+t->start, t->end - t->start);                    \
     intbuf[t->end-t->start] = '\0';                                     \
-    dest = strtoul(intbuf, &endptr, 10);       \
+    dest = strtoul(intbuf, &endptr, 10);                                \
     if (*endptr != '\0') {                                              \
       goto err;                                                         \
     }                                                                   \
@@ -212,6 +213,8 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
   }
 
   if (root_tok->type != JSMN_OBJECT) {
+    fprintf(stderr, "ERROR: Root object is not JSON\n");
+    fprintf(stderr, "INFO: JSON: %s\n", js);
     goto err;
   }
 
@@ -219,6 +222,8 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
   for (i=0; i<root_tok->size; i++) {
     // all keys must be strings
     if (t->type != JSMN_STRING) {
+      fprintf(stderr, "ERROR: Encountered non-string key: '%.*s'\n",
+                t->end - t->start, js+t->start);
       goto err;
     }
     if (json_strcmp(js, t, "time") == 0) {
@@ -281,6 +286,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
             if (url_len < (t->end - t->start + 1)) {
               url_len = t->end - t->start + 1;
               if ((url = realloc(url, url_len)) == NULL) {
+                fprintf(stderr, "ERROR: Could not realloc URL string\n");
                 goto err;
               }
             }
@@ -392,6 +398,7 @@ static int read_json(bgpstream_broker_datasource_t *broker_ds,
 
   // allocate some tokens to start
   if ((tok = malloc(sizeof(jsmntok_t) * tokcount)) == NULL) {
+    fprintf(stderr, "ERROR: Could not malloc initial tokens\n");
     goto err;
   }
 
@@ -408,6 +415,7 @@ static int read_json(bgpstream_broker_datasource_t *broker_ds,
       break;
     }
     if ((js = realloc(js, jslen + ret + 1)) == NULL) {
+      fprintf(stderr, "ERROR: Could not realloc json string\n");
       goto err;
     }
     strncpy(js+jslen, buf, ret);
@@ -419,13 +427,14 @@ static int read_json(bgpstream_broker_datasource_t *broker_ds,
     if (ret == JSMN_ERROR_NOMEM) {
       tokcount *= 2;
       if ((tok = realloc(tok, sizeof(jsmntok_t) * tokcount)) == NULL) {
-        return -1;
+        fprintf(stderr, "ERROR: Could not realloc tokens\n");
+        goto err;
       }
       goto again;
     }
     if (ret == JSMN_ERROR_INVAL) {
       fprintf(stderr, "ERROR: Invalid character in JSON string\n");
-      return -1;
+      goto err;
     }
     fprintf(stderr, "ERROR: JSON parser returned %d\n", ret);
     goto err;
@@ -434,11 +443,15 @@ static int read_json(bgpstream_broker_datasource_t *broker_ds,
 
   free(js);
   free(tok);
+  if (ret == ERR_FATAL) {
+    fprintf(stderr, "ERROR: Received fatal error from process_json\n");
+  }
   return ret;
 
  err:
   free(js);
   free(tok);
+  fprintf(stderr,"%s: Returning fatal error code\n", __func__);
   return ERR_FATAL;
 }
 
@@ -561,7 +574,7 @@ bgpstream_broker_datasource_update_input_queue(bgpstream_broker_datasource_t* br
   #define BUFLEN 20
   char buf[BUFLEN];
 
-  io_t *jsonfile;
+  io_t *jsonfile = NULL;;
 
   int num_results;
 
@@ -572,7 +585,8 @@ bgpstream_broker_datasource_update_input_queue(bgpstream_broker_datasource_t* br
     // need to add dataAddedSince
     if (snprintf(buf, BUFLEN, "%"PRIu32, broker_ds->last_response_time)
         >= BUFLEN) {
-      return -1;
+      fprintf(stderr, "ERROR: Could not build dataAddedSince param string\n");
+      goto err;
     }
     AMPORQ;
     APPEND_STR("dataAddedSince=");
@@ -583,47 +597,62 @@ bgpstream_broker_datasource_update_input_queue(bgpstream_broker_datasource_t* br
     // need to add minInitialTime
     if (snprintf(buf, BUFLEN, "%"PRIu32, broker_ds->current_window_end)
         >= BUFLEN) {
-      return -1;
+      fprintf(stderr, "ERROR: Could not build minInitialTime param string\n");
+      goto err;
     }
     AMPORQ;
     APPEND_STR("minInitialTime=");
     APPEND_STR(buf);
   }
 
- retry:
-  if (attempts > 0) {
-    fprintf(stderr,
-            "WARN: Broker request failed, waiting %ds before retry\n",
-            wait_time);
-    sleep(wait_time);
-    if (wait_time < MAX_WAIT_TIME) {
-      wait_time *= 2;
+  while(1) {
+    if (jsonfile != NULL) {
+      wandio_destroy(jsonfile);
+      jsonfile = NULL;
     }
+
+    if (attempts > 0) {
+      fprintf(stderr,
+              "WARN: Broker request failed, waiting %ds before retry\n",
+              wait_time);
+      sleep(wait_time);
+      if (wait_time < MAX_WAIT_TIME) {
+        wait_time *= 2;
+      }
+    }
+    attempts++;
+
+    fprintf(stderr, "\nQuery URL: \"%s\"\n", broker_ds->query_url_buf);
+
+    if ((jsonfile = wandio_create(broker_ds->query_url_buf)) == NULL) {
+      fprintf(stderr, "ERROR: Could not open %s for reading\n",
+              broker_ds->query_url_buf);
+      continue;
+    }
+
+    if ((num_results = read_json(broker_ds, input_mgr, jsonfile)) == ERR_FATAL) {
+      fprintf(stderr, "ERROR: Received fatal error code from read_json\n");
+      goto err;
+    } else if (num_results == ERR_RETRY) {
+      continue;
+    } else { // success!
+      break;
+    }
+
+    assert(0);
   }
-  attempts++;
-
-  fprintf(stderr, "Query URL: \"%s\"\n", broker_ds->query_url_buf);
-
-  if ((jsonfile = wandio_create(broker_ds->query_url_buf)) == NULL) {
-    fprintf(stderr, "ERROR: Could not open %s for reading\n",
-            broker_ds->query_url_buf);
-    goto retry;
-  }
-
-  if ((num_results = read_json(broker_ds, input_mgr, jsonfile)) == ERR_RETRY) {
-    goto retry;
-  } else if (num_results == ERR_FATAL) {
-    goto err;
-  }
-
-  wandio_destroy(jsonfile);
 
   // reset the variable params
   *broker_ds->query_url_end = '\0';
+  broker_ds->query_url_remaining =
+    URL_BUFLEN - strlen(broker_ds->query_url_end);
   return num_results;
 
  err:
   fprintf(stderr, "ERROR: Fatal error in broker data source\n");
+  if (jsonfile != NULL) {
+    wandio_destroy(jsonfile);
+  }
   return -1;
 }
 
