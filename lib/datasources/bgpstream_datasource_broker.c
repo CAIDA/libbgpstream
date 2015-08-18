@@ -209,7 +209,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
 
   if (count == 0) {
     fprintf(stderr, "ERROR: Empty JSON response from broker\n");
-    return ERR_RETRY;
+    goto retry;
   }
 
   if (root_tok->type != JSMN_OBJECT) {
@@ -241,7 +241,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
       if (json_isnull(js, t) == 0) {  // i.e. there is an error set
         fprintf(stderr, "ERROR: Broker reported an error: %.*s\n",
                 t->end - t->start, js+t->start);
-        return ERR_FATAL;
+        goto err;
       }
       NEXT_TOK;
     } else if (json_strcmp(js, t, "queryParameters") == 0) {
@@ -277,7 +277,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
               // not yet supported?
               fprintf(stderr, "ERROR: Unsupported URL type '%.*s'\n",
                       t->end - t->start, js+t->start);
-              return ERR_FATAL;
+              goto err;
             }
             NEXT_TOK;
           } else if (json_strcmp(js, t, "url") == 0) {
@@ -334,7 +334,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
         if (url_set == 0 || project_set == 0 || collector_set == 0 ||
             type_set == 0 || initial_time_set == 0 || duration_set == 0) {
           fprintf(stderr, "ERROR: Invalid dumpFile record\n");
-          return ERR_RETRY;
+          goto retry;
         }
         fprintf(stderr, "----------\n");
         fprintf(stderr, "URL: %s\n", url);
@@ -370,8 +370,11 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
   }
 
   free(url);
-
   return num_results;
+
+ retry:
+  free(url);
+  return ERR_RETRY;
 
  err:
   fprintf(stderr, "ERROR: Invalid JSON response received from broker\n");
@@ -581,6 +584,8 @@ bgpstream_broker_datasource_update_input_queue(bgpstream_broker_datasource_t* br
   int attempts = 0;
   int wait_time = 1;
 
+  int success = 0;
+
   if (broker_ds->last_response_time > 0) {
     // need to add dataAddedSince
     if (snprintf(buf, BUFLEN, "%"PRIu32, broker_ds->last_response_time)
@@ -605,12 +610,7 @@ bgpstream_broker_datasource_update_input_queue(bgpstream_broker_datasource_t* br
     APPEND_STR(buf);
   }
 
-  while(1) {
-    if (jsonfile != NULL) {
-      wandio_destroy(jsonfile);
-      jsonfile = NULL;
-    }
-
+  do {
     if (attempts > 0) {
       fprintf(stderr,
               "WARN: Broker request failed, waiting %ds before retry\n",
@@ -627,20 +627,25 @@ bgpstream_broker_datasource_update_input_queue(bgpstream_broker_datasource_t* br
     if ((jsonfile = wandio_create(broker_ds->query_url_buf)) == NULL) {
       fprintf(stderr, "ERROR: Could not open %s for reading\n",
               broker_ds->query_url_buf);
-      continue;
+      goto retry;
     }
 
     if ((num_results = read_json(broker_ds, input_mgr, jsonfile)) == ERR_FATAL) {
       fprintf(stderr, "ERROR: Received fatal error code from read_json\n");
       goto err;
     } else if (num_results == ERR_RETRY) {
-      continue;
-    } else { // success!
-      break;
+      goto retry;
+    } else {
+      // success!
+      success = 1;
     }
 
-    assert(0);
-  }
+  retry:
+    if (jsonfile != NULL) {
+      wandio_destroy(jsonfile);
+      jsonfile = NULL;
+    }
+  } while(success == 0);
 
   // reset the variable params
   *broker_ds->query_url_end = '\0';
