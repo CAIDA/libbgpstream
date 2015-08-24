@@ -90,6 +90,8 @@ typedef struct struct_bgpstream_datasource_mgr_t {
 #ifdef WITH_DATA_INTERFACE_BROKER
   bgpstream_broker_datasource_t *broker_ds;
   char *broker_url;
+  char **broker_params;
+  int broker_params_cnt;
 #endif
 
   // blocking options
