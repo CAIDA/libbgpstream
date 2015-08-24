@@ -165,6 +165,13 @@ static bgpstream_data_interface_option_t bgpstream_broker_options[] = {
     "url",
     "Broker URL (default: " STR(BGPSTREAM_DS_BROKER_URL) ")",
   },
+  /* Broker Param */
+  {
+    BGPSTREAM_DATA_INTERFACE_BROKER,
+    1,
+    "param",
+    "Additional Broker GET parameter*",
+  },
 };
 #endif
 
