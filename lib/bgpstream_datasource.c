@@ -118,6 +118,8 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
   datasource_mgr->broker_ds = NULL;
   GET_DEFAULT_STR_VALUE(datasource_mgr->broker_url,
                         BGPSTREAM_DS_BROKER_URL);
+  datasource_mgr->broker_params = NULL;
+  datasource_mgr->broker_params_cnt = 0;
 #endif
 
   datasource_mgr->status = BGPSTREAM_DATASOURCE_STATUS_OFF;
@@ -259,6 +261,18 @@ int bgpstream_datasource_mgr_set_data_interface_option(bgpstream_datasource_mgr_
             }
           datasource_mgr->broker_url = strdup(option_value);
           break;
+
+        case 1:
+          if((datasource_mgr->broker_params =
+              realloc(datasource_mgr->broker_params,
+                      sizeof(char*) * (datasource_mgr->broker_params_cnt+1)))
+             == NULL)
+            {
+              return -1;
+            }
+          datasource_mgr->broker_params[datasource_mgr->broker_params_cnt++]
+            = strdup(option_value);
+          break;
         }
       break;
 #endif
@@ -314,7 +328,9 @@ void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
     case BGPSTREAM_DATA_INTERFACE_BROKER:
       datasource_mgr->broker_ds =
         bgpstream_broker_datasource_create(filter_mgr,
-                                           datasource_mgr->broker_url);
+                                           datasource_mgr->broker_url,
+                                           datasource_mgr->broker_params,
+                                           datasource_mgr->broker_params_cnt);
       ds = (void *) datasource_mgr->broker_ds;
       break;
 #endif
@@ -503,6 +519,15 @@ void bgpstream_datasource_mgr_destroy(bgpstream_datasource_mgr_t *datasource_mgr
   bgpstream_broker_datasource_destroy(datasource_mgr->broker_ds);
   datasource_mgr->broker_ds = NULL;
   free(datasource_mgr->broker_url);
+  int i;
+  for(i=0; i<datasource_mgr->broker_params_cnt; i++)
+    {
+      free(datasource_mgr->broker_params[i]);
+      datasource_mgr->broker_params[i] = NULL;
+    }
+  free(datasource_mgr->broker_params);
+  datasource_mgr->broker_params = NULL;
+  datasource_mgr->broker_params_cnt = 0;
 #endif
 
 #ifdef WITH_DATA_INTERFACE_MYSQL

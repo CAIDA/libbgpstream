@@ -33,7 +33,8 @@ typedef struct struct_bgpstream_broker_datasource_t bgpstream_broker_datasource_
 
 bgpstream_broker_datasource_t *
 bgpstream_broker_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
-                                   char *broker_url);
+                                   char *broker_url,
+                                   char **params, int params_cnt);
 
 int
 bgpstream_broker_datasource_update_input_queue(bgpstream_broker_datasource_t* broker_ds,
