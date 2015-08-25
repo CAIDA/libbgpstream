@@ -460,9 +460,10 @@ static int read_json(bgpstream_broker_datasource_t *broker_ds,
 
 bgpstream_broker_datasource_t *
 bgpstream_broker_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
-                                   char * broker_url)
+                                   char *broker_url,
+                                   char **params, int params_cnt)
 {
-
+  int i;
   bgpstream_debug("\t\tBSDS_BROKER: create broker_ds start");
   bgpstream_broker_datasource_t *broker_ds;
 
@@ -521,6 +522,14 @@ bgpstream_broker_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
       sf = sf->next;
     }
   }
+
+  // user-provided params
+  for(i=0; i<params_cnt; i++)
+    {
+      assert(params[i] != NULL);
+      AMPORQ;
+      APPEND_STR(params[i]);
+    }
 
   // time_intervals
   #define BUFLEN 20
