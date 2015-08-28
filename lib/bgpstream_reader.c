@@ -568,6 +568,8 @@ void bgpstream_reader_mgr_add(bgpstream_reader_mgr_t * const bs_reader_mgr,
       bgpstream_reader_read_new_data(bs_reader, filter_mgr);
       bgpstream_reader_mgr_sorted_insert(bs_reader_mgr, bs_reader);
     }
+  free(tmp_reader_queue);
+  tmp_reader_queue = NULL;
   print_reader_queue(bs_reader_mgr->reader_queue);
   bgpstream_debug("\tBSR_MGR: add input: end");
 }
