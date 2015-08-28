@@ -199,10 +199,10 @@ static bgpstream_reader_t * bgpstream_reader_create(const bgpstream_input_t * co
     bs_reader->status = BGPSTREAM_READER_STATUS_CANT_OPEN_DUMP;
     return bs_reader; // can't open bgpdump
   }
-  // call bgpstream_reader_read_new_data
-  bgpstream_debug("\t\tBSR: create reader: read new data");
-  bgpstream_reader_read_new_data(bs_reader, filter_mgr);
-  bgpstream_debug("\t\tBSR: create reader: end");  
+  /* // call bgpstream_reader_read_new_data */
+  /* bgpstream_debug("\t\tBSR: create reader: read new data"); */
+  /* bgpstream_reader_read_new_data(bs_reader, filter_mgr); */
+  /* bgpstream_debug("\t\tBSR: create reader: end");   */
   // return reader
   return bs_reader;
 }
@@ -527,17 +527,30 @@ void bgpstream_reader_mgr_add(bgpstream_reader_mgr_t * const bs_reader_mgr,
   bgpstream_debug("\tBSR_MGR: add input: start");
   const bgpstream_input_t * iterator = toprocess_queue;
   bgpstream_reader_t * bs_reader = NULL;
-  // foreach  bgpstream input:
+
+  /* tmp structure to hold reader pointers */
+  bgpstream_reader_t **tmp_reader_queue = NULL;
+  int i = 0;
+  int max_readers = 0;
+  int max = 0;
+  while(iterator != NULL) {
+    max_readers++;
+    iterator = iterator->next;
+  }
+  tmp_reader_queue = (bgpstream_reader_t **) malloc(sizeof(bgpstream_reader_t *) * max_readers);
+
+  /* foreach  bgpstream input add it to the queue and create a reader */
+  iterator = toprocess_queue;
   while(iterator != NULL) {
     if(bgpstream_reader_period_check(iterator, filter_mgr))
-      {
+      {        
         bgpstream_debug("\tBSR_MGR: add input: i");
         // a) create a new reader (create includes the first read)
         bs_reader = bgpstream_reader_create(iterator, filter_mgr);
-        // if it creates correctly
+        // if it creates correctly then add it to the temporary queue
         if(bs_reader != NULL) {
-          // then add the reader to the sorted queue
-          bgpstream_reader_mgr_sorted_insert(bs_reader_mgr, bs_reader);
+          tmp_reader_queue[i] = bs_reader;
+          i++;
         }
         else{
           bgpstream_log_err("ERROR: could not create reader\n");
@@ -547,6 +560,14 @@ void bgpstream_reader_mgr_add(bgpstream_reader_mgr_t * const bs_reader_mgr,
     // go to the next input
     iterator = iterator->next;
   }
+  /* then for each reader read the first record and add it to the reader queue */
+  max = i;
+  for(i =0; i < max; i++)
+    {
+      bs_reader = tmp_reader_queue[i];
+      bgpstream_reader_read_new_data(bs_reader, filter_mgr);
+      bgpstream_reader_mgr_sorted_insert(bs_reader_mgr, bs_reader);
+    }
   print_reader_queue(bs_reader_mgr->reader_queue);
   bgpstream_debug("\tBSR_MGR: add input: end");
 }
