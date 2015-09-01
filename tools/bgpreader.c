@@ -43,6 +43,7 @@ struct window {
 };
 
 static bgpstream_t *bs;
+static bgpstream_data_interface_id_t datasource_id_default = 0;
 static bgpstream_data_interface_id_t datasource_id = 0;
 static bgpstream_data_interface_info_t *datasource_info = NULL;
 
@@ -62,7 +63,8 @@ static void data_if_usage() {
       if(info != NULL)
         {
           fprintf(stderr,
-                  "       %-15s%s\n", info->name, info->description);
+                  "       %-15s%s%s\n", info->name, info->description,
+                  (ids[i] == datasource_id_default) ? " (default)" : "");
         }
     }
 }
@@ -167,7 +169,7 @@ int main(int argc, char *argv[])
     fprintf(stderr, "ERROR: Could not create BGPStream instance\n");
     return -1;
   }
-  datasource_id = bgpstream_get_data_interface_id(bs);
+  datasource_id_default = datasource_id = bgpstream_get_data_interface_id(bs);
   datasource_info = bgpstream_get_data_interface_info(bs, datasource_id);
   assert(datasource_id != 0);
 
