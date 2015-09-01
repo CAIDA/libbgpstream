@@ -485,6 +485,13 @@ int bgpstream_start(bgpstream_t *bs) {
   if(bs == NULL || (bs != NULL && bs->status != BGPSTREAM_STATUS_ALLOCATED)) {
     return 0; // nothing to init
   }
+
+  // validate the filters that have been set
+  int rc;
+  if((rc = bgpstream_filter_mgr_validate(bs->filter_mgr)) != 0) {
+    return rc;
+  }
+
   // turn on datasource interface
   bgpstream_datasource_mgr_init(bs->datasource_mgr, bs->filter_mgr);
   if(bs->datasource_mgr->status == BGPSTREAM_DATASOURCE_STATUS_ON) {

@@ -70,6 +70,9 @@ void bgpstream_filter_mgr_interval_filter_add(bgpstream_filter_mgr_t *bs_filter_
 					      uint32_t begin_time,
 					      uint32_t end_time);
 
+/* validate the current filters */
+int bgpstream_filter_mgr_validate(bgpstream_filter_mgr_t *mgr);
+
 
 /* destroy the memory allocated for bgpstream filter */
 void bgpstream_filter_mgr_destroy(bgpstream_filter_mgr_t *bs_filter_mgr);
