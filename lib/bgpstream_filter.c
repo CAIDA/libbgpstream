@@ -23,7 +23,10 @@
 
 #include "bgpstream_filter.h"
 #include "bgpstream_debug.h"
-#include "assert.h"
+
+#include <assert.h>
+#include <inttypes.h>
+#include <stdio.h>
 
 /* allocate memory for a new bgpstream filter */
 bgpstream_filter_mgr_t *bgpstream_filter_mgr_create() {
@@ -122,7 +125,26 @@ void bgpstream_filter_mgr_interval_filter_add(bgpstream_filter_mgr_t *bs_filter_
   bgpstream_debug("\tBSF_MGR:: add_filter stop");  
 }
 
+int bgpstream_filter_mgr_validate(bgpstream_filter_mgr_t *filter_mgr) {
+  bgpstream_interval_filter_t * tif;
+  /* currently we only validate the intervals */
+  if(filter_mgr->time_intervals != NULL) {
+    tif = filter_mgr->time_intervals;
 
+    while(tif != NULL) {
+      if(tif->begin_time > tif->end_time) {
+        /* invalid interval */
+        fprintf(stderr, "ERROR: Interval %"PRIu32",%"PRIu32" is invalid\n",
+                tif->begin_time, tif->end_time);
+        return -1;
+      }
+
+      tif = tif->next;
+    }
+  }
+
+  return 0;
+}
 
 /* destroy the memory allocated for bgpstream filter */
 void bgpstream_filter_mgr_destroy(bgpstream_filter_mgr_t *bs_filter_mgr) {
