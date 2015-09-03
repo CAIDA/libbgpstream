@@ -21,6 +21,8 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -29,9 +31,66 @@
 #include "bgpstream_input.h"
 #include "bgpstream_debug.h"
 
+#include "utils.h"
 
 #define BUFFER_LEN 1024
 
+struct struct_bgpstream_reader_t {
+  struct struct_bgpstream_reader_t *next;
+  char dump_name[BGPSTREAM_DUMP_MAX_LEN];  // name of bgp dump 
+  char dump_project[BGPSTREAM_PAR_MAX_LEN];  // name of bgp project 
+  char dump_collector[BGPSTREAM_PAR_MAX_LEN];  // name of bgp collector 
+  char dump_type[BGPSTREAM_PAR_MAX_LEN];  // type of bgp dump (rib or update)
+  long dump_time;         // timestamp associated with the time the bgp data was aggregated
+  long record_time;       // timestamp associated with the current bd_entry
+  BGPDUMP_ENTRY *bd_entry;
+  int successful_read; // n. successful reads, i.e. entry != NULL
+  int valid_read; // n. reads successful and compatible with filters
+  bgpstream_reader_status_t status;
+
+  BGPDUMP *bd_mgr;
+  /** The thread that opens the bgpdump */
+  pthread_t producer;
+  /* has the thread opened the dump? */
+  int dump_ready;
+  pthread_cond_t dump_ready_cond;
+  pthread_mutex_t mutex;
+  /* have we already checked that the dump is ready? */
+  int skip_dump_check;
+};
+
+static void *thread_producer(void *user)
+{
+  bgpstream_reader_t *bsr = (bgpstream_reader_t *)user;
+
+  /* all we do is open the dump */
+  if((bsr->bd_mgr = bgpdump_open_dump(bsr->dump_name)) == NULL) {
+    bsr->status = BGPSTREAM_READER_STATUS_CANT_OPEN_DUMP;
+  }
+
+  pthread_mutex_lock(&bsr->mutex);
+  bsr->dump_ready = 1;
+  pthread_cond_signal(&bsr->dump_ready_cond);
+  pthread_mutex_unlock(&bsr->mutex);
+
+  return NULL;
+}
+
+static BGPDUMP_ENTRY *get_next_entry(bgpstream_reader_t *bsr)
+{
+  if(bsr->skip_dump_check == 0) {
+    pthread_mutex_lock(&bsr->mutex);
+    while (bsr->dump_ready == 0) {
+      pthread_cond_wait(&bsr->dump_ready_cond, &bsr->mutex);
+    }
+    pthread_mutex_unlock(&bsr->mutex);
+
+    bsr->skip_dump_check = 1;
+  }
+
+  /* now, grab an entry from bgpdump */
+  return bgpdump_read_next(bsr->bd_mgr);
+}
 
 /* -------------- Reader functions -------------- */
 
@@ -81,11 +140,11 @@ static void bgpstream_reader_read_new_data(bgpstream_reader_t * const bs_reader,
   bs_reader->bd_entry = NULL;
   // check if the end of the file was already reached before
   // reading a new value
-  if(bs_reader->bd_mgr->eof != 0) {
-    bgpstream_debug("\t\tBSR: read new data: end of file reached");      
-    bs_reader->status = BGPSTREAM_READER_STATUS_END_OF_DUMP;
-    return;
-  }
+  //if(bs_reader->bd_mgr->eof != 0) {
+  //  bgpstream_debug("\t\tBSR: read new data: end of file reached");      
+  //  bs_reader->status = BGPSTREAM_READER_STATUS_END_OF_DUMP;
+  //  return;
+  //}
   bgpstream_debug("\t\tBSR: read new data (previous): %ld\t%ld\t%s\t%s\t%d",  
 	bs_reader->record_time,
 	bs_reader->dump_time,
@@ -96,7 +155,11 @@ static void bgpstream_reader_read_new_data(bgpstream_reader_t * const bs_reader,
   bgpstream_debug("\t\tBSR: read new data: from %s", bs_reader->dump_name);
   while(!significant_entry) {
     bgpstream_debug("\t\t\tBSR: read new data: reading");   
-    bs_reader->bd_entry = bgpdump_read_next(bs_reader->bd_mgr);   
+    bs_reader->bd_entry = get_next_entry(bs_reader);
+    // check if there was an error opening the dump
+    if(bs_reader->status == BGPSTREAM_READER_STATUS_CANT_OPEN_DUMP) {
+      return;
+    }
     // check if an entry has been read
     if(bs_reader->bd_entry != NULL) {
       bs_reader->successful_read++;
@@ -160,6 +223,30 @@ static void bgpstream_reader_read_new_data(bgpstream_reader_t * const bs_reader,
   return;
 }
 
+static void bgpstream_reader_destroy(bgpstream_reader_t * const bs_reader) {
+
+  bgpstream_debug("\t\tBSR: destroy reader start");
+  if(bs_reader == NULL) {
+    bgpstream_debug("\t\tBSR: destroy reader: null reader provided");    
+    return;
+  }
+
+  /* Ensure the thread is done */
+  pthread_join(bs_reader->producer, NULL);
+  pthread_mutex_destroy(&bs_reader->mutex);
+  pthread_cond_destroy(&bs_reader->dump_ready_cond);
+
+  // we do not deallocate memory for bd_entry
+  // (the last entry may be still in use in
+  // the current record)
+  bs_reader->bd_entry = NULL;
+  // close bgpdump
+  bgpdump_close_dump(bs_reader->bd_mgr);
+  bs_reader->bd_mgr = NULL;  
+  // deallocate all memory for reader
+  free(bs_reader);
+  bgpstream_debug("\t\tBSR: destroy reader end");
+}
 
 static bgpstream_reader_t * bgpstream_reader_create(const bgpstream_input_t * const bs_input,
 						    const bgpstream_filter_mgr_t * const filter_mgr) {
@@ -181,10 +268,10 @@ static bgpstream_reader_t * bgpstream_reader_create(const bgpstream_input_t * co
   bs_reader->next = NULL;
   bs_reader->bd_mgr = NULL;
   bs_reader->bd_entry = NULL;
-  memset(bs_reader->dump_name, 0, BGPSTREAM_DUMP_MAX_LEN);
-  memset(bs_reader->dump_project, 0, BGPSTREAM_PAR_MAX_LEN);
-  memset(bs_reader->dump_collector, 0, BGPSTREAM_PAR_MAX_LEN);
-  memset(bs_reader->dump_type, 0, BGPSTREAM_PAR_MAX_LEN);
+  //memset(bs_reader->dump_name, 0, BGPSTREAM_DUMP_MAX_LEN);
+  //memset(bs_reader->dump_project, 0, BGPSTREAM_PAR_MAX_LEN);
+  //memset(bs_reader->dump_collector, 0, BGPSTREAM_PAR_MAX_LEN);
+  //memset(bs_reader->dump_type, 0, BGPSTREAM_PAR_MAX_LEN);
   // init done
   strcpy(bs_reader->dump_name, bs_input->filename);
   strcpy(bs_reader->dump_project, bs_input->fileproject);
@@ -195,14 +282,15 @@ static bgpstream_reader_t * bgpstream_reader_create(const bgpstream_input_t * co
   bs_reader->status = BGPSTREAM_READER_STATUS_VALID_ENTRY; // let's be optimistic :)
   bs_reader->valid_read = 0;
   bs_reader->successful_read = 0;
-  // open bgpdump
-  bgpstream_debug("\t\tBSR: create reader: bgpdump_open");
-  bs_reader->bd_mgr = bgpdump_open_dump(bs_reader->dump_name);   
-  if(bs_reader->bd_mgr == NULL) {     
-    bgpstream_debug("\t\tBSR: create reader: bgpdump_open_dump fails to open");
-    bs_reader->status = BGPSTREAM_READER_STATUS_CANT_OPEN_DUMP;
-    return bs_reader; // can't open bgpdump
-  }
+
+  pthread_mutex_init(&bs_reader->mutex, NULL);
+  pthread_cond_init(&bs_reader->dump_ready_cond,NULL);
+  bs_reader->dump_ready = 0;
+  bs_reader->skip_dump_check = 0;
+
+  // bgpdump is created in the thread
+  pthread_create(&bs_reader->producer, NULL, thread_producer, bs_reader);
+
   /* // call bgpstream_reader_read_new_data */
   /* bgpstream_debug("\t\tBSR: create reader: read new data"); */
   /* bgpstream_reader_read_new_data(bs_reader, filter_mgr); */
@@ -307,24 +395,6 @@ static void bgpstream_reader_export_record(bgpstream_reader_t * const bs_reader,
   bgpstream_debug("\t\tBSR: export record: end");    
 }
 
-
-static void bgpstream_reader_destroy(bgpstream_reader_t * const bs_reader) {
-  bgpstream_debug("\t\tBSR: destroy reader start");
-  if(bs_reader == NULL) {
-    bgpstream_debug("\t\tBSR: destroy reader: null reader provided");    
-    return;
-  }
-  // we do not deallocate memory for bd_entry
-  // (the last entry may be still in use in
-  // the current record)
-  bs_reader->bd_entry = NULL;
-  // close bgpdump
-  bgpdump_close_dump(bs_reader->bd_mgr);
-  bs_reader->bd_mgr = NULL;  
-  // deallocate all memory for reader
-  free(bs_reader);
-  bgpstream_debug("\t\tBSR: destroy reader end");
-}
 
  //function used for debug
 static void print_reader_queue(const bgpstream_reader_t * const reader_queue) {

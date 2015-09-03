@@ -24,6 +24,8 @@
 #ifndef _BGPSTREAM_READER_H
 #define _BGPSTREAM_READER_H
 
+#include <pthread.h>
+#include <stdbool.h>
 
 #include "bgpstream_constants.h"
 #include "bgpstream_record.h"
@@ -31,7 +33,6 @@
 #include "bgpstream_filter.h" 
 
 #include <bgpdump_lib.h>
-#include <stdbool.h>
 
 
 typedef enum {
@@ -43,20 +44,7 @@ typedef enum {
   BGPSTREAM_READER_STATUS_END_OF_DUMP
 } bgpstream_reader_status_t;
 
-typedef struct struct_bgpstream_reader_t {
-  struct struct_bgpstream_reader_t *next;
-  char dump_name[BGPSTREAM_DUMP_MAX_LEN];  // name of bgp dump 
-  char dump_project[BGPSTREAM_PAR_MAX_LEN];  // name of bgp project 
-  char dump_collector[BGPSTREAM_PAR_MAX_LEN];  // name of bgp collector 
-  char dump_type[BGPSTREAM_PAR_MAX_LEN];  // type of bgp dump (rib or update)
-  long dump_time;         // timestamp associated with the time the bgp data was aggregated
-  long record_time;       // timestamp associated with the current bd_entry
-  BGPDUMP *bd_mgr;
-  BGPDUMP_ENTRY *bd_entry;
-  int successful_read; // n. successful reads, i.e. entry != NULL
-  int valid_read; // n. reads successful and compatible with filters
-  bgpstream_reader_status_t status;
-} bgpstream_reader_t;
+typedef struct struct_bgpstream_reader_t bgpstream_reader_t;
 
 typedef enum {
   BGPSTREAM_READER_MGR_STATUS_EMPTY_READER_MGR,
