@@ -340,6 +340,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
           fprintf(stderr, "ERROR: Invalid dumpFile record\n");
           goto retry;
         }
+#ifdef WITH_BROKER_DEBUG
         fprintf(stderr, "----------\n");
         fprintf(stderr, "URL: %s\n", url);
         fprintf(stderr, "Project: %s\n", project);
@@ -347,6 +348,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
         fprintf(stderr, "Type: %s\n", type);
         fprintf(stderr, "InitialTime: %"PRIu32"\n", initial_time);
         fprintf(stderr, "Duration: %"PRIu32"\n", duration);
+#endif
 
         // do we need to update our current_window_end?
         if (initial_time+duration > broker_ds->current_window_end) {
@@ -635,7 +637,9 @@ bgpstream_broker_datasource_update_input_queue(bgpstream_broker_datasource_t* br
     }
     attempts++;
 
+#ifdef WITH_BROKER_DEBUG
     fprintf(stderr, "\nQuery URL: \"%s\"\n", broker_ds->query_url_buf);
+#endif
 
     if ((jsonfile = wandio_create(broker_ds->query_url_buf)) == NULL) {
       fprintf(stderr, "ERROR: Could not open %s for reading\n",
