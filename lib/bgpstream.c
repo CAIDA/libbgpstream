@@ -35,11 +35,11 @@
 
 /* this should be the complete list of interface types */
 static bgpstream_data_interface_id_t bgpstream_data_interfaces[] = {
+  BGPSTREAM_DATA_INTERFACE_BROKER,
   BGPSTREAM_DATA_INTERFACE_SINGLEFILE,
   BGPSTREAM_DATA_INTERFACE_CSVFILE,
-  BGPSTREAM_DATA_INTERFACE_SQLITE,
   BGPSTREAM_DATA_INTERFACE_MYSQL,
-  BGPSTREAM_DATA_INTERFACE_BROKER,
+  BGPSTREAM_DATA_INTERFACE_SQLITE,
 };
 
 #ifdef WITH_DATA_INTERFACE_SINGLEFILE
@@ -85,6 +85,12 @@ static bgpstream_data_interface_info_t bgpstream_broker_info = {
 static bgpstream_data_interface_info_t *bgpstream_data_interface_infos[] = {
   NULL, /* NO VALID IF WITH ID 0 */
 
+#ifdef WITH_DATA_INTERFACE_BROKER
+  &bgpstream_broker_info,
+#else
+  NULL,
+#endif
+
 #ifdef WITH_DATA_INTERFACE_SINGLEFILE
   &bgpstream_singlefile_info,
 #else
@@ -97,23 +103,18 @@ static bgpstream_data_interface_info_t *bgpstream_data_interface_infos[] = {
   NULL,
 #endif
 
-#ifdef WITH_DATA_INTERFACE_SQLITE
-  &bgpstream_sqlite_info,
-#else
-  NULL,
-#endif
-
 #ifdef WITH_DATA_INTERFACE_MYSQL
   &bgpstream_mysql_info,
 #else
   NULL,
 #endif
 
-#ifdef WITH_DATA_INTERFACE_BROKER
-  &bgpstream_broker_info,
+#ifdef WITH_DATA_INTERFACE_SQLITE
+  &bgpstream_sqlite_info,
 #else
   NULL,
 #endif
+
 };
 
 /* this should be a complete list of per-interface options */

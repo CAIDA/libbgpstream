@@ -71,21 +71,21 @@ typedef enum {
 /** Data Interface IDs */
 typedef enum {
 
+  /** Broker data interface */
+  BGPSTREAM_DATA_INTERFACE_BROKER     = 1,
+
   /** Customlist interface */
-  BGPSTREAM_DATA_INTERFACE_SINGLEFILE = 1,
+  BGPSTREAM_DATA_INTERFACE_SINGLEFILE = 2,
 
   /** CSV file interface */
-  BGPSTREAM_DATA_INTERFACE_CSVFILE    = 2,
-
-  /** SQLITE file interface */
-  BGPSTREAM_DATA_INTERFACE_SQLITE     = 3,
+  BGPSTREAM_DATA_INTERFACE_CSVFILE    = 3,
 
   /** MySQL data interface */
-  BGPSTREAM_DATA_INTERFACE_MYSQL      = 4,
+  BGPSTREAM_DATA_INTERFACE_MYSQL      = 4,  
 
-  /** Broker data interface */
-  BGPSTREAM_DATA_INTERFACE_BROKER     = 5,
-
+  /** SQLITE file interface */
+  BGPSTREAM_DATA_INTERFACE_SQLITE     = 5,
+  
 } bgpstream_data_interface_id_t;
 
 
