@@ -152,6 +152,15 @@ AC_MSG_NOTICE([configuring data interface parameters...])
 # broker options
 if test "x$with_di_broker" == xyes; then
    BS_DI_OPT(broker-url, BROKER_URL, Broker URL, https://bgpstream.caida.org/broker)
+AC_ARG_WITH([broker-debug],
+        [AS_HELP_STRING([--with-broker-debug], [Enable broker debugging output])],
+            [with_broker_debug=$with_broker_debug],
+            [with_broker_debug=no])
+AS_IF([test "x$with_broker_debug" != xno],
+	[
+	    AC_DEFINE_UNQUOTED([WITH_BROKER_DEBUG],[1],
+		[Enable broker debugging output])
+	])
 fi
 
 # singlefile options
