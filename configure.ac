@@ -86,6 +86,16 @@ AC_CHECK_HEADERS([arpa/inet.h inttypes.h limits.h math.h stdlib.h string.h \
 			      time.h sys/time.h])
 
 # Checks for mandatory libraries
+
+# this code is needed to get the right threading library on a mac
+STASH_CFLAGS="$CFLAGS"
+CFLAGS=
+AX_PTHREAD(, [AC_MSG_ERROR([pthreads required])])
+CFLAGS="$STASH_CFLAGS"
+LIBS="$PTHREAD_LIBS $LIBS"
+CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+CC="$PTHREAD_CC"
+
 AC_SEARCH_LIBS([wandio_create], [wandio trace], [with_wandio=yes],
                  [AC_MSG_ERROR(
 		 [libwandio required (included with libtrace since 3.0.15)]
