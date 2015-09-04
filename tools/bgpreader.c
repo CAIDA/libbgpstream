@@ -100,26 +100,28 @@ static void dump_if_options() {
 
 static void usage() {
   fprintf(stderr,
-	  "usage: bgpreader -d <interface> [<options>]\n"
+	  "usage: bgpreader -w <start,end> [<options>]\n"
+          "Available options are:\n"
           "   -d <interface> use the given data interface to find available data\n"
-          "     available data interfaces are:\n");
+          "                  available data interfaces are:\n");
   data_if_usage();
   fprintf(stderr,
           "   -o <option-name,option-value>*\n"
           "                  set an option for the current data interface.\n"
-          "                    use '-o ?' to get a list of available\n"
-          "                    options for the current data interface.\n"
-          "                    (data interface can be selected using -d)\n"
-	  "   -P <project>   process records from only the given project (routeviews, ris)*\n"
-	  "   -C <collector> process records from only the given collector*\n"
-	  "   -T <type>      process records with only the given type (ribs, updates)*\n"
-	  "   -W <start,end> process records only within the given time window*\n"
-          "   -R <period>    process a rib files every <period> seconds (bgp time)\n"
+          "                  use '-o ?' to get a list of available options for the current\n"
+          "                  data interface. (data interface can be selected using -d)\n"
+	  "   -p <project>   process records from only the given project (routeviews, ris)*\n"
+	  "   -c <collector> process records from only the given collector*\n"
+	  "   -t <type>      process records with only the given type (ribs, updates)*\n"
+	  "   -w <start,end> process records only within the given time window*\n"
+          "   -P <period>    process a rib files every <period> seconds (bgp time)\n"
 	  "   -b             make blocking requests for BGP records\n"
 	  "                  allows bgpstream to be used to process data in real-time\n"
-	  "   -r             print info for each BGP record (in bgpstream format) [default]\n"
-	  "   -m             print info for each BGP valid record (in bgpdump -m format)\n"
-	  "   -e             print info for each element of a valid BGP record\n"
+          "\n"
+	  "   -r             print info for each BGP record (default)\n"
+          "   -m             print info for each BGP valid record in bgpdump -m format\n"
+          "   -e             print info for each element of a valid BGP record\n"         
+          "\n"
 	  "   -h             print this help menu\n"
 	  "* denotes an option that can be given multiple times\n"
 	  );
@@ -178,7 +180,7 @@ int main(int argc, char *argv[])
   assert(datasource_id != 0);
 
   while (prevoptind = optind,
-	 (opt = getopt (argc, argv, "P:C:T:W:R:d:brmeo:h?")) >= 0)
+	 (opt = getopt (argc, argv, "d:o:p:c:t:w:P:brmeh?")) >= 0)
     {
       if (optind == prevoptind + 2 && (optarg == NULL || *optarg == '-') ) {
         opt = ':';
@@ -186,7 +188,7 @@ int main(int argc, char *argv[])
       }
       switch (opt)
 	{
-	case 'P':
+	case 'p':
 	  if(projects_cnt == PROJECT_CMD_CNT)
 	    {
 	      fprintf(stderr,
@@ -198,7 +200,7 @@ int main(int argc, char *argv[])
 	    }
 	  projects[projects_cnt++] = strdup(optarg);
 	  break;
-	case 'C':
+	case 'c':
 	  if(collectors_cnt == COLLECTOR_CMD_CNT)
 	    {
 	      fprintf(stderr,
@@ -210,7 +212,7 @@ int main(int argc, char *argv[])
 	    }
 	  collectors[collectors_cnt++] = strdup(optarg);
 	  break;
-	case 'T':
+	case 't':
 	  if(types_cnt == TYPE_CMD_CNT)
 	    {
 	      fprintf(stderr,
@@ -222,7 +224,7 @@ int main(int argc, char *argv[])
 	    }
 	  types[types_cnt++] = strdup(optarg);
 	  break;
-	case 'W':
+	case 'w':
 	  if(windows_cnt == WINDOW_CMD_CNT)
 	  {
 	    fprintf(stderr,
@@ -246,7 +248,7 @@ int main(int argc, char *argv[])
 	  windows[windows_cnt].end =  atoi(endp);
 	  windows_cnt++;
 	  break;
-        case 'R':
+        case 'P':
           rib_period = atoi(optarg);
           break;
 	case 'd':
@@ -348,7 +350,7 @@ int main(int argc, char *argv[])
   if(windows_cnt == 0)
     {
       fprintf(stderr,
-              "ERROR: At least one time window must be specified using -W\n");
+              "ERROR: At least one time window must be specified using -w\n");
       usage();
       exit(-1);
     }
