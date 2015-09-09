@@ -72,9 +72,12 @@ void bgpstream_ip_counter_add(bgpstream_ip_counter_t *ipc,
 /** Get the number of unique IPs in the IP Counter
  *
  * @param counter        pointer to the IP Counter
+ * @param v              IP version
  * @return               number of unique IPs in the IP Counter
+ *                       (unique /32 in IPv4, unique /64 in IPv6)
  */
-uint32_t bgpstream_ip_counter_get_ipcount(bgpstream_ip_counter_t *ipc);
+uint64_t bgpstream_ip_counter_get_ipcount(bgpstream_ip_counter_t *ipc,
+                                          bgpstream_addr_version_t v);
 
 /** Return the number of unique IPs in the IP Counter instance that
  *  overlap with the provided prefix
@@ -84,7 +87,7 @@ uint32_t bgpstream_ip_counter_get_ipcount(bgpstream_ip_counter_t *ipc);
  * @return               number of unique IPs in the IP Counter that 
  *                       overlap with pfx
  */
-uint32_t bgpstream_ip_counter_is_overlapping(bgpstream_ip_counter_t *ipc,
+uint64_t bgpstream_ip_counter_is_overlapping(bgpstream_ip_counter_t *ipc,
                                              bgpstream_pfx_t *pfx);
 
 /** Empty the IP Counter
