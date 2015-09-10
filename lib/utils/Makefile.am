@@ -41,7 +41,8 @@ include_HEADERS= bgpstream_utils.h 		     \
 		 bgpstream_utils_peer_sig_map.h      \
 		 bgpstream_utils_pfx.h		     \
 		 bgpstream_utils_pfx_set.h	     \
-		 bgpstream_utils_str_set.h
+		 bgpstream_utils_str_set.h	     \
+		 bgpstream_utils_ip_counter.h
 
 libbgpstream_utils_la_SOURCES =             \
 	bgpstream_utils.h                   \
@@ -63,7 +64,9 @@ libbgpstream_utils_la_SOURCES =             \
 	bgpstream_utils_pfx_set.c  	    \
 	bgpstream_utils_pfx_set.h	    \
 	bgpstream_utils_str_set.c  	    \
-	bgpstream_utils_str_set.h
+	bgpstream_utils_str_set.h	    \
+	bgpstream_utils_ip_counter.c	    \
+	bgpstream_utils_ip_counter.h
 
 
 libbgpstream_utils_la_LIBADD = $(CONDITIONAL_LIBS)
