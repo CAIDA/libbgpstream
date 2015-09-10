@@ -143,7 +143,7 @@ one_step_merge6(v6pfx_int_t *pil)
 }
 
 
-static void
+static int
 merge_in_sorted_queue4(v4pfx_int_t **pil, uint32_t start, uint32_t end)
 {
   // create new v4pfx_int_t
@@ -162,7 +162,11 @@ merge_in_sorted_queue4(v4pfx_int_t **pil, uint32_t start, uint32_t end)
       if(end < current->start)
         {
           /* found a position where to insert  */
-          p = (v4pfx_int_t *)malloc(sizeof(v4pfx_int_t));
+          if((p = (v4pfx_int_t *)malloc_zero(sizeof(v4pfx_int_t))) == NULL)
+            {
+              fprintf(stderr,"ERROR: can't malloc v4pfx_int_t structure\n");
+              return -1;
+            }
           p->start = start;
           p->end = end;
           p->next = NULL;
@@ -175,7 +179,7 @@ merge_in_sorted_queue4(v4pfx_int_t **pil, uint32_t start, uint32_t end)
               *pil = p;              
             }
           p->next = current;
-          return;
+          return 0;
         }
       /* At this point S <= cE and E >= cS
        * so we can merge them */
@@ -190,12 +194,16 @@ merge_in_sorted_queue4(v4pfx_int_t **pil, uint32_t start, uint32_t end)
       /* Now check from here on if there are other things
        * to merge */
       one_step_merge4(current);
-      return;
+      return 0;
     }
 
   /*   if here we didn't find a place where to insert the 
    * interval, it is either the first position or the last */
-  p = (v4pfx_int_t *)malloc(sizeof(v4pfx_int_t));
+  if((p = (v4pfx_int_t *)malloc_zero(sizeof(v4pfx_int_t))) == NULL)
+    {
+      fprintf(stderr,"ERROR: can't malloc v4pfx_int_t structure\n");
+      return -1;
+    }
   p->start = start;
   p->end = end;
   p->next = NULL;  
@@ -203,13 +211,14 @@ merge_in_sorted_queue4(v4pfx_int_t **pil, uint32_t start, uint32_t end)
   if (previous == current)
     {
       *pil = p;
-      return;
+      return 0;
     }
   // adding at the end of the queue
   previous->next = p;
+  return 0;
 }
 
-static void
+static int
 merge_in_sorted_queue6(v6pfx_int_t **pil,
                        uint64_t start_ms, uint64_t start_ls,
                        uint64_t end_ms, uint64_t end_ls)
@@ -236,7 +245,11 @@ merge_in_sorted_queue6(v6pfx_int_t **pil,
           end_ls < current->start_ls))
         {
           /* found a position where to insert  */
-          p = (v6pfx_int_t *)malloc(sizeof(v6pfx_int_t));
+          if((p = (v6pfx_int_t *)malloc_zero(sizeof(v6pfx_int_t))) == NULL)
+            {
+              fprintf(stderr,"ERROR: can't malloc v6pfx_int_t structure\n");
+              return -1;
+            }
           p->start_ms = start_ms;
           p->start_ls = start_ls;
           p->end_ms = end_ms;
@@ -251,7 +264,7 @@ merge_in_sorted_queue6(v6pfx_int_t **pil,
               *pil = p;              
             }
           p->next = current;
-          return;
+          return 0;
         }
       /* At this point S <= cE and E >= cS
        * so we can merge them */
@@ -274,12 +287,16 @@ merge_in_sorted_queue6(v6pfx_int_t **pil,
       /* Now check from here on if there are other things
        * to merge */
       one_step_merge6(current);
-      return;
+      return 0;
     }
 
   /*   if here we didn't find a place where to insert the 
    * interval, it is either the first position or the last */
-  p = (v6pfx_int_t *)malloc(sizeof(v6pfx_int_t));
+  if((p = (v6pfx_int_t *)malloc_zero(sizeof(v6pfx_int_t))) == NULL)
+    {
+      fprintf(stderr,"ERROR: can't malloc v6pfx_int_t structure\n");
+      return -1;
+    }
   p->start_ms = start_ms;
   p->start_ls = start_ls;
   p->end_ms = end_ms;
@@ -289,10 +306,11 @@ merge_in_sorted_queue6(v6pfx_int_t **pil,
   if (previous == current)
     {
       *pil = p;
-      return;
+      return 0;
     }
   // adding at the end of the queue
   previous->next = p;
+  return 0;
 }
 
 
@@ -302,6 +320,7 @@ bgpstream_ip_counter_create()
   bgpstream_ip_counter_t *ipc;
   if((ipc = (bgpstream_ip_counter_t *)malloc_zero(sizeof(bgpstream_ip_counter_t))) == NULL)
     {
+      fprintf(stderr,"ERROR: can't malloc bgpstream_ip_counter_t structure\n");
       return NULL;
     }
   ipc->v4list = NULL;
@@ -309,7 +328,7 @@ bgpstream_ip_counter_create()
   return ipc;
 }
 
-void
+int
 bgpstream_ip_counter_add(bgpstream_ip_counter_t *ipc,
                          bgpstream_pfx_t *pfx)
 {
@@ -323,15 +342,13 @@ bgpstream_ip_counter_add(bgpstream_ip_counter_t *ipc,
   uint64_t mask_ms;
   uint64_t mask_ls;
 
-
-
   if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4)
     {
       mask = ~( ((uint64_t)1 << (32 - pfx->mask_len)) - 1);
       start = ntohl(((bgpstream_ipv4_pfx_t *)pfx)->address.ipv4.s_addr);
       start = start & mask;
       end = start | (~mask);
-      merge_in_sorted_queue4(&ipc->v4list, start, end);
+      return merge_in_sorted_queue4(&ipc->v4list, start, end);
     }
   else
     {
@@ -358,20 +375,21 @@ bgpstream_ip_counter_add(bgpstream_ip_counter_t *ipc,
 
           /* printf("MASKS:  %"PRIu64" %"PRIu64"\n", mask_ms, mask_ls); */
           
-          /* most significative */
+          /* most significant */
           start_ms = start_ms & mask_ms;
           end_ms = start_ms | (~mask_ms);
           /* printf("MS:  %"PRIu64" %"PRIu64"\n", start_ms, end_ms); */
 
-          /* least significative */
+          /* least significant */
           start_ls = start_ls & mask_ls;
           end_ls = start_ls | (~mask_ls);
           /* printf("LS:  %"PRIu64" %"PRIu64"\n", start_ls, end_ls); */
           
-          merge_in_sorted_queue6(&ipc->v6list, start_ms, start_ls, end_ms, end_ls);
+          return merge_in_sorted_queue6(&ipc->v6list, start_ms, start_ls, end_ms, end_ls);
         }
     }
   /* print_pfx_int_list(ipc); */
+  return 0;
 }
 
 uint32_t
@@ -425,7 +443,7 @@ bgpstream_ip_counter_is_overlapping4(bgpstream_ip_counter_t *ipc,
 
 uint64_t
 bgpstream_ip_counter_is_overlapping6(bgpstream_ip_counter_t *ipc,
-                                    bgpstream_ipv6_pfx_t *pfx)
+                                     bgpstream_ipv6_pfx_t *pfx)
 {  
   v6pfx_int_t *current = ipc->v6list;
   v6pfx_int_t *previous = ipc->v6list;
@@ -460,12 +478,12 @@ bgpstream_ip_counter_is_overlapping6(bgpstream_ip_counter_t *ipc,
   
   /* printf("MASKS:  %"PRIu64" %"PRIu64"\n", mask_ms, mask_ls); */
   
-  /* most significative */
+  /* most significant */
   start_ms = start_ms & mask_ms;
   end_ms = start_ms | (~mask_ms);
   /* printf("MS:  %"PRIu64" %"PRIu64"\n", start_ms, end_ms); */
   
-  /* least significative */
+  /* least significant */
   start_ls = start_ls & mask_ls;
   end_ls = start_ls | (~mask_ls);
   /* printf("LS:  %"PRIu64" %"PRIu64"\n", start_ls, end_ls); */
