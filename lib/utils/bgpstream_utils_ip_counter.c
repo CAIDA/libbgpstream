@@ -488,11 +488,11 @@ bgpstream_ip_counter_is_overlapping6(bgpstream_ip_counter_t *ipc,
   end_ls = start_ls | (~mask_ls);
   /* printf("LS:  %"PRIu64" %"PRIu64"\n", start_ls, end_ls); */
   
-  /* intersection endpoints */
-  uint64_t int_start_ms;
-  uint64_t int_start_ls;
+  /* intersection endpoints 
+   * (only most significant)*/
+  uint64_t int_start_ms;  
   uint64_t int_end_ms;
-  uint64_t int_end_ls;
+
   while(current != NULL)
     {
       /* current->start > end */
@@ -514,16 +514,16 @@ bgpstream_ip_counter_is_overlapping6(bgpstream_ip_counter_t *ipc,
       /* there is some overlap 
        * max(start) and min(end) */
       int_start_ms = current->start_ms;
-      int_start_ls = current->start_ls;
       int_end_ms = current->end_ms;
-      int_end_ls = current->end_ls;
+      /* int_start_ls = current->start_ls; */
+      /* int_end_ls = current->end_ls; */
       /* current->start < start */
       if(current->start_ms < start_ms ||
          (current->start_ms == start_ms &&
           current->start_ms < start_ls))
         {
           int_start_ms = start_ms;
-          int_start_ls = start_ls;
+          /* int_start_ls = start_ls; */
         }
       /* current->end > end */
       if(current->end_ms > end_ms ||
@@ -531,7 +531,7 @@ bgpstream_ip_counter_is_overlapping6(bgpstream_ip_counter_t *ipc,
           current->end_ls > end_ls))
         {
           int_end_ms = end_ms;
-          int_end_ls = end_ls;
+          /* int_end_ls = end_ls; */
         }
       if(previous != current)
         {
