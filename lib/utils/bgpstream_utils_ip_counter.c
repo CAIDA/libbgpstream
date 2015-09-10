@@ -335,6 +335,7 @@ bgpstream_ip_counter_add(bgpstream_ip_counter_t *ipc,
   uint32_t start;
   uint32_t end;
   uint32_t mask;
+  unsigned char * tmp;
   uint64_t start_ms = 0;
   uint64_t start_ls = 0;
   uint64_t end_ms = 0;
@@ -354,8 +355,10 @@ bgpstream_ip_counter_add(bgpstream_ip_counter_t *ipc,
     {
       if(pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV6)
         {
-          start_ms = ntohll(*((uint64_t *) &((bgpstream_ipv6_pfx_t *)pfx)->address.ipv6.s6_addr[0]));
-          start_ls = ntohll(*((uint64_t *) &((bgpstream_ipv6_pfx_t *)pfx)->address.ipv6.s6_addr[8]));
+          tmp = &((bgpstream_ipv6_pfx_t *)pfx)->address.ipv6.s6_addr[0];
+          start_ms = ntohll(*((uint64_t *)tmp));
+          tmp = &((bgpstream_ipv6_pfx_t *)pfx)->address.ipv6.s6_addr[8];
+          start_ls = ntohll(*((uint64_t *)tmp));
           /* printf("+++++++++  %"PRIu64" %"PRIu64"\n", start_ms, start_ls); */
           if(pfx->mask_len > 64)
             {
@@ -454,11 +457,14 @@ bgpstream_ip_counter_is_overlapping6(bgpstream_ip_counter_t *ipc,
   uint64_t end_ls = 0;
   uint64_t mask_ms;
   uint64_t mask_ls;
+  unsigned char * tmp;
+
   uint64_t overlap_count = 0;
 
-
-  start_ms = ntohll(*((uint64_t *) &(pfx->address.ipv6.s6_addr[0])));
-  start_ls = ntohll(*((uint64_t *) &(pfx->address.ipv6.s6_addr[8])));
+  tmp = &(pfx->address.ipv6.s6_addr[0]);
+  start_ms = ntohll(*((uint64_t *)tmp));
+  tmp = &(pfx->address.ipv6.s6_addr[8]);
+  start_ls = ntohll(*((uint64_t *)tmp));
   /* printf("+++++++++  %"PRIu64" %"PRIu64"\n", start_ms, start_ls); */
   if(pfx->mask_len > 64)
     {
