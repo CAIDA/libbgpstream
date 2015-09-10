@@ -65,8 +65,10 @@ bgpstream_ip_counter_t *bgpstream_ip_counter_create();
  *
  * @param counter      pointer to the IP Counter
  * @param pfx          prefix to insert in IP Counter
+ * @return             0 if a prefix was added correctly, -1 otherwise
+
  */
-void bgpstream_ip_counter_add(bgpstream_ip_counter_t *ipc,
+int bgpstream_ip_counter_add(bgpstream_ip_counter_t *ipc,
                               bgpstream_pfx_t *pfx);
 
 /** Get the number of unique IPs in the IP Counter
