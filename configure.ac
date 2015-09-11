@@ -263,6 +263,7 @@ AC_MSG_RESULT([$with_plugin_timing])
 # they will be run.                                                            #
 ################################################################################
 
+ED_WITH_PLUGIN([bgpcorsaro_pfxmonitor],[pfxmonitor],[PFXMONITOR],[yes])
 ED_WITH_PLUGIN([bgpcorsaro_routingtables],[routingtables],[ROUTINGTABLES],[yes])
 ED_WITH_PLUGIN([bgpcorsaro_pacifier],[pacifier],[PACIFIER],[yes])
 ED_WITH_PLUGIN([bgpcorsaro_viewconsumer],[viewconsumer],[VIEWCONSUMER],[yes])
