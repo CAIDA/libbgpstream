@@ -264,13 +264,16 @@ bgpstream_get_data_interface_id(bgpstream_t *bs);
 void bgpstream_set_data_interface(bgpstream_t *bs,
                                   bgpstream_data_interface_id_t if_id);
 
-/** Configure the interface to blocks waiting for new data instead of returning
+/** Configure the interface to block waiting for new data instead of returning
  * end-of-stream if no more data is available.
  *
- * @param bs            pointer to a BGP Stream instance to put into blocking
+ * @param bs            pointer to a BGP Stream instance to put into live
  *                      mode
+ *
+ * Live mode is implicitly enabled when an interval end is set to
+ * BGPSTREAM_FOREVER.
  */
-void bgpstream_set_blocking(bgpstream_t *bs);
+void bgpstream_set_live_mode(bgpstream_t *bs);
 
 /** Start the given BGP Stream instance.
  *
