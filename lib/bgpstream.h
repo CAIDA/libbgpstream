@@ -39,6 +39,17 @@
  */
 
 /**
+ * @name Public Macros
+ *
+ * @{ */
+
+/** Used to specify an interval that never ends (i.e., when processing in live
+    mode). */
+#define BGPSTREAM_FOREVER 0
+
+/** @} */
+
+/**
  * @name Public Opaque Data Structures
  *
  * @{ */
@@ -166,6 +177,9 @@ void bgpstream_add_rib_period_filter(bgpstream_t *bs, uint32_t period);
  * @param bs            pointer to a BGP Stream instance to filter
  * @param begin_time    the first time that will match the filter (inclusive)
  * @param end_time      the last time that will match the filter (inclusive)
+ *
+ * If end_time is set to BGPSTREAM_FOREVER, the stream will be set to live mode,
+ * and will process data forever.
  */
 void bgpstream_add_interval_filter(bgpstream_t *bs,
 				   uint32_t begin_time,
