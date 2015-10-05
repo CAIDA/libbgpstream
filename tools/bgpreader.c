@@ -115,7 +115,7 @@ static void usage() {
 	  "   -t <type>      process records with only the given type (ribs, updates)*\n"
 	  "   -w <start,end> process records only within the given time window*\n"
           "   -P <period>    process a rib files every <period> seconds (bgp time)\n"
-	  "   -b             make blocking requests for BGP records\n"
+	  "   -l             enable live mode (make blocking requests for BGP records)\n"
 	  "                  allows bgpstream to be used to process data in real-time\n"
           "\n"
 	  "   -r             print info for each BGP record (default)\n"
@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
   int interface_options_cnt = 0;
 
   int rib_period = 0;
-  int blocking = 0;
+  int live = 0;
   int record_output_on = 0;
   int record_bgpdump_output_on = 0;
   int elem_output_on = 0;
@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
   assert(datasource_id != 0);
 
   while (prevoptind = optind,
-	 (opt = getopt (argc, argv, "d:o:p:c:t:w:P:brmeh?")) >= 0)
+	 (opt = getopt (argc, argv, "d:o:p:c:t:w:P:lrmeh?")) >= 0)
     {
       if (optind == prevoptind + 2 && (optarg == NULL || *optarg == '-') ) {
         opt = ':';
@@ -275,8 +275,8 @@ int main(int argc, char *argv[])
 	  interface_options[interface_options_cnt++] = strdup(optarg);
           break;
 
-	case 'b':
-	  blocking = 1;
+	case 'l':
+	  live = 1;
 	  break;
 	case 'r':
 	  record_output_on = 1;
@@ -401,10 +401,10 @@ int main(int argc, char *argv[])
   /* datasource */
   bgpstream_set_data_interface(bs, datasource_id);
 
-  /* blocking */
-  if(blocking != 0)
+  /* live */
+  if(live != 0)
     {
-      bgpstream_set_blocking(bs);
+      bgpstream_set_live_mode(bs);
     }
 
    // allocate memory for bs_record
