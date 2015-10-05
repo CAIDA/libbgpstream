@@ -320,24 +320,31 @@ bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(bgpstream_filter
       APPEND_STR(" ( ");
 
       // BEGIN TIME
-      APPEND_STR(" (bgp_data.file_time >=  ");     
+      APPEND_STR(" (bgp_data.file_time >=  ");
       interval_str[0] = '\0';
-      if((written = snprintf(interval_str, MAX_INTERVAL_LEN, "%"PRIu32, tif->begin_time)) < MAX_INTERVAL_LEN)
+      if((written =
+          snprintf(interval_str, MAX_INTERVAL_LEN,
+                   "%"PRIu32, tif->begin_time)) < MAX_INTERVAL_LEN)
         {
           APPEND_STR(interval_str);
-        }                      
+        }
       APPEND_STR("  - on_web_frequency.offset - 120 )");
       APPEND_STR("  AND  ");
 
       // END TIME
-      APPEND_STR(" (bgp_data.file_time <=  ");
-      interval_str[0] = '\0';
-      if((written = snprintf(interval_str, MAX_INTERVAL_LEN, "%"PRIu32, tif->end_time)) < MAX_INTERVAL_LEN)
+      if(tif->end_time != BGPSTREAM_FOREVER)
         {
-          APPEND_STR(interval_str);
-        }                      
-      APPEND_STR(") ");
-      APPEND_STR(" ) ");
+          APPEND_STR(" (bgp_data.file_time <=  ");
+          interval_str[0] = '\0';
+          if((written =
+              snprintf(interval_str, MAX_INTERVAL_LEN,
+                       "%"PRIu32, tif->end_time)) < MAX_INTERVAL_LEN)
+            {
+              APPEND_STR(interval_str);
+            }
+          APPEND_STR(") ");
+          APPEND_STR(" ) ");
+        }
 
       tif = tif->next;
       if(tif!= NULL) {
