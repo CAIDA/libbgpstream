@@ -100,7 +100,7 @@ static void dump_if_options() {
 
 static void usage() {
   fprintf(stderr,
-	  "usage: bgpreader -w <start,end> [<options>]\n"
+	  "usage: bgpreader -w <start>[,<end>] [<options>]\n"
           "Available options are:\n"
           "   -d <interface> use the given data interface to find available data\n"
           "                  available data interfaces are:\n");
@@ -113,7 +113,9 @@ static void usage() {
 	  "   -p <project>   process records from only the given project (routeviews, ris)*\n"
 	  "   -c <collector> process records from only the given collector*\n"
 	  "   -t <type>      process records with only the given type (ribs, updates)*\n"
-	  "   -w <start,end> process records only within the given time window*\n"
+          "   -w <start>[,<end>]\n"
+          "                  process records within the given time window\n"
+          "                    (omitting the end parameter enables live mode)*\n"
           "   -P <period>    process a rib files every <period> seconds (bgp time)\n"
 	  "   -l             enable live mode (make blocking requests for BGP records)\n"
 	  "                  allows bgpstream to be used to process data in real-time\n"
@@ -237,15 +239,15 @@ int main(int argc, char *argv[])
 	  /* split the window into a start and end */
 	  if((endp = strchr(optarg, ',')) == NULL)
 	    {
-	      fprintf(stderr, "ERROR: Malformed time window (%s)\n", optarg);
-	      fprintf(stderr, "ERROR: Expecting start,end\n");
-	      usage();
-	      exit(-1);
+              windows[windows_cnt].end = BGPSTREAM_FOREVER;
 	    }
-	  *endp = '\0';
-	  endp++;
+          else
+            {
+              *endp = '\0';
+              endp++;
+              windows[windows_cnt].end =  atoi(endp);
+            }
 	  windows[windows_cnt].start = atoi(optarg);
-	  windows[windows_cnt].end =  atoi(endp);
 	  windows_cnt++;
 	  break;
         case 'P':
