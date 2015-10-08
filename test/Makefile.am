@@ -31,12 +31,12 @@ TESTS = bgpstream-test bgpstream-test-utilities
 check_PROGRAMS =  bgpstream-test bgpstream-test-utilities
 
 bgpstream_test_SOURCES = bgpstream-test.c
-bgpstream_test_LDADD   = -lbgpstream
-bgpstream_test_LDFLAGS = -L$(top_builddir)/lib
+bgpstream_test_LDADD   = $(top_builddir)/lib/libbgpstream.la
+bgpstream_test_LDFLAGS =
 
 bgpstream_test_utilities_SOURCES = bgpstream-test-utilities.c
-bgpstream_test_utilities_LDADD   = -lbgpstream
-bgpstream_test_utilities_LDFLAGS = -L$(top_builddir)/lib
+bgpstream_test_utilities_LDADD   = $(top_builddir)/lib/libbgpstream.la
+bgpstream_test_utilities_LDFLAGS =
 
 ACLOCAL_AMFLAGS = -I m4
 

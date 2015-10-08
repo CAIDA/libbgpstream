@@ -23,9 +23,9 @@
 
 SUBDIRS = common	\
 	  lib		\
-	  tools		\
 	  bgpview 	\
 	  bgpcorsaro	\
+	  tools		\
 	  test		\
 	  docs
 
