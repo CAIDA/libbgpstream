@@ -63,7 +63,7 @@ special_purpose_pfxs_v4 = (
 )
 
 
-def pfxs_to_ip(input_file, output_folder):
+def pfxs_to_ip(input_file, output_file):
     """Extract a list of IP host addresses from a lis of prefixes
     Reads the prefixes from the input file and outputs
     for each prefix, a corresponding host IP address
@@ -73,16 +73,10 @@ def pfxs_to_ip(input_file, output_folder):
     if not os.path.exists(input_file):
         print "Error: input file", input_file, "does not exist"
         return
+    output_folder = os.path.dirname(os.path.abspath(output_file))
     if not os.path.exists(output_folder):
         print "Error: output folder", output_folder, "does not exist"
         return
-    # parse input file and generate output file
-    basename = os.path.basename(input_file)
-    sub_names = basename.split("_")
-    if output_folder[-1] == '/':
-        output_file = output_folder + "_".join(sub_names[0:2]) + "_ips.txt.gz"
-    else:
-        output_file = output_folder + "/" + "_".join(sub_names[0:2]) + "_ips.txt.gz"    
     # load reserved prefixes in patricia trie
     reserved_pfxs = radix.Radix()
     for r in special_purpose_pfxs_v4:
@@ -149,9 +143,16 @@ def pfxs_to_ip(input_file, output_folder):
             next_pfx = str(ipcalc.IP(long(matching_network.broadcast_long()) + 1)) + "/" + net
             next_network = ipcalc.Network(next_pfx)
             assigned_ip = long(next_network.host_first())
-    with gzip.open(output_file, "wb") as f:
-        for pfx in pfx_ip:
-            f.write("\t".join([pfx, pfx_ip[pfx]]) + "\n")
+    ext = os.path.splitext(output_file)[-1]
+    if ext == ".gz":
+        fh = gzip.open(output_file, 'wb')
+    elif ext == ".bz2":
+        fh = bz2.BZ2File(output_file, 'wb')
+    else:
+        fh = open(output_file, 'wb')
+    for pfx in pfx_ip:
+        fh.write("\t".join([pfx, pfx_ip[pfx]]) + "\n")
+    fh.close()
 
 
 
@@ -160,11 +161,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-i","--input", help="input file (required)",
                     default=None, action='store',type=str)
-    parser.add_argument("-o","--output", help="output folder (default: current folder)",
-                    default="./", action='store',type=str)
+    parser.add_argument("-o","--output", help="output file (required)",
+                    default=None, action='store',type=str)
     args = parser.parse_args()
     if not args.input:
         print "Error: input file required"
+        parser.print_help()
+    elif not args.output:
+        print "Error: output file required"
         parser.print_help()
     else:
         # run pfxs to ip function
