@@ -36,12 +36,26 @@ import ipcalc
 
 
 
-def pfxs_to_ip(input_file, output_file):
+def pfxs_to_ip(input_file, output_folder):
     """Extract a list of IP host addresses from a lis of prefixes
     Reads the prefixes from the input file and outputs
     for each prefix, a corresponding host IP address
     (unless the prefix is fully covered by subprefixes)
     """
+    # check that the input file and the output folder exist
+    if not os.path.exists(input_file):
+        print "Error: input file", input_file, "does not exist"
+        return
+    if not os.path.exists(output_folder):
+        print "Error: output folder", output_folder, "does not exist"
+        return
+    # parse input file and generate output file
+    basename = os.path.basename(input_file)
+    sub_names = basename.split("_")
+    if output_folder[-1] == '/':
+        output_file = output_folder + "_".join(sub_names[0:2]) + "_ips.txt.gz"
+    else:
+        output_file = output_folder + "/" + "_".join(sub_names[0:2]) + "_ips.txt.gz"    
     fh = 0
     # open file based on extension
     ext = os.path.splitext(input_file)[-1]
@@ -99,7 +113,7 @@ def pfxs_to_ip(input_file, output_file):
             next_pfx = str(ipcalc.IP(long(matching_network.broadcast_long()) + 1)) + "/" + net
             next_network = ipcalc.Network(next_pfx)
             assigned_ip = long(next_network.host_first())
-    with open (output_file, "w") as f:
+    with gzip.open(output_file, "wb") as f:
         for pfx in pfx_ip:
             f.write("\t".join([pfx, pfx_ip[pfx]]) + "\n")
 
@@ -117,18 +131,6 @@ if __name__ == "__main__":
         print "Error: input file required"
         parser.print_help()
     else:
-        # create output folder
-        if not os.path.exists(args.output):
-            os.makedirs(args.output)
-        # parse input file and get output file
-        basename = os.path.basename(args.input)
-        sub_names = basename.split("_")
-        if args.output[-1] == '/':
-            output_file = args.output + "_".join(sub_names[0:2]) + "_ips.txt"
-        else:
-            output_file = args.output + "/" + "_".join(sub_names[0:2]) + "_ips.txt"
-        print "INFO input file:", args.input
-        print "INFO output file:", output_file
-        pfxs_to_ip(args.input, output_file)
+        # run pfxs to ip function
+        pfxs_to_ip(args.input, args.output)
         
-
