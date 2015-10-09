@@ -36,6 +36,33 @@ import ipcalc
 
 
 
+special_purpose_pfxs_v4 = (
+    # https://tools.ietf.org/html/rfc6890
+    "0.0.0.0/8",           # This host on this network RFC 1122
+    "10.0.0.0/8",          # Private-Use RFC 1918
+    "100.64.0.0/10",       # Shared Address Space RFC 6598
+    "127.0.0.0/8",         # Loopback RFC 1122
+    "169.254.0.0/16",      # Link Local RFC 3927
+    "172.16.0.0/12",       # Private-Use RFC 1918
+    "192.0.0.0/24",        # IETF Protocol Assignments RFC 6890
+    "192.0.0.0/29",        # DS-Lite RFC 6333
+    "192.0.2.0/24",        # Documentation (TEST-NET-1) RFC 5737
+    "192.88.99.0/24",      # 6to4 Relay Anycast RFC 3068
+    "192.168.0.0/16",      # Private-Use RFC 1918
+    "198.18.0.0/15",       # Benchmarking RFC 2544
+    "198.51.100.0/24",     # Documentation (TEST-NET-2) RFC 5737
+    "203.0.113.0/24",      # Documentation (TEST-NET-3) RFC5737
+    "240.0.0.0/4",         # Reserved RFC 1112
+    "255.255.255.255/32",  # Limited Broadcast RFC 0919
+    # IPv4 Multicast Address Assignments RFC 3171
+    "224.0.0.0/4",         # Multicast   RFC 3171
+    # https://conference.apnic.net/data/37/2014-02-27-prop-109_1393397866.pdf
+    # https://www.apnic.net/policy/proposals/prop-109
+    "1.0.0.0/24",          # APNIC Labs as Research Prefixes
+    "1.1.1.0/24"          # APNIC Labs as Research Prefixes
+)
+
+
 def pfxs_to_ip(input_file, output_folder):
     """Extract a list of IP host addresses from a lis of prefixes
     Reads the prefixes from the input file and outputs
@@ -56,6 +83,10 @@ def pfxs_to_ip(input_file, output_folder):
         output_file = output_folder + "_".join(sub_names[0:2]) + "_ips.txt.gz"
     else:
         output_file = output_folder + "/" + "_".join(sub_names[0:2]) + "_ips.txt.gz"    
+    # load reserved prefixes in patricia trie
+    reserved_pfxs = radix.Radix()
+    for r in special_purpose_pfxs_v4:
+        reserved_pfxs.add(r)
     fh = 0
     # open file based on extension
     ext = os.path.splitext(input_file)[-1]
@@ -68,10 +99,15 @@ def pfxs_to_ip(input_file, output_folder):
     # load prefixes in a patricia trie
     patricia_trie = radix.Radix()
     for line in fh:
-        net_length = int(line.rstrip("\n").split("/")[1])
+        pfx = line.rstrip("\n")
+        # ignore reserved prefixes
+        if reserved_pfxs.search_best(pfx) is not None:
+            continue
+        # ignore prefixes with short or long mask
+        net_length = int(pfx.split("/")[1])
         if net_length < 7 or net_length > 24:
             continue
-        patricia_trie.add(line.rstrip("\n"))
+        patricia_trie.add(pfx)
     fh.close()
     # debug: print patricia_trie.prefixes()
     pfx_ip = dict()
