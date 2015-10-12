@@ -24,6 +24,7 @@ ChangeLog
 *.tar.gz
 tools/bgpreader
 test/bgpstream-test
+test/bgpstream-test-utilities
 bgpcorsaro/tools/bgpcorsaro
 bgpview/tools/io/bgpview-consumer
 bgpview/tools/io/bgpview-server
