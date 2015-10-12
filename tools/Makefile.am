@@ -30,7 +30,6 @@ bin_PROGRAMS =  bgpreader
 
 bgpreader_SOURCES = bgpreader.c
 bgpreader_LDADD   = $(top_builddir)/lib/libbgpstream.la
-bgpreader_LDFLAGS =
 
 ACLOCAL_AMFLAGS = -I m4
 
