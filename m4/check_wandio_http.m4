@@ -28,6 +28,7 @@ AC_DEFUN([CHECK_WANDIO_HTTP],
 [
   AC_MSG_CHECKING([for wandio HTTP support])
 
+  LIBS_STASH=$LIBS
   LIBS="-lwandio"
   # here we have some version of wandio, check that it has http support
   AC_TRY_RUN([
@@ -42,7 +43,7 @@ AC_DEFUN([CHECK_WANDIO_HTTP],
       [wandio HTTP support required (installed libcurl before building wandio)]
     )
   ])
-  LIBS=
+  LIBS=$LIBS_STASH
 
   AC_MSG_RESULT([$with_wandio_http])
 ])
