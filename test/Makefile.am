@@ -32,11 +32,9 @@ check_PROGRAMS =  bgpstream-test bgpstream-test-utilities
 
 bgpstream_test_SOURCES = bgpstream-test.c
 bgpstream_test_LDADD   = $(top_builddir)/lib/libbgpstream.la
-bgpstream_test_LDFLAGS =
 
 bgpstream_test_utilities_SOURCES = bgpstream-test-utilities.c
 bgpstream_test_utilities_LDADD   = $(top_builddir)/lib/libbgpstream.la
-bgpstream_test_utilities_LDFLAGS =
 
 ACLOCAL_AMFLAGS = -I m4
 
