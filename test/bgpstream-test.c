@@ -24,15 +24,8 @@
 #include "bgpstream.h"
 
 #include <stdio.h>
-#include <time.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <stdbool.h>
 #include <string.h>
+#include <wandio.h>
 
 #define SINGLEFILE_RECORDS 537347
 #define CSVFILE_RECORDS    559424
@@ -178,6 +171,18 @@ int main()
 
   /* Testing broker interface */
   printf("Testing broker interface...\n");
+
+  printf("Testing HTTP support/Internet connectivity...\n");
+  io_t *file = wandio_create("http://google.com");
+  if (file != NULL)
+    {
+      fprintf(stderr,
+              "ERROR: Failed to download file via HTTP.\n"
+              "ERROR: Either wandio is built without HTTP support, "
+              "or there is no Internet connectivity\n");
+      return -1;
+    }
+
   bs = bgpstream_create();
   datasource_id =
     bgpstream_get_data_interface_id_by_name(bs, "broker");
