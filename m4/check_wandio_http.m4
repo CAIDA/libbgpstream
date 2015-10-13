@@ -34,13 +34,13 @@ AC_DEFUN([CHECK_WANDIO_HTTP],
   AC_TRY_RUN([
     #include <wandio.h>
     int main() {
-      io_t *file = wandio_create("http://google.com");
+      io_t *file = wandio_create($1);
       return (file == NULL);
     }
   ],
   [with_wandio_http=yes],
   [AC_MSG_ERROR(
-      [wandio HTTP support required (installed libcurl before building wandio)]
+      [wandio HTTP support required (install libcurl before building wandio)]
     )
   ])
   LIBS=$LIBS_STASH
