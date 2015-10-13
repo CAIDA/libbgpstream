@@ -149,7 +149,7 @@ fi
 AC_MSG_NOTICE([checking data interface dependencies...])
 
 if test "x$with_di_broker" == xyes; then
-  CHECK_WANDIO_HTTP
+  CHECK_WANDIO_HTTP("http://bgpstream.caida.org/broker")
 fi
 
 if test "x$with_di_sqlite" == xyes; then
