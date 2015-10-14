@@ -30,6 +30,13 @@ bgpview/tools/io/bgpview-consumer
 bgpview/tools/io/bgpview-server
 bgpview/tools/io/bgpview-test-producer
 
+# pybgpstream build files
+pybgpstream/MANIFEST
+pybgpstream/build/
+pybgpstream/dist/
+pybgpstream/docs/_build
+pybgpstream/*.egg-info/
+
 # doxygen files
 docs/doxygen/html
 docs/doxygen/latex
