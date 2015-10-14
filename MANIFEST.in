@@ -1,3 +1,0 @@
-include src/*.h
-include examples/tutorial_print.py
-include examples/topology.py
