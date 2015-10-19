@@ -120,9 +120,9 @@ static void usage() {
 	  "   -l             enable live mode (make blocking requests for BGP records)\n"
 	  "                  allows bgpstream to be used to process data in real-time\n"
           "\n"
-	  "   -r             print info for each BGP record (default)\n"
+          "   -e             print info for each element of a valid BGP record (default)\n"
           "   -m             print info for each BGP valid record in bgpdump -m format\n"
-          "   -e             print info for each element of a valid BGP record\n"         
+          "   -r             print info for each BGP record (used mostly for debugging BGPStream)\n"
           "\n"
 	  "   -h             print this help menu\n"
 	  "* denotes an option that can be given multiple times\n"
@@ -360,7 +360,7 @@ int main(int argc, char *argv[])
   // if the user did not specify any output format
   // then the default one is per record
   if(record_output_on == 0 && elem_output_on == 0 && record_bgpdump_output_on == 0) {
-    record_output_on = 1;
+    elem_output_on = 1;
   }
 
   // the program can now start
