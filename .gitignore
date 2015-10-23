@@ -37,8 +37,10 @@ pybgpstream/dist/
 pybgpstream/docs/_build
 pybgpstream/*.egg-info/
 
-# doxygen files
+# doxygen/sphinx files
+docs/sphinx
 docs/doxygen/html
+docs/doxygen/xml
 docs/doxygen/latex
 docs/doxygen/man
 docs/bgpstream.doxygen
