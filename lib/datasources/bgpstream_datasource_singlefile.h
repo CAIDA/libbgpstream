@@ -30,7 +30,6 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <openssl/md5.h>
 
 
 /** Opaque handle that represents the mysql data source */
