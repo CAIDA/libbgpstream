@@ -25,7 +25,12 @@ DOXYGEN_CONF = bgpstream.doxygen
 DOXYGEN_FOLDERS = doxygen/html doxygen/man doxygen/latex
 DOXYGEN_BIB_FILES = doxygen/bib*.aux doxygen/citelist.doc*
 
-EXTRA_DIST = doxygen/static
+SPHINXOPTS    = -d sphinx/build/doctrees .
+SPHINXBUILD   = sphinx-build
+PAPER         =
+BUILDDIR      = sphinx/build
+
+EXTRA_DIST = doxygen/static 
 
 if HAS_DOXYGEN
 EXTRA_DIST += $(DOXYGEN_FOLDERS)
@@ -43,14 +48,14 @@ documentation: latex
 latex: *.tex
 	latex2html -dir html -split 0 *.tex
 
-all: doxy
+all: doxy sphinx
 
 distclean: doxyclean
 	rm -rf $(DOXYGEN_CONF)
 
 clean: doxyclean
 
-doxy:
+doxy: bgpstream.doxygen
 	@for folder in $(DOXYGEN_FOLDERS) ; do \
 	  if test -d $$folder ; then \
 	    break ; \
@@ -66,6 +71,11 @@ doxy:
 	    fi ; \
 	  fi \
 	done
+
+sphinx: doxy
+	$(SPHINXBUILD) -b html $(SPHINXOPTS) $(BUILDDIR)/html
+	@echo
+	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 
 doxyclean:
 	rm -rf $(DOXYGEN_FOLDERS) $(DOXYGEN_BIB_FILES)
