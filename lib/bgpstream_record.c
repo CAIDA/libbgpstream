@@ -237,7 +237,7 @@ char *bgpstream_record_elem_snprintf(char *buf, size_t len,
   assert(elem);
 
   size_t written = 0; /* < how many bytes we wanted to write */
-  size_t c = 0; /* < how many chars were written */
+  ssize_t c = 0; /* < how many chars were written */
   char *buf_p = buf;
 
   /* Record type */
