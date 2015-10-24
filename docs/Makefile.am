@@ -30,7 +30,7 @@ SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = sphinx/build
 
-EXTRA_DIST = doxygen/static
+EXTRA_DIST =
 
 if HAS_DOXYGEN
 EXTRA_DIST += $(DOXYGEN_FOLDERS)
@@ -73,12 +73,12 @@ doxy: bgpstream.doxygen
 	done
 
 sphinx: doxy
-        if test x"$(bgpstream_doxygen)" = xyes ; then \
-	  $(SPHINXBUILD) -b html $(SPHINXOPTS) $(BUILDDIR)/html \
-	  @echo \
-	  @echo "Build finished. The HTML pages are in $(BUILDDIR)/html." \
+	@if test x"$(bgpstream_doxygen)" = xyes ; then \
+		$(SPHINXBUILD) -b html $(SPHINXOPTS) $(BUILDDIR)/html \
+		echo ; \
+		echo "Build finished. The HTML pages are in $(BUILDDIR)/html." ; \
 	else \
-	  @echo "Sorry, you do not have doxygen in your PATH." ; \
+		echo "Sorry, you do not have doxygen in your PATH." ; \
 	fi
 
 doxyclean:
