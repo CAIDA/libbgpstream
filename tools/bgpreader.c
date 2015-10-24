@@ -538,12 +538,14 @@ static void print_bs_record(bgpstream_record_t *bs_record)
   assert(bs_record);
 
   size_t written = 0; /* < how many bytes we wanted to write */
-  size_t c = 0; /* < how many chars were written */
+  ssize_t c = 0; /* < how many chars were written */
   char *buf_p = record_buf;
   int len = 65536;
 
   /* record type */
-  if((c = bgpstream_record_dump_type_snprintf(buf_p, len-written, bs_record->attributes.dump_type)) < 0)
+  if((c =
+      bgpstream_record_dump_type_snprintf(buf_p, len-written,
+                                          bs_record->attributes.dump_type)) < 0)
     {
       return;
     }
@@ -555,7 +557,8 @@ static void print_bs_record(bgpstream_record_t *bs_record)
   buf_p += c;
 
   /* record position */
-  if((c = bgpstream_record_dump_pos_snprintf(buf_p, len-written, bs_record->dump_pos)) < 0)
+  if((c = bgpstream_record_dump_pos_snprintf(buf_p, len-written,
+                                             bs_record->dump_pos)) < 0)
     {
       return;
     }
@@ -588,7 +591,7 @@ static void print_bs_record(bgpstream_record_t *bs_record)
     {
       return;
     }
-  
+
   printf("%s\n", record_buf);
 }
 
@@ -598,12 +601,14 @@ static void print_rib_control_message(bgpstream_record_t *bs_record)
   assert(bs_record);
 
   size_t written = 0; /* < how many bytes we wanted to write */
-  size_t c = 0; /* < how many chars were written */
+  ssize_t c = 0; /* < how many chars were written */
   char *buf_p = record_buf;
   int len = 65536;
-  
+
   /* record type */
-  if((c = bgpstream_record_dump_type_snprintf(buf_p, len-written, bs_record->attributes.dump_type)) < 0)
+  if((c =
+      bgpstream_record_dump_type_snprintf(buf_p, len-written,
+                                              bs_record->attributes.dump_type)) < 0)
     {
       return;
     }
@@ -615,7 +620,8 @@ static void print_rib_control_message(bgpstream_record_t *bs_record)
   buf_p += c;
 
   /* record position */
-  if((c = bgpstream_record_dump_pos_snprintf(buf_p, len-written, bs_record->dump_pos)) < 0)
+  if((c = bgpstream_record_dump_pos_snprintf(buf_p, len-written,
+                                             bs_record->dump_pos)) < 0)
     {
       return;
     }
@@ -634,7 +640,7 @@ static void print_rib_control_message(bgpstream_record_t *bs_record)
     {
       return;
     }
-  
+
   printf("%s\n", record_buf);
 }
 
