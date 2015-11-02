@@ -58,6 +58,7 @@
 
 #define BIT_TEST(f, b)  ((f) & (b))
 
+
 static int
 comp_with_mask (void *addr, void *dest, u_int mask)
 {
@@ -105,6 +106,10 @@ struct bgpstream_patricia_tree {
   /* Number of nodes per tree */
   uint64_t ipv4_active_nodes;
   uint64_t ipv6_active_nodes;
+
+  /** Pointer to a function that destroys the user structure
+   *  in the bgpstream_patricia_node_t structure */
+  bgpstream_patricia_tree_destroy_user_t *node_user_destructor;
 };
 
 
@@ -202,7 +207,7 @@ static void bgpstream_patricia_set_head(bgpstream_patricia_tree_t *pt, bgpstream
 }
 
 
-bgpstream_patricia_tree_t *bgpstream_patricia_tree_create()
+bgpstream_patricia_tree_t *bgpstream_patricia_tree_create(bgpstream_patricia_tree_destroy_user_t *bspt_user_destructor)
 {
   bgpstream_patricia_tree_t *pt = NULL;
   if((pt = malloc_zero(sizeof(bgpstream_patricia_tree_t))) == NULL)
@@ -213,6 +218,7 @@ bgpstream_patricia_tree_t *bgpstream_patricia_tree_create()
   pt->head6 = NULL;
   pt->ipv4_active_nodes = 0;
   pt->ipv6_active_nodes = 0;
+  pt->node_user_destructor = bspt_user_destructor;
   return pt;
 }
 
@@ -453,6 +459,28 @@ bgpstream_patricia_node_t *bgpstream_patricia_tree_insert(bgpstream_patricia_tre
 
   /* DEBUG   fprintf(stderr, "Adding %s as a ??\n", buffer); */
   return new_node;
+}
+
+
+void *bgpstream_patricia_tree_get_user(bgpstream_patricia_node_t *node)
+{
+  return node->user;
+}
+
+
+int bgpstream_patricia_tree_set_user(bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node, void *user)
+{
+  if(node->user == user)
+    {
+      return 0;
+    }
+  if(node->user != NULL && pt->node_user_destructor != NULL)
+    {
+      pt->node_user_destructor(node->user);
+    }
+  node->user = user;
+  return 1;
+
 }
 
 
@@ -1004,6 +1032,7 @@ void bgpstream_patricia_tree_print_results(bgpstream_patricia_tree_result_t *res
     }
 }
 
+
 bgpstream_pfx_t *bgpstream_patricia_tree_get_pfx(bgpstream_patricia_node_t *node)
 {
   assert(node);
@@ -1014,14 +1043,19 @@ bgpstream_pfx_t *bgpstream_patricia_tree_get_pfx(bgpstream_patricia_node_t *node
   return NULL;
 }
 
-static void bgpstream_patricia_tree_destroy_tree(bgpstream_patricia_node_t *head)
+
+static void bgpstream_patricia_tree_destroy_tree(bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *head)
 {
   if(head != NULL)
     {
       bgpstream_patricia_node_t *l = head->l;
       bgpstream_patricia_node_t *r = head->r;
-      bgpstream_patricia_tree_destroy_tree(l);
-      bgpstream_patricia_tree_destroy_tree(r);
+      bgpstream_patricia_tree_destroy_tree(pt, l);
+      bgpstream_patricia_tree_destroy_tree(pt, r);
+      if(head->user != NULL && pt->node_user_destructor != NULL)
+        {
+          pt->node_user_destructor(head->user);
+        }
       free(head);
     }
 }
@@ -1031,11 +1065,11 @@ void bgpstream_patricia_tree_clear(bgpstream_patricia_tree_t *pt)
 {
   assert(pt);
 
-  bgpstream_patricia_tree_destroy_tree(pt->head4);
+  bgpstream_patricia_tree_destroy_tree(pt, pt->head4);
   pt->ipv4_active_nodes = 0;
   pt->head4 = NULL;
 
-  bgpstream_patricia_tree_destroy_tree(pt->head6);
+  bgpstream_patricia_tree_destroy_tree(pt, pt->head6);
   pt->ipv6_active_nodes = 0;
   pt->head6 = NULL;
 }

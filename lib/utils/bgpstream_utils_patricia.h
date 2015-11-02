@@ -95,6 +95,12 @@ typedef struct bgpstream_patricia_tree_result {
 } bgpstream_patricia_tree_result_t;
 
 
+/** Callback for destroying a custom user structure associated with bgpview
+ *  view or one of its substructures
+ * @param user    user pointer to destroy
+ */
+typedef void (bgpstream_patricia_tree_destroy_user_t) (void* user);
+
 /** @} */
 
 /**
@@ -104,9 +110,11 @@ typedef struct bgpstream_patricia_tree_result {
 
 /** Create a new Patricia Tree instance
  *
+ * @param bspt_user_destructor          a function that destroys the user structure
+ *                                      in the Patricia Tree Node structure
  * @return a pointer to the structure, or NULL if an error occurred
  */
-bgpstream_patricia_tree_t *bgpstream_patricia_tree_create();
+bgpstream_patricia_tree_t *bgpstream_patricia_tree_create(bgpstream_patricia_tree_destroy_user_t *bspt_user_destructor);
 
 
 /** Insert a new prefix, if it does not exist
@@ -116,6 +124,25 @@ bgpstream_patricia_tree_t *bgpstream_patricia_tree_create();
  * @return a pointer to the prefix in the Patricia Tree, or NULL if an error occurred
  */
 bgpstream_patricia_node_t *bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt, bgpstream_pfx_t *pfx);
+
+
+/** Get the user pointer associated with the node
+ *
+ * @param node        pointer to a node
+ * @return the user pointer associated with the node
+ */
+void *bgpstream_patricia_tree_get_user(bgpstream_patricia_node_t *node);
+
+
+/** Set the user pointer associated with the node
+ *
+ * @param pt           pointer to the patricia tree
+ * @param node         pointer to a node
+ * @param user         user pointer to associate with the view structure
+ * @return 1 if a new user pointer is set, 0 if the user pointer was already
+ *         set to the address provided.
+ */
+int bgpstream_patricia_tree_set_user(bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node, void *user);
 
 
 /** Merge the information of two Patricia Trees
