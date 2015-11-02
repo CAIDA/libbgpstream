@@ -235,6 +235,15 @@ uint8_t bgpstream_patricia_tree_get_node_overlap_info(bgpstream_patricia_tree_t 
 uint8_t bgpstream_patricia_tree_get_pfx_overlap_info(bgpstream_patricia_tree_t *pt,
                                                       bgpstream_pfx_t *pfx);
 
+
+/** Get node's prefix
+ *
+ * @param node         pointer to the node
+ * @return a pointer to the node's prefix , or NULL if an error occurred
+ */
+bgpstream_pfx_t *bgpstream_patricia_tree_get_pfx(bgpstream_patricia_node_t *node);
+
+
 /** Destroy the result list (not the nodes)
  *
  * @param result      pointer to the patricia tree result list to destroy
