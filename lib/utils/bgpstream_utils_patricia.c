@@ -85,14 +85,11 @@ struct bgpstream_patricia_node {
   bgpstream_patricia_node_t *l;
   bgpstream_patricia_node_t *r;
 
-  /* may be used */
+  /* parent node */
   bgpstream_patricia_node_t *parent;
 
-  /* pointer to data */
-  void *data;
-
-  /* pointer to usr data (ex. route flap info) */
-  void	*user1;
+  /* pointer to user data */
+  void *user;
 
 };
 
@@ -154,7 +151,6 @@ static bgpstream_patricia_node_t *bgpstream_patricia_node_create(bgpstream_patri
   node->bit = pfx->mask_len;
   node->l = NULL;
   node->r = NULL;
-  node->data = NULL;
   return node;
 }
 
@@ -171,7 +167,6 @@ static bgpstream_patricia_node_t *bgpstream_patricia_gluenode_create()
   node->bit = 0;
   node->l = NULL;
   node->r = NULL;
-  node->data = NULL;
   return node;
 }
 
@@ -348,7 +343,6 @@ bgpstream_patricia_node_t *bgpstream_patricia_tree_insert(bgpstream_patricia_tre
       /* otherwise replace the info in the glue node with proper
        * prefix information */
       node_it->prefix = *((bgpstream_pfx_storage_t *) pfx);
-      assert (node_it->data == NULL);
       /* patricia_lookup: new node #1 (glue mod) */
       /* DEBUG fprintf(stderr, "Using %s to replace a GLUE node\n", buffer); */
       return node_it;
@@ -525,7 +519,7 @@ void bgpstream_patricia_tree_remove_node(bgpstream_patricia_tree_t *pt, bgpstrea
           node->prefix.address.version = BGPSTREAM_ADDR_VERSION_UNKNOWN;
         }
       /* node data remains, unless we decide to pass a destroy function somewehere */
-      /* node->data = NULL; */
+      /* node->user = NULL; */
       /* DEBUG fprintf(stderr, "Removing node with both children\n"); */
       return;
     }
@@ -1010,6 +1004,15 @@ void bgpstream_patricia_tree_print_results(bgpstream_patricia_tree_result_t *res
     }
 }
 
+bgpstream_pfx_t *bgpstream_patricia_tree_get_pfx(bgpstream_patricia_node_t *node)
+{
+  assert(node);
+  if(node->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN)
+    {
+      return (bgpstream_pfx_t *) &node->prefix;
+    }
+  return NULL;
+}
 
 static void bgpstream_patricia_tree_destroy_tree(bgpstream_patricia_node_t *head)
 {
