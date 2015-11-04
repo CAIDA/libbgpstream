@@ -74,6 +74,23 @@ comp_with_mask (void *addr, void *dest, u_int mask)
 }
 
 
+/** Data structure containing a list of pointers to Patricia Tree nodes
+ *  that are returned as the result of a computation */
+typedef struct bgpstream_patricia_tree_result_set {
+
+  /* pointer to a node in the Patricia Treee (borrowed memory) */
+  bgpstream_patricia_node_t *node;
+
+  /* pointer to the next result node*/
+  struct bgpstream_patricia_tree_result *next;
+
+};
+
+typedef struct ipmeta_record_set ipmeta_record_set_t;
+
+
+
+
 struct bgpstream_patricia_node {
 
   /* flag if this node used */
