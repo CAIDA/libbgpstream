@@ -272,6 +272,14 @@ bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
   bgpstream_as_path_store_path_t findme;
   bgpstream_as_path_seg_t *seg = (bgpstream_as_path_seg_t*)path->data;
 
+  /* special case for empty path */
+  if(path == NULL)
+    {
+      id->path_hash = UINT32_MAX;
+      id->path_id = UINT16_MAX;
+      return 0;
+    }
+
   /* perform a shallow copy of the path, only extracting the core path if
      needed */
   if(path->data_len > 0 && /* empty path */
@@ -378,6 +386,12 @@ bgpstream_as_path_store_get_store_path(bgpstream_as_path_store_t *store,
                                        bgpstream_as_path_store_path_id_t id)
 {
   khiter_t k;
+
+  /* special case for NULL path */
+  if(id.path_hash == UINT32_MAX && id.path_id == UINT16_MAX)
+    {
+      return NULL;
+    }
 
   if((k = kh_get(pathset, store->path_set, id.path_hash)) ==
      kh_end(store->path_set))
