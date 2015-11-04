@@ -74,6 +74,9 @@ typedef struct bgpstream_patricia_node bgpstream_patricia_node_t;
 /** Opaque structure containing a Patricia Tree instance */
 typedef struct bgpstream_patricia_tree bgpstream_patricia_tree_t;
 
+/** Opaque structure containing a Patricia Tree results set */
+typedef struct bgpstream_patricia_tree_result_set bgpstream_patricia_tree_result_set_t;
+
 /** @} */
 
 
@@ -81,19 +84,6 @@ typedef struct bgpstream_patricia_tree bgpstream_patricia_tree_t;
  * @name Public Data Structures
  *
  * @{ */
-
-/** Data structure containing a list of pointers to Patricia Tree nodes
- *  that are returned as the result of a computation */
-typedef struct bgpstream_patricia_tree_result {
-
-  /* pointer to a node in the Patricia Treee (borrowed memory) */
-  bgpstream_patricia_node_t *node;
-
-  /* pointer to the next result node*/
-  struct bgpstream_patricia_tree_result *next;
-
-} bgpstream_patricia_tree_result_t;
-
 
 /** Callback for destroying a custom user structure associated with bgpview
  *  view or one of its substructures
