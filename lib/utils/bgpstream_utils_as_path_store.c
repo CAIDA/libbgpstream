@@ -270,7 +270,7 @@ bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
 {
   /* shallow copy of the provided path, possibly with the peer segment removed */
   bgpstream_as_path_store_path_t findme;
-  bgpstream_as_path_seg_t *seg = (bgpstream_as_path_seg_t*)path->data;
+  bgpstream_as_path_seg_t *seg;
 
   /* special case for empty path */
   if(path == NULL)
@@ -279,6 +279,8 @@ bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
       id->path_id = UINT16_MAX;
       return 0;
     }
+
+  seg = (bgpstream_as_path_seg_t*)path->data;
 
   /* perform a shallow copy of the path, only extracting the core path if
      needed */
