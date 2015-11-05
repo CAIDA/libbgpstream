@@ -98,6 +98,44 @@ typedef void (bgpstream_patricia_tree_destroy_user_t) (void* user);
  *
  * @{ */
 
+
+/** Initialize a new result set instance
+ *
+ * @return the result set instance created, NULL if an error occurs
+ */
+bgpstream_patricia_tree_result_set_t *bgpstream_patricia_tree_result_set_create();
+
+
+/** Free a result set instance
+ *
+ * @param this_p        The pointer to the result set instance to free
+ */
+void bgpstream_patricia_tree_result_set_destroy(bgpstream_patricia_tree_result_set_t **set_p);
+
+
+/** Move the result set iterator pointer to the the beginning
+ *  (so that next returns the first element)
+ *
+ * @param this          The result set instance
+ */
+void bgpstream_patricia_tree_result_set_rewind(bgpstream_patricia_tree_result_set_t *set);
+
+
+/** Get the next result in the result set iterator
+ *
+ * @param this          The result set instance
+ * @return a pointer to the result
+ */
+bgpstream_patricia_node_t *bgpstream_patricia_tree_result_set_next(bgpstream_patricia_tree_result_set_t *set);
+
+
+/** Print the result list
+ *
+ * @param result      pointer to the patricia tree result list to print
+ */
+void bgpstream_patricia_tree_result_set_print(bgpstream_patricia_tree_result_set_t *set);
+
+
 /** Create a new Patricia Tree instance
  *
  * @param bspt_user_destructor          a function that destroys the user structure
@@ -195,40 +233,37 @@ uint64_t bgpstream_patricia_tree_count_64subnets(bgpstream_patricia_tree_t *pt);
  *
  * @param pt           pointer to the patricia tree
  * @param node         pointer to the node
- * @return a pointer to the list of nodes in the Patricia Tree that are more specifics,
- * or NULL if there are none or an error occurred
+ * @param results      pointer to the results structure to fill
+ * @return 0 if the computation finished correctly, -1 if an error occurred
  */
-bgpstream_patricia_tree_result_t *bgpstream_patricia_tree_get_more_specifics(bgpstream_patricia_tree_t *pt,
-                                                                             bgpstream_patricia_node_t *node);
+int bgpstream_patricia_tree_get_more_specifics(bgpstream_patricia_tree_t *pt,
+                                               bgpstream_patricia_node_t *node,
+                                               bgpstream_patricia_tree_result_set_t *results);
 
 
 /** Return less specific prefixes
  *
  * @param pt           pointer to the patricia tree
  * @param node         pointer to the node
- * @return a pointer to the list of nodes in the Patricia Tree that are less specifics,
- * or NULL if there are none or an error occurred
+ * @param results      pointer to the results structure to fill
+ * @return 0 if the computation finished correctly, -1 if an error occurred
  */
-bgpstream_patricia_tree_result_t *bgpstream_patricia_tree_get_less_specifics(bgpstream_patricia_tree_t *pt,
-                                                                             bgpstream_patricia_node_t *node);
+int bgpstream_patricia_tree_get_less_specifics(bgpstream_patricia_tree_t *pt,
+                                               bgpstream_patricia_node_t *node,
+                                               bgpstream_patricia_tree_result_set_t *results);
 
 
-/** Return minimum coverage
+/** Return minimum coverage (the minimum list of prefixes in the Patricia Tree that 
+ *  cover the entire IP space)
  *
  * @param pt           pointer to the patricia tree
  * @param v          IP version
- * @return a pointer to the minimum list of prefixes in the Patricia Tree that cover the entire IP space
- * or NULL if there are none or an error occurred
+ * @param results      pointer to the results structure to fill
+ * @return 0 if the computation finished correctly, -1 if an error occurred
  */
-bgpstream_patricia_tree_result_t *bgpstream_patricia_tree_get_minimum_coverage(bgpstream_patricia_tree_t *pt,
-                                                                               bgpstream_addr_version_t v);
-
-
-/** Print the result list
- *
- * @param result      pointer to the patricia tree result list to print
- */
-void bgpstream_patricia_tree_print_results(bgpstream_patricia_tree_result_t *result);
+int bgpstream_patricia_tree_get_minimum_coverage(bgpstream_patricia_tree_t *pt,
+                                                 bgpstream_addr_version_t v,
+                                                 bgpstream_patricia_tree_result_set_t *results);
 
 
 /** Check whether a node overlaps with other prefixes in the tree
@@ -250,7 +285,7 @@ uint8_t bgpstream_patricia_tree_get_node_overlap_info(bgpstream_patricia_tree_t 
  *                 1 on the second bit if less specifics are present
  */
 uint8_t bgpstream_patricia_tree_get_pfx_overlap_info(bgpstream_patricia_tree_t *pt,
-                                                      bgpstream_pfx_t *pfx);
+                                                     bgpstream_pfx_t *pfx);
 
 
 /** Get node's prefix
@@ -259,13 +294,6 @@ uint8_t bgpstream_patricia_tree_get_pfx_overlap_info(bgpstream_patricia_tree_t *
  * @return a pointer to the node's prefix , or NULL if an error occurred
  */
 bgpstream_pfx_t *bgpstream_patricia_tree_get_pfx(bgpstream_patricia_node_t *node);
-
-
-/** Destroy the result list (not the nodes)
- *
- * @param result      pointer to the patricia tree result list to destroy
- */
-void bgpstream_patricia_tree_result_destroy(bgpstream_patricia_tree_result_t **result);
 
                                                                              
 /** Print the prefixes in the Patricia Tree
