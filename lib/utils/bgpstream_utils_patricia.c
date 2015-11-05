@@ -44,7 +44,7 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <string.h>
-
+#include "khash.h" /* << kroundup32 */
 
 #include "utils.h"
 #include "bgpstream_utils_patricia.h"
@@ -72,23 +72,6 @@ comp_with_mask (void *addr, void *dest, u_int mask)
     }
     return (0);
 }
-
-
-/** Data structure containing a list of pointers to Patricia Tree nodes
- *  that are returned as the result of a computation */
-typedef struct bgpstream_patricia_tree_result_set {
-
-  /* pointer to a node in the Patricia Treee (borrowed memory) */
-  bgpstream_patricia_node_t *node;
-
-  /* pointer to the next result node*/
-  struct bgpstream_patricia_tree_result *next;
-
-};
-
-typedef struct ipmeta_record_set ipmeta_record_set_t;
-
-
 
 
 struct bgpstream_patricia_node {
@@ -130,6 +113,23 @@ struct bgpstream_patricia_tree {
 };
 
 
+/** Data structure containing a list of pointers to Patricia Tree nodes
+ *  that are returned as the result of a computation */
+struct bgpstream_patricia_tree_result_set {
+  /* resizable array of node pointers */
+  bgpstream_patricia_node_t **result_nodes;
+  /* number of result nodes*/
+  int n_recs;
+  /* iterator position */
+  int _cursor;
+  /* current size of the result nodes array */
+  int _alloc_size;
+};
+
+
+/* ======================= UTILITY FUNCTIONS ======================= */
+
+
 static unsigned char *bgpstream_pfx_get_first_byte(bgpstream_pfx_t *pfx)
 {
   switch(pfx->address.version)
@@ -143,6 +143,40 @@ static unsigned char *bgpstream_pfx_get_first_byte(bgpstream_pfx_t *pfx)
     }
   return NULL;
 }
+
+
+/* ======================= RESULT SET FUNCTIONS  ======================= */
+
+static int bgpstream_patricia_tree_result_set_add_node(bgpstream_patricia_tree_result_set_t *set,
+                                                       bgpstream_patricia_node_t *node)
+{
+  set->n_recs++;
+  /* Realloc if necessary */
+  if(set->_alloc_size < set->n_recs)
+    {
+      /* round n_recs up to next pow 2 */
+      set->_alloc_size = set->n_recs;
+      kroundup32(set->_alloc_size);
+
+      if((set->result_nodes =
+          realloc(set->result_nodes,
+                  sizeof(bgpstream_patricia_node_t*) * set->_alloc_size)) == NULL)
+        {
+          fprintf(stderr, "Error: could not realloc result_nodes in result set\n");
+          return -1;
+        }
+    }
+  set->result_nodes[set->n_recs-1] = node;
+  return 0;
+}
+
+static void bgpstream_patricia_tree_result_set_clear(bgpstream_patricia_tree_result_set_t *set)
+{
+  set->n_recs=0;
+}
+
+
+/* ======================= PATRICIA NODE FUNCTIONS ======================= */
 
 
 static bgpstream_patricia_node_t *bgpstream_patricia_node_create(bgpstream_patricia_tree_t *pt,
@@ -192,6 +226,9 @@ static bgpstream_patricia_node_t *bgpstream_patricia_gluenode_create()
   return node;
 }
 
+
+/* ======================= PATRICIA TREE FUNCTIONS ======================= */
+
 static bgpstream_patricia_node_t *bgpstream_patricia_get_head(bgpstream_patricia_tree_t *pt,
                                                               bgpstream_addr_version_t v)
 {
@@ -220,6 +257,258 @@ static void bgpstream_patricia_set_head(bgpstream_patricia_tree_t *pt, bgpstream
       break;
     default:
       assert(0);
+    }
+}
+
+
+static uint64_t bgpstream_patricia_tree_count_subnets(bgpstream_patricia_node_t *node, uint64_t subnet_size)
+{
+  if(node == NULL)
+    {
+      return 0;
+    }
+  /* if the node is a glue node, then the /subnet_size subnets are the sum of the
+   * /24 subnets contained in its left and right subtrees */
+  if(node->prefix.address.version == BGPSTREAM_ADDR_VERSION_UNKNOWN)
+    {
+      /* if the glue node is already a /subnet_size, then just return 1 (even though
+       * the subnetworks below could be a non complete /subnet_size */
+      if(node->bit >= subnet_size)
+        {
+          return 1;
+        }
+      else
+        {
+          return bgpstream_patricia_tree_count_subnets(node->l, subnet_size) + \
+            bgpstream_patricia_tree_count_subnets(node->r, subnet_size);
+        }
+    }
+  else
+    {
+      /* otherwise we just count the subnet for the given network and return
+       * we don't need to go deeper in the tree (everything else beyond this
+       * point is covered */
+
+      /* compute how many /subnet_size are in this prefix */
+      if(node->prefix.mask_len >= subnet_size)
+        {
+          return 1;
+        }
+      else
+        {
+          uint8_t diff = subnet_size - node->prefix.mask_len;
+          if(diff == 64)
+            {
+              return UINT64_MAX;
+            }
+          else
+            {
+              return (uint64_t) 1 << diff;
+            }
+        }
+    }
+}
+
+
+/* depth pecifies how many "children" to explore for each node */
+static int bgpstream_patricia_tree_add_more_specifics(bgpstream_patricia_tree_result_set_t *set,
+                                                      bgpstream_patricia_node_t *node, const uint8_t depth)
+{
+  if(node == NULL || depth == 0)
+    {
+      return 0;
+    }
+  uint8_t d = depth;
+  /* if it is a node containing a real prefix, then copy the address to a new result node */
+  if(node->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN)
+    {
+      if(bgpstream_patricia_tree_result_set_add_node(set, node) != 0)
+        {
+          return -1;
+        }
+      d--;
+    }
+
+  /* using pre-order R - Left - Right */
+  if(bgpstream_patricia_tree_add_more_specifics(set, node->l, d) != 0)
+    {
+      return -1;
+    }
+  if(bgpstream_patricia_tree_add_more_specifics(set, node->r, d) != 0)
+    {
+      return -1;
+    }
+  return 0;
+}
+
+/* depth pecifies how many "children" to explore for each node */
+static int bgpstream_patricia_tree_add_less_specifics(bgpstream_patricia_tree_result_set_t *set,
+                                                      bgpstream_patricia_node_t *node, const uint8_t depth)
+{
+  if(node == NULL)
+    {
+      return 0;
+    }
+  uint8_t d = depth;
+  while(node != NULL && d > 0)
+    {
+      /* if it is a node containing a real prefix, then copy the address to a new result node */
+      if(node->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN)
+        {
+          if(bgpstream_patricia_tree_result_set_add_node(set, node) != 0)
+            {
+              return -1;
+            }
+          d--;
+        }
+      node = node->parent;
+    }
+  return 0;
+}
+
+
+static int bgpstream_patricia_tree_find_more_specific(bgpstream_patricia_node_t *node)
+{
+  if(node == NULL)
+    {
+      return 0;
+    }
+  /* if it is a node containing a glue node, then we have to search for other cases */
+  if(node->prefix.address.version == BGPSTREAM_ADDR_VERSION_UNKNOWN)
+    {
+      if(bgpstream_patricia_tree_find_more_specific(node->l) == 0)
+        {
+          if(bgpstream_patricia_tree_find_more_specific(node->r) == 0)
+            {
+              return 0;
+            }
+        }
+    }
+  /* if it is a node containing a real prefix, we are done */
+  return 1;
+
+}
+
+static void bgpstream_patricia_tree_merge_tree(bgpstream_patricia_tree_t *dst, bgpstream_patricia_node_t *node)
+{
+  if(node == NULL)
+    {
+      return;
+    }
+  /* Add the current node, if it is not a glue node */
+  if(node->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN)
+    {
+      bgpstream_patricia_tree_insert(dst, (bgpstream_pfx_t *) &node->prefix);
+    }
+  /* Recursively add left and right node */
+  bgpstream_patricia_tree_merge_tree(dst, node->l);
+  bgpstream_patricia_tree_merge_tree(dst, node->r);
+}
+
+
+static void bgpstream_patricia_tree_print_tree(bgpstream_patricia_node_t *node)
+{
+  if(node == NULL)
+    {
+      return;
+    }
+  bgpstream_patricia_tree_print_tree(node->l);
+
+  char buffer[1024];
+
+  /* if node is not a glue node, print the prefix */
+  if(node->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN)
+    {
+      memset(buffer, ' ', sizeof(char)*node->prefix.mask_len);
+      bgpstream_pfx_snprintf(buffer+node->prefix.mask_len, 1024, (bgpstream_pfx_t *) &node->prefix);
+      fprintf(stdout, "%s\n", buffer);
+    }
+
+  bgpstream_patricia_tree_print_tree(node->r);
+}
+
+
+static void bgpstream_patricia_tree_destroy_tree(bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *head)
+{
+  if(head != NULL)
+    {
+      bgpstream_patricia_node_t *l = head->l;
+      bgpstream_patricia_node_t *r = head->r;
+      bgpstream_patricia_tree_destroy_tree(pt, l);
+      bgpstream_patricia_tree_destroy_tree(pt, r);
+      if(head->user != NULL && pt->node_user_destructor != NULL)
+        {
+          pt->node_user_destructor(head->user);
+        }
+      free(head);
+    }
+}
+
+/* ======================= PUBLIC API FUNCTIONS ======================= */
+
+
+bgpstream_patricia_tree_result_set_t *bgpstream_patricia_tree_result_set_create()
+{
+  bgpstream_patricia_tree_result_set_t *set;
+
+  if((set = malloc_zero(sizeof(bgpstream_patricia_tree_result_set_t))) == NULL)
+  {
+    fprintf(stderr, "Error: could not create bgpstream_patricia_tree_result_set\n");
+    return NULL;
+  }
+
+  /* always have space for a single node  */
+  if(bgpstream_patricia_tree_result_set_add_node(set, NULL) != 0)
+    {
+      free(set);
+      return NULL;
+    }
+  
+  bgpstream_patricia_tree_result_set_clear(set);
+  return set;
+}
+
+void bgpstream_patricia_tree_result_set_destroy(bgpstream_patricia_tree_result_set_t **set_p)
+{
+  assert(set_p);
+  bgpstream_patricia_tree_result_set_t *set = *set_p;
+  if(set != NULL)
+    {
+      free(set->result_nodes);
+      set->result_nodes=NULL;
+      set->n_recs=0;
+      set->_cursor=0;
+      set->_alloc_size=0;
+      free(set);
+      *set_p=NULL;
+    }
+}
+
+void bgpstream_patricia_tree_result_set_rewind(bgpstream_patricia_tree_result_set_t *set)
+{
+  set->_cursor = 0;
+}
+
+bgpstream_patricia_node_t *bgpstream_patricia_tree_result_set_next(bgpstream_patricia_tree_result_set_t *set)
+{
+  if(set->n_recs <= set->_cursor)
+    {
+      /* No more nodes */
+      return NULL;
+    }
+  return set->result_nodes[set->_cursor++]; /* Advance head */
+}
+
+
+void bgpstream_patricia_tree_result_set_print(bgpstream_patricia_tree_result_set_t *set)
+{
+  bgpstream_patricia_tree_result_set_rewind(set);
+  bgpstream_patricia_node_t *next;
+  char buffer[1024];
+  while((next = bgpstream_patricia_tree_result_set_next(set)) != NULL)
+    {
+      bgpstream_pfx_snprintf(buffer, 1024, (bgpstream_pfx_t *) &next->prefix);
+      fprintf(stdout, "%s\n", buffer);
     }
 }
 
@@ -485,7 +774,8 @@ void *bgpstream_patricia_tree_get_user(bgpstream_patricia_node_t *node)
 }
 
 
-int bgpstream_patricia_tree_set_user(bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node, void *user)
+int bgpstream_patricia_tree_set_user(bgpstream_patricia_tree_t *pt,
+                                     bgpstream_patricia_node_t *node, void *user)
 {
   if(node->user == user)
     {
@@ -673,7 +963,8 @@ void bgpstream_patricia_tree_remove_node(bgpstream_patricia_tree_t *pt, bgpstrea
 }
 
 
-bgpstream_patricia_node_t *bgpstream_patricia_tree_search_exact(bgpstream_patricia_tree_t *pt, bgpstream_pfx_t *pfx)
+bgpstream_patricia_node_t *bgpstream_patricia_tree_search_exact(bgpstream_patricia_tree_t *pt,
+                                                                bgpstream_pfx_t *pfx)
 {
   assert(pt);
   assert(pfx);
@@ -730,7 +1021,8 @@ bgpstream_patricia_node_t *bgpstream_patricia_tree_search_exact(bgpstream_patric
 }
 
 
-uint64_t bgpstream_patricia_prefix_count(bgpstream_patricia_tree_t *pt, bgpstream_addr_version_t v)
+uint64_t bgpstream_patricia_prefix_count(bgpstream_patricia_tree_t *pt,
+                                         bgpstream_addr_version_t v)
 {
   switch(v)
     {
@@ -745,55 +1037,6 @@ uint64_t bgpstream_patricia_prefix_count(bgpstream_patricia_tree_t *pt, bgpstrea
 }
 
 
-static uint64_t bgpstream_patricia_tree_count_subnets(bgpstream_patricia_node_t *node, uint64_t subnet_size)
-{
-  if(node == NULL)
-    {
-      return 0;
-    }
-  /* if the node is a glue node, then the /subnet_size subnets are the sum of the
-   * /24 subnets contained in its left and right subtrees */
-  if(node->prefix.address.version == BGPSTREAM_ADDR_VERSION_UNKNOWN)
-    {
-      /* if the glue node is already a /subnet_size, then just return 1 (even though
-       * the subnetworks below could be a non complete /subnet_size */
-      if(node->bit >= subnet_size)
-        {
-          return 1;
-        }
-      else
-        {
-          return bgpstream_patricia_tree_count_subnets(node->l, subnet_size) + \
-            bgpstream_patricia_tree_count_subnets(node->r, subnet_size);
-        }
-    }
-  else
-    {
-      /* otherwise we just count the subnet for the given network and return
-       * we don't need to go deeper in the tree (everything else beyond this
-       * point is covered */
-
-      /* compute how many /subnet_size are in this prefix */
-      if(node->prefix.mask_len >= subnet_size)
-        {
-          return 1;
-        }
-      else
-        {
-          uint8_t diff = subnet_size - node->prefix.mask_len;
-          if(diff == 64)
-            {
-              return UINT64_MAX;
-            }
-          else
-            {
-              return (uint64_t) 1 << diff;
-            }
-        }
-    }
-}
-
-
 uint64_t bgpstream_patricia_tree_count_24subnets(bgpstream_patricia_tree_t *pt)
 {
   return bgpstream_patricia_tree_count_subnets(pt->head4, 24);
@@ -805,123 +1048,51 @@ uint64_t bgpstream_patricia_tree_count_64subnets(bgpstream_patricia_tree_t *pt)
   return bgpstream_patricia_tree_count_subnets(pt->head6, 64);
 }
 
-/* depth = 1 -> Recursively find all more specifics,
- * depth = 0 -> find the first later of more specifics */
-static bgpstream_patricia_tree_result_t **
-bgpstream_patricia_tree_add_more_specifics(bgpstream_patricia_tree_result_t **last_result,
-                                           bgpstream_patricia_node_t *node, const uint8_t depth)
+
+int bgpstream_patricia_tree_get_more_specifics(bgpstream_patricia_tree_t *pt,
+                                               bgpstream_patricia_node_t *node,
+                                               bgpstream_patricia_tree_result_set_t *results)
 {
-  if(node == NULL)
-    {
-      return last_result;
-    }
-  /* if it is a node containing a real prefix, then copy the address to a new result node */
-  if(node->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN)
-    {
-      if((*last_result = (bgpstream_patricia_tree_result_t *) malloc_zero(sizeof(bgpstream_patricia_tree_result_t))) == NULL)
-        {
-          fprintf(stderr, "Error: could not allocate memory for results\n");
-          assert(0);
-        }
-      (*last_result)->node = node;
-      (*last_result)->next = NULL;
-      last_result = &((*last_result)->next);
-      /* DEBUG       bgpstream_pfx_snprintf(buffer, 1024, (bgpstream_pfx_t *) &node->prefix);
-       * fprintf(stderr, "More specific found: %s\n", buffer); */
-      if(depth == 0)
-        { /* if 0 we stop at the first layer */
-          return last_result;
-        }
-    }
-
-  /* using pre-order */
-  last_result = bgpstream_patricia_tree_add_more_specifics(last_result, node->l, depth);
-  last_result = bgpstream_patricia_tree_add_more_specifics(last_result, node->r, depth);
-
-  return last_result;
-}
-
-
-bgpstream_patricia_tree_result_t *bgpstream_patricia_tree_get_more_specifics(bgpstream_patricia_tree_t *pt,
-                                                                             bgpstream_patricia_node_t *node)
-{
-  bgpstream_patricia_tree_result_t *result = NULL;
-  bgpstream_patricia_tree_result_t **r = &result;
+  bgpstream_patricia_tree_result_set_clear(results);
 
   if(node != NULL)
     { /* we do not return the node itself */
-      r = bgpstream_patricia_tree_add_more_specifics(r, node->l, 1);
-      r = bgpstream_patricia_tree_add_more_specifics(r, node->r, 1);
-    }
-  return result;
-}
-
-
-bgpstream_patricia_tree_result_t *bgpstream_patricia_tree_get_less_specifics(bgpstream_patricia_tree_t *pt,
-                                                                             bgpstream_patricia_node_t *node)
-{
-  if(node == NULL)
-    {
-      return NULL;
-    }
-
-  bgpstream_patricia_tree_result_t *result = NULL;
-  bgpstream_patricia_tree_result_t **last_result = &result;
-
-  /* we do not return the node itself */
-  bgpstream_patricia_node_t *node_it = node->parent;
-  while(node_it != NULL)
-    {
-      if(node_it->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN)
+      if(bgpstream_patricia_tree_add_more_specifics(results, node->l, BGPSTREAM_PATRICIA_MAXBITS+1) != 0)
         {
-          if((*last_result = (bgpstream_patricia_tree_result_t *) malloc_zero(sizeof(bgpstream_patricia_tree_result_t))) == NULL)
-            {
-              fprintf(stderr, "Error: could not allocate memory for results\n");
-              assert(0);
-            }
-          (*last_result)->node = node_it;
-          (*last_result)->next = NULL;
-          last_result = &((*last_result)->next);
-          /* DEBUG  bgpstream_pfx_snprintf(buffer, 1024, (bgpstream_pfx_t *) &node_it->prefix);
-           *          fprintf(stderr, "Less specific found: %s\n", buffer); */
+          return -1;
         }
-      node_it = node_it->parent;
+      if(bgpstream_patricia_tree_add_more_specifics(results, node->r, BGPSTREAM_PATRICIA_MAXBITS+1) != 0)
+        {
+          return -1;
+        }
     }
-  return result;
+  return 0;
 }
 
 
-bgpstream_patricia_tree_result_t *bgpstream_patricia_tree_get_minimum_coverage(bgpstream_patricia_tree_t *pt,
-                                                                               bgpstream_addr_version_t v)
+int bgpstream_patricia_tree_get_less_specifics(bgpstream_patricia_tree_t *pt,
+                                               bgpstream_patricia_node_t *node,
+                                               bgpstream_patricia_tree_result_set_t *results)
 {
-  bgpstream_patricia_node_t *head = bgpstream_patricia_get_head(pt,v);
-  bgpstream_patricia_tree_result_t *result = NULL;
-  bgpstream_patricia_tree_result_t **r = &result;
-  /* we stop at the first layer, hence depth = 0 */
-  bgpstream_patricia_tree_add_more_specifics(r, head, 0);
-  return result;
-}
+  bgpstream_patricia_tree_result_set_clear(results);
 
-static int bgpstream_patricia_tree_find_more_specific(bgpstream_patricia_node_t *node)
-{
   if(node == NULL)
     {
       return 0;
     }
-  /* if it is a node containing a glue node, then we have to search for other cases */
-  if(node->prefix.address.version == BGPSTREAM_ADDR_VERSION_UNKNOWN)
-    {
-      if(bgpstream_patricia_tree_find_more_specific(node->l) == 0)
-        {
-          if(bgpstream_patricia_tree_find_more_specific(node->r) == 0)
-            {
-              return 0;
-            }
-        }
-    }
-  /* if it is a node containing a real prefix, we are done */
-  return 1;
+  /* we do not return the node itself (that's why we pass the parent node) */
+  return bgpstream_patricia_tree_add_less_specifics(results, node->parent, BGPSTREAM_PATRICIA_MAXBITS+1);
+}
 
+
+int bgpstream_patricia_tree_get_minimum_coverage(bgpstream_patricia_tree_t *pt,
+                                                 bgpstream_addr_version_t v,
+                                                 bgpstream_patricia_tree_result_set_t *results)
+{
+  bgpstream_patricia_tree_result_set_clear(results);
+  bgpstream_patricia_node_t *head = bgpstream_patricia_get_head(pt,v);
+  /* we stop at the first layer, hence depth = 1 */
+  return bgpstream_patricia_tree_add_more_specifics(results, head, 1);
 }
 
 
@@ -961,39 +1132,6 @@ uint8_t bgpstream_patricia_tree_get_node_overlap_info(bgpstream_patricia_tree_t 
 }
 
 
-
-void bgpstream_patricia_tree_result_destroy(bgpstream_patricia_tree_result_t **result)
-{
-  assert(result != NULL);
-  bgpstream_patricia_tree_result_t *v = *result;
-  bgpstream_patricia_tree_result_t *next;
-  while(v != NULL)
-    {
-      next = v->next;
-      free(v);
-      v = next;
-    }
-  *result = NULL;
-}
-
-
-static void bgpstream_patricia_tree_merge_tree(bgpstream_patricia_tree_t *dst, bgpstream_patricia_node_t *node)
-{
-  if(node == NULL)
-    {
-      return;
-    }
-  /* Add the current node, if it is not a glue node */
-  if(node->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN)
-    {
-      bgpstream_patricia_tree_insert(dst, (bgpstream_pfx_t *) &node->prefix);
-    }
-  /* Recursively add left and right node */
-  bgpstream_patricia_tree_merge_tree(dst, node->l);
-  bgpstream_patricia_tree_merge_tree(dst, node->r);
-}
-
-
 void bgpstream_patricia_tree_merge(bgpstream_patricia_tree_t *dst, const bgpstream_patricia_tree_t *src)
 {
   assert(dst);
@@ -1008,45 +1146,10 @@ void bgpstream_patricia_tree_merge(bgpstream_patricia_tree_t *dst, const bgpstre
 }
 
 
-static void bgpstream_patricia_tree_print_tree(bgpstream_patricia_node_t *node)
-{
-  if(node == NULL)
-    {
-      return;
-    }
-  bgpstream_patricia_tree_print_tree(node->l);
-
-  char buffer[1024];
-
-  /* if node is not a glue node, print the prefix */
-  if(node->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN)
-    {
-      memset(buffer, ' ', sizeof(char)*node->prefix.mask_len);
-      bgpstream_pfx_snprintf(buffer+node->prefix.mask_len, 1024, (bgpstream_pfx_t *) &node->prefix);
-      fprintf(stdout, "%s\n", buffer);
-    }
-
-  bgpstream_patricia_tree_print_tree(node->r);
-}
-
-
 void bgpstream_patricia_tree_print(bgpstream_patricia_tree_t *pt)
 {
   bgpstream_patricia_tree_print_tree(pt->head4);
   bgpstream_patricia_tree_print_tree(pt->head6);
-}
-
-
-void bgpstream_patricia_tree_print_results(bgpstream_patricia_tree_result_t *result)
-{
-  bgpstream_patricia_tree_result_t *next = result;
-  char buffer[1024];
-  while(next != NULL)
-    {
-      bgpstream_pfx_snprintf(buffer, 1024, (bgpstream_pfx_t *) &next->node->prefix);
-      fprintf(stdout, "%s\n", buffer);
-      next = next->next;
-    }
 }
 
 
@@ -1060,22 +1163,6 @@ bgpstream_pfx_t *bgpstream_patricia_tree_get_pfx(bgpstream_patricia_node_t *node
   return NULL;
 }
 
-
-static void bgpstream_patricia_tree_destroy_tree(bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *head)
-{
-  if(head != NULL)
-    {
-      bgpstream_patricia_node_t *l = head->l;
-      bgpstream_patricia_node_t *r = head->r;
-      bgpstream_patricia_tree_destroy_tree(pt, l);
-      bgpstream_patricia_tree_destroy_tree(pt, r);
-      if(head->user != NULL && pt->node_user_destructor != NULL)
-        {
-          pt->node_user_destructor(head->user);
-        }
-      free(head);
-    }
-}
 
 
 void bgpstream_patricia_tree_clear(bgpstream_patricia_tree_t *pt)
