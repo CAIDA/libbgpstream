@@ -33,7 +33,6 @@ BUILDDIR      = sphinx/build
 EXTRA_DIST =
 
 if HAS_DOXYGEN
-EXTRA_DIST += $(DOXYGEN_FOLDERS)
 bgpstream_doxygen=yes
 endif
 
@@ -74,7 +73,7 @@ doxy: bgpstream.doxygen
 
 sphinx: doxy
 	@if test x"$(bgpstream_doxygen)" = xyes ; then \
-		$(SPHINXBUILD) -b html $(SPHINXOPTS) $(BUILDDIR)/html \
+		$(SPHINXBUILD) -b html $(SPHINXOPTS) $(BUILDDIR)/html ; \
 		echo ; \
 		echo "Build finished. The HTML pages are in $(BUILDDIR)/html." ; \
 	else \
