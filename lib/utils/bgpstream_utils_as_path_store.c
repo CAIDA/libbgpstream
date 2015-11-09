@@ -456,6 +456,13 @@ bgpstream_as_path_store_path_get_path(bgpstream_as_path_store_path_t *store_path
   return NULL;
 }
 
+bgpstream_as_path_seg_t *
+bgpstream_as_path_store_path_get_origin_seg(bgpstream_as_path_store_path_t *store_path)
+{
+  return ((store_path == NULL) || store_path->path.data_len == 0) ? NULL :
+    (bgpstream_as_path_seg_t*)(store_path->path.data+store_path->path.origin_offset);
+}
+
 void
 bgpstream_as_path_store_path_iter_reset(bgpstream_as_path_store_path_t *store_path,
                                         bgpstream_as_path_store_path_iter_t *iter,
