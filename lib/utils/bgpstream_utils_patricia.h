@@ -91,8 +91,9 @@ typedef struct bgpstream_patricia_tree_result_set bgpstream_patricia_tree_result
  */
 typedef void (bgpstream_patricia_tree_destroy_user_t) (void* user);
 
-/** Callback for custom processing bgpstream_patricia_node when traversing
- *  a patricia tree
+/** Callback for custom processing of the bgpstream_patricia_node structures
+ *  when traversing a patricia tree
+ *
  * @param node    pointer to the node
  * @param data    user pointer to a data structure that can be used by the
  *                user to store a state
@@ -313,16 +314,16 @@ uint8_t bgpstream_patricia_tree_get_pfx_overlap_info(bgpstream_patricia_tree_t *
 bgpstream_pfx_t *bgpstream_patricia_tree_get_pfx(bgpstream_patricia_node_t *node);
 
 
-/** Process the node in the Patricia Tree
+/** Process the nodes while walking the Patricia Tree in order
  *
  * @param pt           pointer to the patricia tree
  * @param fun          pointer to a function to process the nodes in the patricia tree
  * @param data         pointer to a custom structure that can be used to update a state
  *                     during the fun call
  */
-void bgpstream_patricia_tree_process(bgpstream_patricia_tree_t *pt,
-                                     bgpstream_patricia_tree_process_node_t *fun,
-                                     void *data);
+void bgpstream_patricia_tree_walk(bgpstream_patricia_tree_t *pt,
+                                  bgpstream_patricia_tree_process_node_t *fun,
+                                  void *data);
 
 
 /** Print the prefixes in the Patricia Tree
