@@ -405,6 +405,25 @@ static void bgpstream_patricia_tree_merge_tree(bgpstream_patricia_tree_t *dst, b
   bgpstream_patricia_tree_merge_tree(dst, node->r);
 }
 
+static void bgpstream_patricia_tree_process_tree(bgpstream_patricia_tree_t *pt,
+                                                 bgpstream_patricia_node_t *node,
+                                                 bgpstream_patricia_tree_process_node_t *fun,
+                                                 void *data)
+{
+  if(node == NULL)
+    {
+      return;
+    }
+  bgpstream_patricia_tree_process_tree(pt, node->l, fun, data);
+  bgpstream_patricia_tree_process_tree(pt, node->r, fun, data);
+
+  if(node->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN)
+    {
+      fun(pt, node, data);
+    }
+
+}
+
 
 static void bgpstream_patricia_tree_print_tree(bgpstream_patricia_node_t *node)
 {
@@ -463,7 +482,7 @@ bgpstream_patricia_tree_result_set_t *bgpstream_patricia_tree_result_set_create(
       free(set);
       return NULL;
     }
-  
+
   bgpstream_patricia_tree_result_set_clear(set);
   return set;
 }
@@ -499,6 +518,10 @@ bgpstream_patricia_node_t *bgpstream_patricia_tree_result_set_next(bgpstream_pat
   return set->result_nodes[set->_cursor++]; /* Advance head */
 }
 
+int bgpstream_patricia_tree_result_set_count(bgpstream_patricia_tree_result_set_t *set)
+{
+  return set->n_recs;
+}
 
 void bgpstream_patricia_tree_result_set_print(bgpstream_patricia_tree_result_set_t *set)
 {
@@ -1143,6 +1166,16 @@ void bgpstream_patricia_tree_merge(bgpstream_patricia_tree_t *dst, const bgpstre
   bgpstream_patricia_tree_merge_tree(dst, src->head4);
   /* Merge IPv6 */
   bgpstream_patricia_tree_merge_tree(dst, src->head6);
+}
+
+
+
+void bgpstream_patricia_tree_process(bgpstream_patricia_tree_t *pt,
+                                     bgpstream_patricia_tree_process_node_t *fun,
+                                     void *data)
+{
+  bgpstream_patricia_tree_process_tree(pt, pt->head4, fun, data);
+  bgpstream_patricia_tree_process_tree(pt, pt->head6, fun, data);
 }
 
 

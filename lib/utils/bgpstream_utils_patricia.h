@@ -21,8 +21,8 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* This software is heavily based on software developed by 
- * 
+/* This software is heavily based on software developed by
+ *
  * Dave Plonka <plonka@doit.wisc.edu>
  *
  * This product includes software developed by the University of Michigan,
@@ -85,11 +85,21 @@ typedef struct bgpstream_patricia_tree_result_set bgpstream_patricia_tree_result
  *
  * @{ */
 
-/** Callback for destroying a custom user structure associated with bgpview
- *  view or one of its substructures
+/** Callback for destroying a custom user structure associated with a
+ *  patricia tree node
  * @param user    user pointer to destroy
  */
 typedef void (bgpstream_patricia_tree_destroy_user_t) (void* user);
+
+/** Callback for custom processing bgpstream_patricia_node when traversing
+ *  a patricia tree
+ * @param node    pointer to the node
+ * @param data    user pointer to a data structure that can be used by the
+ *                user to store a state
+ */
+typedef void (bgpstream_patricia_tree_process_node_t) (bgpstream_patricia_tree_t *pt,
+                                                       bgpstream_patricia_node_t * node,
+                                                       void* data);
 
 /** @} */
 
@@ -127,6 +137,13 @@ void bgpstream_patricia_tree_result_set_rewind(bgpstream_patricia_tree_result_se
  * @return a pointer to the result
  */
 bgpstream_patricia_node_t *bgpstream_patricia_tree_result_set_next(bgpstream_patricia_tree_result_set_t *set);
+
+/** Count the number of results in the list
+ *
+ * @param result      pointer to the patricia tree result list to print
+ * @return the number of nodes in the result set
+ */
+int bgpstream_patricia_tree_result_set_count(bgpstream_patricia_tree_result_set_t *set);
 
 
 /** Print the result list
@@ -253,7 +270,7 @@ int bgpstream_patricia_tree_get_less_specifics(bgpstream_patricia_tree_t *pt,
                                                bgpstream_patricia_tree_result_set_t *results);
 
 
-/** Return minimum coverage (the minimum list of prefixes in the Patricia Tree that 
+/** Return minimum coverage (the minimum list of prefixes in the Patricia Tree that
  *  cover the entire IP space)
  *
  * @param pt           pointer to the patricia tree
@@ -295,7 +312,19 @@ uint8_t bgpstream_patricia_tree_get_pfx_overlap_info(bgpstream_patricia_tree_t *
  */
 bgpstream_pfx_t *bgpstream_patricia_tree_get_pfx(bgpstream_patricia_node_t *node);
 
-                                                                             
+
+/** Process the node in the Patricia Tree
+ *
+ * @param pt           pointer to the patricia tree
+ * @param fun          pointer to a function to process the nodes in the patricia tree
+ * @param data         pointer to a custom structure that can be used to update a state
+ *                     during the fun call
+ */
+void bgpstream_patricia_tree_process(bgpstream_patricia_tree_t *pt,
+                                     bgpstream_patricia_tree_process_node_t *fun,
+                                     void *data);
+
+
 /** Print the prefixes in the Patricia Tree
  *
  * @param pt           pointer to the patricia tree
@@ -322,4 +351,3 @@ void bgpstream_patricia_tree_destroy(bgpstream_patricia_tree_t *pt);
 
 
 #endif /* __BGPSTREAM_UTILS_PATRICIA_H */
-
