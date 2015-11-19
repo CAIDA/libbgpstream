@@ -830,7 +830,7 @@ uint8_t bgpstream_patricia_tree_get_pfx_overlap_info(bgpstream_patricia_tree_t *
   bgpstream_patricia_node_t *n = bgpstream_patricia_tree_search_exact(pt, pfx);
   if(n != NULL)
     {
-      return bgpstream_patricia_tree_get_node_overlap_info(pt, n);
+      return bgpstream_patricia_tree_get_node_overlap_info(pt, n) | BGPSTREAM_PATRICIA_EXACT_MATCH;
     }
   else
     {
@@ -839,7 +839,7 @@ uint8_t bgpstream_patricia_tree_get_pfx_overlap_info(bgpstream_patricia_tree_t *
       n = bgpstream_patricia_tree_insert(pt, pfx);
       uint8_t mask = bgpstream_patricia_tree_get_node_overlap_info(pt, n);
       bgpstream_patricia_tree_remove_node(pt, n);
-      return mask;
+      return mask & (~BGPSTREAM_PATRICIA_EXACT_MATCH);
     }
   return 0;
 }
@@ -974,7 +974,7 @@ void bgpstream_patricia_tree_remove_node(bgpstream_patricia_tree_t *pt, bgpstrea
   if (parent == NULL)
     { /* if the parent is the head, then attach
        * the only child directly */
-      assert(parent == bgpstream_patricia_get_head(pt, v));
+      assert(node == bgpstream_patricia_get_head(pt, v));
       bgpstream_patricia_set_head(pt, v, child);
       return;
     }
@@ -1131,7 +1131,7 @@ int bgpstream_patricia_tree_get_minimum_coverage(bgpstream_patricia_tree_t *pt,
 uint8_t bgpstream_patricia_tree_get_node_overlap_info(bgpstream_patricia_tree_t *pt,
                                                       bgpstream_patricia_node_t *node)
 {
-  uint8_t mask = 0;
+  uint8_t mask = BGPSTREAM_PATRICIA_EXACT_MATCH;
 
   bgpstream_patricia_node_t *node_it = node->parent;
   while(node_it != NULL)
@@ -1145,6 +1145,7 @@ uint8_t bgpstream_patricia_tree_get_node_overlap_info(bgpstream_patricia_tree_t 
       node_it = node_it->parent;
     }
 
+  node_it = node;
   if(node_it != NULL)
     { /* we do not consider the node itself */
       /* if one of the subtree return 1 we can avoid the other */
