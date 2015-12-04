@@ -129,7 +129,7 @@ int bgpstream_pfx_storage_equal(bgpstream_pfx_storage_t *pfx1,
 
 
 bgpstream_pfx_storage_t *
-bgpstream_str2pfx(char *pfx_str, bgpstream_pfx_storage_t *pfx)
+bgpstream_str2pfx(const char *pfx_str, bgpstream_pfx_storage_t *pfx)
 {
   if(pfx_str == NULL || pfx == NULL)
     {
