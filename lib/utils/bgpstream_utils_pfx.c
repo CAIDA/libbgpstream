@@ -178,7 +178,6 @@ bgpstream_str2pfx(const char *pfx_str, bgpstream_pfx_storage_t *pfx)
   strncpy(pfx_copy, pfx_str, INET6_ADDRSTRLEN+3);
   if(pfx_copy[INET6_ADDRSTRLEN+3-1] != '\0')
     {
-      fprintf(stderr, "%s is not a prefix\n", pfx_copy);
       return NULL;
     }
 
@@ -186,7 +185,6 @@ bgpstream_str2pfx(const char *pfx_str, bgpstream_pfx_storage_t *pfx)
   char *found = strchr(pfx_copy, '/');
   if(found == NULL)
     {
-      fprintf(stderr, "%s is not a prefix\n", pfx_copy);
       return NULL;
     }
 
@@ -206,7 +204,6 @@ bgpstream_str2pfx(const char *pfx_str, bgpstream_pfx_storage_t *pfx)
      (pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4 && r > 32) ||
      (pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV6 && r > 128) )
     {
-      fprintf(stderr, "%s - invalid mask\n", pfx_str);
       return NULL;
     }
   pfx->mask_len = (uint8_t) r;
