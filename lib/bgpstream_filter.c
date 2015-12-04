@@ -24,6 +24,8 @@
 #include "bgpstream_filter.h"
 #include "bgpstream_debug.h"
 
+#include "utils.h"
+
 #include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -31,16 +33,11 @@
 /* allocate memory for a new bgpstream filter */
 bgpstream_filter_mgr_t *bgpstream_filter_mgr_create() {
   bgpstream_debug("\tBSF_MGR: create start");
-  bgpstream_filter_mgr_t *bs_filter_mgr = (bgpstream_filter_mgr_t*) malloc(sizeof(bgpstream_filter_mgr_t));
+  bgpstream_filter_mgr_t *bs_filter_mgr =
+    (bgpstream_filter_mgr_t*) malloc_zero(sizeof(bgpstream_filter_mgr_t));
   if(bs_filter_mgr == NULL) {
     return NULL; // can't allocate memory
   }
-  bs_filter_mgr->projects = NULL;
-  bs_filter_mgr->collectors = NULL;
-  bs_filter_mgr->bgp_types = NULL;
-  bs_filter_mgr->time_intervals = NULL;
-  bs_filter_mgr->last_processed_ts = NULL;
-  bs_filter_mgr->rib_period = 0;
   bgpstream_debug("\tBSF_MGR: create end");
   return bs_filter_mgr;
 }
