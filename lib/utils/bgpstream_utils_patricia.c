@@ -1102,6 +1102,20 @@ int bgpstream_patricia_tree_get_more_specifics(bgpstream_patricia_tree_t *pt,
 }
 
 
+int bgpstream_patricia_tree_get_mincovering_prefix(bgpstream_patricia_tree_t *pt,
+                                                   bgpstream_patricia_node_t *node,
+                                                   bgpstream_patricia_tree_result_set_t *results)
+{
+  bgpstream_patricia_tree_result_set_clear(results);
+
+  if(node == NULL)
+    {
+      return 0;
+    }
+  /* we do not return the node itself (that's why we pass the parent node) */
+  return bgpstream_patricia_tree_add_less_specifics(results, node->parent, 1);
+}
+
 int bgpstream_patricia_tree_get_less_specifics(bgpstream_patricia_tree_t *pt,
                                                bgpstream_patricia_node_t *node,
                                                bgpstream_patricia_tree_result_set_t *results)

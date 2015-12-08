@@ -261,6 +261,17 @@ int bgpstream_patricia_tree_get_more_specifics(bgpstream_patricia_tree_t *pt,
                                                bgpstream_patricia_tree_result_set_t *results);
 
 
+/** Return the smallest less specific prefix
+ *
+ * @param pt           pointer to the patricia tree
+ * @param node         pointer to the node
+ * @param results      pointer to the results structure to fill
+ * @return 0 if the computation finished correctly, -1 if an error occurred
+ */
+int bgpstream_patricia_tree_get_mincovering_prefix(bgpstream_patricia_tree_t *pt,
+                                                   bgpstream_patricia_node_t *node,
+                                                   bgpstream_patricia_tree_result_set_t *results);
+
 /** Return less specific prefixes
  *
  * @param pt           pointer to the patricia tree
