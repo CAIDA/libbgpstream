@@ -210,5 +210,7 @@ int main()
 #else
   SKIPPED_SECTION("broker data interface");
 #endif
+
+  return 0;
 }
 
