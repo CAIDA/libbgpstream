@@ -30,7 +30,7 @@
 #include "bgpstream_utils_peer_sig_map.h"
 
 #define IPV4_ID_OFFSET 1
-#define IPV6_ID_OFFSET 400
+#define IPV6_ID_OFFSET 1
 
 
 /** Hash a peer signature into a 64bit number
