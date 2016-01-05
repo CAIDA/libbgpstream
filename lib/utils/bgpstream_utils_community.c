@@ -26,12 +26,15 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include "bgpdump_lib.h"
 #include "khash.h"
 #include "utils.h"
 
 #include "bgpstream_utils_community_int.h"
+
+#define COMMUNITY_MAX_STR_LEN 16
 
 /** Set of community values */
 struct bgpstream_community_set {
@@ -45,6 +48,10 @@ struct bgpstream_community_set {
   /** Number of communities allocated in the set */
   int communities_alloc_cnt;
 
+  /** Communities hash (OR between
+   *  all communities in the set) */
+  uint32_t communities_hash;
+
 };
 
 
@@ -55,6 +62,57 @@ int bgpstream_community_snprintf(char *buf, size_t len,
 {
   return snprintf(buf, len, "%"PRIu16":%"PRIu16, comm->asn, comm->value);
 }
+
+int bgpstream_community_read(const char *buf, bgpstream_community_t *comm)
+{
+  if(buf  == NULL || comm == NULL)
+    {
+      return -1;
+    }
+  uint8_t mask = 0;
+  char com_copy[COMMUNITY_MAX_STR_LEN];
+  strncpy(com_copy, buf, COMMUNITY_MAX_STR_LEN);
+
+  unsigned long int r;
+  int ret;
+  char *endptr = NULL;
+  char *found = strchr(com_copy, ':');
+
+  if(found == NULL)
+    {
+      return -1;
+    }
+  *found = '\0';
+  errno = 0;
+  comm->asn = 0;
+  if(com_copy[0] != '*')
+    {
+      mask = mask | BGPSTREAM_COMMUNITY_FILTER_ASN;
+      r = strtoul(com_copy, &endptr, 10);
+      ret = errno;
+      if(!(endptr != NULL && *endptr == '\0') || ret != 0)
+        {
+          return -1;
+        }
+      comm->asn = (uint32_t) r;
+    }
+
+  endptr = NULL;
+  comm->value = 0;
+  if(*(found+1) != '*')
+    {
+      mask = mask | BGPSTREAM_COMMUNITY_FILTER_VALUE;
+      r = strtoul(found+1, &endptr, 10);
+      ret = errno;
+      if(!(endptr != NULL && *endptr == '\0') || ret != 0)
+        {
+          return -1;
+        }
+      comm->value = (uint32_t) r;
+    }
+  return (int )mask;
+}
+
 
 bgpstream_community_t *bgpstream_community_dup(bgpstream_community_t *src)
 {
@@ -86,10 +144,26 @@ bgpstream_community_hash(bgpstream_community_t *comm)
   return comm->asn | comm->value;
 }
 
+#if UINT_MAX == 0xffffffffu
+unsigned int
+#elif ULONG_MAX == 0xffffffffu
+unsigned long
+#endif
+bgpstream_community_hash_value(bgpstream_community_t comm)
+{
+  return bgpstream_community_hash(&comm);
+}
+
 int bgpstream_community_equal(bgpstream_community_t *comm1,
                               bgpstream_community_t *comm2)
 {
   return (comm1->asn == comm2->asn) && (comm1->value == comm2->value);
+}
+
+int bgpstream_community_equal_value(bgpstream_community_t comm1,
+                                    bgpstream_community_t comm2)
+{
+  return bgpstream_community_equal(&comm1, &comm2);
 }
 
 /* SET FUNCTIONS */
@@ -148,6 +222,7 @@ bgpstream_community_set_t *bgpstream_community_set_create()
 void bgpstream_community_set_clear(bgpstream_community_set_t *set)
 {
   set->communities_cnt = 0;
+  set->communities_hash = 0;
 }
 
 void bgpstream_community_set_destroy(bgpstream_community_set_t *set)
@@ -159,6 +234,7 @@ void bgpstream_community_set_destroy(bgpstream_community_set_t *set)
   set->communities = NULL;
   set->communities_cnt = 0;
   set->communities_alloc_cnt = 0;
+  set->communities_hash = 0;
 
   free(set);
 }
@@ -181,6 +257,7 @@ int bgpstream_community_set_copy(bgpstream_community_set_t *dst,
          sizeof(bgpstream_community_t) * src->communities_cnt);
 
   dst->communities_cnt = src->communities_cnt;
+  dst->communities_hash = src->communities_hash;
 
   return 0;
 }
@@ -194,6 +271,26 @@ bgpstream_community_set_get(bgpstream_community_set_t *set, int i)
 int bgpstream_community_set_size(bgpstream_community_set_t *set)
 {
   return set->communities_cnt;
+}
+
+int bgpstream_community_set_insert(bgpstream_community_set_t *set,
+                                   bgpstream_community_t *comm)
+{
+  if(set->communities_cnt == set->communities_alloc_cnt)
+    {
+      if((set->communities =
+          realloc(set->communities, sizeof(bgpstream_community_t) *
+                  (set->communities_alloc_cnt + 1))) == NULL)
+        {
+          return -1;
+        }
+      set->communities_alloc_cnt++;
+    }
+
+  set->communities[set->communities_cnt] = *comm;
+  set->communities_cnt++;
+  set->communities_hash = set->communities_hash | *((uint32_t *) comm);
+  return 0;
 }
 
 int bgpstream_community_set_populate_from_array(bgpstream_community_set_t *set,
@@ -216,6 +313,12 @@ int bgpstream_community_set_populate_from_array_zc(bgpstream_community_set_t *se
   set->communities_alloc_cnt = -1; /* signal that memory is not owned by us */
   set->communities = comms;
   set->communities_cnt = comms_cnt;
+  set->communities_hash = 0;
+  int i;
+  for(i=0; i < bgpstream_community_set_size(set); i++)
+    {
+      set->communities_hash = set->communities_hash | *((uint32_t *) &set->communities[i]);
+    }
   return 0;
 }
 
@@ -240,7 +343,8 @@ bgpstream_community_set_hash(bgpstream_community_set_t *set)
 int bgpstream_community_set_equal(bgpstream_community_set_t *set1,
                                   bgpstream_community_set_t *set2)
 {
-  return (set1->communities_cnt == set2->communities_cnt) &&
+  return (set1->communities_hash == set2->communities_hash) &&
+    (set1->communities_cnt == set2->communities_cnt) &&
     bcmp(set1->communities, set2->communities,
          sizeof(bgpstream_community_t) * set1->communities_cnt);
 }
@@ -281,9 +385,55 @@ int bgpstream_community_set_populate(bgpstream_community_set_t *set,
       comval = ntohl(comval);
       c->asn = (comval >> 16) & 0xFFFF;
       c->value = comval & 0xFFFF;
+      set->communities_hash = set->communities_hash | *((uint32_t *) c);
     }
 
   set->communities_cnt = bd_comms->size;
 
+  return 0;
+}
+
+int bgpstream_community_set_exists(bgpstream_community_set_t *set,
+                                   bgpstream_community_t *com)
+{
+  return bgpstream_community_set_match(set, com, BGPSTREAM_COMMUNITY_FILTER_EXACT);
+}
+
+int bgpstream_community_set_match(bgpstream_community_set_t *set,
+                                   bgpstream_community_t *com,
+                                   uint8_t mask)
+{
+  bgpstream_community_t *hash = (bgpstream_community_t *) &set->communities_hash;
+
+  /* first we verify if the hash is compatible */
+  if( (!(mask & BGPSTREAM_COMMUNITY_FILTER_ASN) || hash->asn & com->asn) &&
+      (!(mask & BGPSTREAM_COMMUNITY_FILTER_VALUE) || hash->value & com->value) )
+    {
+      bgpstream_community_t *c;
+      int i;
+      int n = bgpstream_community_set_size(set);
+      for(i=0; i < n; i++)
+        {
+          c = bgpstream_community_set_get(set, i);
+          /* checking if asn match is requested and compatible */
+          if(mask & BGPSTREAM_COMMUNITY_FILTER_ASN)
+            {
+              if(c->asn != com->asn)
+                {
+                  continue;
+                }
+            }
+          /* checking if value match is requested and compatible */
+          if(mask & BGPSTREAM_COMMUNITY_FILTER_VALUE)
+            {
+              if(c->value != com->value)
+                {
+                  continue;
+                }
+            }
+
+          return 1;
+        }
+    }
   return 0;
 }

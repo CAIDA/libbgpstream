@@ -149,7 +149,7 @@ typedef struct struct_bgpstream_elem_t {
 
   /** Communities
    *
-   * Available only for RIP and Announcement elem types
+   * Available only for RIB and Announcement elem types
    */
   bgpstream_community_set_t *communities;
 
