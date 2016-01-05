@@ -56,6 +56,13 @@
 
 #define BGPSTREAM_COMMUNITY_NO_EXPORT_SUBCONFED  0xFFFFFF03
 
+/** Community mask used for filtering */
+
+#define BGPSTREAM_COMMUNITY_FILTER_EXACT         0b0011
+#define BGPSTREAM_COMMUNITY_FILTER_ASN           0b0010
+#define BGPSTREAM_COMMUNITY_FILTER_VALUE         0b0001
+
+
 /** @} */
 
 /**
@@ -102,6 +109,15 @@ typedef struct bgpstream_community {
 int bgpstream_community_snprintf(char *buf, size_t len,
                                  bgpstream_community_t *comm);
 
+/** Read the string representation of a community from the buffer and
+ *  populate the community structure .
+ *
+ * @param buf           pointer to a character buffer at least len bytes long
+ * @param comm          pointer to the community structure populate
+ * @return 0 if the operation is successful, -1 otherwise.
+ */
+int bgpstream_community_read(const char *buf, bgpstream_community_t *comm);
+
 /** Duplicate the given community
  *
  * @param src           pointer to the community to duplicate
@@ -131,6 +147,18 @@ unsigned long
 bgpstream_community_hash(bgpstream_community_t *comm);
 
 
+/** Hash the given community into a 32bit number
+ *
+ * @param comm          community to hash
+ * @return 32bit hash of the community
+ */
+#if UINT_MAX == 0xffffffffu
+unsigned int
+#elif ULONG_MAX == 0xffffffffu
+unsigned long
+#endif
+bgpstream_community_hash_value(bgpstream_community_t comm);
+
 /** Compare two communities for equality
  *
  * @param comm1         pointer to the first community to compare
@@ -140,6 +168,14 @@ bgpstream_community_hash(bgpstream_community_t *comm);
 int bgpstream_community_equal(bgpstream_community_t *comm1,
                               bgpstream_community_t *comm2);
 
+/** Compare two communities for equality
+ *
+ * @param comm1         first community to compare
+ * @param comm2         second community to compare
+ * @return 0 if the communities are not equal, non-zero if they are equal
+ */
+int bgpstream_community_equal_value(bgpstream_community_t comm1,
+                                    bgpstream_community_t comm2);
 
 /** Write the string representation of the given community set into the given
  *  character buffer.
@@ -205,6 +241,15 @@ bgpstream_community_set_get(bgpstream_community_set_t *set, int i);
  */
 int bgpstream_community_set_size(bgpstream_community_set_t *set);
 
+/** Insert the given community into the community set
+ *
+ * @param set           pointer to the set to populate
+ * @param comm          pointer to the community
+ * @return 0 if the set was populated successfully, -1 otherwise
+ */
+int bgpstream_community_set_insert(bgpstream_community_set_t *set,
+                                   bgpstream_community_t *comm);
+
 /** Populate the given community set from the given community array
  *
  * @param set           pointer to the set to populate
@@ -254,6 +299,28 @@ bgpstream_community_set_hash(bgpstream_community_set_t *set);
 int bgpstream_community_set_equal(bgpstream_community_set_t *set1,
                                   bgpstream_community_set_t *set2);
 
+
+/** Check if a community is part of a community set
+ *
+ * @param set          pointer to the community set to check
+ * @param com          pointer to the community set to search
+ * @return 1 if the set contains the community, 0 if not
+ *
+ */
+int bgpstream_community_set_exists(bgpstream_community_set_t *set,
+                                   bgpstream_community_t *com);
+
+/** Check if a community matches of a community set
+ *
+ * @param set          pointer to the community set to check
+ * @param com          pointer to the community set to search
+ * @param mask         it tells whether we check the entire community,
+ *                     the asn field or the value field
+ * @return 1 if the set matches the community, 0 if not
+ *
+ */
+int bgpstream_community_set_match(bgpstream_community_set_t *set,
+                                  bgpstream_community_t *com, uint8_t mask);
 
 /** @} */
 
