@@ -116,7 +116,7 @@ int bgpstream_community_snprintf(char *buf, size_t len,
  * @param comm          pointer to the community structure populate
  * @return 0 if the operation is successful, -1 otherwise.
  */
-int bgpstream_community_read(const char *buf, bgpstream_community_t *comm);
+int bgpstream_str2community(const char *buf, bgpstream_community_t *comm);
 
 /** Duplicate the given community
  *

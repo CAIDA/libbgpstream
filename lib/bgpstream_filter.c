@@ -103,7 +103,7 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
               return;
             }
         }
-      if((mask = bgpstream_community_read(filter_value, &comm)) < 0)
+      if((mask = bgpstream_str2community(filter_value, &comm)) < 0)
         {
           bgpstream_debug("\tBSF_MGR:: can't convert community");
           return;
