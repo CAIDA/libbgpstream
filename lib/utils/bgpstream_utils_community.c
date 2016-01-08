@@ -331,8 +331,16 @@ bgpstream_community_set_hash(bgpstream_community_set_t *set)
 {
   int i;
   uint32_t h;
+  int cnt = bgpstream_community_set_size(set);
 
-  for(i=0; i < bgpstream_community_set_size(set); i++)
+  if(cnt == 0)
+    {
+      return 0;
+    }
+
+  h = bgpstream_community_hash(bgpstream_community_set_get(set, 0));
+
+  for(i=1; i < cnt; i++)
     {
       h = (h << 5) - h +
         bgpstream_community_hash(bgpstream_community_set_get(set, i));
