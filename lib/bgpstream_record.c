@@ -125,9 +125,9 @@ static int bgpstream_elem_check_filters(bgpstream_filter_mgr_t *filter_mgr, bgps
     }
 
   if(filter_mgr->prefixes &&
-     bgpstream_patricia_tree_get_pfx_overlap_info(filter_mgr->prefixes,
-                                                  (bgpstream_pfx_t *) &elem->prefix) !=
-     BGPSTREAM_PATRICIA_EXACT_MATCH)
+    (bgpstream_patricia_tree_get_pfx_overlap_info(filter_mgr->prefixes,
+                                                  (bgpstream_pfx_t *) &elem->prefix) &
+     (BGPSTREAM_PATRICIA_EXACT_MATCH | BGPSTREAM_PATRICIA_LESS_SPECIFICS) ) == 0)
     {
       return 0;
     }

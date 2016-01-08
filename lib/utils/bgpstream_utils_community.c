@@ -63,7 +63,7 @@ int bgpstream_community_snprintf(char *buf, size_t len,
   return snprintf(buf, len, "%"PRIu16":%"PRIu16, comm->asn, comm->value);
 }
 
-int bgpstream_community_read(const char *buf, bgpstream_community_t *comm)
+int bgpstream_str2community(const char *buf, bgpstream_community_t *comm)
 {
   if(buf  == NULL || comm == NULL)
     {
