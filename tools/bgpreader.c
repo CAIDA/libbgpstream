@@ -325,7 +325,7 @@ int main(int argc, char *argv[])
 	  if(communities_cnt == COMMUNITY_CMD_CNT)
 	    {
 	      fprintf(stderr,
-		      "ERROR: A maximum of %d peer asns can be specified on "
+		      "ERROR: A maximum of %d communities can be specified on "
 		      "the command line\n",
 		      PREFIX_CMD_CNT);
 	      usage();
