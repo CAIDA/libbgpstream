@@ -37,13 +37,13 @@ check_PROGRAMS =  			\
 	bgpstream-test-utils-pfx
 
 bgpstream_test_SOURCES = bgpstream-test.c bgpstream_test.h
-bgpstream_test_LDADD   = $(top_builddir)/lib/libbgpstream.la
+bgpstream_test_LDADD   = $(top_builddir)/lib/libbgpstreamcaida.la
 
 bgpstream_test_utils_addr_SOURCES = bgpstream-test-utils-addr.c bgpstream_test.h
-bgpstream_test_utils_addr_LDADD   = $(top_builddir)/lib/libbgpstream.la
+bgpstream_test_utils_addr_LDADD   = $(top_builddir)/lib/libbgpstreamcaida.la
 
 bgpstream_test_utils_pfx_SOURCES = bgpstream-test-utils-pfx.c bgpstream_test.h
-bgpstream_test_utils_pfx_LDADD   = $(top_builddir)/lib/libbgpstream.la
+bgpstream_test_utils_pfx_LDADD   = $(top_builddir)/lib/libbgpstreamcaida.la
 
 ACLOCAL_AMFLAGS = -I m4
 
