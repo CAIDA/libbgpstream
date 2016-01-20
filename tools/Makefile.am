@@ -29,7 +29,7 @@ AM_CPPFLAGS = 	-I$(top_srcdir) \
 bin_PROGRAMS =  bgpreader
 
 bgpreader_SOURCES = bgpreader.c
-bgpreader_LDADD   = $(top_builddir)/lib/libbgpstream.la
+bgpreader_LDADD   = $(top_builddir)/lib/libbgpstreamcaida.la
 
 ACLOCAL_AMFLAGS = -I m4
 
