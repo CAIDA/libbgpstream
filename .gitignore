@@ -24,8 +24,10 @@ ChangeLog
 *.tar.gz
 tools/bgpreader
 test/bgpstream-test
+test/bgpstream-test-filters
 test/bgpstream-test-utils-addr
 test/bgpstream-test-utils-pfx
+test/bgpstream-test-utils-patricia
 bgpcorsaro/tools/bgpcorsaro
 bgpview/tools/io/bgpview-consumer
 bgpview/tools/io/bgpview-server
