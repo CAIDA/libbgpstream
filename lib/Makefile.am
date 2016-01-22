@@ -73,7 +73,7 @@ libbgpstreamcaida_la_LIBADD = \
 			$(top_builddir)/lib/utils/libbgpstream-utils.la \
 			$(top_builddir)/common/libcccommon.la
 
-libbgpstreamcaida_la_LDFLAGS = -version-info @BGPSTREAM_MAJOR_VERSION@:@BGPSTREAM_MINOR_VERSION@:@BGPSTREAM_MID_VERSION@
+libbgpstreamcaida_la_LDFLAGS = -version-info @LIBBGPSTREAM_MAJOR_VERSION@:@LIBBGPSTREAM_MINOR_VERSION@:@LIBBGPSTREAM_MID_VERSION@
 
 ACLOCAL_AMFLAGS = -I m4
 
