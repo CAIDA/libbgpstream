@@ -497,6 +497,12 @@ int process_mrtd_table_dump_v2_ipv4_unicast(struct mstream *s, BGPDUMP_ENTRY *en
   prefixdata = &entry->body.mrtd_table_dump_v2_prefix;
   uint16_t i;
 
+  /* in case there is a corrupt dump that does not include the peer table... */
+  if(entry->dump->table_dump_v2_peer_index_table == NULL) {
+    bgpdump_err("process_mrtd_table_dump_v2_ipv4_unicast: missing peer index table");
+    return 0;
+  }
+
   prefixdata->afi = AFI_IP;
   prefixdata->safi = SAFI_UNICAST;
 
@@ -531,6 +537,12 @@ int process_mrtd_table_dump_v2_ipv6_unicast(struct mstream *s, BGPDUMP_ENTRY *en
   BGPDUMP_TABLE_DUMP_V2_PREFIX *prefixdata;
   prefixdata = &entry->body.mrtd_table_dump_v2_prefix;
   uint16_t i;
+
+  /* in case there is a corrupt dump that does not include the peer table... */
+  if(entry->dump->table_dump_v2_peer_index_table == NULL) {
+    bgpdump_err("process_mrtd_table_dump_v2_ipv6_unicast: missing peer index table");
+    return 0;
+  }
 
   prefixdata->afi = AFI_IP6;
   prefixdata->safi = SAFI_UNICAST;
