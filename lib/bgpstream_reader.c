@@ -481,6 +481,31 @@ bool bgpstream_reader_mgr_is_empty(const bgpstream_reader_mgr_t * const bs_reade
 }
 
 
+static void bgpstream_reader_mgr_head_insert(bgpstream_reader_mgr_t * const bs_reader_mgr, 
+					       bgpstream_reader_t * const bs_reader)
+{
+  if(bs_reader_mgr == NULL) {
+    bgpstream_debug("\tBSR_MGR: sorted insert: null reader mgr provided");    
+    return;
+  }
+  if(bs_reader == NULL) {
+    bgpstream_debug("\tBSR_MGR: sorted insert: null reader provided");    
+    return;
+  }
+  /* empty queue */
+  if(bs_reader_mgr->status == BGPSTREAM_READER_MGR_STATUS_EMPTY_READER_MGR) {
+      bs_reader_mgr->reader_queue = bs_reader;
+      bs_reader->next = NULL;
+      bs_reader_mgr->status = BGPSTREAM_READER_MGR_STATUS_NON_EMPTY_READER_MGR;  
+  }
+  else
+    {
+      bs_reader->next = bs_reader_mgr->reader_queue;
+      bs_reader_mgr->reader_queue = bs_reader;
+    }
+  return;
+}
+
 static void bgpstream_reader_mgr_sorted_insert(bgpstream_reader_mgr_t * const bs_reader_mgr, 
 					       bgpstream_reader_t * const bs_reader) {
   bgpstream_debug("\tBSR_MGR: sorted insert:start");
@@ -680,6 +705,9 @@ void bgpstream_reader_mgr_add(bgpstream_reader_mgr_t * const bs_reader_mgr,
 int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reader_mgr, 
 					 bgpstream_record_t *const bs_record,
 					 const bgpstream_filter_mgr_t * const filter_mgr) {
+
+  long previous_record_time = 0;
+
   bgpstream_debug("\tBSR_MGR: get_next_record: start");
   if(bs_reader_mgr == NULL) {
     bgpstream_debug("\tBSR_MGR: get_next_record: null reader mgr provided");    
@@ -701,6 +729,7 @@ int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reade
   }
   // disconnect reader from the queue
   bs_reader->next = NULL;
+  
   // bgpstream_reader_export
   bgpstream_reader_export_record(bs_reader, bs_record, filter_mgr);
   // we save the difference between successful read
@@ -710,6 +739,9 @@ int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reade
   // if previous read was successful, we read next
   // entry from same reader
   if(bs_reader->status == BGPSTREAM_READER_STATUS_VALID_ENTRY) {
+
+    previous_record_time = bs_record->attributes.record_time;
+    
     bgpstream_reader_read_new_data(bs_reader, filter_mgr);
     // if end of dump is reached after a successful read (already exported)
     // we destroy the reader
@@ -722,7 +754,14 @@ int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t * const bs_reade
     }
     // otherwise we insert the reader in the queue again
     else {
-      bgpstream_reader_mgr_sorted_insert(bs_reader_mgr, bs_reader);
+      if(bs_reader->record_time == previous_record_time)
+        {
+          bgpstream_reader_mgr_head_insert(bs_reader_mgr, bs_reader);
+        }
+      else
+        {
+          bgpstream_reader_mgr_sorted_insert(bs_reader_mgr, bs_reader);
+        }
     }
   }
   // otherwise we destroy the reader
