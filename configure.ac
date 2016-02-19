@@ -132,6 +132,12 @@ LIBS="$PTHREAD_LIBS $LIBS"
 CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 CC="$PTHREAD_CC"
 
+#
+AC_SEARCH_LIBS([wandio_create], [wandio], [with_wandio=yes],
+               [AC_MSG_ERROR(
+  [libwandio required (http://research.wand.net.nz/software/libwandio.php)]
+)])
+
 # check that wandio is installed and HTTP support is enabled
 AC_SEARCH_LIBS([wandio_create], [wandio], [with_wandio=yes],
                [AC_MSG_ERROR(
@@ -249,6 +255,15 @@ AC_CHECK_LIB([ipmeta], [ipmeta_lookup], ,[AC_MSG_ERROR([ipmeta is required])])
 AC_CHECK_LIB([czmq], [zctx_new], ,[AC_MSG_ERROR(
 		      [CZMQ is required])])
 
+# check for protobuf
+ AC_CHECK_LIB([protobuf-c], [protobuf_c_message_pack_to_buffer], ,
+               [AC_MSG_ERROR( [libprotobuf-c required...])])
+
+# check for kafka
+ AC_CHECK_LIB([rdkafka], [rd_kafka_conf_new], ,
+               [AC_MSG_ERROR( [librdkafka required...])])
+
+
 AC_MSG_NOTICE([-------------------------------])
 
 # BGPCorsaro configuration
@@ -344,8 +359,8 @@ AC_CONFIG_FILES([Makefile
                 bgpcorsaro/tools/Makefile
                 bgpview/Makefile
                 bgpview/lib/Makefile
-                bgpview/lib/consumers/Makefile
                 bgpview/lib/io/Makefile
+                bgpview/lib/consumers/Makefile
                 bgpview/tools/Makefile
                 bgpview/tools/io/Makefile
 		common/Makefile

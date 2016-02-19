@@ -26,10 +26,14 @@ AM_CPPFLAGS = 	-I$(top_srcdir) \
 	 	-I$(top_srcdir)/lib/utils \
 	 	-I$(top_srcdir)/common
 
-bin_PROGRAMS =  bgpreader
+bin_PROGRAMS =  bgpreader peer_consumer
 
 bgpreader_SOURCES = bgpreader.c
 bgpreader_LDADD   = $(top_builddir)/lib/libbgpstreamcaida.la
+
+peer_consumer_SOURCES = peer_consumer.c\
+peer.pb-c.c \
+peer.pb-c.h
 
 ACLOCAL_AMFLAGS = -I m4
 
