@@ -260,7 +260,7 @@ AC_CHECK_LIB([czmq], [zctx_new], ,[AC_MSG_ERROR(
                [AC_MSG_ERROR( [libprotobuf-c required...])])
 
 # check for kafka
- AC_CHECK_LIB([rdkafka], [rd_kafka_conf_new], ,
+ AC_CHECK_LIB([rdkafka], [rd_kafka_seek], ,
                [AC_MSG_ERROR( [librdkafka required...])])
 
 
