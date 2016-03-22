@@ -44,8 +44,7 @@ include_HEADERS= bgpstream_utils.h 		     \
 		 bgpstream_utils_pfx_set.h	     \
 		 bgpstream_utils_str_set.h	     \
 		 bgpstream_utils_ip_counter.h	     \
-		 bgpstream_utils_patricia.h
-
+	         bgpstream_utils_patricia.h
 
 
 libbgpstream_utils_la_SOURCES =             \
