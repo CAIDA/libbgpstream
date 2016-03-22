@@ -132,12 +132,6 @@ LIBS="$PTHREAD_LIBS $LIBS"
 CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 CC="$PTHREAD_CC"
 
-#
-AC_SEARCH_LIBS([wandio_create], [wandio], [with_wandio=yes],
-               [AC_MSG_ERROR(
-  [libwandio required (http://research.wand.net.nz/software/libwandio.php)]
-)])
-
 # check that wandio is installed and HTTP support is enabled
 AC_SEARCH_LIBS([wandio_create], [wandio], [with_wandio=yes],
                [AC_MSG_ERROR(
@@ -359,8 +353,8 @@ AC_CONFIG_FILES([Makefile
                 bgpcorsaro/tools/Makefile
                 bgpview/Makefile
                 bgpview/lib/Makefile
-                bgpview/lib/io/Makefile
                 bgpview/lib/consumers/Makefile
+                bgpview/lib/io/Makefile
                 bgpview/tools/Makefile
                 bgpview/tools/io/Makefile
 		common/Makefile
