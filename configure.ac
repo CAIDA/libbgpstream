@@ -249,6 +249,15 @@ AC_CHECK_LIB([ipmeta], [ipmeta_lookup], ,[AC_MSG_ERROR([ipmeta is required])])
 AC_CHECK_LIB([czmq], [zctx_new], ,[AC_MSG_ERROR(
 		      [CZMQ is required])])
 
+# check for protobuf
+ AC_CHECK_LIB([protobuf-c], [protobuf_c_message_pack_to_buffer], ,
+               [AC_MSG_ERROR( [libprotobuf-c required...])])
+
+# check for kafka
+ AC_CHECK_LIB([rdkafka], [rd_kafka_seek], ,
+               [AC_MSG_ERROR( [librdkafka required...])])
+
+
 AC_MSG_NOTICE([-------------------------------])
 
 # BGPCorsaro configuration
