@@ -355,6 +355,9 @@ AC_CONFIG_FILES([Makefile
                 bgpview/lib/Makefile
                 bgpview/lib/consumers/Makefile
                 bgpview/lib/io/Makefile
+                bgpview/lib/io/file/Makefile
+                bgpview/lib/io/kafka/Makefile
+                bgpview/lib/io/zmq/Makefile
                 bgpview/tools/Makefile
                 bgpview/tools/io/Makefile
 		common/Makefile
