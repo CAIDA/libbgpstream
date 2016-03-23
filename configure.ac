@@ -237,6 +237,7 @@ AC_MSG_NOTICE([---------------------------------])
 AC_MSG_NOTICE([])
 AC_MSG_NOTICE([---- BGPView configuration ----])
 
+AC_MSG_NOTICE([checking consumer dependencies])
 # TODO: Make BGPView Consumers optional
 # TODO: also needed by bgpcorsaro
 AC_CHECK_LIB([timeseries], [timeseries_init], , [
@@ -244,19 +245,34 @@ AC_CHECK_LIB([timeseries], [timeseries_init], , [
 ])
 AC_CHECK_LIB([ipmeta], [ipmeta_lookup], ,[AC_MSG_ERROR([ipmeta is required])])
 
+# BGPView IO modules
+AC_MSG_NOTICE([configuring BGPView IO modules])
+
+# File module
+BS_WITH_IO_MOD([file],[FILE],[yes])
+
+# ZMQ module
+BS_WITH_IO_MOD([zmq],[ZMQ],[yes])
+
+# Kafak module
+BS_WITH_IO_MOD([kafka],[KAFKA],[no])
+
 # BGPView IO dependencies
-# TODO: make view IO optional
-AC_CHECK_LIB([czmq], [zctx_new], ,[AC_MSG_ERROR(
-		      [CZMQ is required])])
+AC_MSG_NOTICE([checking BGPView IO module dependencies])
 
-# check for protobuf
- AC_CHECK_LIB([protobuf-c], [protobuf_c_message_pack_to_buffer], ,
-               [AC_MSG_ERROR( [libprotobuf-c required...])])
+if test "x$with_io_zmq" == xyes; then
+   AC_CHECK_LIB([czmq], [zctx_new], ,[AC_MSG_ERROR(
+		      [CZMQ is required for the ZMQ IO module])])
+fi
 
-# check for kafka
- AC_CHECK_LIB([rdkafka], [rd_kafka_seek], ,
-               [AC_MSG_ERROR( [librdkafka required...])])
-
+if test "x$with_io_kafka" == xyes; then
+   # check for protobuf
+    AC_CHECK_LIB([protobuf-c], [protobuf_c_message_pack_to_buffer], ,
+               [AC_MSG_ERROR( [libprotobuf-c required for the Kafka IO module])])
+   # check for kafka
+   AC_CHECK_LIB([rdkafka], [rd_kafka_seek], ,
+               [AC_MSG_ERROR( [librdkafka required for the Kafka IO module])])
+fi
 
 AC_MSG_NOTICE([-------------------------------])
 
