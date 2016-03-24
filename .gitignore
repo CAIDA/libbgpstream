@@ -33,6 +33,7 @@ bgpview/tools/io/bgpview-consumer
 bgpview/tools/io/bgpview-server
 bgpview/tools/io/bgpview-producer
 bgpview/tools/io/bgpview-test-producer
+bgpview/tools/io/bvcat
 
 # pybgpstream build files
 pybgpstream/MANIFEST
