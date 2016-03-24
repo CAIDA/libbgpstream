@@ -266,9 +266,6 @@ if test "x$with_io_zmq" == xyes; then
 fi
 
 if test "x$with_io_kafka" == xyes; then
-   # check for protobuf
-    AC_CHECK_LIB([protobuf-c], [protobuf_c_message_pack_to_buffer], ,
-               [AC_MSG_ERROR( [libprotobuf-c required for the Kafka IO module])])
    # check for kafka
    AC_CHECK_LIB([rdkafka], [rd_kafka_seek], ,
                [AC_MSG_ERROR( [librdkafka required for the Kafka IO module])])

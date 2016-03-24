@@ -511,3 +511,12 @@ bgpstream_as_path_store_path_get_int_path(bgpstream_as_path_store_path_t *store_
 {
   return &store_path->path;
 }
+
+size_t
+bgpstream_as_path_store_path_get_size(bgpstream_as_path_store_path_t *store_path)
+{
+  return
+    sizeof(store_path->is_core) +
+    sizeof(store_path->path.data_len) +
+    store_path->path.data_len;
+}
