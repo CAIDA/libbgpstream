@@ -267,7 +267,7 @@ fi
 
 if test "x$with_io_kafka" == xyes; then
    # check for kafka
-   AC_CHECK_LIB([rdkafka], [rd_kafka_seek], ,
+   AC_CHECK_LIB([rdkafka], [rd_kafka_query_watermark_offsets], ,
                [AC_MSG_ERROR( [librdkafka required for the Kafka IO module])])
 fi
 
