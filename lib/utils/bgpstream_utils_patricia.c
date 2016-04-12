@@ -202,7 +202,9 @@ static bgpstream_patricia_node_t *bgpstream_patricia_node_create(bgpstream_patri
       pt->ipv6_active_nodes++;
     }
 
-  node->prefix = *((bgpstream_pfx_storage_t *) pfx);
+  node->prefix.mask_len = pfx->mask_len;
+  bgpstream_addr_copy((bgpstream_ip_addr_t *) &node->prefix.address , (bgpstream_ip_addr_t *) &pfx->address);
+
   node->parent = NULL;
   node->bit = pfx->mask_len;
   node->l = NULL;
