@@ -248,13 +248,16 @@ AC_CHECK_LIB([ipmeta], [ipmeta_lookup], ,[AC_MSG_ERROR([ipmeta is required])])
 # BGPView IO modules
 AC_MSG_NOTICE([configuring BGPView IO modules])
 
+# Test module
+BS_WITH_IO_MOD([test],[TEST],[yes])
+
 # File module
 BS_WITH_IO_MOD([file],[FILE],[yes])
 
 # ZMQ module
 BS_WITH_IO_MOD([zmq],[ZMQ],[yes])
 
-# Kafak module
+# Kafka module
 BS_WITH_IO_MOD([kafka],[KAFKA],[no])
 
 # BGPView IO dependencies
@@ -370,9 +373,11 @@ AC_CONFIG_FILES([Makefile
                 bgpview/lib/io/Makefile
                 bgpview/lib/io/file/Makefile
                 bgpview/lib/io/kafka/Makefile
+                bgpview/lib/io/test/Makefile
                 bgpview/lib/io/zmq/Makefile
                 bgpview/tools/Makefile
                 bgpview/tools/io/Makefile
+                bgpview/tools/consumers/Makefile
 		common/Makefile
 		common/libpatricia/Makefile
 		common/libinterval3/Makefile
