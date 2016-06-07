@@ -255,10 +255,10 @@ BS_WITH_IO_MOD([test],[TEST],[yes])
 BS_WITH_IO_MOD([file],[FILE],[yes])
 
 # ZMQ module
-BS_WITH_IO_MOD([zmq],[ZMQ],[yes])
+BS_WITH_IO_MOD([zmq],[ZMQ],[no])
 
 # Kafka module
-BS_WITH_IO_MOD([kafka],[KAFKA],[no])
+BS_WITH_IO_MOD([kafka],[KAFKA],[yes])
 
 # BGPView IO dependencies
 AC_MSG_NOTICE([checking BGPView IO module dependencies])

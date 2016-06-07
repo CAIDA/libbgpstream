@@ -36,7 +36,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#define DATASOURCE_BLOCKING_MIN_WAIT 30
+#define DATASOURCE_BLOCKING_MIN_WAIT 5
 #define DATASOURCE_BLOCKING_MAX_WAIT 150
 
 
