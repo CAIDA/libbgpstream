@@ -36,7 +36,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#define DATASOURCE_BLOCKING_MIN_WAIT 5
+/* After 10 retries, start exponential backoff */
+#define DATASOURCE_BLOCKING_RETRY_CNT 10
+/* Wait at least 20 seconds if the broker has no new data for us */
+#define DATASOURCE_BLOCKING_MIN_WAIT 20
+/* Wait at most 150 seconds if the broker has no new data for us */
 #define DATASOURCE_BLOCKING_MAX_WAIT 150
 
 
@@ -78,6 +82,7 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create(){
   datasource_mgr->datasource = BGPSTREAM_DATA_INTERFACE_BROKER; // default data source
   datasource_mgr->blocking = 0;
   datasource_mgr->backoff_time = DATASOURCE_BLOCKING_MIN_WAIT;
+  datasource_mgr->retry_cnt = 0;
   // datasources (none of them is active at the beginning)
 
 #ifdef WITH_DATA_INTERFACE_MYSQL
@@ -427,16 +432,20 @@ int bgpstream_datasource_mgr_update_input_queue(bgpstream_datasource_mgr_t *data
     if(results == 0 && datasource_mgr->blocking) {
 	// results = 0 => 2+ time and database did not give any error
 	sleep(datasource_mgr->backoff_time);
-	datasource_mgr->backoff_time = datasource_mgr->backoff_time * 2;
-	if(datasource_mgr->backoff_time > DATASOURCE_BLOCKING_MAX_WAIT) {
-	  datasource_mgr->backoff_time = DATASOURCE_BLOCKING_MAX_WAIT;
-	}
+        if (datasource_mgr->retry_cnt >= DATASOURCE_BLOCKING_RETRY_CNT) {
+          datasource_mgr->backoff_time = datasource_mgr->backoff_time * 2;
+          if(datasource_mgr->backoff_time > DATASOURCE_BLOCKING_MAX_WAIT) {
+            datasource_mgr->backoff_time = DATASOURCE_BLOCKING_MAX_WAIT;
+          }
+        }
+        datasource_mgr->retry_cnt++;
     }
     bgpstream_debug("\tBSDS_MGR: got %d (blocking: %d)", results,
                     datasource_mgr->blocking);
   } while(datasource_mgr->blocking && results == 0);
 
   datasource_mgr->backoff_time = DATASOURCE_BLOCKING_MIN_WAIT;
+  datasource_mgr->retry_cnt = 0;
   
   bgpstream_debug("\tBSDS_MGR: get data end");
   return results; 
