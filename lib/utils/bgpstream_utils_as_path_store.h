@@ -299,6 +299,19 @@ bgpstream_as_path_store_path_is_core(bgpstream_as_path_store_path_t *store_path)
 bgpstream_as_path_t *
 bgpstream_as_path_store_path_get_int_path(bgpstream_as_path_store_path_t *store_path);
 
+/** Get the size of the given Store Path in terms of bytes (for the purposes of
+ * serialization)
+ *
+ * @param store_path    pointer to the store path
+ * @return the number of bytes the path requires
+ *
+ * The size is calculated as `sizeof(is_core) + sizeof(path_len) + path_len`,
+ * i.e., `1 + 2 + path_len`.
+ */
+size_t
+bgpstream_as_path_store_path_get_size(bgpstream_as_path_store_path_t *store_path);
+
+
 /** @} */
 
 

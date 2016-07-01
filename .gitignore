@@ -29,10 +29,8 @@ test/bgpstream-test-utils-addr
 test/bgpstream-test-utils-pfx
 test/bgpstream-test-utils-patricia
 bgpcorsaro/tools/bgpcorsaro
-bgpview/tools/io/bgpview-consumer
-bgpview/tools/io/bgpview-server
-bgpview/tools/io/bgpview-producer
-bgpview/tools/io/bgpview-test-producer
+bgpview/tools/consumers/bgpview-consumer
+bgpview/tools/io/bgpview-server-zmq
 bgpview/tools/io/bvcat
 
 # pybgpstream build files
