@@ -25,11 +25,12 @@
 #define _BGPSTREAM_DATASOURCE_H
 
 #include "bgpstream_constants.h"
-#include "bgpstream_input.h"
 #include "bgpstream_filter.h"
+#include "bgpstream_input.h"
+#include "config.h"
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #ifdef WITH_DATA_INTERFACE_MYSQL
 #include "bgpstream_datasource_mysql.h"
@@ -51,19 +52,15 @@
 #include "bgpstream_datasource_broker.h"
 #endif
 
-
-
 typedef enum {
-  BGPSTREAM_DATASOURCE_STATUS_ON,    /* current data source is on */
-  BGPSTREAM_DATASOURCE_STATUS_OFF,   /* current data source is off */
-  BGPSTREAM_DATASOURCE_STATUS_ERROR  /* current data source generated an error */
+  BGPSTREAM_DATASOURCE_STATUS_ON,   /* current data source is on */
+  BGPSTREAM_DATASOURCE_STATUS_OFF,  /* current data source is off */
+  BGPSTREAM_DATASOURCE_STATUS_ERROR /* current data source generated an error */
 } bgpstream_datasource_status_t;
 
-
-
-typedef struct struct_bgpstream_datasource_mgr_t {  
+typedef struct struct_bgpstream_datasource_mgr_t {
   bgpstream_data_interface_id_t datasource;
-  // datasources available
+// datasources available
 #ifdef WITH_DATA_INTERFACE_MYSQL
   bgpstream_mysql_datasource_t *mysql_ds;
   char *mysql_dbname;
@@ -101,36 +98,38 @@ typedef struct struct_bgpstream_datasource_mgr_t {
   // blocking options
   int blocking;
   int backoff_time;
+  int retry_cnt;
   bgpstream_datasource_status_t status;
 } bgpstream_datasource_mgr_t;
-
 
 /* allocates memory for datasource_mgr */
 bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create();
 
-void bgpstream_datasource_mgr_set_data_interface(bgpstream_datasource_mgr_t *datasource_mgr,
-						 const bgpstream_data_interface_id_t datasource);
+void bgpstream_datasource_mgr_set_data_interface(
+    bgpstream_datasource_mgr_t *datasource_mgr,
+    const bgpstream_data_interface_id_t datasource);
 
-int bgpstream_datasource_mgr_set_data_interface_option(bgpstream_datasource_mgr_t *datasource_mgr,
-							const bgpstream_data_interface_option_t *option_type,
-							const char *option_value);
+int bgpstream_datasource_mgr_set_data_interface_option(
+    bgpstream_datasource_mgr_t *datasource_mgr,
+    const bgpstream_data_interface_option_t *option_type,
+    const char *option_value);
 
 /* init the datasource_mgr and start/init the selected datasource */
 void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
-				   bgpstream_filter_mgr_t *filter_mgr);
+                                   bgpstream_filter_mgr_t *filter_mgr);
 
-void bgpstream_datasource_mgr_set_blocking(bgpstream_datasource_mgr_t *datasource_mgr);
+void bgpstream_datasource_mgr_set_blocking(
+    bgpstream_datasource_mgr_t *datasource_mgr);
 
-int bgpstream_datasource_mgr_update_input_queue(bgpstream_datasource_mgr_t *datasource_mgr,
-						bgpstream_input_mgr_t *input_mgr);
+int bgpstream_datasource_mgr_update_input_queue(
+    bgpstream_datasource_mgr_t *datasource_mgr,
+    bgpstream_input_mgr_t *input_mgr);
 
 /* stop the active data source */
 void bgpstream_datasource_mgr_close(bgpstream_datasource_mgr_t *datasource_mgr);
 
 /* destroy the memory allocated for the datasource_mgr */
-void bgpstream_datasource_mgr_destroy(bgpstream_datasource_mgr_t *datasource_mgr);
-
-
-
+void bgpstream_datasource_mgr_destroy(
+    bgpstream_datasource_mgr_t *datasource_mgr);
 
 #endif /* _BGPSTREAM_DATASOURCE */
