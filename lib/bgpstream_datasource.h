@@ -101,6 +101,7 @@ typedef struct struct_bgpstream_datasource_mgr_t {
   // blocking options
   int blocking;
   int backoff_time;
+  int retry_cnt;
   bgpstream_datasource_status_t status;
 } bgpstream_datasource_mgr_t;
 
