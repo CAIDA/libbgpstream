@@ -21,7 +21,6 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef __BGPSTREAM_UTILS_AS_PATH_H
 #define __BGPSTREAM_UTILS_AS_PATH_H
 
@@ -56,19 +55,19 @@
 typedef enum {
 
   /** Invalid Segment Type */
-  BGPSTREAM_AS_PATH_SEG_INVALID      = 0,
+  BGPSTREAM_AS_PATH_SEG_INVALID = 0,
 
   /** Simple ASN AS Path Segment */
-  BGPSTREAM_AS_PATH_SEG_ASN          = 1,
+  BGPSTREAM_AS_PATH_SEG_ASN = 1,
 
   /** AS Path Segment Set */
-  BGPSTREAM_AS_PATH_SEG_SET          = 2,
+  BGPSTREAM_AS_PATH_SEG_SET = 2,
 
   /** AS Path Segment Confederation Set */
-  BGPSTREAM_AS_PATH_SEG_CONFED_SET   = 3,
+  BGPSTREAM_AS_PATH_SEG_CONFED_SET = 3,
 
   /** AS Path Segment Confederation Sequence */
-  BGPSTREAM_AS_PATH_SEG_CONFED_SEQ   = 4,
+  BGPSTREAM_AS_PATH_SEG_CONFED_SEQ = 4,
 
   /** @todo etc */
 
@@ -90,7 +89,6 @@ typedef struct bgpstream_as_path bgpstream_as_path_t;
  * @name Public Data Structures
  *
  * @{ */
-
 
 /** Generic AS Path Segment.
  *
@@ -170,7 +168,8 @@ int bgpstream_as_path_seg_snprintf(char *buf, size_t len,
  * @note the returned segment must be destroyed using
  * bgpstream_as_path_seg_destroy
  */
-bgpstream_as_path_seg_t *bgpstream_as_path_seg_dup(bgpstream_as_path_seg_t *src);
+bgpstream_as_path_seg_t *
+bgpstream_as_path_seg_dup(bgpstream_as_path_seg_t *src);
 
 /** Destroy the given AS Path Segment
  *
@@ -190,7 +189,6 @@ unsigned long
 #endif
 bgpstream_as_path_seg_hash(bgpstream_as_path_seg_t *seg);
 
-
 /** Compare two AS path segments for equality
  *
  * @param seg1          pointer to the first AS path segment to compare
@@ -200,10 +198,10 @@ bgpstream_as_path_seg_hash(bgpstream_as_path_seg_t *seg);
 int bgpstream_as_path_seg_equal(bgpstream_as_path_seg_t *seg1,
                                 bgpstream_as_path_seg_t *seg2);
 
-
 /* AS PATH FUNCTIONS */
 
-/** Write the string representation of the given AS path into the given character
+/** Write the string representation of the given AS path into the given
+ * character
  *  buffer.
  *
  * @param buf           pointer to a character buffer at least len bytes long
@@ -360,9 +358,6 @@ bgpstream_as_path_hash(bgpstream_as_path_t *path);
 int bgpstream_as_path_equal(bgpstream_as_path_t *path1,
                             bgpstream_as_path_t *path2);
 
-
 /** @} */
 
-
 #endif /* __BGPSTREAM_UTILS_AS_PATH_H */
-

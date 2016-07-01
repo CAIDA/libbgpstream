@@ -25,34 +25,24 @@
 #define _BGPSTREAM_DATASOURCE_MYSQL_H
 
 #include "bgpstream_constants.h"
-#include "bgpstream_input.h"
 #include "bgpstream_filter.h"
+#include "bgpstream_input.h"
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <mysql.h>
-
+#include <stdio.h>
+#include <stdlib.h>
 
 /** Opaque handle that represents the mysql data source */
 typedef struct struct_bgpstream_mysql_datasource_t bgpstream_mysql_datasource_t;
 
-bgpstream_mysql_datasource_t *
-bgpstream_mysql_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
-                                  char * mysql_dbname,
-                                  char * mysql_user,
-                                  char * mysql_password,
-                                  char * mysql_host,
-                                  unsigned int mysql_port,
-                                  char * mysql_socket,
-                                  char * mysql_dump_path);
+bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(
+    bgpstream_filter_mgr_t *filter_mgr, char *mysql_dbname, char *mysql_user,
+    char *mysql_password, char *mysql_host, unsigned int mysql_port,
+    char *mysql_socket, char *mysql_dump_path);
 
+int bgpstream_mysql_datasource_update_input_queue(
+    bgpstream_mysql_datasource_t *mysql_ds, bgpstream_input_mgr_t *input_mgr);
 
-int
-bgpstream_mysql_datasource_update_input_queue(bgpstream_mysql_datasource_t* mysql_ds,
-                                              bgpstream_input_mgr_t *input_mgr);
-
-void
-bgpstream_mysql_datasource_destroy(bgpstream_mysql_datasource_t* mysql_ds);
-
+void bgpstream_mysql_datasource_destroy(bgpstream_mysql_datasource_t *mysql_ds);
 
 #endif /* _BGPSTREAM_DATASOURCE_MYSQL_H */
