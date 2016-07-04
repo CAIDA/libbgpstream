@@ -66,11 +66,11 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
                                      const char *filter_value);
 
 void bgpstream_filter_mgr_rib_period_filter_add(
-    bgpstream_filter_mgr_t *bs_filter_mgr, uint32_t period);
+  bgpstream_filter_mgr_t *bs_filter_mgr, uint32_t period);
 
 void bgpstream_filter_mgr_interval_filter_add(
-    bgpstream_filter_mgr_t *bs_filter_mgr, uint32_t begin_time,
-    uint32_t end_time);
+  bgpstream_filter_mgr_t *bs_filter_mgr, uint32_t begin_time,
+  uint32_t end_time);
 
 /* validate the current filters */
 int bgpstream_filter_mgr_validate(bgpstream_filter_mgr_t *mgr);

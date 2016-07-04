@@ -119,11 +119,11 @@ bgpstream_ip_addr_t *bgpstream_addr_mask(bgpstream_ip_addr_t *addr,
 {
   if (addr->version == BGPSTREAM_ADDR_VERSION_IPV4) {
     return (bgpstream_ip_addr_t *)bgpstream_ipv4_addr_mask(
-        (bgpstream_ipv4_addr_t *)addr, mask_len);
+      (bgpstream_ipv4_addr_t *)addr, mask_len);
   }
   if (addr->version == BGPSTREAM_ADDR_VERSION_IPV6) {
     return (bgpstream_ip_addr_t *)bgpstream_ipv6_addr_mask(
-        (bgpstream_ipv6_addr_t *)addr, mask_len);
+      (bgpstream_ipv6_addr_t *)addr, mask_len);
   }
   return NULL;
 }

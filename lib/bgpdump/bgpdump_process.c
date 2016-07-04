@@ -107,13 +107,13 @@ void bgpdump_print_entry(BGPDUMP_ENTRY *entry)
       case BGPDUMP_SUBTYPE_MRTD_TABLE_DUMP_AFI_IP6:
         printf("TYPE: TABLE_DUMP/INET6\n");
         prefix_str =
-            bgpdump_fmt_ipv6(entry->body.mrtd_table_dump.prefix, prefix);
+          bgpdump_fmt_ipv6(entry->body.mrtd_table_dump.prefix, prefix);
         break;
 
       case BGPDUMP_SUBTYPE_MRTD_TABLE_DUMP_AFI_IP6_32BIT_AS:
         printf("TYPE: TABLE_DUMP/INET6_32BIT_AS\n");
         prefix_str =
-            bgpdump_fmt_ipv6(entry->body.mrtd_table_dump.prefix, prefix);
+          bgpdump_fmt_ipv6(entry->body.mrtd_table_dump.prefix, prefix);
         break;
       case BGPDUMP_SUBTYPE_MRTD_TABLE_DUMP_AFI_IP:
         printf("TYPE: TABLE_DUMP/INET\n");
@@ -259,9 +259,9 @@ void bgpdump_print_entry(BGPDUMP_ENTRY *entry)
             default:
               if (entry->body.zebra_message.destination_ip.v4_addr.s_addr !=
                   0x00000000L)
-                printf(" %s ",
-                       inet_ntoa(
-                           entry->body.zebra_message.destination_ip.v4_addr));
+                printf(
+                  " %s ",
+                  inet_ntoa(entry->body.zebra_message.destination_ip.v4_addr));
               else
                 printf(" N/A ");
             }
@@ -299,24 +299,24 @@ void bgpdump_print_entry(BGPDUMP_ENTRY *entry)
             if ((entry->body.zebra_message.withdraw_count) ||
                 (entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST] &&
                  entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST]
-                     ->prefix_count) ||
+                   ->prefix_count) ||
                 (entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST] &&
                  entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]
-                     ->prefix_count) ||
+                   ->prefix_count) ||
                 (entry->attr->mp_info
-                     ->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST] &&
+                   ->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST] &&
                  entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]
-                     ->prefix_count) ||
+                   ->prefix_count) ||
                 (entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST] &&
                  entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST]
-                     ->prefix_count) ||
+                   ->prefix_count) ||
                 (entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST] &&
                  entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]
-                     ->prefix_count) ||
+                   ->prefix_count) ||
                 (entry->attr->mp_info
-                     ->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST] &&
+                   ->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST] &&
                  entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]
-                     ->prefix_count))
+                   ->prefix_count))
               printf("WITHDRAW\n");
             if (entry->body.zebra_message.withdraw_count)
               show_prefixes(entry->body.zebra_message.withdraw_count,
@@ -324,57 +324,55 @@ void bgpdump_print_entry(BGPDUMP_ENTRY *entry)
 
             if (entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST] &&
                 entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               show_prefixes(
-                  entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST]
-                      ->prefix_count,
-                  entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST]->nlri);
+                entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST]
+                  ->prefix_count,
+                entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST]->nlri);
 
             if (entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST] &&
                 entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               show_prefixes(
-                  entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]
-                      ->prefix_count,
-                  entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]->nlri);
+                entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]
+                  ->prefix_count,
+                entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]->nlri);
 
             if (entry->attr->mp_info
-                    ->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST] &&
+                  ->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST] &&
                 entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               show_prefixes(
-                  entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]
-                      ->prefix_count,
-                  entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]
-                      ->nlri);
+                entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]
+                  ->prefix_count,
+                entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]
+                  ->nlri);
 
             if (entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST] &&
                 entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               show_prefixes6(
-                  entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST]
-                      ->prefix_count,
-                  entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST]->nlri);
+                entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST]
+                  ->prefix_count,
+                entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST]->nlri);
 
             if (entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST] &&
                 entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               show_prefixes6(
-                  entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]
-                      ->prefix_count,
-                  entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]
-                      ->nlri);
+                entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]
+                  ->prefix_count,
+                entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]->nlri);
 
             if (entry->attr->mp_info
-                    ->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST] &&
+                  ->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST] &&
                 entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]
-                    ->prefix_count)
-              show_prefixes6(entry->attr->mp_info
-                                 ->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]
-                                 ->prefix_count,
-                             entry->attr->mp_info
-                                 ->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]
-                                 ->nlri);
+                  ->prefix_count)
+              show_prefixes6(
+                entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]
+                  ->prefix_count,
+                entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]
+                  ->nlri);
           }
           if ((entry->body.zebra_message.announce_count) ||
               (entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_MP_REACH_NLRI))) {
@@ -385,57 +383,55 @@ void bgpdump_print_entry(BGPDUMP_ENTRY *entry)
 
             if (entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST] &&
                 entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               show_prefixes(
-                  entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST]
-                      ->prefix_count,
-                  entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST]->nlri);
+                entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST]
+                  ->prefix_count,
+                entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST]->nlri);
 
             if (entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST] &&
                 entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               show_prefixes(
-                  entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]
-                      ->prefix_count,
-                  entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]->nlri);
+                entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]
+                  ->prefix_count,
+                entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]->nlri);
 
             if (entry->attr->mp_info
-                    ->announce[AFI_IP][SAFI_UNICAST_MULTICAST] &&
+                  ->announce[AFI_IP][SAFI_UNICAST_MULTICAST] &&
                 entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               show_prefixes(
-                  entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]
-                      ->prefix_count,
-                  entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]
-                      ->nlri);
+                entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]
+                  ->prefix_count,
+                entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]
+                  ->nlri);
 
             if (entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST] &&
                 entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               show_prefixes6(
-                  entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]
-                      ->prefix_count,
-                  entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nlri);
+                entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]
+                  ->prefix_count,
+                entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nlri);
 
             if (entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST] &&
                 entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               show_prefixes6(
-                  entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]
-                      ->prefix_count,
-                  entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]
-                      ->nlri);
+                entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]
+                  ->prefix_count,
+                entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]->nlri);
 
             if (entry->attr->mp_info
-                    ->announce[AFI_IP6][SAFI_UNICAST_MULTICAST] &&
+                  ->announce[AFI_IP6][SAFI_UNICAST_MULTICAST] &&
                 entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]
-                    ->prefix_count)
-              show_prefixes6(entry->attr->mp_info
-                                 ->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]
-                                 ->prefix_count,
-                             entry->attr->mp_info
-                                 ->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]
-                                 ->nlri);
+                  ->prefix_count)
+              show_prefixes6(
+                entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]
+                  ->prefix_count,
+                entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]
+                  ->nlri);
           }
         } else if (mode == 1 || mode == 2) //-m -M
         {
@@ -448,63 +444,61 @@ void bgpdump_print_entry(BGPDUMP_ENTRY *entry)
 
             if (entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST] &&
                 entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               table_line_withdraw(
-                  entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST]->nlri,
-                  entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST]
-                      ->prefix_count,
-                  entry, time_str);
+                entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST]->nlri,
+                entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST]
+                  ->prefix_count,
+                entry, time_str);
 
             if (entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST] &&
                 entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               table_line_withdraw(
-                  entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]->nlri,
-                  entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]
-                      ->prefix_count,
-                  entry, time_str);
+                entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]->nlri,
+                entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]
+                  ->prefix_count,
+                entry, time_str);
 
             if (entry->attr->mp_info
-                    ->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST] &&
+                  ->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST] &&
                 entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               table_line_withdraw(
-                  entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]
-                      ->nlri,
-                  entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]
-                      ->prefix_count,
-                  entry, time_str);
+                entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]
+                  ->nlri,
+                entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]
+                  ->prefix_count,
+                entry, time_str);
 
             if (entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST] &&
                 entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               table_line_withdraw6(
-                  entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST]->nlri,
-                  entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST]
-                      ->prefix_count,
-                  entry, time_str);
+                entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST]->nlri,
+                entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST]
+                  ->prefix_count,
+                entry, time_str);
 
             if (entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST] &&
                 entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               table_line_withdraw6(
-                  entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]->nlri,
-                  entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]
-                      ->prefix_count,
-                  entry, time_str);
+                entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]->nlri,
+                entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]
+                  ->prefix_count,
+                entry, time_str);
 
             if (entry->attr->mp_info
-                    ->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST] &&
+                  ->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST] &&
                 entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               table_line_withdraw6(
-                  entry->attr->mp_info
-                      ->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]
-                      ->nlri,
-                  entry->attr->mp_info
-                      ->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]
-                      ->prefix_count,
-                  entry, time_str);
+                entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]
+                  ->nlri,
+                entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]
+                  ->prefix_count,
+                entry, time_str);
           }
           if ((entry->body.zebra_message.announce_count) ||
               (entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_MP_REACH_NLRI))) {
@@ -513,57 +507,54 @@ void bgpdump_print_entry(BGPDUMP_ENTRY *entry)
                                 time_str);
             if (entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST] &&
                 entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               table_line_announce_1(
-                  entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST],
-                  entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST]
-                      ->prefix_count,
-                  entry, time_str);
+                entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST],
+                entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST]
+                  ->prefix_count,
+                entry, time_str);
             if (entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST] &&
                 entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               table_line_announce_1(
-                  entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST],
-                  entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]
-                      ->prefix_count,
-                  entry, time_str);
+                entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST],
+                entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]
+                  ->prefix_count,
+                entry, time_str);
             if (entry->attr->mp_info
-                    ->announce[AFI_IP][SAFI_UNICAST_MULTICAST] &&
+                  ->announce[AFI_IP][SAFI_UNICAST_MULTICAST] &&
                 entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               table_line_announce_1(
-                  entry->attr->mp_info
-                      ->announce[AFI_IP][SAFI_UNICAST_MULTICAST],
-                  entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]
-                      ->prefix_count,
-                  entry, time_str);
+                entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST],
+                entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]
+                  ->prefix_count,
+                entry, time_str);
             if (entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST] &&
                 entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               table_line_announce6(
-                  entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST],
-                  entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]
-                      ->prefix_count,
-                  entry, time_str);
+                entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST],
+                entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]
+                  ->prefix_count,
+                entry, time_str);
             if (entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST] &&
                 entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               table_line_announce6(
-                  entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST],
-                  entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]
-                      ->prefix_count,
-                  entry, time_str);
+                entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST],
+                entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]
+                  ->prefix_count,
+                entry, time_str);
             if (entry->attr->mp_info
-                    ->announce[AFI_IP6][SAFI_UNICAST_MULTICAST] &&
+                  ->announce[AFI_IP6][SAFI_UNICAST_MULTICAST] &&
                 entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]
-                    ->prefix_count)
+                  ->prefix_count)
               table_line_announce6(
-                  entry->attr->mp_info
-                      ->announce[AFI_IP6][SAFI_UNICAST_MULTICAST],
-                  entry->attr->mp_info
-                      ->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]
-                      ->prefix_count,
-                  entry, time_str);
+                entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST],
+                entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]
+                  ->prefix_count,
+                entry, time_str);
           }
         }
         break;
@@ -602,8 +593,8 @@ void bgpdump_print_entry(BGPDUMP_ENTRY *entry)
             if (entry->body.zebra_message.destination_ip.v4_addr.s_addr !=
                 0x00000000L)
               printf(
-                  " %s ",
-                  inet_ntoa(entry->body.zebra_message.destination_ip.v4_addr));
+                " %s ",
+                inet_ntoa(entry->body.zebra_message.destination_ip.v4_addr));
             else
               printf(" N/A ");
           }
@@ -651,8 +642,8 @@ void bgpdump_print_entry(BGPDUMP_ENTRY *entry)
             if (entry->body.zebra_message.destination_ip.v4_addr.s_addr !=
                 0x00000000L)
               printf(
-                  " %s ",
-                  inet_ntoa(entry->body.zebra_message.destination_ip.v4_addr));
+                " %s ",
+                inet_ntoa(entry->body.zebra_message.destination_ip.v4_addr));
             else
               printf(" N/A ");
           }
@@ -818,8 +809,8 @@ void bgpdump_print_entry(BGPDUMP_ENTRY *entry)
             if (entry->body.zebra_message.destination_ip.v4_addr.s_addr !=
                 0x00000000L)
               printf(
-                  " %s ",
-                  inet_ntoa(entry->body.zebra_message.destination_ip.v4_addr));
+                " %s ",
+                inet_ntoa(entry->body.zebra_message.destination_ip.v4_addr));
             else
               printf(" N/A ");
           }
@@ -977,80 +968,81 @@ static void show_attr(attributes_t *attr)
 
         if (attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]) {
           printf("(IPv6 Unicast)\n");
-          printf("NEXT_HOP: %s\n",
-                 bgpdump_fmt_ipv6(
-                     attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop,
-                     buf));
+          printf(
+            "NEXT_HOP: %s\n",
+            bgpdump_fmt_ipv6(
+              attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop, buf));
           if (attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop_len == 32)
             printf(
-                "NEXT_HOP: %s\n",
-                bgpdump_fmt_ipv6(attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]
-                                     ->nexthop_local,
-                                 buf));
+              "NEXT_HOP: %s\n",
+              bgpdump_fmt_ipv6(
+                attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop_local,
+                buf));
         } else if (attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]) {
           printf("(IPv6 Multicast)\n");
-          printf("NEXT_HOP: %s\n",
-                 bgpdump_fmt_ipv6(
-                     attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]->nexthop,
-                     buf));
+          printf(
+            "NEXT_HOP: %s\n",
+            bgpdump_fmt_ipv6(
+              attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]->nexthop, buf));
           if (attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]->nexthop_len ==
               32)
-            printf("NEXT_HOP: %s\n",
-                   bgpdump_fmt_ipv6(
-                       attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]
-                           ->nexthop_local,
-                       buf));
+            printf(
+              "NEXT_HOP: %s\n",
+              bgpdump_fmt_ipv6(
+                attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]->nexthop_local,
+                buf));
 
         } else {
           printf("(IPv6 Both unicast and multicast)\n");
-          printf("NEXT_HOP: %s\n",
-                 bgpdump_fmt_ipv6(
-                     attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]
-                         ->nexthop,
-                     buf));
+          printf(
+            "NEXT_HOP: %s\n",
+            bgpdump_fmt_ipv6(
+              attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]->nexthop,
+              buf));
           if (attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]
-                  ->nexthop_len == 32)
+                ->nexthop_len == 32)
             printf("NEXT_HOP: %s\n",
                    bgpdump_fmt_ipv6(
-                       attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]
-                           ->nexthop_local,
-                       buf));
+                     attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]
+                       ->nexthop_local,
+                     buf));
         }
       } else {
 
         if (attr->mp_info->announce[AFI_IP][SAFI_UNICAST]) {
           printf("(IPv4 Unicast)\n");
-          printf("NEXT_HOP: %s\n",
-                 inet_ntoa(attr->mp_info->announce[AFI_IP][SAFI_UNICAST]
-                               ->nexthop.v4_addr));
+          printf(
+            "NEXT_HOP: %s\n",
+            inet_ntoa(
+              attr->mp_info->announce[AFI_IP][SAFI_UNICAST]->nexthop.v4_addr));
           if (attr->mp_info->announce[AFI_IP][SAFI_UNICAST]->nexthop_len == 32)
             printf("NEXT_HOP: %s\n",
                    inet_ntoa(attr->mp_info->announce[AFI_IP][SAFI_UNICAST]
-                                 ->nexthop_local.v4_addr));
+                               ->nexthop_local.v4_addr));
 
         } else if (attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]) {
           printf("(IPv4 Multicast)\n");
           printf("NEXT_HOP: %s\n",
                  inet_ntoa(attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]
-                               ->nexthop.v4_addr));
+                             ->nexthop.v4_addr));
           if (attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]->nexthop_len ==
               32)
             printf("NEXT_HOP: %s\n",
                    inet_ntoa(attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]
-                                 ->nexthop_local.v4_addr));
+                               ->nexthop_local.v4_addr));
 
         } else if (attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]) {
           printf("(IPv4 Both unicast and multicast)\n");
           printf(
+            "NEXT_HOP: %s\n",
+            inet_ntoa(attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]
+                        ->nexthop.v4_addr));
+          if (attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]
+                ->nexthop_len == 32)
+            printf(
               "NEXT_HOP: %s\n",
               inet_ntoa(attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]
-                            ->nexthop.v4_addr));
-          if (attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]
-                  ->nexthop_len == 32)
-            printf("NEXT_HOP: %s\n",
-                   inet_ntoa(
-                       attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]
-                           ->nexthop_local.v4_addr));
+                          ->nexthop_local.v4_addr));
         }
       }
     }
@@ -1524,7 +1516,7 @@ static void table_line_mrtd_route(BGPDUMP_MRTD_TABLE_DUMP *route,
   unsigned int nmed;
   char time_str[20];
   char peer[BGPDUMP_ADDRSTRLEN], prefix[BGPDUMP_ADDRSTRLEN],
-      nexthop[BGPDUMP_ADDRSTRLEN];
+    nexthop[BGPDUMP_ADDRSTRLEN];
 
   switch (entry->attr->origin) {
 
@@ -1570,8 +1562,8 @@ static void table_line_mrtd_route(BGPDUMP_MRTD_TABLE_DUMP *route,
     if ((entry->attr->flag & ATTR_FLAG_BIT(BGP_ATTR_MP_REACH_NLRI)) &&
         entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]) {
       bgpdump_fmt_ipv6(
-          entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop,
-          nexthop);
+        entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop,
+        nexthop);
     } else {
       strncpy(nexthop, inet_ntoa(entry->attr->nexthop), BGPDUMP_ADDRSTRLEN);
     }
@@ -1620,7 +1612,7 @@ static void table_line_dump_v2_prefix(BGPDUMP_TABLE_DUMP_V2_PREFIX *e,
   unsigned int nmed;
   char time_str[20];
   char peer[BGPDUMP_ADDRSTRLEN], prefix[BGPDUMP_ADDRSTRLEN],
-      nexthop[BGPDUMP_ADDRSTRLEN];
+    nexthop[BGPDUMP_ADDRSTRLEN];
 
   int i;
 
@@ -1635,7 +1627,7 @@ static void table_line_dump_v2_prefix(BGPDUMP_TABLE_DUMP_V2_PREFIX *e,
     }
     char *aspath_str = (attr->aspath) ? attr->aspath->str : "";
     char *aggregate =
-        attr->flag & ATTR_FLAG_BIT(BGP_ATTR_ATOMIC_AGGREGATE) ? "AG" : "NAG";
+      attr->flag & ATTR_FLAG_BIT(BGP_ATTR_ATOMIC_AGGREGATE) ? "AG" : "NAG";
 
     if (e->entries[i].peer.afi == AFI_IP) {
       bgpdump_fmt_ipv4(e->entries[i].peer.peer_ip, peer);
@@ -1669,7 +1661,7 @@ static void table_line_dump_v2_prefix(BGPDUMP_TABLE_DUMP_V2_PREFIX *e,
       if ((attr->flag & ATTR_FLAG_BIT(BGP_ATTR_MP_REACH_NLRI)) &&
           attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]) {
         bgpdump_fmt_ipv6(
-            attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop, nexthop);
+          attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop, nexthop);
       } else {
         strncpy(nexthop, inet_ntoa(attr->nexthop), BGPDUMP_ADDRSTRLEN);
       }

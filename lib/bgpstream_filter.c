@@ -35,7 +35,7 @@ bgpstream_filter_mgr_t *bgpstream_filter_mgr_create()
 {
   bgpstream_debug("\tBSF_MGR: create start");
   bgpstream_filter_mgr_t *bs_filter_mgr =
-      (bgpstream_filter_mgr_t *)malloc_zero(sizeof(bgpstream_filter_mgr_t));
+    (bgpstream_filter_mgr_t *)malloc_zero(sizeof(bgpstream_filter_mgr_t));
   if (bs_filter_mgr == NULL) {
     return NULL; // can't allocate memory
   }
@@ -116,7 +116,7 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
      * e.g. 10:0, 10:* is equivalent to 10:*
      */
     kh_value(bs_filter_mgr->communities, k) =
-        kh_value(bs_filter_mgr->communities, k) & mask;
+      kh_value(bs_filter_mgr->communities, k) & mask;
     /* DEBUG: fprintf(stderr, "%s - %d\n",
      *                filter_value, kh_value(bs_filter_mgr->communities, k) );
      */
@@ -154,14 +154,14 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
 }
 
 void bgpstream_filter_mgr_rib_period_filter_add(
-    bgpstream_filter_mgr_t *bs_filter_mgr, uint32_t period)
+  bgpstream_filter_mgr_t *bs_filter_mgr, uint32_t period)
 {
   bgpstream_debug("\tBSF_MGR:: add_filter start");
   assert(bs_filter_mgr != NULL);
   if (period != 0 && bs_filter_mgr->last_processed_ts == NULL) {
     if ((bs_filter_mgr->last_processed_ts = kh_init(collector_ts)) == NULL) {
       bgpstream_log_warn(
-          "\tBSF_MGR: can't allocate memory for collectortype map");
+        "\tBSF_MGR: can't allocate memory for collectortype map");
     }
   }
   bs_filter_mgr->rib_period = period;
@@ -169,16 +169,15 @@ void bgpstream_filter_mgr_rib_period_filter_add(
 }
 
 void bgpstream_filter_mgr_interval_filter_add(
-    bgpstream_filter_mgr_t *bs_filter_mgr, uint32_t begin_time,
-    uint32_t end_time)
+  bgpstream_filter_mgr_t *bs_filter_mgr, uint32_t begin_time, uint32_t end_time)
 {
   bgpstream_debug("\tBSF_MGR:: add_filter start");
   if (bs_filter_mgr == NULL) {
     return; // nothing to customize
   }
   // create a new filter structure
-  bgpstream_interval_filter_t *f = (bgpstream_interval_filter_t *)malloc(
-      sizeof(bgpstream_interval_filter_t));
+  bgpstream_interval_filter_t *f =
+    (bgpstream_interval_filter_t *)malloc(sizeof(bgpstream_interval_filter_t));
   if (f == NULL) {
     bgpstream_debug("\tBSF_MGR:: add_filter malloc failed");
     bgpstream_log_warn("\tBSF_MGR: can't allocate memory");

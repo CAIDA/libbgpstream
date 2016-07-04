@@ -52,7 +52,7 @@ bgpstream_input_mgr_t *bgpstream_input_mgr_create()
 {
   bgpstream_debug("\tBSI_MGR: create input mgr start");
   bgpstream_input_mgr_t *bs_input_mgr =
-      (bgpstream_input_mgr_t *)malloc(sizeof(bgpstream_input_mgr_t));
+    (bgpstream_input_mgr_t *)malloc(sizeof(bgpstream_input_mgr_t));
   if (bs_input_mgr == NULL) {
     return NULL; // can't allocate memory
   }
@@ -69,7 +69,7 @@ bgpstream_input_mgr_t *bgpstream_input_mgr_create()
 /* Check if the current status is EMPTY
  */
 bool bgpstream_input_mgr_is_empty(
-    const bgpstream_input_mgr_t *const bs_input_mgr)
+  const bgpstream_input_mgr_t *const bs_input_mgr)
 {
   bgpstream_debug("\tBSI_MGR: is empty start");
   if (bs_input_mgr != NULL &&
@@ -86,9 +86,9 @@ bool bgpstream_input_mgr_is_empty(
  * (bgpstream objects are sorted by filetime)
  */
 int bgpstream_input_mgr_push_sorted_input(
-    bgpstream_input_mgr_t *const bs_input_mgr, char *filename,
-    char *fileproject, char *filecollector, char *const filetype,
-    const int epoch_filetime, const int time_span)
+  bgpstream_input_mgr_t *const bs_input_mgr, char *filename, char *fileproject,
+  char *filecollector, char *const filetype, const int epoch_filetime,
+  const int time_span)
 {
   bgpstream_debug("\t\tBSI: push input start");
   if (bs_input_mgr == NULL) {
@@ -97,7 +97,7 @@ int bgpstream_input_mgr_push_sorted_input(
   }
   // create a new bgpstream_input object
   bgpstream_input_t *bs_input =
-      (bgpstream_input_t *)malloc(sizeof(bgpstream_input_t));
+    (bgpstream_input_t *)malloc(sizeof(bgpstream_input_t));
   if (bs_input == NULL) {
     return 0; // can't allocate memory
   }
@@ -194,7 +194,7 @@ static void bgpstream_set_intervals(bgpstream_input_t *input,
  * the function is static: it is not visible outside this file
  */
 static void bgpstream_input_mgr_set_last_to_process(
-    bgpstream_input_mgr_t *const bs_input_mgr)
+  bgpstream_input_mgr_t *const bs_input_mgr)
 {
   bgpstream_debug("\tBSI_MGR: last to process set start");
   bs_input_mgr->last_to_process = NULL;
@@ -262,7 +262,7 @@ static void bgpstream_input_mgr_set_last_to_process(
  * from the FIFO queue managed by the bgpstream input manager
  */
 bgpstream_input_t *bgpstream_input_mgr_get_queue_to_process(
-    bgpstream_input_mgr_t *const bs_input_mgr)
+  bgpstream_input_mgr_t *const bs_input_mgr)
 {
   bgpstream_debug("\tBSI_MGR: get subqueue to process start");
   if (bs_input_mgr == NULL) {

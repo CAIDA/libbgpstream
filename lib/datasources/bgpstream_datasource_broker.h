@@ -33,7 +33,7 @@
 
 /** Opaque handle that represents the mysql data source */
 typedef struct struct_bgpstream_broker_datasource_t
-    bgpstream_broker_datasource_t;
+  bgpstream_broker_datasource_t;
 
 bgpstream_broker_datasource_t *
 bgpstream_broker_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
@@ -41,9 +41,9 @@ bgpstream_broker_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
                                    int params_cnt);
 
 int bgpstream_broker_datasource_update_input_queue(
-    bgpstream_broker_datasource_t *broker_ds, bgpstream_input_mgr_t *input_mgr);
+  bgpstream_broker_datasource_t *broker_ds, bgpstream_input_mgr_t *input_mgr);
 
 void bgpstream_broker_datasource_destroy(
-    bgpstream_broker_datasource_t *broker_ds);
+  bgpstream_broker_datasource_t *broker_ds);
 
 #endif /* _BGPSTREAM_DATASOURCE_BROKER_H */
