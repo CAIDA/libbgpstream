@@ -88,11 +88,11 @@ bgpstream_sqlite_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
 
   bgpstream_debug("\t\tBSDS_SQLITE: create sqlite_ds start");
   bgpstream_sqlite_datasource_t *sqlite_ds =
-      (bgpstream_sqlite_datasource_t *)malloc_zero(
-          sizeof(bgpstream_sqlite_datasource_t));
+    (bgpstream_sqlite_datasource_t *)malloc_zero(
+      sizeof(bgpstream_sqlite_datasource_t));
   if (sqlite_ds == NULL) {
     bgpstream_log_err(
-        "\t\tBSDS_SQLITE: create sqlite_ds can't allocate memory");
+      "\t\tBSDS_SQLITE: create sqlite_ds can't allocate memory");
     goto err;
   }
   if (sqlite_file == NULL) {
@@ -111,13 +111,13 @@ bgpstream_sqlite_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
   char interval_str[MAX_INTERVAL_LEN];
 
   APPEND_STR(
-      "SELECT bgp_data.file_path, collectors.project, collectors.name, "
-      "bgp_types.name, time_span.time_span, bgp_data.file_time, bgp_data.ts "
-      "FROM  collectors JOIN bgp_data JOIN bgp_types JOIN time_span "
-      "WHERE bgp_data.collector_id = collectors.id  AND "
-      "bgp_data.collector_id = time_span.collector_id AND "
-      "bgp_data.type_id = bgp_types.id AND "
-      "bgp_data.type_id = time_span.bgp_type_id ");
+    "SELECT bgp_data.file_path, collectors.project, collectors.name, "
+    "bgp_types.name, time_span.time_span, bgp_data.file_time, bgp_data.ts "
+    "FROM  collectors JOIN bgp_data JOIN bgp_types JOIN time_span "
+    "WHERE bgp_data.collector_id = collectors.id  AND "
+    "bgp_data.collector_id = time_span.collector_id AND "
+    "bgp_data.type_id = bgp_types.id AND "
+    "bgp_data.type_id = time_span.bgp_type_id ");
 
   // projects, collectors, bgp_types, and time_intervals are used as filters
   // only if they are provided by the user
@@ -244,7 +244,7 @@ err:
 }
 
 int bgpstream_sqlite_datasource_update_input_queue(
-    bgpstream_sqlite_datasource_t *sqlite_ds, bgpstream_input_mgr_t *input_mgr)
+  bgpstream_sqlite_datasource_t *sqlite_ds, bgpstream_input_mgr_t *input_mgr)
 {
   int rc;
   int num_results = 0;
@@ -263,20 +263,20 @@ int bgpstream_sqlite_datasource_update_input_queue(
       /* printf("%s: %d\n", sqlite3_column_text(sqlite_ds->stmt, 0),
        * sqlite3_column_int(sqlite_ds->stmt, 6)); */
       num_results += bgpstream_input_mgr_push_sorted_input(
-          input_mgr, strdup((const char *)sqlite3_column_text(sqlite_ds->stmt,
-                                                              0)) /* path */,
-          strdup((const char *)sqlite3_column_text(sqlite_ds->stmt,
-                                                   1)) /* project */,
-          strdup((const char *)sqlite3_column_text(sqlite_ds->stmt,
-                                                   2)) /* collector */,
-          strdup(
-              (const char *)sqlite3_column_text(sqlite_ds->stmt, 3)) /* type */,
-          sqlite3_column_int(sqlite_ds->stmt, 5) /* file time */,
-          sqlite3_column_int(sqlite_ds->stmt, 4) /* time span */);
+        input_mgr, strdup((const char *)sqlite3_column_text(sqlite_ds->stmt,
+                                                            0)) /* path */,
+        strdup(
+          (const char *)sqlite3_column_text(sqlite_ds->stmt, 1)) /* project */,
+        strdup((const char *)sqlite3_column_text(sqlite_ds->stmt,
+                                                 2)) /* collector */,
+        strdup(
+          (const char *)sqlite3_column_text(sqlite_ds->stmt, 3)) /* type */,
+        sqlite3_column_int(sqlite_ds->stmt, 5) /* file time */,
+        sqlite3_column_int(sqlite_ds->stmt, 4) /* time span */);
 
     } else {
       bgpstream_log_err(
-          "\t\tBSDS_SQLITE: error while stepping through results");
+        "\t\tBSDS_SQLITE: error while stepping through results");
       return -1;
     }
   }
@@ -285,7 +285,7 @@ int bgpstream_sqlite_datasource_update_input_queue(
 }
 
 void bgpstream_sqlite_datasource_destroy(
-    bgpstream_sqlite_datasource_t *sqlite_ds)
+  bgpstream_sqlite_datasource_t *sqlite_ds)
 {
   if (sqlite_ds != NULL) {
     if (sqlite_ds->sqlite_file != NULL) {

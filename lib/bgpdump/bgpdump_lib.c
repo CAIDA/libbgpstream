@@ -321,7 +321,7 @@ void bgpdump_free_attr(attributes_t *attr)
   if (attr != NULL) {
     u_int16_t i;
     struct aspath *path,
-        *pathstofree[3] = {attr->aspath, attr->old_aspath, attr->new_aspath};
+      *pathstofree[3] = {attr->aspath, attr->old_aspath, attr->new_aspath};
     for (i = 0; i < (sizeof(pathstofree) / sizeof(pathstofree[0])); i++) {
       path = pathstofree[i];
       if (path) {
@@ -467,7 +467,7 @@ int process_mrtd_table_dump_v2_peer_index_table(struct mstream *s,
   }
 
   entry->dump->table_dump_v2_peer_index_table =
-      malloc(sizeof(BGPDUMP_TABLE_DUMP_V2_PEER_INDEX_TABLE));
+    malloc(sizeof(BGPDUMP_TABLE_DUMP_V2_PEER_INDEX_TABLE));
   t = entry->dump->table_dump_v2_peer_index_table;
   t->entries = NULL;
 
@@ -527,7 +527,7 @@ int process_mrtd_table_dump_v2_ipv4_unicast(struct mstream *s,
   /* in case there is a corrupt dump that does not include the peer table... */
   if (entry->dump->table_dump_v2_peer_index_table == NULL) {
     bgpdump_err(
-        "process_mrtd_table_dump_v2_ipv4_unicast: missing peer index table");
+      "process_mrtd_table_dump_v2_ipv4_unicast: missing peer index table");
     return 0;
   }
 
@@ -541,8 +541,8 @@ int process_mrtd_table_dump_v2_ipv4_unicast(struct mstream *s,
               (prefixdata->prefix_length + 7) / 8);
   mstream_getw(s, &prefixdata->entry_count);
 
-  prefixdata->entries = malloc(sizeof(BGPDUMP_TABLE_DUMP_V2_ROUTE_ENTRY) *
-                               prefixdata->entry_count);
+  prefixdata->entries =
+    malloc(sizeof(BGPDUMP_TABLE_DUMP_V2_ROUTE_ENTRY) * prefixdata->entry_count);
   if (prefixdata->entries == NULL) {
     bgpdump_err("process_mrtd_table_dump_v2_ipv4_unicast: failed to allocate "
                 "memory for entry table");
@@ -555,7 +555,7 @@ int process_mrtd_table_dump_v2_ipv4_unicast(struct mstream *s,
 
     mstream_getw(s, &e->peer_index);
     e->peer =
-        entry->dump->table_dump_v2_peer_index_table->entries[e->peer_index];
+      entry->dump->table_dump_v2_peer_index_table->entries[e->peer_index];
     mstream_getl(s, &e->originated_time);
 
     e->attr = process_attributes(s, 4, NULL);
@@ -574,7 +574,7 @@ int process_mrtd_table_dump_v2_ipv6_unicast(struct mstream *s,
   /* in case there is a corrupt dump that does not include the peer table... */
   if (entry->dump->table_dump_v2_peer_index_table == NULL) {
     bgpdump_err(
-        "process_mrtd_table_dump_v2_ipv6_unicast: missing peer index table");
+      "process_mrtd_table_dump_v2_ipv6_unicast: missing peer index table");
     return 0;
   }
 
@@ -590,8 +590,8 @@ int process_mrtd_table_dump_v2_ipv6_unicast(struct mstream *s,
 
   mstream_getw(s, &prefixdata->entry_count);
 
-  prefixdata->entries = malloc(sizeof(BGPDUMP_TABLE_DUMP_V2_ROUTE_ENTRY) *
-                               prefixdata->entry_count);
+  prefixdata->entries =
+    malloc(sizeof(BGPDUMP_TABLE_DUMP_V2_ROUTE_ENTRY) * prefixdata->entry_count);
   if (prefixdata->entries == NULL) {
     bgpdump_err("process_mrtd_table_dump_v2_ipv6_unicast: failed to allocate "
                 "memory for entry table");
@@ -604,7 +604,7 @@ int process_mrtd_table_dump_v2_ipv6_unicast(struct mstream *s,
 
     mstream_getw(s, &e->peer_index);
     e->peer =
-        entry->dump->table_dump_v2_peer_index_table->entries[e->peer_index];
+      entry->dump->table_dump_v2_peer_index_table->entries[e->peer_index];
     mstream_getl(s, &e->originated_time);
 
     e->attr = process_attributes(s, 4, NULL);
@@ -644,7 +644,7 @@ int process_zebra_bgp_state_change(struct mstream *s, BGPDUMP_ENTRY *entry,
    * N.B. I don't see this in quagga 0.96.4 any more. Is it fixed? */
   if (entry->length == 8) {
     bgpdump_warn(
-        "process_zebra_bgp_state_change: 8-byte state change (zebra bug?)");
+      "process_zebra_bgp_state_change: 8-byte state change (zebra bug?)");
 
     mstream_getw(s, &entry->body.zebra_state_change.old_state);
     mstream_getw(s, &entry->body.zebra_state_change.new_state);
@@ -684,7 +684,7 @@ int process_zebra_bgp_state_change(struct mstream *s, BGPDUMP_ENTRY *entry,
     mstream_get(s, &entry->body.zebra_state_change.source_ip.v6_addr.s6_addr,
                 16);
     mstream_get(
-        s, &entry->body.zebra_state_change.destination_ip.v6_addr.s6_addr, 16);
+      s, &entry->body.zebra_state_change.destination_ip.v6_addr.s6_addr, 16);
     break;
   default:
     bgpdump_warn("process_zebra_bgp_state_change: unknown AFI %d",
@@ -764,7 +764,7 @@ int process_zebra_bgp_message(struct mstream *s, BGPDUMP_ENTRY *entry,
   mstream_getw(s, &entry->body.zebra_message.size);
 
   int expected =
-      entry->body.zebra_message.size - sizeof(marker) - sizeof(u_int16_t);
+    entry->body.zebra_message.size - sizeof(marker) - sizeof(u_int16_t);
 
   mstream_t copy = mstream_copy(s, expected);
 
@@ -803,7 +803,7 @@ int process_zebra_bgp_message_notify(struct mstream *s, BGPDUMP_ENTRY *entry)
 
   if (entry->body.zebra_message.notify_len > 0) {
     entry->body.zebra_message.notify_data =
-        malloc(entry->body.zebra_message.notify_len);
+      malloc(entry->body.zebra_message.notify_len);
     mstream_get(s, entry->body.zebra_message.notify_data,
                 entry->body.zebra_message.notify_len);
   }
@@ -822,7 +822,7 @@ int process_zebra_bgp_message_open(struct mstream *s, BGPDUMP_ENTRY *entry,
 
   if (entry->body.zebra_message.opt_len) {
     entry->body.zebra_message.opt_data =
-        malloc(entry->body.zebra_message.opt_len);
+      malloc(entry->body.zebra_message.opt_len);
     mstream_get(s, entry->body.zebra_message.opt_data,
                 entry->body.zebra_message.opt_len);
   }
@@ -837,15 +837,15 @@ int process_zebra_bgp_message_update(struct mstream *s, BGPDUMP_ENTRY *entry,
 
   mstream_t withdraw_stream = mstream_copy(s, mstream_getw(s, NULL));
   entry->body.zebra_message.withdraw_count = read_prefix_list(
-      &withdraw_stream, AFI_IP, entry->body.zebra_message.withdraw,
-      &entry->body.zebra_message.incomplete);
+    &withdraw_stream, AFI_IP, entry->body.zebra_message.withdraw,
+    &entry->body.zebra_message.incomplete);
 
   entry->attr =
-      process_attributes(s, asn_len, &entry->body.zebra_message.incomplete);
+    process_attributes(s, asn_len, &entry->body.zebra_message.incomplete);
 
   entry->body.zebra_message.announce_count =
-      read_prefix_list(s, AFI_IP, entry->body.zebra_message.announce,
-                       &entry->body.zebra_message.incomplete);
+    read_prefix_list(s, AFI_IP, entry->body.zebra_message.announce,
+                     &entry->body.zebra_message.incomplete);
 
   return 1;
 }
@@ -906,11 +906,11 @@ static void process_unknown_attr(struct mstream *s, attributes_t *attr,
   /* Unknown attribute. Save as is */
   attr->unknown_num++;
   attr->unknown =
-      realloc(attr->unknown, attr->unknown_num * sizeof(struct unknown_attr));
+    realloc(attr->unknown, attr->unknown_num * sizeof(struct unknown_attr));
 
   /* Pointer to the unknown attribute we want to fill in */
   struct unknown_attr unknown = {
-      .flag = flag, .type = type, .len = len, .raw = malloc(len)};
+    .flag = flag, .type = type, .len = len, .raw = malloc(len)};
 
   attr->unknown[attr->unknown_num - 1] = unknown;
 
@@ -1011,7 +1011,7 @@ static void process_one_attr(struct mstream *outer_stream, attributes_t *attr,
     attr->cluster = malloc(sizeof(struct cluster_list));
     attr->cluster->length = len / 4;
     attr->cluster->list =
-        malloc((attr->cluster->length) * sizeof(struct in_addr));
+      malloc((attr->cluster->length) * sizeof(struct in_addr));
 
     int i; // cluster index
     for (i = 0; i < attr->cluster->length; i++)
@@ -1312,8 +1312,8 @@ void process_mp_announce(struct mstream *s, struct mp_info *info,
 
   if (info->announce[afi][safi] != NULL) {
     bgpdump_warn(
-        "process_mp_announce: two MP_NLRI for the same protocol(%d, %d)!", afi,
-        safi);
+      "process_mp_announce: two MP_NLRI for the same protocol(%d, %d)!", afi,
+      safi);
     return;
   }
 
@@ -1328,7 +1328,7 @@ void process_mp_announce(struct mstream *s, struct mp_info *info,
   }
 
   info->announce[afi][safi]->prefix_count =
-      read_prefix_list(s, afi, info->announce[afi][safi]->nlri, incomplete);
+    read_prefix_list(s, afi, info->announce[afi][safi]->nlri, incomplete);
 }
 
 void process_mp_withdraw(struct mstream *s, struct mp_info *info,
@@ -1446,7 +1446,7 @@ void process_asn32_trans(attributes_t *attr, u_int8_t asn_len)
     /* These attributes "SHOULD NOT" be used with ASN32. */
     if (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_NEW_AS_PATH))
       bgpdump_warn(
-          "process_asn32_trans: ASN32 message contains NEW_AS_PATH attribute");
+        "process_asn32_trans: ASN32 message contains NEW_AS_PATH attribute");
 
     if (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_NEW_AGGREGATOR))
       bgpdump_warn("process_asn32_trans: ASN32 message contains NEW_AGGREGATOR "
@@ -1528,16 +1528,16 @@ struct aspath *asn32_merge_paths(struct aspath *path, struct aspath *newpath)
       /* Did we copy too many ASes over? */
       if (mergedpath->count > path->count - newpath->count) {
         mergedsegment->length -=
-            mergedpath->count - (path->count - newpath->count);
+          mergedpath->count - (path->count - newpath->count);
         mergedpath->length -=
-            (mergedpath->count - (path->count - newpath->count)) * ASN32_LEN;
+          (mergedpath->count - (path->count - newpath->count)) * ASN32_LEN;
       }
     }
   }
 
   /* Append NEW_AS_PATH to merged path */
   mergedpath->data =
-      realloc(mergedpath->data, mergedpath->length + newpath->length);
+    realloc(mergedpath->data, mergedpath->length + newpath->length);
   memcpy(mergedpath->data + mergedpath->length, newpath->data, newpath->length);
   mergedpath->length += newpath->length;
 

@@ -233,8 +233,8 @@ bgpstream_get_data_interface_info(bgpstream_t *bs,
  * user.
  */
 int bgpstream_get_data_interface_options(
-    bgpstream_t *bs, bgpstream_data_interface_id_t if_id,
-    bgpstream_data_interface_option_t **opts);
+  bgpstream_t *bs, bgpstream_data_interface_id_t if_id,
+  bgpstream_data_interface_option_t **opts);
 
 /** Get the data interface option for the given data interface and option name
  *
@@ -245,7 +245,7 @@ int bgpstream_get_data_interface_options(
  * the interface ID is not valid, or the name does not match any options
  */
 bgpstream_data_interface_option_t *bgpstream_get_data_interface_option_by_name(
-    bgpstream_t *bs, bgpstream_data_interface_id_t if_id, const char *name);
+  bgpstream_t *bs, bgpstream_data_interface_id_t if_id, const char *name);
 
 /** Set a data interface option
  *
@@ -257,8 +257,8 @@ bgpstream_data_interface_option_t *bgpstream_get_data_interface_option_by_name(
  * options for an interface.
  */
 void bgpstream_set_data_interface_option(
-    bgpstream_t *bs, bgpstream_data_interface_option_t *option_type,
-    const char *option_value);
+  bgpstream_t *bs, bgpstream_data_interface_option_t *option_type,
+  const char *option_value);
 
 /** Get the ID of the currently active data interface
  *

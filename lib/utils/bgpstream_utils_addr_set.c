@@ -80,7 +80,7 @@ bgpstream_addr_storage_set_t *bgpstream_addr_storage_set_create()
   bgpstream_addr_storage_set_t *set;
 
   if ((set = (bgpstream_addr_storage_set_t *)malloc(
-           sizeof(bgpstream_addr_storage_set_t))) == NULL) {
+         sizeof(bgpstream_addr_storage_set_t))) == NULL) {
     return NULL;
   }
 
@@ -143,7 +143,7 @@ bgpstream_ipv4_addr_set_t *bgpstream_ipv4_addr_set_create()
   bgpstream_ipv4_addr_set_t *set;
 
   if ((set = (bgpstream_ipv4_addr_set_t *)malloc(
-           sizeof(bgpstream_ipv4_addr_set_t))) == NULL) {
+         sizeof(bgpstream_ipv4_addr_set_t))) == NULL) {
     return NULL;
   }
 
@@ -206,7 +206,7 @@ bgpstream_ipv6_addr_set_t *bgpstream_ipv6_addr_set_create()
   bgpstream_ipv6_addr_set_t *set;
 
   if ((set = (bgpstream_ipv6_addr_set_t *)malloc(
-           sizeof(bgpstream_ipv6_addr_set_t))) == NULL) {
+         sizeof(bgpstream_ipv6_addr_set_t))) == NULL) {
     return NULL;
   }
 

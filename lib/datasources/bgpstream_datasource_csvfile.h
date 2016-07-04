@@ -33,17 +33,16 @@
 
 /** Opaque handle that represents the mysql data source */
 typedef struct struct_bgpstream_csvfile_datasource_t
-    bgpstream_csvfile_datasource_t;
+  bgpstream_csvfile_datasource_t;
 
 bgpstream_csvfile_datasource_t *
 bgpstream_csvfile_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
                                     char *csvfile_file);
 
 int bgpstream_csvfile_datasource_update_input_queue(
-    bgpstream_csvfile_datasource_t *csvfile_ds,
-    bgpstream_input_mgr_t *input_mgr);
+  bgpstream_csvfile_datasource_t *csvfile_ds, bgpstream_input_mgr_t *input_mgr);
 
 void bgpstream_csvfile_datasource_destroy(
-    bgpstream_csvfile_datasource_t *csvfile_ds);
+  bgpstream_csvfile_datasource_t *csvfile_ds);
 
 #endif /* _BGPSTREAM_DATASOURCE_CSVFILE_H */

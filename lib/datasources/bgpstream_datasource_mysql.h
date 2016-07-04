@@ -36,12 +36,12 @@
 typedef struct struct_bgpstream_mysql_datasource_t bgpstream_mysql_datasource_t;
 
 bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(
-    bgpstream_filter_mgr_t *filter_mgr, char *mysql_dbname, char *mysql_user,
-    char *mysql_password, char *mysql_host, unsigned int mysql_port,
-    char *mysql_socket, char *mysql_dump_path);
+  bgpstream_filter_mgr_t *filter_mgr, char *mysql_dbname, char *mysql_user,
+  char *mysql_password, char *mysql_host, unsigned int mysql_port,
+  char *mysql_socket, char *mysql_dump_path);
 
 int bgpstream_mysql_datasource_update_input_queue(
-    bgpstream_mysql_datasource_t *mysql_ds, bgpstream_input_mgr_t *input_mgr);
+  bgpstream_mysql_datasource_t *mysql_ds, bgpstream_input_mgr_t *input_mgr);
 
 void bgpstream_mysql_datasource_destroy(bgpstream_mysql_datasource_t *mysql_ds);
 

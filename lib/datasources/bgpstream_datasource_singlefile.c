@@ -58,11 +58,11 @@ bgpstream_singlefile_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
 {
   bgpstream_debug("\t\tBSDS_CLIST: create singlefile_ds start");
   bgpstream_singlefile_datasource_t *singlefile_ds =
-      (bgpstream_singlefile_datasource_t *)malloc(
-          sizeof(bgpstream_singlefile_datasource_t));
+    (bgpstream_singlefile_datasource_t *)malloc(
+      sizeof(bgpstream_singlefile_datasource_t));
   if (singlefile_ds == NULL) {
     bgpstream_log_err(
-        "\t\tBSDS_CLIST: create singlefile_ds can't allocate memory");
+      "\t\tBSDS_CLIST: create singlefile_ds can't allocate memory");
     return NULL; // can't allocate memory
   }
   singlefile_ds->filter_mgr = filter_mgr;
@@ -110,8 +110,8 @@ static int same_header(char *mrt_filename, unsigned char *previous_header)
 }
 
 int bgpstream_singlefile_datasource_update_input_queue(
-    bgpstream_singlefile_datasource_t *singlefile_ds,
-    bgpstream_input_mgr_t *input_mgr)
+  bgpstream_singlefile_datasource_t *singlefile_ds,
+  bgpstream_input_mgr_t *input_mgr)
 {
   bgpstream_debug("\t\tBSDS_CLIST: singlefile_ds update input queue start");
   struct timeval tv;
@@ -123,13 +123,13 @@ int bgpstream_singlefile_datasource_update_input_queue(
   if (singlefile_ds->rib_filename[0] != '\0' &&
       now - singlefile_ds->last_rib_filetime > RIB_FREQUENCY_CHECK &&
       same_header(singlefile_ds->rib_filename, singlefile_ds->rib_header) ==
-          0) {
+        0) {
     /* fprintf(stderr, "new RIB at: %"PRIu32"\n", now); */
     singlefile_ds->last_rib_filetime = now;
     num_results += bgpstream_input_mgr_push_sorted_input(
-        input_mgr, strdup(singlefile_ds->rib_filename), strdup("singlefile_ds"),
-        strdup("singlefile_ds"), strdup("ribs"),
-        singlefile_ds->last_rib_filetime, RIB_FREQUENCY_CHECK);
+      input_mgr, strdup(singlefile_ds->rib_filename), strdup("singlefile_ds"),
+      strdup("singlefile_ds"), strdup("ribs"), singlefile_ds->last_rib_filetime,
+      RIB_FREQUENCY_CHECK);
   }
 
   if (singlefile_ds->update_filename[0] != '\0' &&
@@ -139,9 +139,9 @@ int bgpstream_singlefile_datasource_update_input_queue(
     /* fprintf(stderr, "new updates at: %"PRIu32"\n", now); */
     singlefile_ds->last_update_filetime = now;
     num_results += bgpstream_input_mgr_push_sorted_input(
-        input_mgr, strdup(singlefile_ds->update_filename),
-        strdup("singlefile_ds"), strdup("singlefile_ds"), strdup("updates"),
-        singlefile_ds->last_update_filetime, UPDATE_FREQUENCY_CHECK);
+      input_mgr, strdup(singlefile_ds->update_filename),
+      strdup("singlefile_ds"), strdup("singlefile_ds"), strdup("updates"),
+      singlefile_ds->last_update_filetime, UPDATE_FREQUENCY_CHECK);
   }
 
   bgpstream_debug("\t\tBSDS_CLIST: singlefile_ds update input queue end");
@@ -149,7 +149,7 @@ int bgpstream_singlefile_datasource_update_input_queue(
 }
 
 void bgpstream_singlefile_datasource_destroy(
-    bgpstream_singlefile_datasource_t *singlefile_ds)
+  bgpstream_singlefile_datasource_t *singlefile_ds)
 {
   bgpstream_debug("\t\tBSDS_CLIST: destroy singlefile_ds start");
   if (singlefile_ds == NULL) {

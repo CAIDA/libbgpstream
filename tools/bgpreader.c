@@ -122,52 +122,52 @@ static void dump_if_options()
 static void usage()
 {
   fprintf(
-      stderr,
-      "usage: bgpreader -w <start>[,<end>] [<options>]\n"
-      "Available options are:\n"
-      "   -d <interface> use the given data interface to find available data\n"
-      "                  available data interfaces are:\n");
+    stderr,
+    "usage: bgpreader -w <start>[,<end>] [<options>]\n"
+    "Available options are:\n"
+    "   -d <interface> use the given data interface to find available data\n"
+    "                  available data interfaces are:\n");
   data_if_usage();
   fprintf(
-      stderr,
-      "   -o <option-name,option-value>*\n"
-      "                  set an option for the current data interface.\n"
-      "                  use '-o ?' to get a list of available options for the "
-      "current\n"
-      "                  data interface. (data interface can be selected using "
-      "-d)\n"
-      "   -p <project>   process records from only the given project "
-      "(routeviews, ris)*\n"
-      "   -c <collector> process records from only the given collector*\n"
-      "   -t <type>      process records with only the given type (ribs, "
-      "updates)*\n"
-      "   -w <start>[,<end>]\n"
-      "                  process records within the given time window\n"
-      "                    (omitting the end parameter enables live mode)*\n"
-      "   -P <period>    process a rib files every <period> seconds (bgp "
-      "time)\n"
-      "   -j <peer ASN>  return valid elems originated by a specific peer "
-      "ASN*\n"
-      "   -k <prefix>    return valid elems associated with a specific "
-      "prefix*\n"
-      "   -y <community> return valid elems with the specified community* \n"
-      "                  (format: asn:value, the '*' metacharacter is "
-      "recognized)\n"
-      "   -l             enable live mode (make blocking requests for BGP "
-      "records)\n"
-      "                  allows bgpstream to be used to process data in "
-      "real-time\n"
-      "\n"
-      "   -e             print info for each element of a valid BGP record "
-      "(default)\n"
-      "   -m             print info for each BGP valid record in bgpdump -m "
-      "format\n"
-      "   -r             print info for each BGP record (used mostly for "
-      "debugging BGPStream)\n"
-      "   -i             print format information before output\n"
-      "\n"
-      "   -h             print this help menu\n"
-      "* denotes an option that can be given multiple times\n");
+    stderr,
+    "   -o <option-name,option-value>*\n"
+    "                  set an option for the current data interface.\n"
+    "                  use '-o ?' to get a list of available options for the "
+    "current\n"
+    "                  data interface. (data interface can be selected using "
+    "-d)\n"
+    "   -p <project>   process records from only the given project "
+    "(routeviews, ris)*\n"
+    "   -c <collector> process records from only the given collector*\n"
+    "   -t <type>      process records with only the given type (ribs, "
+    "updates)*\n"
+    "   -w <start>[,<end>]\n"
+    "                  process records within the given time window\n"
+    "                    (omitting the end parameter enables live mode)*\n"
+    "   -P <period>    process a rib files every <period> seconds (bgp "
+    "time)\n"
+    "   -j <peer ASN>  return valid elems originated by a specific peer "
+    "ASN*\n"
+    "   -k <prefix>    return valid elems associated with a specific "
+    "prefix*\n"
+    "   -y <community> return valid elems with the specified community* \n"
+    "                  (format: asn:value, the '*' metacharacter is "
+    "recognized)\n"
+    "   -l             enable live mode (make blocking requests for BGP "
+    "records)\n"
+    "                  allows bgpstream to be used to process data in "
+    "real-time\n"
+    "\n"
+    "   -e             print info for each element of a valid BGP record "
+    "(default)\n"
+    "   -m             print info for each BGP valid record in bgpdump -m "
+    "format\n"
+    "   -r             print info for each BGP record (used mostly for "
+    "debugging BGPStream)\n"
+    "   -i             print format information before output\n"
+    "\n"
+    "   -h             print this help menu\n"
+    "* denotes an option that can be given multiple times\n");
 }
 
 // print / utility functions
@@ -331,7 +331,7 @@ int main(int argc, char *argv[])
       break;
     case 'd':
       if ((datasource_id =
-               bgpstream_get_data_interface_id_by_name(bs, optarg)) == 0) {
+             bgpstream_get_data_interface_id_by_name(bs, optarg)) == 0) {
         fprintf(stderr, "ERROR: Invalid data interface name '%s'\n", optarg);
         usage();
         exit(-1);
@@ -399,7 +399,7 @@ int main(int argc, char *argv[])
       *endp = '\0';
       endp++;
       if ((option = bgpstream_get_data_interface_option_by_name(
-               bs, datasource_id, interface_options[i])) == NULL) {
+             bs, datasource_id, interface_options[i])) == NULL) {
         fprintf(stderr, "ERROR: Invalid option '%s' for data interface '%s'\n",
                 interface_options[i], datasource_info->name);
         usage();
@@ -570,7 +570,7 @@ static void print_bs_record(bgpstream_record_t *bs_record)
 
   /* record type */
   if ((c = bgpstream_record_dump_type_snprintf(
-           buf_p, len - written, bs_record->attributes.dump_type)) < 0) {
+         buf_p, len - written, bs_record->attributes.dump_type)) < 0) {
     return;
   }
   written += c;
@@ -590,8 +590,8 @@ static void print_bs_record(bgpstream_record_t *bs_record)
 
   /* Record timestamp, project, collector */
   c = snprintf(
-      buf_p, len - written, "|%ld|%s|%s|", bs_record->attributes.record_time,
-      bs_record->attributes.dump_project, bs_record->attributes.dump_collector);
+    buf_p, len - written, "|%ld|%s|%s|", bs_record->attributes.record_time,
+    bs_record->attributes.dump_project, bs_record->attributes.dump_collector);
   written += c;
   buf_p += c;
 
@@ -626,7 +626,7 @@ static void print_rib_control_message(bgpstream_record_t *bs_record)
 
   /* record type */
   if ((c = bgpstream_record_dump_type_snprintf(
-           buf_p, len - written, bs_record->attributes.dump_type)) < 0) {
+         buf_p, len - written, bs_record->attributes.dump_type)) < 0) {
     return;
   }
   written += c;
@@ -646,8 +646,8 @@ static void print_rib_control_message(bgpstream_record_t *bs_record)
 
   /* Record timestamp, project, collector */
   c = snprintf(
-      buf_p, len - written, "|%ld|%s|%s", bs_record->attributes.record_time,
-      bs_record->attributes.dump_project, bs_record->attributes.dump_collector);
+    buf_p, len - written, "|%ld|%s|%s", bs_record->attributes.record_time,
+    bs_record->attributes.dump_project, bs_record->attributes.dump_collector);
   written += c;
   buf_p += c;
 

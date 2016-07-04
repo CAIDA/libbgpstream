@@ -127,7 +127,7 @@ static unsigned char *bgpstream_pfx_get_first_byte(bgpstream_pfx_t *pfx)
     return (unsigned char *)&((bgpstream_ipv4_pfx_t *)pfx)->address.ipv4.s_addr;
   case BGPSTREAM_ADDR_VERSION_IPV6:
     return (unsigned char *)&((bgpstream_ipv6_pfx_t *)pfx)
-        ->address.ipv6.s6_addr[0];
+      ->address.ipv6.s6_addr[0];
   default:
     assert(0);
   }
@@ -137,7 +137,7 @@ static unsigned char *bgpstream_pfx_get_first_byte(bgpstream_pfx_t *pfx)
 /* ======================= RESULT SET FUNCTIONS  ======================= */
 
 static int bgpstream_patricia_tree_result_set_add_node(
-    bgpstream_patricia_tree_result_set_t *set, bgpstream_patricia_node_t *node)
+  bgpstream_patricia_tree_result_set_t *set, bgpstream_patricia_node_t *node)
 {
   set->n_recs++;
   /* Realloc if necessary */
@@ -147,8 +147,8 @@ static int bgpstream_patricia_tree_result_set_add_node(
     kroundup32(set->_alloc_size);
 
     if ((set->result_nodes =
-             realloc(set->result_nodes, sizeof(bgpstream_patricia_node_t *) *
-                                            set->_alloc_size)) == NULL) {
+           realloc(set->result_nodes, sizeof(bgpstream_patricia_node_t *) *
+                                        set->_alloc_size)) == NULL) {
       fprintf(stderr, "Error: could not realloc result_nodes in result set\n");
       return -1;
     }
@@ -158,7 +158,7 @@ static int bgpstream_patricia_tree_result_set_add_node(
 }
 
 static void bgpstream_patricia_tree_result_set_clear(
-    bgpstream_patricia_tree_result_set_t *set)
+  bgpstream_patricia_tree_result_set_t *set)
 {
   set->n_recs = 0;
 }
@@ -286,8 +286,8 @@ bgpstream_patricia_tree_count_subnets(bgpstream_patricia_node_t *node,
 
 /* depth pecifies how many "children" to explore for each node */
 static int bgpstream_patricia_tree_add_more_specifics(
-    bgpstream_patricia_tree_result_set_t *set, bgpstream_patricia_node_t *node,
-    const uint8_t depth)
+  bgpstream_patricia_tree_result_set_t *set, bgpstream_patricia_node_t *node,
+  const uint8_t depth)
 {
   if (node == NULL || depth == 0) {
     return 0;
@@ -314,8 +314,8 @@ static int bgpstream_patricia_tree_add_more_specifics(
 
 /* depth pecifies how many "children" to explore for each node */
 static int bgpstream_patricia_tree_add_less_specifics(
-    bgpstream_patricia_tree_result_set_t *set, bgpstream_patricia_node_t *node,
-    const uint8_t depth)
+  bgpstream_patricia_tree_result_set_t *set, bgpstream_patricia_node_t *node,
+  const uint8_t depth)
 {
   if (node == NULL) {
     return 0;
@@ -370,8 +370,8 @@ static void bgpstream_patricia_tree_merge_tree(bgpstream_patricia_tree_t *dst,
 }
 
 static void bgpstream_patricia_tree_walk_tree(
-    bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node,
-    bgpstream_patricia_tree_process_node_t *fun, void *data)
+  bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node,
+  bgpstream_patricia_tree_process_node_t *fun, void *data)
 {
   if (node == NULL) {
     return;
@@ -454,7 +454,7 @@ bgpstream_patricia_tree_result_set_create()
 }
 
 void bgpstream_patricia_tree_result_set_destroy(
-    bgpstream_patricia_tree_result_set_t **set_p)
+  bgpstream_patricia_tree_result_set_t **set_p)
 {
   assert(set_p);
   bgpstream_patricia_tree_result_set_t *set = *set_p;
@@ -470,13 +470,13 @@ void bgpstream_patricia_tree_result_set_destroy(
 }
 
 void bgpstream_patricia_tree_result_set_rewind(
-    bgpstream_patricia_tree_result_set_t *set)
+  bgpstream_patricia_tree_result_set_t *set)
 {
   set->_cursor = 0;
 }
 
 bgpstream_patricia_node_t *bgpstream_patricia_tree_result_set_next(
-    bgpstream_patricia_tree_result_set_t *set)
+  bgpstream_patricia_tree_result_set_t *set)
 {
   if (set->n_recs <= set->_cursor) {
     /* No more nodes */
@@ -486,13 +486,13 @@ bgpstream_patricia_node_t *bgpstream_patricia_tree_result_set_next(
 }
 
 int bgpstream_patricia_tree_result_set_count(
-    bgpstream_patricia_tree_result_set_t *set)
+  bgpstream_patricia_tree_result_set_t *set)
 {
   return set->n_recs;
 }
 
 void bgpstream_patricia_tree_result_set_print(
-    bgpstream_patricia_tree_result_set_t *set)
+  bgpstream_patricia_tree_result_set_t *set)
 {
   bgpstream_patricia_tree_result_set_rewind(set);
   bgpstream_patricia_node_t *next;
@@ -504,7 +504,7 @@ void bgpstream_patricia_tree_result_set_print(
 }
 
 bgpstream_patricia_tree_t *bgpstream_patricia_tree_create(
-    bgpstream_patricia_tree_destroy_user_t *bspt_user_destructor)
+  bgpstream_patricia_tree_destroy_user_t *bspt_user_destructor)
 {
   bgpstream_patricia_tree_t *pt = NULL;
   if ((pt = malloc_zero(sizeof(bgpstream_patricia_tree_t))) == NULL) {
@@ -580,7 +580,7 @@ bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
 
   /*  node_it->prefix is the prefix we stopped at */
   unsigned char *test_addr =
-      bgpstream_pfx_get_first_byte((bgpstream_pfx_t *)&node_it->prefix);
+    bgpstream_pfx_get_first_byte((bgpstream_pfx_t *)&node_it->prefix);
 
   /* find the first bit different */
   uint8_t check_bit;
@@ -771,7 +771,7 @@ void bgpstream_patricia_tree_remove(bgpstream_patricia_tree_t *pt,
                                     bgpstream_pfx_t *pfx)
 {
   bgpstream_patricia_tree_remove_node(
-      pt, bgpstream_patricia_tree_search_exact(pt, pfx));
+    pt, bgpstream_patricia_tree_search_exact(pt, pfx));
 }
 
 void bgpstream_patricia_tree_remove_node(bgpstream_patricia_tree_t *pt,
@@ -945,8 +945,8 @@ bgpstream_patricia_tree_search_exact(bgpstream_patricia_tree_t *pt,
   /* compare the prefixes bit by bit
    * TODO: consider replacing with bgpstream_pfx_storage_equal */
   if (comp_with_mask(
-          bgpstream_pfx_get_first_byte((bgpstream_pfx_t *)&node_it->prefix),
-          bgpstream_pfx_get_first_byte(pfx), bitlen)) {
+        bgpstream_pfx_get_first_byte((bgpstream_pfx_t *)&node_it->prefix),
+        bgpstream_pfx_get_first_byte(pfx), bitlen)) {
     /* exact match found */
     return node_it;
   }
@@ -978,18 +978,18 @@ uint64_t bgpstream_patricia_tree_count_64subnets(bgpstream_patricia_tree_t *pt)
 }
 
 int bgpstream_patricia_tree_get_more_specifics(
-    bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node,
-    bgpstream_patricia_tree_result_set_t *results)
+  bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node,
+  bgpstream_patricia_tree_result_set_t *results)
 {
   bgpstream_patricia_tree_result_set_clear(results);
 
   if (node != NULL) { /* we do not return the node itself */
     if (bgpstream_patricia_tree_add_more_specifics(
-            results, node->l, BGPSTREAM_PATRICIA_MAXBITS + 1) != 0) {
+          results, node->l, BGPSTREAM_PATRICIA_MAXBITS + 1) != 0) {
       return -1;
     }
     if (bgpstream_patricia_tree_add_more_specifics(
-            results, node->r, BGPSTREAM_PATRICIA_MAXBITS + 1) != 0) {
+          results, node->r, BGPSTREAM_PATRICIA_MAXBITS + 1) != 0) {
       return -1;
     }
   }
@@ -997,8 +997,8 @@ int bgpstream_patricia_tree_get_more_specifics(
 }
 
 int bgpstream_patricia_tree_get_mincovering_prefix(
-    bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node,
-    bgpstream_patricia_tree_result_set_t *results)
+  bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node,
+  bgpstream_patricia_tree_result_set_t *results)
 {
   bgpstream_patricia_tree_result_set_clear(results);
 
@@ -1010,8 +1010,8 @@ int bgpstream_patricia_tree_get_mincovering_prefix(
 }
 
 int bgpstream_patricia_tree_get_less_specifics(
-    bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node,
-    bgpstream_patricia_tree_result_set_t *results)
+  bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node,
+  bgpstream_patricia_tree_result_set_t *results)
 {
   bgpstream_patricia_tree_result_set_clear(results);
 
@@ -1020,12 +1020,12 @@ int bgpstream_patricia_tree_get_less_specifics(
   }
   /* we do not return the node itself (that's why we pass the parent node) */
   return bgpstream_patricia_tree_add_less_specifics(
-      results, node->parent, BGPSTREAM_PATRICIA_MAXBITS + 1);
+    results, node->parent, BGPSTREAM_PATRICIA_MAXBITS + 1);
 }
 
 int bgpstream_patricia_tree_get_minimum_coverage(
-    bgpstream_patricia_tree_t *pt, bgpstream_addr_version_t v,
-    bgpstream_patricia_tree_result_set_t *results)
+  bgpstream_patricia_tree_t *pt, bgpstream_addr_version_t v,
+  bgpstream_patricia_tree_result_set_t *results)
 {
   bgpstream_patricia_tree_result_set_clear(results);
   bgpstream_patricia_node_t *head = bgpstream_patricia_get_head(pt, v);

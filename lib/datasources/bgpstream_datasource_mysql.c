@@ -85,15 +85,15 @@ struct struct_bgpstream_mysql_datasource_t {
 };
 
 bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(
-    bgpstream_filter_mgr_t *filter_mgr, char *mysql_dbname, char *mysql_user,
-    char *mysql_password, char *mysql_host, unsigned int mysql_port,
-    char *mysql_socket, char *mysql_dump_path)
+  bgpstream_filter_mgr_t *filter_mgr, char *mysql_dbname, char *mysql_user,
+  char *mysql_password, char *mysql_host, unsigned int mysql_port,
+  char *mysql_socket, char *mysql_dump_path)
 {
   bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds start");
 
   bgpstream_mysql_datasource_t *mysql_ds =
-      (bgpstream_mysql_datasource_t *)malloc(
-          sizeof(bgpstream_mysql_datasource_t));
+    (bgpstream_mysql_datasource_t *)malloc(
+      sizeof(bgpstream_mysql_datasource_t));
   if (mysql_ds == NULL) {
     return NULL; // can't allocate memory
   }
@@ -171,7 +171,7 @@ bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(
 
   // Establish a connection to the database
   bgpstream_debug(
-      "\t\tBSDS_MYSQL: create mysql_ds mysql connection establishment");
+    "\t\tBSDS_MYSQL: create mysql_ds mysql connection establishment");
   if (mysql_real_connect(mysql_ds->mysql_con, mysql_ds->mysql_host,
                          mysql_ds->mysql_user, mysql_ds->mysql_password,
                          mysql_ds->mysql_dbname, mysql_ds->mysql_port,
@@ -188,7 +188,7 @@ bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(
     bgpstream_debug("\t\tBSDS_MYSQL: create mysql_ds set time_zone");
   } else {
     bgpstream_debug(
-        "\t\tBSDS_MYSQL: create mysql_ds set time_zone something wrong");
+      "\t\tBSDS_MYSQL: create mysql_ds set time_zone something wrong");
   }
 
   /* if the user did not provide a path, we extract it from the db */
@@ -212,17 +212,17 @@ bgpstream_mysql_datasource_t *bgpstream_mysql_datasource_create(
   char interval_str[MAX_INTERVAL_LEN];
 
   APPEND_STR(
-      "SELECT "
-      "projects.path, collectors.path, bgp_types.path, "
-      "projects.name, collectors.name, bgp_types.name, projects.file_ext, "
-      "file_time, on_web_frequency.offset "
-      "FROM bgp_data "
-      "JOIN bgp_types  ON bgp_types.id  = bgp_data.bgp_type_id "
-      "JOIN collectors ON collectors.id = bgp_data.collector_id "
-      "JOIN projects   ON projects.id   = collectors.project_id "
-      "JOIN on_web_frequency "
-      "     ON on_web_frequency.project_id  = projects.id AND "
-      "        on_web_frequency.bgp_type_id = bgp_types.id");
+    "SELECT "
+    "projects.path, collectors.path, bgp_types.path, "
+    "projects.name, collectors.name, bgp_types.name, projects.file_ext, "
+    "file_time, on_web_frequency.offset "
+    "FROM bgp_data "
+    "JOIN bgp_types  ON bgp_types.id  = bgp_data.bgp_type_id "
+    "JOIN collectors ON collectors.id = bgp_data.collector_id "
+    "JOIN projects   ON projects.id   = collectors.project_id "
+    "JOIN on_web_frequency "
+    "     ON on_web_frequency.project_id  = projects.id AND "
+    "        on_web_frequency.bgp_type_id = bgp_types.id");
 
   // projects, collectors, bgp_types, and time_intervals are used as filters
   // only if they are provided by the user
@@ -469,11 +469,11 @@ static char *build_filename(bgpstream_mysql_datasource_t *ds)
               ds->proj_path_res, ds->coll_path_res, ds->type_path_res, date,
               ds->proj_name_res, ds->coll_name_res, ds->type_name_res,
               ds->filetime_res, ds->file_ext_res) -
-          1 >
+        1 >
       4095) {
     fprintf(
-        stderr,
-        "Error, trying to write a file name larger than 4095 characters!\n");
+      stderr,
+      "Error, trying to write a file name larger than 4095 characters!\n");
     return NULL;
   }
 
@@ -481,7 +481,7 @@ static char *build_filename(bgpstream_mysql_datasource_t *ds)
 }
 
 int bgpstream_mysql_datasource_update_input_queue(
-    bgpstream_mysql_datasource_t *mysql_ds, bgpstream_input_mgr_t *input_mgr)
+  bgpstream_mysql_datasource_t *mysql_ds, bgpstream_input_mgr_t *input_mgr)
 {
 
   // printf("--> %d\n",  mysql_ds->current_timestamp);
@@ -588,9 +588,9 @@ int bgpstream_mysql_datasource_update_input_queue(
     }
 
     num_results += bgpstream_input_mgr_push_sorted_input(
-        input_mgr, filename, strdup(mysql_ds->proj_name_res),
-        strdup(mysql_ds->coll_name_res), strdup(mysql_ds->type_name_res),
-        mysql_ds->filetime_res, mysql_ds->file_time_span);
+      input_mgr, filename, strdup(mysql_ds->proj_name_res),
+      strdup(mysql_ds->coll_name_res), strdup(mysql_ds->type_name_res),
+      mysql_ds->filetime_res, mysql_ds->file_time_span);
     // DEBUG printf("%s\n", mysql_ds->filename_res);
     bgpstream_debug("\t\tBSDS_MYSQL: added %d new inputs to input queue",
                     num_results);

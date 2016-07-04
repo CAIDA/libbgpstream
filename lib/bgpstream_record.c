@@ -116,7 +116,7 @@ static int bgpstream_elem_check_filters(bgpstream_filter_mgr_t *filter_mgr,
    * set, return 0 */
   if (filter_mgr->peer_asns &&
       bgpstream_id_set_exists(filter_mgr->peer_asns, elem->peer_asnumber) ==
-          0) {
+        0) {
     return 0;
   }
 
@@ -127,9 +127,9 @@ static int bgpstream_elem_check_filters(bgpstream_filter_mgr_t *filter_mgr,
 
   if (filter_mgr->prefixes &&
       (bgpstream_patricia_tree_get_pfx_overlap_info(
-           filter_mgr->prefixes, (bgpstream_pfx_t *)&elem->prefix) &
+         filter_mgr->prefixes, (bgpstream_pfx_t *)&elem->prefix) &
        (BGPSTREAM_PATRICIA_EXACT_MATCH | BGPSTREAM_PATRICIA_LESS_SPECIFICS)) ==
-          0) {
+        0) {
     return 0;
   }
 
@@ -147,7 +147,7 @@ static int bgpstream_elem_check_filters(bgpstream_filter_mgr_t *filter_mgr,
       if (kh_exist(filter_mgr->communities, k)) {
         c = &(kh_key(filter_mgr->communities, k));
         if (bgpstream_community_set_match(
-                elem->communities, c, kh_value(filter_mgr->communities, k))) {
+              elem->communities, c, kh_value(filter_mgr->communities, k))) {
           pass = 1;
           break;
         }
@@ -164,7 +164,7 @@ bgpstream_elem_t *bgpstream_record_get_next_elem(bgpstream_record_t *record)
     return NULL;
   }
   bgpstream_elem_t *elem =
-      bgpstream_elem_generator_get_next_elem(record->elem_generator);
+    bgpstream_elem_generator_get_next_elem(record->elem_generator);
 
   /* if the elem is compatible with the current filters
    * then return elem, otherwise run again
@@ -293,7 +293,7 @@ char *bgpstream_record_elem_snprintf(char *buf, size_t len,
 
   /* Record type */
   if ((c = bgpstream_record_dump_type_snprintf(
-           buf_p, B_REMAIN, bs_record->attributes.dump_type)) < 0) {
+         buf_p, B_REMAIN, bs_record->attributes.dump_type)) < 0) {
     return NULL;
   }
   written += c;

@@ -143,8 +143,8 @@ int bgpstream_peer_sig_equal(bgpstream_peer_sig_t *ps1,
                              bgpstream_peer_sig_t *ps2)
 {
   return (
-      bgpstream_addr_storage_equal(&ps1->peer_ip_addr, &ps2->peer_ip_addr) &&
-      (strcmp(ps1->collector_str, ps2->collector_str) == 0));
+    bgpstream_addr_storage_equal(&ps1->peer_ip_addr, &ps2->peer_ip_addr) &&
+    (strcmp(ps1->collector_str, ps2->collector_str) == 0));
 }
 
 /* PUBLIC FUNCTIONS */
@@ -153,7 +153,7 @@ bgpstream_peer_sig_map_t *bgpstream_peer_sig_map_create()
 {
   bgpstream_peer_sig_map_t *map = NULL;
   if ((map = (bgpstream_peer_sig_map_t *)malloc_zero(
-           sizeof(bgpstream_peer_sig_map_t))) == NULL) {
+         sizeof(bgpstream_peer_sig_map_t))) == NULL) {
     return NULL;
   }
 
@@ -176,8 +176,8 @@ err:
 }
 
 bgpstream_peer_id_t bgpstream_peer_sig_map_get_id(
-    bgpstream_peer_sig_map_t *map, char *collector_str,
-    bgpstream_ip_addr_t *peer_ip_addr, uint32_t peer_asnumber)
+  bgpstream_peer_sig_map_t *map, char *collector_str,
+  bgpstream_ip_addr_t *peer_ip_addr, uint32_t peer_asnumber)
 {
   bgpstream_peer_sig_t *new_ps;
   if ((new_ps = malloc(sizeof(bgpstream_peer_sig_t))) == NULL) {
