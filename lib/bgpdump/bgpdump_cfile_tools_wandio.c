@@ -6,6 +6,7 @@
  * 2014-08-14
  */
 
+#include "config.h"
 #include "bgpdump_cfile_tools.h"
 #include <assert.h>
 #include <errno.h>
