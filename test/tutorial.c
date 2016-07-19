@@ -52,12 +52,12 @@ int main()
 
   /* Configure the sqlite interface */
   bgpstream_data_interface_id_t datasource_id =
-      bgpstream_get_data_interface_id_by_name(bs, "sqlite");
+    bgpstream_get_data_interface_id_by_name(bs, "sqlite");
   bgpstream_set_data_interface(bs, datasource_id);
 
   /* Configure the sqlite interface options */
   bgpstream_data_interface_option_t *option =
-      bgpstream_get_data_interface_option_by_name(bs, datasource_id, "db-file");
+    bgpstream_get_data_interface_option_by_name(bs, datasource_id, "db-file");
   bgpstream_set_data_interface_option(bs, option, "./sqlite_test.db");
 
   /* Select bgp data from RRC06 and route-views.jinx collectors only */

@@ -76,7 +76,7 @@ bgpstream_pfx_storage_set_t *bgpstream_pfx_storage_set_create()
   bgpstream_pfx_storage_set_t *set;
 
   if ((set = (bgpstream_pfx_storage_set_t *)malloc(
-           sizeof(bgpstream_pfx_storage_set_t))) == NULL) {
+         sizeof(bgpstream_pfx_storage_set_t))) == NULL) {
     return NULL;
   }
 
@@ -171,7 +171,7 @@ bgpstream_ipv4_pfx_set_t *bgpstream_ipv4_pfx_set_create()
   bgpstream_ipv4_pfx_set_t *set;
 
   if ((set = (bgpstream_ipv4_pfx_set_t *)malloc(
-           sizeof(bgpstream_ipv4_pfx_set_t))) == NULL) {
+         sizeof(bgpstream_ipv4_pfx_set_t))) == NULL) {
     return NULL;
   }
 
@@ -245,7 +245,7 @@ bgpstream_ipv6_pfx_set_t *bgpstream_ipv6_pfx_set_create()
   bgpstream_ipv6_pfx_set_t *set;
 
   if ((set = (bgpstream_ipv6_pfx_set_t *)malloc(
-           sizeof(bgpstream_ipv6_pfx_set_t))) == NULL) {
+         sizeof(bgpstream_ipv6_pfx_set_t))) == NULL) {
     return NULL;
   }
 

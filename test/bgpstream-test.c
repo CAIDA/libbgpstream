@@ -71,7 +71,7 @@ bgpstream_data_interface_option_t *option;
   do {                                                                         \
     CHECK("get data interface ID (" STR(interface) ")",                        \
           (datasource_id = bgpstream_get_data_interface_id_by_name(            \
-               bs, STR(interface))) != 0);                                     \
+             bs, STR(interface))) != 0);                                       \
     bgpstream_set_data_interface(bs, datasource_id);                           \
   } while (0)
 
@@ -93,13 +93,13 @@ int test_singlefile()
 
   CHECK("get option (rib-file)",
         (option = bgpstream_get_data_interface_option_by_name(
-             bs, datasource_id, "rib-file")) != NULL);
+           bs, datasource_id, "rib-file")) != NULL);
   bgpstream_set_data_interface_option(
-      bs, option, "routeviews.route-views.jinx.ribs.1427846400.bz2");
+    bs, option, "routeviews.route-views.jinx.ribs.1427846400.bz2");
 
   CHECK("get option (upd-file)",
         (option = bgpstream_get_data_interface_option_by_name(
-             bs, datasource_id, "upd-file")) != NULL);
+           bs, datasource_id, "upd-file")) != NULL);
   bgpstream_set_data_interface_option(bs, option,
                                       "ris.rrc06.updates.1427846400.gz");
 
@@ -117,7 +117,7 @@ int test_csvfile()
 
   CHECK("get option (csv-file)",
         (option = bgpstream_get_data_interface_option_by_name(
-             bs, datasource_id, "csv-file")) != NULL);
+           bs, datasource_id, "csv-file")) != NULL);
   bgpstream_set_data_interface_option(bs, option, "csv_test.csv");
 
   bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_COLLECTOR, "rrc06");
@@ -136,7 +136,7 @@ int test_sqlite()
 
   CHECK("get option (db-file)",
         (option = bgpstream_get_data_interface_option_by_name(
-             bs, datasource_id, "db-file")) != NULL);
+           bs, datasource_id, "db-file")) != NULL);
   bgpstream_set_data_interface_option(bs, option, "sqlite_test.db");
 
   bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_PROJECT, "routeviews");

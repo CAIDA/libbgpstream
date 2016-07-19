@@ -268,8 +268,7 @@ int bgpstream_community_set_populate_from_array(bgpstream_community_set_t *set,
  * only valid as long as the comms array passed to this function is valid.
  */
 int bgpstream_community_set_populate_from_array_zc(
-    bgpstream_community_set_t *set, bgpstream_community_t *comms,
-    int comms_cnt);
+  bgpstream_community_set_t *set, bgpstream_community_t *comms, int comms_cnt);
 
 /** Hash the given community set into a 32bit number
  *

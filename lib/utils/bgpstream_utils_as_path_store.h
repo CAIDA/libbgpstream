@@ -189,7 +189,7 @@ void bgpstream_as_path_store_iter_next_path(bgpstream_as_path_store_t *store);
  * @return 1 if the iterator is valid, 0 otherwise
  */
 int bgpstream_as_path_store_iter_has_more_path(
-    bgpstream_as_path_store_t *store);
+  bgpstream_as_path_store_t *store);
 
 /** Get the current path from the iterator
  *
@@ -221,7 +221,7 @@ bgpstream_as_path_store_iter_get_path_id(bgpstream_as_path_store_t *store);
  * iterator functions wherever possible.
  */
 bgpstream_as_path_t *bgpstream_as_path_store_path_get_path(
-    bgpstream_as_path_store_path_t *store_path, uint32_t peer_asn);
+  bgpstream_as_path_store_path_t *store_path, uint32_t peer_asn);
 
 /** Get a borrowed pointer to the origin segment of the given store path
  *
@@ -229,7 +229,7 @@ bgpstream_as_path_t *bgpstream_as_path_store_path_get_path(
  * @return a borrowed pointer to the origin segment
  */
 bgpstream_as_path_seg_t *bgpstream_as_path_store_path_get_origin_seg(
-    bgpstream_as_path_store_path_t *store_path);
+  bgpstream_as_path_store_path_t *store_path);
 
 /** Reset the given store path iterator
  *
@@ -238,8 +238,8 @@ bgpstream_as_path_seg_t *bgpstream_as_path_store_path_get_origin_seg(
  * @param peer_asn      ASN of the peer that this path was observed by
  */
 void bgpstream_as_path_store_path_iter_reset(
-    bgpstream_as_path_store_path_t *store_path,
-    bgpstream_as_path_store_path_iter_t *iter, uint32_t peer_asn);
+  bgpstream_as_path_store_path_t *store_path,
+  bgpstream_as_path_store_path_iter_t *iter, uint32_t peer_asn);
 
 /** Get the next segment from the given store path
  *
@@ -252,7 +252,7 @@ void bgpstream_as_path_store_path_iter_reset(
  * store path is valid.
  */
 bgpstream_as_path_seg_t *bgpstream_as_path_store_path_get_next_seg(
-    bgpstream_as_path_store_path_iter_t *iter);
+  bgpstream_as_path_store_path_iter_t *iter);
 
 /** Get the internal index of the given store path
  *
@@ -264,7 +264,7 @@ bgpstream_as_path_seg_t *bgpstream_as_path_store_path_get_next_seg(
  * range [0 -> bgpstream_as_path_store_get_size).
  */
 uint32_t bgpstream_as_path_store_path_get_idx(
-    bgpstream_as_path_store_path_t *store_path);
+  bgpstream_as_path_store_path_t *store_path);
 
 /** Check if the given store path is a core path (i.e. the peer segment has been
  * removed)
@@ -276,7 +276,7 @@ uint32_t bgpstream_as_path_store_path_get_idx(
  * should be considered internal.
  */
 int bgpstream_as_path_store_path_is_core(
-    bgpstream_as_path_store_path_t *store_path);
+  bgpstream_as_path_store_path_t *store_path);
 
 /** Get a pointer to the internal path structure from the store path
  *
@@ -287,7 +287,7 @@ int bgpstream_as_path_store_path_is_core(
  * should be considered internal.
  */
 bgpstream_as_path_t *bgpstream_as_path_store_path_get_int_path(
-    bgpstream_as_path_store_path_t *store_path);
+  bgpstream_as_path_store_path_t *store_path);
 
 /** Get the size of the given Store Path in terms of bytes (for the purposes of
  * serialization)
@@ -299,7 +299,7 @@ bgpstream_as_path_t *bgpstream_as_path_store_path_get_int_path(
  * i.e., `1 + 2 + path_len`.
  */
 size_t bgpstream_as_path_store_path_get_size(
-    bgpstream_as_path_store_path_t *store_path);
+  bgpstream_as_path_store_path_t *store_path);
 
 /** @} */
 

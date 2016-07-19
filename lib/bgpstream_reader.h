@@ -61,7 +61,7 @@ bgpstream_reader_mgr_t *
 bgpstream_reader_mgr_create(const bgpstream_filter_mgr_t *const filter_mgr);
 /* check if the readers' queue is empty  */
 bool bgpstream_reader_mgr_is_empty(
-    const bgpstream_reader_mgr_t *const bs_reader_mgr);
+  const bgpstream_reader_mgr_t *const bs_reader_mgr);
 
 /* use a list of inputs to populate the readers' queue */
 void bgpstream_reader_mgr_add(bgpstream_reader_mgr_t *const bs_reader_mgr,
@@ -70,9 +70,9 @@ void bgpstream_reader_mgr_add(bgpstream_reader_mgr_t *const bs_reader_mgr,
 
 /* get the next available record (and update the reader mgr status) */
 int bgpstream_reader_mgr_get_next_record(
-    bgpstream_reader_mgr_t *const bs_reader_mgr,
-    bgpstream_record_t *const bs_record,
-    const bgpstream_filter_mgr_t *const filter_mgr);
+  bgpstream_reader_mgr_t *const bs_reader_mgr,
+  bgpstream_record_t *const bs_record,
+  const bgpstream_filter_mgr_t *const filter_mgr);
 
 /* destroy the reader manager */
 void bgpstream_reader_mgr_destroy(bgpstream_reader_mgr_t *const bs_reader_mgr);

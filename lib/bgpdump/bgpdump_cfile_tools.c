@@ -28,24 +28,24 @@
 // Note: 0, 1 are special entries.
 
 const char *cfr_formats[CFR_NUM_FORMATS] = {
-    "not open",     //  0
-    "uncompressed", //  1
+  "not open",     //  0
+  "uncompressed", //  1
 #ifndef DONT_HAVE_BZ2
-    "bzip2", //  2
+  "bzip2", //  2
 #endif
 #ifndef DONT_HAVE_GZ
-    "gzip", //  3
+  "gzip", //  3
 #endif
 };
 
 const char *cfr_extensions[CFR_NUM_FORMATS] = {
-    "", //  0
-    "", //  1
+  "", //  0
+  "", //  1
 #ifndef DONT_HAVE_BZ2
-    ".bz2", //  2
+  ".bz2", //  2
 #endif
 #ifndef DONT_HAVE_GZ
-    ".gz" //  3
+  ".gz" //  3
 #endif
 };
 

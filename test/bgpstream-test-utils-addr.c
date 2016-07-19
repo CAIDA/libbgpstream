@@ -69,13 +69,13 @@ int test_addresses_ipv4()
   CHECK("IPv4 address generic-equals (cast from storage)",
         bgpstream_addr_equal((bgpstream_ip_addr_t *)&a,
                              (bgpstream_ip_addr_t *)&b) == 0 &&
-            bgpstream_addr_equal((bgpstream_ip_addr_t *)&a,
-                                 (bgpstream_ip_addr_t *)&a) != 0);
+          bgpstream_addr_equal((bgpstream_ip_addr_t *)&a,
+                               (bgpstream_ip_addr_t *)&a) != 0);
 
   /* check storage equal */
   CHECK("IPv4 address storage-equals (storage)",
         bgpstream_addr_storage_equal(&a, &b) == 0 &&
-            bgpstream_addr_storage_equal(&a, &a) != 0);
+          bgpstream_addr_storage_equal(&a, &a) != 0);
 
   /* IPV4-SPECIFIC CHECKS */
 
@@ -88,13 +88,13 @@ int test_addresses_ipv4()
   CHECK("IPv4 address generic-equals (cast from ipv4)",
         bgpstream_addr_equal((bgpstream_ip_addr_t *)&a4,
                              (bgpstream_ip_addr_t *)&b4) == 0 &&
-            bgpstream_addr_equal((bgpstream_ip_addr_t *)&a4,
-                                 (bgpstream_ip_addr_t *)&a4) != 0);
+          bgpstream_addr_equal((bgpstream_ip_addr_t *)&a4,
+                               (bgpstream_ip_addr_t *)&a4) != 0);
 
   /* check ipv4 equal */
   CHECK("IPv4 address ipv4-equals (ipv4)",
         bgpstream_ipv4_addr_equal(&a4, &b4) == 0 &&
-            bgpstream_ipv4_addr_equal(&a4, &a4) != 0);
+          bgpstream_ipv4_addr_equal(&a4, &a4) != 0);
 
   /* MASK CHECKS */
   /* generic mask */
@@ -163,13 +163,13 @@ int test_addresses_ipv6()
   CHECK("IPv6 address generic-equals (cast from storage)",
         bgpstream_addr_equal((bgpstream_ip_addr_t *)&a,
                              (bgpstream_ip_addr_t *)&b) == 0 &&
-            bgpstream_addr_equal((bgpstream_ip_addr_t *)&a,
-                                 (bgpstream_ip_addr_t *)&a) != 0);
+          bgpstream_addr_equal((bgpstream_ip_addr_t *)&a,
+                               (bgpstream_ip_addr_t *)&a) != 0);
 
   /* check storage equal */
   CHECK("IPv6 address storage-equals (storage)",
         bgpstream_addr_storage_equal(&a, &b) == 0 &&
-            bgpstream_addr_storage_equal(&a, &a) != 0);
+          bgpstream_addr_storage_equal(&a, &a) != 0);
 
   /* IPV6-SPECIFIC CHECKS */
 
@@ -182,13 +182,13 @@ int test_addresses_ipv6()
   CHECK("IPv6 address generic-equals (cast from ipv6)",
         bgpstream_addr_equal((bgpstream_ip_addr_t *)&a6,
                              (bgpstream_ip_addr_t *)&b6) == 0 &&
-            bgpstream_addr_equal((bgpstream_ip_addr_t *)&a6,
-                                 (bgpstream_ip_addr_t *)&a6) != 0);
+          bgpstream_addr_equal((bgpstream_ip_addr_t *)&a6,
+                               (bgpstream_ip_addr_t *)&a6) != 0);
 
   /* check ipv6 equal */
   CHECK("IPv6 address ipv6-equals (ipv6)",
         bgpstream_ipv6_addr_equal(&a6, &b6) == 0 &&
-            bgpstream_ipv6_addr_equal(&a6, &a6) != 0);
+          bgpstream_ipv6_addr_equal(&a6, &a6) != 0);
 
   /* MASK CHECKS (addr a checks len < 64, addr b checks len > 64) */
   /* generic mask */
@@ -203,8 +203,8 @@ int test_addresses_ipv6()
   CHECK("IPv6 address generic-mask (cast from storage)",
         bgpstream_addr_equal((bgpstream_ip_addr_t *)&a,
                              (bgpstream_ip_addr_t *)&a_masked) != 0 &&
-            bgpstream_addr_equal((bgpstream_ip_addr_t *)&b,
-                                 (bgpstream_ip_addr_t *)&b_masked) != 0);
+          bgpstream_addr_equal((bgpstream_ip_addr_t *)&b,
+                               (bgpstream_ip_addr_t *)&b_masked) != 0);
 
   /* ipv6-specific */
   bgpstream_str2addr(IPV6_TEST_ADDR_A, (bgpstream_addr_storage_t *)&a6);
@@ -219,7 +219,7 @@ int test_addresses_ipv6()
 
   CHECK("IPv6 address ipv6-mask (ipv6)",
         bgpstream_ipv6_addr_equal(&a6, &a6_masked) != 0 &&
-            bgpstream_ipv6_addr_equal(&b6, &b6_masked) != 0);
+          bgpstream_ipv6_addr_equal(&b6, &b6_masked) != 0);
 
   /* copy checks */
   bgpstream_addr_copy((bgpstream_ip_addr_t *)&b, (bgpstream_ip_addr_t *)&a);
