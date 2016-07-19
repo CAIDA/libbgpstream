@@ -63,16 +63,15 @@ int test_prefixes_ipv4()
   bgpstream_str2pfx(IPV4_TEST_PFX_B, &b);
 
   /* check generic equal */
-  CHECK("IPv4 prefix generic-equals (cast from storage)",
-        bgpstream_pfx_equal((bgpstream_pfx_t *)&a, (bgpstream_pfx_t *)&b) ==
-                0 &&
-            bgpstream_pfx_equal((bgpstream_pfx_t *)&a, (bgpstream_pfx_t *)&a) !=
-                0);
+  CHECK(
+    "IPv4 prefix generic-equals (cast from storage)",
+    bgpstream_pfx_equal((bgpstream_pfx_t *)&a, (bgpstream_pfx_t *)&b) == 0 &&
+      bgpstream_pfx_equal((bgpstream_pfx_t *)&a, (bgpstream_pfx_t *)&a) != 0);
 
   /* check storage equal */
   CHECK("IPv4 prefix storage-equals (storage)",
         bgpstream_pfx_storage_equal(&a, &b) == 0 &&
-            bgpstream_pfx_storage_equal(&a, &a) != 0);
+          bgpstream_pfx_storage_equal(&a, &a) != 0);
 
   /* IPV4-SPECIFIC CHECKS */
 
@@ -82,26 +81,25 @@ int test_prefixes_ipv4()
   bgpstream_str2pfx(IPV4_TEST_PFX_B, (bgpstream_pfx_storage_t *)&b4);
 
   /* check generic equal */
-  CHECK("IPv4 prefix generic-equals (cast from ipv4)",
-        bgpstream_pfx_equal((bgpstream_pfx_t *)&a4, (bgpstream_pfx_t *)&b4) ==
-                0 &&
-            bgpstream_pfx_equal((bgpstream_pfx_t *)&a4,
-                                (bgpstream_pfx_t *)&a4) != 0);
+  CHECK(
+    "IPv4 prefix generic-equals (cast from ipv4)",
+    bgpstream_pfx_equal((bgpstream_pfx_t *)&a4, (bgpstream_pfx_t *)&b4) == 0 &&
+      bgpstream_pfx_equal((bgpstream_pfx_t *)&a4, (bgpstream_pfx_t *)&a4) != 0);
 
   /* check ipv4 equal */
   CHECK("IPv4 prefix ipv4-equals (ipv4)",
         bgpstream_ipv4_pfx_equal(&a4, &b4) == 0 &&
-            bgpstream_ipv4_pfx_equal(&a4, &a4) != 0);
+          bgpstream_ipv4_pfx_equal(&a4, &a4) != 0);
 
   /* prefix contains (i.e. more specifics) */
   bgpstream_str2pfx(IPV4_TEST_PFX_B, &a);
   bgpstream_str2pfx(IPV4_TEST_PFX_B_CHILD, &b);
   /* b is a child of a BUT a is NOT a child of b */
-  CHECK("IPv4 prefix contains",
-        bgpstream_pfx_contains((bgpstream_pfx_t *)&a, (bgpstream_pfx_t *)&b) !=
-                0 &&
-            bgpstream_pfx_contains((bgpstream_pfx_t *)&b,
-                                   (bgpstream_pfx_t *)&a) == 0);
+  CHECK(
+    "IPv4 prefix contains",
+    bgpstream_pfx_contains((bgpstream_pfx_t *)&a, (bgpstream_pfx_t *)&b) != 0 &&
+      bgpstream_pfx_contains((bgpstream_pfx_t *)&b, (bgpstream_pfx_t *)&a) ==
+        0);
 
   return 0;
 }
@@ -136,16 +134,15 @@ int test_prefixes_ipv6()
   bgpstream_str2pfx(IPV6_TEST_PFX_B, &b);
 
   /* check generic equal */
-  CHECK("IPv6 prefix generic-equals (cast from storage)",
-        bgpstream_pfx_equal((bgpstream_pfx_t *)&a, (bgpstream_pfx_t *)&b) ==
-                0 &&
-            bgpstream_pfx_equal((bgpstream_pfx_t *)&a, (bgpstream_pfx_t *)&a) !=
-                0);
+  CHECK(
+    "IPv6 prefix generic-equals (cast from storage)",
+    bgpstream_pfx_equal((bgpstream_pfx_t *)&a, (bgpstream_pfx_t *)&b) == 0 &&
+      bgpstream_pfx_equal((bgpstream_pfx_t *)&a, (bgpstream_pfx_t *)&a) != 0);
 
   /* check storage equal */
   CHECK("IPv6 prefix storage-equals (storage)",
         bgpstream_pfx_storage_equal(&a, &b) == 0 &&
-            bgpstream_pfx_storage_equal(&a, &a) != 0);
+          bgpstream_pfx_storage_equal(&a, &a) != 0);
 
   /* IPV6-SPECIFIC CHECKS */
 
@@ -155,16 +152,15 @@ int test_prefixes_ipv6()
   bgpstream_str2pfx(IPV6_TEST_PFX_B, (bgpstream_pfx_storage_t *)&b6);
 
   /* check generic equal */
-  CHECK("IPv6 prefix generic-equals (cast from ipv6)",
-        bgpstream_pfx_equal((bgpstream_pfx_t *)&a6, (bgpstream_pfx_t *)&b6) ==
-                0 &&
-            bgpstream_pfx_equal((bgpstream_pfx_t *)&a6,
-                                (bgpstream_pfx_t *)&a6) != 0);
+  CHECK(
+    "IPv6 prefix generic-equals (cast from ipv6)",
+    bgpstream_pfx_equal((bgpstream_pfx_t *)&a6, (bgpstream_pfx_t *)&b6) == 0 &&
+      bgpstream_pfx_equal((bgpstream_pfx_t *)&a6, (bgpstream_pfx_t *)&a6) != 0);
 
   /* check ipv6 equal */
   CHECK("IPv6 prefix ipv6-equals (ipv6)",
         bgpstream_ipv6_pfx_equal(&a6, &b6) == 0 &&
-            bgpstream_ipv6_pfx_equal(&a6, &a6) != 0);
+          bgpstream_ipv6_pfx_equal(&a6, &a6) != 0);
 
   /* prefix contains (i.e. more specifics) */
   bgpstream_str2pfx(IPV6_TEST_PFX_A, &a);
@@ -175,12 +171,12 @@ int test_prefixes_ipv6()
   CHECK("IPv6 prefix contains",
         bgpstream_pfx_contains((bgpstream_pfx_t *)&a,
                                (bgpstream_pfx_t *)&a_child) != 0 &&
-            bgpstream_pfx_contains((bgpstream_pfx_t *)&a_child,
-                                   (bgpstream_pfx_t *)&a) == 0 &&
-            bgpstream_pfx_contains((bgpstream_pfx_t *)&b,
-                                   (bgpstream_pfx_t *)&b_child) != 0 &&
-            bgpstream_pfx_contains((bgpstream_pfx_t *)&b_child,
-                                   (bgpstream_pfx_t *)&b) == 0);
+          bgpstream_pfx_contains((bgpstream_pfx_t *)&a_child,
+                                 (bgpstream_pfx_t *)&a) == 0 &&
+          bgpstream_pfx_contains((bgpstream_pfx_t *)&b,
+                                 (bgpstream_pfx_t *)&b_child) != 0 &&
+          bgpstream_pfx_contains((bgpstream_pfx_t *)&b_child,
+                                 (bgpstream_pfx_t *)&b) == 0);
 
   return 0;
 }

@@ -68,70 +68,70 @@ int test_patricia()
 
   CHECK("Insert into Patricia Tree v4",
         bgpstream_patricia_tree_insert(pt, (bgpstream_pfx_t *)bgpstream_str2pfx(
-                                               IPV4_TEST_PFX_A, &pfx)) != NULL);
+                                             IPV4_TEST_PFX_A, &pfx)) != NULL);
   CHECK("Insert into Patricia Tree v4",
         bgpstream_patricia_tree_insert(pt, (bgpstream_pfx_t *)bgpstream_str2pfx(
-                                               IPV4_TEST_PFX_B, &pfx)) != NULL);
+                                             IPV4_TEST_PFX_B, &pfx)) != NULL);
   CHECK("Insert into Patricia Tree v4",
         bgpstream_patricia_tree_insert(pt, (bgpstream_pfx_t *)bgpstream_str2pfx(
-                                               IPV4_TEST_PFX_B_CHILD, &pfx)) !=
-            NULL);
+                                             IPV4_TEST_PFX_B_CHILD, &pfx)) !=
+          NULL);
 
   CHECK("Insert into Patricia Tree v6",
         bgpstream_patricia_tree_insert(pt, (bgpstream_pfx_t *)bgpstream_str2pfx(
-                                               IPV6_TEST_PFX_A, &pfx)) != NULL);
+                                             IPV6_TEST_PFX_A, &pfx)) != NULL);
   CHECK("Insert into Patricia Tree v6",
         bgpstream_patricia_tree_insert(pt, (bgpstream_pfx_t *)bgpstream_str2pfx(
-                                               IPV6_TEST_PFX_A_CHILD, &pfx)) !=
-            NULL);
+                                             IPV6_TEST_PFX_A_CHILD, &pfx)) !=
+          NULL);
   CHECK("Insert into Patricia Tree v6",
         bgpstream_patricia_tree_insert(pt, (bgpstream_pfx_t *)bgpstream_str2pfx(
-                                               IPV6_TEST_PFX_B, &pfx)) != NULL);
+                                             IPV6_TEST_PFX_B, &pfx)) != NULL);
   CHECK("Insert into Patricia Tree v6",
         bgpstream_patricia_tree_insert(pt, (bgpstream_pfx_t *)bgpstream_str2pfx(
-                                               IPV6_TEST_PFX_B_CHILD, &pfx)) !=
-            NULL);
+                                             IPV6_TEST_PFX_B_CHILD, &pfx)) !=
+          NULL);
 
   /* Count prefixes */
   CHECK("Count Patricia Tree v4 prefixes",
         bgpstream_patricia_prefix_count(pt, BGPSTREAM_ADDR_VERSION_IPV4) ==
-            IPV4_TEST_PFX_CNT);
+          IPV4_TEST_PFX_CNT);
   CHECK("Count Patricia Tree v6 prefixes",
         bgpstream_patricia_prefix_count(pt, BGPSTREAM_ADDR_VERSION_IPV6) ==
-            IPV6_TEST_PFX_CNT);
+          IPV6_TEST_PFX_CNT);
 
   /* Search prefixes */
   CHECK("Patricia Tree v4 search exact",
         bgpstream_patricia_tree_search_exact(
-            pt, (bgpstream_pfx_t *)bgpstream_str2pfx(IPV4_TEST_PFX_A, &pfx)) !=
-            NULL);
+          pt, (bgpstream_pfx_t *)bgpstream_str2pfx(IPV4_TEST_PFX_A, &pfx)) !=
+          NULL);
   CHECK("Patricia Tree v6 search exact",
         bgpstream_patricia_tree_search_exact(
-            pt, (bgpstream_pfx_t *)bgpstream_str2pfx(IPV6_TEST_PFX_A, &pfx)) !=
-            NULL);
+          pt, (bgpstream_pfx_t *)bgpstream_str2pfx(IPV6_TEST_PFX_A, &pfx)) !=
+          NULL);
 
   /* Overlap info */
-  CHECK("Patricia Tree v4 overlap info",
-        bgpstream_patricia_tree_get_pfx_overlap_info(
-            pt, (bgpstream_pfx_t *)bgpstream_str2pfx(IPV4_TEST_PFX_OVERLAP,
-                                                     &pfx)) ==
-                BGPSTREAM_PATRICIA_LESS_SPECIFICS ||
-            BGPSTREAM_PATRICIA_MORE_SPECIFICS);
+  CHECK(
+    "Patricia Tree v4 overlap info",
+    bgpstream_patricia_tree_get_pfx_overlap_info(
+      pt, (bgpstream_pfx_t *)bgpstream_str2pfx(IPV4_TEST_PFX_OVERLAP, &pfx)) ==
+        BGPSTREAM_PATRICIA_LESS_SPECIFICS ||
+      BGPSTREAM_PATRICIA_MORE_SPECIFICS);
   CHECK("Patricia Tree v6 overlap info",
         bgpstream_patricia_tree_get_pfx_overlap_info(
-            pt, (bgpstream_pfx_t *)bgpstream_str2pfx(IPV6_TEST_PFX_B, &pfx)) ==
-                BGPSTREAM_PATRICIA_EXACT_MATCH ||
-            BGPSTREAM_PATRICIA_MORE_SPECIFICS);
+          pt, (bgpstream_pfx_t *)bgpstream_str2pfx(IPV6_TEST_PFX_B, &pfx)) ==
+            BGPSTREAM_PATRICIA_EXACT_MATCH ||
+          BGPSTREAM_PATRICIA_MORE_SPECIFICS);
 
   /* Count minimum coverage prefixes */
   CHECK("Patricia Tree v4 minimum coverage",
         bgpstream_patricia_tree_get_minimum_coverage(
-            pt, BGPSTREAM_ADDR_VERSION_IPV4, res) == 0 &&
-            bgpstream_patricia_tree_result_set_count(res) == 2);
+          pt, BGPSTREAM_ADDR_VERSION_IPV4, res) == 0 &&
+          bgpstream_patricia_tree_result_set_count(res) == 2);
   CHECK("Patricia Tree v6 minimum coverage",
         bgpstream_patricia_tree_get_minimum_coverage(
-            pt, BGPSTREAM_ADDR_VERSION_IPV6, res) == 0 &&
-            bgpstream_patricia_tree_result_set_count(res) == 2);
+          pt, BGPSTREAM_ADDR_VERSION_IPV6, res) == 0 &&
+          bgpstream_patricia_tree_result_set_count(res) == 2);
 
   /* Count prefixes subnets */
   CHECK("Patricia Tree v4 /24 subnets",

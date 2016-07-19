@@ -181,7 +181,7 @@ int bgpstream_community_set_snprintf(char *buf, size_t len,
     }
     need_sep = 1;
     written += bgpstream_community_snprintf(
-        bufp, (len - written), bgpstream_community_set_get(set, i));
+      bufp, (len - written), bgpstream_community_set_get(set, i));
     bufp = buf + written;
   }
   *bufp = '\0';
@@ -228,8 +228,8 @@ int bgpstream_community_set_copy(bgpstream_community_set_t *dst,
 {
   if (dst->communities_alloc_cnt < src->communities_cnt) {
     if ((dst->communities =
-             realloc(dst->communities, sizeof(bgpstream_community_t) *
-                                           src->communities_cnt)) == NULL) {
+           realloc(dst->communities, sizeof(bgpstream_community_t) *
+                                       src->communities_cnt)) == NULL) {
       return -1;
     }
     dst->communities_alloc_cnt = src->communities_cnt;
@@ -260,8 +260,8 @@ int bgpstream_community_set_insert(bgpstream_community_set_t *set,
 {
   if (set->communities_cnt == set->communities_alloc_cnt) {
     if ((set->communities = realloc(
-             set->communities, sizeof(bgpstream_community_t) *
-                                   (set->communities_alloc_cnt + 1))) == NULL) {
+           set->communities, sizeof(bgpstream_community_t) *
+                               (set->communities_alloc_cnt + 1))) == NULL) {
       return -1;
     }
     set->communities_alloc_cnt++;
@@ -286,7 +286,7 @@ int bgpstream_community_set_populate_from_array(bgpstream_community_set_t *set,
 }
 
 int bgpstream_community_set_populate_from_array_zc(
-    bgpstream_community_set_t *set, bgpstream_community_t *comms, int comms_cnt)
+  bgpstream_community_set_t *set, bgpstream_community_t *comms, int comms_cnt)
 {
   set->communities_alloc_cnt = -1; /* signal that memory is not owned by us */
   set->communities = comms;
@@ -295,7 +295,7 @@ int bgpstream_community_set_populate_from_array_zc(
   int i;
   for (i = 0; i < bgpstream_community_set_size(set); i++) {
     set->communities_hash =
-        set->communities_hash | *((uint32_t *)&set->communities[i]);
+      set->communities_hash | *((uint32_t *)&set->communities[i]);
   }
   return 0;
 }
@@ -350,8 +350,8 @@ int bgpstream_community_set_populate(bgpstream_community_set_t *set,
 
   if (set->communities_alloc_cnt < bd_comms->size) {
     if ((set->communities =
-             realloc(set->communities,
-                     sizeof(bgpstream_community_t) * bd_comms->size)) == NULL) {
+           realloc(set->communities,
+                   sizeof(bgpstream_community_t) * bd_comms->size)) == NULL) {
       return -1;
     }
     set->communities_alloc_cnt = bd_comms->size;

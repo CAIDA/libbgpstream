@@ -357,8 +357,8 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
         }
 
         if (bgpstream_input_mgr_push_sorted_input(
-                input_mgr, strdup(url), strdup(project), strdup(collector),
-                strdup(type), initial_time, duration) <= 0) {
+              input_mgr, strdup(url), strdup(project), strdup(collector),
+              strdup(type), initial_time, duration) <= 0) {
           goto err;
         }
 
@@ -472,7 +472,7 @@ bgpstream_broker_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
   if ((broker_ds = malloc_zero(sizeof(bgpstream_broker_datasource_t))) ==
       NULL) {
     bgpstream_log_err(
-        "\t\tBSDS_BROKER: create broker_ds can't allocate memory");
+      "\t\tBSDS_BROKER: create broker_ds can't allocate memory");
     goto err;
   }
   if (broker_url == NULL) {
@@ -560,7 +560,7 @@ bgpstream_broker_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
   // grab pointer to the end of the current string to simplify modifying the
   // query later
   broker_ds->query_url_end =
-      broker_ds->query_url_buf + strlen(broker_ds->query_url_buf);
+    broker_ds->query_url_buf + strlen(broker_ds->query_url_buf);
   assert((*broker_ds->query_url_end) == '\0');
 
   bgpstream_debug("\t\tBSDS_BROKER: create broker_ds end");
@@ -572,7 +572,7 @@ err:
 }
 
 int bgpstream_broker_datasource_update_input_queue(
-    bgpstream_broker_datasource_t *broker_ds, bgpstream_input_mgr_t *input_mgr)
+  bgpstream_broker_datasource_t *broker_ds, bgpstream_input_mgr_t *input_mgr)
 {
 
 // we need to set two parameters:
@@ -658,7 +658,7 @@ int bgpstream_broker_datasource_update_input_queue(
   // reset the variable params
   *broker_ds->query_url_end = '\0';
   broker_ds->query_url_remaining =
-      URL_BUFLEN - strlen(broker_ds->query_url_end);
+    URL_BUFLEN - strlen(broker_ds->query_url_end);
   return num_results;
 
 err:
@@ -670,7 +670,7 @@ err:
 }
 
 void bgpstream_broker_datasource_destroy(
-    bgpstream_broker_datasource_t *broker_ds)
+  bgpstream_broker_datasource_t *broker_ds)
 {
   if (broker_ds == NULL) {
     return;

@@ -149,7 +149,7 @@ static uint16_t pathset_get_path_id(bgpstream_as_path_store_t *store,
 
   /* need to append this path */
   if ((ps->paths = realloc(ps->paths, sizeof(bgpstream_as_path_store_path_t) *
-                                          (ps->paths_cnt + 1))) == NULL) {
+                                        (ps->paths_cnt + 1))) == NULL) {
     fprintf(stderr, "ERROR: Could not realloc paths\n");
     return UINT16_MAX;
   }
@@ -264,7 +264,7 @@ int bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
       path->seg_cnt > 1 &&                      /* peer seg != origin seg */
       seg->type == BGPSTREAM_AS_PATH_SEG_ASN && /* simple ASN */
       ((bgpstream_as_path_seg_asn_t *)seg)->asn ==
-          peer_asn) /* peer prepended */
+        peer_asn) /* peer prepended */
   {
     /* just point to the core path */
     findme.path.data = path->data + sizeof(bgpstream_as_path_seg_asn_t);
@@ -272,7 +272,7 @@ int bgpstream_as_path_store_get_path_id(bgpstream_as_path_store_t *store,
     findme.path.data_alloc_len = UINT16_MAX;
     findme.path.seg_cnt = path->seg_cnt - 1;
     findme.path.origin_offset =
-        path->origin_offset - sizeof(bgpstream_as_path_seg_asn_t);
+      path->origin_offset - sizeof(bgpstream_as_path_seg_asn_t);
     findme.is_core = 1;
   } else {
     /* empty path or no peer ASN */
@@ -375,7 +375,7 @@ bgpstream_as_path_store_get_store_path(bgpstream_as_path_store_t *store,
 }
 
 bgpstream_as_path_t *bgpstream_as_path_store_path_get_path(
-    bgpstream_as_path_store_path_t *store_path, uint32_t peer_asn)
+  bgpstream_as_path_store_path_t *store_path, uint32_t peer_asn)
 {
   bgpstream_as_path_t *pc = NULL;
 
@@ -395,7 +395,7 @@ bgpstream_as_path_t *bgpstream_as_path_store_path_get_path(
   bgpstream_as_path_clear(pc);
 
   pc->data_alloc_len = pc->data_len =
-      store_path->path.data_len + sizeof(bgpstream_as_path_seg_asn_t);
+    store_path->path.data_len + sizeof(bgpstream_as_path_seg_asn_t);
   if ((pc->data = malloc(pc->data_len)) == NULL) {
     goto err;
   }
@@ -416,17 +416,17 @@ err:
 }
 
 bgpstream_as_path_seg_t *bgpstream_as_path_store_path_get_origin_seg(
-    bgpstream_as_path_store_path_t *store_path)
+  bgpstream_as_path_store_path_t *store_path)
 {
   return ((store_path == NULL) || store_path->path.data_len == 0)
-             ? NULL
-             : (bgpstream_as_path_seg_t *)(store_path->path.data +
-                                           store_path->path.origin_offset);
+           ? NULL
+           : (bgpstream_as_path_seg_t *)(store_path->path.data +
+                                         store_path->path.origin_offset);
 }
 
 void bgpstream_as_path_store_path_iter_reset(
-    bgpstream_as_path_store_path_t *store_path,
-    bgpstream_as_path_store_path_iter_t *iter, uint32_t peer_asn)
+  bgpstream_as_path_store_path_t *store_path,
+  bgpstream_as_path_store_path_iter_t *iter, uint32_t peer_asn)
 {
   iter->spath = store_path;
 
@@ -441,7 +441,7 @@ void bgpstream_as_path_store_path_iter_reset(
 }
 
 bgpstream_as_path_seg_t *bgpstream_as_path_store_path_get_next_seg(
-    bgpstream_as_path_store_path_iter_t *iter)
+  bgpstream_as_path_store_path_iter_t *iter)
 {
   if (iter->pi.cur_offset == UINT16_MAX) {
     bgpstream_as_path_iter_reset(&iter->pi);
@@ -457,19 +457,19 @@ bgpstream_as_path_store_path_get_idx(bgpstream_as_path_store_path_t *store_path)
 }
 
 int bgpstream_as_path_store_path_is_core(
-    bgpstream_as_path_store_path_t *store_path)
+  bgpstream_as_path_store_path_t *store_path)
 {
   return store_path->is_core;
 }
 
 bgpstream_as_path_t *bgpstream_as_path_store_path_get_int_path(
-    bgpstream_as_path_store_path_t *store_path)
+  bgpstream_as_path_store_path_t *store_path)
 {
   return &store_path->path;
 }
 
 size_t bgpstream_as_path_store_path_get_size(
-    bgpstream_as_path_store_path_t *store_path)
+  bgpstream_as_path_store_path_t *store_path)
 {
   return sizeof(store_path->is_core) + sizeof(store_path->path.data_len) +
          store_path->path.data_len;

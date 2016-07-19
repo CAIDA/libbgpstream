@@ -271,7 +271,7 @@ bgpstream_ip_counter_t *bgpstream_ip_counter_create()
 {
   bgpstream_ip_counter_t *ipc;
   if ((ipc = (bgpstream_ip_counter_t *)malloc_zero(
-           sizeof(bgpstream_ip_counter_t))) == NULL) {
+         sizeof(bgpstream_ip_counter_t))) == NULL) {
     fprintf(stderr, "ERROR: can't malloc bgpstream_ip_counter_t structure\n");
     return NULL;
   }
@@ -502,11 +502,11 @@ uint64_t bgpstream_ip_counter_is_overlapping(bgpstream_ip_counter_t *ipc,
   *more_specific = 0;
   if (pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4) {
     return bgpstream_ip_counter_is_overlapping4(
-        ipc, (bgpstream_ipv4_pfx_t *)pfx, more_specific);
+      ipc, (bgpstream_ipv4_pfx_t *)pfx, more_specific);
   } else {
     if (pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV6) {
       return bgpstream_ip_counter_is_overlapping6(
-          ipc, (bgpstream_ipv6_pfx_t *)pfx, more_specific);
+        ipc, (bgpstream_ipv6_pfx_t *)pfx, more_specific);
     }
   }
   return 0;

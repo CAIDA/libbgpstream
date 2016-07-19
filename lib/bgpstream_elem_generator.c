@@ -90,7 +90,7 @@ static bgpstream_elem_t *get_new_elem(bgpstream_elem_generator_t *self)
 
     /* alloc more memory */
     if ((self->elems = realloc(self->elems, sizeof(bgpstream_elem_t *) *
-                                                (self->elems_alloc_cnt + 1))) ==
+                                              (self->elems_alloc_cnt + 1))) ==
         NULL) {
       return NULL;
     }
@@ -228,7 +228,7 @@ static int table_line_mrtd_route(bgpstream_elem_generator_t *self,
       entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]) {
     ri->nexthop.version = BGPSTREAM_ADDR_VERSION_IPV6;
     ri->nexthop.ipv6 =
-        entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop.v6_addr;
+      entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop.v6_addr;
   } else {
     ri->nexthop.version = BGPSTREAM_ADDR_VERSION_IPV4;
     ri->nexthop.ipv4 = entry->attr->nexthop;
@@ -296,7 +296,7 @@ int table_line_dump_v2_prefix(bgpstream_elem_generator_t *self,
         attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]) {
       ri->nexthop.version = BGPSTREAM_ADDR_VERSION_IPV6;
       ri->nexthop.ipv6 =
-          attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop.v6_addr;
+        attr->mp_info->announce[AFI_IP6][SAFI_UNICAST]->nexthop.v6_addr;
     } else {
       ri->nexthop.version = BGPSTREAM_ADDR_VERSION_IPV4;
       ri->nexthop.ipv4 = attr->nexthop;
@@ -532,18 +532,18 @@ static int table_line_update(bgpstream_elem_generator_t *self,
       entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]->prefix_count) {
     prefix = entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]->nlri;
     count =
-        entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]->prefix_count;
+      entry->attr->mp_info->withdraw[AFI_IP][SAFI_MULTICAST]->prefix_count;
     if (table_line_withdraw(self, prefix, count, entry) != 0) {
       return -1;
     }
   }
   if (entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST] &&
       entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]
-          ->prefix_count) {
+        ->prefix_count) {
     prefix =
-        entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]->nlri;
+      entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]->nlri;
     count = entry->attr->mp_info->withdraw[AFI_IP][SAFI_UNICAST_MULTICAST]
-                ->prefix_count;
+              ->prefix_count;
     if (table_line_withdraw(self, prefix, count, entry) != 0) {
       return -1;
     }
@@ -562,18 +562,18 @@ static int table_line_update(bgpstream_elem_generator_t *self,
       entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]->prefix_count) {
     prefix = entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]->nlri;
     count =
-        entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]->prefix_count;
+      entry->attr->mp_info->withdraw[AFI_IP6][SAFI_MULTICAST]->prefix_count;
     if (table_line_withdraw6(self, prefix, count, entry) != 0) {
       return -1;
     }
   }
   if (entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST] &&
       entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]
-          ->prefix_count) {
+        ->prefix_count) {
     prefix =
-        entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]->nlri;
+      entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]->nlri;
     count = entry->attr->mp_info->withdraw[AFI_IP6][SAFI_UNICAST_MULTICAST]
-                ->prefix_count;
+              ->prefix_count;
     if (table_line_withdraw6(self, prefix, count, entry) != 0) {
       return -1;
     }
@@ -602,17 +602,17 @@ static int table_line_update(bgpstream_elem_generator_t *self,
       entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]->prefix_count) {
     prefix_mp = entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST];
     count =
-        entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]->prefix_count;
+      entry->attr->mp_info->announce[AFI_IP][SAFI_MULTICAST]->prefix_count;
     if (table_line_announce_1(self, prefix_mp, count, entry) != 0) {
       return -1;
     }
   }
   if (entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST] &&
       entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]
-          ->prefix_count) {
+        ->prefix_count) {
     prefix_mp = entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST];
     count = entry->attr->mp_info->announce[AFI_IP][SAFI_UNICAST_MULTICAST]
-                ->prefix_count;
+              ->prefix_count;
     if (table_line_announce_1(self, prefix_mp, count, entry) != 0) {
       return -1;
     }
@@ -631,17 +631,17 @@ static int table_line_update(bgpstream_elem_generator_t *self,
       entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]->prefix_count) {
     prefix_mp = entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST];
     count =
-        entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]->prefix_count;
+      entry->attr->mp_info->announce[AFI_IP6][SAFI_MULTICAST]->prefix_count;
     if (table_line_announce6(self, prefix_mp, count, entry) != 0) {
       return -1;
     }
   }
   if (entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST] &&
       entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]
-          ->prefix_count) {
+        ->prefix_count) {
     prefix_mp = entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST];
     count = entry->attr->mp_info->announce[AFI_IP6][SAFI_UNICAST_MULTICAST]
-                ->prefix_count;
+              ->prefix_count;
     if (table_line_announce6(self, prefix_mp, count, entry) != 0) {
       return -1;
     }

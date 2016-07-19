@@ -34,16 +34,16 @@
 
 /** Opaque handle that represents the mysql data source */
 typedef struct struct_bgpstream_sqlite_datasource_t
-    bgpstream_sqlite_datasource_t;
+  bgpstream_sqlite_datasource_t;
 
 bgpstream_sqlite_datasource_t *
 bgpstream_sqlite_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
                                    char *sqlite_file);
 
 int bgpstream_sqlite_datasource_update_input_queue(
-    bgpstream_sqlite_datasource_t *sqlite_ds, bgpstream_input_mgr_t *input_mgr);
+  bgpstream_sqlite_datasource_t *sqlite_ds, bgpstream_input_mgr_t *input_mgr);
 
 void bgpstream_sqlite_datasource_destroy(
-    bgpstream_sqlite_datasource_t *sqlite_ds);
+  bgpstream_sqlite_datasource_t *sqlite_ds);
 
 #endif /* _BGPSTREAM_DATASOURCE_SQLITE_H */
