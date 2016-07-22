@@ -21,9 +21,9 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "config.h"
 #include "bgpstream_datasource_singlefile.h"
 #include "bgpstream_debug.h"
+#include "config.h"
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
