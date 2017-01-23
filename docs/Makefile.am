@@ -47,7 +47,9 @@ documentation: latex
 latex: *.tex
 	latex2html -dir html -split 0 *.tex
 
-all: doxy sphinx
+all:
+
+docs: doxy sphinx
 
 distclean: doxyclean
 	rm -rf $(DOXYGEN_CONF)
@@ -83,3 +85,4 @@ sphinx: doxy
 doxyclean:
 	rm -rf $(DOXYGEN_FOLDERS) $(DOXYGEN_BIB_FILES)
 
+.PHONY: doxy sphinx
