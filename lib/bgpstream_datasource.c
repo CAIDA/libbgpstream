@@ -79,21 +79,6 @@ bgpstream_datasource_mgr_t *bgpstream_datasource_mgr_create()
   datasource_mgr->retry_cnt = 0;
 // datasources (none of them is active at the beginning)
 
-#ifdef WITH_DATA_INTERFACE_MYSQL
-  datasource_mgr->mysql_ds = NULL;
-  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_dbname,
-                        BGPSTREAM_DS_MYSQL_DB_NAME);
-  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_user, BGPSTREAM_DS_MYSQL_DB_USER);
-  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_password,
-                        BGPSTREAM_DS_MYSQL_DB_PASSWORD);
-  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_host, BGPSTREAM_DS_MYSQL_DB_HOST);
-  GET_DEFAULT_INT_VALUE(datasource_mgr->mysql_port, BGPSTREAM_DS_MYSQL_DB_PORT);
-  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_socket,
-                        BGPSTREAM_DS_MYSQL_DB_SOCKET);
-  GET_DEFAULT_STR_VALUE(datasource_mgr->mysql_dump_path,
-                        BGPSTREAM_DS_MYSQL_DUMP_PATH);
-#endif
-
 #ifdef WITH_DATA_INTERFACE_SINGLEFILE
   datasource_mgr->singlefile_ds = NULL;
   GET_DEFAULT_STR_VALUE(datasource_mgr->singlefile_rib_mrtfile,
@@ -147,51 +132,6 @@ int bgpstream_datasource_mgr_set_data_interface_option(
   // this option has no effect if the datasource selected is not
   // using this option
   switch (option_type->if_id) {
-#ifdef WITH_DATA_INTERFACE_MYSQL
-  case BGPSTREAM_DATA_INTERFACE_MYSQL:
-    switch (option_type->id) {
-    case 0:
-      if (datasource_mgr->mysql_dbname != NULL) {
-        free(datasource_mgr->mysql_dbname);
-      }
-      datasource_mgr->mysql_dbname = strdup(option_value);
-      break;
-    case 1:
-      if (datasource_mgr->mysql_user != NULL) {
-        free(datasource_mgr->mysql_user);
-      }
-      datasource_mgr->mysql_user = strdup(option_value);
-      break;
-    case 2:
-      if (datasource_mgr->mysql_password != NULL) {
-        free(datasource_mgr->mysql_password);
-      }
-      datasource_mgr->mysql_password = strdup(option_value);
-      break;
-    case 3:
-      if (datasource_mgr->mysql_host != NULL) {
-        free(datasource_mgr->mysql_host);
-      }
-      datasource_mgr->mysql_host = strdup(option_value);
-      break;
-    case 4:
-      datasource_mgr->mysql_port = atoi(option_value);
-      break;
-    case 5:
-      if (datasource_mgr->mysql_socket != NULL) {
-        free(datasource_mgr->mysql_socket);
-      }
-      datasource_mgr->mysql_socket = strdup(option_value);
-      break;
-    case 6:
-      if (datasource_mgr->mysql_dump_path != NULL) {
-        free(datasource_mgr->mysql_dump_path);
-      }
-      datasource_mgr->mysql_dump_path = strdup(option_value);
-      break;
-    }
-    break;
-#endif
 
 #ifdef WITH_DATA_INTERFACE_SINGLEFILE
   case BGPSTREAM_DATA_INTERFACE_SINGLEFILE:
@@ -313,17 +253,6 @@ void bgpstream_datasource_mgr_init(bgpstream_datasource_mgr_t *datasource_mgr,
     break;
 #endif
 
-#ifdef WITH_DATA_INTERFACE_MYSQL
-  case BGPSTREAM_DATA_INTERFACE_MYSQL:
-    datasource_mgr->mysql_ds = bgpstream_mysql_datasource_create(
-      filter_mgr, datasource_mgr->mysql_dbname, datasource_mgr->mysql_user,
-      datasource_mgr->mysql_password, datasource_mgr->mysql_host,
-      datasource_mgr->mysql_port, datasource_mgr->mysql_socket,
-      datasource_mgr->mysql_dump_path);
-    ds = (void *)datasource_mgr->mysql_ds;
-    break;
-#endif
-
   default:
     ds = NULL;
   }
@@ -383,13 +312,6 @@ int bgpstream_datasource_mgr_update_input_queue(
     case BGPSTREAM_DATA_INTERFACE_BROKER:
       results = bgpstream_broker_datasource_update_input_queue(
         datasource_mgr->broker_ds, input_mgr);
-      break;
-#endif
-
-#ifdef WITH_DATA_INTERFACE_MYSQL
-    case BGPSTREAM_DATA_INTERFACE_MYSQL:
-      results = bgpstream_mysql_datasource_update_input_queue(
-        datasource_mgr->mysql_ds, input_mgr);
       break;
 #endif
 
@@ -454,13 +376,6 @@ void bgpstream_datasource_mgr_close(bgpstream_datasource_mgr_t *datasource_mgr)
     break;
 #endif
 
-#ifdef WITH_DATA_INTERFACE_MYSQL
-  case BGPSTREAM_DATA_INTERFACE_MYSQL:
-    bgpstream_mysql_datasource_destroy(datasource_mgr->mysql_ds);
-    datasource_mgr->mysql_ds = NULL;
-    break;
-#endif
-
   default:
     assert(0);
     break;
@@ -508,18 +423,6 @@ void bgpstream_datasource_mgr_destroy(
   free(datasource_mgr->broker_params);
   datasource_mgr->broker_params = NULL;
   datasource_mgr->broker_params_cnt = 0;
-#endif
-
-#ifdef WITH_DATA_INTERFACE_MYSQL
-  bgpstream_mysql_datasource_destroy(datasource_mgr->mysql_ds);
-  datasource_mgr->mysql_ds = NULL;
-
-  free(datasource_mgr->mysql_dbname);
-  free(datasource_mgr->mysql_user);
-  free(datasource_mgr->mysql_password);
-  free(datasource_mgr->mysql_host);
-  free(datasource_mgr->mysql_socket);
-  free(datasource_mgr->mysql_dump_path);
 #endif
 
   free(datasource_mgr);

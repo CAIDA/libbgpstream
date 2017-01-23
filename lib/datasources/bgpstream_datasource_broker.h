@@ -31,7 +31,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/** Opaque handle that represents the mysql data source */
+/** Opaque handle that represents the Broker data source */
 typedef struct struct_bgpstream_broker_datasource_t
   bgpstream_broker_datasource_t;
 

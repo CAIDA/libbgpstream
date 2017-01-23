@@ -32,10 +32,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifdef WITH_DATA_INTERFACE_MYSQL
-#include "bgpstream_datasource_mysql.h"
-#endif
-
 #ifdef WITH_DATA_INTERFACE_SINGLEFILE
 #include "bgpstream_datasource_singlefile.h"
 #endif
@@ -61,16 +57,6 @@ typedef enum {
 typedef struct struct_bgpstream_datasource_mgr_t {
   bgpstream_data_interface_id_t datasource;
 // datasources available
-#ifdef WITH_DATA_INTERFACE_MYSQL
-  bgpstream_mysql_datasource_t *mysql_ds;
-  char *mysql_dbname;
-  char *mysql_user;
-  char *mysql_password;
-  char *mysql_host;
-  unsigned int mysql_port;
-  char *mysql_socket;
-  char *mysql_dump_path;
-#endif
 
 #ifdef WITH_DATA_INTERFACE_SINGLEFILE
   bgpstream_singlefile_datasource_t *singlefile_ds;

@@ -123,9 +123,6 @@ typedef enum {
   /** CSV file interface */
   BGPSTREAM_DATA_INTERFACE_CSVFILE = 3,
 
-  /** MySQL data interface */
-  BGPSTREAM_DATA_INTERFACE_MYSQL = 4,
-
   /** SQLITE file interface */
   BGPSTREAM_DATA_INTERFACE_SQLITE = 5,
 
