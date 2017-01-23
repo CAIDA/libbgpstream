@@ -21,9 +21,9 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "config.h"
 #include "bgpstream_data_interface_broker.h"
 #include "bgpstream_debug.h"
+#include "config.h"
 #include "utils.h"
 #include "libjsmn/jsmn.h"
 #include <assert.h>
@@ -50,12 +50,11 @@
 #define APPEND_STR(str)                                                        \
   do {                                                                         \
     size_t len = strlen(str);                                                  \
-    if (broker->query_url_remaining < len + 1) {                            \
+    if (broker->query_url_remaining < len + 1) {                               \
       goto err;                                                                \
     }                                                                          \
-    strncat(broker->query_url_buf, str,                                     \
-            broker->query_url_remaining - 1);                               \
-    broker->query_url_remaining -= len;                                     \
+    strncat(broker->query_url_buf, str, broker->query_url_remaining - 1);      \
+    broker->query_url_remaining -= len;                                        \
   } while (0)
 
 struct bgpstream_di_broker {
@@ -81,9 +80,9 @@ struct bgpstream_di_broker {
 
 #define AMPORQ                                                                 \
   do {                                                                         \
-    if (broker->first_param) {                                              \
+    if (broker->first_param) {                                                 \
       APPEND_STR("?");                                                         \
-      broker->first_param = 0;                                              \
+      broker->first_param = 0;                                                 \
     } else {                                                                   \
       APPEND_STR("&");                                                         \
     }                                                                          \
@@ -459,18 +458,15 @@ err:
 }
 
 bgpstream_di_broker_t *
-bgpstream_di_broker_create(bgpstream_filter_mgr_t *filter_mgr,
-                                   char *broker_url, char **params,
-                                   int params_cnt)
+bgpstream_di_broker_create(bgpstream_filter_mgr_t *filter_mgr, char *broker_url,
+                           char **params, int params_cnt)
 {
   int i;
   bgpstream_debug("\t\tBSDS_BROKER: create broker start");
   bgpstream_di_broker_t *broker;
 
-  if ((broker = malloc_zero(sizeof(bgpstream_di_broker_t))) ==
-      NULL) {
-    bgpstream_log_err(
-      "\t\tBSDS_BROKER: create broker can't allocate memory");
+  if ((broker = malloc_zero(sizeof(bgpstream_di_broker_t))) == NULL) {
+    bgpstream_log_err("\t\tBSDS_BROKER: create broker can't allocate memory");
     goto err;
   }
   if (broker_url == NULL) {
@@ -557,8 +553,7 @@ bgpstream_di_broker_create(bgpstream_filter_mgr_t *filter_mgr,
 
   // grab pointer to the end of the current string to simplify modifying the
   // query later
-  broker->query_url_end =
-    broker->query_url_buf + strlen(broker->query_url_buf);
+  broker->query_url_end = broker->query_url_buf + strlen(broker->query_url_buf);
   assert((*broker->query_url_end) == '\0');
 
   bgpstream_debug("\t\tBSDS_BROKER: create broker end");
@@ -569,8 +564,8 @@ err:
   return NULL;
 }
 
-int bgpstream_di_broker_update_input_queue(
-  bgpstream_di_broker_t *broker, bgpstream_input_mgr_t *input_mgr)
+int bgpstream_di_broker_update_input_queue(bgpstream_di_broker_t *broker,
+                                           bgpstream_input_mgr_t *input_mgr)
 {
 
 // we need to set two parameters:
@@ -635,8 +630,7 @@ int bgpstream_di_broker_update_input_queue(
       goto retry;
     }
 
-    if ((num_results = read_json(broker, input_mgr, jsonfile)) ==
-        ERR_FATAL) {
+    if ((num_results = read_json(broker, input_mgr, jsonfile)) == ERR_FATAL) {
       fprintf(stderr, "ERROR: Received fatal error code from read_json\n");
       goto err;
     } else if (num_results == ERR_RETRY) {
@@ -655,8 +649,7 @@ int bgpstream_di_broker_update_input_queue(
 
   // reset the variable params
   *broker->query_url_end = '\0';
-  broker->query_url_remaining =
-    URL_BUFLEN - strlen(broker->query_url_end);
+  broker->query_url_remaining = URL_BUFLEN - strlen(broker->query_url_end);
   return num_results;
 
 err:
@@ -667,8 +660,7 @@ err:
   return -1;
 }
 
-void bgpstream_di_broker_destroy(
-  bgpstream_di_broker_t *broker)
+void bgpstream_di_broker_destroy(bgpstream_di_broker_t *broker)
 {
   if (broker == NULL) {
     return;

@@ -45,7 +45,8 @@
 typedef enum {
   BGPSTREAM_DATA_INTERFACE_STATUS_ON,   /* current data source is on */
   BGPSTREAM_DATA_INTERFACE_STATUS_OFF,  /* current data source is off */
-  BGPSTREAM_DATA_INTERFACE_STATUS_ERROR /* current data source generated an error */
+  BGPSTREAM_DATA_INTERFACE_STATUS_ERROR /* current data source generated an
+                                           error */
 } bgpstream_data_interface_status_t;
 
 typedef struct bgpstream_data_interface_mgr {
@@ -95,17 +96,20 @@ int bgpstream_data_interface_mgr_set_data_interface_option(
   const char *option_value);
 
 /* init the data_interface_mgr and start/init the selected data_interface */
-void bgpstream_data_interface_mgr_init(bgpstream_data_interface_mgr_t *data_interface_mgr,
-                                   bgpstream_filter_mgr_t *filter_mgr);
+void bgpstream_data_interface_mgr_init(
+  bgpstream_data_interface_mgr_t *data_interface_mgr,
+  bgpstream_filter_mgr_t *filter_mgr);
 
 void bgpstream_data_interface_mgr_set_blocking(
   bgpstream_data_interface_mgr_t *data_interface_mgr);
 
 int bgpstream_data_interface_mgr_update_input_queue(
-  bgpstream_data_interface_mgr_t *data_interface_mgr, bgpstream_input_mgr_t *input_mgr);
+  bgpstream_data_interface_mgr_t *data_interface_mgr,
+  bgpstream_input_mgr_t *input_mgr);
 
 /* stop the active data source */
-void bgpstream_data_interface_mgr_close(bgpstream_data_interface_mgr_t *data_interface_mgr);
+void bgpstream_data_interface_mgr_close(
+  bgpstream_data_interface_mgr_t *data_interface_mgr);
 
 /* destroy the memory allocated for the data_interface_mgr */
 void bgpstream_data_interface_mgr_destroy(

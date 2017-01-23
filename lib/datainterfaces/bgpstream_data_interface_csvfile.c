@@ -78,14 +78,13 @@ struct bgpstream_di_csvfile {
 
 bgpstream_di_csvfile_t *
 bgpstream_di_csvfile_create(bgpstream_filter_mgr_t *filter_mgr,
-                                    char *csvfile_file)
+                            char *csvfile_file)
 {
   bgpstream_debug("\t\tBSDS_CSVFILE: create csvfile start");
   bgpstream_di_csvfile_t *csvfile =
     (bgpstream_di_csvfile_t *)malloc_zero(sizeof(bgpstream_di_csvfile_t));
   if (csvfile == NULL) {
-    bgpstream_log_err(
-      "\t\tBSDS_CSVFILE: create csvfile can't allocate memory");
+    bgpstream_log_err("\t\tBSDS_CSVFILE: create csvfile can't allocate memory");
     goto err;
   }
   if (csvfile_file == NULL) {
@@ -125,8 +124,7 @@ err:
   return NULL;
 }
 
-static bool bgpstream_di_csvfile_filter_ok(
-  bgpstream_di_csvfile_t *csvfile)
+static bool bgpstream_di_csvfile_filter_ok(bgpstream_di_csvfile_t *csvfile)
 {
   bgpstream_debug("\t\tBSDS_CSVFILE: csvfile apply filter start");
 
@@ -213,8 +211,7 @@ static void parse_csvfile_field(void *field, size_t i, void *user_data)
 {
 
   char *field_str = (char *)field;
-  bgpstream_di_csvfile_t *csvfile =
-    (bgpstream_di_csvfile_t *)user_data;
+  bgpstream_di_csvfile_t *csvfile = (bgpstream_di_csvfile_t *)user_data;
 
   /* fprintf(stderr, "%s\n", field_str); */
 
@@ -256,8 +253,7 @@ static void parse_csvfile_field(void *field, size_t i, void *user_data)
 
 static void parse_csvfile_rowend(int c, void *user_data)
 {
-  bgpstream_di_csvfile_t *csvfile =
-    (bgpstream_di_csvfile_t *)user_data;
+  bgpstream_di_csvfile_t *csvfile = (bgpstream_di_csvfile_t *)user_data;
 
   /* if the number of fields read is compliant with the expected file format */
   if (csvfile->current_field == CSVFILE_FIELDCNT) {
@@ -272,16 +268,15 @@ static void parse_csvfile_rowend(int c, void *user_data)
         csvfile->num_results += bgpstream_input_mgr_push_sorted_input(
           csvfile->input_mgr, strdup(csvfile->filename),
           strdup(csvfile->project), strdup(csvfile->collector),
-          strdup(csvfile->bgp_type), csvfile->filetime,
-          csvfile->time_span);
+          strdup(csvfile->bgp_type), csvfile->filetime, csvfile->time_span);
       }
     }
   }
   csvfile->current_field = 0;
 }
 
-int bgpstream_di_csvfile_update_input_queue(
-  bgpstream_di_csvfile_t *csvfile, bgpstream_input_mgr_t *input_mgr)
+int bgpstream_di_csvfile_update_input_queue(bgpstream_di_csvfile_t *csvfile,
+                                            bgpstream_input_mgr_t *input_mgr)
 {
   bgpstream_debug("\t\tBSDS_CSVFILE: csvfile update input queue start");
 
@@ -329,8 +324,7 @@ int bgpstream_di_csvfile_update_input_queue(
   return csvfile->num_results;
 }
 
-void bgpstream_di_csvfile_destroy(
-  bgpstream_di_csvfile_t *csvfile)
+void bgpstream_di_csvfile_destroy(bgpstream_di_csvfile_t *csvfile)
 {
   bgpstream_debug("\t\tBSDS_CSVFILE: destroy csvfile start");
   if (csvfile == NULL) {

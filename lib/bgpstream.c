@@ -34,10 +34,10 @@
 
 /* this should be the complete list of interface types */
 static bgpstream_data_interface_id_t bgpstream_data_interfaces[] = {
-  BGPSTREAM_DATA_INTERFACE_BROKER, //
+  BGPSTREAM_DATA_INTERFACE_BROKER,     //
   BGPSTREAM_DATA_INTERFACE_SINGLEFILE, //
-  BGPSTREAM_DATA_INTERFACE_CSVFILE, //
-  BGPSTREAM_DATA_INTERFACE_SQLITE, //
+  BGPSTREAM_DATA_INTERFACE_CSVFILE,    //
+  BGPSTREAM_DATA_INTERFACE_SQLITE,     //
 };
 
 #ifdef WITH_DATA_INTERFACE_SINGLEFILE
@@ -368,8 +368,8 @@ void bgpstream_set_data_interface_option(
     return; // nothing to customize
   }
 
-  bgpstream_data_interface_mgr_set_data_interface_option(bs->di_mgr,
-                                                     option_type, option_value);
+  bgpstream_data_interface_mgr_set_data_interface_option(
+    bs->di_mgr, option_type, option_value);
 
   bgpstream_debug("BS: set_data_interface_options stop");
 }
@@ -472,7 +472,8 @@ int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t *record)
         return 0; // no (more) data are available
       }
       if (num_query_results < 0) {
-        bgpstream_debug("BS: error during data_interface_mgr_update_input_queue");
+        bgpstream_debug(
+          "BS: error during data_interface_mgr_update_input_queue");
         return -1; // error during execution
       }
       bgpstream_debug("BS: got results from data_interface");

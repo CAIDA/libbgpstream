@@ -31,9 +31,8 @@
 typedef struct bgpstream_di_broker bgpstream_di_broker_t;
 
 bgpstream_di_broker_t *
-bgpstream_di_broker_create(bgpstream_filter_mgr_t *filter_mgr,
-                           char *broker_url, char **params,
-                           int params_cnt);
+bgpstream_di_broker_create(bgpstream_filter_mgr_t *filter_mgr, char *broker_url,
+                           char **params, int params_cnt);
 
 int bgpstream_di_broker_update_input_queue(bgpstream_di_broker_t *broker,
                                            bgpstream_input_mgr_t *input_mgr);

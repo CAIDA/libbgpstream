@@ -55,13 +55,12 @@ struct bgpstream_di_singlefile {
 
 bgpstream_di_singlefile_t *
 bgpstream_di_singlefile_create(bgpstream_filter_mgr_t *filter_mgr,
-                                       char *singlefile_rib_mrtfile,
-                                       char *singlefile_upd_mrtfile)
+                               char *singlefile_rib_mrtfile,
+                               char *singlefile_upd_mrtfile)
 {
   bgpstream_debug("\t\tBSDS_CLIST: create singlefile start");
   bgpstream_di_singlefile_t *singlefile =
-    (bgpstream_di_singlefile_t *)malloc(
-      sizeof(bgpstream_di_singlefile_t));
+    (bgpstream_di_singlefile_t *)malloc(sizeof(bgpstream_di_singlefile_t));
   if (singlefile == NULL) {
     bgpstream_log_err(
       "\t\tBSDS_CLIST: create singlefile can't allocate memory");
@@ -112,8 +111,7 @@ static int same_header(char *mrt_filename, unsigned char *previous_header)
 }
 
 int bgpstream_di_singlefile_update_input_queue(
-  bgpstream_di_singlefile_t *singlefile,
-  bgpstream_input_mgr_t *input_mgr)
+  bgpstream_di_singlefile_t *singlefile, bgpstream_input_mgr_t *input_mgr)
 {
   bgpstream_debug("\t\tBSDS_CLIST: singlefile update input queue start");
   struct timeval tv;
@@ -124,8 +122,7 @@ int bgpstream_di_singlefile_update_input_queue(
   /* check digest, if different (or first) then add files to input queue) */
   if (singlefile->rib_filename[0] != '\0' &&
       now - singlefile->last_rib_filetime > RIB_FREQUENCY_CHECK &&
-      same_header(singlefile->rib_filename, singlefile->rib_header) ==
-        0) {
+      same_header(singlefile->rib_filename, singlefile->rib_header) == 0) {
     /* fprintf(stderr, "new RIB at: %"PRIu32"\n", now); */
     singlefile->last_rib_filetime = now;
     num_results += bgpstream_input_mgr_push_sorted_input(
@@ -136,22 +133,21 @@ int bgpstream_di_singlefile_update_input_queue(
 
   if (singlefile->update_filename[0] != '\0' &&
       now - singlefile->last_update_filetime > UPDATE_FREQUENCY_CHECK &&
-      same_header(singlefile->update_filename,
-                  singlefile->update_header) == 0) {
+      same_header(singlefile->update_filename, singlefile->update_header) ==
+        0) {
     /* fprintf(stderr, "new updates at: %"PRIu32"\n", now); */
     singlefile->last_update_filetime = now;
     num_results += bgpstream_input_mgr_push_sorted_input(
-      input_mgr, strdup(singlefile->update_filename),
-      strdup("singlefile"), strdup("singlefile"), strdup("updates"),
-      singlefile->last_update_filetime, UPDATE_FREQUENCY_CHECK);
+      input_mgr, strdup(singlefile->update_filename), strdup("singlefile"),
+      strdup("singlefile"), strdup("updates"), singlefile->last_update_filetime,
+      UPDATE_FREQUENCY_CHECK);
   }
 
   bgpstream_debug("\t\tBSDS_CLIST: singlefile update input queue end");
   return num_results;
 }
 
-void bgpstream_di_singlefile_destroy(
-  bgpstream_di_singlefile_t *singlefile)
+void bgpstream_di_singlefile_destroy(bgpstream_di_singlefile_t *singlefile)
 {
   bgpstream_debug("\t\tBSDS_CLIST: destroy singlefile start");
   if (singlefile == NULL) {

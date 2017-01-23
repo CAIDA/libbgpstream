@@ -26,6 +26,7 @@
 #include "utils.h"
 #include <assert.h>
 #include <inttypes.h>
+#include <sqlite3.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,7 +34,6 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <sqlite3.h>
 
 #define MAX_QUERY_LEN 2048
 #define MAX_INTERVAL_LEN 16
@@ -44,7 +44,7 @@
     if (rem_buf_space < len + 1) {                                             \
       return NULL;                                                             \
     }                                                                          \
-    strncat(sqlite->sql_query, str, rem_buf_space);                         \
+    strncat(sqlite->sql_query, str, rem_buf_space);                            \
     rem_buf_space -= len;                                                      \
   } while (0)
 
@@ -63,16 +63,16 @@ static int prepare_db(bgpstream_di_sqlite_t *sqlite)
 {
   assert(sqlite);
   int rc = 0;
-  if (sqlite3_open_v2(sqlite->sqlite_file, &sqlite->db,
-                      SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {
+  if (sqlite3_open_v2(sqlite->sqlite_file, &sqlite->db, SQLITE_OPEN_READONLY,
+                      NULL) != SQLITE_OK) {
     bgpstream_log_err("\t\tBSDS_SQLITE: can't open database: %s",
                       sqlite3_errmsg(sqlite->db));
     sqlite3_close(sqlite->db);
     return -1;
   }
 
-  rc = sqlite3_prepare_v2(sqlite->db, sqlite->sql_query, -1,
-                          &sqlite->stmt, NULL);
+  rc =
+    sqlite3_prepare_v2(sqlite->db, sqlite->sql_query, -1, &sqlite->stmt, NULL);
   if (rc != SQLITE_OK) {
     bgpstream_log_err("\t\tBSDS_SQLITE: failed to execute statement: %s",
                       sqlite3_errmsg(sqlite->db));
@@ -83,16 +83,14 @@ static int prepare_db(bgpstream_di_sqlite_t *sqlite)
 
 bgpstream_di_sqlite_t *
 bgpstream_di_sqlite_create(bgpstream_filter_mgr_t *filter_mgr,
-                                   char *sqlite_file)
+                           char *sqlite_file)
 {
 
   bgpstream_debug("\t\tBSDS_SQLITE: create sqlite start");
   bgpstream_di_sqlite_t *sqlite =
-    (bgpstream_di_sqlite_t *)malloc_zero(
-      sizeof(bgpstream_di_sqlite_t));
+    (bgpstream_di_sqlite_t *)malloc_zero(sizeof(bgpstream_di_sqlite_t));
   if (sqlite == NULL) {
-    bgpstream_log_err(
-      "\t\tBSDS_SQLITE: create sqlite can't allocate memory");
+    bgpstream_log_err("\t\tBSDS_SQLITE: create sqlite can't allocate memory");
     goto err;
   }
   if (sqlite_file == NULL) {
@@ -243,8 +241,8 @@ err:
   return NULL;
 }
 
-int bgpstream_di_sqlite_update_input_queue(
-  bgpstream_di_sqlite_t *sqlite, bgpstream_input_mgr_t *input_mgr)
+int bgpstream_di_sqlite_update_input_queue(bgpstream_di_sqlite_t *sqlite,
+                                           bgpstream_input_mgr_t *input_mgr)
 {
   int rc;
   int num_results = 0;
@@ -263,14 +261,13 @@ int bgpstream_di_sqlite_update_input_queue(
       /* printf("%s: %d\n", sqlite3_column_text(sqlite->stmt, 0),
        * sqlite3_column_int(sqlite->stmt, 6)); */
       num_results += bgpstream_input_mgr_push_sorted_input(
-        input_mgr, strdup((const char *)sqlite3_column_text(sqlite->stmt,
-                                                            0)) /* path */,
+        input_mgr,
+        strdup((const char *)sqlite3_column_text(sqlite->stmt, 0)) /* path */,
         strdup(
           (const char *)sqlite3_column_text(sqlite->stmt, 1)) /* project */,
-        strdup((const char *)sqlite3_column_text(sqlite->stmt,
-                                                 2)) /* collector */,
         strdup(
-          (const char *)sqlite3_column_text(sqlite->stmt, 3)) /* type */,
+          (const char *)sqlite3_column_text(sqlite->stmt, 2)) /* collector */,
+        strdup((const char *)sqlite3_column_text(sqlite->stmt, 3)) /* type */,
         sqlite3_column_int(sqlite->stmt, 5) /* file time */,
         sqlite3_column_int(sqlite->stmt, 4) /* time span */);
 
@@ -284,8 +281,7 @@ int bgpstream_di_sqlite_update_input_queue(
   return num_results;
 }
 
-void bgpstream_di_sqlite_destroy(
-  bgpstream_di_sqlite_t *sqlite)
+void bgpstream_di_sqlite_destroy(bgpstream_di_sqlite_t *sqlite)
 {
   if (sqlite != NULL) {
     if (sqlite->sqlite_file != NULL) {

@@ -32,12 +32,11 @@ typedef struct bgpstream_di_csvfile bgpstream_di_csvfile_t;
 
 bgpstream_di_csvfile_t *
 bgpstream_di_csvfile_create(bgpstream_filter_mgr_t *filter_mgr,
-                                    char *csvfile_file);
+                            char *csvfile_file);
 
-int bgpstream_di_csvfile_update_input_queue(
-  bgpstream_di_csvfile_t *csvfile_ds, bgpstream_input_mgr_t *input_mgr);
+int bgpstream_di_csvfile_update_input_queue(bgpstream_di_csvfile_t *csvfile_ds,
+                                            bgpstream_input_mgr_t *input_mgr);
 
-void bgpstream_di_csvfile_destroy(
-  bgpstream_di_csvfile_t *csvfile_ds);
+void bgpstream_di_csvfile_destroy(bgpstream_di_csvfile_t *csvfile_ds);
 
 #endif /* __BGPSTREAM_DATA_INTERFACE_CSVFILE_H */

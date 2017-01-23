@@ -32,14 +32,12 @@ typedef struct bgpstream_di_singlefile bgpstream_di_singlefile_t;
 
 bgpstream_di_singlefile_t *
 bgpstream_di_singlefile_create(bgpstream_filter_mgr_t *filter_mgr,
-                                       char *singlefile_rib_mrtfile,
-                                       char *singlefile_upd_mrtfile);
+                               char *singlefile_rib_mrtfile,
+                               char *singlefile_upd_mrtfile);
 
 int bgpstream_di_singlefile_update_input_queue(
-  bgpstream_di_singlefile_t *singlefile_ds,
-  bgpstream_input_mgr_t *input_mgr);
+  bgpstream_di_singlefile_t *singlefile_ds, bgpstream_input_mgr_t *input_mgr);
 
-void bgpstream_di_singlefile_destroy(
-  bgpstream_di_singlefile_t *singlefile_ds);
+void bgpstream_di_singlefile_destroy(bgpstream_di_singlefile_t *singlefile_ds);
 
 #endif /* __BGPSTREAM_DATA_INTERFACE_SINGLEFILE_H */
