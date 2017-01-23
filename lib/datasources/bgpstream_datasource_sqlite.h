@@ -32,7 +32,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/** Opaque handle that represents the mysql data source */
+/** Opaque handle that represents the SQLite data source */
 typedef struct struct_bgpstream_sqlite_datasource_t
   bgpstream_sqlite_datasource_t;
 

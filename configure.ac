@@ -162,8 +162,6 @@ BS_WITH_DI([bgpstream_broker],[broker],[BROKER],[yes])
 BS_WITH_DI([bgpstream_singlefile],[singlefile],[SINGLEFILE],[yes])
 BS_WITH_DI([bgpstream_csvfile],[csvfile],[CSVFILE],[yes])
 BS_WITH_DI([bgpstream_sqlite],[sqlite],[SQLITE],[no])
-# TODO: remove the mysql data interface
-BS_WITH_DI([bgpstream_mysql],[mysql],[MYSQL],[no])
 
 if test "x$bs_di_valid" != xyes; then
    AC_MSG_ERROR([At least one data interface must be enabled])
@@ -180,11 +178,6 @@ if test "x$with_di_sqlite" == xyes; then
    # check for sqlite library
    AC_CHECK_LIB([sqlite3], [sqlite3_open_v2], ,
                [AC_MSG_ERROR( [libsqlite3 required for sqlite data interface])])
-fi
-
-if test "x$with_di_mysql" == xyes; then
-   AC_CHECK_LIB([mysqlclient], [mysql_query], ,
-               [AC_MSG_ERROR( [libmysqlclient required for mysql data interface])])
 fi
 
 # configure enabled data interfaces
@@ -218,17 +211,6 @@ fi
 # csvfile options
 if test "x$with_di_csvfile" == xyes; then
    BS_DI_OPT(csvfile-csv-file, CSVFILE_CSV_FILE, CSV file listing the MRT data to read, not-set)
-fi
-
-# MySQL options
-if test "x$with_di_mysql" == xyes; then
-   BS_DI_OPT(mysql-db-name, MYSQL_DB_NAME, MySQL Database name, bgparchive)
-   BS_DI_OPT(mysql-db-user, MYSQL_DB_USER, MySQL Database username, bgpstream)
-   BS_DI_OPT(mysql-db-password, MYSQL_DB_PASSWORD, MySQL Database password, not-set)
-   BS_DI_OPT(mysql-db-host, MYSQL_DB_HOST, MySQL server hostname/IP address, not-set)
-   BS_DI_OPT(mysql-db-port, MYSQL_DB_PORT, MySQL server port, not-set)
-   BS_DI_OPT(mysql-db-socket, MYSQL_DB_SOCKET, MySQL server unix socket, not-set)
-   BS_DI_OPT(mysql-dump-path, MYSQL_DUMP_PATH, Common prefix path for MRT data, not-set)
 fi
 
 AC_MSG_NOTICE([---------------------------------])

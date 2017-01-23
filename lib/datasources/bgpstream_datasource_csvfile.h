@@ -31,7 +31,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/** Opaque handle that represents the mysql data source */
+/** Opaque handle that represents the CSV-file data source */
 typedef struct struct_bgpstream_csvfile_datasource_t
   bgpstream_csvfile_datasource_t;
 

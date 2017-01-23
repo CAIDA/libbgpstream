@@ -34,9 +34,10 @@
 
 /* this should be the complete list of interface types */
 static bgpstream_data_interface_id_t bgpstream_data_interfaces[] = {
-  BGPSTREAM_DATA_INTERFACE_BROKER,  BGPSTREAM_DATA_INTERFACE_SINGLEFILE,
-  BGPSTREAM_DATA_INTERFACE_CSVFILE, BGPSTREAM_DATA_INTERFACE_MYSQL,
-  BGPSTREAM_DATA_INTERFACE_SQLITE,
+  BGPSTREAM_DATA_INTERFACE_BROKER, //
+  BGPSTREAM_DATA_INTERFACE_SINGLEFILE, //
+  BGPSTREAM_DATA_INTERFACE_CSVFILE, //
+  BGPSTREAM_DATA_INTERFACE_SQLITE, //
 };
 
 #ifdef WITH_DATA_INTERFACE_SINGLEFILE
@@ -57,13 +58,6 @@ static bgpstream_data_interface_info_t bgpstream_csvfile_info = {
 static bgpstream_data_interface_info_t bgpstream_sqlite_info = {
   BGPSTREAM_DATA_INTERFACE_SQLITE, "sqlite",
   "Retrieve metadata information from a sqlite database",
-};
-#endif
-
-#ifdef WITH_DATA_INTERFACE_MYSQL
-static bgpstream_data_interface_info_t bgpstream_mysql_info = {
-  BGPSTREAM_DATA_INTERFACE_MYSQL, "mysql",
-  "Retrieve metadata information from the bgparchive mysql database",
 };
 #endif
 
@@ -91,12 +85,6 @@ static bgpstream_data_interface_info_t *bgpstream_data_interface_infos[] = {
 
 #ifdef WITH_DATA_INTERFACE_CSVFILE
   &bgpstream_csvfile_info,
-#else
-  NULL,
-#endif
-
-#ifdef WITH_DATA_INTERFACE_MYSQL
-  &bgpstream_mysql_info,
 #else
   NULL,
 #endif
@@ -158,52 +146,6 @@ static bgpstream_data_interface_option_t bgpstream_broker_options[] = {
   {
     BGPSTREAM_DATA_INTERFACE_BROKER, 1, "param",
     "Additional Broker GET parameter*",
-  },
-};
-#endif
-
-#ifdef WITH_DATA_INTERFACE_MYSQL
-static bgpstream_data_interface_option_t bgpstream_mysql_options[] = {
-  /* Database Name */
-  {
-    BGPSTREAM_DATA_INTERFACE_MYSQL, 0, "db-name",
-    "name of the mysql database to use (default: " STR(
-      BGPSTREAM_DS_MYSQL_DB_NAME) ")",
-  },
-
-  /* Database username */
-  {
-    BGPSTREAM_DATA_INTERFACE_MYSQL, 1, "db-user",
-    "mysql username to use (default: " STR(BGPSTREAM_DS_MYSQL_DB_USER) ")",
-  },
-  /* Database password */
-  {
-    BGPSTREAM_DATA_INTERFACE_MYSQL, 2, "db-password",
-    "mysql password to use (default: " STR(BGPSTREAM_DS_MYSQL_DB_PASSWORD) ")",
-  },
-
-  /* Database host */
-  {
-    BGPSTREAM_DATA_INTERFACE_MYSQL, 3, "db-host",
-    "hostname/IP of the mysql server (default: " STR(
-      BGPSTREAM_DS_MYSQL_DB_HOST) ")",
-  },
-  /* Database connection port */
-  {
-    BGPSTREAM_DATA_INTERFACE_MYSQL, 4, "db-port",
-    "port of the mysql server (default: " STR(BGPSTREAM_DS_MYSQL_DB_PORT) ")",
-  },
-  /* Database Unix socket */
-  {
-    BGPSTREAM_DATA_INTERFACE_MYSQL, 5, "db-socket",
-    "Unix socket of the mysql server (default: " STR(
-      BGPSTREAM_DS_MYSQL_DB_SOCKET) ")",
-  },
-  /* Common MRT data path */
-  {
-    BGPSTREAM_DATA_INTERFACE_MYSQL, 6, "dump-path",
-    "Common prefix path for MRT data (default:  " STR(
-      BGPSTREAM_DS_MYSQL_DUMP_PATH) ")",
   },
 };
 #endif
@@ -385,13 +327,6 @@ int bgpstream_get_data_interface_options(
     break;
 #endif
 
-#ifdef WITH_DATA_INTERFACE_MYSQL
-  case BGPSTREAM_DATA_INTERFACE_MYSQL:
-    *opts = bgpstream_mysql_options;
-    return ARR_CNT(bgpstream_mysql_options);
-    break;
-#endif
-
   default:
     *opts = NULL;
     return 0;
@@ -541,8 +476,6 @@ int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t *record)
         return -1; // error during execution
       }
       bgpstream_debug("BS: got results from datasource");
-      // DEBUG fprintf(stderr, "Finished with loading mysql results in
-      // memory!\n");
     }
     bgpstream_debug("BS: input mgr not empty");
     bs_in = bgpstream_input_mgr_get_queue_to_process(bs->input_mgr);

@@ -31,7 +31,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/** Opaque handle that represents the mysql data source */
+/** Opaque handle that represents the Single-File data source */
 typedef struct struct_bgpstream_singlefile_datasource_t
   bgpstream_singlefile_datasource_t;
 

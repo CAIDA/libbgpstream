@@ -55,11 +55,6 @@ DI_SOURCES+=bgpstream_datasource_sqlite.c \
 	    bgpstream_datasource_sqlite.h
 endif
 
-if WITH_DATA_INTERFACE_MYSQL
-DI_SOURCES+=bgpstream_datasource_mysql.c \
-	    bgpstream_datasource_mysql.h
-endif
-
 libbgpstream_datasources_la_SOURCES = $(DI_SOURCES)
 
 libbgpstream_datasources_la_LIBADD = $(DI_LIBS)
