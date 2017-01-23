@@ -104,12 +104,12 @@ static bgpstream_data_interface_option_t bgpstream_singlefile_options[] = {
   /* RIB MRT file path */
   {
     BGPSTREAM_DATA_INTERFACE_SINGLEFILE, 0, "rib-file",
-    "rib mrt file to read (default: " STR(BGPSTREAM_DS_SINGLEFILE_RIB_FILE) ")",
+    "rib mrt file to read (default: " STR(BGPSTREAM_DI_SINGLEFILE_RIB_FILE) ")",
   },
   {
     BGPSTREAM_DATA_INTERFACE_SINGLEFILE, 1, "upd-file",
     "updates mrt file to read (default: " STR(
-      BGPSTREAM_DS_SINGLEFILE_UPDATE_FILE) ")",
+      BGPSTREAM_DI_SINGLEFILE_UPDATE_FILE) ")",
   },
 };
 #endif
@@ -120,7 +120,7 @@ static bgpstream_data_interface_option_t bgpstream_csvfile_options[] = {
   {
     BGPSTREAM_DATA_INTERFACE_CSVFILE, 0, "csv-file",
     "csv file listing the mrt data to read (default: " STR(
-      BGPSTREAM_DS_CSVFILE_CSV_FILE) ")",
+      BGPSTREAM_DI_CSVFILE_CSV_FILE) ")",
   },
 };
 #endif
@@ -130,7 +130,7 @@ static bgpstream_data_interface_option_t bgpstream_sqlite_options[] = {
   /* SQLITE database file name */
   {
     BGPSTREAM_DATA_INTERFACE_SQLITE, 0, "db-file",
-    "sqlite database (default: " STR(BGPSTREAM_DS_SQLITE_DB_FILE) ")",
+    "sqlite database (default: " STR(BGPSTREAM_DI_SQLITE_DB_FILE) ")",
   },
 };
 #endif
@@ -140,7 +140,7 @@ static bgpstream_data_interface_option_t bgpstream_broker_options[] = {
   /* Broker URL */
   {
     BGPSTREAM_DATA_INTERFACE_BROKER, 0, "url",
-    "Broker URL (default: " STR(BGPSTREAM_DS_BROKER_URL) ")",
+    "Broker URL (default: " STR(BGPSTREAM_DI_BROKER_URL) ")",
   },
   /* Broker Param */
   {
@@ -165,8 +165,8 @@ bgpstream_t *bgpstream_create()
     bs = NULL;
     return NULL;
   }
-  bs->datasource_mgr = bgpstream_datasource_mgr_create();
-  if (bs->datasource_mgr == NULL) {
+  bs->di_mgr = bgpstream_data_interface_mgr_create();
+  if (bs->di_mgr == NULL) {
     bgpstream_destroy(bs);
     return NULL;
   }
@@ -356,7 +356,7 @@ bgpstream_data_interface_option_t *bgpstream_get_data_interface_option_by_name(
   return NULL;
 }
 
-/* configure the datasource interface options */
+/* configure the data interface options */
 
 void bgpstream_set_data_interface_option(
   bgpstream_t *bs, bgpstream_data_interface_option_t *option_type,
@@ -368,29 +368,29 @@ void bgpstream_set_data_interface_option(
     return; // nothing to customize
   }
 
-  bgpstream_datasource_mgr_set_data_interface_option(bs->datasource_mgr,
+  bgpstream_data_interface_mgr_set_data_interface_option(bs->di_mgr,
                                                      option_type, option_value);
 
   bgpstream_debug("BS: set_data_interface_options stop");
 }
 
 /* configure the interface so that it connects
- * to a specific datasource interface
+ * to a specific data interface
  */
 void bgpstream_set_data_interface(bgpstream_t *bs,
-                                  bgpstream_data_interface_id_t datasource)
+                                  bgpstream_data_interface_id_t di)
 {
   bgpstream_debug("BS: set_data_interface start");
   if (bs == NULL || (bs != NULL && bs->status != BGPSTREAM_STATUS_ALLOCATED)) {
     return; // nothing to customize
   }
-  bgpstream_datasource_mgr_set_data_interface(bs->datasource_mgr, datasource);
+  bgpstream_data_interface_mgr_set_data_interface(bs->di_mgr, di);
   bgpstream_debug("BS: set_data_interface stop");
 }
 
 bgpstream_data_interface_id_t bgpstream_get_data_interface_id(bgpstream_t *bs)
 {
-  return bs->datasource_mgr->datasource;
+  return bs->di_mgr->di_id;
 }
 
 /* configure the interface so that it blocks
@@ -402,7 +402,7 @@ void bgpstream_set_live_mode(bgpstream_t *bs)
   if (bs == NULL || (bs != NULL && bs->status != BGPSTREAM_STATUS_ALLOCATED)) {
     return; // nothing to customize
   }
-  bgpstream_datasource_mgr_set_blocking(bs->datasource_mgr);
+  bgpstream_data_interface_mgr_set_blocking(bs->di_mgr);
   bgpstream_debug("BS: set_blocking stop");
 }
 
@@ -423,16 +423,16 @@ int bgpstream_start(bgpstream_t *bs)
     return rc;
   }
 
-  // turn on datasource interface
-  bgpstream_datasource_mgr_init(bs->datasource_mgr, bs->filter_mgr);
-  if (bs->datasource_mgr->status == BGPSTREAM_DATASOURCE_STATUS_ON) {
+  // turn on data interface
+  bgpstream_data_interface_mgr_init(bs->di_mgr, bs->filter_mgr);
+  if (bs->di_mgr->status == BGPSTREAM_DATA_INTERFACE_STATUS_ON) {
     bs->status = BGPSTREAM_STATUS_ON; // interface is on
     bgpstream_debug("BS: init end: ok");
     return 0;
   } else {
-    // interface is not on (something wrong with datasource)
+    // interface is not on (something wrong with data interface)
     bs->status = BGPSTREAM_STATUS_ALLOCATED;
-    bgpstream_debug("BS: init warning: check if the datasource provided is ok");
+    bgpstream_debug("BS: init warning: check if data interface provided is ok");
     bgpstream_debug("BS: init end: not ok");
     return -1;
   }
@@ -465,17 +465,17 @@ int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t *record)
       bgpstream_debug("BS: input mgr is empty");
       /* query the external source and append new
        * input objects to the input_mgr queue */
-      num_query_results = bgpstream_datasource_mgr_update_input_queue(
-        bs->datasource_mgr, bs->input_mgr);
+      num_query_results = bgpstream_data_interface_mgr_update_input_queue(
+        bs->di_mgr, bs->input_mgr);
       if (num_query_results == 0) {
         bgpstream_debug("BS: no (more) data are available");
         return 0; // no (more) data are available
       }
       if (num_query_results < 0) {
-        bgpstream_debug("BS: error during datasource_mgr_update_input_queue");
+        bgpstream_debug("BS: error during data_interface_mgr_update_input_queue");
         return -1; // error during execution
       }
-      bgpstream_debug("BS: got results from datasource");
+      bgpstream_debug("BS: got results from data_interface");
     }
     bgpstream_debug("BS: input mgr not empty");
     bs_in = bgpstream_input_mgr_get_queue_to_process(bs->input_mgr);
@@ -497,7 +497,7 @@ void bgpstream_stop(bgpstream_t *bs)
   if (bs == NULL || (bs != NULL && bs->status != BGPSTREAM_STATUS_ON)) {
     return; // nothing to close
   }
-  bgpstream_datasource_mgr_close(bs->datasource_mgr);
+  bgpstream_data_interface_mgr_close(bs->di_mgr);
   bs->status = BGPSTREAM_STATUS_OFF; // interface is off
   bgpstream_debug("BS: close end");
 }
@@ -516,8 +516,8 @@ void bgpstream_destroy(bgpstream_t *bs)
   bs->reader_mgr = NULL;
   bgpstream_filter_mgr_destroy(bs->filter_mgr);
   bs->filter_mgr = NULL;
-  bgpstream_datasource_mgr_destroy(bs->datasource_mgr);
-  bs->datasource_mgr = NULL;
+  bgpstream_data_interface_mgr_destroy(bs->di_mgr);
+  bs->di_mgr = NULL;
   free(bs);
   bgpstream_debug("BS: destroy end");
 }

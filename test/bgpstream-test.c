@@ -35,7 +35,7 @@
 
 bgpstream_t *bs;
 bgpstream_record_t *rec;
-bgpstream_data_interface_id_t datasource_id = 0;
+bgpstream_data_interface_id_t di_id = 0;
 bgpstream_data_interface_option_t *option;
 
 #define RUN(interface)                                                         \
@@ -70,9 +70,9 @@ bgpstream_data_interface_option_t *option;
 #define CHECK_SET_INTERFACE(interface)                                         \
   do {                                                                         \
     CHECK("get data interface ID (" STR(interface) ")",                        \
-          (datasource_id = bgpstream_get_data_interface_id_by_name(            \
+          (di_id = bgpstream_get_data_interface_id_by_name(            \
              bs, STR(interface))) != 0);                                       \
-    bgpstream_set_data_interface(bs, datasource_id);                           \
+    bgpstream_set_data_interface(bs, di_id);                           \
   } while (0)
 
 int test_bgpstream()
@@ -93,13 +93,13 @@ int test_singlefile()
 
   CHECK("get option (rib-file)",
         (option = bgpstream_get_data_interface_option_by_name(
-           bs, datasource_id, "rib-file")) != NULL);
+           bs, di_id, "rib-file")) != NULL);
   bgpstream_set_data_interface_option(
     bs, option, "routeviews.route-views.jinx.ribs.1427846400.bz2");
 
   CHECK("get option (upd-file)",
         (option = bgpstream_get_data_interface_option_by_name(
-           bs, datasource_id, "upd-file")) != NULL);
+           bs, di_id, "upd-file")) != NULL);
   bgpstream_set_data_interface_option(bs, option,
                                       "ris.rrc06.updates.1427846400.gz");
 
@@ -117,7 +117,7 @@ int test_csvfile()
 
   CHECK("get option (csv-file)",
         (option = bgpstream_get_data_interface_option_by_name(
-           bs, datasource_id, "csv-file")) != NULL);
+           bs, di_id, "csv-file")) != NULL);
   bgpstream_set_data_interface_option(bs, option, "csv_test.csv");
 
   bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_COLLECTOR, "rrc06");
@@ -136,7 +136,7 @@ int test_sqlite()
 
   CHECK("get option (db-file)",
         (option = bgpstream_get_data_interface_option_by_name(
-           bs, datasource_id, "db-file")) != NULL);
+           bs, di_id, "db-file")) != NULL);
   bgpstream_set_data_interface_option(bs, option, "sqlite_test.db");
 
   bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_PROJECT, "routeviews");
@@ -154,7 +154,7 @@ int test_broker()
   CHECK_SET_INTERFACE(broker);
 
   /* test http connectivity */
-  io_t *file = wandio_create(BGPSTREAM_DS_BROKER_URL);
+  io_t *file = wandio_create(BGPSTREAM_DI_BROKER_URL);
   CHECK_MSG("HTTP connectivity to broker",
             "Failed to connect to BGPStream Broker via HTTP.\n"
             "Maybe wandio is built without HTTP support, "

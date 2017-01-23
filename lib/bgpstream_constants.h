@@ -25,7 +25,7 @@
 #define _BGPSTREAM_CONSTANTS_H
 
 // data source max length
-#define BGPSTREAM_DS_MAX_LEN 512
+#define BGPSTREAM_DI_MAX_LEN 512
 
 // dump name max length
 #define BGPSTREAM_DUMP_MAX_LEN 1024

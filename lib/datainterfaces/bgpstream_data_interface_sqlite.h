@@ -21,29 +21,23 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _BGPSTREAM_DATASOURCE_BROKER_H
-#define _BGPSTREAM_DATASOURCE_BROKER_H
+#ifndef __BGPSTREAM_DATA_INTERFACE_SQLITE_H
+#define __BGPSTREAM_DATA_INTERFACE_SQLITE_H
 
-#include "bgpstream_constants.h"
 #include "bgpstream_filter.h"
 #include "bgpstream_input.h"
 
-#include <stdio.h>
-#include <stdlib.h>
+/** Opaque handle that represents the SQLite data source */
+typedef struct bgpstream_di_sqlite bgpstream_di_sqlite_t;
 
-/** Opaque handle that represents the Broker data source */
-typedef struct struct_bgpstream_broker_datasource_t
-  bgpstream_broker_datasource_t;
+bgpstream_di_sqlite_t *
+bgpstream_di_sqlite_create(bgpstream_filter_mgr_t *filter_mgr,
+                                   char *sqlite_file);
 
-bgpstream_broker_datasource_t *
-bgpstream_broker_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
-                                   char *broker_url, char **params,
-                                   int params_cnt);
+int bgpstream_di_sqlite_update_input_queue(
+  bgpstream_di_sqlite_t *sqlite_ds, bgpstream_input_mgr_t *input_mgr);
 
-int bgpstream_broker_datasource_update_input_queue(
-  bgpstream_broker_datasource_t *broker_ds, bgpstream_input_mgr_t *input_mgr);
+void bgpstream_di_sqlite_destroy(
+  bgpstream_di_sqlite_t *sqlite_ds);
 
-void bgpstream_broker_datasource_destroy(
-  bgpstream_broker_datasource_t *broker_ds);
-
-#endif /* _BGPSTREAM_DATASOURCE_BROKER_H */
+#endif /* __BGPSTREAM_DATA_INTERFACE_SQLITE_H */
