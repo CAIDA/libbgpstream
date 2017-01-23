@@ -30,34 +30,34 @@ AM_CPPFLAGS= 	-I$(top_srcdir) \
 	 	-I$(top_srcdir)/common
 
 
-noinst_LTLIBRARIES = libbgpstream-datasources.la
+noinst_LTLIBRARIES = libbgpstream-data-interfaces.la
 
 DI_SOURCES=
 DI_LIBS=
 
 if WITH_DATA_INTERFACE_BROKER
-DI_SOURCES+=bgpstream_datasource_broker.c \
-	    bgpstream_datasource_broker.h
+DI_SOURCES+=bgpstream_data_interface_broker.c \
+	    bgpstream_data_interface_broker.h
 endif
 
 if WITH_DATA_INTERFACE_SINGLEFILE
-DI_SOURCES+=bgpstream_datasource_singlefile.c \
-	    bgpstream_datasource_singlefile.h
+DI_SOURCES+=bgpstream_data_interface_singlefile.c \
+	    bgpstream_data_interface_singlefile.h
 endif
 
 if WITH_DATA_INTERFACE_CSVFILE
-DI_SOURCES+=bgpstream_datasource_csvfile.c \
-	    bgpstream_datasource_csvfile.h
+DI_SOURCES+=bgpstream_data_interface_csvfile.c \
+	    bgpstream_data_interface_csvfile.h
 endif
 
 if WITH_DATA_INTERFACE_SQLITE
-DI_SOURCES+=bgpstream_datasource_sqlite.c \
-	    bgpstream_datasource_sqlite.h
+DI_SOURCES+=bgpstream_data_interface_sqlite.c \
+	    bgpstream_data_interface_sqlite.h
 endif
 
-libbgpstream_datasources_la_SOURCES = $(DI_SOURCES)
+libbgpstream_data_interfaces_la_SOURCES = $(DI_SOURCES)
 
-libbgpstream_datasources_la_LIBADD = $(DI_LIBS)
+libbgpstream_data_interfaces_la_LIBADD = $(DI_LIBS)
 
 ACLOCAL_AMFLAGS = -I m4
 

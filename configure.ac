@@ -370,7 +370,7 @@ AC_CONFIG_FILES([Makefile
 	        docs/bgpstream.doxygen
 		lib/Makefile
                 lib/bgpdump/Makefile
-                lib/datasources/Makefile
+                lib/datainterfaces/Makefile
                 lib/utils/Makefile
 		tools/Makefile
 		test/Makefile])

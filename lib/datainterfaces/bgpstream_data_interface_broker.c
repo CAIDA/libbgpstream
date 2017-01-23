@@ -22,12 +22,10 @@
  */
 
 #include "config.h"
-
-#include "bgpstream_datasource_broker.h"
+#include "bgpstream_data_interface_broker.h"
 #include "bgpstream_debug.h"
 #include "utils.h"
 #include "libjsmn/jsmn.h"
-
 #include <assert.h>
 #include <inttypes.h>
 #include <stdint.h>
@@ -52,15 +50,15 @@
 #define APPEND_STR(str)                                                        \
   do {                                                                         \
     size_t len = strlen(str);                                                  \
-    if (broker_ds->query_url_remaining < len + 1) {                            \
+    if (broker->query_url_remaining < len + 1) {                            \
       goto err;                                                                \
     }                                                                          \
-    strncat(broker_ds->query_url_buf, str,                                     \
-            broker_ds->query_url_remaining - 1);                               \
-    broker_ds->query_url_remaining -= len;                                     \
+    strncat(broker->query_url_buf, str,                                     \
+            broker->query_url_remaining - 1);                               \
+    broker->query_url_remaining -= len;                                     \
   } while (0)
 
-struct struct_bgpstream_broker_datasource_t {
+struct bgpstream_di_broker {
   bgpstream_filter_mgr_t *filter_mgr;
 
   // working space to build query urls
@@ -83,9 +81,9 @@ struct struct_bgpstream_broker_datasource_t {
 
 #define AMPORQ                                                                 \
   do {                                                                         \
-    if (broker_ds->first_param) {                                              \
+    if (broker->first_param) {                                              \
       APPEND_STR("?");                                                         \
-      broker_ds->first_param = 0;                                              \
+      broker->first_param = 0;                                              \
     } else {                                                                   \
       APPEND_STR("&");                                                         \
     }                                                                          \
@@ -184,7 +182,7 @@ static jsmntok_t *json_skip(jsmntok_t *t)
     }                                                                          \
   } while (0)
 
-static int process_json(bgpstream_broker_datasource_t *broker_ds,
+static int process_json(bgpstream_di_broker_t *broker,
                         bgpstream_input_mgr_t *input_mgr, const char *js,
                         jsmntok_t *root_tok, size_t count)
 {
@@ -234,7 +232,7 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
     if (json_strcmp(js, t, "time") == 0) {
       NEXT_TOK;
       json_type_assert(t, JSMN_PRIMITIVE);
-      json_strtoul(broker_ds->last_response_time, t);
+      json_strtoul(broker->last_response_time, t);
       time_set = 1;
       NEXT_TOK;
     } else if (json_strcmp(js, t, "type") == 0) {
@@ -352,8 +350,8 @@ static int process_json(bgpstream_broker_datasource_t *broker_ds,
 #endif
 
         // do we need to update our current_window_end?
-        if (initial_time + duration > broker_ds->current_window_end) {
-          broker_ds->current_window_end = (initial_time + duration);
+        if (initial_time + duration > broker->current_window_end) {
+          broker->current_window_end = (initial_time + duration);
         }
 
         if (bgpstream_input_mgr_push_sorted_input(
@@ -385,7 +383,7 @@ err:
   return ERR_RETRY;
 }
 
-static int read_json(bgpstream_broker_datasource_t *broker_ds,
+static int read_json(bgpstream_di_broker_t *broker,
                      bgpstream_input_mgr_t *input_mgr, io_t *jsonfile)
 {
   jsmn_parser p;
@@ -444,7 +442,7 @@ again:
     fprintf(stderr, "ERROR: JSON parser returned %d\n", ret);
     goto err;
   }
-  ret = process_json(broker_ds, input_mgr, js, tok, p.toknext);
+  ret = process_json(broker, input_mgr, js, tok, p.toknext);
 
   free(js);
   free(tok);
@@ -460,29 +458,29 @@ err:
   return ERR_FATAL;
 }
 
-bgpstream_broker_datasource_t *
-bgpstream_broker_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
+bgpstream_di_broker_t *
+bgpstream_di_broker_create(bgpstream_filter_mgr_t *filter_mgr,
                                    char *broker_url, char **params,
                                    int params_cnt)
 {
   int i;
-  bgpstream_debug("\t\tBSDS_BROKER: create broker_ds start");
-  bgpstream_broker_datasource_t *broker_ds;
+  bgpstream_debug("\t\tBSDS_BROKER: create broker start");
+  bgpstream_di_broker_t *broker;
 
-  if ((broker_ds = malloc_zero(sizeof(bgpstream_broker_datasource_t))) ==
+  if ((broker = malloc_zero(sizeof(bgpstream_di_broker_t))) ==
       NULL) {
     bgpstream_log_err(
-      "\t\tBSDS_BROKER: create broker_ds can't allocate memory");
+      "\t\tBSDS_BROKER: create broker can't allocate memory");
     goto err;
   }
   if (broker_url == NULL) {
-    bgpstream_log_err("\t\tBSDS_BROKER: create broker_ds no file provided");
+    bgpstream_log_err("\t\tBSDS_BROKER: create broker no file provided");
     goto err;
   }
-  broker_ds->filter_mgr = filter_mgr;
-  broker_ds->first_param = 1;
-  broker_ds->query_url_remaining = URL_BUFLEN;
-  broker_ds->query_url_buf[0] = '\0';
+  broker->filter_mgr = filter_mgr;
+  broker->first_param = 1;
+  broker->query_url_remaining = URL_BUFLEN;
+  broker->query_url_buf[0] = '\0';
 
   // http://bgpstream.caida.org/broker (e.g.)
   APPEND_STR(broker_url);
@@ -559,20 +557,20 @@ bgpstream_broker_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
 
   // grab pointer to the end of the current string to simplify modifying the
   // query later
-  broker_ds->query_url_end =
-    broker_ds->query_url_buf + strlen(broker_ds->query_url_buf);
-  assert((*broker_ds->query_url_end) == '\0');
+  broker->query_url_end =
+    broker->query_url_buf + strlen(broker->query_url_buf);
+  assert((*broker->query_url_end) == '\0');
 
-  bgpstream_debug("\t\tBSDS_BROKER: create broker_ds end");
+  bgpstream_debug("\t\tBSDS_BROKER: create broker end");
 
-  return broker_ds;
+  return broker;
 err:
-  bgpstream_broker_datasource_destroy(broker_ds);
+  bgpstream_di_broker_destroy(broker);
   return NULL;
 }
 
-int bgpstream_broker_datasource_update_input_queue(
-  bgpstream_broker_datasource_t *broker_ds, bgpstream_input_mgr_t *input_mgr)
+int bgpstream_di_broker_update_input_queue(
+  bgpstream_di_broker_t *broker, bgpstream_input_mgr_t *input_mgr)
 {
 
 // we need to set two parameters:
@@ -592,9 +590,9 @@ int bgpstream_broker_datasource_update_input_queue(
 
   int success = 0;
 
-  if (broker_ds->last_response_time > 0) {
+  if (broker->last_response_time > 0) {
     // need to add dataAddedSince
-    if (snprintf(buf, BUFLEN, "%" PRIu32, broker_ds->last_response_time) >=
+    if (snprintf(buf, BUFLEN, "%" PRIu32, broker->last_response_time) >=
         BUFLEN) {
       fprintf(stderr, "ERROR: Could not build dataAddedSince param string\n");
       goto err;
@@ -604,9 +602,9 @@ int bgpstream_broker_datasource_update_input_queue(
     APPEND_STR(buf);
   }
 
-  if (broker_ds->current_window_end > 0) {
+  if (broker->current_window_end > 0) {
     // need to add minInitialTime
-    if (snprintf(buf, BUFLEN, "%" PRIu32, broker_ds->current_window_end) >=
+    if (snprintf(buf, BUFLEN, "%" PRIu32, broker->current_window_end) >=
         BUFLEN) {
       fprintf(stderr, "ERROR: Could not build minInitialTime param string\n");
       goto err;
@@ -628,16 +626,16 @@ int bgpstream_broker_datasource_update_input_queue(
     attempts++;
 
 #ifdef WITH_BROKER_DEBUG
-    fprintf(stderr, "\nQuery URL: \"%s\"\n", broker_ds->query_url_buf);
+    fprintf(stderr, "\nQuery URL: \"%s\"\n", broker->query_url_buf);
 #endif
 
-    if ((jsonfile = wandio_create(broker_ds->query_url_buf)) == NULL) {
+    if ((jsonfile = wandio_create(broker->query_url_buf)) == NULL) {
       fprintf(stderr, "ERROR: Could not open %s for reading\n",
-              broker_ds->query_url_buf);
+              broker->query_url_buf);
       goto retry;
     }
 
-    if ((num_results = read_json(broker_ds, input_mgr, jsonfile)) ==
+    if ((num_results = read_json(broker, input_mgr, jsonfile)) ==
         ERR_FATAL) {
       fprintf(stderr, "ERROR: Received fatal error code from read_json\n");
       goto err;
@@ -656,9 +654,9 @@ int bgpstream_broker_datasource_update_input_queue(
   } while (success == 0);
 
   // reset the variable params
-  *broker_ds->query_url_end = '\0';
-  broker_ds->query_url_remaining =
-    URL_BUFLEN - strlen(broker_ds->query_url_end);
+  *broker->query_url_end = '\0';
+  broker->query_url_remaining =
+    URL_BUFLEN - strlen(broker->query_url_end);
   return num_results;
 
 err:
@@ -669,12 +667,12 @@ err:
   return -1;
 }
 
-void bgpstream_broker_datasource_destroy(
-  bgpstream_broker_datasource_t *broker_ds)
+void bgpstream_di_broker_destroy(
+  bgpstream_di_broker_t *broker)
 {
-  if (broker_ds == NULL) {
+  if (broker == NULL) {
     return;
   }
 
-  free(broker_ds);
+  free(broker);
 }

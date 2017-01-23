@@ -26,7 +26,7 @@
 
 #include "bgpstream.h"
 
-#include "bgpstream_datasource.h"
+#include "bgpstream_data_interface_manager.h"
 #include "bgpstream_filter.h"
 #include "bgpstream_input.h"
 #include "bgpstream_reader.h"
@@ -41,7 +41,7 @@ struct struct_bgpstream_t {
   bgpstream_input_mgr_t *input_mgr;
   bgpstream_reader_mgr_t *reader_mgr;
   bgpstream_filter_mgr_t *filter_mgr;
-  bgpstream_datasource_mgr_t *datasource_mgr;
+  bgpstream_data_interface_mgr_t *di_mgr;
   bgpstream_status status;
 };
 

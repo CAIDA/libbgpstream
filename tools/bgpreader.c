@@ -74,9 +74,9 @@ struct window {
 };
 
 static bgpstream_t *bs;
-static bgpstream_data_interface_id_t datasource_id_default = 0;
-static bgpstream_data_interface_id_t datasource_id = 0;
-static bgpstream_data_interface_info_t *datasource_info = NULL;
+static bgpstream_data_interface_id_t di_id_default = 0;
+static bgpstream_data_interface_id_t di_id = 0;
+static bgpstream_data_interface_info_t *di_info = NULL;
 
 static void data_if_usage()
 {
@@ -93,22 +93,22 @@ static void data_if_usage()
 
     if (info != NULL) {
       fprintf(stderr, "       %-15s%s%s\n", info->name, info->description,
-              (ids[i] == datasource_id_default) ? " (default)" : "");
+              (ids[i] == di_id_default) ? " (default)" : "");
     }
   }
 }
 
 static void dump_if_options()
 {
-  assert(datasource_id != 0);
+  assert(di_id != 0);
 
   bgpstream_data_interface_option_t *options;
   int opt_cnt = 0;
   int i;
 
-  opt_cnt = bgpstream_get_data_interface_options(bs, datasource_id, &options);
+  opt_cnt = bgpstream_get_data_interface_options(bs, di_id, &options);
 
-  fprintf(stderr, "Data interface options for '%s':\n", datasource_info->name);
+  fprintf(stderr, "Data interface options for '%s':\n", di_info->name);
   if (opt_cnt == 0) {
     fprintf(stderr, "   [NONE]\n");
   } else {
@@ -241,9 +241,9 @@ int main(int argc, char *argv[])
     fprintf(stderr, "ERROR: Could not create BGPStream instance\n");
     return -1;
   }
-  datasource_id_default = datasource_id = bgpstream_get_data_interface_id(bs);
-  datasource_info = bgpstream_get_data_interface_info(bs, datasource_id);
-  assert(datasource_id != 0);
+  di_id_default = di_id = bgpstream_get_data_interface_id(bs);
+  di_info = bgpstream_get_data_interface_info(bs, di_id);
+  assert(di_id != 0);
 
   /* allocate memory for bs_record */
   bgpstream_record_t *bs_record = bgpstream_record_create();
@@ -344,13 +344,13 @@ int main(int argc, char *argv[])
       rib_period = atoi(optarg);
       break;
     case 'd':
-      if ((datasource_id =
+      if ((di_id =
              bgpstream_get_data_interface_id_by_name(bs, optarg)) == 0) {
         fprintf(stderr, "ERROR: Invalid data interface name '%s'\n", optarg);
         usage();
         exit(-1);
       }
-      datasource_info = bgpstream_get_data_interface_info(bs, datasource_id);
+      di_info = bgpstream_get_data_interface_info(bs, di_id);
       break;
     case 'o':
       if (interface_options_cnt == OPTION_CMD_CNT) {
@@ -419,9 +419,9 @@ int main(int argc, char *argv[])
       *endp = '\0';
       endp++;
       if ((option = bgpstream_get_data_interface_option_by_name(
-             bs, datasource_id, interface_options[i])) == NULL) {
+             bs, di_id, interface_options[i])) == NULL) {
         fprintf(stderr, "ERROR: Invalid option '%s' for data interface '%s'\n",
-                interface_options[i], datasource_info->name);
+                interface_options[i], di_info->name);
         usage();
         exit(-1);
       }
@@ -433,7 +433,7 @@ int main(int argc, char *argv[])
   interface_options_cnt = 0;
 
   if (windows_cnt == 0 && !intervalstring) {
-    if (datasource_id == BGPSTREAM_DATA_INTERFACE_BROKER) {
+    if (di_id == BGPSTREAM_DATA_INTERFACE_BROKER) {
       fprintf(stderr,
               "ERROR: At least one time window must be set when using the "
               "broker data interface\n");
@@ -512,8 +512,8 @@ int main(int argc, char *argv[])
     bgpstream_add_rib_period_filter(bs, rib_period);
   }
 
-  /* datasource */
-  bgpstream_set_data_interface(bs, datasource_id);
+  /* di */
+  bgpstream_set_data_interface(bs, di_id);
 
   /* live */
   if (live != 0) {

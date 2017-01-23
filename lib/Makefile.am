@@ -21,14 +21,14 @@
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-SUBDIRS= bgpdump datasources utils
+SUBDIRS= bgpdump datainterfaces utils
 
 # AM_CPPFLAGS - The contents of this variable are passed to every compilation
 # that invokes the C preprocessor; it is a list of arguments to the
 # preprocessor. For instance, -I and -D options should be listed here.
 AM_CPPFLAGS = 	-I$(top_srcdir) \
 		-I$(top_srcdir)/lib/bgpdump \
-		-I$(top_srcdir)/lib/datasources \
+		-I$(top_srcdir)/lib/datainterfaces \
                 -I$(top_srcdir)/lib/utils \
 	 	-I$(top_srcdir)/common
 
@@ -46,8 +46,8 @@ libbgpstreamcaida_la_SOURCES = 	\
 	bgpstream.h		\
 	bgpstream.c		\
 	bgpstream_constants.h	\
-	bgpstream_datasource.c	\
-	bgpstream_datasource.h	\
+	bgpstream_data_interface_manager.c	\
+	bgpstream_data_interface_manager.h	\
 	bgpstream_debug.h	\
 	bgpstream_elem.c	\
 	bgpstream_elem.h	\
@@ -71,7 +71,7 @@ libbgpstreamcaida_la_CFLAGS = -Wall
 
 libbgpstreamcaida_la_LIBADD = \
 			$(top_builddir)/lib/bgpdump/libbgpstream-bgpdump.la \
-			$(top_builddir)/lib/datasources/libbgpstream-datasources.la \
+			$(top_builddir)/lib/datainterfaces/libbgpstream-data-interfaces.la \
 			$(top_builddir)/lib/utils/libbgpstream-utils.la \
 			$(top_builddir)/common/libcccommon.la
 

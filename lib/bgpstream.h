@@ -243,7 +243,7 @@ void bgpstream_add_interval_filter(bgpstream_t *bs, uint32_t begin_time,
  * @param bs            pointer to the BGP Stream instance
  *                      in the returned array
  * @param[out] if_ids   set to a borrowed pointer to an array of
- *                      bgpstream_datasource_type_t values
+ *                      bgpstream_data_interface_type_t values
  * @return the number of elements the the if_ids array
  *
  * @note the returned array belongs to BGP Stream. It must not be freed by the

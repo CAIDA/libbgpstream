@@ -21,7 +21,7 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "bgpstream_datasource_singlefile.h"
+#include "bgpstream_data_interface_singlefile.h"
 #include "bgpstream_debug.h"
 #include "config.h"
 #include <inttypes.h>
@@ -39,9 +39,11 @@
 #define UPDATE_FREQUENCY_CHECK 120
 
 #define MAX_HEADER_READ_BYTES 1024
+
+/* TODO: move this buffer inside the state structure!! */
 static unsigned char buffer[MAX_HEADER_READ_BYTES];
 
-struct struct_bgpstream_singlefile_datasource_t {
+struct bgpstream_di_singlefile {
   bgpstream_filter_mgr_t *filter_mgr;
   char rib_filename[BGPSTREAM_DUMP_MAX_LEN];
   unsigned char rib_header[MAX_HEADER_READ_BYTES];
@@ -51,35 +53,35 @@ struct struct_bgpstream_singlefile_datasource_t {
   uint32_t last_update_filetime;
 };
 
-bgpstream_singlefile_datasource_t *
-bgpstream_singlefile_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
+bgpstream_di_singlefile_t *
+bgpstream_di_singlefile_create(bgpstream_filter_mgr_t *filter_mgr,
                                        char *singlefile_rib_mrtfile,
                                        char *singlefile_upd_mrtfile)
 {
-  bgpstream_debug("\t\tBSDS_CLIST: create singlefile_ds start");
-  bgpstream_singlefile_datasource_t *singlefile_ds =
-    (bgpstream_singlefile_datasource_t *)malloc(
-      sizeof(bgpstream_singlefile_datasource_t));
-  if (singlefile_ds == NULL) {
+  bgpstream_debug("\t\tBSDS_CLIST: create singlefile start");
+  bgpstream_di_singlefile_t *singlefile =
+    (bgpstream_di_singlefile_t *)malloc(
+      sizeof(bgpstream_di_singlefile_t));
+  if (singlefile == NULL) {
     bgpstream_log_err(
-      "\t\tBSDS_CLIST: create singlefile_ds can't allocate memory");
+      "\t\tBSDS_CLIST: create singlefile can't allocate memory");
     return NULL; // can't allocate memory
   }
-  singlefile_ds->filter_mgr = filter_mgr;
-  singlefile_ds->rib_filename[0] = '\0';
-  singlefile_ds->rib_header[0] = '\0';
-  singlefile_ds->last_rib_filetime = 0;
+  singlefile->filter_mgr = filter_mgr;
+  singlefile->rib_filename[0] = '\0';
+  singlefile->rib_header[0] = '\0';
+  singlefile->last_rib_filetime = 0;
   if (singlefile_rib_mrtfile != NULL) {
-    strcpy(singlefile_ds->rib_filename, singlefile_rib_mrtfile);
+    strcpy(singlefile->rib_filename, singlefile_rib_mrtfile);
   }
-  singlefile_ds->update_filename[0] = '\0';
-  singlefile_ds->update_header[0] = '\0';
-  singlefile_ds->last_update_filetime = 0;
+  singlefile->update_filename[0] = '\0';
+  singlefile->update_header[0] = '\0';
+  singlefile->last_update_filetime = 0;
   if (singlefile_upd_mrtfile != NULL) {
-    strcpy(singlefile_ds->update_filename, singlefile_upd_mrtfile);
+    strcpy(singlefile->update_filename, singlefile_upd_mrtfile);
   }
   bgpstream_debug("\t\tBSDS_CLIST: create customlist_ds end");
-  return singlefile_ds;
+  return singlefile;
 }
 
 static int same_header(char *mrt_filename, unsigned char *previous_header)
@@ -109,53 +111,53 @@ static int same_header(char *mrt_filename, unsigned char *previous_header)
   return 0;
 }
 
-int bgpstream_singlefile_datasource_update_input_queue(
-  bgpstream_singlefile_datasource_t *singlefile_ds,
+int bgpstream_di_singlefile_update_input_queue(
+  bgpstream_di_singlefile_t *singlefile,
   bgpstream_input_mgr_t *input_mgr)
 {
-  bgpstream_debug("\t\tBSDS_CLIST: singlefile_ds update input queue start");
+  bgpstream_debug("\t\tBSDS_CLIST: singlefile update input queue start");
   struct timeval tv;
   gettimeofday(&tv, NULL);
   uint32_t now = tv.tv_sec;
   int num_results = 0;
 
   /* check digest, if different (or first) then add files to input queue) */
-  if (singlefile_ds->rib_filename[0] != '\0' &&
-      now - singlefile_ds->last_rib_filetime > RIB_FREQUENCY_CHECK &&
-      same_header(singlefile_ds->rib_filename, singlefile_ds->rib_header) ==
+  if (singlefile->rib_filename[0] != '\0' &&
+      now - singlefile->last_rib_filetime > RIB_FREQUENCY_CHECK &&
+      same_header(singlefile->rib_filename, singlefile->rib_header) ==
         0) {
     /* fprintf(stderr, "new RIB at: %"PRIu32"\n", now); */
-    singlefile_ds->last_rib_filetime = now;
+    singlefile->last_rib_filetime = now;
     num_results += bgpstream_input_mgr_push_sorted_input(
-      input_mgr, strdup(singlefile_ds->rib_filename), strdup("singlefile_ds"),
-      strdup("singlefile_ds"), strdup("ribs"), singlefile_ds->last_rib_filetime,
+      input_mgr, strdup(singlefile->rib_filename), strdup("singlefile"),
+      strdup("singlefile"), strdup("ribs"), singlefile->last_rib_filetime,
       RIB_FREQUENCY_CHECK);
   }
 
-  if (singlefile_ds->update_filename[0] != '\0' &&
-      now - singlefile_ds->last_update_filetime > UPDATE_FREQUENCY_CHECK &&
-      same_header(singlefile_ds->update_filename,
-                  singlefile_ds->update_header) == 0) {
+  if (singlefile->update_filename[0] != '\0' &&
+      now - singlefile->last_update_filetime > UPDATE_FREQUENCY_CHECK &&
+      same_header(singlefile->update_filename,
+                  singlefile->update_header) == 0) {
     /* fprintf(stderr, "new updates at: %"PRIu32"\n", now); */
-    singlefile_ds->last_update_filetime = now;
+    singlefile->last_update_filetime = now;
     num_results += bgpstream_input_mgr_push_sorted_input(
-      input_mgr, strdup(singlefile_ds->update_filename),
-      strdup("singlefile_ds"), strdup("singlefile_ds"), strdup("updates"),
-      singlefile_ds->last_update_filetime, UPDATE_FREQUENCY_CHECK);
+      input_mgr, strdup(singlefile->update_filename),
+      strdup("singlefile"), strdup("singlefile"), strdup("updates"),
+      singlefile->last_update_filetime, UPDATE_FREQUENCY_CHECK);
   }
 
-  bgpstream_debug("\t\tBSDS_CLIST: singlefile_ds update input queue end");
+  bgpstream_debug("\t\tBSDS_CLIST: singlefile update input queue end");
   return num_results;
 }
 
-void bgpstream_singlefile_datasource_destroy(
-  bgpstream_singlefile_datasource_t *singlefile_ds)
+void bgpstream_di_singlefile_destroy(
+  bgpstream_di_singlefile_t *singlefile)
 {
-  bgpstream_debug("\t\tBSDS_CLIST: destroy singlefile_ds start");
-  if (singlefile_ds == NULL) {
+  bgpstream_debug("\t\tBSDS_CLIST: destroy singlefile start");
+  if (singlefile == NULL) {
     return; // nothing to destroy
   }
-  singlefile_ds->filter_mgr = NULL;
-  free(singlefile_ds);
-  bgpstream_debug("\t\tBSDS_CLIST: destroy singlefile_ds end");
+  singlefile->filter_mgr = NULL;
+  free(singlefile);
+  bgpstream_debug("\t\tBSDS_CLIST: destroy singlefile end");
 }

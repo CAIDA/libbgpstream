@@ -21,29 +21,25 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _BGPSTREAM_DATASOURCE_SQLITE_H
-#define _BGPSTREAM_DATASOURCE_SQLITE_H
+#ifndef __BGPSTREAM_DATA_INTERFACE_SINGLEFILE_H
+#define __BGPSTREAM_DATA_INTERFACE_SINGLEFILE_H
 
-#include "bgpstream_constants.h"
 #include "bgpstream_filter.h"
 #include "bgpstream_input.h"
 
-#include <sqlite3.h>
-#include <stdio.h>
-#include <stdlib.h>
+/** Opaque handle that represents the Single-File data source */
+typedef struct bgpstream_di_singlefile bgpstream_di_singlefile_t;
 
-/** Opaque handle that represents the SQLite data source */
-typedef struct struct_bgpstream_sqlite_datasource_t
-  bgpstream_sqlite_datasource_t;
+bgpstream_di_singlefile_t *
+bgpstream_di_singlefile_create(bgpstream_filter_mgr_t *filter_mgr,
+                                       char *singlefile_rib_mrtfile,
+                                       char *singlefile_upd_mrtfile);
 
-bgpstream_sqlite_datasource_t *
-bgpstream_sqlite_datasource_create(bgpstream_filter_mgr_t *filter_mgr,
-                                   char *sqlite_file);
+int bgpstream_di_singlefile_update_input_queue(
+  bgpstream_di_singlefile_t *singlefile_ds,
+  bgpstream_input_mgr_t *input_mgr);
 
-int bgpstream_sqlite_datasource_update_input_queue(
-  bgpstream_sqlite_datasource_t *sqlite_ds, bgpstream_input_mgr_t *input_mgr);
+void bgpstream_di_singlefile_destroy(
+  bgpstream_di_singlefile_t *singlefile_ds);
 
-void bgpstream_sqlite_datasource_destroy(
-  bgpstream_sqlite_datasource_t *sqlite_ds);
-
-#endif /* _BGPSTREAM_DATASOURCE_SQLITE_H */
+#endif /* __BGPSTREAM_DATA_INTERFACE_SINGLEFILE_H */
