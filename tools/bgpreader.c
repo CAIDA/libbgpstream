@@ -344,8 +344,7 @@ int main(int argc, char *argv[])
       rib_period = atoi(optarg);
       break;
     case 'd':
-      if ((di_id =
-             bgpstream_get_data_interface_id_by_name(bs, optarg)) == 0) {
+      if ((di_id = bgpstream_get_data_interface_id_by_name(bs, optarg)) == 0) {
         fprintf(stderr, "ERROR: Invalid data interface name '%s'\n", optarg);
         usage();
         exit(-1);

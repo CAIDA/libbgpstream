@@ -32,12 +32,11 @@ typedef struct bgpstream_di_sqlite bgpstream_di_sqlite_t;
 
 bgpstream_di_sqlite_t *
 bgpstream_di_sqlite_create(bgpstream_filter_mgr_t *filter_mgr,
-                                   char *sqlite_file);
+                           char *sqlite_file);
 
-int bgpstream_di_sqlite_update_input_queue(
-  bgpstream_di_sqlite_t *sqlite_ds, bgpstream_input_mgr_t *input_mgr);
+int bgpstream_di_sqlite_update_input_queue(bgpstream_di_sqlite_t *sqlite_ds,
+                                           bgpstream_input_mgr_t *input_mgr);
 
-void bgpstream_di_sqlite_destroy(
-  bgpstream_di_sqlite_t *sqlite_ds);
+void bgpstream_di_sqlite_destroy(bgpstream_di_sqlite_t *sqlite_ds);
 
 #endif /* __BGPSTREAM_DATA_INTERFACE_SQLITE_H */

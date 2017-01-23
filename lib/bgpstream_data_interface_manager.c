@@ -66,7 +66,8 @@ bgpstream_data_interface_mgr_t *bgpstream_data_interface_mgr_create()
 {
   bgpstream_debug("\tBSDI_MGR: create start");
   bgpstream_data_interface_mgr_t *di_mgr =
-    (bgpstream_data_interface_mgr_t *)malloc(sizeof(bgpstream_data_interface_mgr_t));
+    (bgpstream_data_interface_mgr_t *)malloc(
+      sizeof(bgpstream_data_interface_mgr_t));
   if (di_mgr == NULL) {
     return NULL; // can't allocate memory
   }
@@ -76,7 +77,7 @@ bgpstream_data_interface_mgr_t *bgpstream_data_interface_mgr_create()
   di_mgr->backoff_time = DATA_INTERFACE_BLOCKING_MIN_WAIT;
   di_mgr->retry_cnt = 0;
 
-  // data interfaces (none of them are active at the beginning)
+// data interfaces (none of them are active at the beginning)
 
 #ifdef WITH_DATA_INTERFACE_SINGLEFILE
   di_mgr->singlefile = NULL;
@@ -88,14 +89,12 @@ bgpstream_data_interface_mgr_t *bgpstream_data_interface_mgr_create()
 
 #ifdef WITH_DATA_INTERFACE_CSVFILE
   di_mgr->csvfile = NULL;
-  GET_DEFAULT_STR_VALUE(di_mgr->csvfile_file,
-                        BGPSTREAM_DI_CSVFILE_CSV_FILE);
+  GET_DEFAULT_STR_VALUE(di_mgr->csvfile_file, BGPSTREAM_DI_CSVFILE_CSV_FILE);
 #endif
 
 #ifdef WITH_DATA_INTERFACE_SQLITE
   di_mgr->sqlite = NULL;
-  GET_DEFAULT_STR_VALUE(di_mgr->sqlite_file,
-                        BGPSTREAM_DI_SQLITE_DB_FILE);
+  GET_DEFAULT_STR_VALUE(di_mgr->sqlite_file, BGPSTREAM_DI_SQLITE_DB_FILE);
 #endif
 
 #ifdef WITH_DATA_INTERFACE_BROKER
@@ -189,12 +188,10 @@ int bgpstream_data_interface_mgr_set_data_interface_option(
     case 1:
       if ((di_mgr->broker_params = realloc(
              di_mgr->broker_params,
-             sizeof(char *) * (di_mgr->broker_params_cnt + 1))) ==
-          NULL) {
+             sizeof(char *) * (di_mgr->broker_params_cnt + 1))) == NULL) {
         return -1;
       }
-      di_mgr->broker_params[di_mgr->broker_params_cnt++] =
-        strdup(option_value);
+      di_mgr->broker_params[di_mgr->broker_params_cnt++] = strdup(option_value);
       break;
     }
     break;
@@ -208,7 +205,7 @@ int bgpstream_data_interface_mgr_set_data_interface_option(
 }
 
 void bgpstream_data_interface_mgr_init(bgpstream_data_interface_mgr_t *di_mgr,
-                                   bgpstream_filter_mgr_t *filter_mgr)
+                                       bgpstream_filter_mgr_t *filter_mgr)
 {
   bgpstream_debug("\tBSDS_MGR: init start");
   if (di_mgr == NULL) {
@@ -220,34 +217,34 @@ void bgpstream_data_interface_mgr_init(bgpstream_data_interface_mgr_t *di_mgr,
   switch (di_mgr->di_id) {
 #ifdef WITH_DATA_INTERFACE_SINGLEFILE
   case BGPSTREAM_DATA_INTERFACE_SINGLEFILE:
-    di_mgr->singlefile = bgpstream_di_singlefile_create(
-      filter_mgr, di_mgr->singlefile_rib_mrtfile,
-      di_mgr->singlefile_upd_mrtfile);
+    di_mgr->singlefile =
+      bgpstream_di_singlefile_create(filter_mgr, di_mgr->singlefile_rib_mrtfile,
+                                     di_mgr->singlefile_upd_mrtfile);
     ds = (void *)di_mgr->singlefile;
     break;
 #endif
 
 #ifdef WITH_DATA_INTERFACE_CSVFILE
   case BGPSTREAM_DATA_INTERFACE_CSVFILE:
-    di_mgr->csvfile = bgpstream_di_csvfile_create(
-      filter_mgr, di_mgr->csvfile_file);
+    di_mgr->csvfile =
+      bgpstream_di_csvfile_create(filter_mgr, di_mgr->csvfile_file);
     ds = (void *)di_mgr->csvfile;
     break;
 #endif
 
 #ifdef WITH_DATA_INTERFACE_SQLITE
   case BGPSTREAM_DATA_INTERFACE_SQLITE:
-    di_mgr->sqlite = bgpstream_di_sqlite_create(
-      filter_mgr, di_mgr->sqlite_file);
+    di_mgr->sqlite =
+      bgpstream_di_sqlite_create(filter_mgr, di_mgr->sqlite_file);
     ds = (void *)di_mgr->sqlite;
     break;
 #endif
 
 #ifdef WITH_DATA_INTERFACE_BROKER
   case BGPSTREAM_DATA_INTERFACE_BROKER:
-    di_mgr->broker = bgpstream_di_broker_create(
-      filter_mgr, di_mgr->broker_url, di_mgr->broker_params,
-      di_mgr->broker_params_cnt);
+    di_mgr->broker = bgpstream_di_broker_create(filter_mgr, di_mgr->broker_url,
+                                                di_mgr->broker_params,
+                                                di_mgr->broker_params_cnt);
     ds = (void *)di_mgr->broker;
     break;
 #endif
@@ -288,29 +285,29 @@ int bgpstream_data_interface_mgr_update_input_queue(
     switch (di_mgr->di_id) {
 #ifdef WITH_DATA_INTERFACE_SINGLEFILE
     case BGPSTREAM_DATA_INTERFACE_SINGLEFILE:
-      results = bgpstream_di_singlefile_update_input_queue(
-        di_mgr->singlefile, input_mgr);
+      results = bgpstream_di_singlefile_update_input_queue(di_mgr->singlefile,
+                                                           input_mgr);
       break;
 #endif
 
 #ifdef WITH_DATA_INTERFACE_CSVFILE
     case BGPSTREAM_DATA_INTERFACE_CSVFILE:
-      results = bgpstream_di_csvfile_update_input_queue(
-        di_mgr->csvfile, input_mgr);
+      results =
+        bgpstream_di_csvfile_update_input_queue(di_mgr->csvfile, input_mgr);
       break;
 #endif
 
 #ifdef WITH_DATA_INTERFACE_SQLITE
     case BGPSTREAM_DATA_INTERFACE_SQLITE:
-      results = bgpstream_di_sqlite_update_input_queue(
-        di_mgr->sqlite, input_mgr);
+      results =
+        bgpstream_di_sqlite_update_input_queue(di_mgr->sqlite, input_mgr);
       break;
 #endif
 
 #ifdef WITH_DATA_INTERFACE_BROKER
     case BGPSTREAM_DATA_INTERFACE_BROKER:
-      results = bgpstream_di_broker_update_input_queue(
-        di_mgr->broker, input_mgr);
+      results =
+        bgpstream_di_broker_update_input_queue(di_mgr->broker, input_mgr);
       break;
 #endif
 

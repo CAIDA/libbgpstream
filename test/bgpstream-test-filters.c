@@ -72,9 +72,9 @@ static char *expected_results[7] = {
 #define CHECK_SET_INTERFACE(interface)                                         \
   do {                                                                         \
     CHECK("get data interface ID (" STR(interface) ")",                        \
-          (di_id = bgpstream_get_data_interface_id_by_name(             \
+          (di_id = bgpstream_get_data_interface_id_by_name(                    \
              bs, STR(interface))) != 0);                                       \
-    bgpstream_set_data_interface(bs, di_id);                            \
+    bgpstream_set_data_interface(bs, di_id);                                   \
   } while (0)
 
 int test_bgpstream_filters()
