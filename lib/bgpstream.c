@@ -165,7 +165,7 @@ bgpstream_t *bgpstream_create()
     bs = NULL;
     return NULL;
   }
-  bs->di_mgr = bgpstream_data_interface_mgr_create();
+  bs->di_mgr = bgpstream_di_mgr_create();
   if (bs->di_mgr == NULL) {
     bgpstream_destroy(bs);
     return NULL;
@@ -368,8 +368,8 @@ void bgpstream_set_data_interface_option(
     return; // nothing to customize
   }
 
-  bgpstream_data_interface_mgr_set_data_interface_option(
-    bs->di_mgr, option_type, option_value);
+  bgpstream_di_mgr_set_data_interface_option(bs->di_mgr, option_type,
+                                             option_value);
 
   bgpstream_debug("BS: set_data_interface_options stop");
 }
@@ -384,13 +384,13 @@ void bgpstream_set_data_interface(bgpstream_t *bs,
   if (bs == NULL || (bs != NULL && bs->status != BGPSTREAM_STATUS_ALLOCATED)) {
     return; // nothing to customize
   }
-  bgpstream_data_interface_mgr_set_data_interface(bs->di_mgr, di);
+  bgpstream_di_mgr_set_data_interface(bs->di_mgr, di);
   bgpstream_debug("BS: set_data_interface stop");
 }
 
 bgpstream_data_interface_id_t bgpstream_get_data_interface_id(bgpstream_t *bs)
 {
-  return bs->di_mgr->di_id;
+  return bgpstream_di_mgr_get_data_interface_id(bs->di_mgr);
 }
 
 /* configure the interface so that it blocks
@@ -402,7 +402,7 @@ void bgpstream_set_live_mode(bgpstream_t *bs)
   if (bs == NULL || (bs != NULL && bs->status != BGPSTREAM_STATUS_ALLOCATED)) {
     return; // nothing to customize
   }
-  bgpstream_data_interface_mgr_set_blocking(bs->di_mgr);
+  bgpstream_di_mgr_set_blocking(bs->di_mgr);
   bgpstream_debug("BS: set_blocking stop");
 }
 
@@ -424,18 +424,15 @@ int bgpstream_start(bgpstream_t *bs)
   }
 
   // turn on data interface
-  bgpstream_data_interface_mgr_init(bs->di_mgr, bs->filter_mgr);
-  if (bs->di_mgr->status == BGPSTREAM_DATA_INTERFACE_STATUS_ON) {
-    bs->status = BGPSTREAM_STATUS_ON; // interface is on
-    bgpstream_debug("BS: init end: ok");
-    return 0;
-  } else {
-    // interface is not on (something wrong with data interface)
+  if (bgpstream_di_mgr_init(bs->di_mgr, bs->filter_mgr) != 0) {
     bs->status = BGPSTREAM_STATUS_ALLOCATED;
     bgpstream_debug("BS: init warning: check if data interface provided is ok");
     bgpstream_debug("BS: init end: not ok");
     return -1;
   }
+
+  bs->status = BGPSTREAM_STATUS_ON;
+  return 0;
 }
 
 /* this function returns the next available record read
@@ -465,15 +462,14 @@ int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t *record)
       bgpstream_debug("BS: input mgr is empty");
       /* query the external source and append new
        * input objects to the input_mgr queue */
-      num_query_results = bgpstream_data_interface_mgr_update_input_queue(
-        bs->di_mgr, bs->input_mgr);
+      num_query_results =
+        bgpstream_di_mgr_get_queue(bs->di_mgr, bs->input_mgr);
       if (num_query_results == 0) {
         bgpstream_debug("BS: no (more) data are available");
         return 0; // no (more) data are available
       }
       if (num_query_results < 0) {
-        bgpstream_debug(
-          "BS: error during data_interface_mgr_update_input_queue");
+        bgpstream_debug("BS: error during di_mgr_update_input_queue");
         return -1; // error during execution
       }
       bgpstream_debug("BS: got results from data_interface");
@@ -491,14 +487,13 @@ int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t *record)
                                               bs->filter_mgr);
 }
 
-/* turn off the bgpstream interface */
-void bgpstream_stop(bgpstream_t *bs)
+/* turn off the bgpstream interface TODO: remove me */
+static void bgpstream_stop(bgpstream_t *bs)
 {
   bgpstream_debug("BS: close start");
   if (bs == NULL || (bs != NULL && bs->status != BGPSTREAM_STATUS_ON)) {
     return; // nothing to close
   }
-  bgpstream_data_interface_mgr_close(bs->di_mgr);
   bs->status = BGPSTREAM_STATUS_OFF; // interface is off
   bgpstream_debug("BS: close end");
 }
@@ -511,13 +506,14 @@ void bgpstream_destroy(bgpstream_t *bs)
   if (bs == NULL) {
     return; // nothing to destroy
   }
+  bgpstream_stop(bs);
   bgpstream_input_mgr_destroy(bs->input_mgr);
   bs->input_mgr = NULL;
   bgpstream_reader_mgr_destroy(bs->reader_mgr);
   bs->reader_mgr = NULL;
   bgpstream_filter_mgr_destroy(bs->filter_mgr);
   bs->filter_mgr = NULL;
-  bgpstream_data_interface_mgr_destroy(bs->di_mgr);
+  bgpstream_di_mgr_destroy(bs->di_mgr);
   bs->di_mgr = NULL;
   free(bs);
   bgpstream_debug("BS: destroy end");

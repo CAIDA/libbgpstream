@@ -21,7 +21,7 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "bgpstream_data_interface_manager.h"
+#include "bgpstream_di_mgr.h"
 #include "bgpstream_debug.h"
 #include "config.h"
 #include "utils.h"
@@ -35,12 +35,61 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#ifdef WITH_DATA_INTERFACE_SINGLEFILE
+#include "bgpstream_data_interface_singlefile.h"
+#endif
+
+#ifdef WITH_DATA_INTERFACE_CSVFILE
+#include "bgpstream_data_interface_csvfile.h"
+#endif
+
+#ifdef WITH_DATA_INTERFACE_SQLITE
+#include "bgpstream_data_interface_sqlite.h"
+#endif
+
+#ifdef WITH_DATA_INTERFACE_BROKER
+#include "bgpstream_data_interface_broker.h"
+#endif
+
 /* After 10 retries, start exponential backoff */
 #define DATA_INTERFACE_BLOCKING_RETRY_CNT 10
 /* Wait at least 20 seconds if the broker has no new data for us */
 #define DATA_INTERFACE_BLOCKING_MIN_WAIT 20
 /* Wait at most 150 seconds if the broker has no new data for us */
 #define DATA_INTERFACE_BLOCKING_MAX_WAIT 150
+
+struct bgpstream_di_mgr {
+  bgpstream_data_interface_id_t di_id;
+// data_interfaces available
+
+#ifdef WITH_DATA_INTERFACE_SINGLEFILE
+  bgpstream_di_singlefile_t *singlefile;
+  char *singlefile_rib_mrtfile;
+  char *singlefile_upd_mrtfile;
+#endif
+
+#ifdef WITH_DATA_INTERFACE_CSVFILE
+  bgpstream_di_csvfile_t *csvfile;
+  char *csvfile_file;
+#endif
+
+#ifdef WITH_DATA_INTERFACE_SQLITE
+  bgpstream_di_sqlite_t *sqlite;
+  char *sqlite_file;
+#endif
+
+#ifdef WITH_DATA_INTERFACE_BROKER
+  bgpstream_di_broker_t *broker;
+  char *broker_url;
+  char **broker_params;
+  int broker_params_cnt;
+#endif
+
+  // blocking options
+  int blocking;
+  int backoff_time;
+  int retry_cnt;
+};
 
 #define GET_DEFAULT_STR_VALUE(var_store, default_value)                        \
   do {                                                                         \
@@ -62,12 +111,11 @@
 
 /* data interface mgr related functions */
 
-bgpstream_data_interface_mgr_t *bgpstream_data_interface_mgr_create()
+bgpstream_di_mgr_t *bgpstream_di_mgr_create()
 {
   bgpstream_debug("\tBSDI_MGR: create start");
-  bgpstream_data_interface_mgr_t *di_mgr =
-    (bgpstream_data_interface_mgr_t *)malloc(
-      sizeof(bgpstream_data_interface_mgr_t));
+  bgpstream_di_mgr_t *di_mgr =
+    (bgpstream_di_mgr_t *)malloc(sizeof(bgpstream_di_mgr_t));
   if (di_mgr == NULL) {
     return NULL; // can't allocate memory
   }
@@ -104,15 +152,12 @@ bgpstream_data_interface_mgr_t *bgpstream_data_interface_mgr_create()
   di_mgr->broker_params_cnt = 0;
 #endif
 
-  di_mgr->status = BGPSTREAM_DATA_INTERFACE_STATUS_OFF;
-
   bgpstream_debug("\tBSDS_MGR: create end");
   return di_mgr;
 }
 
-void bgpstream_data_interface_mgr_set_data_interface(
-  bgpstream_data_interface_mgr_t *di_mgr,
-  const bgpstream_data_interface_id_t di_id)
+void bgpstream_di_mgr_set_data_interface(
+  bgpstream_di_mgr_t *di_mgr, const bgpstream_data_interface_id_t di_id)
 {
   bgpstream_debug("\tBSDS_MGR: set data interface start");
   if (di_mgr == NULL) {
@@ -122,8 +167,14 @@ void bgpstream_data_interface_mgr_set_data_interface(
   bgpstream_debug("\tBSDS_MGR: set  data interface end");
 }
 
-int bgpstream_data_interface_mgr_set_data_interface_option(
-  bgpstream_data_interface_mgr_t *di_mgr,
+bgpstream_data_interface_id_t
+bgpstream_di_mgr_get_data_interface_id(bgpstream_di_mgr_t *di_mgr)
+{
+  return di_mgr->di_id;
+}
+
+int bgpstream_di_mgr_set_data_interface_option(
+  bgpstream_di_mgr_t *di_mgr,
   const bgpstream_data_interface_option_t *option_type,
   const char *option_value)
 {
@@ -204,12 +255,12 @@ int bgpstream_data_interface_mgr_set_data_interface_option(
   return 0;
 }
 
-void bgpstream_data_interface_mgr_init(bgpstream_data_interface_mgr_t *di_mgr,
-                                       bgpstream_filter_mgr_t *filter_mgr)
+int bgpstream_di_mgr_init(bgpstream_di_mgr_t *di_mgr,
+                           bgpstream_filter_mgr_t *filter_mgr)
 {
   bgpstream_debug("\tBSDS_MGR: init start");
   if (di_mgr == NULL) {
-    return; // no manager
+    return -1; // no manager
   }
 
   void *ds = NULL;
@@ -254,15 +305,14 @@ void bgpstream_data_interface_mgr_init(bgpstream_data_interface_mgr_t *di_mgr,
   }
 
   if (ds == NULL) {
-    di_mgr->status = BGPSTREAM_DATA_INTERFACE_STATUS_ERROR;
-  } else {
-    di_mgr->status = BGPSTREAM_DATA_INTERFACE_STATUS_ON;
+    return -1;
   }
+
   bgpstream_debug("\tBSDS_MGR: init end");
+  return 0;
 }
 
-void bgpstream_data_interface_mgr_set_blocking(
-  bgpstream_data_interface_mgr_t *di_mgr)
+void bgpstream_di_mgr_set_blocking(bgpstream_di_mgr_t *di_mgr)
 {
   bgpstream_debug("\tBSDS_MGR: set blocking start");
   if (di_mgr == NULL) {
@@ -272,8 +322,8 @@ void bgpstream_data_interface_mgr_set_blocking(
   bgpstream_debug("\tBSDS_MGR: set blocking end");
 }
 
-int bgpstream_data_interface_mgr_update_input_queue(
-  bgpstream_data_interface_mgr_t *di_mgr, bgpstream_input_mgr_t *input_mgr)
+int bgpstream_di_mgr_get_queue(bgpstream_di_mgr_t *di_mgr,
+                               bgpstream_input_mgr_t *input_mgr)
 {
   bgpstream_debug("\tBSDS_MGR: get data start");
   if (di_mgr == NULL) {
@@ -337,7 +387,7 @@ int bgpstream_data_interface_mgr_update_input_queue(
   return results;
 }
 
-void bgpstream_data_interface_mgr_close(bgpstream_data_interface_mgr_t *di_mgr)
+static void bgpstream_di_mgr_close(bgpstream_di_mgr_t *di_mgr)
 {
   bgpstream_debug("\tBSDS_MGR: close start");
   if (di_mgr == NULL) {
@@ -376,17 +426,18 @@ void bgpstream_data_interface_mgr_close(bgpstream_data_interface_mgr_t *di_mgr)
     assert(0);
     break;
   }
-  di_mgr->status = BGPSTREAM_DATA_INTERFACE_STATUS_OFF;
   bgpstream_debug("\tBSDS_MGR: close end");
 }
 
-void bgpstream_data_interface_mgr_destroy(
-  bgpstream_data_interface_mgr_t *di_mgr)
+void bgpstream_di_mgr_destroy(bgpstream_di_mgr_t *di_mgr)
 {
   bgpstream_debug("\tBSDS_MGR: destroy start");
   if (di_mgr == NULL) {
     return; // no manager to destroy
   }
+
+  bgpstream_di_mgr_close(di_mgr);
+
 // destroy any active data interface (if they have not been destroyed before)
 #ifdef WITH_DATA_INTERFACE_SINGLEFILE
   bgpstream_di_singlefile_destroy(di_mgr->singlefile);

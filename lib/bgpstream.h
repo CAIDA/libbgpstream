@@ -136,7 +136,7 @@ typedef enum {
  * @{ */
 
 /** Structure that contains information about a BGP Stream Data Interface */
-typedef struct struct_bgpstream_data_interface_info {
+typedef struct bgpstream_data_interface_info {
 
   /** The ID of this data interface */
   bgpstream_data_interface_id_t id;
@@ -363,12 +363,6 @@ int bgpstream_start(bgpstream_t *bs);
  * then a new record must be created for each call to this function.
  */
 int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t *record);
-
-/** Stop the given BGP Stream instance
- *
- * @param bs            pointer to a BGP Stream instance to stop
- */
-void bgpstream_stop(bgpstream_t *bs);
 
 /** Destroy the given BGP Stream instance
  *

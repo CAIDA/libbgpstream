@@ -128,8 +128,6 @@ int test_bgpstream_filters()
 
   CHECK("elem total count", counter == 7);
 
-  bgpstream_stop(bs);
-
   TEARDOWN;
   return 0;
 }

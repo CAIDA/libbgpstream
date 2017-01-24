@@ -46,8 +46,9 @@ libbgpstreamcaida_la_SOURCES = 	\
 	bgpstream.h		\
 	bgpstream.c		\
 	bgpstream_constants.h	\
-	bgpstream_data_interface_manager.c	\
-	bgpstream_data_interface_manager.h	\
+	bgpstream_di_interface.h	\
+	bgpstream_di_mgr.c	\
+	bgpstream_di_mgr.h	\
 	bgpstream_debug.h	\
 	bgpstream_elem.c	\
 	bgpstream_elem.h	\
