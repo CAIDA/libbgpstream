@@ -48,9 +48,10 @@ bgpstream_data_interface_option_t *option;
         counter++;                                                             \
       }                                                                        \
     }                                                                          \
-    bgpstream_stop(bs);                                                        \
+    CHECK("final return code (" STR(interface) ")",                         \
+          ret == 0);                                                    \
     CHECK("read records (" STR(interface) ")",                                 \
-          ret == 0 && counter == interface##_RECORDS);                         \
+          counter == interface##_RECORDS);                              \
   } while (0)
 
 #define SETUP                                                                  \

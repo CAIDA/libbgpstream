@@ -574,9 +574,6 @@ int main(int argc, char *argv[])
   /* de-allocate memory for bs_record */
   bgpstream_record_destroy(bs_record);
 
-  /* turn off interface */
-  bgpstream_stop(bs);
-
   /* deallocate memory for interface */
   bgpstream_destroy(bs);
 
@@ -584,7 +581,6 @@ int main(int argc, char *argv[])
 
 err:
   bgpstream_record_destroy(bs_record);
-  bgpstream_stop(bs);
   bgpstream_destroy(bs);
   return -1;
 }
