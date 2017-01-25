@@ -24,19 +24,8 @@
 #ifndef __BGPSTREAM_DATA_INTERFACE_BROKER_H
 #define __BGPSTREAM_DATA_INTERFACE_BROKER_H
 
-#include "bgpstream_filter.h"
-#include "bgpstream_input.h"
+#include "bgpstream_di_interface.h"
 
-/** Opaque handle that represents the Broker data interface */
-typedef struct bgpstream_di_broker bgpstream_di_broker_t;
-
-bgpstream_di_broker_t *
-bgpstream_di_broker_create(bgpstream_filter_mgr_t *filter_mgr, char *broker_url,
-                           char **params, int params_cnt);
-
-int bgpstream_di_broker_update_input_queue(bgpstream_di_broker_t *broker,
-                                           bgpstream_input_mgr_t *input_mgr);
-
-void bgpstream_di_broker_destroy(bgpstream_di_broker_t *broker);
+BSDI_GENERATE_PROTOS(broker);
 
 #endif /* __BGPSTREAM_DATA_INTERFACE_BROKER_H */
