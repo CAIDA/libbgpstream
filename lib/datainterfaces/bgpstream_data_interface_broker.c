@@ -37,6 +37,8 @@
 
 #include <wandio.h>
 
+#define STATE (BSDI_GET_STATE(di, broker))
+
 #define URL_BUFLEN 4096
 
 // the max time we will wait between retries to the broker
@@ -57,8 +59,46 @@
     broker->query_url_remaining -= len;                                        \
   } while (0)
 
-struct bgpstream_di_broker {
-  bgpstream_filter_mgr_t *filter_mgr;
+static bgpstream_data_interface_option_t options[] = {
+  /* Broker URL */
+  {
+    BGPSTREAM_DATA_INTERFACE_BROKER, 0, "url",
+    "Broker URL (default: " STR(BGPSTREAM_DI_BROKER_URL) ")",
+  },
+  /* Broker Param */
+  {
+    BGPSTREAM_DATA_INTERFACE_BROKER, 1, "param",
+    "Additional Broker GET parameter*",
+  },
+};
+
+/* Our "Class" instance */
+static bsdi_t bsdi_broker = {
+  // "info"
+  {
+    BGPSTREAM_DATA_INTERFACE_BROKER, // ID
+    "broker", // name
+    "Retrieve metadata information from the BGPStream Broker service", //
+  },
+  options,
+  ARR_CNT(options),
+  BSDI_GENERATE_PTRS(broker) //
+};
+
+typedef struct bsdi_broker_state {
+
+  /* user-provided options: */
+
+  // Base URL of the Broker web service
+  char *broker_url;
+
+  // User-provided parameters
+  char **params;
+
+  // Number of parameters in the params array
+  int params_cnt;
+
+  /* internal state: */
 
   // working space to build query urls
   char query_url_buf[URL_BUFLEN];
@@ -76,7 +116,8 @@ struct bgpstream_di_broker {
 
   // the max (file_time + duration) that we have seen
   uint32_t current_window_end;
-};
+
+} bsdi_broker_state_t;
 
 #define AMPORQ                                                                 \
   do {                                                                         \
@@ -457,29 +498,21 @@ err:
   return ERR_FATAL;
 }
 
-bgpstream_di_broker_t *
-bgpstream_di_broker_create(bgpstream_filter_mgr_t *filter_mgr, char *broker_url,
-                           char **params, int params_cnt)
+static int update_query_url(bsdi_t *di)
 {
-  int i;
-  bgpstream_debug("\t\tBSDS_BROKER: create broker start");
-  bgpstream_di_broker_t *broker;
+  bgpstream_filter_mgr_t *filter_mgr = BSDI_GET_FILTER_MGR(di);
 
-  if ((broker = malloc_zero(sizeof(bgpstream_di_broker_t))) == NULL) {
-    bgpstream_log_err("\t\tBSDS_BROKER: create broker can't allocate memory");
+  if (STATE->broker_url == NULL) {
     goto err;
   }
-  if (broker_url == NULL) {
-    bgpstream_log_err("\t\tBSDS_BROKER: create broker no file provided");
-    goto err;
-  }
-  broker->filter_mgr = filter_mgr;
-  broker->first_param = 1;
-  broker->query_url_remaining = URL_BUFLEN;
-  broker->query_url_buf[0] = '\0';
+
+  // reset the query url buffer
+  STATE->first_param = 1;
+  STATE->query_url_remaining = URL_BUFLEN;
+  STATE->query_url_buf[0] = '\0';
 
   // http://bgpstream.caida.org/broker (e.g.)
-  APPEND_STR(broker_url);
+  APPEND_STR(STATE->broker_url);
 
   // http://bgpstream.caida.org/broker/data?
   APPEND_STR("/data");
@@ -518,10 +551,10 @@ bgpstream_di_broker_create(bgpstream_filter_mgr_t *filter_mgr, char *broker_url,
   }
 
   // user-provided params
-  for (i = 0; i < params_cnt; i++) {
-    assert(params[i] != NULL);
+  for (i = 0; i < STATE->params_cnt; i++) {
+    assert(STATE->params[i] != NULL);
     AMPORQ;
-    APPEND_STR(params[i]);
+    APPEND_STR(STATE->params[i]);
   }
 
 // time_intervals
@@ -553,16 +586,50 @@ bgpstream_di_broker_create(bgpstream_filter_mgr_t *filter_mgr, char *broker_url,
 
   // grab pointer to the end of the current string to simplify modifying the
   // query later
-  broker->query_url_end = broker->query_url_buf + strlen(broker->query_url_buf);
-  assert((*broker->query_url_end) == '\0');
+  STATE->query_url_end = STATE->query_url_buf + strlen(STATE->query_url_buf);
+  assert((*STATE->query_url_end) == '\0');
 
-  bgpstream_debug("\t\tBSDS_BROKER: create broker end");
+  return 0;
 
-  return broker;
-err:
-  bgpstream_di_broker_destroy(broker);
-  return NULL;
+ err:
+  return -1;
 }
+
+/* ========== PUBLIC METHODS BELOW HERE ========== */
+
+bsdi_t *bsdi_broker_alloc()
+{
+  return &bsdi_broker;
+}
+
+int bsdi_broker_init(bsdi_t *di)
+{
+  int i;
+  bsdi_broker_state_t *state;
+
+  if ((state = malloc_zero(sizeof(bsdi_broker_state_t))) == NULL) {
+    goto err;
+  }
+  BSDI_SET_STATE(di, state);
+
+  /* set default state */
+  if ((state->broker_url = strdup(BGPSTREAM_DI_BROKER_URL)) == NULL) {
+    goto err;
+  }
+
+  /* build the default query URL (will be rebuilt if the user sets any params
+     explicitly) */
+  if (update_query_url(di) != 0) {
+    goto err;
+  }
+
+  return 0;
+err:
+  bgpstream_di_broker_destroy(di);
+  return -1;
+}
+
+int bsdi_broker_set_option(bsdi_t *di, bgpstream_data_interface_option_t 
 
 int bgpstream_di_broker_update_input_queue(bgpstream_di_broker_t *broker,
                                            bgpstream_input_mgr_t *input_mgr)

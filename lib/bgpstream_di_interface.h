@@ -26,7 +26,7 @@
 
 #include "config.h"
 #include "bgpstream.h"
-#include "bgpstream_di_manager.h"
+#include "bgpstream_di_mgr.h" /*< for bsdi_t */
 
 /** @file
  *
@@ -48,12 +48,14 @@
     (interface)->state = ptr;                                           \
   } while (0)
 
+#define BSDI_GET_FILTER_MGR(interface) ((interface)->filter_mgr)
+
 /** Convenience macro that defines all the function prototypes for the data
  * interface API
  */
 #define BSDI_GENERATE_PROTOS(ifname)                                    \
   bsdi_t *bsdi_##ifname##_alloc();                                      \
-  int bsdi_##ifname##_init(bsdi_t *di);                                 \
+  int bsdi_##ifname##_init(bsdi_t *di); \
   int bsdi_##ifname##_set_option(bsdi_t *di,                            \
                                  bgpstream_data_interface_option_t *option_type, \
                                  const char *option_value);             \
@@ -67,7 +69,8 @@
   bsdi_##ifname##_init,                                               \
     bsdi_##ifname##_set_option,                                       \
     bsdi_##ifname##_destroy,                                          \
-    bsdi_##ifname##_get_queue,
+    bsdi_##ifname##_get_queue,                                        \
+    NULL, NULL,
 
 /** Structure which represents a data interface */
 struct bsdi {
@@ -146,6 +149,9 @@ struct bsdi {
   /** An opaque pointer to interface-specific state if needed by the
       interface */
   void *state;
+
+  /** Borrowed pointer to a Filter Manager instance */
+  bgpstream_filter_mgr_t *filter_mgr;
 
   /** }@ */
 };
