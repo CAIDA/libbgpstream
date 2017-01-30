@@ -115,16 +115,19 @@ typedef enum {
 typedef enum {
 
   /** Broker data interface */
-  BGPSTREAM_DATA_INTERFACE_BROKER = 1,
+  BGPSTREAM_DATA_INTERFACE_BROKER,
 
   /** Customlist interface */
-  BGPSTREAM_DATA_INTERFACE_SINGLEFILE = 2,
+  BGPSTREAM_DATA_INTERFACE_SINGLEFILE,
 
   /** CSV file interface */
-  BGPSTREAM_DATA_INTERFACE_CSVFILE = 3,
+  BGPSTREAM_DATA_INTERFACE_CSVFILE,
 
   /** SQLITE file interface */
-  BGPSTREAM_DATA_INTERFACE_SQLITE = 5,
+  BGPSTREAM_DATA_INTERFACE_SQLITE,
+
+  /** The number of data interfaces */
+  _BGPSTREAM_DATA_INTERFACE_CNT,
 
 } bgpstream_data_interface_id_t;
 

@@ -59,9 +59,21 @@
 #define DATA_INTERFACE_BLOCKING_MAX_WAIT 150
 
 struct bgpstream_di_mgr {
-  bgpstream_data_interface_id_t di_id;
-// data_interfaces available
 
+  bsdi_t *interfaces[_BGPSTREAM_DATA_INTERFACE_CNT];
+
+  bgpstream_data_interface_id_t active_di;
+
+  // has the data interface been started yet?
+  int started;
+
+  // blocking query state
+  int blocking;
+  int backoff_time;
+  int retry_cnt;
+
+  // TODO: remove these
+#if 0
 #ifdef WITH_DATA_INTERFACE_SINGLEFILE
   bgpstream_di_singlefile_t *singlefile;
   char *singlefile_rib_mrtfile;
@@ -77,18 +89,42 @@ struct bgpstream_di_mgr {
   bgpstream_di_sqlite_t *sqlite;
   char *sqlite_file;
 #endif
+#endif
+};
+
+/** Convenience typedef for the interface alloc function type */
+typedef bsdi_t *(*di_alloc_func_t)();
+
+/** Array of DI allocation functions.
+ *
+ * This MUST be kept in sync with the bgpstream_data_interface_id_t enum
+ */
+static const di_alloc_func_t di_alloc_functions[] = {
 
 #ifdef WITH_DATA_INTERFACE_BROKER
-  bgpstream_di_broker_t *broker;
-  char *broker_url;
-  char **broker_params;
-  int broker_params_cnt;
+  bsdi_broker_alloc,
+#else
+  NULL,
 #endif
 
-  // blocking options
-  int blocking;
-  int backoff_time;
-  int retry_cnt;
+#ifdef WITH_DATA_INTERFACE_SINGLEFILE
+  bsdi_singlefile_alloc,
+#else
+  NULL,
+#endif
+
+#ifdef WITH_DATA_INTERFACE_CSVFILE
+  bsdi_csvfile_alloc,
+#else
+  NULL,
+#endif
+
+#ifdef WITH_DATA_INTERFACE_SQLITE
+  bsdi_sqlite_alloc,
+#else
+  NULL,
+#endif
+
 };
 
 #define GET_DEFAULT_STR_VALUE(var_store, default_value)                        \
@@ -109,68 +145,66 @@ struct bgpstream_di_mgr {
     }                                                                          \
   } while (0)
 
-/* data interface mgr related functions */
-
-bgpstream_di_mgr_t *bgpstream_di_mgr_create()
+static bsdi_t *di_alloc(bgpstream_filter_mgr_t *filter_mgr,
+                        bgpstream_data_interface_id_t id)
 {
-  bgpstream_debug("\tBSDI_MGR: create start");
-  bgpstream_di_mgr_t *di_mgr =
-    (bgpstream_di_mgr_t *)malloc(sizeof(bgpstream_di_mgr_t));
-  if (di_mgr == NULL) {
-    return NULL; // can't allocate memory
+  bsdi_t *di;
+  assert(ARR_CNT(di_alloc_functions) == _BGPSTREAM_DATA_INTERFACE_CNT);
+
+  if (di_alloc_functions[id] == NULL) {
+    return NULL;
   }
-  // default values
-  di_mgr->di_id = BGPSTREAM_DATA_INTERFACE_BROKER; // default data interface
-  di_mgr->blocking = 0;
-  di_mgr->backoff_time = DATA_INTERFACE_BLOCKING_MIN_WAIT;
-  di_mgr->retry_cnt = 0;
 
-// data interfaces (none of them are active at the beginning)
+  /* first, create the struct */
+  if ((di = malloc_zero(sizeof(bsdi_t))) == NULL) {
+    return NULL;
+  }
 
-#ifdef WITH_DATA_INTERFACE_SINGLEFILE
-  di_mgr->singlefile = NULL;
-  GET_DEFAULT_STR_VALUE(di_mgr->singlefile_rib_mrtfile,
-                        BGPSTREAM_DI_SINGLEFILE_RIB_FILE);
-  GET_DEFAULT_STR_VALUE(di_mgr->singlefile_upd_mrtfile,
-                        BGPSTREAM_DI_SINGLEFILE_UPDATE_FILE);
-#endif
+  /* get the core DI details (info, func ptrs) from the plugin */
+  memcpy(di, di_alloc_functions[id - 1](), sizeof(bsdi_t));
 
-#ifdef WITH_DATA_INTERFACE_CSVFILE
-  di_mgr->csvfile = NULL;
-  GET_DEFAULT_STR_VALUE(di_mgr->csvfile_file, BGPSTREAM_DI_CSVFILE_CSV_FILE);
-#endif
+  di->filter_mgr = filter_mgr;
 
-#ifdef WITH_DATA_INTERFACE_SQLITE
-  di_mgr->sqlite = NULL;
-  GET_DEFAULT_STR_VALUE(di_mgr->sqlite_file, BGPSTREAM_DI_SQLITE_DB_FILE);
-#endif
-
-#ifdef WITH_DATA_INTERFACE_BROKER
-  di_mgr->broker = NULL;
-  GET_DEFAULT_STR_VALUE(di_mgr->broker_url, BGPSTREAM_DI_BROKER_URL);
-  di_mgr->broker_params = NULL;
-  di_mgr->broker_params_cnt = 0;
-#endif
-
-  bgpstream_debug("\tBSDS_MGR: create end");
-  return di_mgr;
+  return di;
 }
 
-void bgpstream_di_mgr_set_data_interface(
-  bgpstream_di_mgr_t *di_mgr, const bgpstream_data_interface_id_t di_id)
+/* ========== PUBLIC FUNCTIONS BELOW HERE ========== */
+
+bgpstream_di_mgr_t *bgpstream_di_mgr_create(bgpstream_filter_mgr_t *filter_mgr)
 {
-  bgpstream_debug("\tBSDS_MGR: set data interface start");
-  if (di_mgr == NULL) {
-    return; // no manager
+  bgpstream_di_mgr_t *mgr;
+  int id;
+
+  if ((mgr = malloc_zero(sizeof(bgpstream_di_mgr_t))) == NULL) {
+    return NULL; // can't allocate memory
   }
-  di_mgr->di_id = di_id;
-  bgpstream_debug("\tBSDS_MGR: set  data interface end");
+
+  // default values
+  mgr->active_di = BGPSTREAM_DATA_INTERFACE_BROKER;
+  mgr->backoff_time = DATA_INTERFACE_BLOCKING_MIN_WAIT;
+
+  /* allocate the interfaces (some may/will be NULL) */
+  for (id = 0; id <= _BGPSTREAM_DATA_INTERFACE_CNT; id++) {
+    mgr->interfaces[id] = di_alloc(filter_mgr, id);
+  }
+
+  return mgr;
+}
+
+int bgpstream_di_mgr_set_data_interface(bgpstream_di_mgr_t *di_mgr,
+                                         bgpstream_data_interface_id_t di_id)
+{
+  if (di_mgr->interfaces[di_id] == NULL) {
+    return -1;
+  }
+  di_mgr->active_di = di_id;
+  return 0;
 }
 
 bgpstream_data_interface_id_t
 bgpstream_di_mgr_get_data_interface_id(bgpstream_di_mgr_t *di_mgr)
 {
-  return di_mgr->di_id;
+  return di_mgr->active_di;
 }
 
 int bgpstream_di_mgr_set_data_interface_option(
@@ -255,8 +289,7 @@ int bgpstream_di_mgr_set_data_interface_option(
   return 0;
 }
 
-int bgpstream_di_mgr_init(bgpstream_di_mgr_t *di_mgr,
-                           bgpstream_filter_mgr_t *filter_mgr)
+int bgpstream_di_mgr_start(bgpstream_di_mgr_t *di_mgr)
 {
   bgpstream_debug("\tBSDS_MGR: init start");
   if (di_mgr == NULL) {
