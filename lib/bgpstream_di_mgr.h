@@ -39,19 +39,20 @@ typedef struct bsdi bsdi_t;
  * @return pointer to a manager instance if successful, NULL otherwise
  */
 bgpstream_di_mgr_t *
-bgpstream_di_mgr_create();
+bgpstream_di_mgr_create(bgpstream_filter_mgr_t *filter_mgr);
 
 /** Set the current data interface
  *
  * @param di_mgr        pointer to a data interface manager instance
  * @param di_id         ID of the data interface to enable
+ * @return 0 if the data interface was set successfully, -1 otherwise
  *
  * There may only be one active data interface. Activating a data interface
  * implicitly deactivates all other interfaces
  */
-void
+int
 bgpstream_di_mgr_set_data_interface(bgpstream_di_mgr_t *di_mgr,
-                                    const bgpstream_data_interface_id_t di_id);
+                                    bgpstream_data_interface_id_t di_id);
 
 /** Get the ID of the currently active Data Interface
  *
@@ -76,16 +77,20 @@ int bgpstream_di_mgr_set_data_interface_option(
   const bgpstream_data_interface_option_t *option_type,
   const char *option_value);
 
-/* init the di_mgr and start/init the selected data_interface */
-/* @TODO does this need to exist? can it be done during _set_data_interface? */
-int bgpstream_di_mgr_init(bgpstream_di_mgr_t *di_mgr,
-                           bgpstream_filter_mgr_t *filter_mgr);
-
 /** Set the data interface to blocking mode
  *
  * @param di_mgr        pointer to a data interface manager instance
  */
 void bgpstream_di_mgr_set_blocking(bgpstream_di_mgr_t *di_mgr);
+
+/** Start the data interface
+ *
+ * @param di_mgr        pointer to a data interface manager instance
+ * @return 0 if the data interface was started successfully, -1 otherwise
+ *
+ * All options and filters must be set before calling this function
+ */
+int bgpstream_di_mgr_start(bgpstream_di_mgr_t *di_mgr);
 
 /** Get the next batch of metadata from the active data interface
  *

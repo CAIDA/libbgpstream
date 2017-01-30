@@ -165,7 +165,7 @@ bgpstream_t *bgpstream_create()
     bs = NULL;
     return NULL;
   }
-  bs->di_mgr = bgpstream_di_mgr_create();
+  bs->di_mgr = bgpstream_di_mgr_create(bs->filter_mgr);
   if (bs->di_mgr == NULL) {
     bgpstream_destroy(bs);
     return NULL;
@@ -424,7 +424,8 @@ int bgpstream_start(bgpstream_t *bs)
   }
 
   // turn on data interface
-  if (bgpstream_di_mgr_init(bs->di_mgr, bs->filter_mgr) != 0) {
+  // turn on data interface
+  if (bgpstream_di_mgr_start(bs->di_mgr) != 0) {
     bs->status = BGPSTREAM_STATUS_ALLOCATED;
     bgpstream_debug("BS: init warning: check if data interface provided is ok");
     bgpstream_debug("BS: init end: not ok");
