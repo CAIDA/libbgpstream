@@ -21,7 +21,7 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "bgpstream_data_interface_broker.h"
+#include "bsdi_broker.h"
 #include "bgpstream_debug.h"
 #include "config.h"
 #include "utils.h"
@@ -627,20 +627,19 @@ int bsdi_broker_init(bsdi_t *di)
     goto err;
   }
 
-  /* build the default query URL (will be rebuilt if the user sets any params
-     explicitly) */
-  if (update_query_url(di) != 0) {
-    goto err;
-  }
-
   return 0;
 err:
   bsdi_broker_destroy(di);
   return -1;
 }
 
+int bsdi_broker_start(bsdi_t *di)
+{
+  return update_query_url(di);
+}
+
 int bsdi_broker_set_option(bsdi_t *di,
-                           bgpstream_data_interface_option_t *option_type,
+                           const bgpstream_data_interface_option_t *option_type,
                            const char *option_value)
 {
   switch (option_type->id) {
@@ -669,8 +668,7 @@ int bsdi_broker_set_option(bsdi_t *di,
     return -1;
   }
 
-  // whichever option was set, we need to rebuild the query url
-  return update_query_url(di);
+  return 0;
 }
 
 void bsdi_broker_destroy(bsdi_t *di)
@@ -693,7 +691,7 @@ void bsdi_broker_destroy(bsdi_t *di)
   BSDI_SET_STATE(di, NULL);
 }
 
-int bsdi_get_queue(bsdi_t *di, bgpstream_input_mgr_t *input_mgr)
+int bsdi_broker_get_queue(bsdi_t *di, bgpstream_input_mgr_t *input_mgr)
 {
 
 // we need to set two parameters:

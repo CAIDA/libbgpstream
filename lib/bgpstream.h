@@ -113,6 +113,8 @@ typedef enum {
 
 /** Data Interface IDs */
 typedef enum {
+  /** Special "invalid" data interface ID */
+  _BGPSTREAM_DATA_INTERFACE_INVALID,
 
   /** Broker data interface */
   BGPSTREAM_DATA_INTERFACE_BROKER,

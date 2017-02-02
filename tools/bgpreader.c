@@ -100,7 +100,7 @@ static void data_if_usage()
 
 static void dump_if_options()
 {
-  assert(di_id != 0);
+  assert(di_id != _BGPSTREAM_DATA_INTERFACE_INVALID);
 
   bgpstream_data_interface_option_t *options;
   int opt_cnt = 0;
