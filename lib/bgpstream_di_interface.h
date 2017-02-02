@@ -55,9 +55,10 @@
  */
 #define BSDI_GENERATE_PROTOS(ifname)                                    \
   bsdi_t *bsdi_##ifname##_alloc();                                      \
-  int bsdi_##ifname##_init(bsdi_t *di); \
+  int bsdi_##ifname##_init(bsdi_t *di);                                 \
+  int bsdi_##ifname##_start(bsdi_t *di);                                \
   int bsdi_##ifname##_set_option(bsdi_t *di,                            \
-                                 bgpstream_data_interface_option_t *option_type, \
+                                 const bgpstream_data_interface_option_t *option_type, \
                                  const char *option_value);             \
   void bsdi_##ifname##_destroy(bsdi_t *di);                             \
   int bsdi_##ifname##_get_queue(bsdi_t *di, bgpstream_input_mgr_t *input_mgr);
@@ -67,6 +68,7 @@
  */
 #define BSDI_GENERATE_PTRS(ifname)                                    \
   bsdi_##ifname##_init,                                               \
+    bsdi_##ifname##_start,                                            \
     bsdi_##ifname##_set_option,                                       \
     bsdi_##ifname##_destroy,                                          \
     bsdi_##ifname##_get_queue,                                        \
@@ -99,8 +101,18 @@ struct bsdi {
    *
    * @param di          The data interface object to allocate
    * @return 0 if the interface is successfully initialized, -1 otherwise
+   *
+   * This method is for creating state. If the interface needs to open
+   * connections, databases, etc. this should be done in the `start` method.
    */
   int (*init)(struct bsdi *di);
+
+  /** Start this data interface
+   *
+   * @param di          The data interface to start
+   * @return 0 if the interface was started successfully, -1 otherwise
+   */
+  int (*start)(struct bsdi *di);
 
   /** Set a data interface option
    *
@@ -110,7 +122,7 @@ struct bsdi {
    * @return 0 if the option was set successfully, -1 otherwise
    */
   int (*set_option)(bsdi_t *di,
-                    bgpstream_data_interface_option_t *option_type,
+                    const bgpstream_data_interface_option_t *option_type,
                     const char *option_value);
 
   /** Shutdown and free interface-specific state for this data interface

@@ -36,23 +36,23 @@ DI_SOURCES=
 DI_LIBS=
 
 if WITH_DATA_INTERFACE_BROKER
-DI_SOURCES+=bgpstream_data_interface_broker.c \
-	    bgpstream_data_interface_broker.h
+DI_SOURCES+=bsdi_broker.c \
+	    bsdi_broker.h
 endif
 
 if WITH_DATA_INTERFACE_SINGLEFILE
-DI_SOURCES+=bgpstream_data_interface_singlefile.c \
-	    bgpstream_data_interface_singlefile.h
+DI_SOURCES+=bsdi_singlefile.c \
+	    bsdi_singlefile.h
 endif
 
 if WITH_DATA_INTERFACE_CSVFILE
-DI_SOURCES+=bgpstream_data_interface_csvfile.c \
-	    bgpstream_data_interface_csvfile.h
+DI_SOURCES+=bsdi_csvfile.c \
+	    bsdi_csvfile.h
 endif
 
 if WITH_DATA_INTERFACE_SQLITE
-DI_SOURCES+=bgpstream_data_interface_sqlite.c \
-	    bgpstream_data_interface_sqlite.h
+DI_SOURCES+=bsdi_sqlite.c \
+	    bsdi_sqlite.h
 endif
 
 libbgpstream_data_interfaces_la_SOURCES = $(DI_SOURCES)
