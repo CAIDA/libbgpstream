@@ -34,7 +34,6 @@
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
-
 #include <wandio.h>
 
 #define STATE (BSDI_GET_STATE(di, broker))
@@ -63,8 +62,6 @@ enum {
   OPTION_BROKER_URL,
   OPTION_PARAM,
 };
-
-#define MAX_PARAMS 100
 
 static bgpstream_data_interface_option_t options[] = {
   /* Broker URL */
@@ -95,6 +92,8 @@ static bsdi_t bsdi_broker = {
   ARR_CNT(options),
   BSDI_GENERATE_PTRS(broker) //
 };
+
+#define MAX_PARAMS 100
 
 typedef struct bsdi_broker_state {
 

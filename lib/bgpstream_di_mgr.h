@@ -41,6 +41,55 @@ typedef struct bsdi bsdi_t;
 bgpstream_di_mgr_t *
 bgpstream_di_mgr_create(bgpstream_filter_mgr_t *filter_mgr);
 
+/** Get a list of data interfaces that are currently supported
+ *
+ * @param di_mgr        pointer to a data interface manager instance
+ * @param[out] if_ids   set to a borrowed pointer to an array of
+ *                      bgpstream_data_interface_type_t values
+ * @return the number of elements the the if_ids array
+ *
+ * @note the returned array belongs to BGPStream. It must not be freed by the
+ * user.
+ */
+int bgpstream_di_mgr_get_data_interfaces(bgpstream_di_mgr_t *di_mgr,
+                                         bgpstream_data_interface_id_t **if_ids);
+
+/** Get the ID of the data interface with the given name
+ *
+ * @param di            pointer to a data interface manager instance
+ * @param name          name of the data interface to retrieve the ID for
+ * @return the ID of the data interface with the given name, or
+ * _BGPSTREAM_DATA_INTERFACE_INVALID if no matching interface was found
+ */
+bgpstream_data_interface_id_t
+bgpstream_di_mgr_get_data_interface_id_by_name(bgpstream_di_mgr_t *di_mgr,
+                                               const char *name);
+
+/** Get information for the given data interface
+ *
+ * @param di            pointer to a data interface manager instance
+ * @param if_id         ID of the interface to get the name for
+ * @return borrowed pointer to an interface info structure
+ */
+bgpstream_data_interface_info_t *
+bgpstream_di_mgr_get_data_interface_info(bgpstream_di_mgr_t *di_mgr,
+                                         bgpstream_data_interface_id_t if_id);
+
+/** Get a list of valid option types for the given data interface
+ *
+ * @param di            pointer to a data interface manager instance
+ * @param if_id         ID of the interface to get option names for
+ *                      in the returned array
+ * @param[out] opts     set to a borrowed pointer to an array of options
+ * @return the number of elements in the opts array
+ *
+ * @note the returned array belongs to BGP Stream. It must not be freed by the
+ * user.
+ */
+int bgpstream_di_mgr_get_data_interface_options(
+  bgpstream_di_mgr_t *di, bgpstream_data_interface_id_t if_id,
+  bgpstream_data_interface_option_t **opts);
+
 /** Set the current data interface
  *
  * @param di_mgr        pointer to a data interface manager instance
@@ -63,8 +112,7 @@ bgpstream_di_mgr_set_data_interface(bgpstream_di_mgr_t *di_mgr,
 bgpstream_data_interface_id_t
 bgpstream_di_mgr_get_data_interface_id(bgpstream_di_mgr_t *di_mgr);
 
-/** Set the given option to the given value for the currently active data
- * interface
+/** Set the given option to the given value for the given data interface
  *
  * @param di_mgr        pointer to a data interface manager instance
  * @param option_type   pointer to an option spec object

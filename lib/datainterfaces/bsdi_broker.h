@@ -21,11 +21,11 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __BGPSTREAM_DATA_INTERFACE_BROKER_H
-#define __BGPSTREAM_DATA_INTERFACE_BROKER_H
+#ifndef __BSDI_BROKER_H
+#define __BSDI_BROKER_H
 
 #include "bgpstream_di_interface.h"
 
 BSDI_GENERATE_PROTOS(broker);
 
-#endif /* __BGPSTREAM_DATA_INTERFACE_BROKER_H */
+#endif /* __BSDI_BROKER_H */

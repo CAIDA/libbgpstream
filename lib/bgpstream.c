@@ -32,21 +32,6 @@
 
 /* TEMPORARY STRUCTURES TO FAKE DATA INTERFACE PLUGIN API */
 
-/* this should be the complete list of interface types */
-static bgpstream_data_interface_id_t bgpstream_data_interfaces[] = {
-  BGPSTREAM_DATA_INTERFACE_BROKER,     //
-  BGPSTREAM_DATA_INTERFACE_SINGLEFILE, //
-  BGPSTREAM_DATA_INTERFACE_CSVFILE,    //
-  BGPSTREAM_DATA_INTERFACE_SQLITE,     //
-};
-
-#ifdef WITH_DATA_INTERFACE_SINGLEFILE
-static bgpstream_data_interface_info_t bgpstream_singlefile_info = {
-  BGPSTREAM_DATA_INTERFACE_SINGLEFILE, "singlefile",
-  "Read a single mrt data file (a RIB and/or an update)",
-};
-#endif
-
 #ifdef WITH_DATA_INTERFACE_CSVFILE
 static bgpstream_data_interface_info_t bgpstream_csvfile_info = {
   BGPSTREAM_DATA_INTERFACE_CSVFILE, "csvfile",
@@ -61,58 +46,7 @@ static bgpstream_data_interface_info_t bgpstream_sqlite_info = {
 };
 #endif
 
-#ifdef WITH_DATA_INTERFACE_BROKER
-static bgpstream_data_interface_info_t bgpstream_broker_info = {
-  BGPSTREAM_DATA_INTERFACE_BROKER, "broker",
-  "Retrieve metadata information from the BGPStream Broker service",
-};
-#endif
 
-static bgpstream_data_interface_info_t *bgpstream_data_interface_infos[] = {
-  NULL, /* NO VALID IF WITH ID 0 */
-
-#ifdef WITH_DATA_INTERFACE_BROKER
-  &bgpstream_broker_info,
-#else
-  NULL,
-#endif
-
-#ifdef WITH_DATA_INTERFACE_SINGLEFILE
-  &bgpstream_singlefile_info,
-#else
-  NULL,
-#endif
-
-#ifdef WITH_DATA_INTERFACE_CSVFILE
-  &bgpstream_csvfile_info,
-#else
-  NULL,
-#endif
-
-#ifdef WITH_DATA_INTERFACE_SQLITE
-  &bgpstream_sqlite_info,
-#else
-  NULL,
-#endif
-
-};
-
-/* this should be a complete list of per-interface options */
-
-#ifdef WITH_DATA_INTERFACE_SINGLEFILE
-static bgpstream_data_interface_option_t bgpstream_singlefile_options[] = {
-  /* RIB MRT file path */
-  {
-    BGPSTREAM_DATA_INTERFACE_SINGLEFILE, 0, "rib-file",
-    "rib mrt file to read (default: " STR(BGPSTREAM_DI_SINGLEFILE_RIB_FILE) ")",
-  },
-  {
-    BGPSTREAM_DATA_INTERFACE_SINGLEFILE, 1, "upd-file",
-    "updates mrt file to read (default: " STR(
-      BGPSTREAM_DI_SINGLEFILE_UPDATE_FILE) ")",
-  },
-};
-#endif
 
 #ifdef WITH_DATA_INTERFACE_CSVFILE
 static bgpstream_data_interface_option_t bgpstream_csvfile_options[] = {
@@ -135,20 +69,6 @@ static bgpstream_data_interface_option_t bgpstream_sqlite_options[] = {
 };
 #endif
 
-#ifdef WITH_DATA_INTERFACE_BROKER
-static bgpstream_data_interface_option_t bgpstream_broker_options[] = {
-  /* Broker URL */
-  {
-    BGPSTREAM_DATA_INTERFACE_BROKER, 0, "url",
-    "Broker URL (default: " STR(BGPSTREAM_DI_BROKER_URL) ")",
-  },
-  /* Broker Param */
-  {
-    BGPSTREAM_DATA_INTERFACE_BROKER, 1, "param",
-    "Additional Broker GET parameter*",
-  },
-};
-#endif
 
 /* allocate memory for a new bgpstream interface
  */
@@ -264,74 +184,27 @@ void bgpstream_add_interval_filter(bgpstream_t *bs, uint32_t begin_time,
 int bgpstream_get_data_interfaces(bgpstream_t *bs,
                                   bgpstream_data_interface_id_t **if_ids)
 {
-  assert(if_ids != NULL);
-  *if_ids = bgpstream_data_interfaces;
-  return ARR_CNT(bgpstream_data_interfaces);
+  return bgpstream_di_mgr_get_data_interfaces(bs->di_mgr, if_ids);
 }
 
 bgpstream_data_interface_id_t
 bgpstream_get_data_interface_id_by_name(bgpstream_t *bs, const char *name)
 {
-  int i;
-
-  for (i = 1; i < ARR_CNT(bgpstream_data_interface_infos); i++) {
-    if (bgpstream_data_interface_infos[i] != NULL &&
-        strcmp(bgpstream_data_interface_infos[i]->name, name) == 0) {
-      return bgpstream_data_interface_infos[i]->id;
-    }
-  }
-
-  return 0;
+  return bgpstream_di_mgr_get_data_interface_id_by_name(bs->di_mgr, name);
 }
 
 bgpstream_data_interface_info_t *
 bgpstream_get_data_interface_info(bgpstream_t *bs,
                                   bgpstream_data_interface_id_t if_id)
 {
-  return bgpstream_data_interface_infos[if_id];
+  return bgpstream_di_mgr_get_data_interface_info(bs->di_mgr, if_id);
 }
 
 int bgpstream_get_data_interface_options(
   bgpstream_t *bs, bgpstream_data_interface_id_t if_id,
   bgpstream_data_interface_option_t **opts)
 {
-  assert(opts != NULL);
-
-  switch (if_id) {
-
-#ifdef WITH_DATA_INTERFACE_SINGLEFILE
-  case BGPSTREAM_DATA_INTERFACE_SINGLEFILE:
-    *opts = bgpstream_singlefile_options;
-    return ARR_CNT(bgpstream_singlefile_options);
-    break;
-#endif
-
-#ifdef WITH_DATA_INTERFACE_CSVFILE
-  case BGPSTREAM_DATA_INTERFACE_CSVFILE:
-    *opts = bgpstream_csvfile_options;
-    return ARR_CNT(bgpstream_csvfile_options);
-    break;
-#endif
-
-#ifdef WITH_DATA_INTERFACE_SQLITE
-  case BGPSTREAM_DATA_INTERFACE_SQLITE:
-    *opts = bgpstream_sqlite_options;
-    return ARR_CNT(bgpstream_sqlite_options);
-    break;
-#endif
-
-#ifdef WITH_DATA_INTERFACE_BROKER
-  case BGPSTREAM_DATA_INTERFACE_BROKER:
-    *opts = bgpstream_broker_options;
-    return ARR_CNT(bgpstream_broker_options);
-    break;
-#endif
-
-  default:
-    *opts = NULL;
-    return 0;
-    break;
-  }
+  return bgpstream_di_mgr_get_data_interface_options(bs->di_mgr, if_id, opts);
 }
 
 bgpstream_data_interface_option_t *bgpstream_get_data_interface_option_by_name(
@@ -358,20 +231,12 @@ bgpstream_data_interface_option_t *bgpstream_get_data_interface_option_by_name(
 
 /* configure the data interface options */
 
-void bgpstream_set_data_interface_option(
+int bgpstream_set_data_interface_option(
   bgpstream_t *bs, bgpstream_data_interface_option_t *option_type,
   const char *option_value)
 {
-
-  bgpstream_debug("BS: set_data_interface_options start");
-  if (bs == NULL || (bs != NULL && bs->status != BGPSTREAM_STATUS_ALLOCATED)) {
-    return; // nothing to customize
-  }
-
-  bgpstream_di_mgr_set_data_interface_option(bs->di_mgr, option_type,
-                                             option_value);
-
-  bgpstream_debug("BS: set_data_interface_options stop");
+  return bgpstream_di_mgr_set_data_interface_option(bs->di_mgr,
+                                                    option_type, option_value);
 }
 
 /* configure the interface so that it connects
@@ -380,12 +245,7 @@ void bgpstream_set_data_interface_option(
 void bgpstream_set_data_interface(bgpstream_t *bs,
                                   bgpstream_data_interface_id_t di)
 {
-  bgpstream_debug("BS: set_data_interface start");
-  if (bs == NULL || (bs != NULL && bs->status != BGPSTREAM_STATUS_ALLOCATED)) {
-    return; // nothing to customize
-  }
   bgpstream_di_mgr_set_data_interface(bs->di_mgr, di);
-  bgpstream_debug("BS: set_data_interface stop");
 }
 
 bgpstream_data_interface_id_t bgpstream_get_data_interface_id(bgpstream_t *bs)
@@ -398,12 +258,7 @@ bgpstream_data_interface_id_t bgpstream_get_data_interface_id(bgpstream_t *bs)
  */
 void bgpstream_set_live_mode(bgpstream_t *bs)
 {
-  bgpstream_debug("BS: set_live_mode start");
-  if (bs == NULL || (bs != NULL && bs->status != BGPSTREAM_STATUS_ALLOCATED)) {
-    return; // nothing to customize
-  }
   bgpstream_di_mgr_set_blocking(bs->di_mgr);
-  bgpstream_debug("BS: set_blocking stop");
 }
 
 /* turn on the bgpstream interface, i.e.:
@@ -412,11 +267,6 @@ void bgpstream_set_live_mode(bgpstream_t *bs)
 */
 int bgpstream_start(bgpstream_t *bs)
 {
-  bgpstream_debug("BS: init start");
-  if (bs == NULL || (bs != NULL && bs->status != BGPSTREAM_STATUS_ALLOCATED)) {
-    return 0; // nothing to init
-  }
-
   // validate the filters that have been set
   int rc;
   if ((rc = bgpstream_filter_mgr_validate(bs->filter_mgr)) != 0) {

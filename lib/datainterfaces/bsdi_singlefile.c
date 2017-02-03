@@ -21,9 +21,10 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "bgpstream_data_interface_singlefile.h"
+#include "bsdi_singlefile.h"
 #include "bgpstream_debug.h"
 #include "config.h"
+#include "utils.h"
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,6 +34,8 @@
 #include <unistd.h>
 #include <wandio.h>
 
+#define STATE (BSDI_GET_STATE(di, singlefile))
+
 /* check for new ribs once every 30 mins */
 #define RIB_FREQUENCY_CHECK 1800
 /* check for new updates once every 2 minutes */
@@ -40,120 +43,219 @@
 
 #define MAX_HEADER_READ_BYTES 1024
 
-/* TODO: move this buffer inside the state structure!! */
-static unsigned char buffer[MAX_HEADER_READ_BYTES];
-
-struct bgpstream_di_singlefile {
-  bgpstream_filter_mgr_t *filter_mgr;
-  char rib_filename[BGPSTREAM_DUMP_MAX_LEN];
-  unsigned char rib_header[MAX_HEADER_READ_BYTES];
-  uint32_t last_rib_filetime;
-  char update_filename[BGPSTREAM_DUMP_MAX_LEN];
-  unsigned char update_header[MAX_HEADER_READ_BYTES];
-  uint32_t last_update_filetime;
+enum {
+  OPTION_RIB_FILE,
+  OPTION_UPDATE_FILE,
 };
 
-bgpstream_di_singlefile_t *
-bgpstream_di_singlefile_create(bgpstream_filter_mgr_t *filter_mgr,
-                               char *singlefile_rib_mrtfile,
-                               char *singlefile_upd_mrtfile)
-{
-  bgpstream_debug("\t\tBSDS_CLIST: create singlefile start");
-  bgpstream_di_singlefile_t *singlefile =
-    (bgpstream_di_singlefile_t *)malloc(sizeof(bgpstream_di_singlefile_t));
-  if (singlefile == NULL) {
-    bgpstream_log_err(
-      "\t\tBSDS_CLIST: create singlefile can't allocate memory");
-    return NULL; // can't allocate memory
-  }
-  singlefile->filter_mgr = filter_mgr;
-  singlefile->rib_filename[0] = '\0';
-  singlefile->rib_header[0] = '\0';
-  singlefile->last_rib_filetime = 0;
-  if (singlefile_rib_mrtfile != NULL) {
-    strcpy(singlefile->rib_filename, singlefile_rib_mrtfile);
-  }
-  singlefile->update_filename[0] = '\0';
-  singlefile->update_header[0] = '\0';
-  singlefile->last_update_filetime = 0;
-  if (singlefile_upd_mrtfile != NULL) {
-    strcpy(singlefile->update_filename, singlefile_upd_mrtfile);
-  }
-  bgpstream_debug("\t\tBSDS_CLIST: create customlist_ds end");
-  return singlefile;
-}
+static bgpstream_data_interface_option_t options[] = {
+  /* RIB file path */
+  {
+    BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
+    OPTION_RIB_FILE, // internal ID
+    "rib-file", // name
+    "rib mrt file to read (default: " STR(BGPSTREAM_DI_SINGLEFILE_RIB_FILE) ")",
+  },
+  /* Update file path */
+  {
+    BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
+    OPTION_UPDATE_FILE, //internal ID
+    "upd-file", //name
+    "updates mrt file to read (default: " STR(
+      BGPSTREAM_DI_SINGLEFILE_UPDATE_FILE) ")",
+  },
+};
 
-static int same_header(char *mrt_filename, unsigned char *previous_header)
+/* Our "Class" instance */
+static bsdi_t bsdi_singlefile = {
+  // "info"
+  {
+    BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // ID
+    "singlefile", // name
+    "Read a single mrt data file (a RIB and/or an update)", //
+  },
+  options,
+  ARR_CNT(options),
+  BSDI_GENERATE_PTRS(singlefile) //
+};
+
+typedef struct bsdi_singlefile_state {
+  /* user-provided options: */
+
+  // Path to a RIB file to read
+  char *rib_file;
+
+  // Path to an update file to read
+  char *update_file;
+
+  /* internal state: */
+
+  // a few bytes from the beginning of the RIB file (used to tell if a symlink
+  // has been updated)
+  char rib_header[MAX_HEADER_READ_BYTES];
+
+  // timestamp of the last RIB read
+  uint32_t last_rib_filetime;
+
+  // a few bytes from the beginning of the update file (used to tell if a
+  // symlink has been updated)
+  char update_header[MAX_HEADER_READ_BYTES];
+
+  // timestamp of the last updates read
+  uint32_t last_update_filetime;
+} bsdi_singlefile_state_t;
+
+static int same_header(char *filename, char *prev_hdr)
 {
-  off_t read_bytes;
-  io_t *io_h = wandio_create(mrt_filename);
-  if (io_h == NULL) {
-    bgpstream_log_err("\t\tBSDS_SINGLEFILE: can't open file!");
+  char buffer[MAX_HEADER_READ_BYTES];
+  off_t bread;
+  io_t *io_h;
+
+  if ((io_h = wandio_create(filename)) == NULL) {
+    bgpstream_log_err("Singlefile: can't open file '%s'",
+                      filename);
     return -1;
   }
 
-  read_bytes = wandio_read(io_h, (void *)&(buffer[0]), MAX_HEADER_READ_BYTES);
-  if (read_bytes < 0) {
-    bgpstream_log_err("\t\tBSDS_SINGLEFILE: can't read file!");
+  if ((bread =
+       wandio_read(io_h, (void *)&(buffer[0]), MAX_HEADER_READ_BYTES)) < 0) {
+    bgpstream_log_err("Singlefile: can't read file '%s'", filename);
     wandio_destroy(io_h);
     return -1;
   }
-
-  int ret = memcmp(buffer, previous_header, sizeof(unsigned char) * read_bytes);
   wandio_destroy(io_h);
-  /* if there is no difference, then they have the same header */
-  if (ret == 0) {
-    /* fprintf(stderr, "same header\n"); */
+
+  if (bcmp(buffer, prev_hdr, bread) == 0) {
+    /* there is no difference, it has the same header */
     return 1;
   }
-  memcpy(previous_header, buffer, sizeof(unsigned char) * read_bytes);
+
+  /* its a new file, update our header */
+  memcpy(prev_hdr, buffer, bread);
+  return 0; // not the same header
+}
+
+/* ========== PUBLIC METHODS BELOW HERE ========== */
+
+bsdi_t *bsdi_singlefile_alloc()
+{
+  return &bsdi_singlefile;
+}
+
+int bsdi_singlefile_init(bsdi_t *di)
+{
+  bsdi_singlefile_state_t *state;
+
+  if ((state = malloc_zero(sizeof(bsdi_singlefile_state_t))) == NULL) {
+    goto err;
+  }
+  BSDI_SET_STATE(di, state);
+
+  /* set default state */
+  // none
+
+  return 0;
+err:
+  bsdi_singlefile_destroy(di);
+  return -1;
+}
+
+int bsdi_singlefile_start(bsdi_t *di)
+{
+  if (STATE->rib_file || STATE->update_file) {
+    return 0;
+  } else {
+    fprintf(stderr, "ERROR: At least one of the 'rib-file' and 'upd-file' options must be set\n");
+    return -1;
+  }
+}
+
+int bsdi_singlefile_set_option(bsdi_t *di,
+                           const bgpstream_data_interface_option_t *option_type,
+                           const char *option_value)
+{
+  fprintf(stderr, "DEBUG: setting option value: %s\n", option_value);
+  switch (option_type->id) {
+  case OPTION_RIB_FILE:
+    // replaces our current RIB file
+    if (STATE->rib_file != NULL) {
+      free(STATE->rib_file);
+      STATE->rib_file = NULL;
+    }
+    if ((STATE->rib_file = strdup(option_value)) == NULL) {
+      return -1;
+    }
+    break;
+
+  case OPTION_UPDATE_FILE:
+    // replaces our current update file
+    if (STATE->update_file != NULL) {
+      free(STATE->update_file);
+      STATE->update_file = NULL;
+    }
+    if ((STATE->update_file = strdup(option_value)) == NULL) {
+      return -1;
+    }
+    break;
+
+  default:
+    return -1;
+  }
+
   return 0;
 }
 
-int bgpstream_di_singlefile_update_input_queue(
-  bgpstream_di_singlefile_t *singlefile, bgpstream_input_mgr_t *input_mgr)
+void bsdi_singlefile_destroy(bsdi_t *di)
 {
-  bgpstream_debug("\t\tBSDS_CLIST: singlefile update input queue start");
-  struct timeval tv;
-  gettimeofday(&tv, NULL);
-  uint32_t now = tv.tv_sec;
-  int num_results = 0;
-
-  /* check digest, if different (or first) then add files to input queue) */
-  if (singlefile->rib_filename[0] != '\0' &&
-      now - singlefile->last_rib_filetime > RIB_FREQUENCY_CHECK &&
-      same_header(singlefile->rib_filename, singlefile->rib_header) == 0) {
-    /* fprintf(stderr, "new RIB at: %"PRIu32"\n", now); */
-    singlefile->last_rib_filetime = now;
-    num_results += bgpstream_input_mgr_push_sorted_input(
-      input_mgr, strdup(singlefile->rib_filename), strdup("singlefile"),
-      strdup("singlefile"), strdup("ribs"), singlefile->last_rib_filetime,
-      RIB_FREQUENCY_CHECK);
+  if (di == NULL || STATE == NULL) {
+    return;
   }
 
-  if (singlefile->update_filename[0] != '\0' &&
-      now - singlefile->last_update_filetime > UPDATE_FREQUENCY_CHECK &&
-      same_header(singlefile->update_filename, singlefile->update_header) ==
-        0) {
-    /* fprintf(stderr, "new updates at: %"PRIu32"\n", now); */
-    singlefile->last_update_filetime = now;
-    num_results += bgpstream_input_mgr_push_sorted_input(
-      input_mgr, strdup(singlefile->update_filename), strdup("singlefile"),
-      strdup("singlefile"), strdup("updates"), singlefile->last_update_filetime,
-      UPDATE_FREQUENCY_CHECK);
-  }
+  free(STATE->rib_file);
+  STATE->rib_file = NULL;
 
-  bgpstream_debug("\t\tBSDS_CLIST: singlefile update input queue end");
-  return num_results;
+  free(STATE->update_file);
+  STATE->update_file = NULL;
+
+  free(STATE);
+  BSDI_SET_STATE(di, NULL);
 }
 
-void bgpstream_di_singlefile_destroy(bgpstream_di_singlefile_t *singlefile)
+int bsdi_singlefile_get_queue(bsdi_t *di, bgpstream_input_mgr_t *input_mgr)
 {
-  bgpstream_debug("\t\tBSDS_CLIST: destroy singlefile start");
-  if (singlefile == NULL) {
-    return; // nothing to destroy
+  uint32_t now = epoch_sec();
+  int queue_len = 0;
+
+  /* if this is the first time we've read the file, then add it to the queue,
+     otherwise check the header to see if it has changed */
+
+  if (STATE->rib_file != NULL &&
+      (now - STATE->last_rib_filetime) > RIB_FREQUENCY_CHECK &&
+      same_header(STATE->rib_file, STATE->rib_header) == 0) {
+    STATE->last_rib_filetime = now;
+    queue_len +=
+      bgpstream_input_mgr_push_sorted_input(input_mgr,
+                                            strdup(STATE->rib_file),
+                                            strdup("singlefile"),
+                                            strdup("singlefile"),
+                                            strdup("ribs"),
+                                            STATE->last_rib_filetime,
+                                            RIB_FREQUENCY_CHECK);
   }
-  singlefile->filter_mgr = NULL;
-  free(singlefile);
-  bgpstream_debug("\t\tBSDS_CLIST: destroy singlefile end");
+
+  if (STATE->update_file != NULL &&
+      (now - STATE->last_update_filetime) > UPDATE_FREQUENCY_CHECK &&
+      same_header(STATE->update_file, STATE->update_header) == 0) {
+    STATE->last_update_filetime = now;
+    queue_len +=
+      bgpstream_input_mgr_push_sorted_input(input_mgr,
+                                            strdup(STATE->update_file),
+                                            strdup("singlefile"),
+                                            strdup("singlefile"),
+                                            strdup("updates"),
+                                            STATE->last_update_filetime,
+                                            UPDATE_FREQUENCY_CHECK);
+  }
+
+  return queue_len;
 }

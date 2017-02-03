@@ -424,7 +424,12 @@ int main(int argc, char *argv[])
         usage();
         exit(-1);
       }
-      bgpstream_set_data_interface_option(bs, option, endp);
+      if (bgpstream_set_data_interface_option(bs, option, endp) != 0) {
+        fprintf(stderr, "ERROR: Failed to set option '%s' for data interface '%s'\n",
+                interface_options[i], di_info->name);
+        usage();
+        exit(-1);
+      }
     }
     free(interface_options[i]);
     interface_options[i] = NULL;
@@ -511,7 +516,7 @@ int main(int argc, char *argv[])
     bgpstream_add_rib_period_filter(bs, rib_period);
   }
 
-  /* di */
+  /* set data interface */
   bgpstream_set_data_interface(bs, di_id);
 
   /* live */

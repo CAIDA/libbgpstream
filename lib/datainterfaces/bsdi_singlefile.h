@@ -21,23 +21,11 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __BGPSTREAM_DATA_INTERFACE_SINGLEFILE_H
-#define __BGPSTREAM_DATA_INTERFACE_SINGLEFILE_H
+#ifndef __BSDI_SINGLEFILE_H
+#define __BSDI_SINGLEFILE_H
 
-#include "bgpstream_filter.h"
-#include "bgpstream_input.h"
+#include "bgpstream_di_interface.h"
 
-/** Opaque handle that represents the Single-File data source */
-typedef struct bgpstream_di_singlefile bgpstream_di_singlefile_t;
+BSDI_GENERATE_PROTOS(singlefile);
 
-bgpstream_di_singlefile_t *
-bgpstream_di_singlefile_create(bgpstream_filter_mgr_t *filter_mgr,
-                               char *singlefile_rib_mrtfile,
-                               char *singlefile_upd_mrtfile);
-
-int bgpstream_di_singlefile_update_input_queue(
-  bgpstream_di_singlefile_t *singlefile_ds, bgpstream_input_mgr_t *input_mgr);
-
-void bgpstream_di_singlefile_destroy(bgpstream_di_singlefile_t *singlefile_ds);
-
-#endif /* __BGPSTREAM_DATA_INTERFACE_SINGLEFILE_H */
+#endif /* __BSDI_SINGLEFILE_H */
