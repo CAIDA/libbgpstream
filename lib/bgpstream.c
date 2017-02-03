@@ -24,32 +24,10 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-
 #include "bgpstream_int.h"
 #include "bgpdump_lib.h"
 #include "bgpstream_debug.h"
 #include "utils.h"
-
-/* TEMPORARY STRUCTURES TO FAKE DATA INTERFACE PLUGIN API */
-
-#ifdef WITH_DATA_INTERFACE_SQLITE
-static bgpstream_data_interface_info_t bgpstream_sqlite_info = {
-  BGPSTREAM_DATA_INTERFACE_SQLITE, "sqlite",
-  "Retrieve metadata information from a sqlite database",
-};
-#endif
-
-
-#ifdef WITH_DATA_INTERFACE_SQLITE
-static bgpstream_data_interface_option_t bgpstream_sqlite_options[] = {
-  /* SQLITE database file name */
-  {
-    BGPSTREAM_DATA_INTERFACE_SQLITE, 0, "db-file",
-    "sqlite database (default: " STR(BGPSTREAM_DI_SQLITE_DB_FILE) ")",
-  },
-};
-#endif
-
 
 /* allocate memory for a new bgpstream interface
  */

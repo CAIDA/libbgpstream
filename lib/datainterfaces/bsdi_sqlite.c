@@ -21,7 +21,7 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "bgpstream_data_interface_sqlite.h"
+#include "bsdi_sqlite.h"
 #include "bgpstream_debug.h"
 #include "utils.h"
 #include <assert.h>
@@ -35,78 +35,119 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#define STATE (BSDI_GET_STATE(di, sqlite))
+
+/* ---------- START CLASS DEFINITION ---------- */
+
+/* define the internal option ID values */
+enum {
+  OPTION_DB_FILE,
+};
+
+/* define the options this data interface accepts */
+static bgpstream_data_interface_option_t options[] = {
+  /* SQLITE database file name */
+  {
+    BGPSTREAM_DATA_INTERFACE_SQLITE, // interface ID
+    OPTION_DB_FILE, // internal ID
+    "db-file", // name
+    "SQLite database file (default: " STR(BGPSTREAM_DI_SQLITE_DB_FILE) ")",
+  },
+};
+
+/* create the class structure for this data interface */
+BSDI_CREATE_CLASS(
+  sqlite,
+  BGPSTREAM_DATA_INTERFACE_SQLITE,
+  "Retrieve metadata information from an SQLite database",
+  options
+);
+
+/* ---------- END CLASS DEFINITION ---------- */
+
 #define MAX_QUERY_LEN 2048
+
+typedef struct bsdi_sqlite_state {
+  /* user-provided options: */
+
+  char *db_file;
+
+  /* internal state: */
+
+  // DB handle
+  sqlite3 *db;
+
+  // statement handle
+  sqlite3_stmt *stmt;
+
+  // buffer for building queries XXX
+  char query_buf[MAX_QUERY_LEN];
+
+  // current timestamp
+  uint32_t current_ts;
+
+  // last timestamp
+  uint32_t last_ts;
+
+} bsdi_sqlite_state_t;
+
 #define MAX_INTERVAL_LEN 16
 
 #define APPEND_STR(str)                                                        \
   do {                                                                         \
     size_t len = strlen(str);                                                  \
     if (rem_buf_space < len + 1) {                                             \
-      return NULL;                                                             \
+      goto err;                                                         \
     }                                                                          \
-    strncat(sqlite->sql_query, str, rem_buf_space);                            \
+    strncat(STATE->query_buf, str, rem_buf_space);                            \
     rem_buf_space -= len;                                                      \
   } while (0)
 
-struct bgpstream_di_sqlite {
-  bgpstream_filter_mgr_t *filter_mgr;
-  /* sqlite connection handler */
-  sqlite3 *db;
-  sqlite3_stmt *stmt;
-  char sql_query[MAX_QUERY_LEN];
-  char *sqlite_file;
-  uint32_t current_ts;
-  uint32_t last_ts;
-};
-
-static int prepare_db(bgpstream_di_sqlite_t *sqlite)
+static int prepare_db(bsdi_t *di)
 {
-  assert(sqlite);
-  int rc = 0;
-  if (sqlite3_open_v2(sqlite->sqlite_file, &sqlite->db, SQLITE_OPEN_READONLY,
-                      NULL) != SQLITE_OK) {
-    bgpstream_log_err("\t\tBSDS_SQLITE: can't open database: %s",
-                      sqlite3_errmsg(sqlite->db));
-    sqlite3_close(sqlite->db);
+  if (sqlite3_open_v2(STATE->db_file, &STATE->db, SQLITE_OPEN_READONLY, NULL)
+      != SQLITE_OK) {
+    bgpstream_log_err("SQLite can't open database: %s",
+                      sqlite3_errmsg(STATE->db));
     return -1;
   }
 
-  rc =
-    sqlite3_prepare_v2(sqlite->db, sqlite->sql_query, -1, &sqlite->stmt, NULL);
-  if (rc != SQLITE_OK) {
-    bgpstream_log_err("\t\tBSDS_SQLITE: failed to execute statement: %s",
-                      sqlite3_errmsg(sqlite->db));
+  if (sqlite3_prepare_v2(STATE->db, STATE->query_buf, -1, &STATE->stmt, NULL)
+      != SQLITE_OK) {
+    bgpstream_log_err("SQLite failed to prepare statement: %s",
+                      sqlite3_errmsg(STATE->db));
     return -1;
   }
   return 0;
 }
 
-bgpstream_di_sqlite_t *
-bgpstream_di_sqlite_create(bgpstream_filter_mgr_t *filter_mgr,
-                           char *sqlite_file)
+/* ========== PUBLIC METHODS BELOW HERE ========== */
+
+int bsdi_sqlite_init(bsdi_t *di)
 {
+  bsdi_sqlite_state_t *state;
 
-  bgpstream_debug("\t\tBSDS_SQLITE: create sqlite start");
-  bgpstream_di_sqlite_t *sqlite =
-    (bgpstream_di_sqlite_t *)malloc_zero(sizeof(bgpstream_di_sqlite_t));
-  if (sqlite == NULL) {
-    bgpstream_log_err("\t\tBSDS_SQLITE: create sqlite can't allocate memory");
+  if ((state = malloc_zero(sizeof(bsdi_sqlite_state_t))) == NULL) {
     goto err;
   }
-  if (sqlite_file == NULL) {
-    bgpstream_log_err("\t\tBSDS_SQLITE: create sqlite no file provided");
-    goto err;
-  }
-  sqlite->sqlite_file = strdup(sqlite_file);
+  BSDI_SET_STATE(di, state);
 
-  sqlite->filter_mgr = filter_mgr;
-  sqlite->current_ts = 0;
-  sqlite->last_ts = 0;
+  /* set default state */
+  // none
 
-  /* how many characters can be written in the query buffer */
+  return 0;
+err:
+  bsdi_sqlite_destroy(di);
+  return -1;
+}
+
+static int build_query(bsdi_t *di)
+{
   size_t rem_buf_space = MAX_QUERY_LEN;
-  sqlite->sql_query[0] = '\0';
   char interval_str[MAX_INTERVAL_LEN];
+
+  /* reset the query buffer. probably unnecessary, but lets do it anyway */
+  STATE->query_buf[0] = '\0';
 
   APPEND_STR(
     "SELECT bgp_data.file_path, collectors.project, collectors.name, "
@@ -119,12 +160,13 @@ bgpstream_di_sqlite_create(bgpstream_filter_mgr_t *filter_mgr,
 
   // projects, collectors, bgp_types, and time_intervals are used as filters
   // only if they are provided by the user
+  bgpstream_filter_mgr_t *filter_mgr = BSDI_GET_FILTER_MGR(di);
   bgpstream_interval_filter_t *tif;
-  bool first;
+  int first;
   char *f;
 
   // projects
-  first = true;
+  first = 1;
   if (filter_mgr->projects != NULL) {
     APPEND_STR(" AND collectors.project IN (");
     bgpstream_str_set_rewind(filter_mgr->projects);
@@ -135,13 +177,13 @@ bgpstream_di_sqlite_create(bgpstream_filter_mgr_t *filter_mgr,
       APPEND_STR("'");
       APPEND_STR(f);
       APPEND_STR("'");
-      first = false;
+      first = 0;
     }
     APPEND_STR(" ) ");
   }
 
   // collectors
-  first = true;
+  first = 1;
   if (filter_mgr->collectors != NULL) {
     APPEND_STR(" AND collectors.name IN (");
     bgpstream_str_set_rewind(filter_mgr->collectors);
@@ -152,13 +194,13 @@ bgpstream_di_sqlite_create(bgpstream_filter_mgr_t *filter_mgr,
       APPEND_STR("'");
       APPEND_STR(f);
       APPEND_STR("'");
-      first = false;
+      first = 0;
     }
     APPEND_STR(" ) ");
   }
 
   // bgp_types
-  first = true;
+  first = 1;
   if (filter_mgr->bgp_types != NULL) {
     APPEND_STR(" AND bgp_types.name IN (");
     bgpstream_str_set_rewind(filter_mgr->bgp_types);
@@ -169,7 +211,7 @@ bgpstream_di_sqlite_create(bgpstream_filter_mgr_t *filter_mgr,
       APPEND_STR("'");
       APPEND_STR(f);
       APPEND_STR("'");
-      first = false;
+      first = 0;
     }
     APPEND_STR(" ) ");
   }
@@ -227,70 +269,98 @@ bgpstream_di_sqlite_create(bgpstream_filter_mgr_t *filter_mgr,
   // faster
   APPEND_STR(" ORDER BY file_time DESC, bgp_types.name DESC");
 
-  if (prepare_db(sqlite) != 0) {
-    goto err;
-  }
+  return 0;
 
-  // printf("%s\n", sqlite->sql_query);
-
-  bgpstream_debug("\t\tBSDS_SQLITE: create sqlite end");
-
-  return sqlite;
-err:
-  bgpstream_di_sqlite_destroy(sqlite);
-  return NULL;
+ err:
+  return -1;
 }
 
-int bgpstream_di_sqlite_update_input_queue(bgpstream_di_sqlite_t *sqlite,
-                                           bgpstream_input_mgr_t *input_mgr)
+int bsdi_sqlite_start(bsdi_t *di)
+{
+  /* check user-provided options */
+  if (!STATE->db_file) {
+    fprintf(stderr, "ERROR: The 'db-file' option must be set\n");
+    return -1;
+  }
+
+  if (build_query(di) != 0) {
+    return -1;
+  }
+
+  return prepare_db(di);
+}
+
+int bsdi_sqlite_set_option(bsdi_t *di,
+                           const bgpstream_data_interface_option_t *option_type,
+                           const char *option_value)
+{
+  switch (option_type->id) {
+  case OPTION_DB_FILE:
+    // replaces our current DB file
+    if (STATE->db_file != NULL) {
+      free(STATE->db_file);
+      STATE->db_file = NULL;
+    }
+    if ((STATE->db_file = strdup(option_value)) == NULL) {
+      return -1;
+    }
+    break;
+
+  default:
+    return -1;
+  }
+
+  return 0;
+}
+
+void bsdi_sqlite_destroy(bsdi_t *di)
+{
+  if (di == NULL || STATE == NULL) {
+    return;
+  }
+
+  free(STATE->db_file);
+  STATE->db_file = NULL;
+
+  sqlite3_finalize(STATE->stmt);
+  sqlite3_close(STATE->db);
+
+  free(STATE);
+  BSDI_SET_STATE(di, NULL);
+}
+
+int bsdi_sqlite_get_queue(bsdi_t *di, bgpstream_input_mgr_t *input_mgr)
 {
   int rc;
-  int num_results = 0;
-  sqlite->last_ts = sqlite->current_ts;
-  struct timeval tv;
-  gettimeofday(&tv, NULL);
+  int queue_len = 0;
+
+  STATE->last_ts = STATE->current_ts;
+
   // update current_timestamp - we always ask for data 1 second old at least
-  sqlite->current_ts = tv.tv_sec - 1; // now() - 1 second
+  STATE->current_ts = epoch_sec() - 1; // now() - 1 second
 
-  sqlite3_bind_int(sqlite->stmt, 1, sqlite->last_ts);
-  sqlite3_bind_int(sqlite->stmt, 2, sqlite->current_ts);
+  sqlite3_bind_int(STATE->stmt, 1, STATE->last_ts);
+  sqlite3_bind_int(STATE->stmt, 2, STATE->current_ts);
 
-  /* printf("%d - %d \n", sqlite->last_ts, sqlite->current_ts); */
-  while ((rc = sqlite3_step(sqlite->stmt)) != SQLITE_DONE) {
-    if (rc == SQLITE_ROW) {
-      /* printf("%s: %d\n", sqlite3_column_text(sqlite->stmt, 0),
-       * sqlite3_column_int(sqlite->stmt, 6)); */
-      num_results += bgpstream_input_mgr_push_sorted_input(
-        input_mgr,
-        strdup((const char *)sqlite3_column_text(sqlite->stmt, 0)) /* path */,
-        strdup(
-          (const char *)sqlite3_column_text(sqlite->stmt, 1)) /* project */,
-        strdup(
-          (const char *)sqlite3_column_text(sqlite->stmt, 2)) /* collector */,
-        strdup((const char *)sqlite3_column_text(sqlite->stmt, 3)) /* type */,
-        sqlite3_column_int(sqlite->stmt, 5) /* file time */,
-        sqlite3_column_int(sqlite->stmt, 4) /* time span */);
-
-    } else {
+  while ((rc = sqlite3_step(STATE->stmt)) != SQLITE_DONE) {
+    if (rc != SQLITE_ROW) {
       bgpstream_log_err(
         "\t\tBSDS_SQLITE: error while stepping through results");
       return -1;
     }
+
+    queue_len += bgpstream_input_mgr_push_sorted_input(input_mgr,
+        strdup((const char *)sqlite3_column_text(STATE->stmt, 0)) /* path */,
+        strdup(
+          (const char *)sqlite3_column_text(STATE->stmt, 1)) /* project */,
+        strdup(
+          (const char *)sqlite3_column_text(STATE->stmt, 2)) /* collector */,
+        strdup((const char *)sqlite3_column_text(STATE->stmt, 3)) /* type */,
+        sqlite3_column_int(STATE->stmt, 5) /* file time */,
+        sqlite3_column_int(STATE->stmt, 4) /* time span */);
   }
-  sqlite3_reset(sqlite->stmt);
-  return num_results;
+  sqlite3_reset(STATE->stmt);
+
+  return queue_len;
 }
 
-void bgpstream_di_sqlite_destroy(bgpstream_di_sqlite_t *sqlite)
-{
-  if (sqlite != NULL) {
-    if (sqlite->sqlite_file != NULL) {
-      free(sqlite->sqlite_file);
-      sqlite->sqlite_file = NULL;
-    }
-
-    sqlite3_finalize(sqlite->stmt);
-    sqlite3_close(sqlite->db);
-    free(sqlite);
-  }
-}
