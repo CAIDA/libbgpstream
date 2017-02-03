@@ -63,16 +63,27 @@
   void bsdi_##ifname##_destroy(bsdi_t *di);                             \
   int bsdi_##ifname##_get_queue(bsdi_t *di, bgpstream_input_mgr_t *input_mgr);
 
-/** Convenience macro that defines all the function pointers for the data
- *  interface API
- */
-#define BSDI_GENERATE_PTRS(ifname)                                    \
-  bsdi_##ifname##_init,                                               \
-    bsdi_##ifname##_start,                                            \
-    bsdi_##ifname##_set_option,                                       \
-    bsdi_##ifname##_destroy,                                          \
-    bsdi_##ifname##_get_queue,                                        \
-    NULL, NULL,
+/** Convenience macro that creates a class structure for a data interface */
+#define BSDI_CREATE_CLASS(classname, id, desc, options)                 \
+  static bsdi_t bsdi_##classname = {                                    \
+    {                                                                   \
+      (id),                                                             \
+      STR(classname),                                                   \
+      desc,                                                             \
+    },                                                                  \
+    (options),                                                          \
+    ARR_CNT(options),                                                   \
+    bsdi_##classname##_init,                                            \
+    bsdi_##classname##_start,                                           \
+    bsdi_##classname##_set_option,                                      \
+    bsdi_##classname##_destroy,                                         \
+    bsdi_##classname##_get_queue,                                       \
+    NULL,                                                               \
+    NULL,                                                               \
+  };                                                                    \
+  bsdi_t *bsdi_##classname##_alloc() {                                  \
+    return &bsdi_##classname;                                           \
+  }
 
 /** Structure which represents a data interface */
 struct bsdi {

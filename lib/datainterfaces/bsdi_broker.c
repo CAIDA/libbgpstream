@@ -38,31 +38,15 @@
 
 #define STATE (BSDI_GET_STATE(di, broker))
 
-#define URL_BUFLEN 4096
+/* ---------- START CLASS DEFINITION ---------- */
 
-// the max time we will wait between retries to the broker
-#define MAX_WAIT_TIME 900
-
-// indicates a fatal error
-#define ERR_FATAL -1
-// indicates a non-fatal error
-#define ERR_RETRY -2
-
-#define APPEND_STR(str)                                                        \
-  do {                                                                         \
-    size_t len = strlen(str);                                                  \
-    if (STATE->query_url_remaining < len + 1) {                               \
-      goto err;                                                                \
-    }                                                                          \
-    strncat(STATE->query_url_buf, str, STATE->query_url_remaining - 1);      \
-    STATE->query_url_remaining -= len;                                        \
-  } while (0)
-
+/* define the internal option ID values */
 enum {
   OPTION_BROKER_URL,
   OPTION_PARAM,
 };
 
+/* define the options this data interface accepts */
 static bgpstream_data_interface_option_t options[] = {
   /* Broker URL */
   {
@@ -80,20 +64,23 @@ static bgpstream_data_interface_option_t options[] = {
   },
 };
 
-/* Our "Class" instance */
-static bsdi_t bsdi_broker = {
-  // "info"
-  {
-    BGPSTREAM_DATA_INTERFACE_BROKER, // ID
-    "broker", // name
-    "Retrieve metadata information from the BGPStream Broker service", //
-  },
-  options,
-  ARR_CNT(options),
-  BSDI_GENERATE_PTRS(broker) //
-};
+/* create the class structure for this data interface */
+BSDI_CREATE_CLASS(
+  broker,
+  BGPSTREAM_DATA_INTERFACE_BROKER,
+  "Retrieve metadata information from the BGPStream Broker service",
+  options
+);
 
+/* ---------- END CLASS DEFINITION ---------- */
+
+/* The maximum number of parameters we let users set (just to simplify memory
+   management */
 #define MAX_PARAMS 100
+
+/* The length of the URL buffer (we can't build broker query URLs longer than
+   this) */
+#define URL_BUFLEN 4096
 
 typedef struct bsdi_broker_state {
 
@@ -128,6 +115,24 @@ typedef struct bsdi_broker_state {
   uint32_t current_window_end;
 
 } bsdi_broker_state_t;
+
+// the max time we will wait between retries to the broker
+#define MAX_WAIT_TIME 900
+
+enum {
+  ERR_FATAL = -1,
+  ERR_RETRY = -2,
+};
+
+#define APPEND_STR(str)                                                        \
+  do {                                                                         \
+    size_t len = strlen(str);                                                  \
+    if (STATE->query_url_remaining < len + 1) {                               \
+      goto err;                                                                \
+    }                                                                          \
+    strncat(STATE->query_url_buf, str, STATE->query_url_remaining - 1);      \
+    STATE->query_url_remaining -= len;                                        \
+  } while (0)
 
 #define AMPORQ                                                                 \
   do {                                                                         \
@@ -606,11 +611,6 @@ static int update_query_url(bsdi_t *di)
 }
 
 /* ========== PUBLIC METHODS BELOW HERE ========== */
-
-bsdi_t *bsdi_broker_alloc()
-{
-  return &bsdi_broker;
-}
 
 int bsdi_broker_init(bsdi_t *di)
 {

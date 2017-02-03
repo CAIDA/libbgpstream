@@ -21,7 +21,7 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "bgpstream_data_interface_csvfile.h"
+#include "bsdi_csvfile.h"
 #include "bgpstream_debug.h"
 #include "config.h"
 #include "utils.h"
@@ -36,30 +36,58 @@
 #include <unistd.h>
 #include <wandio.h>
 
-#define BUFFER_LEN 1024
+#define STATE (BSDI_GET_STATE(di, csvfile))
 
-typedef enum {
+/* ---------- START CLASS DEFINITION ---------- */
 
-  CSVFILE_PATH = 0,
-  CSVFILE_PROJECT = 1,
-  CSVFILE_BGPTYPE = 2,
-  CSVFILE_COLLECTOR = 3,
-  CSVFILE_FILETIME = 4,
-  CSVFILE_TIMESPAN = 5,
-  CSVFILE_TIMESTAMP = 6,
+/* define the internal option ID values */
+enum {
+  OPTION_CSV_FILE,
+};
 
-  CSVFILE_FIELDCNT = 7
-} csvfile_field_t;
+/* define the options this data interface accepts */
+static bgpstream_data_interface_option_t options[] = {
+  /* CSV file name */
+  {
+    BGPSTREAM_DATA_INTERFACE_CSVFILE, // interface ID
+    OPTION_CSV_FILE, // internal ID
+    "csv-file", // name
+    "csv file listing the mrt data to read (default: " STR(
+      BGPSTREAM_DI_CSVFILE_CSV_FILE) ")",
+  },
+};
 
-struct bgpstream_di_csvfile {
-  char *csvfile_file;
-  struct csv_parser parser;
-  int current_field;
-  int num_results;
-  bgpstream_filter_mgr_t *filter_mgr;
+/* create the class structure for this data interface */
+BSDI_CREATE_CLASS(
+  csvfile,
+  BGPSTREAM_DATA_INTERFACE_CSVFILE,
+  "Retrieve metadata information from a csv file",
+  options
+);
+
+/* ---------- END CLASS DEFINITION ---------- */
+
+typedef struct bsdi_csvfile_state {
+  /* user-provided options */
+
+  // Path to a CSV file to read
+  char *csv_file;
+
+  /* internal state: */
+
+  // Input manager
   bgpstream_input_mgr_t *input_mgr;
 
-  /* bgp record metadata */
+  // CSV parser state
+  struct csv_parser parser;
+
+  // The current field being parsed
+  int current_field;
+
+  // the number of files we added to the input queue
+  int queue_len;
+
+  /* record metadata: */
   char filename[BGPSTREAM_DUMP_MAX_LEN];
   char project[BGPSTREAM_PAR_MAX_LEN];
   char bgp_type[BGPSTREAM_PAR_MAX_LEN];
@@ -74,269 +102,281 @@ struct bgpstream_di_csvfile {
   uint32_t last_processed_ts;
   /* maximum timestamp accepted in the current round */
   uint32_t max_accepted_ts;
+} bsdi_csvfile_state_t;
+
+enum {
+  CSVFILE_PATH = 0,
+  CSVFILE_PROJECT = 1,
+  CSVFILE_BGPTYPE = 2,
+  CSVFILE_COLLECTOR = 3,
+  CSVFILE_FILETIME = 4,
+  CSVFILE_TIMESPAN = 5,
+  CSVFILE_TIMESTAMP = 6,
+
+  CSVFILE_FIELDCNT = 7
 };
 
-bgpstream_di_csvfile_t *
-bgpstream_di_csvfile_create(bgpstream_filter_mgr_t *filter_mgr,
-                            char *csvfile_file)
+static int filters_match(bsdi_t *di)
 {
-  bgpstream_debug("\t\tBSDS_CSVFILE: create csvfile start");
-  bgpstream_di_csvfile_t *csvfile =
-    (bgpstream_di_csvfile_t *)malloc_zero(sizeof(bgpstream_di_csvfile_t));
-  if (csvfile == NULL) {
-    bgpstream_log_err("\t\tBSDS_CSVFILE: create csvfile can't allocate memory");
-    goto err;
-  }
-  if (csvfile_file == NULL) {
-    bgpstream_log_err("\t\tBSDS_CSVFILE: create csvfile no file provided");
-    goto err;
-  }
-  if ((csvfile->csvfile_file = strdup(csvfile_file)) == NULL) {
-    bgpstream_log_err("\t\tBSDS_CSVFILE: can't allocate memory for filename");
-    goto err;
-  }
-
-  /* cvs file parser options */
-  unsigned char options = CSV_STRICT | CSV_REPALL_NL | CSV_STRICT_FINI |
-                          CSV_APPEND_NULL | CSV_EMPTY_IS_NULL;
-
-  if (csv_init(&(csvfile->parser), options) != 0) {
-    bgpstream_log_err("\t\tBSDS_CSVFILE: can't initialize csv parser");
-    goto err;
-  }
-
-  csvfile->current_field = CSVFILE_PATH;
-
-  csvfile->filter_mgr = filter_mgr;
-  csvfile->input_mgr = NULL;
-
-  csvfile->num_results = 0;
-
-  csvfile->max_ts_infile = 0;
-  csvfile->last_processed_ts = 0;
-  csvfile->max_accepted_ts = 0;
-
-  bgpstream_debug("\t\tBSDS_CSVFILE: create csvfile end");
-  return csvfile;
-
-err:
-  bgpstream_di_csvfile_destroy(csvfile);
-  return NULL;
-}
-
-static bool bgpstream_di_csvfile_filter_ok(bgpstream_di_csvfile_t *csvfile)
-{
-  bgpstream_debug("\t\tBSDS_CSVFILE: csvfile apply filter start");
-
-  /* fprintf(stderr, "%s %s %s %s\n", */
-  /*         csvfile->filename, csvfile->project, csvfile->collector,
-   * csvfile->bgp_type); */
-
+  bgpstream_filter_mgr_t *filter_mgr = BSDI_GET_FILTER_MGR(di);
   bgpstream_interval_filter_t *tif;
-  bool all_false;
+  int all_false;
 
   char *f;
 
   // projects
-  all_false = true;
-  if (csvfile->filter_mgr->projects != NULL) {
-    bgpstream_str_set_rewind(csvfile->filter_mgr->projects);
-    while ((f = bgpstream_str_set_next(csvfile->filter_mgr->projects)) !=
-           NULL) {
-      if (strcmp(f, csvfile->project) == 0) {
-        all_false = false;
+  all_false = 1;
+  if (filter_mgr->projects != NULL) {
+    bgpstream_str_set_rewind(filter_mgr->projects);
+    while ((f = bgpstream_str_set_next(filter_mgr->projects)) != NULL) {
+      if (strcmp(f, STATE->project) == 0) {
+        all_false = 0;
         break;
       }
     }
-    if (all_false) {
-      return false;
+    if (all_false != 0) {
+      return 0;
     }
   }
+
   // collectors
-  all_false = true;
-  if (csvfile->filter_mgr->collectors != NULL) {
-    bgpstream_str_set_rewind(csvfile->filter_mgr->collectors);
-    while ((f = bgpstream_str_set_next(csvfile->filter_mgr->collectors)) !=
-           NULL) {
-      if (strcmp(f, csvfile->collector) == 0) {
-        all_false = false;
+  all_false = 1;
+  if (filter_mgr->collectors != NULL) {
+    bgpstream_str_set_rewind(filter_mgr->collectors);
+    while ((f = bgpstream_str_set_next(filter_mgr->collectors)) != NULL) {
+      if (strcmp(f, STATE->collector) == 0) {
+        all_false = 0;
         break;
       }
     }
-    if (all_false) {
-      return false;
+    if (all_false != 0) {
+      return 0;
     }
   }
 
   // bgp_types
-  all_false = true;
-  if (csvfile->filter_mgr->bgp_types != NULL) {
-    bgpstream_str_set_rewind(csvfile->filter_mgr->bgp_types);
-    while ((f = bgpstream_str_set_next(csvfile->filter_mgr->bgp_types)) !=
-           NULL) {
-      if (strcmp(f, csvfile->bgp_type) == 0) {
-        all_false = false;
+  all_false = 1;
+  if (filter_mgr->bgp_types != NULL) {
+    bgpstream_str_set_rewind(filter_mgr->bgp_types);
+    while ((f = bgpstream_str_set_next(filter_mgr->bgp_types)) != NULL) {
+      if (strcmp(f, STATE->bgp_type) == 0) {
+        all_false = 0;
         break;
       }
     }
-    if (all_false) {
-      return false;
+    if (all_false != 0) {
+      return 0;
     }
   }
 
   // time_intervals
-  all_false = true;
-  if (csvfile->filter_mgr->time_intervals != NULL) {
-    tif = csvfile->filter_mgr->time_intervals;
+  all_false = 1;
+  if (filter_mgr->time_intervals != NULL) {
+    tif = filter_mgr->time_intervals;
     while (tif != NULL) {
       // filetime (we consider 15 mins before to consider routeviews updates
       // and 120 seconds to have some margins)
-      if (csvfile->filetime >= (tif->begin_time - 15 * 60 - 120) &&
+      if (STATE->filetime >= (tif->begin_time - (15 * 60) - 120) &&
           (tif->end_time == BGPSTREAM_FOREVER ||
-           csvfile->filetime <= tif->end_time)) {
-        all_false = false;
+           STATE->filetime <= tif->end_time)) {
+        all_false = 0;
         break;
       }
       tif = tif->next;
     }
-    if (all_false) {
-      return false;
+    if (all_false != 0) {
+      return 0;
     }
   }
-  // if all the filters are passed
-  return true;
+
+  // if all the filters are matched
+  return 1;
 }
 
-static void parse_csvfile_field(void *field, size_t i, void *user_data)
+static void parse_field(void *field, size_t i, void *user_data)
 {
 
   char *field_str = (char *)field;
-  bgpstream_di_csvfile_t *csvfile = (bgpstream_di_csvfile_t *)user_data;
+  bsdi_t *di = (bsdi_t *)user_data;
 
-  /* fprintf(stderr, "%s\n", field_str); */
-
-  switch (csvfile->current_field) {
+  switch (STATE->current_field) {
   case CSVFILE_PATH:
     assert(i < BGPSTREAM_DUMP_MAX_LEN - 1);
-    strncpy(csvfile->filename, field_str, i);
-    csvfile->filename[i] = '\0';
+    strncpy(STATE->filename, field_str, i);
+    STATE->filename[i] = '\0';
     break;
   case CSVFILE_PROJECT:
     assert(i < BGPSTREAM_PAR_MAX_LEN - 1);
-    strncpy(csvfile->project, field_str, i);
-    csvfile->project[i] = '\0';
+    strncpy(STATE->project, field_str, i);
+    STATE->project[i] = '\0';
     break;
   case CSVFILE_BGPTYPE:
     assert(i < BGPSTREAM_PAR_MAX_LEN - 1);
-    strncpy(csvfile->bgp_type, field_str, i);
-    csvfile->bgp_type[i] = '\0';
+    strncpy(STATE->bgp_type, field_str, i);
+    STATE->bgp_type[i] = '\0';
     break;
   case CSVFILE_COLLECTOR:
     assert(i < BGPSTREAM_PAR_MAX_LEN - 1);
-    strncpy(csvfile->collector, field_str, i);
-    csvfile->collector[i] = '\0';
+    strncpy(STATE->collector, field_str, i);
+    STATE->collector[i] = '\0';
     break;
   case CSVFILE_FILETIME:
-    csvfile->filetime = atoi(field_str);
+    STATE->filetime = atoi(field_str);
     break;
   case CSVFILE_TIMESPAN:
-    csvfile->time_span = atoi(field_str);
+    STATE->time_span = atoi(field_str);
     break;
   case CSVFILE_TIMESTAMP:
-    csvfile->timestamp = atoi(field_str);
+    STATE->timestamp = atoi(field_str);
     break;
   }
 
   /* one more field read */
-  csvfile->current_field++;
+  STATE->current_field++;
 }
 
-static void parse_csvfile_rowend(int c, void *user_data)
-{
-  bgpstream_di_csvfile_t *csvfile = (bgpstream_di_csvfile_t *)user_data;
 
-  /* if the number of fields read is compliant with the expected file format */
-  if (csvfile->current_field == CSVFILE_FIELDCNT) {
-    /* check if the timestamp is acceptable */
-    if (csvfile->timestamp > csvfile->last_processed_ts &&
-        csvfile->timestamp <= csvfile->max_accepted_ts) {
-      /* update max in file timestamp */
-      if (csvfile->timestamp > csvfile->max_ts_infile) {
-        csvfile->max_ts_infile = csvfile->timestamp;
-      }
-      if (bgpstream_di_csvfile_filter_ok(csvfile)) {
-        csvfile->num_results += bgpstream_input_mgr_push_sorted_input(
-          csvfile->input_mgr, strdup(csvfile->filename),
-          strdup(csvfile->project), strdup(csvfile->collector),
-          strdup(csvfile->bgp_type), csvfile->filetime, csvfile->time_span);
-      }
+static void parse_rowend(int c, void *user_data)
+{
+  bsdi_t *di = (bsdi_t *)user_data;
+
+  /* ensure fields read is compliant with the expected file format */
+  assert(STATE->current_field == CSVFILE_FIELDCNT);
+
+  /* check if the timestamp is acceptable */
+  if (STATE->timestamp > STATE->last_processed_ts &&
+      STATE->timestamp <= STATE->max_accepted_ts) {
+    /* update max in file timestamp */
+    if (STATE->timestamp > STATE->max_ts_infile) {
+      STATE->max_ts_infile = STATE->timestamp;
+    }
+    if (filters_match(di) != 0) {
+      STATE->queue_len +=
+        bgpstream_input_mgr_push_sorted_input(STATE->input_mgr,
+                                              strdup(STATE->filename),
+                                              strdup(STATE->project),
+                                              strdup(STATE->collector),
+                                              strdup(STATE->bgp_type),
+                                              STATE->filetime,
+                                              STATE->time_span);
     }
   }
-  csvfile->current_field = 0;
+  STATE->current_field = 0;
 }
 
-int bgpstream_di_csvfile_update_input_queue(bgpstream_di_csvfile_t *csvfile,
-                                            bgpstream_input_mgr_t *input_mgr)
-{
-  bgpstream_debug("\t\tBSDS_CSVFILE: csvfile update input queue start");
+/* ========== PUBLIC METHODS BELOW HERE ========== */
 
+int bsdi_csvfile_init(bsdi_t *di)
+{
+  bsdi_csvfile_state_t *state;
+
+  if ((state = malloc_zero(sizeof(bsdi_csvfile_state_t))) == NULL) {
+    goto err;
+  }
+  BSDI_SET_STATE(di, state);
+
+  /* set default state */
+
+  /* initialize the CSV parser */
+  if (csv_init(&(STATE->parser),
+               (CSV_STRICT | CSV_REPALL_NL | CSV_STRICT_FINI |
+                CSV_APPEND_NULL | CSV_EMPTY_IS_NULL)) != 0) {
+    goto err;
+  }
+  STATE->current_field = CSVFILE_PATH;
+
+  return 0;
+err:
+  bsdi_csvfile_destroy(di);
+  return -1;
+}
+
+int bsdi_csvfile_start(bsdi_t *di)
+{
+  if (STATE->csv_file) {
+    return 0;
+  } else {
+    fprintf(stderr, "ERROR: The 'csv-file' option must be set\n");
+    return -1;
+  }
+}
+
+int bsdi_csvfile_set_option(bsdi_t *di,
+                           const bgpstream_data_interface_option_t *option_type,
+                           const char *option_value)
+{
+  switch (option_type->id) {
+  case OPTION_CSV_FILE:
+    // replaces our current CSV file
+    if (STATE->csv_file != NULL) {
+      free(STATE->csv_file);
+      STATE->csv_file = NULL;
+    }
+    if ((STATE->csv_file = strdup(option_value)) == NULL) {
+      return -1;
+    }
+    break;
+
+  default:
+    return -1;
+  }
+
+  return 0;
+}
+
+void bsdi_csvfile_destroy(bsdi_t *di)
+{
+  if (di == NULL || STATE == NULL) {
+    return;
+  }
+
+  free(STATE->csv_file);
+  STATE->csv_file = NULL;
+
+  csv_free(&STATE->parser);
+
+  free(STATE);
+  BSDI_SET_STATE(di, NULL);
+}
+
+int bsdi_csvfile_get_queue(bsdi_t *di, bgpstream_input_mgr_t *input_mgr)
+{
   io_t *file_io = NULL;
+#define BUFFER_LEN 1024
   char buffer[BUFFER_LEN];
   int read = 0;
 
-  struct timeval tv;
-  gettimeofday(&tv, NULL);
-
   /* we accept all timestamp earlier than now() - 1 second */
-  csvfile->max_accepted_ts = tv.tv_sec - 1;
+  STATE->max_accepted_ts = epoch_sec() - 1;
 
-  csvfile->num_results = 0;
-  csvfile->max_ts_infile = 0;
-  csvfile->input_mgr = input_mgr;
+  STATE->queue_len = 0;
+  STATE->max_ts_infile = 0;
+  STATE->input_mgr = input_mgr;
 
-  if ((file_io = wandio_create(csvfile->csvfile_file)) == NULL) {
-    bgpstream_log_err("\t\tBSDS_CSVFILE: create csvfile can't open file %s",
-                      csvfile->csvfile_file);
+  if ((file_io = wandio_create(STATE->csv_file)) == NULL) {
+    bgpstream_log_err("csvfile can't open file %s", STATE->csv_file);
     return -1;
   }
 
   while ((read = wandio_read(file_io, &buffer, BUFFER_LEN)) > 0) {
-    if (csv_parse(&(csvfile->parser), buffer, read, parse_csvfile_field,
-                  parse_csvfile_rowend, csvfile) != read) {
-      bgpstream_log_err("\t\tBSDS_CSVFILE: CSV error %s",
-                        csv_strerror(csv_error(&(csvfile->parser))));
+    if (csv_parse(&(STATE->parser), buffer, read, parse_field,
+                  parse_rowend, di) != read) {
+      bgpstream_log_err("CSV parsing error %s",
+                        csv_strerror(csv_error(&STATE->parser)));
       return -1;
     }
   }
 
-  if (csv_fini(&(csvfile->parser), parse_csvfile_field, parse_csvfile_rowend,
-               csvfile) != 0) {
-    bgpstream_log_err("\t\tBSDS_CSVFILE: CSV error %s",
-                      csv_strerror(csv_error(&(csvfile->parser))));
+  if (csv_fini(&(STATE->parser), parse_field, parse_rowend, di) != 0) {
+    bgpstream_log_err("CSV parsing error %s",
+                      csv_strerror(csv_error(&STATE->parser)));
     return -1;
   }
 
   wandio_destroy(file_io);
-  csvfile->input_mgr = NULL;
-  csvfile->last_processed_ts = csvfile->max_ts_infile;
 
-  bgpstream_debug("\t\tBSDS_CSVFILE: csvfile update input queue end");
-  return csvfile->num_results;
-}
+  STATE->input_mgr = NULL;
+  STATE->last_processed_ts = STATE->max_ts_infile;
 
-void bgpstream_di_csvfile_destroy(bgpstream_di_csvfile_t *csvfile)
-{
-  bgpstream_debug("\t\tBSDS_CSVFILE: destroy csvfile start");
-  if (csvfile == NULL) {
-    return; // nothing to destroy
-  }
-  csvfile->filter_mgr = NULL;
-  if (csvfile->csvfile_file != NULL) {
-    free(csvfile->csvfile_file);
-  }
-  if (&(csvfile->parser) != NULL) {
-    csv_free(&(csvfile->parser));
-  }
-  free(csvfile);
-  bgpstream_debug("\t\tBSDS_CSVFILE: destroy csvfile end");
+  return STATE->queue_len;
 }
