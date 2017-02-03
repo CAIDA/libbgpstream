@@ -85,6 +85,8 @@ bool bgpstream_input_mgr_is_empty(
  * managed by the bgpstream input manager
  * (bgpstream objects are sorted by filetime)
  */
+/* TODO!!! dont use strings where enum would be better... treat as borrowed
+   pointers! */
 int bgpstream_input_mgr_push_sorted_input(
   bgpstream_input_mgr_t *const bs_input_mgr, char *filename, char *fileproject,
   char *filecollector, char *const filetype, const int epoch_filetime,

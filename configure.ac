@@ -205,7 +205,7 @@ fi
 
 # sqlite options
 if test "x$with_di_sqlite" == xyes; then
-   BS_DI_OPT(sqlite-db-file, SQLITE_DB_FILE, SQLite database, bgp_data.db)
+   BS_DI_OPT(sqlite-db-file, SQLITE_DB_FILE, SQLite database, not-set)
 fi
 
 # csvfile options
