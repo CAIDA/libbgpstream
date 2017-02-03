@@ -36,18 +36,15 @@
 
 #define STATE (BSDI_GET_STATE(di, singlefile))
 
-/* check for new ribs once every 30 mins */
-#define RIB_FREQUENCY_CHECK 1800
-/* check for new updates once every 2 minutes */
-#define UPDATE_FREQUENCY_CHECK 120
+/* ---------- START CLASS DEFINITION ---------- */
 
-#define MAX_HEADER_READ_BYTES 1024
-
+/* define the internal option ID values */
 enum {
   OPTION_RIB_FILE,
   OPTION_UPDATE_FILE,
 };
 
+/* define the options this data interface accepts */
 static bgpstream_data_interface_option_t options[] = {
   /* RIB file path */
   {
@@ -66,18 +63,24 @@ static bgpstream_data_interface_option_t options[] = {
   },
 };
 
-/* Our "Class" instance */
-static bsdi_t bsdi_singlefile = {
-  // "info"
-  {
-    BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // ID
-    "singlefile", // name
-    "Read a single mrt data file (a RIB and/or an update)", //
-  },
-  options,
-  ARR_CNT(options),
-  BSDI_GENERATE_PTRS(singlefile) //
-};
+/* create the class structure for this data interface */
+BSDI_CREATE_CLASS(
+  singlefile,
+  BGPSTREAM_DATA_INTERFACE_SINGLEFILE,
+  "Read a single mrt data file (RIB and/or updates)",
+  options
+);
+
+/* ---------- END CLASS DEFINITION ---------- */
+
+/* check for new ribs once every 30 mins */
+#define RIB_FREQUENCY_CHECK 1800
+
+/* check for new updates once every 2 minutes */
+#define UPDATE_FREQUENCY_CHECK 120
+
+/* max number of bytes to read from file header (to detect file changes) */
+#define MAX_HEADER_READ_BYTES 1024
 
 typedef struct bsdi_singlefile_state {
   /* user-provided options: */
@@ -137,11 +140,6 @@ static int same_header(char *filename, char *prev_hdr)
 
 /* ========== PUBLIC METHODS BELOW HERE ========== */
 
-bsdi_t *bsdi_singlefile_alloc()
-{
-  return &bsdi_singlefile;
-}
-
 int bsdi_singlefile_init(bsdi_t *di)
 {
   bsdi_singlefile_state_t *state;
@@ -165,7 +163,9 @@ int bsdi_singlefile_start(bsdi_t *di)
   if (STATE->rib_file || STATE->update_file) {
     return 0;
   } else {
-    fprintf(stderr, "ERROR: At least one of the 'rib-file' and 'upd-file' options must be set\n");
+    fprintf(stderr,
+            "ERROR: At least one of the 'rib-file' and 'upd-file' "
+            "options must be set\n");
     return -1;
   }
 }
@@ -174,7 +174,6 @@ int bsdi_singlefile_set_option(bsdi_t *di,
                            const bgpstream_data_interface_option_t *option_type,
                            const char *option_value)
 {
-  fprintf(stderr, "DEBUG: setting option value: %s\n", option_value);
   switch (option_type->id) {
   case OPTION_RIB_FILE:
     // replaces our current RIB file

@@ -32,13 +32,6 @@
 
 /* TEMPORARY STRUCTURES TO FAKE DATA INTERFACE PLUGIN API */
 
-#ifdef WITH_DATA_INTERFACE_CSVFILE
-static bgpstream_data_interface_info_t bgpstream_csvfile_info = {
-  BGPSTREAM_DATA_INTERFACE_CSVFILE, "csvfile",
-  "Retrieve metadata information from a csv file",
-};
-#endif
-
 #ifdef WITH_DATA_INTERFACE_SQLITE
 static bgpstream_data_interface_info_t bgpstream_sqlite_info = {
   BGPSTREAM_DATA_INTERFACE_SQLITE, "sqlite",
@@ -46,18 +39,6 @@ static bgpstream_data_interface_info_t bgpstream_sqlite_info = {
 };
 #endif
 
-
-
-#ifdef WITH_DATA_INTERFACE_CSVFILE
-static bgpstream_data_interface_option_t bgpstream_csvfile_options[] = {
-  /* CSV file name */
-  {
-    BGPSTREAM_DATA_INTERFACE_CSVFILE, 0, "csv-file",
-    "csv file listing the mrt data to read (default: " STR(
-      BGPSTREAM_DI_CSVFILE_CSV_FILE) ")",
-  },
-};
-#endif
 
 #ifdef WITH_DATA_INTERFACE_SQLITE
 static bgpstream_data_interface_option_t bgpstream_sqlite_options[] = {

@@ -21,22 +21,11 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __BGPSTREAM_DATA_INTERFACE_CSVFILE_H
-#define __BGPSTREAM_DATA_INTERFACE_CSVFILE_H
+#ifndef __BSDI_CSVFILE_H
+#define __BSDI_CSVFILE_H
 
-#include "bgpstream_filter.h"
-#include "bgpstream_input.h"
+#include "bgpstream_di_interface.h"
 
-/** Opaque handle that represents the CSV-file data source */
-typedef struct bgpstream_di_csvfile bgpstream_di_csvfile_t;
+BSDI_GENERATE_PROTOS(csvfile);
 
-bgpstream_di_csvfile_t *
-bgpstream_di_csvfile_create(bgpstream_filter_mgr_t *filter_mgr,
-                            char *csvfile_file);
-
-int bgpstream_di_csvfile_update_input_queue(bgpstream_di_csvfile_t *csvfile_ds,
-                                            bgpstream_input_mgr_t *input_mgr);
-
-void bgpstream_di_csvfile_destroy(bgpstream_di_csvfile_t *csvfile_ds);
-
-#endif /* __BGPSTREAM_DATA_INTERFACE_CSVFILE_H */
+#endif /* __BSDI_CSVFILE_H */

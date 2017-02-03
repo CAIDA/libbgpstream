@@ -281,7 +281,6 @@ int bgpstream_di_mgr_get_data_interface_options(
 int bgpstream_di_mgr_set_data_interface(bgpstream_di_mgr_t *di_mgr,
                                          bgpstream_data_interface_id_t di_id)
 {
-  fprintf(stderr, "DEBUG: Setting data interface to %d\n", di_id);
   if (di_mgr->interfaces[di_id] == NULL) {
     return -1;
   }
