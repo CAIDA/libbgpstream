@@ -95,14 +95,16 @@ int test_singlefile()
   CHECK("get option (rib-file)",
         (option = bgpstream_get_data_interface_option_by_name(
            bs, di_id, "rib-file")) != NULL);
-  bgpstream_set_data_interface_option(
-    bs, option, "routeviews.route-views.jinx.ribs.1427846400.bz2");
+  CHECK("set option (rib-file)",
+        bgpstream_set_data_interface_option(bs, option,
+                                            "routeviews.route-views.jinx.ribs.1427846400.bz2") == 0);
 
   CHECK("get option (upd-file)",
         (option = bgpstream_get_data_interface_option_by_name(
            bs, di_id, "upd-file")) != NULL);
-  bgpstream_set_data_interface_option(bs, option,
-                                      "ris.rrc06.updates.1427846400.gz");
+  CHECK("set option (upd-file)",
+        bgpstream_set_data_interface_option(bs, option,
+                                            "ris.rrc06.updates.1427846400.gz") == 0);
 
   RUN(singlefile);
 

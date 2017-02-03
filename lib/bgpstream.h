@@ -259,6 +259,7 @@ int bgpstream_get_data_interfaces(bgpstream_t *bs,
 
 /** Get the ID of the data interface with the given name
  *
+ * @param bs            pointer to a BGPStream instance
  * @param name          name of the data interface to retrieve the ID for
  * @return the ID of the data interface with the given name, 0 if no matching
  * interface was found
@@ -307,11 +308,12 @@ bgpstream_data_interface_option_t *bgpstream_get_data_interface_option_by_name(
  * @param bs            pointer to a BGP Stream instance to configure
  * @param option_type   pointer to the option to set
  * @param option_value  value to set the option to
+ * @return 0 if the option was set successfully, -1 otherwise
  *
  * Use the bgpstream_get_data_interface_options function to discover the set of
  * options for an interface.
  */
-void bgpstream_set_data_interface_option(
+int bgpstream_set_data_interface_option(
   bgpstream_t *bs, bgpstream_data_interface_option_t *option_type,
   const char *option_value);
 

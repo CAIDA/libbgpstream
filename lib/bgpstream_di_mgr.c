@@ -64,6 +64,9 @@ struct bgpstream_di_mgr {
 
   bsdi_t *interfaces[_BGPSTREAM_DATA_INTERFACE_CNT];
 
+  bgpstream_data_interface_id_t *available_dis;
+  int available_dis_cnt;
+
   bgpstream_data_interface_id_t active_di;
 
   // has the data interface been started yet?
@@ -76,11 +79,6 @@ struct bgpstream_di_mgr {
 
   // TODO: remove these
 #if 0
-#ifdef WITH_DATA_INTERFACE_SINGLEFILE
-  bgpstream_di_singlefile_t *singlefile;
-  char *singlefile_rib_mrtfile;
-  char *singlefile_upd_mrtfile;
-#endif
 
 #ifdef WITH_DATA_INTERFACE_CSVFILE
   bgpstream_di_csvfile_t *csvfile;
@@ -194,6 +192,15 @@ static bsdi_t *di_alloc(bgpstream_filter_mgr_t *filter_mgr,
   return di;
 }
 
+static bsdi_t *get_di(bgpstream_di_mgr_t *di_mgr,
+                      bgpstream_data_interface_id_t id)
+{
+  if (id > 0 && id < _BGPSTREAM_DATA_INTERFACE_CNT) {
+    return di_mgr->interfaces[id]; // could be NULL
+  }
+  return NULL;
+}
+
 /* ========== PUBLIC FUNCTIONS BELOW HERE ========== */
 
 bgpstream_di_mgr_t *bgpstream_di_mgr_create(bgpstream_filter_mgr_t *filter_mgr)
@@ -211,15 +218,70 @@ bgpstream_di_mgr_t *bgpstream_di_mgr_create(bgpstream_filter_mgr_t *filter_mgr)
 
   /* allocate the interfaces (some may/will be NULL) */
   for (id = 0; id < _BGPSTREAM_DATA_INTERFACE_CNT; id++) {
+    if ((mgr->available_dis = realloc(mgr->available_dis,
+                                      sizeof(bgpstream_data_interface_id_t)*
+                                      (mgr->available_dis_cnt+1))) == NULL) {
+      bgpstream_di_mgr_destroy(mgr);
+      return NULL;
+    }
+    mgr->available_dis[mgr->available_dis_cnt++] = id;
     mgr->interfaces[id] = di_alloc(filter_mgr, id);
   }
 
   return mgr;
 }
 
+int bgpstream_di_mgr_get_data_interfaces(bgpstream_di_mgr_t *di_mgr,
+                                         bgpstream_data_interface_id_t **if_ids)
+{
+  *if_ids = di_mgr->available_dis;
+  return di_mgr->available_dis_cnt;
+}
+
+bgpstream_data_interface_id_t
+bgpstream_di_mgr_get_data_interface_id_by_name(bgpstream_di_mgr_t *di_mgr,
+                                               const char *name)
+
+{
+  int id;
+
+  for (id = 1; id < _BGPSTREAM_DATA_INTERFACE_CNT; id++) {
+    if (bgpstream_di_mgr_get_data_interface_info(di_mgr, id) != NULL &&
+        strcmp(bgpstream_di_mgr_get_data_interface_info(di_mgr, id)->name,
+               name) == 0) {
+      return id;
+    }
+  }
+
+  return 0;
+}
+
+bgpstream_data_interface_info_t *
+bgpstream_di_mgr_get_data_interface_info(bgpstream_di_mgr_t *di_mgr,
+                                         bgpstream_data_interface_id_t if_id)
+{
+  if (get_di(di_mgr, if_id) != NULL) {
+    return &get_di(di_mgr, if_id)->info;
+  }
+  return NULL;
+}
+
+int bgpstream_di_mgr_get_data_interface_options(
+  bgpstream_di_mgr_t *di_mgr, bgpstream_data_interface_id_t if_id,
+  bgpstream_data_interface_option_t **opts)
+{
+  if (get_di(di_mgr, if_id) != NULL) {
+    *opts = get_di(di_mgr, if_id)->opts;
+    return get_di(di_mgr, if_id)->opts_cnt;
+  }
+  *opts = NULL;
+  return 0;
+}
+
 int bgpstream_di_mgr_set_data_interface(bgpstream_di_mgr_t *di_mgr,
                                          bgpstream_data_interface_id_t di_id)
 {
+  fprintf(stderr, "DEBUG: Setting data interface to %d\n", di_id);
   if (di_mgr->interfaces[di_id] == NULL) {
     return -1;
   }
@@ -237,13 +299,12 @@ int bgpstream_di_mgr_set_data_interface_option(bgpstream_di_mgr_t *di_mgr,
                            const bgpstream_data_interface_option_t *option_type,
                            const char *option_value)
 {
-  bsdi_t *di = ACTIVE_DI;
+  bsdi_t *di;
 
-  /* The current active interface is unavailable */
-  if (di == NULL) {
+  /* The requested interface is unavailable */
+  if ((di = get_di(di_mgr, option_type->if_id)) == NULL) {
     return -1;
   }
-
   return di->set_option(di, option_type, option_value);
 }
 
@@ -295,6 +356,10 @@ void bgpstream_di_mgr_destroy(bgpstream_di_mgr_t *di_mgr)
   if (di_mgr == NULL) {
     return;
   }
+
+  free(di_mgr->available_dis);
+  di_mgr->available_dis = NULL;
+  di_mgr->available_dis_cnt = 0;
 
   int id;
   for (id = 0; id < _BGPSTREAM_DATA_INTERFACE_CNT; id++) {
