@@ -256,11 +256,10 @@ int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t *record)
   bgpstream_record_clear(record);
   record->bs = bs; // in case the user is using one record with two streams...
 
-  // while we have no data in our local queues, try and get some
-  while (bgpstream_reader_mgr_is_empty(bs->reader_mgr)) {
-
+  // if we have no data in our local queues, try and get some
+  if (bgpstream_reader_mgr_is_empty(bs->reader_mgr)) {
     // while the list of "file" metadata is empty, try and get some more files
-    while (bgpstream_input_mgr_is_empty(bs->input_mgr)) {
+    if (bgpstream_input_mgr_is_empty(bs->input_mgr)) {
       // ask the data interface for more "files"
       // this call will block if we're in blocking mode
       if ((md_queue_len =
@@ -273,7 +272,6 @@ int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t *record)
         return 0;
       }
     }
-
     // if we're here then the input manager has metadata in its queue for us to
     // process
     md_queue = bgpstream_input_mgr_get_queue_to_process(bs->input_mgr);
