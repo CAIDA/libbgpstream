@@ -26,10 +26,8 @@
 #include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
-
 #include "bgpdump_lib.h"
 #include "bgpdump_process.h"
-
 #include "bgpstream_elem_int.h"
 #include "bgpstream_int.h"
 #include "bgpstream_debug.h"
@@ -158,9 +156,10 @@ endmatch:
   return matched;
 }
 
-static int bgpstream_elem_check_filters(bgpstream_filter_mgr_t *filter_mgr,
-                                        bgpstream_elem_t *elem)
+static int elem_check_filters(bgpstream_record_t *record,
+                              bgpstream_elem_t *elem)
 {
+  bgpstream_filter_mgr_t *filter_mgr = bgpstream_int_get_filter_mgr(record->bs);
   int pass = 0;
 
   /* First up, check if this element is the right type */
@@ -326,8 +325,7 @@ bgpstream_elem_t *bgpstream_record_get_next_elem(bgpstream_record_t *record)
   /* if the elem is compatible with the current filters
    * then return elem, otherwise run again
    * bgpstream_record_get_next_elem(record) */
-  if (elem == NULL ||
-      bgpstream_elem_check_filters(record->bs->filter_mgr, elem) == 1) {
+  if (elem == NULL || elem_check_filters(record, elem) == 1) {
     return elem;
   }
 

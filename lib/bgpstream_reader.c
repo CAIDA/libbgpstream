@@ -621,7 +621,7 @@ bgpstream_reader_period_check(const bgpstream_input_t *in,
   return 1;
 }
 
-void bgpstream_reader_mgr_add(bgpstream_reader_mgr_t *const bs_reader_mgr,
+int bgpstream_reader_mgr_add(bgpstream_reader_mgr_t *const bs_reader_mgr,
                               const bgpstream_input_t *const toprocess_queue,
                               const bgpstream_filter_mgr_t *const filter_mgr)
 {
@@ -654,7 +654,7 @@ void bgpstream_reader_mgr_add(bgpstream_reader_mgr_t *const bs_reader_mgr,
         i++;
       } else {
         bgpstream_log_err("ERROR: could not create reader\n");
-        return;
+        return -1;
       }
     }
     // go to the next input
@@ -672,6 +672,8 @@ void bgpstream_reader_mgr_add(bgpstream_reader_mgr_t *const bs_reader_mgr,
   tmp_reader_queue = NULL;
   print_reader_queue(bs_reader_mgr->reader_queue);
   bgpstream_debug("\tBSR_MGR: add input: end");
+
+  return 0;
 }
 
 static bgpstream_reader_t *

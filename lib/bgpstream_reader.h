@@ -64,9 +64,9 @@ bool bgpstream_reader_mgr_is_empty(
   const bgpstream_reader_mgr_t *const bs_reader_mgr);
 
 /* use a list of inputs to populate the readers' queue */
-void bgpstream_reader_mgr_add(bgpstream_reader_mgr_t *const bs_reader_mgr,
-                              const bgpstream_input_t *const toprocess_queue,
-                              const bgpstream_filter_mgr_t *const filter_mgr);
+int bgpstream_reader_mgr_add(bgpstream_reader_mgr_t *const bs_reader_mgr,
+                             const bgpstream_input_t *const toprocess_queue,
+                             const bgpstream_filter_mgr_t *const filter_mgr);
 
 /* get the next available record (and update the reader mgr status) */
 int bgpstream_reader_mgr_get_next_record(
