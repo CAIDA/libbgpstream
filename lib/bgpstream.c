@@ -25,78 +25,86 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "bgpstream_int.h"
-#include "bgpdump_lib.h"
 #include "bgpstream_debug.h"
+#include "bgpstream_input.h"
+#include "bgpstream_reader.h"
+#include "bgpstream_di_mgr.h"
+#include "bgpdump_lib.h"
 #include "utils.h"
 
-/* allocate memory for a new bgpstream interface
- */
+struct bgpstream {
+
+  /* our input queue manager */
+  bgpstream_input_mgr_t *input_mgr;
+
+  /* our reader manager */
+  bgpstream_reader_mgr_t *reader_mgr;
+
+  /* filter manager instance */
+  bgpstream_filter_mgr_t *filter_mgr;
+
+  /* data interface manager */
+  bgpstream_di_mgr_t *di_mgr;
+
+  /* set to 1 once BGPStream has been started */
+  int started;
+};
+
+/* ========== INTERNAL METHODS (see bgpstream_int.h) ========== */
+
+bgpstream_filter_mgr_t *bgpstream_int_get_filter_mgr(bgpstream_t *bs)
+{
+  return bs->filter_mgr;
+}
+
+/* ========== PUBLIC METHODS (see bgpstream_int.h) ========== */
+
 bgpstream_t *bgpstream_create()
 {
-  bgpstream_debug("BS: create start");
-  bgpstream_t *bs = (bgpstream_t *)malloc(sizeof(bgpstream_t));
-  if (bs == NULL) {
+  bgpstream_t *bs = NULL;
+
+  if ((bs = malloc_zero(sizeof(bgpstream_t))) == NULL) {
     return NULL; // can't allocate memory
   }
-  bs->filter_mgr = bgpstream_filter_mgr_create();
-  if (bs->filter_mgr == NULL) {
-    bgpstream_destroy(bs);
-    bs = NULL;
-    return NULL;
+
+  if ((bs->filter_mgr = bgpstream_filter_mgr_create()) == NULL) {
+    goto err;
   }
-  bs->di_mgr = bgpstream_di_mgr_create(bs->filter_mgr);
-  if (bs->di_mgr == NULL) {
-    bgpstream_destroy(bs);
-    return NULL;
+
+  if ((bs->di_mgr = bgpstream_di_mgr_create(bs->filter_mgr)) == NULL) {
+    goto err;
   }
-  /* create an empty input mgr
-   * the input queue will be populated when a
+
+  /* create an empty input mgr the input queue will be populated when a
    * bgpstream record is requested */
-  bs->input_mgr = bgpstream_input_mgr_create();
-  if (bs->input_mgr == NULL) {
-    bgpstream_destroy(bs);
-    bs = NULL;
-    return NULL;
+  if ((bs->input_mgr = bgpstream_input_mgr_create()) == NULL) {
+    goto err;
   }
-  bs->reader_mgr = bgpstream_reader_mgr_create(bs->filter_mgr);
-  if (bs->reader_mgr == NULL) {
-    bgpstream_destroy(bs);
-    bs = NULL;
-    return NULL;
+
+  if ((bs->reader_mgr = bgpstream_reader_mgr_create(bs->filter_mgr)) == NULL) {
+    goto err;
   }
-  /* memory for the bgpstream interface has been
-   * allocated correctly */
-  bs->status = BGPSTREAM_STATUS_ALLOCATED;
-  bgpstream_debug("BS: create end");
+
   return bs;
+
+ err:
+  bgpstream_destroy(bs);
+  return NULL;
 }
-/* side note: filters are part of the bgpstream so they
- * can be accessed both from the input_mgr and the
- * reader_mgr (input_mgr use them to apply a coarse-grained
- * filtering, the reader_mgr applies a fine-grained filtering
- * of the data provided by the input_mgr)
- */
 
 /* configure filters in order to select a subset of the bgp data available */
+/* TODO: consider having these funcs return an error code */
 void bgpstream_add_filter(bgpstream_t *bs, bgpstream_filter_type_t filter_type,
                           const char *filter_value)
 {
-  bgpstream_debug("BS: set_filter start");
-  if (bs == NULL || (bs != NULL && bs->status != BGPSTREAM_STATUS_ALLOCATED)) {
-    return; // nothing to customize
-  }
+  assert(!bs->started);
   bgpstream_filter_mgr_filter_add(bs->filter_mgr, filter_type, filter_value);
-  bgpstream_debug("BS: set_filter end");
 }
 
 void bgpstream_add_rib_period_filter(bgpstream_t *bs, uint32_t period)
 {
-  bgpstream_debug("BS: set_filter start");
-  if (bs == NULL || (bs != NULL && bs->status != BGPSTREAM_STATUS_ALLOCATED)) {
-    return; // nothing to customize
-  }
+  assert(!bs->started);
   bgpstream_filter_mgr_rib_period_filter_add(bs->filter_mgr, period);
-  bgpstream_debug("BS: set_filter end");
 }
 
 void bgpstream_add_recent_interval_filter(bgpstream_t *bs, const char *interval,
@@ -104,11 +112,7 @@ void bgpstream_add_recent_interval_filter(bgpstream_t *bs, const char *interval,
 {
 
   uint32_t starttime, endtime;
-  bgpstream_debug("BS: set_filter start");
-
-  if (bs == NULL || (bs != NULL && bs->status != BGPSTREAM_STATUS_ALLOCATED)) {
-    return; // nothing to customize
-  }
+  assert(!bs->started);
 
   if (bgpstream_time_calc_recent_interval(&starttime, &endtime, interval) ==
       0) {
@@ -122,22 +126,18 @@ void bgpstream_add_recent_interval_filter(bgpstream_t *bs, const char *interval,
   }
 
   bgpstream_filter_mgr_interval_filter_add(bs->filter_mgr, starttime, endtime);
-  bgpstream_debug("BS: set_filter end");
 }
 
 void bgpstream_add_interval_filter(bgpstream_t *bs, uint32_t begin_time,
                                    uint32_t end_time)
 {
-  bgpstream_debug("BS: set_filter start");
-  if (bs == NULL || (bs != NULL && bs->status != BGPSTREAM_STATUS_ALLOCATED)) {
-    return; // nothing to customize
-  }
+  assert(!bs->started);
+
   if (end_time == BGPSTREAM_FOREVER) {
     bgpstream_set_live_mode(bs);
   }
   bgpstream_filter_mgr_interval_filter_add(bs->filter_mgr, begin_time,
                                            end_time);
-  bgpstream_debug("BS: set_filter end");
 }
 
 int bgpstream_get_data_interfaces(bgpstream_t *bs,
@@ -194,6 +194,7 @@ int bgpstream_set_data_interface_option(
   bgpstream_t *bs, bgpstream_data_interface_option_t *option_type,
   const char *option_value)
 {
+  assert(!bs->started);
   return bgpstream_di_mgr_set_data_interface_option(bs->di_mgr,
                                                     option_type, option_value);
 }
@@ -204,6 +205,7 @@ int bgpstream_set_data_interface_option(
 void bgpstream_set_data_interface(bgpstream_t *bs,
                                   bgpstream_data_interface_id_t di)
 {
+  assert(!bs->started);
   bgpstream_di_mgr_set_data_interface(bs->di_mgr, di);
 }
 
@@ -217,6 +219,7 @@ bgpstream_data_interface_id_t bgpstream_get_data_interface_id(bgpstream_t *bs)
  */
 void bgpstream_set_live_mode(bgpstream_t *bs)
 {
+  assert(!bs->started);
   bgpstream_di_mgr_set_blocking(bs->di_mgr);
 }
 
@@ -226,105 +229,90 @@ void bgpstream_set_live_mode(bgpstream_t *bs)
 */
 int bgpstream_start(bgpstream_t *bs)
 {
+  assert(!bs->started);
+
   // validate the filters that have been set
   int rc;
   if ((rc = bgpstream_filter_mgr_validate(bs->filter_mgr)) != 0) {
     return rc;
   }
 
-  // turn on data interface
-  // turn on data interface
+  // start the data interface
   if (bgpstream_di_mgr_start(bs->di_mgr) != 0) {
-    bs->status = BGPSTREAM_STATUS_ALLOCATED;
-    bgpstream_debug("BS: init warning: check if data interface provided is ok");
-    bgpstream_debug("BS: init end: not ok");
     return -1;
   }
 
-  bs->status = BGPSTREAM_STATUS_ON;
+  bs->started = 1;
   return 0;
 }
 
-/* this function returns the next available record read
- * if the input_queue (i.e. list of files connected from
- * an external source) or the reader_cqueue (i.e. list
- * of bgpdump currently open) are empty then it
- * triggers a mechanism to populate the queues or
- * return 0 if nothing is available
- */
 int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t *record)
 {
-  bgpstream_debug("BS: get next");
-  if (bs == NULL || (bs != NULL && bs->status != BGPSTREAM_STATUS_ON)) {
-    return -1; // wrong status
-  }
-
-  int num_query_results = 0;
-  bgpstream_input_t *bs_in = NULL;
+  assert(bs->started);
+  int md_queue_len = 0;
+  bgpstream_input_t *md_queue = NULL;
 
   // if bs_record contains an initialized bgpdump entry we destroy it
   bgpstream_record_clear(record);
+  record->bs = bs; // in case the user is using one record with two streams...
 
+  // while we have no data in our local queues, try and get some
   while (bgpstream_reader_mgr_is_empty(bs->reader_mgr)) {
-    bgpstream_debug("BS: reader mgr is empty");
-    // get new data to process and set the reader_mgr
+
+    // while the list of "file" metadata is empty, try and get some more files
     while (bgpstream_input_mgr_is_empty(bs->input_mgr)) {
-      bgpstream_debug("BS: input mgr is empty");
-      /* query the external source and append new
-       * input objects to the input_mgr queue */
-      num_query_results =
-        bgpstream_di_mgr_get_queue(bs->di_mgr, bs->input_mgr);
-      if (num_query_results == 0) {
-        bgpstream_debug("BS: no (more) data are available");
-        return 0; // no (more) data are available
+      // ask the data interface for more "files"
+      // this call will block if we're in blocking mode
+      if ((md_queue_len =
+           bgpstream_di_mgr_get_queue(bs->di_mgr, bs->input_mgr)) < 0) {
+        // error from the data interface
+        return -1;
       }
-      if (num_query_results < 0) {
-        bgpstream_debug("BS: error during di_mgr_update_input_queue");
-        return -1; // error during execution
+      if (md_queue_len == 0) {
+        // no more data (only returned if not in live mode)
+        return 0;
       }
-      bgpstream_debug("BS: got results from data_interface");
     }
-    bgpstream_debug("BS: input mgr not empty");
-    bs_in = bgpstream_input_mgr_get_queue_to_process(bs->input_mgr);
-    bgpstream_reader_mgr_add(bs->reader_mgr, bs_in, bs->filter_mgr);
-    bgpstream_input_mgr_destroy_queue(bs_in);
-    bs_in = NULL;
+
+    // if we're here then the input manager has metadata in its queue for us to
+    // process
+    md_queue = bgpstream_input_mgr_get_queue_to_process(bs->input_mgr);
+    // tell the reader manager about the new input metadata
+    if (bgpstream_reader_mgr_add(bs->reader_mgr, md_queue,
+                                 bs->filter_mgr) != 0) {
+      return -1;
+    }
+    // we own the metadata queue, so destroy it
+    bgpstream_input_mgr_destroy_queue(md_queue);
+    md_queue = NULL;
   }
-  bgpstream_debug("BS: reader mgr not empty");
-  /* init the record with a pointer to bgpstream */
-  record->bs = bs;
+
+  // if we're here, then the reader manager has data we can get
   return bgpstream_reader_mgr_get_next_record(bs->reader_mgr, record,
                                               bs->filter_mgr);
-}
-
-/* turn off the bgpstream interface TODO: remove me */
-static void bgpstream_stop(bgpstream_t *bs)
-{
-  bgpstream_debug("BS: close start");
-  if (bs == NULL || (bs != NULL && bs->status != BGPSTREAM_STATUS_ON)) {
-    return; // nothing to close
-  }
-  bs->status = BGPSTREAM_STATUS_OFF; // interface is off
-  bgpstream_debug("BS: close end");
 }
 
 /* destroy a bgpstream interface istance
  */
 void bgpstream_destroy(bgpstream_t *bs)
 {
-  bgpstream_debug("BS: destroy start");
   if (bs == NULL) {
-    return; // nothing to destroy
+    return;
   }
-  bgpstream_stop(bs);
+
   bgpstream_input_mgr_destroy(bs->input_mgr);
   bs->input_mgr = NULL;
+
   bgpstream_reader_mgr_destroy(bs->reader_mgr);
   bs->reader_mgr = NULL;
+
   bgpstream_filter_mgr_destroy(bs->filter_mgr);
   bs->filter_mgr = NULL;
+
   bgpstream_di_mgr_destroy(bs->di_mgr);
   bs->di_mgr = NULL;
+
+  bs->started = 0;
+
   free(bs);
-  bgpstream_debug("BS: destroy end");
 }

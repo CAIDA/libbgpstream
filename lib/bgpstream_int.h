@@ -25,24 +25,12 @@
 #define _BGPSTREAM_INT_H
 
 #include "bgpstream.h"
-
-#include "bgpstream_di_mgr.h"
+//#include "bgpstream_di_mgr.h"
 #include "bgpstream_filter.h"
-#include "bgpstream_input.h"
-#include "bgpstream_reader.h"
+//#include "bgpstream_input.h"
+//#include "bgpstream_reader.h"
 
-typedef enum {
-  BGPSTREAM_STATUS_ALLOCATED,
-  BGPSTREAM_STATUS_ON,
-  BGPSTREAM_STATUS_OFF
-} bgpstream_status;
-
-struct struct_bgpstream_t {
-  bgpstream_input_mgr_t *input_mgr;
-  bgpstream_reader_mgr_t *reader_mgr;
-  bgpstream_filter_mgr_t *filter_mgr;
-  bgpstream_di_mgr_t *di_mgr;
-  bgpstream_status status;
-};
+/** Get a borrowed pointer to the filter manager currently in use */
+bgpstream_filter_mgr_t *bgpstream_int_get_filter_mgr(bgpstream_t *bs);
 
 #endif /* _BGPSTREAM_INT_H */
