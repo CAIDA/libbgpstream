@@ -49,6 +49,7 @@
   } while (0)
 
 #define BSDI_GET_FILTER_MGR(interface) ((interface)->filter_mgr)
+#define BSDI_GET_RES_MGR(interface) ((interface)->res_mgr)
 
 /** Convenience macro that defines all the function prototypes for the data
  * interface API
@@ -61,7 +62,7 @@
                                  const bgpstream_data_interface_option_t *option_type, \
                                  const char *option_value);             \
   void bsdi_##ifname##_destroy(bsdi_t *di);                             \
-  int bsdi_##ifname##_get_queue(bsdi_t *di, bgpstream_input_mgr_t *input_mgr);
+  int bsdi_##ifname##_update_resources(bsdi_t *di);
 
 /** Convenience macro that creates a class structure for a data interface */
 #define BSDI_CREATE_CLASS(classname, id, desc, options)                 \
@@ -77,7 +78,8 @@
     bsdi_##classname##_start,                                           \
     bsdi_##classname##_set_option,                                      \
     bsdi_##classname##_destroy,                                         \
-    bsdi_##classname##_get_queue,                                       \
+    bsdi_##classname##_update_resources,                                \
+    NULL,                                                               \
     NULL,                                                               \
     NULL,                                                               \
   };                                                                    \
@@ -145,17 +147,15 @@ struct bsdi {
    */
   void (*destroy)(struct bsdi *di);
 
-  /** Get the next batch of metadata from this interface
+  /** Get the next batch of resource metadata from this interface
    *
    * @param di          pointer to the data interface
-   * @param input_mgr   pointer to the input manager to XXX change this
-   * @return the number of metadata elements in the queue if successful, -1
-   * otherwise
+   * @return 0 if the queue was updated successfully, -1 otherwise
    *
    * If the stream is in live mode, this method will block until data is
    * available, otherwise it will return an empty queue to indicate EOF.
    */
-  int (*get_queue)(bsdi_t *di, bgpstream_input_mgr_t *input_mgr);
+  int (*update_resources)(bsdi_t *di);
 
   /** }@ */
 
@@ -175,6 +175,9 @@ struct bsdi {
 
   /** Borrowed pointer to a Filter Manager instance */
   bgpstream_filter_mgr_t *filter_mgr;
+
+  /** Borrowed pointer to a resource manager instance */
+  bgpstream_resource_mgr_t *res_mgr;
 
   /** }@ */
 };

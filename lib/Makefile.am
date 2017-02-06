@@ -59,13 +59,17 @@ libbgpstreamcaida_la_SOURCES = 	\
 	bgpstream_filter.c	\
 	bgpstream_filter_parser.h	\
 	bgpstream_filter_parser.c	\
-	bgpstream_input.h	\
-	bgpstream_input.c	\
+	bgpstream_format.h	\
 	bgpstream_int.h		\
 	bgpstream_reader.c	\
 	bgpstream_reader.h	\
 	bgpstream_record.c	\
-	bgpstream_record.h
+	bgpstream_record.h	\
+	bgpstream_resource.c	\
+	bgpstream_resource.h	\
+	bgpstream_resource_mgr.c	\
+	bgpstream_resource_mgr.h	\
+	bgpstream_transport.h
 
 
 libbgpstreamcaida_la_CFLAGS = -Wall

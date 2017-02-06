@@ -192,6 +192,7 @@ static void bgpstream_set_intervals(bgpstream_input_t *input,
   }
 }
 
+
 /* Set the last input to process
  * the function is static: it is not visible outside this file
  */

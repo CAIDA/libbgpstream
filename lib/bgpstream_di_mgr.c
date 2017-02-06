@@ -67,7 +67,11 @@ struct bgpstream_di_mgr {
   bgpstream_data_interface_id_t *available_dis;
   int available_dis_cnt;
 
+  // ID of the DI that is active
   bgpstream_data_interface_id_t active_di;
+
+  // resource queue manager
+  bgpstream_resource_mgr_t *res_mgr;
 
   // has the data interface been started yet?
   int started;
@@ -76,20 +80,6 @@ struct bgpstream_di_mgr {
   int blocking;
   int backoff_time;
   int retry_cnt;
-
-  // TODO: remove these
-#if 0
-
-#ifdef WITH_DATA_INTERFACE_CSVFILE
-  bgpstream_di_csvfile_t *csvfile;
-  char *csvfile_file;
-#endif
-
-#ifdef WITH_DATA_INTERFACE_SQLITE
-  bgpstream_di_sqlite_t *sqlite;
-  char *sqlite_file;
-#endif
-#endif
 };
 
 /** Convenience typedef for the interface alloc function type */
@@ -164,6 +154,7 @@ static void di_destroy(bsdi_t *di)
 }
 
 static bsdi_t *di_alloc(bgpstream_filter_mgr_t *filter_mgr,
+                        bgpstream_resource_mgr_t *res_mgr,
                         bgpstream_data_interface_id_t id)
 {
   bsdi_t *di;
@@ -182,6 +173,7 @@ static bsdi_t *di_alloc(bgpstream_filter_mgr_t *filter_mgr,
   memcpy(di, di_alloc_functions[id](), sizeof(bsdi_t));
 
   di->filter_mgr = filter_mgr;
+  di->res_mgr = res_mgr;
 
   /* call the init function to allow the plugin to create state */
   if (di->init(di) != 0) {
@@ -213,6 +205,9 @@ bgpstream_di_mgr_t *bgpstream_di_mgr_create(bgpstream_filter_mgr_t *filter_mgr)
   }
 
   // default values
+  if((mgr->res_mgr = bgpstream_resource_mgr_create()) == NULL) {
+    goto err;
+  }
   mgr->active_di = BGPSTREAM_DATA_INTERFACE_BROKER;
   mgr->backoff_time = DATA_INTERFACE_BLOCKING_MIN_WAIT;
 
@@ -221,14 +216,17 @@ bgpstream_di_mgr_t *bgpstream_di_mgr_create(bgpstream_filter_mgr_t *filter_mgr)
     if ((mgr->available_dis = realloc(mgr->available_dis,
                                       sizeof(bgpstream_data_interface_id_t)*
                                       (mgr->available_dis_cnt+1))) == NULL) {
-      bgpstream_di_mgr_destroy(mgr);
-      return NULL;
+      goto err;
     }
     mgr->available_dis[mgr->available_dis_cnt++] = id;
-    mgr->interfaces[id] = di_alloc(filter_mgr, id);
+    mgr->interfaces[id] = di_alloc(filter_mgr, mgr->res_mgr, id);
   }
 
   return mgr;
+
+ err:
+  bgpstream_di_mgr_destroy(mgr);
+  return NULL;
 }
 
 int bgpstream_di_mgr_get_data_interfaces(bgpstream_di_mgr_t *di_mgr,
@@ -320,34 +318,53 @@ void bgpstream_di_mgr_set_blocking(bgpstream_di_mgr_t *di_mgr)
   di_mgr->blocking = 1;
 }
 
-int bgpstream_di_mgr_get_queue(bgpstream_di_mgr_t *di_mgr,
-                               bgpstream_input_mgr_t *input_mgr)
+int
+bgpstream_di_mgr_get_resource_batch(bgpstream_di_mgr_t *di_mgr,
+                                    bgpstream_resource_t ***res_batch)
 {
-  int queue_len;
+  int res_batch_cnt;
+  assert(res_batch != NULL);
+  *res_batch = NULL;
 
-  do {
-    if ((queue_len = ACTIVE_DI->get_queue(ACTIVE_DI, input_mgr)) < 0) {
+  while(1) {
+    // if our queue is empty, ask the DI for more
+    if (bgpstream_resource_mgr_empty(di_mgr->res_mgr) != 0 &&
+        ACTIVE_DI->update_resources(ACTIVE_DI) != 0) {
+      // an error occurred
       return -1;
     }
 
-    if (queue_len == 0 && di_mgr->blocking != 0) {
-      /* go into polling mode and wait for data */
-      sleep(di_mgr->backoff_time);
-      if (di_mgr->retry_cnt >= DATA_INTERFACE_BLOCKING_RETRY_CNT) {
-        di_mgr->backoff_time = di_mgr->backoff_time * 2;
-        if (di_mgr->backoff_time > DATA_INTERFACE_BLOCKING_MAX_WAIT) {
-          di_mgr->backoff_time = DATA_INTERFACE_BLOCKING_MAX_WAIT;
-        }
-      }
-      di_mgr->retry_cnt++;
+    // master queue could still be empty, but get batch will just return an
+    // empty batch queue in that case
+    if ((res_batch_cnt =
+         bgpstream_resource_mgr_get_batch(di_mgr->res_mgr, res_batch)) < 0) {
+      // an error occurred
+      return -1;
     }
-  } while (queue_len == 0 && di_mgr->blocking != 0);
 
-  /* reset polling state */
+    // if we have data, or we're not in blocking mode,
+    if (res_batch_cnt != 0 || di_mgr->blocking == 0) {
+      // yield the batch now
+      break;
+    }
+
+    // otherwise, we sleep
+    if (sleep(di_mgr->backoff_time) != 0) {
+      break;
+    }
+    // adjust our sleep time, perhaps
+    if (di_mgr->retry_cnt >= DATA_INTERFACE_BLOCKING_RETRY_CNT) {
+      di_mgr->backoff_time = di_mgr->backoff_time * 2;
+      if (di_mgr->backoff_time > DATA_INTERFACE_BLOCKING_MAX_WAIT) {
+        di_mgr->backoff_time = DATA_INTERFACE_BLOCKING_MAX_WAIT;
+      }
+    }
+    di_mgr->retry_cnt++;
+  }
+
   di_mgr->backoff_time = DATA_INTERFACE_BLOCKING_MIN_WAIT;
   di_mgr->retry_cnt = 0;
-
-  return queue_len;
+  return res_batch_cnt;
 }
 
 void bgpstream_di_mgr_destroy(bgpstream_di_mgr_t *di_mgr)

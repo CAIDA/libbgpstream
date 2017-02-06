@@ -26,11 +26,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
 #include "bgpstream_debug.h"
-#include "bgpstream_input.h"
 #include "bgpstream_reader.h"
-
+#include "bgpdump/bgpdump_lib.h"
 #include "utils.h"
 
 #define BUFFER_LEN 1024
@@ -43,7 +41,7 @@ struct struct_bgpstream_reader_t {
   char dump_name[BGPSTREAM_DUMP_MAX_LEN];     // name of bgp dump
   char dump_project[BGPSTREAM_PAR_MAX_LEN];   // name of bgp project
   char dump_collector[BGPSTREAM_PAR_MAX_LEN]; // name of bgp collector
-  char dump_type[BGPSTREAM_PAR_MAX_LEN]; // type of bgp dump (rib or update)
+  bgpstream_record_dump_type_t dump_type;
   long dump_time;   // timestamp associated with the time the bgp data was
                     // aggregated
   long record_time; // timestamp associated with the current bd_entry
@@ -121,8 +119,8 @@ static BGPDUMP_ENTRY *get_next_entry(bgpstream_reader_t *bsr)
 /* -------------- Reader functions -------------- */
 
 static bool
-bgpstream_reader_filter_bd_entry(const BGPDUMP_ENTRY *const bd_entry,
-                                 const bgpstream_filter_mgr_t *const filter_mgr)
+bgpstream_reader_filter_bd_entry(BGPDUMP_ENTRY *bd_entry,
+                                 bgpstream_filter_mgr_t *filter_mgr)
 {
   bgpstream_debug("\t\tBSR: filter entry: start");
   bgpstream_interval_filter_t *tif;
@@ -148,8 +146,8 @@ bgpstream_reader_filter_bd_entry(const BGPDUMP_ENTRY *const bd_entry,
 }
 
 static void
-bgpstream_reader_read_new_data(bgpstream_reader_t *const bs_reader,
-                               const bgpstream_filter_mgr_t *const filter_mgr)
+bgpstream_reader_read_new_data(bgpstream_reader_t *bs_reader,
+                               bgpstream_filter_mgr_t *filter_mgr)
 {
   bool significant_entry = false;
   bgpstream_debug("\t\tBSR: read new data: start");
@@ -177,7 +175,7 @@ bgpstream_reader_read_new_data(bgpstream_reader_t *const bs_reader,
   //  bs_reader->status = BGPSTREAM_READER_STATUS_END_OF_DUMP;
   //  return;
   //}
-  bgpstream_debug("\t\tBSR: read new data (previous): %ld\t%ld\t%s\t%s\t%d",
+  bgpstream_debug("\t\tBSR: read new data (previous): %ld\t%ld\t%d\t%s\t%d",
                   bs_reader->record_time, bs_reader->dump_time,
                   bs_reader->dump_type, bs_reader->dump_collector,
                   bs_reader->status);
@@ -254,7 +252,7 @@ bgpstream_reader_read_new_data(bgpstream_reader_t *const bs_reader,
   return;
 }
 
-static void bgpstream_reader_destroy(bgpstream_reader_t *const bs_reader)
+static void bgpstream_reader_destroy(bgpstream_reader_t *bs_reader)
 {
 
   bgpstream_debug("\t\tBSR: destroy reader start");
@@ -281,15 +279,10 @@ static void bgpstream_reader_destroy(bgpstream_reader_t *const bs_reader)
 }
 
 static bgpstream_reader_t *
-bgpstream_reader_create(const bgpstream_input_t *const bs_input,
-                        const bgpstream_filter_mgr_t *const filter_mgr)
+bgpstream_reader_create(bgpstream_resource_t *resource,
+                        bgpstream_filter_mgr_t *filter_mgr)
 {
-  bgpstream_debug("\t\tBSR: create reader start");
-  if (bs_input == NULL) {
-    bgpstream_debug("\t\tBSR: create reader: empty bs_input provided");
-    bgpstream_debug("\t\tBSR: create reader end");
-    return NULL; // no input to read
-  }
+  assert(resource);
   // allocate memory for reader
   bgpstream_reader_t *bs_reader =
     (bgpstream_reader_t *)malloc(sizeof(bgpstream_reader_t));
@@ -303,19 +296,13 @@ bgpstream_reader_create(const bgpstream_input_t *const bs_input,
   bs_reader->next = NULL;
   bs_reader->bd_mgr = NULL;
   bs_reader->bd_entry = NULL;
-  // memset(bs_reader->dump_name, 0, BGPSTREAM_DUMP_MAX_LEN);
-  // memset(bs_reader->dump_project, 0, BGPSTREAM_PAR_MAX_LEN);
-  // memset(bs_reader->dump_collector, 0, BGPSTREAM_PAR_MAX_LEN);
-  // memset(bs_reader->dump_type, 0, BGPSTREAM_PAR_MAX_LEN);
   // init done
-  strcpy(bs_reader->dump_name, bs_input->filename);
-  strcpy(bs_reader->dump_project, bs_input->fileproject);
-  strcpy(bs_reader->dump_collector, bs_input->filecollector);
-  strcpy(bs_reader->dump_type, bs_input->filetype);
-  bs_reader->dump_time = bs_input->epoch_filetime;
-  bs_reader->record_time = bs_input->epoch_filetime;
-  bs_reader->status =
-    BGPSTREAM_READER_STATUS_VALID_ENTRY; // let's be optimistic :)
+  strcpy(bs_reader->dump_name, resource->uri);
+  strcpy(bs_reader->dump_project, resource->project);
+  strcpy(bs_reader->dump_collector, resource->collector);
+  bs_reader->dump_type = resource->record_type;
+  bs_reader->dump_time = bs_reader->record_time = resource->initial_time;
+  bs_reader->status = BGPSTREAM_READER_STATUS_VALID_ENTRY;
   bs_reader->valid_read = 0;
   bs_reader->successful_read = 0;
 
@@ -336,9 +323,9 @@ bgpstream_reader_create(const bgpstream_input_t *const bs_input,
 }
 
 static void
-bgpstream_reader_export_record(bgpstream_reader_t *const bs_reader,
-                               bgpstream_record_t *const bs_record,
-                               const bgpstream_filter_mgr_t *const filter_mgr)
+bgpstream_reader_export_record(bgpstream_reader_t *bs_reader,
+                               bgpstream_record_t *bs_record,
+                               bgpstream_filter_mgr_t *filter_mgr)
 {
   bgpstream_debug("\t\tBSR: export record: start");
   if (bs_reader == NULL) {
@@ -367,11 +354,7 @@ bgpstream_reader_export_record(bgpstream_reader_t *const bs_reader,
   strcpy(bs_record->attributes.dump_project, bs_reader->dump_project);
   strcpy(bs_record->attributes.dump_collector, bs_reader->dump_collector);
   //   strcpy(bs_record->attributes.dump_type, bs_reader->dump_type);
-  if (strcmp(bs_reader->dump_type, "ribs") == 0) {
-    bs_record->attributes.dump_type = BGPSTREAM_RIB;
-  } else {
-    bs_record->attributes.dump_type = BGPSTREAM_UPDATE;
-  }
+  bs_record->attributes.dump_type = bs_reader->dump_type;
   bs_record->attributes.dump_time = bs_reader->dump_time;
   bs_record->attributes.record_time = bs_reader->record_time;
   // if this is the first significant record and no previous
@@ -427,7 +410,7 @@ bgpstream_reader_export_record(bgpstream_reader_t *const bs_reader,
 }
 
 // function used for debug
-static void print_reader_queue(const bgpstream_reader_t *const reader_queue)
+static void print_reader_queue(bgpstream_reader_t *reader_queue)
 {
 #ifdef NDEBUG
   const bgpstream_reader_t *iterator = reader_queue;
@@ -448,7 +431,7 @@ static void print_reader_queue(const bgpstream_reader_t *const reader_queue)
 /* -------------- Reader mgr functions -------------- */
 
 bgpstream_reader_mgr_t *
-bgpstream_reader_mgr_create(const bgpstream_filter_mgr_t *const filter_mgr)
+bgpstream_reader_mgr_create(bgpstream_filter_mgr_t *filter_mgr)
 {
   bgpstream_debug("\tBSR_MGR: create reader mgr: start");
   // allocate memory and initialize fields
@@ -469,8 +452,7 @@ bgpstream_reader_mgr_create(const bgpstream_filter_mgr_t *const filter_mgr)
   return bs_reader_mgr;
 }
 
-bool bgpstream_reader_mgr_is_empty(
-  const bgpstream_reader_mgr_t *const bs_reader_mgr)
+int bgpstream_reader_mgr_is_empty(bgpstream_reader_mgr_t *bs_reader_mgr)
 {
   bgpstream_debug("\tBSR_MGR: is_empty start");
   if (bs_reader_mgr == NULL) {
@@ -487,8 +469,8 @@ bool bgpstream_reader_mgr_is_empty(
 }
 
 static void
-bgpstream_reader_mgr_sorted_insert(bgpstream_reader_mgr_t *const bs_reader_mgr,
-                                   bgpstream_reader_t *const bs_reader)
+bgpstream_reader_mgr_sorted_insert(bgpstream_reader_mgr_t *bs_reader_mgr,
+                                   bgpstream_reader_t *bs_reader)
 {
   bgpstream_debug("\tBSR_MGR: sorted insert:start");
   if (bs_reader_mgr == NULL) {
@@ -527,23 +509,23 @@ bgpstream_reader_mgr_sorted_insert(bgpstream_reader_mgr_t *const bs_reader_mgr,
         // if time is the same
         if (bs_reader->record_time == iterator->record_time) {
           // if type is the same -> continue
-          if (strcmp(iterator->dump_type, bs_reader->dump_type) == 0) {
+          if (iterator->dump_type == bs_reader->dump_type) {
             previous_iterator = iterator;
             iterator = previous_iterator->next;
             continue;
           }
           // if the queue contains ribs, and the current reader
           // is an update -> continue
-          if (strcmp(iterator->dump_type, "ribs") == 0 &&
-              strcmp(bs_reader->dump_type, "updates") == 0) {
+          if (iterator->dump_type == BGPSTREAM_RIB &&
+              bs_reader->dump_type == BGPSTREAM_UPDATE) {
             previous_iterator = iterator;
             iterator = previous_iterator->next;
             continue;
           }
           // if the queue contains updates, and the current reader
           // is a rib -> insert
-          if (strcmp(iterator->dump_type, "updates") == 0 &&
-              strcmp(bs_reader->dump_type, "ribs") == 0) {
+          if (iterator->dump_type == BGPSTREAM_UPDATE &&
+              bs_reader->dump_type == BGPSTREAM_RIB) {
             // insertion at the beginning of the queue
             if (previous_iterator == bs_reader_mgr->reader_queue &&
                 iterator == bs_reader_mgr->reader_queue) {
@@ -589,65 +571,61 @@ bgpstream_reader_mgr_sorted_insert(bgpstream_reader_mgr_t *const bs_reader_mgr,
 }
 
 static int
-bgpstream_reader_period_check(const bgpstream_input_t *in,
-                              const bgpstream_filter_mgr_t *const filter_mgr)
+bgpstream_reader_period_check(bgpstream_resource_t *res,
+                              bgpstream_filter_mgr_t *filter_mgr)
 {
   /* consider making this buffer static at the beginning of the file */
   char buffer[BUFFER_LEN];
   khiter_t k;
   int khret;
 
-  if ((filter_mgr->rib_period != 0 && strcmp(in->filetype, "ribs") == 0)) {
-    snprintf(buffer, BUFFER_LEN, "%s.%s", in->fileproject, in->filecollector);
+  if (filter_mgr->rib_period != 0 && res->record_type == BGPSTREAM_RIB) {
+    snprintf(buffer, BUFFER_LEN, "%s.%s", res->project, res->collector);
     /* first instance */
     if ((k = kh_get(collector_ts, filter_mgr->last_processed_ts, buffer)) ==
         kh_end(filter_mgr->last_processed_ts)) {
       k = kh_put(collector_ts, filter_mgr->last_processed_ts, strdup(buffer),
                  &khret);
-      kh_value(filter_mgr->last_processed_ts, k) = in->epoch_filetime;
+      kh_value(filter_mgr->last_processed_ts, k) = res->initial_time;
       return 1;
     }
 
     /* we have to check the frequency only if we get a new filetime */
-    if (in->epoch_filetime != kh_value(filter_mgr->last_processed_ts, k)) {
-      if (in->epoch_filetime <
+    if (res->initial_time != kh_value(filter_mgr->last_processed_ts, k)) {
+      if (res->initial_time <
           kh_value(filter_mgr->last_processed_ts, k) + filter_mgr->rib_period) {
         return 0;
       }
-      kh_value(filter_mgr->last_processed_ts, k) = in->epoch_filetime;
+      kh_value(filter_mgr->last_processed_ts, k) = res->initial_time;
     }
   }
 
   return 1;
 }
 
-int bgpstream_reader_mgr_add(bgpstream_reader_mgr_t *const bs_reader_mgr,
-                              const bgpstream_input_t *const toprocess_queue,
-                              const bgpstream_filter_mgr_t *const filter_mgr)
+int bgpstream_reader_mgr_add(bgpstream_reader_mgr_t *bs_reader_mgr,
+                             bgpstream_resource_t **res_batch,
+                             int res_batch_cnt,
+                             bgpstream_filter_mgr_t *filter_mgr)
 {
   bgpstream_debug("\tBSR_MGR: add input: start");
-  const bgpstream_input_t *iterator = toprocess_queue;
   bgpstream_reader_t *bs_reader = NULL;
 
   /* tmp structure to hold reader pointers */
   bgpstream_reader_t **tmp_reader_queue = NULL;
   int i = 0;
-  int max_readers = 0;
+  int max_readers = res_batch_cnt;
   int max = 0;
-  while (iterator != NULL) {
-    max_readers++;
-    iterator = iterator->next;
-  }
   tmp_reader_queue =
     (bgpstream_reader_t **)malloc(sizeof(bgpstream_reader_t *) * max_readers);
 
-  /* foreach  bgpstream input add it to the queue and create a reader */
-  iterator = toprocess_queue;
-  while (iterator != NULL) {
-    if (bgpstream_reader_period_check(iterator, filter_mgr)) {
+  /* foreach resource, add it to the queue and create a reader */
+  int r;
+  for (r=0; r<res_batch_cnt; r++) {
+    if (bgpstream_reader_period_check(res_batch[r], filter_mgr)) {
       bgpstream_debug("\tBSR_MGR: add input: i");
       // a) create a new reader (create includes the first read)
-      bs_reader = bgpstream_reader_create(iterator, filter_mgr);
+      bs_reader = bgpstream_reader_create(res_batch[r], filter_mgr);
       // if it creates correctly then add it to the temporary queue
       if (bs_reader != NULL) {
         tmp_reader_queue[i] = bs_reader;
@@ -657,9 +635,11 @@ int bgpstream_reader_mgr_add(bgpstream_reader_mgr_t *const bs_reader_mgr,
         return -1;
       }
     }
-    // go to the next input
-    iterator = iterator->next;
   }
+
+  /* TODO: use the resources internally */
+  bgpstream_resource_destroy_batch(res_batch, res_batch_cnt, 1);
+
   /* then for each reader read the first record and add it to the reader queue
    */
   max = i;
@@ -677,7 +657,7 @@ int bgpstream_reader_mgr_add(bgpstream_reader_mgr_t *const bs_reader_mgr,
 }
 
 static bgpstream_reader_t *
-bs_reader_mgr_pop_head(bgpstream_reader_mgr_t *const bs_reader_mgr)
+bs_reader_mgr_pop_head(bgpstream_reader_mgr_t *bs_reader_mgr)
 {
   bgpstream_reader_t *bs_reader = bs_reader_mgr->reader_queue;
   // disconnect reader from the queue
@@ -690,9 +670,9 @@ bs_reader_mgr_pop_head(bgpstream_reader_mgr_t *const bs_reader_mgr)
 }
 
 int bgpstream_reader_mgr_get_next_record(
-  bgpstream_reader_mgr_t *const bs_reader_mgr,
-  bgpstream_record_t *const bs_record,
-  const bgpstream_filter_mgr_t *const filter_mgr)
+  bgpstream_reader_mgr_t *bs_reader_mgr,
+  bgpstream_record_t *bs_record,
+  bgpstream_filter_mgr_t *filter_mgr)
 {
 
   long previous_record_time = 0;
@@ -760,7 +740,7 @@ int bgpstream_reader_mgr_get_next_record(
   return 1;
 }
 
-void bgpstream_reader_mgr_destroy(bgpstream_reader_mgr_t *const bs_reader_mgr)
+void bgpstream_reader_mgr_destroy(bgpstream_reader_mgr_t *bs_reader_mgr)
 {
   bgpstream_debug("\tBSR_MGR: destroy reader mgr: start");
   if (bs_reader_mgr == NULL) {

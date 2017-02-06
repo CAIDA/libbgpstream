@@ -71,6 +71,9 @@ typedef enum {
   /** The record contains data for a BGP RIB message */
   BGPSTREAM_RIB = 1,
 
+  /** INTERNAL: The number of record types in use */
+  _BGPSTREAM_RECORD_DUMP_TYPE_CNT = 2,
+
 } bgpstream_record_dump_type_t;
 
 /** The position of this record in the dump */

@@ -220,10 +220,9 @@ void bsdi_singlefile_destroy(bsdi_t *di)
   BSDI_SET_STATE(di, NULL);
 }
 
-int bsdi_singlefile_get_queue(bsdi_t *di, bgpstream_input_mgr_t *input_mgr)
+int bsdi_singlefile_update_resources(bsdi_t *di)
 {
   uint32_t now = epoch_sec();
-  int queue_len = 0;
 
   /* if this is the first time we've read the file, then add it to the queue,
      otherwise check the header to see if it has changed */
@@ -232,29 +231,40 @@ int bsdi_singlefile_get_queue(bsdi_t *di, bgpstream_input_mgr_t *input_mgr)
       (now - STATE->last_rib_filetime) > RIB_FREQUENCY_CHECK &&
       same_header(STATE->rib_file, STATE->rib_header) == 0) {
     STATE->last_rib_filetime = now;
-    queue_len +=
-      bgpstream_input_mgr_push_sorted_input(input_mgr,
-                                            strdup(STATE->rib_file),
-                                            strdup("singlefile"),
-                                            strdup("singlefile"),
-                                            strdup("ribs"),
-                                            STATE->last_rib_filetime,
-                                            RIB_FREQUENCY_CHECK);
+
+    if (bgpstream_resource_mgr_push(BSDI_GET_RES_MGR(di),
+                                    BGPSTREAM_TRANSPORT_FILE,
+                                    BGPSTREAM_FORMAT_MRT,
+                                    STATE->rib_file,
+                                    STATE->last_rib_filetime,
+                                    RIB_FREQUENCY_CHECK,
+                                    "singlefile",
+                                    "singlefile",
+                                    BGPSTREAM_RIB) == NULL) {
+      goto err;
+    }
   }
 
   if (STATE->update_file != NULL &&
       (now - STATE->last_update_filetime) > UPDATE_FREQUENCY_CHECK &&
       same_header(STATE->update_file, STATE->update_header) == 0) {
     STATE->last_update_filetime = now;
-    queue_len +=
-      bgpstream_input_mgr_push_sorted_input(input_mgr,
-                                            strdup(STATE->update_file),
-                                            strdup("singlefile"),
-                                            strdup("singlefile"),
-                                            strdup("updates"),
-                                            STATE->last_update_filetime,
-                                            UPDATE_FREQUENCY_CHECK);
+
+    if (bgpstream_resource_mgr_push(BSDI_GET_RES_MGR(di),
+                                    BGPSTREAM_TRANSPORT_FILE,
+                                    BGPSTREAM_FORMAT_MRT,
+                                    STATE->update_file,
+                                    STATE->last_update_filetime,
+                                    UPDATE_FREQUENCY_CHECK,
+                                    "singlefile",
+                                    "singlefile",
+                                    BGPSTREAM_UPDATE) == NULL) {
+      goto err;
+    }
   }
 
-  return queue_len;
+  return 0;
+
+ err:
+  return -1;
 }
