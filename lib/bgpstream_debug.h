@@ -31,10 +31,10 @@
 #include <string.h>
 #include <time.h>
 
-#define NDEBUG
+//#define NDEBUG
 
 // compile with NDEBUG defined -> then "no debug" messages will remain.
-#ifdef NDEBUG
+#ifndef WITH_BGPSTREAM_DEBUG
 #define bgpstream_debug(M, ...)
 #else
 #define bgpstream_debug(M, ...)                                                \

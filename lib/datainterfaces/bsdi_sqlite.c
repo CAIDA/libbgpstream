@@ -329,13 +329,11 @@ void bsdi_sqlite_destroy(bsdi_t *di)
   BSDI_SET_STATE(di, NULL);
 }
 
-int bsdi_sqlite_get_queue(bsdi_t *di, bgpstream_input_mgr_t *input_mgr)
+int bsdi_sqlite_update_resources(bsdi_t *di)
 {
   int rc;
-  int queue_len = 0;
 
   STATE->last_ts = STATE->current_ts;
-
   // update current_timestamp - we always ask for data 1 second old at least
   STATE->current_ts = epoch_sec() - 1; // now() - 1 second
 
@@ -344,23 +342,44 @@ int bsdi_sqlite_get_queue(bsdi_t *di, bgpstream_input_mgr_t *input_mgr)
 
   while ((rc = sqlite3_step(STATE->stmt)) != SQLITE_DONE) {
     if (rc != SQLITE_ROW) {
-      bgpstream_log_err(
-        "\t\tBSDS_SQLITE: error while stepping through results");
-      return -1;
+      bgpstream_log_err("Sqlite: error while stepping through results");
+      goto err;
     }
 
-    queue_len += bgpstream_input_mgr_push_sorted_input(input_mgr,
-        strdup((const char *)sqlite3_column_text(STATE->stmt, 0)) /* path */,
-        strdup(
-          (const char *)sqlite3_column_text(STATE->stmt, 1)) /* project */,
-        strdup(
-          (const char *)sqlite3_column_text(STATE->stmt, 2)) /* collector */,
-        strdup((const char *)sqlite3_column_text(STATE->stmt, 3)) /* type */,
-        sqlite3_column_int(STATE->stmt, 5) /* file time */,
-        sqlite3_column_int(STATE->stmt, 4) /* time span */);
-  }
-  sqlite3_reset(STATE->stmt);
+    const char *path = (const char *)sqlite3_column_text(STATE->stmt, 0);
+    const char *proj = (const char *)sqlite3_column_text(STATE->stmt, 1);
+    const char *coll = (const char *)sqlite3_column_text(STATE->stmt, 2);
+    const char *type_str = (const char *)sqlite3_column_text(STATE->stmt, 3);
+    bgpstream_record_dump_type_t type;
+    if (strcmp("ribs", type_str) == 0) {
+      type = BGPSTREAM_RIB;
+    } else if (strcmp("updates", type_str) == 0) {
+      type = BGPSTREAM_UPDATE;
+    } else {
+      bgpstream_log_err("Sqlite: invalid record type found '%s'",
+                        type_str);
+      goto err;
+    }
+    uint32_t file_time = sqlite3_column_int(STATE->stmt, 5);
+    uint32_t duration = sqlite3_column_int(STATE->stmt, 4);
 
-  return queue_len;
+    if (bgpstream_resource_mgr_push(BSDI_GET_RES_MGR(di),
+                                    BGPSTREAM_TRANSPORT_FILE,
+                                    BGPSTREAM_FORMAT_MRT,
+                                    path,
+                                    file_time,
+                                    duration,
+                                    proj,
+                                    coll,
+                                    type) == NULL) {
+      goto err;
+    }
+  }
+
+  sqlite3_reset(STATE->stmt);
+  return 0;
+
+ err:
+  return -1;
 }
 

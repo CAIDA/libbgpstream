@@ -24,15 +24,10 @@
 #ifndef _BGPSTREAM_READER_H
 #define _BGPSTREAM_READER_H
 
-#include <pthread.h>
-#include <stdbool.h>
-
 #include "bgpstream_constants.h"
 #include "bgpstream_filter.h"
-#include "bgpstream_input.h"
 #include "bgpstream_record.h"
-
-#include <bgpdump_lib.h>
+#include "bgpstream_resource.h"
 
 typedef enum {
   BGPSTREAM_READER_STATUS_VALID_ENTRY,
@@ -52,29 +47,28 @@ typedef enum {
 
 typedef struct struct_bgpstream_reader_mgr_t {
   bgpstream_reader_t *reader_queue;
-  const bgpstream_filter_mgr_t *filter_mgr;
+  bgpstream_filter_mgr_t *filter_mgr;
   bgpstream_reader_mgr_status_t status;
 } bgpstream_reader_mgr_t;
 
 /* create a new reader mgr */
 bgpstream_reader_mgr_t *
-bgpstream_reader_mgr_create(const bgpstream_filter_mgr_t *const filter_mgr);
+bgpstream_reader_mgr_create(bgpstream_filter_mgr_t *filter_mgr);
 /* check if the readers' queue is empty  */
-bool bgpstream_reader_mgr_is_empty(
-  const bgpstream_reader_mgr_t *const bs_reader_mgr);
+int bgpstream_reader_mgr_is_empty(bgpstream_reader_mgr_t *bs_reader_mgr);
 
 /* use a list of inputs to populate the readers' queue */
-int bgpstream_reader_mgr_add(bgpstream_reader_mgr_t *const bs_reader_mgr,
-                             const bgpstream_input_t *const toprocess_queue,
-                             const bgpstream_filter_mgr_t *const filter_mgr);
+int bgpstream_reader_mgr_add(bgpstream_reader_mgr_t *bs_reader_mgr,
+                             bgpstream_resource_t **res_batch,
+                             int res_batch_cnt,
+                             bgpstream_filter_mgr_t *filter_mgr);
 
 /* get the next available record (and update the reader mgr status) */
-int bgpstream_reader_mgr_get_next_record(
-  bgpstream_reader_mgr_t *const bs_reader_mgr,
-  bgpstream_record_t *const bs_record,
-  const bgpstream_filter_mgr_t *const filter_mgr);
+int bgpstream_reader_mgr_get_next_record(bgpstream_reader_mgr_t *bs_reader_mgr,
+                                         bgpstream_record_t *bs_record,
+                                         bgpstream_filter_mgr_t *filter_mgr);
 
 /* destroy the reader manager */
-void bgpstream_reader_mgr_destroy(bgpstream_reader_mgr_t *const bs_reader_mgr);
+void bgpstream_reader_mgr_destroy(bgpstream_reader_mgr_t *bs_reader_mgr);
 
 #endif /* _BGPSTREAM_READER_H */

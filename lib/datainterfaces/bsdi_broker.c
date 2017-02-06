@@ -195,6 +195,7 @@ static jsmntok_t *json_skip(jsmntok_t *t)
         t = json_skip(t);
       }
     }
+    break;
   default:
     assert(0);
   }
@@ -237,8 +238,8 @@ static jsmntok_t *json_skip(jsmntok_t *t)
     }                                                                          \
   } while (0)
 
-static int process_json(bsdi_t *di, bgpstream_input_mgr_t *input_mgr,
-                        const char *js, jsmntok_t *root_tok, size_t count)
+static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
+                        size_t count)
 {
   int i, j, k;
   jsmntok_t *t = root_tok + 1;
@@ -246,8 +247,6 @@ static int process_json(bsdi_t *di, bgpstream_input_mgr_t *input_mgr,
   int arr_len, obj_len;
 
   int time_set = 0;
-
-  int num_results = 0;
 
   // per-file info
   char *url = NULL;
@@ -257,7 +256,7 @@ static int process_json(bsdi_t *di, bgpstream_input_mgr_t *input_mgr,
   int collector_set = 0;
   char project[BGPSTREAM_UTILS_STR_NAME_LEN] = "";
   int project_set = 0;
-  char type[BGPSTREAM_UTILS_STR_NAME_LEN] = "";
+  bgpstream_record_dump_type_t type;
   int type_set = 0;
   uint32_t initial_time = 0;
   int initial_time_set = 0;
@@ -366,7 +365,15 @@ static int process_json(bsdi_t *di, bgpstream_input_mgr_t *input_mgr,
           } else if (json_strcmp(js, t, "type") == 0) {
             NEXT_TOK;
             json_type_assert(t, JSMN_STRING);
-            json_strcpy(type, t, js);
+            if (json_strcmp(js, t, "ribs") == 0) {
+              type = BGPSTREAM_RIB;
+            } else if (json_strcmp(js, t, "updates") == 0) {
+              type = BGPSTREAM_UPDATE;
+            } else {
+              fprintf(stderr, "ERROR: Invalid type '%.*s'\n",
+                      t->end - t->start, js+t->start);
+              goto err;
+            }
             type_set = 1;
             NEXT_TOK;
           } else if (json_strcmp(js, t, "initialTime") == 0) {
@@ -408,13 +415,17 @@ static int process_json(bsdi_t *di, bgpstream_input_mgr_t *input_mgr,
           STATE->current_window_end = (initial_time + duration);
         }
 
-        if (bgpstream_input_mgr_push_sorted_input(
-              input_mgr, strdup(url), strdup(project), strdup(collector),
-              strdup(type), initial_time, duration) <= 0) {
+        if (bgpstream_resource_mgr_push(BSDI_GET_RES_MGR(di),
+                                        BGPSTREAM_TRANSPORT_FILE,
+                                        BGPSTREAM_FORMAT_MRT,
+                                        url,
+                                        initial_time,
+                                        duration,
+                                        project,
+                                        collector,
+                                        type) == NULL) {
           goto err;
         }
-
-        num_results++;
       }
     }
     // TODO: handle unknown tokens
@@ -425,7 +436,7 @@ static int process_json(bsdi_t *di, bgpstream_input_mgr_t *input_mgr,
   }
 
   free(url);
-  return num_results;
+  return 0;
 
 retry:
   free(url);
@@ -437,8 +448,7 @@ err:
   return ERR_RETRY;
 }
 
-static int read_json(bsdi_t *di, bgpstream_input_mgr_t *input_mgr,
-                     io_t *jsonfile)
+static int read_json(bsdi_t *di, io_t *jsonfile)
 {
   jsmn_parser p;
   jsmntok_t *tok = NULL;
@@ -496,7 +506,7 @@ again:
     fprintf(stderr, "ERROR: JSON parser returned %d\n", ret);
     goto err;
   }
-  ret = process_json(di, input_mgr, js, tok, p.toknext);
+  ret = process_json(di, js, tok, p.toknext);
 
   free(js);
   free(tok);
@@ -690,7 +700,7 @@ void bsdi_broker_destroy(bsdi_t *di)
   BSDI_SET_STATE(di, NULL);
 }
 
-int bsdi_broker_get_queue(bsdi_t *di, bgpstream_input_mgr_t *input_mgr)
+int bsdi_broker_update_resources(bsdi_t *di)
 {
 
 // we need to set two parameters:
@@ -702,8 +712,7 @@ int bsdi_broker_get_queue(bsdi_t *di, bgpstream_input_mgr_t *input_mgr)
 
   io_t *jsonfile = NULL;
 
-  int num_results;
-
+  int rc;
   int attempts = 0;
   int wait_time = 1;
 
@@ -753,10 +762,10 @@ int bsdi_broker_get_queue(bsdi_t *di, bgpstream_input_mgr_t *input_mgr)
       goto retry;
     }
 
-    if ((num_results = read_json(di, input_mgr, jsonfile)) == ERR_FATAL) {
+    if ((rc = read_json(di, jsonfile)) == ERR_FATAL) {
       fprintf(stderr, "ERROR: Received fatal error code from read_json\n");
       goto err;
-    } else if (num_results == ERR_RETRY) {
+    } else if (rc == ERR_RETRY) {
       goto retry;
     } else {
       // success!
@@ -773,7 +782,7 @@ int bsdi_broker_get_queue(bsdi_t *di, bgpstream_input_mgr_t *input_mgr)
   // reset the variable params
   *STATE->query_url_end = '\0';
   STATE->query_url_remaining = URL_BUFLEN - strlen(STATE->query_url_end);
-  return num_results;
+  return 0;
 
 err:
   fprintf(stderr, "ERROR: Fatal error in broker data source\n");

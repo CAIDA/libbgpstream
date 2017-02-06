@@ -26,7 +26,7 @@
 
 #include "config.h"
 #include "bgpstream_filter.h"
-#include "bgpstream_input.h"
+#include "bgpstream_resource_mgr.h"
 
 /** Opaque struct representing the Data Interface manager */
 typedef struct bgpstream_di_mgr bgpstream_di_mgr_t;
@@ -140,18 +140,21 @@ void bgpstream_di_mgr_set_blocking(bgpstream_di_mgr_t *di_mgr);
  */
 int bgpstream_di_mgr_start(bgpstream_di_mgr_t *di_mgr);
 
-/** Get the next batch of metadata from the active data interface
+/** Get the next batch of resource metadata from the active data interface
  *
- * @param di_mgr        pointer to a data interface manager instance
- * @param input_mgr     pointer to the input manager to XXX change this
- * @return the number of metadata elements in the queue if successful, -1
- * otherwise
+ * @param di_mgr          pointer to a data interface manager instance
+ * @param[out] res_batch  pointer to be updated to point to a list of resources
+ * @return the number of resources in the returned list
  *
  * If the stream is in live mode, this method will block until data is
  * available, otherwise it will return an empty queue to indicate EOF.
+ *
+ * The returned queue is owned by the caller and must be freed using
+ * `bgpstream_resource_mgr_destroy_batch`.
  */
-int bgpstream_di_mgr_get_queue(bgpstream_di_mgr_t *di_mgr,
-                               bgpstream_input_mgr_t *input_mgr);
+int
+bgpstream_di_mgr_get_resource_batch(bgpstream_di_mgr_t *di_mgr,
+                                    bgpstream_resource_t ***res_batch);
 
 /** Destroy the given data interface manager
  *

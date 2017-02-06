@@ -26,16 +26,12 @@
 #include <stdlib.h>
 #include "bgpstream_int.h"
 #include "bgpstream_debug.h"
-#include "bgpstream_input.h"
 #include "bgpstream_reader.h"
 #include "bgpstream_di_mgr.h"
 #include "bgpdump_lib.h"
 #include "utils.h"
 
 struct bgpstream {
-
-  /* our input queue manager */
-  bgpstream_input_mgr_t *input_mgr;
 
   /* our reader manager */
   bgpstream_reader_mgr_t *reader_mgr;
@@ -72,12 +68,6 @@ bgpstream_t *bgpstream_create()
   }
 
   if ((bs->di_mgr = bgpstream_di_mgr_create(bs->filter_mgr)) == NULL) {
-    goto err;
-  }
-
-  /* create an empty input mgr the input queue will be populated when a
-   * bgpstream record is requested */
-  if ((bs->input_mgr = bgpstream_input_mgr_create()) == NULL) {
     goto err;
   }
 
@@ -249,8 +239,8 @@ int bgpstream_start(bgpstream_t *bs)
 int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t *record)
 {
   assert(bs->started);
-  int md_queue_len = 0;
-  bgpstream_input_t *md_queue = NULL;
+  bgpstream_resource_t **res_batch = NULL;
+  int res_batch_cnt = 0;
 
   // if bs_record contains an initialized bgpdump entry we destroy it
   bgpstream_record_clear(record);
@@ -258,36 +248,34 @@ int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t *record)
 
   // if we have no data in our local queues, try and get some
   if (bgpstream_reader_mgr_is_empty(bs->reader_mgr)) {
-    // while the list of "file" metadata is empty, try and get some more files
-    if (bgpstream_input_mgr_is_empty(bs->input_mgr)) {
-      // ask the data interface for more "files"
-      // this call will block if we're in blocking mode
-      if ((md_queue_len =
-           bgpstream_di_mgr_get_queue(bs->di_mgr, bs->input_mgr)) < 0) {
-        // error from the data interface
-        return -1;
-      }
-      if (md_queue_len == 0) {
-        // no more data (only returned if not in live mode)
-        return 0;
-      }
+    // ask the data interface for more "files"
+    // this call will block if we're in blocking mode
+    if ((res_batch_cnt = bgpstream_di_mgr_get_resource_batch(bs->di_mgr,
+                                                             &res_batch)) < 0) {
+      // error from the data interface
+      goto err;
     }
-    // if we're here then the input manager has metadata in its queue for us to
-    // process
-    md_queue = bgpstream_input_mgr_get_queue_to_process(bs->input_mgr);
-    // tell the reader manager about the new input metadata
-    if (bgpstream_reader_mgr_add(bs->reader_mgr, md_queue,
+    if (res_batch_cnt == 0) {
+      // no more data (only returned if not in live mode)
+      assert(res_batch == NULL);
+      return 0;
+    }
+    assert(res_batch != NULL);
+    // tell the reader manager about the new resources
+    // it takes ownership of the batch
+    if (bgpstream_reader_mgr_add(bs->reader_mgr, res_batch, res_batch_cnt,
                                  bs->filter_mgr) != 0) {
-      return -1;
+      goto err;
     }
-    // we own the metadata queue, so destroy it
-    bgpstream_input_mgr_destroy_queue(md_queue);
-    md_queue = NULL;
   }
 
   // if we're here, then the reader manager has data we can get
   return bgpstream_reader_mgr_get_next_record(bs->reader_mgr, record,
                                               bs->filter_mgr);
+
+ err:
+  bgpstream_resource_destroy_batch(res_batch, res_batch_cnt, 1);
+  return -1;
 }
 
 /* destroy a bgpstream interface istance
@@ -297,9 +285,6 @@ void bgpstream_destroy(bgpstream_t *bs)
   if (bs == NULL) {
     return;
   }
-
-  bgpstream_input_mgr_destroy(bs->input_mgr);
-  bs->input_mgr = NULL;
 
   bgpstream_reader_mgr_destroy(bs->reader_mgr);
   bs->reader_mgr = NULL;
