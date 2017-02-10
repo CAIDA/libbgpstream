@@ -22,7 +22,7 @@
  */
 
 #include "bsdi_sqlite.h"
-#include "bgpstream_debug.h"
+#include "bgpstream_log.h"
 #include "utils.h"
 #include <assert.h>
 #include <inttypes.h>
@@ -107,15 +107,15 @@ static int prepare_db(bsdi_t *di)
 {
   if (sqlite3_open_v2(STATE->db_file, &STATE->db, SQLITE_OPEN_READONLY, NULL)
       != SQLITE_OK) {
-    bgpstream_log_err("SQLite can't open database: %s",
-                      sqlite3_errmsg(STATE->db));
+    bgpstream_log(BGPSTREAM_LOG_ERR, "can't open database: %s",
+                  sqlite3_errmsg(STATE->db));
     return -1;
   }
 
   if (sqlite3_prepare_v2(STATE->db, STATE->query_buf, -1, &STATE->stmt, NULL)
       != SQLITE_OK) {
-    bgpstream_log_err("SQLite failed to prepare statement: %s",
-                      sqlite3_errmsg(STATE->db));
+    bgpstream_log(BGPSTREAM_LOG_ERR, "failed to prepare statement: %s",
+                  sqlite3_errmsg(STATE->db));
     return -1;
   }
   return 0;
@@ -342,7 +342,8 @@ int bsdi_sqlite_update_resources(bsdi_t *di)
 
   while ((rc = sqlite3_step(STATE->stmt)) != SQLITE_DONE) {
     if (rc != SQLITE_ROW) {
-      bgpstream_log_err("Sqlite: error while stepping through results");
+      bgpstream_log(BGPSTREAM_LOG_ERR,
+                    "error while stepping through results");
       goto err;
     }
 
@@ -356,8 +357,8 @@ int bsdi_sqlite_update_resources(bsdi_t *di)
     } else if (strcmp("updates", type_str) == 0) {
       type = BGPSTREAM_UPDATE;
     } else {
-      bgpstream_log_err("Sqlite: invalid record type found '%s'",
-                        type_str);
+      bgpstream_log(BGPSTREAM_LOG_ERR, "invalid record type found '%s'",
+                    type_str);
       goto err;
     }
     uint32_t file_time = sqlite3_column_int(STATE->stmt, 5);

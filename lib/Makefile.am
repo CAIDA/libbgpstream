@@ -49,7 +49,6 @@ libbgpstreamcaida_la_SOURCES = 	\
 	bgpstream_di_interface.h	\
 	bgpstream_di_mgr.c	\
 	bgpstream_di_mgr.h	\
-	bgpstream_debug.h	\
 	bgpstream_elem.c	\
 	bgpstream_elem.h	\
 	bgpstream_elem_int.h	\
@@ -61,6 +60,8 @@ libbgpstreamcaida_la_SOURCES = 	\
 	bgpstream_filter_parser.c	\
 	bgpstream_format.h	\
 	bgpstream_int.h		\
+	bgpstream_log.c		\
+	bgpstream_log.h		\
 	bgpstream_reader.c	\
 	bgpstream_reader.h	\
 	bgpstream_record.c	\

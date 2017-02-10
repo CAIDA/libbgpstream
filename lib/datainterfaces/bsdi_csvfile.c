@@ -22,7 +22,7 @@
  */
 
 #include "bsdi_csvfile.h"
-#include "bgpstream_debug.h"
+#include "bgpstream_log.h"
 #include "config.h"
 #include "utils.h"
 #include "libcsv/csv.h"
@@ -361,21 +361,21 @@ int bsdi_csvfile_update_resources(bsdi_t *di)
   STATE->max_ts_infile = 0;
 
   if ((file_io = wandio_create(STATE->csv_file)) == NULL) {
-    bgpstream_log_err("csvfile can't open file %s", STATE->csv_file);
+    bgpstream_log(BGPSTREAM_LOG_ERR, "can't open file %s", STATE->csv_file);
     goto err;
   }
 
   while ((read = wandio_read(file_io, &buffer, BUFFER_LEN)) > 0) {
     if (csv_parse(&(STATE->parser), buffer, read, parse_field,
                   parse_rowend, di) != read) {
-      bgpstream_log_err("CSV parsing error %s",
+      bgpstream_log(BGPSTREAM_LOG_ERR, "CSV parsing error %s",
                         csv_strerror(csv_error(&STATE->parser)));
       goto err;
     }
   }
 
   if (csv_fini(&(STATE->parser), parse_field, parse_rowend, di) != 0) {
-    bgpstream_log_err("CSV parsing error %s",
+    bgpstream_log(BGPSTREAM_LOG_ERR, "CSV parsing error %s",
                       csv_strerror(csv_error(&STATE->parser)));
     goto err;
   }

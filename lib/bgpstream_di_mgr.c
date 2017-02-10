@@ -22,7 +22,6 @@
  */
 
 #include "bgpstream_di_mgr.h"
-#include "bgpstream_debug.h"
 #include "config.h"
 #include "utils.h"
 #include <assert.h>

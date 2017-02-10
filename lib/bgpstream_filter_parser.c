@@ -1,6 +1,6 @@
 
 #include "bgpstream_filter_parser.h"
-#include "bgpstream_debug.h"
+#include "bgpstream_log.h"
 #include "bgpstream_filter.h"
 #include <assert.h>
 #include <stdio.h>
@@ -61,13 +61,14 @@ static void instantiate_filter(bgpstream_t *bs, bgpstream_filter_item_t *item)
   case BGPSTREAM_FILTER_TYPE_ELEM_ASPATH:
   case BGPSTREAM_FILTER_TYPE_ELEM_IP_VERSION:
   case BGPSTREAM_FILTER_TYPE_ELEM_TYPE:
-    bgpstream_debug("Added filter for %s", item->value);
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Added filter for %s", item->value);
     bgpstream_add_filter(bs, usetype, item->value);
     break;
 
   default:
-    bgpstream_debug("Implementation of filter type %s is still to come!",
-                    bgpstream_filter_type_to_string(item->termtype));
+    bgpstream_log(BGPSTREAM_LOG_ERR,
+                  "Implementation of filter type %s is still to come!",
+                  bgpstream_filter_type_to_string(item->termtype));
     break;
   }
 }
@@ -82,7 +83,7 @@ static int bgpstream_parse_filter_term(char *term, fp_state_t *state,
 
   if (strcmp(term, "project") == 0 || strcmp(term, "proj") == 0) {
     /* Project */
-    bgpstream_debug("Got a project term");
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Got a project term");
     curr->termtype = BGPSTREAM_FILTER_TYPE_PROJECT;
     *state = VALUE;
     return *state;
@@ -90,7 +91,7 @@ static int bgpstream_parse_filter_term(char *term, fp_state_t *state,
 
   if (strcmp(term, "collector") == 0 || strcmp(term, "coll") == 0) {
     /* Collector */
-    bgpstream_debug("Got a collector term");
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Got a collector term");
     curr->termtype = BGPSTREAM_FILTER_TYPE_COLLECTOR;
     *state = VALUE;
     return *state;
@@ -98,7 +99,7 @@ static int bgpstream_parse_filter_term(char *term, fp_state_t *state,
 
   if (strcmp(term, "type") == 0) {
     /* Type */
-    bgpstream_debug("Got a type term");
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Got a type term");
     curr->termtype = BGPSTREAM_FILTER_TYPE_RECORD_TYPE;
     *state = VALUE;
     return *state;
@@ -106,7 +107,7 @@ static int bgpstream_parse_filter_term(char *term, fp_state_t *state,
 
   if (strcmp(term, "peer") == 0) {
     /* Peer */
-    bgpstream_debug("Got a peer term");
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Got a peer term");
     curr->termtype = BGPSTREAM_FILTER_TYPE_ELEM_PEER_ASN;
     *state = VALUE;
     return *state;
@@ -114,7 +115,7 @@ static int bgpstream_parse_filter_term(char *term, fp_state_t *state,
 
   if (strcmp(term, "prefix") == 0 || strcmp(term, "pref") == 0) {
     /* prefix */
-    bgpstream_debug("Got a prefix term");
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Got a prefix term");
     /* XXX is this the best default? */
     curr->termtype = BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_MORE;
     *state = PREFIXEXT;
@@ -123,7 +124,7 @@ static int bgpstream_parse_filter_term(char *term, fp_state_t *state,
 
   if (strcmp(term, "community") == 0 || strcmp(term, "comm") == 0) {
     /* Community */
-    bgpstream_debug("Got a community term");
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Got a community term");
     curr->termtype = BGPSTREAM_FILTER_TYPE_ELEM_COMMUNITY;
     *state = VALUE;
     return *state;
@@ -131,7 +132,7 @@ static int bgpstream_parse_filter_term(char *term, fp_state_t *state,
 
   if (strcmp(term, "aspath") == 0 || strcmp(term, "path") == 0) {
     /* AS Path */
-    bgpstream_debug("Got an aspath term");
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Got an aspath term");
     curr->termtype = BGPSTREAM_FILTER_TYPE_ELEM_ASPATH;
     *state = VALUE;
     return *state;
@@ -139,7 +140,7 @@ static int bgpstream_parse_filter_term(char *term, fp_state_t *state,
 
   if (strcmp(term, "extcommunity") == 0 || strcmp(term, "extc") == 0) {
     /* Extended Community */
-    bgpstream_debug("Got a extended community term");
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Got a extended community term");
     curr->termtype = BGPSTREAM_FILTER_TYPE_ELEM_EXTENDED_COMMUNITY;
     *state = VALUE;
     return *state;
@@ -147,7 +148,7 @@ static int bgpstream_parse_filter_term(char *term, fp_state_t *state,
 
   if (strcmp(term, "ipversion") == 0 || strcmp(term, "ipv") == 0) {
     /* IP version */
-    bgpstream_debug("Got a ip version term");
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Got a ip version term");
     curr->termtype = BGPSTREAM_FILTER_TYPE_ELEM_IP_VERSION;
     *state = VALUE;
     return *state;
@@ -155,13 +156,13 @@ static int bgpstream_parse_filter_term(char *term, fp_state_t *state,
 
   if (strcmp(term, "elemtype") == 0) {
     /* Element type */
-    bgpstream_debug("Got an element type term");
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Got an element type term");
     curr->termtype = BGPSTREAM_FILTER_TYPE_ELEM_TYPE;
     *state = VALUE;
     return *state;
   }
 
-  bgpstream_log_err("Expected a valid term, got %s", term);
+  bgpstream_log(BGPSTREAM_LOG_ERR, "Expected a valid term, got %s", term);
   *state = FAIL;
   return FAIL;
 }
@@ -196,7 +197,7 @@ static int bgpstream_parse_quotedvalue(char *value, fp_state_t *state,
 
   if (*state == ENDVALUE) {
     /* Create our new filter here? */
-    bgpstream_debug("Set our quoted value to %s", curr->value);
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Set our quoted value to %s", curr->value);
   }
 
   return *state;
@@ -219,7 +220,7 @@ static int bgpstream_parse_value(char *value, fp_state_t *state,
 
   /* At this point we can probably create our new filter */
   /* XXX this may not be true once we get around to OR support... */
-  bgpstream_debug("Set our unquoted value to %s", curr->value);
+  bgpstream_log(BGPSTREAM_LOG_FINE, "Set our unquoted value to %s", curr->value);
 
   return *state;
 }
@@ -232,7 +233,7 @@ static int bgpstream_parse_prefixext(char *ext, fp_state_t *state,
 
   if (strcmp(ext, "any") == 0) {
     /* Any prefix that our prefix belongs to */
-    bgpstream_debug("Got an 'any' prefix");
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Got an 'any' prefix");
     curr->termtype = BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_ANY;
     *state = VALUE;
     return *state;
@@ -240,7 +241,7 @@ static int bgpstream_parse_prefixext(char *ext, fp_state_t *state,
 
   if (strcmp(ext, "more") == 0) {
     /* Either match this prefix or any more specific prefixes */
-    bgpstream_debug("Got an 'more' prefix");
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Got an 'more' prefix");
     curr->termtype = BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_MORE;
     *state = VALUE;
     return *state;
@@ -248,7 +249,7 @@ static int bgpstream_parse_prefixext(char *ext, fp_state_t *state,
 
   if (strcmp(ext, "less") == 0) {
     /* Either match this prefix or any less specific prefixes */
-    bgpstream_debug("Got an 'less' prefix");
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Got an 'less' prefix");
     curr->termtype = BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_LESS;
     *state = VALUE;
     return *state;
@@ -256,7 +257,7 @@ static int bgpstream_parse_prefixext(char *ext, fp_state_t *state,
 
   if (strcmp(ext, "exact") == 0) {
     /* Only match exactly this prefix */
-    bgpstream_debug("Got an 'exact' prefix");
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Got an 'exact' prefix");
     curr->termtype = BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_EXACT;
     *state = VALUE;
     return *state;
@@ -284,7 +285,8 @@ static int bgpstream_parse_endvalue(char *conj, fp_state_t *state,
   /* TODO allow 'or', anything else? */
 
   if (*state != TERM) {
-    bgpstream_log_err("Bad conjunction in bgpstream filter string: %s", conj);
+    bgpstream_log(BGPSTREAM_LOG_ERR,
+                  "Bad conjunction in bgpstream filter string: %s", conj);
     *state = FAIL;
     return FAIL;
   }
@@ -301,7 +303,7 @@ int bgpstream_parse_filter_string(bgpstream_t *bs, const char *fstring)
   char *sptr = NULL;
   int ret = 1;
 
-  bgpstream_debug("Parsing filter string - %s", fstring);
+  bgpstream_log(BGPSTREAM_LOG_FINE, "Parsing filter string - %s", fstring);
   bgpstream_filter_item_t *filteritem;
   fp_state_t state = TERM;
 
@@ -356,7 +358,8 @@ int bgpstream_parse_filter_string(bgpstream_t *bs, const char *fstring)
       break;
 
     default:
-      bgpstream_log_err("Unexpected BGPStream filter string state: %d", state);
+      bgpstream_log(BGPSTREAM_LOG_ERR,
+                    "Unexpected BGPStream filter string state: %d", state);
       ret = 0;
       goto endparsing;
     }
@@ -372,6 +375,6 @@ endparsing:
     free(filteritem);
   }
 
-  bgpstream_debug("Finished parsing filter string");
+  bgpstream_log(BGPSTREAM_LOG_FINE, "Finished parsing filter string");
   return ret;
 }
