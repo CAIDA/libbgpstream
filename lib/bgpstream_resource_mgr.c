@@ -219,7 +219,7 @@ bgpstream_resource_mgr_push(bgpstream_resource_mgr_t *q,
                             bgpstream_record_dump_type_t record_type)
 {
   bgpstream_resource_t *res;
-  struct res_group *gp, *cur, *last, *new;
+  struct res_group *gp = NULL, *cur = NULL, *last = NULL;
 
   // first create the resource
   if ((res = bgpstream_resource_create(transport_type, format_type, uri,
@@ -260,55 +260,68 @@ bgpstream_resource_mgr_push(bgpstream_resource_mgr_t *q,
       last = cur;
       cur = cur->next;
     }
-    if (cur == NULL) {
-      // we got to the end of the list
-      assert(last == q->tail);
-      if ((cur = res_group_create(res)) == NULL) {
+    if (cur->time == res->initial_time) {
+      // just add to the current group
+       if (res_group_add(cur, res) != 0) {
         goto err;
-      }
-      last->next = cur;
-      q->tail = cur;
-    } else if (cur->time == res->initial_time) {
-      // add to this group
-      if (res_group_add(cur, res) != 0) {
-        goto err;
-      }
+       }
     } else {
-      // need to create a new group
-      if ((new = res_group_create(res)) == NULL) {
+      // we first need to create a new group
+      if ((gp = res_group_create(res)) == NULL) {
         goto err;
       }
-      last->next = new;
-      cur->prev = new;
+      gp->next = cur;
+      gp->prev = last;
+      if (cur == NULL) {
+        // creating a new tail
+        assert(last == q->tail);
+        last->next = gp;
+        q->tail = gp;
+      } else if (last == NULL) {
+        // creating a new head
+        assert(q->head == cur);
+        cur->prev = gp;
+        q->head = gp;
+      } else {
+        // splicing into the list
+        cur->prev = gp;
+        last->next = gp;
+      }
     }
   } else {
     // equidistant, or closer to the tail
-    cur = q->tail;
-    last = NULL;
+    cur = q->tail; last = NULL;
     while (cur != NULL && cur->time > res->initial_time) {
       last = cur;
       cur = cur->prev;
     }
-    if (cur == NULL) {
-      // we got to the head of the list
-      assert(last == q->head);
-      if ((cur = res_group_create(res)) == NULL) {
+    if (cur->time == res->initial_time) {
+      // just add to the current group
+       if (res_group_add(cur, res) != 0) {
         goto err;
-      }
-      last->prev = cur;
-      q->head = cur;
-    } else if (cur->time == res->initial_time) {
-      // add to this group
-      if (res_group_add(cur, res) != 0) {
-        goto err;
-      }
+       }
     } else {
-      // need to create a new group
-      if ((new = res_group_create(res)) == NULL) {
+      // we first need to create a new group
+      if ((gp = res_group_create(res)) == NULL) {
         goto err;
       }
-      last->prev = new;
-      cur->next = new;
+      gp->next = last;
+      gp->prev = cur;
+      if (cur == NULL) {
+        // creating a new head
+        assert(last == q->head);
+        last->prev = gp;
+        q->head = gp;
+      } else if (last == NULL) {
+        // creating a new tail
+        assert(q->tail == cur);
+        cur->next = gp;
+        q->tail = gp;
+      } else {
+        // splicing into the list
+        cur->next = gp;
+        last->prev = gp;
+      }
     }
   }
 
