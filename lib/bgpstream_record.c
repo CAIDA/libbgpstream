@@ -30,14 +30,14 @@
 #include "bgpdump_process.h"
 #include "bgpstream_elem_int.h"
 #include "bgpstream_int.h"
-#include "bgpstream_debug.h"
+#include "bgpstream_log.h"
 #include "bgpstream_elem_generator.h"
 #include "bgpstream_record.h"
 
 /* allocate memory for a bs_record */
 bgpstream_record_t *bgpstream_record_create()
 {
-  bgpstream_debug("BS: create record start");
+  bgpstream_log(BGPSTREAM_LOG_VFINE, "BS: create record start");
   bgpstream_record_t *bs_record;
   if ((bs_record = (bgpstream_record_t *)malloc(sizeof(bgpstream_record_t))) ==
       NULL) {
@@ -54,20 +54,20 @@ bgpstream_record_t *bgpstream_record_create()
 
   bgpstream_record_clear(bs_record);
 
-  bgpstream_debug("BS: create record end");
+  bgpstream_log(BGPSTREAM_LOG_VFINE, "BS: create record end");
   return bs_record;
 }
 
 /* free memory associated to a bs_record  */
 void bgpstream_record_destroy(bgpstream_record_t *const bs_record)
 {
-  bgpstream_debug("BS: destroy record start");
+  bgpstream_log(BGPSTREAM_LOG_VFINE, "BS: destroy record start");
   if (bs_record == NULL) {
-    bgpstream_debug("BS: record destroy end");
+    bgpstream_log(BGPSTREAM_LOG_VFINE, "BS: record destroy end");
     return; // nothing to do
   }
   if (bs_record->bd_entry != NULL) {
-    bgpstream_debug("BS - free bs_record->bgpdump_entry");
+    bgpstream_log(BGPSTREAM_LOG_VFINE, "BS - free bs_record->bgpdump_entry");
     bgpdump_free_mem(bs_record->bd_entry);
     bs_record->bd_entry = NULL;
   }
@@ -77,9 +77,9 @@ void bgpstream_record_destroy(bgpstream_record_t *const bs_record)
     bs_record->elem_generator = NULL;
   }
 
-  bgpstream_debug("BS - free bs_record");
+  bgpstream_log(BGPSTREAM_LOG_VFINE, "BS - free bs_record");
   free(bs_record);
-  bgpstream_debug("BS: destroy record end");
+  bgpstream_log(BGPSTREAM_LOG_VFINE, "BS: destroy record end");
 }
 
 void bgpstream_record_clear(bgpstream_record_t *record)
@@ -234,7 +234,8 @@ static int elem_check_filters(bgpstream_record_t *record,
     pathlen = bgpstream_as_path_get_filterable(aspath, 65535, elem->aspath);
 
     if (pathlen == 65535) {
-      bgpstream_log_warn("AS Path is too long? Filter may not work well.");
+      bgpstream_log(BGPSTREAM_LOG_WARN,
+                    "AS Path is too long? Filter may not work well.");
     }
 
     if (pathlen == 0) {
@@ -258,7 +259,7 @@ static int elem_check_filters(bgpstream_record_t *record,
 
       if (regcomp(&re, regexstr, 0) < 0) {
         /* XXX should really use regerror here for proper error reporting */
-        bgpstream_log_err("Failed to compile AS path regex");
+        bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to compile AS path regex");
         break;
       }
 
@@ -274,7 +275,7 @@ static int elem_check_filters(bgpstream_record_t *record,
 
       regfree(&re);
       if (result != REG_NOMATCH && result != 0) {
-        bgpstream_log_err("Error while matching AS path regex");
+        bgpstream_log(BGPSTREAM_LOG_ERR, "Error while matching AS path regex");
         break;
       }
     }

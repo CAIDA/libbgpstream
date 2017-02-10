@@ -22,7 +22,7 @@
  */
 
 #include "bsdi_singlefile.h"
-#include "bgpstream_debug.h"
+#include "bgpstream_log.h"
 #include "config.h"
 #include "utils.h"
 #include <inttypes.h>
@@ -115,14 +115,13 @@ static int same_header(char *filename, char *prev_hdr)
   io_t *io_h;
 
   if ((io_h = wandio_create(filename)) == NULL) {
-    bgpstream_log_err("Singlefile: can't open file '%s'",
-                      filename);
+    bgpstream_log(BGPSTREAM_LOG_ERR, "can't open file '%s'", filename);
     return -1;
   }
 
   if ((bread =
        wandio_read(io_h, (void *)&(buffer[0]), MAX_HEADER_READ_BYTES)) < 0) {
-    bgpstream_log_err("Singlefile: can't read file '%s'", filename);
+    bgpstream_log(BGPSTREAM_LOG_ERR, "can't read file '%s'", filename);
     wandio_destroy(io_h);
     return -1;
   }

@@ -22,20 +22,14 @@
  */
 
 #include "config.h"
-
 #include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
-
 #include "bgpdump_lib.h"
 #include "utils.h"
-
 #include "bgpstream_utils.h"
-
-#include "bgpstream_debug.h"
 #include "bgpstream_record.h"
-
 #include "bgpstream_elem_int.h"
 
 /* ==================== PROTECTED FUNCTIONS ==================== */

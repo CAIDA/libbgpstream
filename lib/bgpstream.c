@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "bgpstream_int.h"
-#include "bgpstream_debug.h"
+#include "bgpstream_log.h"
 #include "bgpstream_reader.h"
 #include "bgpstream_di_mgr.h"
 #include "bgpdump_lib.h"
@@ -106,7 +106,8 @@ void bgpstream_add_recent_interval_filter(bgpstream_t *bs, const char *interval,
 
   if (bgpstream_time_calc_recent_interval(&starttime, &endtime, interval) ==
       0) {
-    bgpstream_log_err("Failed to determine suitable time interval");
+    bgpstream_log(BGPSTREAM_LOG_ERR,
+                  "Failed to determine suitable time interval");
     return;
   }
 

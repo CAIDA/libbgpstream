@@ -53,15 +53,11 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
-
 #include "bgpdump_lib.h"
 #include "utils.h"
-
 #include "bgpstream_utils_as_path_int.h"
 #include "bgpstream_utils_community_int.h"
-
 #include "bgpstream_elem_int.h"
-#include "bgpstream_debug.h"
 #include "bgpstream_elem_generator.h"
 
 struct bgpstream_elem_generator {
@@ -160,7 +156,7 @@ static void get_aspath_struct(struct aspath *ap,
       bs_ap->numeric_aspath = (uint32_t *)malloc(bs_ap->hop_count * sizeof(uint32_t));
       /** @todo fix this function to return -1 on failure */
       if(bs_ap->numeric_aspath == NULL) {
-	bgpstream_log_err("get_aspath_struct: can't malloc aspath numeric array");
+	bgpstream_log(BGPSTREAM_LOG_ERR, "Can't malloc aspath numeric array");
         assert(0);
 	return;
       }
