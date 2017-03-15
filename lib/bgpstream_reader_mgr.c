@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "bgpstream_log.h"
-#include "bgpstream_reader.h"
+#include "bgpstream_reader_mgr.h"
 #include "bgpdump/bgpdump_lib.h"
 #include "utils.h"
 
@@ -35,6 +35,31 @@
 
 #define DUMP_OPEN_MAX_RETRIES 5
 #define DUMP_OPEN_MIN_RETRY_WAIT 10
+
+// TODO: clean up
+
+typedef enum {
+  BGPSTREAM_READER_STATUS_VALID_ENTRY,
+  BGPSTREAM_READER_STATUS_FILTERED_DUMP,
+  BGPSTREAM_READER_STATUS_EMPTY_DUMP,
+  BGPSTREAM_READER_STATUS_CANT_OPEN_DUMP,
+  BGPSTREAM_READER_STATUS_CORRUPTED_DUMP,
+  BGPSTREAM_READER_STATUS_END_OF_DUMP
+} bgpstream_reader_status_t;
+
+typedef struct struct_bgpstream_reader_t bgpstream_reader_t;
+
+typedef enum {
+  BGPSTREAM_READER_MGR_STATUS_EMPTY_READER_MGR,
+  BGPSTREAM_READER_MGR_STATUS_NON_EMPTY_READER_MGR
+} bgpstream_reader_mgr_status_t;
+
+struct bgpstream_reader_mgr {
+  bgpstream_reader_t *reader_queue;
+  bgpstream_filter_mgr_t *filter_mgr;
+  bgpstream_reader_mgr_status_t status;
+};
+
 
 struct struct_bgpstream_reader_t {
   struct struct_bgpstream_reader_t *next;
@@ -605,8 +630,7 @@ bgpstream_reader_period_check(bgpstream_resource_t *res,
 
 int bgpstream_reader_mgr_add(bgpstream_reader_mgr_t *bs_reader_mgr,
                              bgpstream_resource_t **res_batch,
-                             int res_batch_cnt,
-                             bgpstream_filter_mgr_t *filter_mgr)
+                             int res_batch_cnt)
 {
   bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSR_MGR: add input: start");
   bgpstream_reader_t *bs_reader = NULL;
@@ -622,10 +646,10 @@ int bgpstream_reader_mgr_add(bgpstream_reader_mgr_t *bs_reader_mgr,
   /* foreach resource, add it to the queue and create a reader */
   int r;
   for (r=0; r<res_batch_cnt; r++) {
-    if (bgpstream_reader_period_check(res_batch[r], filter_mgr)) {
+    if (bgpstream_reader_period_check(res_batch[r], bs_reader_mgr->filter_mgr)) {
       bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSR_MGR: add input: i");
       // a) create a new reader (create includes the first read)
-      bs_reader = bgpstream_reader_create(res_batch[r], filter_mgr);
+      bs_reader = bgpstream_reader_create(res_batch[r], bs_reader_mgr->filter_mgr);
       // if it creates correctly then add it to the temporary queue
       if (bs_reader != NULL) {
         tmp_reader_queue[i] = bs_reader;
@@ -645,7 +669,7 @@ int bgpstream_reader_mgr_add(bgpstream_reader_mgr_t *bs_reader_mgr,
   max = i;
   for (i = 0; i < max; i++) {
     bs_reader = tmp_reader_queue[i];
-    bgpstream_reader_read_new_data(bs_reader, filter_mgr);
+    bgpstream_reader_read_new_data(bs_reader, bs_reader_mgr->filter_mgr);
     bgpstream_reader_mgr_sorted_insert(bs_reader_mgr, bs_reader);
   }
   free(tmp_reader_queue);
@@ -671,8 +695,7 @@ bs_reader_mgr_pop_head(bgpstream_reader_mgr_t *bs_reader_mgr)
 
 int bgpstream_reader_mgr_get_next_record(
   bgpstream_reader_mgr_t *bs_reader_mgr,
-  bgpstream_record_t *bs_record,
-  bgpstream_filter_mgr_t *filter_mgr)
+  bgpstream_record_t *bs_record)
 {
 
   long previous_record_time = 0;
@@ -694,7 +717,7 @@ int bgpstream_reader_mgr_get_next_record(
   bgpstream_reader_t *bs_reader = bs_reader_mgr->reader_queue;
 
   // bgpstream_reader_export
-  bgpstream_reader_export_record(bs_reader, bs_record, filter_mgr);
+  bgpstream_reader_export_record(bs_reader, bs_record, bs_reader_mgr->filter_mgr);
   // we save the difference between successful read
   // and valid read, so we can check if some valid data
   // have been discarded during the last read_new_data
@@ -706,7 +729,7 @@ int bgpstream_reader_mgr_get_next_record(
   if (bs_reader->status == BGPSTREAM_READER_STATUS_VALID_ENTRY) {
 
     previous_record_time = bs_record->attributes.record_time;
-    bgpstream_reader_read_new_data(bs_reader, filter_mgr);
+    bgpstream_reader_read_new_data(bs_reader, bs_reader_mgr->filter_mgr);
 
     // if end of dump is reached after a successful read (already exported)
     // we destroy the reader

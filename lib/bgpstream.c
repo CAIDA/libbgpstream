@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include "bgpstream_int.h"
 #include "bgpstream_log.h"
-#include "bgpstream_reader.h"
+#include "bgpstream_reader_mgr.h"
 #include "bgpstream_di_mgr.h"
 #include "bgpdump_lib.h"
 #include "utils.h"
@@ -264,15 +264,14 @@ int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t *record)
     assert(res_batch != NULL);
     // tell the reader manager about the new resources
     // it takes ownership of the batch
-    if (bgpstream_reader_mgr_add(bs->reader_mgr, res_batch, res_batch_cnt,
-                                 bs->filter_mgr) != 0) {
+    if (bgpstream_reader_mgr_add(bs->reader_mgr,
+                                 res_batch, res_batch_cnt) != 0) {
       goto err;
     }
   }
 
   // if we're here, then the reader manager has data we can get
-  return bgpstream_reader_mgr_get_next_record(bs->reader_mgr, record,
-                                              bs->filter_mgr);
+  return bgpstream_reader_mgr_get_next_record(bs->reader_mgr, record);
 
  err:
   bgpstream_resource_destroy_batch(res_batch, res_batch_cnt, 1);
