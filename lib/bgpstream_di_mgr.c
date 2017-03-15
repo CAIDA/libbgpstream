@@ -372,6 +372,9 @@ void bgpstream_di_mgr_destroy(bgpstream_di_mgr_t *di_mgr)
     return;
   }
 
+  bgpstream_resource_mgr_destroy(di_mgr->res_mgr);
+  di_mgr->res_mgr = NULL;
+
   free(di_mgr->available_dis);
   di_mgr->available_dis = NULL;
   di_mgr->available_dis_cnt = 0;
