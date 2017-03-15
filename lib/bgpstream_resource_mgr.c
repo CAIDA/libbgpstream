@@ -376,7 +376,7 @@ bgpstream_resource_mgr_get_batch(bgpstream_resource_mgr_t *q,
   struct res_group *cur = q->head;
   struct res_list_elem *el;
   int first = 1;
-  uint32_t last_overlap_end;
+  uint32_t last_overlap_end = 0;
 
   while (cur != NULL &&
          (first != 0 || last_overlap_end > cur->overlap_start)) {
@@ -402,8 +402,10 @@ bgpstream_resource_mgr_get_batch(bgpstream_resource_mgr_t *q,
       el = el->next;
     }
 
-    first = 0;
-    last_overlap_end = cur->overlap_end;
+    if (first != 0 || cur->overlap_end > last_overlap_end) {
+      first = 0;
+      last_overlap_end = cur->overlap_end;
+    }
     if (cur->next != NULL) {
       cur->next->prev = NULL;
     }
