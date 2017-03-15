@@ -179,6 +179,49 @@ static int res_group_add(struct res_group *gp,
   return 0;
 }
 
+#if 0
+static void list_dump(struct res_list_elem *el, int log_level)
+{
+  while (el != NULL) {
+    bgpstream_log(log_level, "    res->initial_time: %d",
+                  el->res->initial_time);
+    bgpstream_log(log_level, "    res->uri: %s",
+                  el->res->uri);
+    el = el->next;
+  }
+}
+
+static void queue_dump(struct res_group *head, int log_level)
+{
+  while (head != NULL) {
+    bgpstream_log(log_level,
+                  "res_group: time: %d, overlap_start: %d, "
+                  "overlap_end: %d, cnt: %d",
+                  head->time, head->overlap_start, head->overlap_end,
+                  head->res_cnt);
+
+    int i;
+    for (i=0; i<_BGPSTREAM_RECORD_DUMP_TYPE_CNT; i++) {
+      bgpstream_log(log_level, "  records (type %d):", i);
+      list_dump(head->res_list[i], log_level);
+    }
+
+    head = head->next;
+  }
+}
+
+static void batch_dump(bgpstream_resource_t **batch, int batch_cnt,
+                       int log_level)
+{
+  int i;
+  for (i=0; i<batch_cnt; i++) {
+    bgpstream_log(log_level, "[%d] res->initial_time: %d", i,
+                  batch[i]->initial_time);
+    bgpstream_log(log_level, "[%d] res->uri: %s", i, batch[i]->uri);
+  }
+}
+#endif
+
 /* ========== PUBLIC METHODS BELOW HERE ========== */
 
 bgpstream_resource_mgr_t *
