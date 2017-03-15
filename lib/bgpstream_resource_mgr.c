@@ -272,41 +272,23 @@ bgpstream_resource_mgr_destroy(bgpstream_resource_mgr_t *q)
     }                                                           \
     if (cur->time == res->initial_time) {                       \
       /* just add to the current group */                       \
-      bgpstream_log(BGPSTREAM_LOG_VFINE,                        \
-                     "adding %s to existing group at %d",       \
-                     res->uri, cur->time);                      \
       if (res_group_add(cur, res) != 0) {                       \
         goto err;                                               \
       }                                                         \
     } else {                                                    \
       /* we first need to create a new group */                 \
-      bgpstream_log(BGPSTREAM_LOG_VFINE,                        \
-                    "creating new group at %d for %s",          \
-                    res->initial_time, res->uri);               \
       if ((gp = res_group_create(res)) == NULL) {               \
         goto err;                                               \
       }                                                         \
-      bgpstream_log(BGPSTREAM_LOG_VFINE,                        \
-                    "attaching group->"STR(TODIR)" to cur (%d)",\
-                    cur == NULL ? -1 : cur->time);              \
-      bgpstream_log(BGPSTREAM_LOG_VFINE,                        \
-                    "attaching group->"STR(FROMDIR)" to last (%d)",\
-                    last == NULL ? -1 : last->time);               \
       gp->TODIR = cur;                                          \
       gp->FROMDIR = last;                                       \
       if (cur == NULL) {                                        \
         /* creating a new TOEND */                              \
-        bgpstream_log(BGPSTREAM_LOG_VFINE,                      \
-                      "inserting group %d at " STR(TOEND),      \
-                      gp->time);                                \
         assert(last == q->TOEND);                               \
         last->TODIR = gp;                                       \
         q->TOEND = gp;                                          \
       } else if (last == NULL) {                                \
         /* creating a new FROMEND */                            \
-        bgpstream_log(BGPSTREAM_LOG_VFINE,                      \
-                      "inserting group %d at " STR(FROMEND),     \
-                      gp->time);                                 \
         assert(q->FROMEND == cur);                              \
         cur->FROMDIR = gp;                                      \
         q->FROMEND = gp;                                        \
@@ -314,8 +296,6 @@ bgpstream_resource_mgr_destroy(bgpstream_resource_mgr_t *q)
         /* splicing into the list */                            \
         cur->FROMDIR = gp;                                      \
         last->TODIR = gp;                                       \
-        bgpstream_log(BGPSTREAM_LOG_VFINE,                      \
-                      "splicing group %d", gp->time);           \
       }                                                         \
     }                                                           \
   } while (0)
@@ -339,15 +319,11 @@ bgpstream_resource_mgr_push(bgpstream_resource_mgr_t *q,
                                        collector, record_type)) == NULL) {
     return NULL;
   }
-
   // now figure out where to put it
 
   // is the list empty?
   if (q->head == NULL) {
     assert(q->tail == NULL);
-
-    bgpstream_log(BGPSTREAM_LOG_VFINE, "queue is empty, creating new group %d",
-              res->initial_time);
 
     // create a new res group
     if ((gp = res_group_create(res)) == NULL) {
@@ -369,13 +345,9 @@ bgpstream_resource_mgr_push(bgpstream_resource_mgr_t *q,
   if (abs(res->initial_time - q->head->time) <
       abs(res->initial_time - q->tail->time)) {
     // closer to the head of the list
-    bgpstream_log(BGPSTREAM_LOG_VFINE, "searching forward to insert %d",
-                  res->initial_time);
     QUEUE_PUSH(res, head, tail, <, next, prev);
   } else {
     // equidistant, or closer to the tail
-    bgpstream_log(BGPSTREAM_LOG_VFINE, "searching forward to insert %d",
-                  res->initial_time);
     QUEUE_PUSH(res, tail, head, >, prev, next);
   }
 
@@ -405,14 +377,10 @@ bgpstream_resource_mgr_get_batch(bgpstream_resource_mgr_t *q,
   struct res_list_elem *el;
   int first = 1;
   uint32_t last_overlap_end;
-  bgpstream_log(BGPSTREAM_LOG_VFINE, "creating resource batch");
+
   while (cur != NULL &&
          (first != 0 || last_overlap_end > cur->overlap_start)) {
     // this is included in the batch
-    bgpstream_log(BGPSTREAM_LOG_VFINE,
-                  "including %d in batch with %d resources",
-                  cur->time,
-                  cur->res_cnt);
 
     // realloc the batch
     if ((*res_batch =
@@ -423,8 +391,6 @@ bgpstream_resource_mgr_get_batch(bgpstream_resource_mgr_t *q,
     // first RIBs
     el = cur->res_list[BGPSTREAM_RIB];
     while (el != NULL) {
-      bgpstream_log(BGPSTREAM_LOG_VFINE, "adding rib %s to batch at idx %d",
-                    el->res->uri, res_batch_cnt);
       (*res_batch)[res_batch_cnt++] = el->res;
       el = el->next;
     }
@@ -432,8 +398,6 @@ bgpstream_resource_mgr_get_batch(bgpstream_resource_mgr_t *q,
     el = cur->res_list[BGPSTREAM_UPDATE];
     while (el != NULL) {
       assert(el->res != NULL);
-      bgpstream_log(BGPSTREAM_LOG_VFINE, "adding update %s to batch at idx %d",
-                    el->res->uri, res_batch_cnt);
       (*res_batch)[res_batch_cnt++] = el->res;
       el = el->next;
     }
@@ -451,9 +415,6 @@ bgpstream_resource_mgr_get_batch(bgpstream_resource_mgr_t *q,
     res_group_destroy(cur, 0);
     cur = q->head;
   }
-
-  bgpstream_log(BGPSTREAM_LOG_VFINE, "returning batch with %d resources",
-                res_batch_cnt);
 
   return res_batch_cnt;
 
