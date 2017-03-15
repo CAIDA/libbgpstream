@@ -266,7 +266,7 @@ int main(int argc, char *argv[])
                         "the command line\n",
                 PROJECT_CMD_CNT);
         usage();
-        exit(-1);
+        goto err;
       }
       projects[projects_cnt++] = strdup(optarg);
       break;
@@ -276,7 +276,7 @@ int main(int argc, char *argv[])
                         "the command line\n",
                 COLLECTOR_CMD_CNT);
         usage();
-        exit(-1);
+        goto err;
       }
       collectors[collectors_cnt++] = strdup(optarg);
       break;
@@ -286,7 +286,7 @@ int main(int argc, char *argv[])
                         "the command line\n",
                 TYPE_CMD_CNT);
         usage();
-        exit(-1);
+        goto err;
       }
       types[types_cnt++] = strdup(optarg);
       break;
@@ -296,7 +296,7 @@ int main(int argc, char *argv[])
                         "the command line\n",
                 WINDOW_CMD_CNT);
         usage();
-        exit(-1);
+        goto err;
       }
       /* split the window into a start and end */
       if ((endp = strchr(optarg, ',')) == NULL) {
@@ -315,7 +315,7 @@ int main(int argc, char *argv[])
                         "the command line\n",
                 PEERASN_CMD_CNT);
         usage();
-        exit(-1);
+        goto err;
       }
       peerasns[peerasns_cnt++] = strdup(optarg);
       break;
@@ -325,7 +325,7 @@ int main(int argc, char *argv[])
                         "the command line\n",
                 PREFIX_CMD_CNT);
         usage();
-        exit(-1);
+        goto err;
       }
       prefixes[prefixes_cnt++] = strdup(optarg);
       break;
@@ -336,7 +336,7 @@ int main(int argc, char *argv[])
                 "the command line\n",
                 PREFIX_CMD_CNT);
         usage();
-        exit(-1);
+        goto err;
       }
       communities[communities_cnt++] = strdup(optarg);
       break;
@@ -347,7 +347,7 @@ int main(int argc, char *argv[])
       if ((di_id = bgpstream_get_data_interface_id_by_name(bs, optarg)) == 0) {
         fprintf(stderr, "ERROR: Invalid data interface name '%s'\n", optarg);
         usage();
-        exit(-1);
+        goto err;
       }
       di_info = bgpstream_get_data_interface_info(bs, di_id);
       break;
@@ -357,7 +357,7 @@ int main(int argc, char *argv[])
                 "ERROR: A maximum of %d interface options can be specified\n",
                 OPTION_CMD_CNT);
         usage();
-        exit(-1);
+        goto err;
       }
       interface_options[interface_options_cnt++] = strdup(optarg);
       break;
@@ -386,18 +386,18 @@ int main(int argc, char *argv[])
     case ':':
       fprintf(stderr, "ERROR: Missing option argument for -%c\n", optopt);
       usage();
-      exit(-1);
+      goto err;
       break;
     case '?':
     case 'v':
       fprintf(stderr, "bgpreader version %d.%d.%d\n", BGPSTREAM_MAJOR_VERSION,
               BGPSTREAM_MID_VERSION, BGPSTREAM_MINOR_VERSION);
       usage();
-      exit(0);
+      goto done;
       break;
     default:
       usage();
-      exit(-1);
+      goto err;
     }
   }
 
@@ -405,7 +405,7 @@ int main(int argc, char *argv[])
     if (*interface_options[i] == '?') {
       dump_if_options();
       usage();
-      exit(0);
+      goto done;
     } else {
       /* actually set this option */
       if ((endp = strchr(interface_options[i], ',')) == NULL) {
@@ -413,7 +413,7 @@ int main(int argc, char *argv[])
                 interface_options[i]);
         fprintf(stderr, "ERROR: Expecting <option-name>,<option-value>\n");
         usage();
-        exit(-1);
+        goto err;
       }
       *endp = '\0';
       endp++;
@@ -422,13 +422,13 @@ int main(int argc, char *argv[])
         fprintf(stderr, "ERROR: Invalid option '%s' for data interface '%s'\n",
                 interface_options[i], di_info->name);
         usage();
-        exit(-1);
+        goto err;
       }
       if (bgpstream_set_data_interface_option(bs, option, endp) != 0) {
         fprintf(stderr, "ERROR: Failed to set option '%s' for data interface '%s'\n",
                 interface_options[i], di_info->name);
         usage();
-        exit(-1);
+        goto err;
       }
     }
     free(interface_options[i]);
@@ -442,7 +442,7 @@ int main(int argc, char *argv[])
               "ERROR: At least one time window must be set when using the "
               "broker data interface\n");
       usage();
-      exit(-1);
+      goto err;
     } else {
       fprintf(stderr, "WARN: No time windows specified, defaulting to all "
                       "available data\n");
@@ -576,12 +576,11 @@ int main(int argc, char *argv[])
     }
   } while (get_next_ret > 0);
 
+ done:
   /* de-allocate memory for bs_record */
   bgpstream_record_destroy(bs_record);
-
   /* deallocate memory for interface */
   bgpstream_destroy(bs);
-
   return 0;
 
 err:
