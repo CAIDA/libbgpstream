@@ -74,7 +74,7 @@ static void res_list_destroy(struct res_list_elem *l, int destroy_resource) {
   if (l == NULL) {
     return;
   }
-  struct res_list_elem *cur = l->next;
+  struct res_list_elem *cur = l;
   struct res_list_elem *tmp = NULL;
 
   while (cur != NULL) {
