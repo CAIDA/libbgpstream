@@ -66,7 +66,11 @@ struct bgpstream_resource_mgr {
 
   struct res_group *tail;
 
+  // the number of resources in the queue
   int queue_len;
+
+  // the number of open resources
+  int open_len;
 
 };
 
@@ -222,6 +226,62 @@ static void batch_dump(bgpstream_resource_t **batch, int batch_cnt,
 }
 #endif
 
+// HERE: fix queue_len, open_len
+
+// open all overlapping resources. does not modify the queue
+static int open_batch(bgpstream_resource_mgr_t *q)
+{
+  // start from the head of the queue and open resources until we
+  // find a group that does not overlap with the previous ones
+  struct res_group *cur = q->head;
+  struct res_list_elem *el;
+  int first = 1;
+  uint32_t last_overlap_end = 0;
+
+  while (cur != NULL &&
+         (first != 0 || last_overlap_end > cur->overlap_start)) {
+    // this is included in the batch
+
+    // first open RIBs
+    el = cur->res_list[BGPSTREAM_RIB];
+    while (el != NULL) {
+      assert(el->res != NULL);
+      if (bgpstream_resource_open(el->res) != 0) {
+        bgpstream_log(BGPSTREAM_LOG_ERR,
+                      "Failed to open RIB: %s", el->res->uri);
+        return -1;
+      }
+      el = el->next;
+    }
+    // then open updates
+    el = cur->res_list[BGPSTREAM_UPDATE];
+    while (el != NULL) {
+      assert(el->res != NULL);
+      if (bgpstream_resource_open(el->res) != 0) {
+        bgpstream_log(BGPSTREAM_LOG_ERR,
+                      "Failed to open RIB: %s", el->res->uri);
+        return -1;
+      }
+      el = el->next;
+    }
+
+    // update our overlap calculation
+    if (first != 0 || cur->overlap_end > last_overlap_end) {
+      first = 0;
+      last_overlap_end = cur->overlap_end;
+    }
+
+    cur = cur->next;
+  }
+
+  return 0;
+}
+
+static int pop_record(bgpstream_resource_mgr_t *q, bgpstream_record_t *record)
+{
+  return -1;
+}
+
 /* ========== PUBLIC METHODS BELOW HERE ========== */
 
 bgpstream_resource_mgr_t *
@@ -366,61 +426,24 @@ bgpstream_resource_mgr_empty(bgpstream_resource_mgr_t *q)
 }
 
 int
-bgpstream_resource_mgr_get_batch(bgpstream_resource_mgr_t *q,
-                                 bgpstream_resource_t ***res_batch)
+bgpstream_resource_mgr_get_record(bgpstream_resource_mgr_t *q,
+                                  bgpstream_record_t *record)
 {
-  // start from the head of the queue and add resources to the batch until we
-  // find a group that does not overlap with the last one
-  *res_batch = NULL;
-  int res_batch_cnt = 0;
-  struct res_group *cur = q->head;
-  struct res_list_elem *el;
-  int first = 1;
-  uint32_t last_overlap_end = 0;
-
-  while (cur != NULL &&
-         (first != 0 || last_overlap_end > cur->overlap_start)) {
-    // this is included in the batch
-
-    // realloc the batch
-    if ((*res_batch =
-         realloc(*res_batch, sizeof(bgpstream_resource_t*) *
-                 (res_batch_cnt + cur->res_cnt))) == NULL) {
-      goto err;
-    }
-    // first RIBs
-    el = cur->res_list[BGPSTREAM_RIB];
-    while (el != NULL) {
-      (*res_batch)[res_batch_cnt++] = el->res;
-      el = el->next;
-    }
-    // then updates
-    el = cur->res_list[BGPSTREAM_UPDATE];
-    while (el != NULL) {
-      assert(el->res != NULL);
-      (*res_batch)[res_batch_cnt++] = el->res;
-      el = el->next;
-    }
-
-    if (first != 0 || cur->overlap_end > last_overlap_end) {
-      first = 0;
-      last_overlap_end = cur->overlap_end;
-    }
-    if (cur->next != NULL) {
-      cur->next->prev = NULL;
-    }
-    q->head = cur->next;
-    if (q->tail == cur) {
-      assert(cur->next == NULL);
-      q->tail = NULL;
-    }
-    res_group_destroy(cur, 0);
-    cur = q->head;
+  if (q->queue_len == 0) {
+    // we have nothing in the queue, so return EOS
+    return 0;
   }
 
-  return res_batch_cnt;
+  // we know we have something in the queue, but if we have nothing open, then
+  // it is time to open some resources!
+  if (q->open_len == 0 && open_batch(q) != 0) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to open resource batch");
+    goto err;
+  }
+
+  // we now know that we have open resources to read from, lets do it
+  return pop_record(q, record);
 
  err:
-  free(*res_batch);
   return -1;
 }

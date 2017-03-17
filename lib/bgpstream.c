@@ -33,9 +33,6 @@
 
 struct bgpstream {
 
-  /* our reader manager */
-  bgpstream_reader_mgr_t *reader_mgr;
-
   /* filter manager instance */
   bgpstream_filter_mgr_t *filter_mgr;
 
@@ -68,10 +65,6 @@ bgpstream_t *bgpstream_create()
   }
 
   if ((bs->di_mgr = bgpstream_di_mgr_create(bs->filter_mgr)) == NULL) {
-    goto err;
-  }
-
-  if ((bs->reader_mgr = bgpstream_reader_mgr_create(bs->filter_mgr)) == NULL) {
     goto err;
   }
 
@@ -240,42 +233,14 @@ int bgpstream_start(bgpstream_t *bs)
 int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t *record)
 {
   assert(bs->started);
-  bgpstream_resource_t **res_batch = NULL;
-  int res_batch_cnt = 0;
 
   // if bs_record contains an initialized bgpdump entry we destroy it
   bgpstream_record_clear(record);
   record->bs = bs; // in case the user is using one record with two streams...
 
-  // if we have no data in our local queues, try and get some
-  if (bgpstream_reader_mgr_is_empty(bs->reader_mgr)) {
-    // ask the data interface for more "files"
-    // this call will block if we're in blocking mode
-    if ((res_batch_cnt = bgpstream_di_mgr_get_resource_batch(bs->di_mgr,
-                                                             &res_batch)) < 0) {
-      // error from the data interface
-      goto err;
-    }
-    if (res_batch_cnt == 0) {
-      // no more data (only returned if not in live mode)
-      assert(res_batch == NULL);
-      return 0;
-    }
-    assert(res_batch != NULL);
-    // tell the reader manager about the new resources
-    // it takes ownership of the batch
-    if (bgpstream_reader_mgr_add(bs->reader_mgr,
-                                 res_batch, res_batch_cnt) != 0) {
-      goto err;
-    }
-  }
-
-  // if we're here, then the reader manager has data we can get
-  return bgpstream_reader_mgr_get_next_record(bs->reader_mgr, record);
-
- err:
-  bgpstream_resource_destroy_batch(res_batch, res_batch_cnt, 1);
-  return -1;
+  // now simply ask the DI manager to get us a record
+  return bgpstream_di_mgr_get_next_record(bs->di_mgr,
+                                          record);
 }
 
 /* destroy a bgpstream interface istance
@@ -285,9 +250,6 @@ void bgpstream_destroy(bgpstream_t *bs)
   if (bs == NULL) {
     return;
   }
-
-  bgpstream_reader_mgr_destroy(bs->reader_mgr);
-  bs->reader_mgr = NULL;
 
   bgpstream_filter_mgr_destroy(bs->filter_mgr);
   bs->filter_mgr = NULL;

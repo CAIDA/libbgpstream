@@ -64,8 +64,6 @@ libbgpstreamcaida_la_SOURCES = 	\
 	bgpstream_log.h		\
 	bgpstream_reader.c	\
 	bgpstream_reader.h	\
-	bgpstream_reader_mgr.c	\
-	bgpstream_reader_mgr.h	\
 	bgpstream_record.c	\
 	bgpstream_record.h	\
 	bgpstream_resource.c	\
