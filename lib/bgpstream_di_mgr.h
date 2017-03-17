@@ -140,21 +140,19 @@ void bgpstream_di_mgr_set_blocking(bgpstream_di_mgr_t *di_mgr);
  */
 int bgpstream_di_mgr_start(bgpstream_di_mgr_t *di_mgr);
 
-/** Get the next batch of resource metadata from the active data interface
+/** Get the next record from the stream
  *
  * @param di_mgr          pointer to a data interface manager instance
- * @param[out] res_batch  pointer to be updated to point to a list of resources
- * @return the number of resources in the returned list
+ * @param record          pointer to a (clear) BGPStream record instance
+ * @return >0 if a record was read successfully, 0 if end-of-stream has been
+ * reached, <0 if an error occurred.
  *
  * If the stream is in live mode, this method will block until data is
- * available, otherwise it will return an empty queue to indicate EOF.
- *
- * The returned queue is owned by the caller and must be freed using
- * `bgpstream_resource_mgr_destroy_batch`.
+ * available, otherwise it will return 0 to indicate EOF.
  */
 int
-bgpstream_di_mgr_get_resource_batch(bgpstream_di_mgr_t *di_mgr,
-                                    bgpstream_resource_t ***res_batch);
+bgpstream_di_mgr_get_next_record(bgpstream_di_mgr_t *di_mgr,
+                                 bgpstream_record_t *record);
 
 /** Destroy the given data interface manager
  *

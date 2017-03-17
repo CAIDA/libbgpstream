@@ -100,18 +100,8 @@ bgpstream_resource_create(bgpstream_transport_type_t transport_type,
 /** Destroy the given resource metadata object */
 void bgpstream_resource_destroy(bgpstream_resource_t *resource);
 
-/** Destroy the given batch of resources
- *
- * @param res_batch     pointer to a list of resources to destroy
- * @param res_batch_cnt the number of resources in the list
- * @param destroy_resources if set, the resources in the list will also be
- * destroyed, otherwise only the list itself is destroyed and the resources must
- * be individually destroyed using `bgpstream_resource_destroy`
- */
-void
-bgpstream_resource_destroy_batch(bgpstream_resource_t **res_batch,
-                                 int res_batch_cnt,
-                                 int destroy_resources);
+/** Open the given resource and ready for reading */
+int bgpstream_resource_open(bgpstream_resource_t *resource);
 
 #if 0
 /** Helper function for setting an attribute for a resource object

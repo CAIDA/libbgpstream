@@ -318,12 +318,11 @@ void bgpstream_di_mgr_set_blocking(bgpstream_di_mgr_t *di_mgr)
 }
 
 int
-bgpstream_di_mgr_get_resource_batch(bgpstream_di_mgr_t *di_mgr,
-                                    bgpstream_resource_t ***res_batch)
+bgpstream_di_mgr_get_next_record(bgpstream_di_mgr_t *di_mgr,
+                                 bgpstream_record_t *record)
 {
-  int res_batch_cnt;
-  assert(res_batch != NULL);
-  *res_batch = NULL;
+  // this function is responsible for blocking if we're in live mode
+  int rc;
 
   while(1) {
     // if our queue is empty, ask the DI for more
@@ -333,17 +332,18 @@ bgpstream_di_mgr_get_resource_batch(bgpstream_di_mgr_t *di_mgr,
       return -1;
     }
 
-    // master queue could still be empty, but get batch will just return an
-    // empty batch queue in that case
-    if ((res_batch_cnt =
-         bgpstream_resource_mgr_get_batch(di_mgr->res_mgr, res_batch)) < 0) {
+    // the queue could still be empty at this point
+
+    // master queue could still be empty, but get record will just return EOS
+    // in that case
+    if ((rc = bgpstream_resource_mgr_get_record(di_mgr->res_mgr, record)) < 0) {
       // an error occurred
       return -1;
     }
 
-    // if we have data, or we're not in blocking mode,
-    if (res_batch_cnt != 0 || di_mgr->blocking == 0) {
-      // yield the batch now
+    // if we have a record, or we're not in blocking mode,
+    if (rc > 0 || di_mgr->blocking == 0) {
+      // yield the record now (could be EOS)
       break;
     }
 
@@ -363,7 +363,8 @@ bgpstream_di_mgr_get_resource_batch(bgpstream_di_mgr_t *di_mgr,
 
   di_mgr->backoff_time = DATA_INTERFACE_BLOCKING_MIN_WAIT;
   di_mgr->retry_cnt = 0;
-  return res_batch_cnt;
+
+  return rc;
 }
 
 void bgpstream_di_mgr_destroy(bgpstream_di_mgr_t *di_mgr)

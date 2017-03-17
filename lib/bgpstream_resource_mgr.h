@@ -74,18 +74,17 @@ bgpstream_resource_mgr_push(bgpstream_resource_mgr_t *q,
 int
 bgpstream_resource_mgr_empty(bgpstream_resource_mgr_t *q);
 
-/** Get a batch of overlapping resources from the queue
+/** Get the next record from the stream
  *
  * @param q             pointer to the queue
- * @param[out] res_batch  pointer to be updated to point to a list of resources
- * @return the number of resources in the returned list
+ * @param record        pointer to a record to fill
+ * @return >0 if a record was read successfully, 0 if end-of-stream has been
+ * reached, <0 if an error occurred.
  *
- * The returned queue is owned by the caller and must be freed using
- * `bgpstream_resource_mgr_destroy_batch`.
  */
 int
-bgpstream_resource_mgr_get_batch(bgpstream_resource_mgr_t *q,
-                                 bgpstream_resource_t ***res_batch);
+bgpstream_resource_mgr_get_record(bgpstream_resource_mgr_t *q,
+                                  bgpstream_record_t *record);
 
 
 #endif /* __BGPSTREAM_RESOURCE_MGR_H */

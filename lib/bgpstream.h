@@ -356,7 +356,7 @@ void bgpstream_set_live_mode(bgpstream_t *bs);
  */
 int bgpstream_start(bgpstream_t *bs);
 
-/** Retrieve from the stream, the next record that matches configured filters.
+/** Retrieve from the stream,the next record that matches configured filters.
  *
  * @param bs            pointer to a BGP Stream instance to get record from
  * @param record        pointer to a bgpstream record instance created using
