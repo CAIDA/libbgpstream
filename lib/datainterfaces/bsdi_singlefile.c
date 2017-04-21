@@ -239,7 +239,7 @@ int bsdi_singlefile_update_resources(bsdi_t *di)
                                     RIB_FREQUENCY_CHECK,
                                     "singlefile",
                                     "singlefile",
-                                    BGPSTREAM_RIB) == NULL) {
+                                    BGPSTREAM_RIB) != 0) {
       goto err;
     }
   }
@@ -257,7 +257,7 @@ int bsdi_singlefile_update_resources(bsdi_t *di)
                                     UPDATE_FREQUENCY_CHECK,
                                     "singlefile",
                                     "singlefile",
-                                    BGPSTREAM_UPDATE) == NULL) {
+                                    BGPSTREAM_UPDATE) != 0) {
       goto err;
     }
   }

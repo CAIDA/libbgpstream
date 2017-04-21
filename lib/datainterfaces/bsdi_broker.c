@@ -404,7 +404,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
         fprintf(stderr, "URL: %s\n", url);
         fprintf(stderr, "Project: %s\n", project);
         fprintf(stderr, "Collector: %s\n", collector);
-        fprintf(stderr, "Type: %s\n", type);
+        fprintf(stderr, "Type: %d\n", type);
         fprintf(stderr, "InitialTime: %" PRIu32 "\n", initial_time);
         fprintf(stderr, "Duration: %" PRIu32 "\n", duration);
 #endif
@@ -422,7 +422,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                                         duration,
                                         project,
                                         collector,
-                                        type) == NULL) {
+                                        type) != 0) {
           goto err;
         }
       }

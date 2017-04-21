@@ -59,7 +59,7 @@ bgpstream_resource_create(bgpstream_transport_type_t transport_type,
   if ((res->uri = strdup(uri)) == NULL) {
     goto err;
   }
-  res->initial_time = initial_time;
+  res->initial_time = res->current_time = initial_time;
   res->duration = duration;
   if ((res->project = strdup(project)) == NULL) {
     goto err;
@@ -89,22 +89,6 @@ void bgpstream_resource_destroy(bgpstream_resource_t *resource)
 
   free(resource);
 }
-
-void
-bgpstream_resource_destroy_batch(bgpstream_resource_t **res_batch,
-                                 int res_batch_cnt,
-                                 int destroy_resources)
-{
-  if (destroy_resources) {
-    int i;
-    for (i=0; i<res_batch_cnt; i++) {
-      bgpstream_resource_destroy(res_batch[i]);
-      res_batch[i] = NULL;
-    }
-  }
-  free(res_batch);
-}
-
 
 /* ========== PUBLIC FUNCTIONS BELOW HERE ========== */
 

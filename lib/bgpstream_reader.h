@@ -21,65 +21,41 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _BGPSTREAM_READER_H
-#define _BGPSTREAM_READER_H
+#ifndef __BGPSTREAM_READER_H
+#define __BGPSTREAM_READER_H
 
-#include "bgpstream_filter.h"
-#include "bgpstream_record.h"
 #include "bgpstream_resource.h"
+#include "bgpstream_filter.h"
 
-typedef enum {
-  BGPSTREAM_READER_STATUS_VALID_ENTRY,
-  BGPSTREAM_READER_STATUS_FILTERED_DUMP,
-  BGPSTREAM_READER_STATUS_EMPTY_DUMP,
-  BGPSTREAM_READER_STATUS_CANT_OPEN_DUMP,
-  BGPSTREAM_READER_STATUS_CORRUPTED_DUMP,
-  BGPSTREAM_READER_STATUS_END_OF_DUMP
-} bgpstream_reader_status_t;
-
-// TODO: move back to reader.c
-#include "bgpdump/bgpdump_lib.h"
-struct bgpstream_reader {
-  struct bgpstream_reader *next;
-  char dump_name[BGPSTREAM_DUMP_MAX_LEN];     // name of bgp dump
-  char dump_project[BGPSTREAM_PAR_MAX_LEN];   // name of bgp project
-  char dump_collector[BGPSTREAM_PAR_MAX_LEN]; // name of bgp collector
-  bgpstream_record_dump_type_t dump_type;
-  long dump_time;   // timestamp associated with the time the bgp data was
-                    // aggregated
-  long record_time; // timestamp associated with the current bd_entry
-  BGPDUMP_ENTRY *bd_entry;
-  int successful_read; // n. successful reads, i.e. entry != NULL
-  int valid_read;      // n. reads successful and compatible with filters
-  bgpstream_reader_status_t status;
-
-  BGPDUMP *bd_mgr;
-  /** The thread that opens the bgpdump */
-  pthread_t producer;
-  /* has the thread opened the dump? */
-  int dump_ready;
-  pthread_cond_t dump_ready_cond;
-  pthread_mutex_t mutex;
-  /* have we already checked that the dump is ready? */
-  int skip_dump_check;
-};
-
-/** Opaque structure representting a reader instance */
+/** Opaque structure representing a reader instance */
 typedef struct bgpstream_reader bgpstream_reader_t;
 
+/** Create a new reader for the given resource */
 bgpstream_reader_t *
 bgpstream_reader_create(bgpstream_resource_t *resource,
                         bgpstream_filter_mgr_t *filter_mgr);
 
-void bgpstream_reader_destroy(bgpstream_reader_t *bs_reader);
+/** Block until the resource has opened */
+int bgpstream_reader_open_wait(bgpstream_reader_t *reader);
 
-void
-bgpstream_reader_read_new_data(bgpstream_reader_t *bs_reader,
-                               bgpstream_filter_mgr_t *filter_mgr);
+/** Destroy the given reader */
+void bgpstream_reader_destroy(bgpstream_reader_t *reader);
 
-void
-bgpstream_reader_export_record(bgpstream_reader_t *bs_reader,
-                               bgpstream_record_t *bs_record,
-                               bgpstream_filter_mgr_t *filter_mgr);
+/** Populate the given record with the next data available
+ *
+ * @param reader        pointer to a reader instance
+ * @param record        pointer to a record to populate
+ * @return <0 if an error occurred, 0 if the record is populated correctly but
+ * there are no further records to be read (i.e. EOF has been reached), >0 if
+ * the record has been populated correctly, and there is at least one more
+ * record to be read
+ *
+ * This function also updates the `current_time` field of the resource
+ * associated with the reader to reflect the time of the _next_ record available
+ * from the reader
+ */
+int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
+                                     bgpstream_record_t *record);
 
-#endif /* _BGPSTREAM_READER_H */
+
+#endif /* __BGPSTREAM_READER_H */

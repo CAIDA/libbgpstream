@@ -204,7 +204,7 @@ bgpstream_di_mgr_t *bgpstream_di_mgr_create(bgpstream_filter_mgr_t *filter_mgr)
   }
 
   // default values
-  if((mgr->res_mgr = bgpstream_resource_mgr_create()) == NULL) {
+  if((mgr->res_mgr = bgpstream_resource_mgr_create(filter_mgr)) == NULL) {
     goto err;
   }
   mgr->active_di = BGPSTREAM_DATA_INTERFACE_BROKER;
@@ -332,23 +332,31 @@ bgpstream_di_mgr_get_next_record(bgpstream_di_mgr_t *di_mgr,
       return -1;
     }
 
-    // the queue could still be empty at this point
-
-    // master queue could still be empty, but get record will just return EOS
-    // in that case
-    if ((rc = bgpstream_resource_mgr_get_record(di_mgr->res_mgr, record)) < 0) {
-      // an error occurred
-      return -1;
-    }
-
-    // if we have a record, or we're not in blocking mode,
-    if (rc > 0 || di_mgr->blocking == 0) {
-      // yield the record now (could be EOS)
+    // if the queue is not empty, then grab a record
+    if (bgpstream_resource_mgr_empty(di_mgr->res_mgr) == 0) {
+      if ((rc = bgpstream_resource_mgr_get_record(di_mgr->res_mgr,
+                                                  record)) < 0) {
+        // an error occurred
+        return -1;
+      }
+      if (rc > 0) {
+        break;
+      }
+      // must be EOS, try immediately to refill the queue
+      continue;
+    } else if (di_mgr->blocking == 0) {
+      // queue is empty after a fill attempt, and we're not in blocking mode, so
+      // signal EOS
+      rc = 0;
       break;
     }
 
-    // otherwise, we sleep
+    // either the queue was empty, or it is now
+    assert(bgpstream_resource_mgr_empty(di_mgr->res_mgr) != 0);
+
+    // we're in blocking mode, so we sleep
     if (sleep(di_mgr->backoff_time) != 0) {
+      // interrupted
       break;
     }
     // adjust our sleep time, perhaps
