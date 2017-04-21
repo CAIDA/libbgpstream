@@ -1,3 +1,4 @@
+
 /*
  * This file is part of bgpstream
  *
@@ -265,7 +266,7 @@ static void parse_rowend(int c, void *user_data)
                                       STATE->time_span,
                                       STATE->project,
                                       STATE->collector,
-                                      STATE->record_type) == NULL) {
+                                      STATE->record_type) != 0) {
         assert(0);
       }
     }

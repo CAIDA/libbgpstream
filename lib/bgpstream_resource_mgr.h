@@ -29,13 +29,14 @@
 #include "bgpstream_transport.h"
 #include "bgpstream_format.h"
 #include "bgpstream_resource.h"
+#include "bgpstream_filter.h"
 
 /** Opaque pointer representing a resource manager */
 typedef struct bgpstream_resource_mgr bgpstream_resource_mgr_t;
 
 /** Create a new resource queue */
 bgpstream_resource_mgr_t *
-bgpstream_resource_mgr_create();
+bgpstream_resource_mgr_create(bgpstream_filter_mgr_t *filter_mgr);
 
 /** Destroy the given resource queue */
 void
@@ -52,10 +53,9 @@ bgpstream_resource_mgr_destroy(bgpstream_resource_mgr_t *q);
  * @param project         borrowed pointer to a project name string
  * @param collector       borrowed pointer to a collector name string
  * @param record_type     type of records provided by resource
- * @return if successful, a borrowed pointer to the added resource object to
- * allow addition of attributes, NULL if the push fails.
+ * @return 0 if successful, -1 otherwise
  */
-bgpstream_resource_t *
+int
 bgpstream_resource_mgr_push(bgpstream_resource_mgr_t *q,
                             bgpstream_transport_type_t transport_type,
                             bgpstream_format_type_t format_type,

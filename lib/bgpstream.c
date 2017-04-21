@@ -26,7 +26,6 @@
 #include <stdlib.h>
 #include "bgpstream_int.h"
 #include "bgpstream_log.h"
-#include "bgpstream_reader_mgr.h"
 #include "bgpstream_di_mgr.h"
 #include "bgpdump_lib.h"
 #include "utils.h"
@@ -239,23 +238,21 @@ int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t *record)
   record->bs = bs; // in case the user is using one record with two streams...
 
   // now simply ask the DI manager to get us a record
-  return bgpstream_di_mgr_get_next_record(bs->di_mgr,
-                                          record);
+  return bgpstream_di_mgr_get_next_record(bs->di_mgr, record);
 }
 
-/* destroy a bgpstream interface istance
- */
+/* destroy a bgpstream interface instance */
 void bgpstream_destroy(bgpstream_t *bs)
 {
   if (bs == NULL) {
     return;
   }
 
-  bgpstream_filter_mgr_destroy(bs->filter_mgr);
-  bs->filter_mgr = NULL;
-
   bgpstream_di_mgr_destroy(bs->di_mgr);
   bs->di_mgr = NULL;
+
+  bgpstream_filter_mgr_destroy(bs->filter_mgr);
+  bs->filter_mgr = NULL;
 
   bs->started = 0;
 

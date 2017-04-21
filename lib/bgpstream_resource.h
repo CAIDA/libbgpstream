@@ -66,6 +66,9 @@ typedef struct bgpstream_resource {
       that the resource contains a variable (probably live) length of data */
   uint32_t duration;
 
+  /** The "current" time of the resource (i.e. the time of the next record). */
+  uint32_t current_time;
+
   /** The name of the collection project */
   char *project;
 
@@ -99,9 +102,6 @@ bgpstream_resource_create(bgpstream_transport_type_t transport_type,
 
 /** Destroy the given resource metadata object */
 void bgpstream_resource_destroy(bgpstream_resource_t *resource);
-
-/** Open the given resource and ready for reading */
-int bgpstream_resource_open(bgpstream_resource_t *resource);
 
 #if 0
 /** Helper function for setting an attribute for a resource object
