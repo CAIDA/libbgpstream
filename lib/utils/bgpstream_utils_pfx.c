@@ -50,6 +50,16 @@ char *bgpstream_pfx_snprintf(char *buf, size_t len, bgpstream_pfx_t *pfx)
   return buf;
 }
 
+void bgpstream_pfx_copy(bgpstream_pfx_t *dst, bgpstream_pfx_t *src)
+{
+  if (src->address.version == BGPSTREAM_ADDR_VERSION_IPV4) {
+    memcpy(dst, src, sizeof(bgpstream_ipv4_pfx_t));
+  }
+  if (src->address.version == BGPSTREAM_ADDR_VERSION_IPV6) {
+    memcpy(dst, src, sizeof(bgpstream_ipv6_pfx_t));
+  }
+}
+
 #if UINT_MAX == 0xffffffffu
 unsigned int
 #elif ULONG_MAX == 0xffffffffu
