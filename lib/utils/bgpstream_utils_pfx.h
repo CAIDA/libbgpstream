@@ -133,6 +133,17 @@ typedef struct struct_bgpstream_pfx_storage_t {
  */
 char *bgpstream_pfx_snprintf(char *buf, size_t len, bgpstream_pfx_t *pfx);
 
+/** Copy one prefix into another
+ *
+ * @param dst          pointer to the destination prefix
+ * @param src          pointer to the source prefix
+ *
+ * The destination prefix structure **must** be large enough to hold the source
+ * prefix type (e.g., if src points to an prefix storage structure, it may be
+ * copied into a destination v4 structure **iff** the src version is v4)
+ */
+void bgpstream_pfx_copy(bgpstream_pfx_t *dst, bgpstream_pfx_t *src);
+
 /** Hash the given IPv4 Prefix into a 32bit number
  *
  * @param pfx          pointer to the IPv4 prefix to hash
