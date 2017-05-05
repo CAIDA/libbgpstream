@@ -161,6 +161,7 @@ static void bgpstream_patricia_tree_result_set_clear(
   bgpstream_patricia_tree_result_set_t *set)
 {
   set->n_recs = 0;
+  set->_cursor = 0;
 }
 
 /* ======================= PATRICIA NODE FUNCTIONS ======================= */
