@@ -240,8 +240,15 @@ BGPDUMP_ENTRY *bgpdump_read_next(BGPDUMP *dump)
   }
 
   free(buffer);
-  if (ok) {
+  if (ok > 0) {
     dump->parsed_ok++;
+  } else if (ok < 0) {
+    // corrupted
+    dump->corrupted_read = true;
+    bgpdump_free_mem(this_entry);
+    this_entry = NULL;
+    dump->eof = 1;
+    return NULL;
   } else {
     // printf("case 3 - not corrupted, just empty beginning\n");
     bgpdump_free_mem(this_entry);
@@ -423,7 +430,9 @@ int process_mrtd_table_dump(struct mstream *s, BGPDUMP_ENTRY *entry)
 
   read_asn(s, &entry->body.mrtd_table_dump.peer_as, asn_len);
 
-  entry->attr = process_attributes(s, asn_len, NULL);
+  if ((entry->attr = process_attributes(s, asn_len, NULL)) == NULL) {
+    return 0;
+  }
 
   return 1;
 }
@@ -493,7 +502,7 @@ int process_mrtd_table_dump_v2_peer_index_table(struct mstream *s,
   if (t->entries == NULL) {
     bgpdump_err("process_mrtd_table_dump_v2_peer_index_table: failed to "
                 "allocate memory for index table");
-    return 0;
+    return -1;
   }
 
   for (i = 0; i < t->peer_count; i++) {
@@ -528,7 +537,7 @@ int process_mrtd_table_dump_v2_ipv4_unicast(struct mstream *s,
   if (entry->dump->table_dump_v2_peer_index_table == NULL) {
     bgpdump_err(
       "process_mrtd_table_dump_v2_ipv4_unicast: missing peer index table");
-    return 0;
+    return -1;
   }
 
   prefixdata->afi = AFI_IP;
@@ -546,7 +555,7 @@ int process_mrtd_table_dump_v2_ipv4_unicast(struct mstream *s,
   if (prefixdata->entries == NULL) {
     bgpdump_err("process_mrtd_table_dump_v2_ipv4_unicast: failed to allocate "
                 "memory for entry table");
-    return 0;
+    return -1;
   }
 
   for (i = 0; i < prefixdata->entry_count; i++) {
@@ -560,7 +569,7 @@ int process_mrtd_table_dump_v2_ipv4_unicast(struct mstream *s,
 
     if((e->attr = process_attributes(s, 4, NULL)) == NULL) {
       bgpdump_err("process_attributes failed");
-      return 0;
+      return -1;
     }
   }
 
@@ -578,7 +587,7 @@ int process_mrtd_table_dump_v2_ipv6_unicast(struct mstream *s,
   if (entry->dump->table_dump_v2_peer_index_table == NULL) {
     bgpdump_err(
       "process_mrtd_table_dump_v2_ipv6_unicast: missing peer index table");
-    return 0;
+    return -1;
   }
 
   prefixdata->afi = AFI_IP6;
@@ -598,7 +607,7 @@ int process_mrtd_table_dump_v2_ipv6_unicast(struct mstream *s,
   if (prefixdata->entries == NULL) {
     bgpdump_err("process_mrtd_table_dump_v2_ipv6_unicast: failed to allocate "
                 "memory for entry table");
-    return 0;
+    return -1;
   }
 
   for (i = 0; i < prefixdata->entry_count; i++) {
@@ -610,7 +619,9 @@ int process_mrtd_table_dump_v2_ipv6_unicast(struct mstream *s,
       entry->dump->table_dump_v2_peer_index_table->entries[e->peer_index];
     mstream_getl(s, &e->originated_time);
 
-    e->attr = process_attributes(s, 4, NULL);
+    if ((e->attr = process_attributes(s, 4, NULL)) == NULL) {
+      return -1;
+    }
   }
 
   return 1;
@@ -843,8 +854,10 @@ int process_zebra_bgp_message_update(struct mstream *s, BGPDUMP_ENTRY *entry,
     &withdraw_stream, AFI_IP, entry->body.zebra_message.withdraw,
     &entry->body.zebra_message.incomplete);
 
-  entry->attr =
-    process_attributes(s, asn_len, &entry->body.zebra_message.incomplete);
+  if ((entry->attr = process_attributes(
+         s, asn_len, &entry->body.zebra_message.incomplete)) == NULL) {
+    return -1;
+  }
 
   entry->body.zebra_message.announce_count =
     read_prefix_list(s, AFI_IP, entry->body.zebra_message.announce,
