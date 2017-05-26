@@ -551,7 +551,7 @@ int process_mrtd_table_dump_v2_ipv4_unicast(struct mstream *s,
   mstream_getw(s, &prefixdata->entry_count);
 
   prefixdata->entries =
-    malloc(sizeof(BGPDUMP_TABLE_DUMP_V2_ROUTE_ENTRY) * prefixdata->entry_count);
+    calloc(prefixdata->entry_count, sizeof(BGPDUMP_TABLE_DUMP_V2_ROUTE_ENTRY));
   if (prefixdata->entries == NULL) {
     bgpdump_err("process_mrtd_table_dump_v2_ipv4_unicast: failed to allocate "
                 "memory for entry table");
