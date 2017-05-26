@@ -974,7 +974,7 @@ static int process_one_attr(struct mstream *outer_stream, attributes_t *attr,
     attr->origin = mstream_getc(s, NULL);
     break;
   case BGP_ATTR_AS_PATH:
-    if (!attr->aspath) {
+    if (attr->aspath) {
       bgpdump_err("ERROR attr->aspath is already set");
       return -1;
     }
