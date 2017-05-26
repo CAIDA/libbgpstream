@@ -558,7 +558,10 @@ int process_mrtd_table_dump_v2_ipv4_unicast(struct mstream *s,
       entry->dump->table_dump_v2_peer_index_table->entries[e->peer_index];
     mstream_getl(s, &e->originated_time);
 
-    e->attr = process_attributes(s, 4, NULL);
+    if((e->attr = process_attributes(s, 4, NULL)) == NULL) {
+      bgpdump_err("process_attributes failed");
+      return 0;
+    }
   }
 
   return 1;
@@ -917,7 +920,7 @@ static void process_unknown_attr(struct mstream *s, attributes_t *attr,
   mstream_get(s, unknown.raw, len);
 }
 
-static void process_one_attr(struct mstream *outer_stream, attributes_t *attr,
+static int process_one_attr(struct mstream *outer_stream, attributes_t *attr,
                              u_int8_t asn_len,
                              struct zebra_incomplete *incomplete)
 {
@@ -936,7 +939,7 @@ static void process_one_attr(struct mstream *outer_stream, attributes_t *attr,
   if (mstream_can_read(s) != len) {
     bgpdump_warn("ERROR attribute is truncated: expected=%u remaining=%u\n",
                  len, mstream_can_read(s));
-    return;
+    return -1;
   }
 
   /* Take note of all attributes, including unknown ones */
@@ -1020,6 +1023,8 @@ static void process_one_attr(struct mstream *outer_stream, attributes_t *attr,
   default:
     process_unknown_attr(s, attr, flag, type, len);
   }
+
+  return 0;
 }
 
 attributes_t *process_attributes(struct mstream *s, u_int8_t asn_len,
@@ -1034,8 +1039,12 @@ attributes_t *process_attributes(struct mstream *s, u_int8_t asn_len,
     bgpdump_warn("entry is truncated: expected=%u remaining=%u", total,
                  mstream_can_read(&copy));
 
-  while (mstream_can_read(&copy))
-    process_one_attr(&copy, attr, asn_len, incomplete);
+  while (mstream_can_read(&copy)) {
+    if (process_one_attr(&copy, attr, asn_len, incomplete) != 0) {
+      bgpdump_warn("process_one_attr failed, stopping attribute processing");
+      return NULL;
+    }
+  }
 
   // Once all attributes have been read, take care of ASN32 transition
   process_asn32_trans(attr, asn_len);
