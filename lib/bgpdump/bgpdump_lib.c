@@ -967,37 +967,58 @@ static int process_one_attr(struct mstream *outer_stream, attributes_t *attr,
     process_mp_withdraw(s, attr->mp_info, incomplete);
     break;
   case BGP_ATTR_ORIGIN:
-    assert(attr->origin == -1);
+    if(attr->origin != -1) {
+      bgpdump_err("ERROR attr->origin is already set");
+      return -1;
+    }
     attr->origin = mstream_getc(s, NULL);
     break;
   case BGP_ATTR_AS_PATH:
-    assert(!attr->aspath);
+    if (!attr->aspath) {
+      bgpdump_err("ERROR attr->aspath is already set");
+      return -1;
+    }
     attr->aspath = create_aspath(len, asn_len);
     mstream_get(s, attr->aspath->data, len);
     /*process_attr_aspath_string(attr->aspath);*/
     break;
   case BGP_ATTR_NEXT_HOP:
-    assert(INADDR_NONE == attr->nexthop.s_addr);
+    if (INADDR_NONE != attr->nexthop.s_addr) {
+      bgpdump_err("ERROR attr->nexthop is already set");
+      return -1;
+    }
     attr->nexthop = mstream_get_ipv4(s);
     break;
   case BGP_ATTR_MULTI_EXIT_DISC:
-    assert(-1 == attr->med);
+    if (-1 != attr->med) {
+      bgpdump_err("ERROR attr->med is already set");
+      return -1;
+    }
     mstream_getl(s, &attr->med);
     break;
   case BGP_ATTR_LOCAL_PREF:
-    assert(-1 == attr->local_pref);
+    if (-1 != attr->local_pref) {
+      bgpdump_err("ERROR attr->local_pref is already set");
+      return -1;
+    }
     mstream_getl(s, &attr->local_pref);
     break;
   case BGP_ATTR_ATOMIC_AGGREGATE:
     break;
   case BGP_ATTR_AGGREGATOR:
     // wrong aggregator as was checked here
-    assert(-1 == attr->aggregator_as);
+    if (-1 != attr->aggregator_as) {
+      bgpdump_err("ERROR attr->aggregator_as is already set");
+      return -1;
+    }
     read_asn(s, &attr->aggregator_as, asn_len);
     attr->aggregator_addr = mstream_get_ipv4(s);
     break;
   case BGP_ATTR_COMMUNITIES:
-    assert(!attr->community);
+    if (attr->community) {
+      bgpdump_err("ERROR attr->community is already set");
+      return -1;
+    }
     attr->community = malloc(sizeof(struct community));
     attr->community->size = len / 4;
     attr->community->val = malloc(len);
@@ -1006,7 +1027,10 @@ static int process_one_attr(struct mstream *outer_stream, attributes_t *attr,
     /*process_attr_community_string(attr->community);*/
     break;
   case BGP_ATTR_NEW_AS_PATH:
-    assert(!attr->new_aspath);
+    if (attr->new_aspath) {
+      bgpdump_err("ERROR attr->new_aspath is already set");
+      return -1;
+    }
     attr->new_aspath = create_aspath(len, ASN32_LEN);
     mstream_get(s, attr->new_aspath->data, len);
     /*process_attr_aspath_string(attr->new_aspath);*/
@@ -1014,16 +1038,25 @@ static int process_one_attr(struct mstream *outer_stream, attributes_t *attr,
     check_new_aspath(attr->new_aspath);
     break;
   case BGP_ATTR_NEW_AGGREGATOR:
-    assert(-1 == attr->new_aggregator_as);
+    if (-1 != attr->new_aggregator_as) {
+      bgpdump_err("ERROR attr->new_aggregator_as is already set");
+      return -1;
+    }
     read_asn(s, &attr->new_aggregator_as, ASN32_LEN);
     attr->new_aggregator_addr = mstream_get_ipv4(s);
     break;
   case BGP_ATTR_ORIGINATOR_ID:
-    assert(INADDR_NONE == attr->originator_id.s_addr);
+    if (INADDR_NONE != attr->originator_id.s_addr) {
+      bgpdump_err("ERROR attr->originator_id is already set");
+      return -1;
+    }
     attr->originator_id = mstream_get_ipv4(s);
     break;
   case BGP_ATTR_CLUSTER_LIST:
-    assert(!attr->cluster);
+    if (attr->cluster) {
+      bgpdump_err("ERROR attr->cluster is already set");
+      return -1;
+    }
     attr->cluster = malloc(sizeof(struct cluster_list));
     attr->cluster->length = len / 4;
     attr->cluster->list =
