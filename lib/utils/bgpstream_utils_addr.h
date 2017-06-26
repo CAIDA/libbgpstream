@@ -256,10 +256,10 @@ bgpstream_ipv4_addr_t *bgpstream_ipv4_addr_mask(bgpstream_ipv4_addr_t *addr,
 bgpstream_ipv6_addr_t *bgpstream_ipv6_addr_mask(bgpstream_ipv6_addr_t *addr,
                                                 uint8_t mask);
 
-/** Copy one prefix into another
+/** Copy one address into another
  *
- * @param dst          pointer to the destination prefix
- * @param src          pointer to the source prefix
+ * @param dst          pointer to the destination address
+ * @param src          pointer to the source address
  *
  * The destination address structure **must** be large enough to hold the source
  * address type (e.g., if src points to an address storage structure, it may be
