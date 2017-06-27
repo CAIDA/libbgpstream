@@ -77,14 +77,15 @@ bgpstream_resource_mgr_empty(bgpstream_resource_mgr_t *q);
 /** Get the next record from the stream
  *
  * @param q             pointer to the queue
- * @param record        pointer to a record to fill
+ * @param[out] record   set to a borrowed pointer to a record if the return
+ *                      code is >0
  * @return >0 if a record was read successfully, 0 if end-of-stream has been
  * reached, <0 if an error occurred.
  *
  */
 int
 bgpstream_resource_mgr_get_record(bgpstream_resource_mgr_t *q,
-                                  bgpstream_record_t *record);
+                                  bgpstream_record_t **record);
 
 
 #endif /* __BGPSTREAM_RESOURCE_MGR_H */

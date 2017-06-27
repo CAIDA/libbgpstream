@@ -22,12 +22,13 @@
  */
 
 #include "bgpstream_reader.h"
+#include "bgpstream_record_int.h"
+#include "bgpdump_lib.h"
 #include "bgpstream_log.h"
 #include "utils.h"
-#include "bgpdump_lib.h"
 #include <assert.h>
-#include <unistd.h>
 #include <pthread.h>
+#include <unistd.h>
 
 // TODO: refactor this into transport and format modules
 
@@ -118,7 +119,11 @@ static int prefetch_record(bgpstream_reader_t *reader)
   assert(reader->rec_buf_filled[PREFETCH_IDX] == 0);
 
   record = reader->rec_buf[PREFETCH_IDX];
-  assert(record->bd_entry == NULL);
+
+  // first, clear up our record
+  // note that this only destroys the bgpdump struct and resets the elem
+  // generator. it does not clear the collector name etc as we reuse that.
+  bgpstream_record_clear(record);
 
   while (1) {
     // try and get the next entry from the file
@@ -233,6 +238,7 @@ static int prefetch_record(bgpstream_reader_t *reader)
   if (reader->status != END_OF_DUMP) {
     reader->rec_buf_filled[PREFETCH_IDX] = 1;
   }
+
   return 0;
 }
 
@@ -272,24 +278,6 @@ static void *threaded_opener(void *user)
   pthread_mutex_unlock(&reader->mutex);
 
   return NULL;
-}
-
-// does NOT copy the BS pointer or elem generator
-static int record_copy(bgpstream_record_t *dst, bgpstream_record_t *src)
-{
-  // bd entry
-  dst->bd_entry = src->bd_entry;
-
-  // attributes
-  memcpy(&dst->attributes, &src->attributes,
-         sizeof(bgpstream_record_attributes_t));
-
-  // status
-  dst->status = src->status;
-
-  dst->dump_pos = src->dump_pos;
-
-  return 0;
 }
 
 // fills the record with resource-level info that doesn't change per-record
@@ -400,7 +388,7 @@ int bgpstream_reader_open_wait(bgpstream_reader_t *reader)
 }
 
 int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
-                                     bgpstream_record_t *record)
+                                     bgpstream_record_t **record)
 {
   // DO NOT use the prefetch record before open_wait!
 
@@ -409,16 +397,15 @@ int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
     assert(reader->successful_read_cnt == 0 && reader->valid_read_cnt == 0);
     // we're not going to last long, but we should return the record saying we're
     // a failure
-    if (record_copy(record, reader->rec_buf[PREFETCH_IDX]) != 0) {
-      return -1;
-    }
-    record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE;
-    assert(record->bd_entry == NULL);
+    *record = reader->rec_buf[PREFETCH_IDX];
+    (*record)->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE;
+    assert((*record)->bd_entry == NULL);
     return 0; // EOF
   }
 
   // mark the previous record as unfilled (about to become PREFETCH_IDX)
   reader->rec_buf_filled[EXPORTED_IDX] = 0;
+  // the record contents will be cleared by the next prefetch
 
   // by here we are guaranteed to have a prefetched record waiting, so flip-flop
   // the buffers
@@ -441,12 +428,7 @@ int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
 
   // we have something in our EXPORT record, so go ahead and copy that into the
   // user's record
-  if (record_copy(record, reader->rec_buf[EXPORTED_IDX]) != 0) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not copy record");
-    return -1;
-  }
-  // unlink our bgpdump record, since we've given up ownership
-  reader->rec_buf[EXPORTED_IDX]->bd_entry = NULL;
+  *record = reader->rec_buf[EXPORTED_IDX];
 
   return 1;
 }

@@ -33,14 +33,15 @@
 #include "bgpstream_log.h"
 #include "bgpstream_elem_generator.h"
 #include "bgpstream_record.h"
+#include "utils.h"
 
 /* allocate memory for a bs_record */
 bgpstream_record_t *bgpstream_record_create()
 {
   bgpstream_log(BGPSTREAM_LOG_VFINE, "BS: create record start");
   bgpstream_record_t *bs_record;
-  if ((bs_record = (bgpstream_record_t *)malloc(sizeof(bgpstream_record_t))) ==
-      NULL) {
+  if ((bs_record = (bgpstream_record_t *)malloc_zero(
+         sizeof(bgpstream_record_t))) == NULL) {
     return NULL; // can't allocate memory
   }
 
@@ -51,8 +52,6 @@ bgpstream_record_t *bgpstream_record_create()
     bgpstream_record_destroy(bs_record);
     return NULL;
   }
-
-  bgpstream_record_clear(bs_record);
 
   bgpstream_log(BGPSTREAM_LOG_VFINE, "BS: create record end");
   return bs_record;
@@ -82,21 +81,15 @@ void bgpstream_record_destroy(bgpstream_record_t *const bs_record)
   bgpstream_log(BGPSTREAM_LOG_VFINE, "BS: destroy record end");
 }
 
+/* NOTE: this function deliberately does not reset many of the fields in a
+   record, since in the v2 implementation of BGPStream records are specific to a
+   reader and thus these fields can be reused between reads. */
 void bgpstream_record_clear(bgpstream_record_t *record)
 {
-  record->status = BGPSTREAM_RECORD_STATUS_EMPTY_SOURCE;
-  record->dump_pos = BGPSTREAM_DUMP_START;
-  record->attributes.dump_project[0] = '\0';
-  record->attributes.dump_collector[0] = '\0';
-  record->attributes.dump_type = BGPSTREAM_UPDATE;
-  record->attributes.dump_time = 0;
-  record->attributes.record_time = 0;
-
   if (record->bd_entry != NULL) {
     bgpdump_free_mem(record->bd_entry);
     record->bd_entry = NULL;
   }
-  // record->bs = NULL;
 
   bgpstream_elem_generator_clear(record->elem_generator);
 }

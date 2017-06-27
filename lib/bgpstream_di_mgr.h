@@ -143,7 +143,8 @@ int bgpstream_di_mgr_start(bgpstream_di_mgr_t *di_mgr);
 /** Get the next record from the stream
  *
  * @param di_mgr          pointer to a data interface manager instance
- * @param record          pointer to a (clear) BGPStream record instance
+ * @param[out] record     set to a borrowed pointer to a record if the return
+ *                        code is >0
  * @return >0 if a record was read successfully, 0 if end-of-stream has been
  * reached, <0 if an error occurred.
  *
@@ -152,7 +153,7 @@ int bgpstream_di_mgr_start(bgpstream_di_mgr_t *di_mgr);
  */
 int
 bgpstream_di_mgr_get_next_record(bgpstream_di_mgr_t *di_mgr,
-                                 bgpstream_record_t *record);
+                                 bgpstream_record_t **record);
 
 /** Destroy the given data interface manager
  *

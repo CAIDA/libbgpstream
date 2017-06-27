@@ -169,31 +169,6 @@ typedef struct struct_bgpstream_record_t {
  *
  * @{ */
 
-/** Create a new BGP Stream Record instance for passing to
- * bgpstream_get_next_record.
- *
- * @return a pointer to a Record instance if successful, NULL otherwise
- *
- * A Record may be reused for successive calls to bgpstream_get_next_record if
- * records are processed independently of each other
- */
-bgpstream_record_t *bgpstream_record_create();
-
-/** Destroy the given BGP Stream Record instance
- *
- * @param record        pointer to a BGP Stream Record instance to destroy
- */
-void bgpstream_record_destroy(bgpstream_record_t *record);
-
-/** Clear the given BGP Stream Record instance
- *
- * @param record        pointer to a BGP Stream Record instance to clear
- *
- * @note the record passed to bgpstream_get_next_record is automatically
- * cleaned.
- */
-void bgpstream_record_clear(bgpstream_record_t *record);
-
 /** Retrieve the next elem from the record
  *
  * @param record        pointer to the BGP Stream Record to retrieve the elem

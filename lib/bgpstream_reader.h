@@ -44,7 +44,8 @@ void bgpstream_reader_destroy(bgpstream_reader_t *reader);
 /** Populate the given record with the next data available
  *
  * @param reader        pointer to a reader instance
- * @param record        pointer to a record to populate
+ * @param[out] record   set to a borrowed pointer to a record if the return
+ *                      code is >0
  * @return <0 if an error occurred, 0 if the record is populated correctly but
  * there are no further records to be read (i.e. EOF has been reached), >0 if
  * the record has been populated correctly, and there is at least one more
@@ -55,7 +56,7 @@ void bgpstream_reader_destroy(bgpstream_reader_t *reader);
  * from the reader
  */
 int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
-                                     bgpstream_record_t *record);
+                                     bgpstream_record_t **record);
 
 
 #endif /* __BGPSTREAM_READER_H */

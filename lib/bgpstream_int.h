@@ -25,10 +25,8 @@
 #define _BGPSTREAM_INT_H
 
 #include "bgpstream.h"
-//#include "bgpstream_di_mgr.h"
 #include "bgpstream_filter.h"
-//#include "bgpstream_input.h"
-//#include "bgpstream_reader.h"
+#include "bgpstream_record_int.h"
 
 /** Get a borrowed pointer to the filter manager currently in use */
 bgpstream_filter_mgr_t *bgpstream_int_get_filter_mgr(bgpstream_t *bs);
