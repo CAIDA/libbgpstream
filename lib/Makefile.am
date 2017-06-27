@@ -21,7 +21,7 @@
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-SUBDIRS= bgpdump datainterfaces transports utils
+SUBDIRS= bgpdump datainterfaces formats transports utils
 
 # AM_CPPFLAGS - The contents of this variable are passed to every compilation
 # that invokes the C preprocessor; it is a list of arguments to the
@@ -29,6 +29,7 @@ SUBDIRS= bgpdump datainterfaces transports utils
 AM_CPPFLAGS = 	-I$(top_srcdir) \
 		-I$(top_srcdir)/lib/bgpdump \
 		-I$(top_srcdir)/lib/datainterfaces \
+		-I$(top_srcdir)/lib/formats \
 		-I$(top_srcdir)/lib/transports \
                 -I$(top_srcdir)/lib/utils \
 	 	-I$(top_srcdir)/common
@@ -60,6 +61,8 @@ libbgpstreamcaida_la_SOURCES = 	\
 	bgpstream_filter_parser.h	\
 	bgpstream_filter_parser.c	\
 	bgpstream_format.h	\
+	bgpstream_format.c	\
+	bgpstream_format_interface.h	\
 	bgpstream_int.h		\
 	bgpstream_log.c		\
 	bgpstream_log.h		\

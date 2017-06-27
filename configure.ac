@@ -394,6 +394,7 @@ AC_CONFIG_FILES([Makefile
                 lib/bgpdump/Makefile
                 lib/datainterfaces/Makefile
                 lib/transports/Makefile
+                lib/formats/Makefile
                 lib/utils/Makefile
 		tools/Makefile
 		test/Makefile])

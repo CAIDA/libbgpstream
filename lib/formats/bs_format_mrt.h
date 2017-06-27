@@ -21,16 +21,11 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __BGPSTREAM_FORMAT_H
-#define __BGPSTREAM_FORMAT_H
+#ifndef __BS_FORMAT_FILE_H
+#define __BS_FORMAT_FILE_H
 
-#include "bgpstream_resource.h"
+#include "bgpstream_format_interface.h"
 
+BS_FORMAT_GENERATE_PROTOS(mrt);
 
-/** Generic interface to specific data format modules */
-typedef struct bgpstream_format bgpstream_format_t;
-
-/* TODO: add format API here */
-
-
-#endif /* __BGPSTREAM_FORMAT_H */
+#endif /* __BS_FORMAT_FILE_H */
