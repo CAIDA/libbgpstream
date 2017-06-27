@@ -365,8 +365,8 @@ int bsdi_sqlite_update_resources(bsdi_t *di)
     uint32_t duration = sqlite3_column_int(STATE->stmt, 4);
 
     if (bgpstream_resource_mgr_push(BSDI_GET_RES_MGR(di),
-                                    BGPSTREAM_TRANSPORT_FILE,
-                                    BGPSTREAM_FORMAT_MRT,
+                                    BGPSTREAM_RESOURCE_TRANSPORT_FILE,
+                                    BGPSTREAM_RESOURCE_FORMAT_MRT,
                                     path,
                                     file_time,
                                     duration,

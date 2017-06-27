@@ -21,8 +21,11 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __BGPSTREAM_FORMAT_H
-#define __BGPSTREAM_FORMAT_H
+#ifndef __BS_TRANSPORT_FILE_H
+#define __BS_TRANSPORT_FILE_H
 
+#include "bgpstream_transport_interface.h"
 
-#endif /* __BGPSTREAM_FORMAT_H */
+BS_TRANSPORT_GENERATE_PROTOS(file);
+
+#endif /* __BS_TRANSPORT_FILE_H */

@@ -26,8 +26,34 @@
 
 #include <stdint.h>
 #include "bgpstream_record.h"
-#include "bgpstream_transport.h"
-#include "bgpstream_format.h"
+
+/** Types of transport supported */
+typedef enum {
+
+  /** Data is in a file (either local or via HTTP) */
+  BGPSTREAM_RESOURCE_TRANSPORT_FILE = 0,
+
+  /** Data is served from a Kafka queue */
+  //  BGPSTREAM_RESOURCE_TRANSPORT_KAFKA = 1,
+
+  /** Data is streamed via websockets */
+  //  BGPSTREAM_RESOURCE_TRANSPORT_WEBSOCKET = 2,
+
+} bgpstream_resource_transport_type_t;
+
+/** Encapsulation/encoding formats supported */
+typedef enum bgpstream_resource_format_type {
+
+  /** Native BGP data encapsulated in MRT */
+  BGPSTREAM_RESOURCE_FORMAT_MRT,
+
+  /** Native BGP data encapsulated in BMP */
+  //  BGPSTREAM_RESOURCE_FORMAT_BMP,
+
+  /** RIPE-format data encapsulated in JSON */
+  //  BGPSTREAM_RESOURCE_FORMAT_RIPEJSON,
+
+} bgpstream_resource_format_type_t;
 
 /** Set of possible resource attribute types */
 typedef enum bgpstream_resource_attr_type {
@@ -46,12 +72,12 @@ typedef struct bgpstream_resource {
   /** The Transport Protocol to use for this resource
    *  (e.g. kafka, file, websockets)
    */
-  bgpstream_transport_type_t transport_type;
+  bgpstream_resource_transport_type_t transport_type;
 
   /** The encapsulation/encoding format of this resource
    * (e.g. MRT/Binary, BMP/Binary, JSON/Binary, JSON/RIPE-ASCII etc.)
    */
-  bgpstream_format_type_t format_type;
+  bgpstream_resource_format_type_t format_type;
 
   /** Protocol/format specific info
    * (e.g. filename, kafka brokers, etc.)
@@ -92,8 +118,8 @@ typedef struct bgpstream_resource {
 
 /** Create a new resource metadata object */
 bgpstream_resource_t *
-bgpstream_resource_create(bgpstream_transport_type_t transport_type,
-                          bgpstream_format_type_t format_type,
+bgpstream_resource_create(bgpstream_resource_transport_type_t transport_type,
+                          bgpstream_resource_format_type_t format_type,
                           const char *uri,
                           uint32_t initial_time,
                           uint32_t duration,

@@ -40,8 +40,8 @@ typedef struct {
 } attr_t;
 
 bgpstream_resource_t *
-bgpstream_resource_create(bgpstream_transport_type_t transport_type,
-                          bgpstream_format_type_t format_type,
+bgpstream_resource_create(bgpstream_resource_transport_type_t transport_type,
+                          bgpstream_resource_format_type_t format_type,
                           const char *uri,
                           uint32_t initial_time,
                           uint32_t duration,
@@ -115,13 +115,13 @@ bgpstream_resource_get_attr(bgpstream_resource_t *resource,
 }
 #endif
 
-bgpstream_transport_type_t
+bgpstream_resource_transport_type_t
 bgpstream_resource_get_transport_type(bgpstream_resource_t *resource)
 {
   return resource->transport_type;
 }
 
-bgpstream_format_type_t
+bgpstream_resource_format_type_t
 bgpstream_resource_get_format_type(bgpstream_resource_t *resource)
 {
   return resource->format_type;

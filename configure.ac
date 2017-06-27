@@ -213,6 +213,28 @@ if test "x$with_di_csvfile" == xyes; then
    BS_DI_OPT(csvfile-csv-file, CSVFILE_CSV_FILE, CSV file listing the MRT data to read, not-set)
 fi
 
+AC_MSG_NOTICE([])
+AC_MSG_NOTICE([checking transport modules...])
+
+# shall we build with support for the kafka transport module?
+AC_MSG_CHECKING([whether to build kafka transport module])
+AC_ARG_WITH([transport-kafka],
+	[AS_HELP_STRING([--without-transport-kafka],
+	  [do not compile the kafka transport module])],
+	  [],
+	  [with_transport_kafka=yes])
+AC_MSG_RESULT([$with_transport_kafka])
+
+AM_CONDITIONAL([WITH_TRANSPORT_KAFKA], [test "x$with_transport_kafka" != xno])
+
+if test x"$with_transport_kafka" = xyes; then
+AC_CHECK_LIB([rdkafka], [rd_kafka_query_watermark_offsets], ,
+               [AC_MSG_ERROR(
+                 [librdkafka is required for kafka (--without-transport-kafka to disable)])])
+
+AC_DEFINE([WITH_TRANSPORT_KAFKA],[1],[Building kafka transport module])
+fi
+
 AC_MSG_NOTICE([---------------------------------])
 
 # TODO: make BGPView optional
@@ -371,6 +393,7 @@ AC_CONFIG_FILES([Makefile
 		lib/Makefile
                 lib/bgpdump/Makefile
                 lib/datainterfaces/Makefile
+                lib/transports/Makefile
                 lib/utils/Makefile
 		tools/Makefile
 		test/Makefile])

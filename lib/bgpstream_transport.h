@@ -24,18 +24,33 @@
 #ifndef __BGPSTREAM_TRANSPORT_H
 #define __BGPSTREAM_TRANSPORT_H
 
-/** Types of transport supported */
-typedef enum {
+#include "bgpstream_resource.h"
 
-  /** Data is in a file (either local or via HTTP) */
-  BGPSTREAM_TRANSPORT_FILE,
 
-  /** Data is served from a Kafka queue */
-  //  BGPSTREAM_TRANSPORT_KAFKA,
+/** Generic interface to specific data transport modules */
+typedef struct bgpstream_transport bgpstream_transport_t;
 
-  /** Data is streamed via websockets */
-  //  BGPSTREAM_TRANSPORT_WEBSOCKET,
 
-} bgpstream_transport_type_t;
+/** Create a transport handler for the given resource
+ *
+ * @param res           pointer to a resource
+ * @return pointer to a transport module instance if successful, NULL otherwise
+ */
+bgpstream_transport_t *
+bgpstream_transport_create(bgpstream_resource_t *res);
+
+/** Read from the given transport handler
+ *
+ * @param transport     pointer to a transport handler to read from
+ * @return the number of bytes read if successful, -1 otherwise
+ */
+ssize_t bgpstream_transport_read(bgpstream_transport_t *transport,
+                                 uint8_t *buffer, size_t len);
+
+/** Shutdown and destroy the given transport handler
+ *
+ * @param transport     pointer to a transport handler to destroy
+ */
+void bgpstream_transport_destroy(bgpstream_transport_t *transport);
 
 #endif /* __BGPSTREAM_TRANSPORT_H */
