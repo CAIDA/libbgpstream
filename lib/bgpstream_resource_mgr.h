@@ -57,8 +57,8 @@ bgpstream_resource_mgr_destroy(bgpstream_resource_mgr_t *q);
  */
 int
 bgpstream_resource_mgr_push(bgpstream_resource_mgr_t *q,
-                            bgpstream_transport_type_t transport_type,
-                            bgpstream_format_type_t format_type,
+                            bgpstream_resource_transport_type_t transport_type,
+                            bgpstream_resource_format_type_t format_type,
                             const char *uri,
                             uint32_t initial_time,
                             uint32_t duration,

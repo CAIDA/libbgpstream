@@ -415,8 +415,8 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
         }
 
         if (bgpstream_resource_mgr_push(BSDI_GET_RES_MGR(di),
-                                        BGPSTREAM_TRANSPORT_FILE,
-                                        BGPSTREAM_FORMAT_MRT,
+                                        BGPSTREAM_RESOURCE_TRANSPORT_FILE,
+                                        BGPSTREAM_RESOURCE_FORMAT_MRT,
                                         url,
                                         initial_time,
                                         duration,

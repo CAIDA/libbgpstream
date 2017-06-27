@@ -232,8 +232,8 @@ int bsdi_singlefile_update_resources(bsdi_t *di)
     STATE->last_rib_filetime = now;
 
     if (bgpstream_resource_mgr_push(BSDI_GET_RES_MGR(di),
-                                    BGPSTREAM_TRANSPORT_FILE,
-                                    BGPSTREAM_FORMAT_MRT,
+                                    BGPSTREAM_RESOURCE_TRANSPORT_FILE,
+                                    BGPSTREAM_RESOURCE_FORMAT_MRT,
                                     STATE->rib_file,
                                     STATE->last_rib_filetime,
                                     RIB_FREQUENCY_CHECK,
@@ -250,8 +250,8 @@ int bsdi_singlefile_update_resources(bsdi_t *di)
     STATE->last_update_filetime = now;
 
     if (bgpstream_resource_mgr_push(BSDI_GET_RES_MGR(di),
-                                    BGPSTREAM_TRANSPORT_FILE,
-                                    BGPSTREAM_FORMAT_MRT,
+                                    BGPSTREAM_RESOURCE_TRANSPORT_FILE,
+                                    BGPSTREAM_RESOURCE_FORMAT_MRT,
                                     STATE->update_file,
                                     STATE->last_update_filetime,
                                     UPDATE_FREQUENCY_CHECK,
