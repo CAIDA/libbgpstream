@@ -402,7 +402,6 @@ static int sort_batch(bgpstream_resource_mgr_t *q)
   struct res_group *cur = q->head;
   struct res_list_elem *el;
   struct res_list_elem *el_nxt;
-  uint32_t prev_time;
   int empty_groups = 0;
 
   // wait for the batch to open first
@@ -428,7 +427,6 @@ static int sort_batch(bgpstream_resource_mgr_t *q)
     el = cur->res_list[BGPSTREAM_RIB];
     while (el != NULL) {
       el_nxt = el->next;
-      prev_time = el->res->current_time;
       if (bgpstream_reader_open_wait(el->reader) != 0) {
         return -1;
       }
