@@ -21,16 +21,17 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __BGPSTREAM_FORMAT_H
-#define __BGPSTREAM_FORMAT_H
+#include "bgpstream_format_interface.h"
+#include "bgpstream_log.h"
+#include "bs_format_mrt.h"
 
-#include "bgpstream_resource.h"
+int bs_format_mrt_create(bgpstream_format_t *format,
+                         bgpstream_resource_t *res)
+{
+  BS_FORMAT_SET_METHODS(file, format);
 
+  // TODO: create bgpdump reader here
+  // NOTE: format->transport should already be created for us
 
-/** Generic interface to specific data format modules */
-typedef struct bgpstream_format bgpstream_format_t;
-
-/* TODO: add format API here */
-
-
-#endif /* __BGPSTREAM_FORMAT_H */
+  return 0;
+}

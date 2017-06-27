@@ -46,13 +46,6 @@
                                      uint8_t *buffer, size_t len);             \
   void bs_transport_##name##_destroy(bgpstream_transport_t *t);
 
-/** Convenience macro that creates a class structure for a data transport */
-#define BS_TRANSPORT_CREATE_CLASS(classname, state)                            \
-  static bgpstream_transport_t bs_transport_##classname = {                    \
-    bs_transport_##classname##_read, bs_transport_##classname##_destroy,       \
-    (state),                                                                   \
-  };
-
 #define BS_TRANSPORT_SET_METHODS(classname, transport)                         \
   do {                                                                         \
     transport->read = bs_transport_##classname##_read;                         \
