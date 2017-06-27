@@ -246,12 +246,7 @@ int main(int argc, char *argv[])
   assert(di_id != 0);
 
   /* allocate memory for bs_record */
-  bgpstream_record_t *bs_record = bgpstream_record_create();
-  if (bs_record == NULL) {
-    fprintf(stderr, "ERROR: Could not create BGPStream record\n");
-    bgpstream_destroy(bs);
-    return -1;
-  }
+  bgpstream_record_t *bs_record = NULL;
 
   while (prevoptind = optind,
          (opt = getopt(argc, argv, "f:I:d:o:p:c:t:w:j:k:y:P:lrmeivh?")) >= 0) {
@@ -543,7 +538,7 @@ int main(int argc, char *argv[])
   int get_next_ret = 0;
   bgpstream_elem_t *bs_elem;
   do {
-    get_next_ret = bgpstream_get_next_record(bs, bs_record);
+    get_next_ret = bgpstream_get_next_record(bs, &bs_record);
     if (get_next_ret && record_output_on) {
       print_bs_record(bs_record);
     }
@@ -577,14 +572,11 @@ int main(int argc, char *argv[])
   } while (get_next_ret > 0);
 
  done:
-  /* de-allocate memory for bs_record */
-  bgpstream_record_destroy(bs_record);
   /* deallocate memory for interface */
   bgpstream_destroy(bs);
   return 0;
 
 err:
-  bgpstream_record_destroy(bs_record);
   bgpstream_destroy(bs);
   return -1;
 }

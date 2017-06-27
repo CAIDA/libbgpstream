@@ -319,7 +319,7 @@ void bgpstream_di_mgr_set_blocking(bgpstream_di_mgr_t *di_mgr)
 
 int
 bgpstream_di_mgr_get_next_record(bgpstream_di_mgr_t *di_mgr,
-                                 bgpstream_record_t *record)
+                                 bgpstream_record_t **record)
 {
   // this function is responsible for blocking if we're in live mode
   int rc;

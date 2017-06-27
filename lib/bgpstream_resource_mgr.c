@@ -571,7 +571,7 @@ static int open_batch(bgpstream_resource_mgr_t *q, struct res_group *gp)
 // if things have gone right, we should read from the first resource in the
 // queue. once we have read from the resource, we should check the new time of
 // the resource and see if it needs to be moved.
-static int pop_record(bgpstream_resource_mgr_t *q, bgpstream_record_t *record)
+static int pop_record(bgpstream_resource_mgr_t *q, bgpstream_record_t **record)
 {
   uint32_t prev_time;
   int rc;
@@ -763,7 +763,7 @@ bgpstream_resource_mgr_empty(bgpstream_resource_mgr_t *q)
 
 int
 bgpstream_resource_mgr_get_record(bgpstream_resource_mgr_t *q,
-                                  bgpstream_record_t *record)
+                                  bgpstream_record_t **record)
 {
   int rc = 0; // EOF
 

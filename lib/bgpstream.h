@@ -359,8 +359,8 @@ int bgpstream_start(bgpstream_t *bs);
 /** Retrieve from the stream,the next record that matches configured filters.
  *
  * @param bs            pointer to a BGP Stream instance to get record from
- * @param record        pointer to a bgpstream record instance created using
- *                      bgpstream_record_create
+ * @param[out] record   set to a borrowed pointer to a record if the return
+ *                      code is >0.
  * @return >0 if a record was read successfully, 0 if end-of-stream has been
  * reached, <0 if an error occurred.
  *
@@ -369,7 +369,7 @@ int bgpstream_start(bgpstream_t *bs);
  * independently of each other). If records are not processed independently,
  * then a new record must be created for each call to this function.
  */
-int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t *record);
+int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t **record);
 
 /** Destroy the given BGP Stream instance
  *

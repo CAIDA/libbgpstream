@@ -229,16 +229,18 @@ int bgpstream_start(bgpstream_t *bs)
   return 0;
 }
 
-int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t *record)
+int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t **record)
 {
+  int rc;
   assert(bs->started);
-
-  // if bs_record contains an initialized bgpdump entry we destroy it
-  bgpstream_record_clear(record);
-  record->bs = bs; // in case the user is using one record with two streams...
-
-  // now simply ask the DI manager to get us a record
-  return bgpstream_di_mgr_get_next_record(bs->di_mgr, record);
+  *record = NULL;
+  // simply ask the DI manager to get us a record
+  rc = bgpstream_di_mgr_get_next_record(bs->di_mgr, record);
+  // inject a pointer to the bgpstream instance if it is a valid record ptr
+  if (*record != NULL) {
+    (*record)->bs = bs;
+  }
+  return rc;
 }
 
 /* destroy a bgpstream interface instance */
