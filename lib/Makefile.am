@@ -84,6 +84,8 @@ libbgpstreamcaida_la_CFLAGS = -Wall
 libbgpstreamcaida_la_LIBADD = \
 			$(top_builddir)/lib/bgpdump/libbgpstream-bgpdump.la \
 			$(top_builddir)/lib/datainterfaces/libbgpstream-data-interfaces.la \
+			$(top_builddir)/lib/transports/libbgpstream-transports.la \
+			$(top_builddir)/lib/formats/libbgpstream-formats.la \
 			$(top_builddir)/lib/utils/libbgpstream-utils.la \
 			$(top_builddir)/common/libcccommon.la
 
