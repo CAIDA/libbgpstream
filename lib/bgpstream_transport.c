@@ -58,8 +58,7 @@ bgpstream_transport_t *bgpstream_transport_create(bgpstream_resource_t *res)
   bgpstream_transport_t *transport = NULL;
 
   // check that the transport type is valid
-  if (res->transport_type < 0 ||
-      res->transport_type >= ARR_CNT(create_functions)) {
+  if ((int)res->transport_type >= ARR_CNT(create_functions)) {
     bgpstream_log(BGPSTREAM_LOG_ERR,
                   "Invalid transport module for %s (ID: %d)",
                   res->uri, res->transport_type);

@@ -58,8 +58,7 @@ bgpstream_format_t *bgpstream_format_create(bgpstream_resource_t *res)
   bgpstream_format_t *format = NULL;
 
   // check that the format type is valid
-  if (res->format_type < 0 ||
-      res->format_type >= ARR_CNT(create_functions)) {
+  if ((int)res->format_type >= ARR_CNT(create_functions)) {
     bgpstream_log(BGPSTREAM_LOG_ERR,
                   "Invalid format module for %s (ID: %d)",
                   res->uri, res->format_type);
