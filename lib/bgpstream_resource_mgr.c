@@ -73,6 +73,9 @@ struct res_group {
   /** The number of open resources in this group */
   int res_open_cnt;
 
+  /** The number of open resources that have been checked and re-sorted */
+  int res_open_checked_cnt;
+
   /** Previous group (newer timestamp) */
   struct res_group *prev;
 
@@ -408,6 +411,7 @@ static void pop_res_el(bgpstream_resource_mgr_t *q,
   // update group and queue stats
   gp->res_cnt--;
   gp->res_open_cnt--;
+  gp->res_open_checked_cnt--;
   q->res_cnt--;
   q->res_open_cnt--;
   assert(gp->res_cnt >= 0);
@@ -476,6 +480,7 @@ static int sort_res_list(bgpstream_resource_mgr_t *q,
       }
     }
     el->open = 1;
+    gp->res_open_checked_cnt++;
     el = el_nxt;
   }
 
@@ -505,6 +510,11 @@ static int sort_batch(bgpstream_resource_mgr_t *q)
 
   // wait for the batch to open first
   while (cur != NULL && cur->res_open_cnt != 0) {
+
+    if (cur->res_open_checked_cnt == cur->res_open_cnt) {
+      cur = cur->next;
+      continue;
+    }
 
     if (sort_group(q, cur) != 0) {
       return -1;
