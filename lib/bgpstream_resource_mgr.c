@@ -43,6 +43,9 @@ struct res_list_elem {
   /** Pointer to a reader instance if the resource is "open" */
   bgpstream_reader_t *reader;
 
+  /** Is the reader open? (i.e. have we waited for it to open) */
+  int open;
+
   /** Previous list elem */
   struct res_list_elem *prev;
 
@@ -96,6 +99,8 @@ struct bgpstream_resource_mgr {
 
 };
 
+static int open_batch(bgpstream_resource_mgr_t *q, struct res_group *gp);
+
 static void res_list_destroy(struct res_list_elem *l, int destroy_resource) {
   if (l == NULL) {
     return;
@@ -110,6 +115,7 @@ static void res_list_destroy(struct res_list_elem *l, int destroy_resource) {
     tmp->next = NULL;
     if (destroy_resource != 0) {
       bgpstream_reader_destroy(tmp->reader);
+      tmp->open = 0;
       bgpstream_resource_destroy(tmp->res);
     }
     tmp->res = NULL;
@@ -130,6 +136,48 @@ static struct res_list_elem *res_list_elem_create(bgpstream_resource_t *res)
   // its up the caller to connect it to something...
 
   return el;
+}
+
+static int open_res_list(bgpstream_resource_mgr_t *q,
+                         struct res_group *gp,
+                         struct res_list_elem *el)
+{
+  while (el != NULL) {
+    assert(el->res != NULL);
+    // it is possible that this is already open (because of re-sorting)
+    if (el->reader != NULL) {
+      el = el->next;
+      continue;
+    }
+    // open this resource
+    if ((el->reader =
+         bgpstream_reader_create(el->res, q->filter_mgr)) == NULL) {
+      bgpstream_log(BGPSTREAM_LOG_ERR,
+                    "Failed to open resource: %s", el->res->uri);
+      return -1;
+    }
+    // update stats
+    q->res_open_cnt++;
+    gp->res_open_cnt++;
+    el = el->next;
+  }
+
+  return 0;
+}
+
+static int open_group(bgpstream_resource_mgr_t *q, struct res_group *gp)
+{
+  // first open RIBs
+  if (open_res_list(q, gp, gp->res_list[BGPSTREAM_RIB]) != 0) {
+    return -1;
+  }
+
+  // then open updates
+  if (open_res_list(q, gp, gp->res_list[BGPSTREAM_UPDATE]) != 0) {
+    return -1;
+  }
+
+  return 0;
 }
 
 static void res_group_destroy(struct res_group *g, int destroy_resource) {
@@ -173,7 +221,9 @@ static struct res_group *res_group_create(struct res_list_elem *el)
   return gp;
 }
 
-static int res_group_add(struct res_group *gp, struct res_list_elem *el)
+static int res_group_add(bgpstream_resource_mgr_t *q,
+                         struct res_group *gp,
+                         struct res_list_elem *el)
 {
   assert(gp->time == el->res->current_time);
 
@@ -202,6 +252,11 @@ static int res_group_add(struct res_group *gp, struct res_list_elem *el)
 
   if (el->reader != NULL) {
     gp->res_open_cnt++;
+    // if we have just opened the first file in the group, then open the rest
+    if (gp->res_cnt > gp->res_open_cnt &&
+        open_batch(q, gp) != 0) {
+      return -1;
+    }
   }
 
   return 0;
@@ -259,7 +314,7 @@ static void queue_dump(struct res_group *head, int log_level)
     }                                                                   \
     if (cur != NULL && cur->time == el->res->current_time) {            \
       /* just add to the current group */                               \
-      if (res_group_add(cur, el) != 0) {                                \
+      if (res_group_add(q, cur, el) != 0) {                             \
         goto err;                                                       \
       }                                                                 \
     } else {                                                            \
@@ -397,47 +452,62 @@ static void reap_groups(bgpstream_resource_mgr_t *q)
   }
 }
 
+static int sort_res_list(bgpstream_resource_mgr_t *q,
+                         struct res_group *gp,
+                         struct res_list_elem *el)
+{
+  struct res_list_elem *el_nxt;
+
+  while (el != NULL) {
+    el_nxt = el->next;
+    if (el->open != 0) {
+      el = el_nxt;
+      continue;
+    }
+
+    if (bgpstream_reader_open_wait(el->reader) != 0) {
+      return -1;
+    }
+    if (el->res->current_time != el->res->initial_time) {
+      // this needs to be popped and then re-inserted
+      pop_res_el(q, gp, el);
+      if (insert_resource_elem(q, el) != 0) {
+        return -1;
+      }
+    }
+    el->open = 1;
+    el = el_nxt;
+  }
+
+  return 0;
+}
+
+static int sort_group(bgpstream_resource_mgr_t *q,
+                      struct res_group *gp)
+{
+  // wait for updates
+  if (sort_res_list(q, gp, gp->res_list[BGPSTREAM_UPDATE]) != 0) {
+    return -1;
+  }
+
+  // wait for ribs
+  if (sort_res_list(q, gp, gp->res_list[BGPSTREAM_RIB]) != 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
 static int sort_batch(bgpstream_resource_mgr_t *q)
 {
   struct res_group *cur = q->head;
-  struct res_list_elem *el;
-  struct res_list_elem *el_nxt;
   int empty_groups = 0;
 
   // wait for the batch to open first
   while (cur != NULL && cur->res_open_cnt != 0) {
-    // wait for updates
-    el = cur->res_list[BGPSTREAM_UPDATE];
-    while (el != NULL) {
-      el_nxt = el->next;
-      if (bgpstream_reader_open_wait(el->reader) != 0) {
-        return -1;
-      }
-      if (el->res->current_time != el->res->initial_time) {
-        // this needs to be popped and then re-inserted
-        pop_res_el(q, cur, el);
-        if (insert_resource_elem(q, el) != 0) {
-          return -1;
-        }
-      }
-      el = el_nxt;
-    }
 
-    // wait for ribs
-    el = cur->res_list[BGPSTREAM_RIB];
-    while (el != NULL) {
-      el_nxt = el->next;
-      if (bgpstream_reader_open_wait(el->reader) != 0) {
-        return -1;
-      }
-      if (el->res->current_time != el->res->initial_time) {
-        // this needs to be popped and then re-inserted
-        pop_res_el(q, cur, el);
-        if (insert_resource_elem(q, el) != 0) {
-          return -1;
-        }
-      }
-      el = el_nxt;
+    if (sort_group(q, cur) != 0) {
+      return -1;
     }
 
     if (cur->res_cnt == 0) {
@@ -456,12 +526,11 @@ static int sort_batch(bgpstream_resource_mgr_t *q)
 }
 
 // open all overlapping resources. does not modify the queue
-static int open_batch(bgpstream_resource_mgr_t *q)
+static int open_batch(bgpstream_resource_mgr_t *q, struct res_group *gp)
 {
   // start from the head of the queue and open resources until we
   // find a group that does not overlap with the previous ones
-  struct res_group *cur = q->head;
-  struct res_list_elem *el;
+  struct res_group *cur = gp;
   int first = 1;
   uint32_t last_overlap_end = 0;
 
@@ -469,33 +538,8 @@ static int open_batch(bgpstream_resource_mgr_t *q)
          (first != 0 || last_overlap_end > cur->overlap_start)) {
     // this is included in the batch
 
-    // first open RIBs
-    el = cur->res_list[BGPSTREAM_RIB];
-    while (el != NULL) {
-      assert(el->res != NULL);
-      if ((el->reader =
-           bgpstream_reader_create(el->res, q->filter_mgr)) == NULL) {
-        bgpstream_log(BGPSTREAM_LOG_ERR,
-                      "Failed to open RIB: %s", el->res->uri);
-        return -1;
-      }
-      q->res_open_cnt++;
-      cur->res_open_cnt++;
-      el = el->next;
-    }
-    // then open updates
-    el = cur->res_list[BGPSTREAM_UPDATE];
-    while (el != NULL) {
-      assert(el->res != NULL);
-      if ((el->reader =
-           bgpstream_reader_create(el->res, q->filter_mgr)) == NULL) {
-        bgpstream_log(BGPSTREAM_LOG_ERR,
-                      "Failed to open Updates: %s", el->res->uri);
-        return -1;
-      }
-      q->res_open_cnt++;
-      cur->res_open_cnt++;
-      el = el->next;
+    if (open_group(q, cur) != 0) {
+      return -1;
     }
 
     // update our overlap calculation
@@ -722,7 +766,7 @@ bgpstream_resource_mgr_get_record(bgpstream_resource_mgr_t *q,
 
     // we know we have something in the queue, but if we have nothing open, then
     // it is time to open some resources!
-    if (q->res_open_cnt == 0 && open_batch(q) != 0) {
+    if (q->res_open_cnt == 0 && open_batch(q, q->head) != 0) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to open resource batch");
       goto err;
     }
