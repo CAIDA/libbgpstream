@@ -134,7 +134,8 @@ static int prefetch_record(bgpstream_reader_t *reader)
         // we want this entry
         reader->valid_read_cnt++;
         reader->status = OK;
-        record->attributes.record_time = record->bd_entry->time;
+        reader->res->current_time = record->attributes.record_time =
+          record->bd_entry->time;
         break;
       } else {
         // we dont want this entry, destroy it
@@ -207,11 +208,10 @@ static int prefetch_record(bgpstream_reader_t *reader)
   switch (reader->status) {
   case OK:
     record->status = BGPSTREAM_RECORD_STATUS_VALID_RECORD;
-    // update our current time
-    reader->res->current_time = record->attributes.record_time;
     break;
   case FILTERED_DUMP:
     record->status = BGPSTREAM_RECORD_STATUS_FILTERED_SOURCE;
+    record->dump_pos = BGPSTREAM_DUMP_END;
     break;
   case EMPTY_DUMP:
     record->status = BGPSTREAM_RECORD_STATUS_EMPTY_SOURCE;
@@ -229,7 +229,10 @@ static int prefetch_record(bgpstream_reader_t *reader)
     }
   }
 
-  reader->rec_buf_filled[PREFETCH_IDX] = 1;
+  // we export a meta record for every status except end of dump
+  if (reader->status != END_OF_DUMP) {
+    reader->rec_buf_filled[PREFETCH_IDX] = 1;
+  }
   return 0;
 }
 
