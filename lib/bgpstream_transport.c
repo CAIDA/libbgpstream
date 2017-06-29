@@ -90,7 +90,7 @@ bgpstream_transport_t *bgpstream_transport_create(bgpstream_resource_t *res)
 }
 
 int64_t bgpstream_transport_read(bgpstream_transport_t *transport,
-                                 uint8_t *buffer, int64_t len)
+                                 void *buffer, int64_t len)
 {
   return transport->read(transport, buffer, len);
 }
