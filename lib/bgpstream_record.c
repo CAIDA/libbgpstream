@@ -35,50 +35,40 @@
 #include "bgpstream_record.h"
 #include "utils.h"
 
-/* allocate memory for a bs_record */
 bgpstream_record_t *bgpstream_record_create()
 {
-  bgpstream_log(BGPSTREAM_LOG_VFINE, "BS: create record start");
-  bgpstream_record_t *bs_record;
-  if ((bs_record = (bgpstream_record_t *)malloc_zero(
+  bgpstream_record_t *record;
+
+  if ((record = (bgpstream_record_t *)malloc_zero(
          sizeof(bgpstream_record_t))) == NULL) {
-    return NULL; // can't allocate memory
-  }
-
-  bs_record->bs = NULL;
-  bs_record->bd_entry = NULL;
-
-  if ((bs_record->elem_generator = bgpstream_elem_generator_create()) == NULL) {
-    bgpstream_record_destroy(bs_record);
     return NULL;
   }
 
-  bgpstream_log(BGPSTREAM_LOG_VFINE, "BS: create record end");
-  return bs_record;
+  if ((record->elem_generator = bgpstream_elem_generator_create()) == NULL) {
+    bgpstream_record_destroy(record);
+    return NULL;
+  }
+
+  return record;
 }
 
-/* free memory associated to a bs_record  */
-void bgpstream_record_destroy(bgpstream_record_t *const bs_record)
+void bgpstream_record_destroy(bgpstream_record_t *record)
 {
-  bgpstream_log(BGPSTREAM_LOG_VFINE, "BS: destroy record start");
-  if (bs_record == NULL) {
-    bgpstream_log(BGPSTREAM_LOG_VFINE, "BS: record destroy end");
-    return; // nothing to do
-  }
-  if (bs_record->bd_entry != NULL) {
-    bgpstream_log(BGPSTREAM_LOG_VFINE, "BS - free bs_record->bgpdump_entry");
-    bgpdump_free_mem(bs_record->bd_entry);
-    bs_record->bd_entry = NULL;
+  if (record == NULL) {
+    return;
   }
 
-  if (bs_record->elem_generator != NULL) {
-    bgpstream_elem_generator_destroy(bs_record->elem_generator);
-    bs_record->elem_generator = NULL;
+  if (record->bd_entry != NULL) {
+    bgpdump_free_mem(record->bd_entry);
+    record->bd_entry = NULL;
   }
 
-  bgpstream_log(BGPSTREAM_LOG_VFINE, "BS - free bs_record");
-  free(bs_record);
-  bgpstream_log(BGPSTREAM_LOG_VFINE, "BS: destroy record end");
+  if (record->elem_generator != NULL) {
+    bgpstream_elem_generator_destroy(record->elem_generator);
+    record->elem_generator = NULL;
+  }
+
+  free(record);
 }
 
 /* NOTE: this function deliberately does not reset many of the fields in a
@@ -94,9 +84,9 @@ void bgpstream_record_clear(bgpstream_record_t *record)
   bgpstream_elem_generator_clear(record->elem_generator);
 }
 
-void bgpstream_record_print_mrt_data(bgpstream_record_t *const bs_record)
+void bgpstream_record_print_mrt_data(bgpstream_record_t *const record)
 {
-  bgpdump_print_entry(bs_record->bd_entry);
+  bgpdump_print_entry(record->bd_entry);
 }
 
 static int bgpstream_elem_prefix_match(bgpstream_patricia_tree_t *prefixes,
@@ -316,9 +306,8 @@ bgpstream_elem_t *bgpstream_record_get_next_elem(bgpstream_record_t *record)
   bgpstream_elem_t *elem =
     bgpstream_elem_generator_get_next_elem(record->elem_generator);
 
-  /* if the elem is compatible with the current filters
-   * then return elem, otherwise run again
-   * bgpstream_record_get_next_elem(record) */
+  /* if the elem is compatible with the current filters then return elem,
+   * otherwise run again bgpstream_record_get_next_elem(record) */
   if (elem == NULL || elem_check_filters(record, elem) == 1) {
     return elem;
   }
@@ -430,10 +419,10 @@ int bgpstream_record_status_snprintf(char *buf, size_t len,
   } while (0)
 
 char *bgpstream_record_elem_snprintf(char *buf, size_t len,
-                                     const bgpstream_record_t *bs_record,
+                                     const bgpstream_record_t *record,
                                      const bgpstream_elem_t *elem)
 {
-  assert(bs_record);
+  assert(record);
   assert(elem);
 
   size_t written = 0; /* < how many bytes we wanted to write */
@@ -442,7 +431,7 @@ char *bgpstream_record_elem_snprintf(char *buf, size_t len,
 
   /* Record type */
   if ((c = bgpstream_record_dump_type_snprintf(
-         buf_p, B_REMAIN, bs_record->attributes.dump_type)) < 0) {
+         buf_p, B_REMAIN, record->attributes.dump_type)) < 0) {
     return NULL;
   }
   written += c;
@@ -458,9 +447,9 @@ char *bgpstream_record_elem_snprintf(char *buf, size_t len,
   ADD_PIPE;
 
   /* Record timestamp, project, collector */
-  c = snprintf(buf_p, B_REMAIN, "%ld|%s|%s", bs_record->attributes.record_time,
-               bs_record->attributes.dump_project,
-               bs_record->attributes.dump_collector);
+  c = snprintf(buf_p, B_REMAIN, "%ld|%s|%s", record->attributes.record_time,
+               record->attributes.dump_project,
+               record->attributes.dump_collector);
   written += c;
   buf_p += c;
   ADD_PIPE;
