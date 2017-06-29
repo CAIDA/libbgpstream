@@ -44,8 +44,8 @@ bgpstream_transport_create(bgpstream_resource_t *res);
  * @param transport     pointer to a transport handler to read from
  * @return the number of bytes read if successful, -1 otherwise
  */
-ssize_t bgpstream_transport_read(bgpstream_transport_t *transport,
-                                 uint8_t *buffer, size_t len);
+int64_t bgpstream_transport_read(bgpstream_transport_t *transport,
+                                 uint8_t *buffer, int64_t len);
 
 /** Shutdown and destroy the given transport handler
  *

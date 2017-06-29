@@ -43,9 +43,8 @@ int bs_transport_file_create(bgpstream_transport_t *transport,
   return 0;
 }
 
-ssize_t bs_transport_file_read(bgpstream_transport_t *transport,
-                               uint8_t *buffer,
-                               size_t len)
+int64_t bs_transport_file_read(bgpstream_transport_t *transport,
+                               uint8_t *buffer, int64_t len)
 {
   return wandio_read((io_t*)transport->state, buffer, len);
 }
