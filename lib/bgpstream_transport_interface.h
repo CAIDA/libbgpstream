@@ -42,8 +42,8 @@
 #define BS_TRANSPORT_GENERATE_PROTOS(name)                                     \
   int bs_transport_##name##_create(bgpstream_transport_t *transport,           \
                                    bgpstream_resource_t *res);                 \
-  ssize_t bs_transport_##name##_read(bgpstream_transport_t *t,                 \
-                                     uint8_t *buffer, size_t len);             \
+  int64_t bs_transport_##name##_read(bgpstream_transport_t *t,                 \
+                                     uint8_t *buffer, int64_t len);            \
   void bs_transport_##name##_destroy(bgpstream_transport_t *t);
 
 #define BS_TRANSPORT_SET_METHODS(classname, transport)                         \
@@ -65,7 +65,7 @@ struct bgpstream_transport {
    * @param t           The data transport object to read from
    * @return the number of bytes read if successful, -1 otherwise
    */
-  ssize_t (*read)(struct bgpstream_transport *t, uint8_t *buffer, size_t len);
+  int64_t (*read)(struct bgpstream_transport *t, uint8_t *buffer, int64_t len);
 
   /** Shutdown and free this data transport
    *
