@@ -73,6 +73,7 @@ struct bgpstream_reader {
   // where does thread belong? maybe here, maybe not
   status_t status;
   BGPDUMP *bgpdump;
+  bgpstream_transport_t *transport;
   pthread_t opener_thread;
   /* has the thread opened the dump? */
   int dump_ready;
@@ -251,7 +252,9 @@ static void *threaded_opener(void *user)
   /* all we do is open the dump */
   /* but try a few times in case there is a transient failure */
   while (retries < DUMP_OPEN_MAX_RETRIES && reader->bgpdump == NULL) {
-    if ((reader->bgpdump = bgpdump_open_dump(reader->res->uri)) == NULL) {
+    /* TEMP: create the appropriate transport */
+    if ((reader->transport = bgpstream_transport_create(reader->res)) == NULL ||
+        (reader->bgpdump = bgpdump_open_dump(reader->transport)) == NULL) {
       bgpstream_log(BGPSTREAM_LOG_WARN,
                     "Could not open dumpfile (%s). Attempt %d of %d",
                     reader->res->uri, retries + 1, DUMP_OPEN_MAX_RETRIES);
@@ -363,6 +366,8 @@ void bgpstream_reader_destroy(bgpstream_reader_t *reader)
 
   bgpdump_close_dump(reader->bgpdump);
   reader->bgpdump = NULL;
+  bgpstream_transport_destroy(reader->transport);
+  reader->transport = NULL;
 
   free(reader);
 }

@@ -79,6 +79,7 @@ bgpstream_transport_t *bgpstream_transport_create(bgpstream_resource_t *res)
   }
 
   if (create_functions[res->transport_type](transport, res) != 0) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open resource (%s)", res->uri);
     goto err;
   }
 

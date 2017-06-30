@@ -28,16 +28,8 @@ AM_CPPFLAGS= -I$(top_srcdir)
 
 noinst_LTLIBRARIES = libbgpstream-bgpdump.la
 
-IO_SOURCE=bgpdump_cfile_tools_wandio.c
-
-# no wandio source
-# IO_SOURCE=bgpdump_cfile_tools.c
-
-
 libbgpstream_bgpdump_la_SOURCES = 	\
 	bgpdump_attr.h    		\
-	bgpdump_cfile_tools.h     	\
-	$(IO_SOURCE)	  		\
 	bgpdump_formats.h 		\
 	bgpdump_lib.c     		\
 	bgpdump_lib.h     		\
