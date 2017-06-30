@@ -31,6 +31,9 @@ Original Author: Dan Ardelean (dan@ripe.net)
 #include <stdbool.h>
 #include <stdio.h>
 
+// TEMP: we're going to throw bgpdump away anyways
+#include "../bgpstream_transport.h"
+
 #include "bgpdump_attr.h"
 #include "bgpdump_formats.h"
 
@@ -43,10 +46,9 @@ typedef struct _CFRFILE CFRFILE;
 #endif
 
 typedef struct struct_BGPDUMP {
-  CFRFILE *f;
+  bgpstream_transport_t *transport;
   int f_type;
   int eof;
-  char filename[BGPDUMP_MAX_FILE_LEN];
   int parsed;
   int parsed_ok;
   // corrupted read signals a corrupted entry found in file
@@ -60,7 +62,7 @@ typedef struct struct_BGPDUMP {
 
 /* prototypes */
 
-BGPDUMP *bgpdump_open_dump(const char *filename);
+BGPDUMP *bgpdump_open_dump(bgpstream_transport_t *transport);
 void bgpdump_close_dump(BGPDUMP *dump);
 BGPDUMP_ENTRY *bgpdump_read_next(BGPDUMP *dump);
 void bgpdump_free_mem(BGPDUMP_ENTRY *entry);

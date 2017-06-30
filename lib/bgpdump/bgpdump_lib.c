@@ -25,7 +25,6 @@
 
 #include "config.h"
 
-#include "bgpdump_cfile_tools.h"
 #include "bgpdump_lib.h"
 #include "bgpdump_mstream.h"
 #include "bgpdump_util.h"
@@ -105,23 +104,11 @@ char *bgpdump_version(void)
   return PACKAGE_VERSION;
 }
 
-BGPDUMP *bgpdump_open_dump(const char *filename)
+BGPDUMP *bgpdump_open_dump(bgpstream_transport_t *transport)
 {
-
-  CFRFILE *f = cfr_open(filename);
-  if (!f) {
-    fprintf(stderr, "Cannot open dumpfile %s: ", filename);
-    perror("");
-    return NULL;
-  }
-
   BGPDUMP *this_dump = malloc(sizeof(BGPDUMP));
-  strcpy(this_dump->filename, "[STDIN]");
-  if (filename && strcmp(filename, "-")) {
-    strcpy(this_dump->filename, filename);
-  }
 
-  this_dump->f = f;
+  this_dump->transport = transport;
   this_dump->eof = 0;
   this_dump->parsed = 0;
   this_dump->parsed_ok = 0;
@@ -149,7 +136,6 @@ void bgpdump_close_dump(BGPDUMP *dump)
     free(dump->table_dump_v2_peer_index_table);
     dump->table_dump_v2_peer_index_table = NULL;
   }
-  cfr_close(dump->f);
   free(dump);
 }
 
@@ -178,17 +164,16 @@ BGPDUMP_ENTRY *bgpdump_read_next(BGPDUMP *dump)
 
   assert(this_entry);
 
-  bytes_read = cfr_read_n(dump->f, &(this_entry->time), 4);
-  bytes_read += cfr_read_n(dump->f, &(this_entry->type), 2);
-  bytes_read += cfr_read_n(dump->f, &(this_entry->subtype), 2);
-  bytes_read += cfr_read_n(dump->f, &(this_entry->length), 4);
+  bytes_read = bgpstream_transport_read(dump->transport, &(this_entry->time), 4);
+  bytes_read += bgpstream_transport_read(dump->transport, &(this_entry->type), 2);
+  bytes_read += bgpstream_transport_read(dump->transport, &(this_entry->subtype), 2);
+  bytes_read += bgpstream_transport_read(dump->transport, &(this_entry->length), 4);
   if (bytes_read != 12) {
     if (bytes_read > 0) {
       /* Malformed record */
       dump->parsed++;
-      bgpdump_err("bgpdump_read_next: %s incomplete MRT header (%d bytes read, "
-                  "expecting 12)",
-                  dump->filename, bytes_read);
+      bgpdump_err("bgpdump_read_next: incomplete MRT header (%d bytes read, "
+                  "expecting 12)", bytes_read);
       dump->corrupted_read = true;
     }
     /* Nothing more to read, quit */
@@ -208,11 +193,10 @@ BGPDUMP_ENTRY *bgpdump_read_next(BGPDUMP *dump)
   this_entry->length = ntohl(this_entry->length);
   this_entry->attr = NULL;
   buffer = malloc(this_entry->length);
-  bytes_read = cfr_read_n(dump->f, buffer, this_entry->length);
+  bytes_read = bgpstream_transport_read(dump->transport, buffer, this_entry->length);
   if (bytes_read != this_entry->length) {
-    bgpdump_err("bgpdump_read_next: %s incomplete dump record (%d bytes read, "
-                "expecting %d)",
-                dump->filename, bytes_read, this_entry->length);
+    bgpdump_err("bgpdump_read_next: incomplete dump record (%d bytes read, "
+                "expecting %d)", bytes_read, this_entry->length);
     dump->corrupted_read = true;
     // printf("case 2\n");
     bgpdump_free_mem(this_entry);
