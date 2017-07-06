@@ -30,7 +30,29 @@
 /** Generic interface to specific data format modules */
 typedef struct bgpstream_format bgpstream_format_t;
 
-/* TODO: add format API here */
+/** Create a format handler for the given resource
+ *
+ * @param res           pointer to a resource
+ * @return pointer to a format module instance if successful, NULL otherwise
+ */
+bgpstream_format_t *
+bgpstream_format_create(bgpstream_resource_t *res);
+
+/** Get the next record from this format instance
+ *
+ * @param format        pointer to the format object to use
+ * @param[out] record   set to point to a populated record instance
+ * @return 1 if a record was read successfully, 0 if there is nothing more to
+ * read, -1 if an error occurred.
+ */
+int bgpstream_format_get_next_record(bgpstream_format_t *format,
+                                     bgpstream_record_t **record);
+
+/** Destroy the given format module
+ *
+ * @param format        pointer to the format instance to destroy
+ */
+void bgpstream_format_destroy(bgpstream_format_t *format);
 
 
 #endif /* __BGPSTREAM_FORMAT_H */

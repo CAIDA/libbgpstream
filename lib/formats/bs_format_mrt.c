@@ -25,13 +25,28 @@
 #include "bgpstream_log.h"
 #include "bs_format_mrt.h"
 
+typedef struct state {
+  
+} state_t;
+
 int bs_format_mrt_create(bgpstream_format_t *format,
                          bgpstream_resource_t *res)
 {
-  BS_FORMAT_SET_METHODS(file, format);
-
-  // TODO: create bgpdump reader here
-  // NOTE: format->transport should already be created for us
+  BS_FORMAT_SET_METHODS(mrt, format);
 
   return 0;
+}
+
+int bs_format_mrt_get_next_record(bgpstream_format_t *format,
+                                  bgpstream_record_t **record)
+{
+  return 0;
+}
+
+void bs_format_mrt_destroy(bgpstream_format_t *format)
+{
+  
+
+  free(format->state);
+  format->state = NULL;
 }

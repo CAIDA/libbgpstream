@@ -48,8 +48,8 @@
 
 #define BS_TRANSPORT_SET_METHODS(classname, transport)                         \
   do {                                                                         \
-    transport->read = bs_transport_##classname##_read;                         \
-    transport->destroy = bs_transport_##classname##_destroy;                   \
+    (transport)->read = bs_transport_##classname##_read;                       \
+    (transport)->destroy = bs_transport_##classname##_destroy;                 \
   } while (0)
 
 /** Structure which represents a data transport */
