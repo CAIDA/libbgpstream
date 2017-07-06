@@ -21,11 +21,11 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __BS_FORMAT_FILE_H
-#define __BS_FORMAT_FILE_H
+#ifndef __BS_FORMAT_MRT_H
+#define __BS_FORMAT_MRT_H
 
 #include "bgpstream_format_interface.h"
 
 BS_FORMAT_GENERATE_PROTOS(mrt);
 
-#endif /* __BS_FORMAT_FILE_H */
+#endif /* __BS_FORMAT_MRT_H */

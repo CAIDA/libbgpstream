@@ -42,10 +42,15 @@
  * format API */
 #define BS_FORMAT_GENERATE_PROTOS(name)                                        \
   int bs_format_##name##_create(bgpstream_format_t *format,                    \
-                                bgpstream_resource_t *res);
+                                bgpstream_resource_t *res);                    \
+  int bs_format_##name##_get_next_record(bgpstream_format_t *format,           \
+                                         bgpstream_record_t **record);         \
+  void bs_format_##name##_destroy(bgpstream_format_t *format);
 
 #define BS_FORMAT_SET_METHODS(classname, format)                               \
   do {                                                                         \
+    (format)->get_next_record = bs_format_##classname##_get_next_record;       \
+    (format)->destroy = bs_format_##classname##_destroy;                       \
   } while (0)
 
 /** Structure which represents a data format */
@@ -55,6 +60,23 @@ struct bgpstream_format {
    * @name Format method pointers
    *
    * @{ */
+
+  /**
+   * Get the next record from this format instance
+   *
+   * @param format      pointer to the format object to read from
+   * @param[out] record   set to point to a populated record instance
+   * @return 1 if a record was read successfully, 0 if there is nothing more to
+   * read, -1 if an error occurred.
+   */
+  int (*get_next_record)(struct bgpstream_format *format,
+                         bgpstream_record_t **record);
+
+  /** Destroy the given format module
+   *
+   * @param format        pointer to the format instance to destroy
+   */
+  void (*destroy)(struct bgpstream_format *format);
 
   /** }@ */
 

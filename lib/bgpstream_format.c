@@ -94,3 +94,24 @@ bgpstream_format_t *bgpstream_format_create(bgpstream_resource_t *res)
   return NULL;
 }
 
+int bgpstream_format_get_next_record(bgpstream_format_t *format,
+                                     bgpstream_record_t **record)
+{
+
+  return format->get_next_record(format, record);
+}
+
+void bgpstream_format_destroy(bgpstream_format_t *format)
+{
+  if (format == NULL) {
+    return;
+  }
+
+  format->destroy(format);
+  format->state = NULL;
+
+  bgpstream_transport_destroy(format->transport);
+  format->transport = NULL;
+
+  free(format);
+}
