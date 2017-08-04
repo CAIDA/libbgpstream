@@ -178,6 +178,8 @@ typedef struct struct_bgpstream_record_t {
  * The returned pointer is guaranteed to be valid until the record is re-used in
  * a subsequent call to bgpstream_get_next_record, or is destroyed with
  * bgpstream_record_destroy
+ *
+ * TODO: change to allow an error code to be returned in case of failure
  */
 bgpstream_elem_t *bgpstream_record_get_next_elem(bgpstream_record_t *record);
 

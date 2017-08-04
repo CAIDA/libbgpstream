@@ -24,7 +24,6 @@
 #ifndef __BGPSTREAM_FORMAT_H
 #define __BGPSTREAM_FORMAT_H
 
-#include "bgpstream_elem_generator.h"
 #include "bgpstream_filter.h"
 #include "bgpstream_resource.h"
 
@@ -67,16 +66,18 @@ bgpstream_format_status_t
 bgpstream_format_populate_record(bgpstream_format_t *format,
                                  bgpstream_record_t *record);
 
-/** Populate the given elem generator with information from the given record
+/** Get the next elem from the given record
  *
  * @param format        pointer to the format object to use
  * @param record        pointer to the record to use
- * @param gen           pointer to the elem generator to populate
- * @return 0 if the generator was populated successfully, -1 otherwise
+ * @param[out] elem     set to point to a borrowed elem structure or NULL if
+ *                      there are no more elems
+ * @return 1 if a valid elem was returned, 0 if there are no more elems, -1 if
+ * an error occurred.
  */
-int bgpstream_format_populate_elem_generator(bgpstream_format_t *format,
-                                             bgpstream_record_t *record,
-                                             bgpstream_elem_generator_t *gen);
+int bgpstream_format_get_next_elem(bgpstream_format_t *format,
+                                   bgpstream_record_t *record,
+                                   bgpstream_elem_t **elem);
 
 /** Destroy the format data in a given record
  *

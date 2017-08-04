@@ -292,6 +292,7 @@ static int elem_check_filters(bgpstream_record_t *record,
 
 bgpstream_elem_t *bgpstream_record_get_next_elem(bgpstream_record_t *record)
 {
+#if 0
   if (bgpstream_elem_generator_is_populated(record->elem_generator) == 0 &&
       bgpstream_format_populate_elem_generator(
         record->__format_data->format, record, record->elem_generator) != 0) {
@@ -307,6 +308,34 @@ bgpstream_elem_t *bgpstream_record_get_next_elem(bgpstream_record_t *record)
   }
 
   return bgpstream_record_get_next_elem(record);
+#endif
+
+  // TODO: remove this and change to API same as get_next_record
+  bgpstream_elem_t *elem = NULL;
+  int rc;
+
+  if (record == NULL || record->__format_data->format == NULL) {
+    return 0; // treat as end-of-elems
+  }
+
+  while (elem == NULL) {
+    if ((rc = bgpstream_format_get_next_elem(record->__format_data->format,
+                                             record, &elem)) < 0) {
+      // TODO: handle this
+      assert(0);
+    }
+    if (rc == 0) {
+      assert(elem == NULL);
+      break;
+    }
+
+    // TODO: consider moving elem filtering down to the formats
+    if (elem_check_filters(record, elem) == 0) {
+      elem = NULL;
+    }
+  }
+
+  return elem;
 }
 
 int bgpstream_record_dump_type_snprintf(char *buf, size_t len,

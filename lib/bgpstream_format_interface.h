@@ -25,7 +25,6 @@
 #define __BGPSTREAM_FORMAT_INTERFACE_H
 
 #include "bgpstream.h"
-#include "bgpstream_elem_generator.h"
 #include "bgpstream_format.h" /*< for bgpstream_format_t */
 #include "bgpstream_transport.h"
 #include "config.h"
@@ -46,9 +45,9 @@
                                 bgpstream_resource_t *res);                    \
   bgpstream_format_status_t bs_format_##name##_populate_record(                \
     bgpstream_format_t *format, bgpstream_record_t *record);                   \
-  int bs_format_##name##_populate_elem_generator(                              \
-    bgpstream_format_t *format, bgpstream_record_t *record,                    \
-    bgpstream_elem_generator_t *gen);                                          \
+  int bs_format_##name##_get_next_elem(bgpstream_format_t *format,             \
+                                       bgpstream_record_t *record,             \
+                                       bgpstream_elem_t **elem);               \
   void bs_format_##name##_destroy_data(bgpstream_format_t *format,             \
                                        void *data);                            \
   void bs_format_##name##_destroy(bgpstream_format_t *format);
@@ -56,8 +55,7 @@
 #define BS_FORMAT_SET_METHODS(classname, format)                               \
   do {                                                                         \
     (format)->populate_record = bs_format_##classname##_populate_record;       \
-    (format)->populate_elem_generator =                                        \
-      bs_format_##classname##_populate_elem_generator;                         \
+    (format)->get_next_elem = bs_format_##classname##_get_next_elem;           \
     (format)->destroy_data = bs_format_##classname##_destroy_data;             \
     (format)->destroy = bs_format_##classname##_destroy;                       \
   } while (0)
@@ -83,16 +81,18 @@ struct bgpstream_format {
   bgpstream_format_status_t (*populate_record)(struct bgpstream_format *format,
                                                bgpstream_record_t *record);
 
-  /** Populate the given elem generator with information from the given record
+  /** Get the next elem from the given record
    *
    * @param format        pointer to the format object to use
    * @param record        pointer to the record to use
-   * @param gen           pointer to the elem generator to populate
-   * @return 0 if the generator was populated successfully, -1 otherwise
+   * @param[out] elem     set to point to a borrowed elem structure or NULL if
+   *                      there are no more elems
+   * @return 1 if a valid elem was returned, 0 if there are no more elems, -1 if
+   * an error occurred.
    */
-  int (*populate_elem_generator)(bgpstream_format_t *format,
-                                 bgpstream_record_t *record,
-                                 bgpstream_elem_generator_t *gen);
+  int (*get_next_elem)(bgpstream_format_t *format,
+                       bgpstream_record_t *record,
+                       bgpstream_elem_t **elem);
 
   /** Destroy the given format-specific record data
    *
