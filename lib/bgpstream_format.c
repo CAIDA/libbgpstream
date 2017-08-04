@@ -108,12 +108,13 @@ bgpstream_format_populate_record(bgpstream_format_t *format,
   return format->populate_record(format, record);
 }
 
-int bgpstream_format_populate_elem_generator(bgpstream_format_t *format,
-                                             bgpstream_record_t *record,
-                                             bgpstream_elem_generator_t *gen)
+int bgpstream_format_get_next_elem(bgpstream_format_t *format,
+                                   bgpstream_record_t *record,
+                                   bgpstream_elem_t **elem)
 {
   assert(record->__format_data->format == format);
-  return format->populate_elem_generator(format, record, gen);
+  *elem = NULL;
+  return format->get_next_elem(format, record, elem);
 }
 
 #define DATA(record) ((record)->__format_data)

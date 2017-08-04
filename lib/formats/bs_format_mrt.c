@@ -178,9 +178,9 @@ bs_format_mrt_populate_record(bgpstream_format_t *format,
   return BGPSTREAM_FORMAT_OK;
 }
 
-int bs_format_mrt_populate_elem_generator(bgpstream_format_t *format,
-                                          bgpstream_record_t *record,
-                                          bgpstream_elem_generator_t *gen)
+int bs_format_mrt_get_next_elem(bgpstream_format_t *format,
+                                bgpstream_record_t *record,
+                                bgpstream_elem_t **elem)
 {
   return 0;
 }
