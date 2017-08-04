@@ -25,28 +25,52 @@
 #define __BGPSTREAM_FORMAT_H
 
 #include "bgpstream_resource.h"
-
+#include "bgpstream_filter.h"
 
 /** Generic interface to specific data format modules */
 typedef struct bgpstream_format bgpstream_format_t;
 
+/** Return codes for the populate_record method */
+typedef enum {
+  BGPSTREAM_FORMAT_OK,
+  // all status codes other than OK signal EOF
+  BGPSTREAM_FORMAT_FILTERED_DUMP,
+  BGPSTREAM_FORMAT_EMPTY_DUMP,
+  BGPSTREAM_FORMAT_CANT_OPEN_DUMP,
+  BGPSTREAM_FORMAT_CORRUPTED_DUMP,
+  BGPSTREAM_FORMAT_END_OF_DUMP,
+} bgpstream_format_status_t;
+
 /** Create a format handler for the given resource
  *
  * @param res           pointer to a resource
+ * @param filter_mgr    pointer to filter manager to use for filtering records
  * @return pointer to a format module instance if successful, NULL otherwise
  */
 bgpstream_format_t *
-bgpstream_format_create(bgpstream_resource_t *res);
+bgpstream_format_create(bgpstream_resource_t *res,
+                        bgpstream_filter_mgr_t *filter_mgr);
 
-/** Get the next record from this format instance
+/** Populate the given record with the next available record from this resource
  *
  * @param format        pointer to the format object to use
- * @param[out] record   set to point to a populated record instance
- * @return 1 if a record was read successfully, 0 if there is nothing more to
- * read, -1 if an error occurred.
+ * @param record        pointer to a record instance to populate
+ * @return format status code, or -1 if an unhandled error occurred
+ *
+ * This function will respect filters set in the filter manager, only returning
+ * records that match the filters. (Note that some filters like project and
+ * collector are applied at a higher level, and will not be considered by this
+ * function.)
  */
-int bgpstream_format_get_next_record(bgpstream_format_t *format,
-                                     bgpstream_record_t **record);
+bgpstream_format_status_t
+bgpstream_format_populate_record(bgpstream_format_t *format,
+                                 bgpstream_record_t *record);
+
+/** Destroy the format data in a given record
+ *
+ * @param record        pointer to the record to destroy data for
+ */
+void bgpstream_format_destroy_data(bgpstream_record_t *record);
 
 /** Destroy the given format module
  *

@@ -22,10 +22,12 @@
  */
 
 #include "bgpstream_format.h"
+#include "bgpstream_record_int.h"
 #include "bgpstream_log.h"
 #include "bgpstream_resource.h"
 #include "bgpstream_transport.h"
 #include "utils.h"
+#include <assert.h>
 
 #include "bs_format_mrt.h"
 #if 0
@@ -53,7 +55,8 @@ static const format_create_func_t create_functions[] = {
 
 };
 
-bgpstream_format_t *bgpstream_format_create(bgpstream_resource_t *res)
+bgpstream_format_t *bgpstream_format_create(bgpstream_resource_t *res,
+                                            bgpstream_filter_mgr_t *filter_mgr)
 {
   bgpstream_format_t *format = NULL;
 
@@ -83,6 +86,8 @@ bgpstream_format_t *bgpstream_format_create(bgpstream_resource_t *res)
     goto err;
   }
 
+  format->filter_mgr = filter_mgr;
+
   if (create_functions[res->format_type](format, res) != 0) {
     goto err;
   }
@@ -94,11 +99,26 @@ bgpstream_format_t *bgpstream_format_create(bgpstream_resource_t *res)
   return NULL;
 }
 
-int bgpstream_format_get_next_record(bgpstream_format_t *format,
-                                     bgpstream_record_t **record)
+bgpstream_format_status_t
+bgpstream_format_populate_record(bgpstream_format_t *format,
+                                 bgpstream_record_t *record)
 {
+  assert(record->__format_data->data == NULL);
+  record->__format_data->format = format;
+  return format->populate_record(format, record);
+}
 
-  return format->get_next_record(format, record);
+#define DATA(record) ((record)->__format_data)
+
+void bgpstream_format_destroy_data(bgpstream_record_t *record)
+{
+  if (record == NULL || DATA(record)->format == NULL) {
+    return;
+  }
+  DATA(record)->format->destroy_data(DATA(record)->format, DATA(record)->data);
+
+  DATA(record)->format = NULL;
+  DATA(record)->data = NULL;
 }
 
 void bgpstream_format_destroy(bgpstream_format_t *format)

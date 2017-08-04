@@ -25,8 +25,9 @@
 #define __BGPSTREAM_RECORD_INT_H
 
 #include "bgpstream_elem.h"
-#include "bgpstream_utils.h"
+#include "bgpstream_format.h"
 #include "bgpstream_record.h"
+#include "bgpstream_utils.h"
 
 /** @file
  *
@@ -37,6 +38,16 @@
  */
 
 /** @} */
+
+struct bgpstream_record_format_data {
+
+  /** Pointer to the format module that created this data */
+  bgpstream_format_t *format;
+
+  /** Private data-structure (optionally) populated by the format module */
+  void *data;
+
+};
 
 /**
  * @name Private API Functions

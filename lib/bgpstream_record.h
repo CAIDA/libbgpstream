@@ -40,13 +40,9 @@
  *
  * @{ */
 
-/** An opaque pointer to a BGPDUMP_ENTRY field.
- *
- * @note this is an *internal* data structure, it is *not* guaranteed that it
- * will continue to conform to the public BGPDUMP_ENTRY structure. This is NOT
- * for use in user code
- */
-typedef struct struct_BGPDUMP_ENTRY bgpstream_record_mrt_data_t;
+/** Opaque structure used internally by BGPStream to store raw data obtained
+    from the underlying data resource. */
+typedef struct bgpstream_record_format_data bgpstream_record_format_data_t;
 
 /** @} */
 
@@ -145,8 +141,8 @@ typedef struct struct_bgpstream_record_t {
   /** INTERNAL: pointer to the originating bgpstream instance */
   struct bgpstream *bs;
 
-  /** INTERNAL: buffer containing the underlying MRT data for the record */
-  bgpstream_record_mrt_data_t *bd_entry;
+  /** INTERNAL: raw data from the underlying resource */
+  bgpstream_record_format_data_t *__format_data;
 
   /** INTERNAL: state used to generate elems for get_next_elem */
   struct bgpstream_elem_generator *elem_generator;
@@ -159,6 +155,9 @@ typedef struct struct_bgpstream_record_t {
 
   /** Position of this record in the dump */
   bgpstream_dump_position_t dump_pos;
+
+  // TMP... DELETEME
+  struct struct_BGPDUMP_ENTRY *bd_entry;
 
 } bgpstream_record_t;
 
