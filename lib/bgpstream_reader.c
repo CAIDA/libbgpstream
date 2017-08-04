@@ -23,14 +23,11 @@
 
 #include "bgpstream_reader.h"
 #include "bgpstream_record_int.h"
-#include "bgpdump_lib.h"
 #include "bgpstream_log.h"
 #include "utils.h"
 #include <assert.h>
 #include <pthread.h>
 #include <unistd.h>
-
-// TODO: refactor this into transport and format modules
 
 #define DUMP_OPEN_MAX_RETRIES 5
 #define DUMP_OPEN_MIN_RETRY_WAIT 10
@@ -38,14 +35,6 @@
 #define PREFETCH_IDX (reader->rec_buf_prefetch_idx)
 #define EXPORTED_IDX ((reader->rec_buf_prefetch_idx + 1) % 2)
 
-typedef enum {
-  OK,
-  FILTERED_DUMP,
-  EMPTY_DUMP,
-  CANT_OPEN_DUMP,
-  CORRUPTED_DUMP,
-  END_OF_DUMP,
-} status_t;
 
 struct bgpstream_reader {
 
@@ -63,180 +52,62 @@ struct bgpstream_reader {
   // the other ((this+1)%2) is holding the "exported" record
   int rec_buf_prefetch_idx;
 
-  // the total number of successful (filtered and not) reads
-  uint64_t successful_read_cnt;
+  // status of the underlying reader
+  bgpstream_format_status_t status;
 
-  // the number of non-filtered reads (i.e. "useful")
-  uint64_t valid_read_cnt;
-
-  // XXX following fields belong in TRANSPORT or FORMAT
-  // where does thread belong? maybe here, maybe not
-  status_t status;
-  BGPDUMP *bgpdump;
-  bgpstream_transport_t *transport;
+  // handle for the thread that will do the actual opening
   pthread_t opener_thread;
-  /* has the thread opened the dump? */
+
+  // ALL BELOW HERE MUST USE MUTEX
+
+  // format instance
+  bgpstream_format_t *format;
+
+  // has the thread opened the dump? (must use mutex)
   int dump_ready;
   pthread_cond_t dump_ready_cond;
   pthread_mutex_t mutex;
-  /* have we already checked that the dump is ready? */
+
+  // can the dump open check be skipped?
   int skip_dump_check;
 };
 
-static int wanted_bd_entry(BGPDUMP_ENTRY *bd_entry,
-                           bgpstream_filter_mgr_t *filter_mgr)
-{
-  bgpstream_interval_filter_t *tif;
-  assert(bd_entry != NULL && filter_mgr != NULL);
-
-  if (filter_mgr->time_intervals == NULL) {
-    // no time filtering
-    return 1;
-  }
-
-  uint32_t time = bd_entry->time;
-  tif = filter_mgr->time_intervals;
-
-  while (tif != NULL) {
-    if (time >= tif->begin_time && (tif->end_time == BGPSTREAM_FOREVER ||
-                                    time <= tif->end_time)) {
-      // matches a filter interval
-      return 1;
-    }
-    tif = tif->next;
-  }
-
-  return 0;
-}
-
-// ALL this does is read a BGPdump record into a waiting bgpstream record and
-// populate all the info needed for the record.
-// it assumes that the record is prepopulated with reader metadata
 static int prefetch_record(bgpstream_reader_t *reader)
 {
   bgpstream_record_t *record;
-  int skipped_cnt = 0;
-  assert(reader->status == OK);
+  assert(reader->status == BGPSTREAM_FORMAT_OK);
   assert(reader->rec_buf_filled[PREFETCH_IDX] == 0);
 
   record = reader->rec_buf[PREFETCH_IDX];
 
   // first, clear up our record
-  // note that this only destroys the bgpdump struct and resets the elem
+  // note that this only destroys the reader struct and resets the elem
   // generator. it does not clear the collector name etc as we reuse that.
   bgpstream_record_clear(record);
 
-  while (1) {
-    // try and get the next entry from the file
-    record->bd_entry = bgpdump_read_next(reader->bgpdump);
+  // try and get the next entry from the resource (will do filtering)
+  reader->status = bgpstream_format_populate_record(reader->format, record);
 
-    // did we read a record?
-    if (record->bd_entry != NULL) {
-      // we did (the normal case)
-      reader->successful_read_cnt++;
+  assert(reader->status == BGPSTREAM_FORMAT_OK ||
+         record->__format_data->data == NULL);
 
-      // check the filters
-      if (wanted_bd_entry(record->bd_entry, reader->filter_mgr) != 0) {
-        // we want this entry
-        reader->valid_read_cnt++;
-        reader->status = OK;
-        reader->res->current_time = record->attributes.record_time =
-          record->bd_entry->time;
-        break;
-      } else {
-        // we dont want this entry, destroy it
-        bgpdump_free_mem(record->bd_entry);
-        record->bd_entry = NULL;
-        skipped_cnt++;
-        continue;
-      }
-      assert(0);
-    }
-
-    // by here we did not read an entry from bgpdump... why?
-    assert(record->bd_entry == NULL);
-
-    // did bgpdump signal a corrupted read?
-    if (reader->bgpdump->corrupted_read) {
-      reader->status = CORRUPTED_DUMP;
-      break;
-    }
-
-    // ok, so an empty read, but not corrupted...
-
-    // end of file?
-    if (reader->bgpdump->eof == 0) {
-      // not EOF, so probably an MRT record that bgpdump kindly doesn't export
-      // (e.g. peer table)
-      // keep trying...
-      continue;
-    }
-
-    // ok, yep, we got EOF
-
-    // was this the first thing we tried to read?
-    if (reader->successful_read_cnt == 0) {
-      // then it is an empty file
-      reader->status = EMPTY_DUMP;
-      break;
-    }
-
-    // so we managed to read some things, but did we get anything useful from
-    // this file?
-    if (reader->valid_read_cnt == 0) {
-      // dump contained data, but we filtered all of them out
-      reader->status = FILTERED_DUMP;
-      break;
-    }
-
-    // well, then we must have reached the end of the file happily (also update
-    // the record that is ready to be exported to indicate that it was end of
-    // dump)
-    reader->status = END_OF_DUMP;
-    break;
+  // did we read a record?
+  if (reader->status == BGPSTREAM_FORMAT_OK) {
+    // we did (the normal case)
+    reader->res->current_time = record->attributes.record_time;
   }
 
-  // now "export" the bgpdump info into the record
-
-  // project, collector, dump type, dump time are already populated
-
-  // if this is the first record we read and no previous
-  // valid record has been discarded because of time
-  if (reader->valid_read_cnt == 1 && reader->successful_read_cnt == 1) {
-    record->dump_pos = BGPSTREAM_DUMP_START;
-  } else {
-    record->dump_pos = BGPSTREAM_DUMP_MIDDLE;
-    // NB when the *next* record is pre-fetched, this may be changed to
-    // end-of-dump (since we'll discover that there are no more records)
-  }
-
-  // TODO: do we REALLY need this to be visible to users?
-  switch (reader->status) {
-  case OK:
-    record->status = BGPSTREAM_RECORD_STATUS_VALID_RECORD;
-    break;
-  case FILTERED_DUMP:
-    record->status = BGPSTREAM_RECORD_STATUS_FILTERED_SOURCE;
-    record->dump_pos = BGPSTREAM_DUMP_END;
-    break;
-  case EMPTY_DUMP:
-    record->status = BGPSTREAM_RECORD_STATUS_EMPTY_SOURCE;
-    break;
-  case CANT_OPEN_DUMP:
-    record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE;
-    break;
-  case CORRUPTED_DUMP:
-    record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
-    break;
-  case END_OF_DUMP:
-    // update the PREVIOUS record iff we didn't skip any records in this read
-    if (skipped_cnt == 0) {
-      reader->rec_buf[EXPORTED_IDX]->dump_pos = BGPSTREAM_DUMP_END;
-    }
+  // set the previous record position to END if we didn't skip any records. we
+  // know this because the format has set the position of the current record to
+  // END (if records were skipped, it would be set to MIDDLE)
+  if (reader->status == BGPSTREAM_FORMAT_END_OF_DUMP &&
+      record->dump_pos == BGPSTREAM_DUMP_END &&
+      reader->rec_buf_filled[EXPORTED_IDX] == 1) {
+    reader->rec_buf[EXPORTED_IDX]->dump_pos = BGPSTREAM_DUMP_END;
   }
 
   // we export a meta record for every status except end of dump
-  if (reader->status != END_OF_DUMP) {
+  if (reader->status != BGPSTREAM_FORMAT_END_OF_DUMP) {
     reader->rec_buf_filled[PREFETCH_IDX] = 1;
   }
 
@@ -251,12 +122,11 @@ static void *threaded_opener(void *user)
 
   /* all we do is open the dump */
   /* but try a few times in case there is a transient failure */
-  while (retries < DUMP_OPEN_MAX_RETRIES && reader->bgpdump == NULL) {
-    /* TEMP: create the appropriate transport */
-    if ((reader->transport = bgpstream_transport_create(reader->res)) == NULL ||
-        (reader->bgpdump = bgpdump_open_dump(reader->transport)) == NULL) {
+  while (retries < DUMP_OPEN_MAX_RETRIES && reader->format == NULL) {
+    if ((reader->format =
+           bgpstream_format_create(reader->res, reader->filter_mgr)) == NULL) {
       bgpstream_log(BGPSTREAM_LOG_WARN,
-                    "Could not open dumpfile (%s). Attempt %d of %d",
+                    "Could not open (%s). Attempt %d of %d",
                     reader->res->uri, retries + 1, DUMP_OPEN_MAX_RETRIES);
       retries++;
       if (retries < DUMP_OPEN_MAX_RETRIES) {
@@ -267,11 +137,11 @@ static void *threaded_opener(void *user)
   }
 
   pthread_mutex_lock(&reader->mutex);
-  if (reader->bgpdump == NULL) {
+  if (reader->format == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR,
       "Could not open dumpfile (%s) after %d attempts. Giving up.",
       reader->res->uri, DUMP_OPEN_MAX_RETRIES);
-    reader->status = CANT_OPEN_DUMP;
+    reader->status = BGPSTREAM_FORMAT_CANT_OPEN_DUMP;
   } else {
     // prefetch the first record (will set reader->status to error if needed)
     prefetch_record(reader);
@@ -320,7 +190,7 @@ bgpstream_reader_create(bgpstream_resource_t *resource,
 
   reader->res = resource;
   reader->filter_mgr = filter_mgr;
-  reader->status = OK;
+  reader->status = BGPSTREAM_FORMAT_OK;
 
   int i;
   for (i=0; i<2; i++) {
@@ -364,10 +234,7 @@ void bgpstream_reader_destroy(bgpstream_reader_t *reader)
     reader->rec_buf[i] = NULL;
   }
 
-  bgpdump_close_dump(reader->bgpdump);
-  reader->bgpdump = NULL;
-  bgpstream_transport_destroy(reader->transport);
-  reader->transport = NULL;
+  bgpstream_format_destroy(reader->format);
 
   free(reader);
 }
@@ -384,7 +251,7 @@ int bgpstream_reader_open_wait(bgpstream_reader_t *reader)
   }
   pthread_mutex_unlock(&reader->mutex);
 
-  if (reader->status == CANT_OPEN_DUMP) {
+  if (reader->status == BGPSTREAM_FORMAT_CANT_OPEN_DUMP) {
     return -1;
   }
 
@@ -399,12 +266,11 @@ int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
 
   if (bgpstream_reader_open_wait(reader) != 0) {
     // cant even open the dump file
-    assert(reader->successful_read_cnt == 0 && reader->valid_read_cnt == 0);
     // we're not going to last long, but we should return the record saying we're
     // a failure
     *record = reader->rec_buf[PREFETCH_IDX];
     (*record)->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE;
-    assert((*record)->bd_entry == NULL);
+    assert((*record)->__format_data->data == NULL);
     return 0; // EOF
   }
 
@@ -418,7 +284,7 @@ int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
 
   // prefetch the next message (so we can see if the record we're about to
   // export would be the last one)
-  if (reader->status == OK &&
+  if (reader->status == BGPSTREAM_FORMAT_OK &&
       prefetch_record(reader) != 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Prefetch failed");
     return -1;
@@ -427,7 +293,7 @@ int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
   // if the EXPORT record is not filled, then we're done
   if (reader->rec_buf_filled[EXPORTED_IDX] == 0) {
     // EOS
-    assert(reader->status != OK);
+    assert(reader->status != BGPSTREAM_FORMAT_OK);
     return 0;
   }
 

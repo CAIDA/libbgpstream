@@ -40,11 +40,10 @@ bgpstream_record_t *bgpstream_record_create()
   bgpstream_record_t *record;
 
   if ((record = (bgpstream_record_t *)malloc_zero(
-         sizeof(bgpstream_record_t))) == NULL) {
-    return NULL;
-  }
-
-  if ((record->elem_generator = bgpstream_elem_generator_create()) == NULL) {
+         sizeof(bgpstream_record_t))) == NULL ||
+      (record->__format_data =
+         malloc_zero(sizeof(bgpstream_record_format_data_t))) == NULL ||
+      (record->elem_generator = bgpstream_elem_generator_create()) == NULL) {
     bgpstream_record_destroy(record);
     return NULL;
   }
@@ -58,16 +57,14 @@ void bgpstream_record_destroy(bgpstream_record_t *record)
     return;
   }
 
-  if (record->bd_entry != NULL) {
-    bgpdump_free_mem(record->bd_entry);
-    record->bd_entry = NULL;
-  }
+  bgpstream_format_destroy_data(record);
 
   if (record->elem_generator != NULL) {
     bgpstream_elem_generator_destroy(record->elem_generator);
     record->elem_generator = NULL;
   }
 
+  free(record->__format_data);
   free(record);
 }
 
@@ -76,11 +73,7 @@ void bgpstream_record_destroy(bgpstream_record_t *record)
    reader and thus these fields can be reused between reads. */
 void bgpstream_record_clear(bgpstream_record_t *record)
 {
-  if (record->bd_entry != NULL) {
-    bgpdump_free_mem(record->bd_entry);
-    record->bd_entry = NULL;
-  }
-
+  bgpstream_format_destroy_data(record);
   bgpstream_elem_generator_clear(record->elem_generator);
 }
 

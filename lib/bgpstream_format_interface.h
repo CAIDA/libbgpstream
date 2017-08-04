@@ -43,13 +43,16 @@
 #define BS_FORMAT_GENERATE_PROTOS(name)                                        \
   int bs_format_##name##_create(bgpstream_format_t *format,                    \
                                 bgpstream_resource_t *res);                    \
-  int bs_format_##name##_get_next_record(bgpstream_format_t *format,           \
-                                         bgpstream_record_t **record);         \
+  bgpstream_format_status_t bs_format_##name##_populate_record(                \
+    bgpstream_format_t *format, bgpstream_record_t *record);                   \
+  void bs_format_##name##_destroy_data(bgpstream_format_t *format,             \
+                                       void *data);                            \
   void bs_format_##name##_destroy(bgpstream_format_t *format);
 
 #define BS_FORMAT_SET_METHODS(classname, format)                               \
   do {                                                                         \
-    (format)->get_next_record = bs_format_##classname##_get_next_record;       \
+    (format)->populate_record = bs_format_##classname##_populate_record;       \
+    (format)->destroy_data = bs_format_##classname##_destroy_data;             \
     (format)->destroy = bs_format_##classname##_destroy;                       \
   } while (0)
 
@@ -66,11 +69,21 @@ struct bgpstream_format {
    *
    * @param format      pointer to the format object to read from
    * @param[out] record   set to point to a populated record instance
-   * @return 1 if a record was read successfully, 0 if there is nothing more to
-   * read, -1 if an error occurred.
+   * @return format status code
+   *
+   * This function should use the filter manager to only return records that
+   * match the given filters.
    */
-  int (*get_next_record)(struct bgpstream_format *format,
-                         bgpstream_record_t **record);
+  bgpstream_format_status_t (*populate_record)(struct bgpstream_format *format,
+                                               bgpstream_record_t *record);
+
+  /** Destroy the given format-specific record data
+   *
+   * @param format      pointer to the format object to use
+   * @param data        pointer to the data to destroy
+   */
+  void (*destroy_data)(struct bgpstream_format *format,
+                       void *data);
 
   /** Destroy the given format module
    *
@@ -87,6 +100,9 @@ struct bgpstream_format {
 
   /** Pointer to the transport instance to read data from */
   bgpstream_transport_t *transport;
+
+  /** Pointer to the filter manager instance to use to filter records */
+  bgpstream_filter_mgr_t *filter_mgr;
 
   /** An opaque pointer to format-specific state if needed */
   void *state;
