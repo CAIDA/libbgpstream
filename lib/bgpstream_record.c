@@ -293,7 +293,8 @@ static int elem_check_filters(bgpstream_record_t *record,
 bgpstream_elem_t *bgpstream_record_get_next_elem(bgpstream_record_t *record)
 {
   if (bgpstream_elem_generator_is_populated(record->elem_generator) == 0 &&
-      bgpstream_elem_generator_populate(record->elem_generator, record) != 0) {
+      bgpstream_format_populate_elem_generator(
+        record->__format_data->format, record, record->elem_generator) != 0) {
     return NULL;
   }
   bgpstream_elem_t *elem =

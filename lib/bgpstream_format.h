@@ -24,8 +24,9 @@
 #ifndef __BGPSTREAM_FORMAT_H
 #define __BGPSTREAM_FORMAT_H
 
-#include "bgpstream_resource.h"
+#include "bgpstream_elem_generator.h"
 #include "bgpstream_filter.h"
+#include "bgpstream_resource.h"
 
 /** Generic interface to specific data format modules */
 typedef struct bgpstream_format bgpstream_format_t;
@@ -65,6 +66,17 @@ bgpstream_format_create(bgpstream_resource_t *res,
 bgpstream_format_status_t
 bgpstream_format_populate_record(bgpstream_format_t *format,
                                  bgpstream_record_t *record);
+
+/** Populate the given elem generator with information from the given record
+ *
+ * @param format        pointer to the format object to use
+ * @param record        pointer to the record to use
+ * @param gen           pointer to the elem generator to populate
+ * @return 0 if the generator was populated successfully, -1 otherwise
+ */
+int bgpstream_format_populate_elem_generator(bgpstream_format_t *format,
+                                             bgpstream_record_t *record,
+                                             bgpstream_elem_generator_t *gen);
 
 /** Destroy the format data in a given record
  *

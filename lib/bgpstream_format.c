@@ -108,6 +108,14 @@ bgpstream_format_populate_record(bgpstream_format_t *format,
   return format->populate_record(format, record);
 }
 
+int bgpstream_format_populate_elem_generator(bgpstream_format_t *format,
+                                             bgpstream_record_t *record,
+                                             bgpstream_elem_generator_t *gen)
+{
+  assert(record->__format_data->format == format);
+  return format->populate_elem_generator(format, record, gen);
+}
+
 #define DATA(record) ((record)->__format_data)
 
 void bgpstream_format_destroy_data(bgpstream_record_t *record)

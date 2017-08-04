@@ -178,6 +178,13 @@ bs_format_mrt_populate_record(bgpstream_format_t *format,
   return BGPSTREAM_FORMAT_OK;
 }
 
+int bs_format_mrt_populate_elem_generator(bgpstream_format_t *format,
+                                          bgpstream_record_t *record,
+                                          bgpstream_elem_generator_t *gen)
+{
+  return 0;
+}
+
 void bs_format_mrt_destroy_data(bgpstream_format_t *format, void *data)
 {
   bgpdump_free_mem((BGPDUMP_ENTRY*)data);
