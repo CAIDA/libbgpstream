@@ -31,7 +31,6 @@
 #include "bgpstream_elem_int.h"
 #include "bgpstream_int.h"
 #include "bgpstream_log.h"
-#include "bgpstream_elem_generator.h"
 #include "bgpstream_record.h"
 #include "utils.h"
 
@@ -42,8 +41,7 @@ bgpstream_record_t *bgpstream_record_create()
   if ((record = (bgpstream_record_t *)malloc_zero(
          sizeof(bgpstream_record_t))) == NULL ||
       (record->__format_data =
-         malloc_zero(sizeof(bgpstream_record_format_data_t))) == NULL ||
-      (record->elem_generator = bgpstream_elem_generator_create()) == NULL) {
+         malloc_zero(sizeof(bgpstream_record_format_data_t))) == NULL) {
     bgpstream_record_destroy(record);
     return NULL;
   }
@@ -59,11 +57,6 @@ void bgpstream_record_destroy(bgpstream_record_t *record)
 
   bgpstream_format_destroy_data(record);
 
-  if (record->elem_generator != NULL) {
-    bgpstream_elem_generator_destroy(record->elem_generator);
-    record->elem_generator = NULL;
-  }
-
   free(record->__format_data);
   free(record);
 }
@@ -74,12 +67,12 @@ void bgpstream_record_destroy(bgpstream_record_t *record)
 void bgpstream_record_clear(bgpstream_record_t *record)
 {
   bgpstream_format_destroy_data(record);
-  bgpstream_elem_generator_clear(record->elem_generator);
 }
 
 void bgpstream_record_print_mrt_data(bgpstream_record_t *const record)
 {
-  bgpdump_print_entry(record->bd_entry);
+  assert(0 && "TODO: fix this implementation");
+  //bgpdump_print_entry(record->bd_entry);
 }
 
 static int bgpstream_elem_prefix_match(bgpstream_patricia_tree_t *prefixes,
@@ -314,7 +307,8 @@ bgpstream_elem_t *bgpstream_record_get_next_elem(bgpstream_record_t *record)
   bgpstream_elem_t *elem = NULL;
   int rc;
 
-  if (record == NULL || record->__format_data->format == NULL) {
+  if (record == NULL || record->status != BGPSTREAM_RECORD_STATUS_VALID_RECORD ||
+      record->__format_data->format == NULL) {
     return 0; // treat as end-of-elems
   }
 
@@ -325,6 +319,7 @@ bgpstream_elem_t *bgpstream_record_get_next_elem(bgpstream_record_t *record)
       assert(0);
     }
     if (rc == 0) {
+      // end-of-elems
       assert(elem == NULL);
       break;
     }

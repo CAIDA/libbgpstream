@@ -83,14 +83,14 @@ int bgpstream_elem_generator_is_populated(
 /** Populate a generator with elems from the given record
  *
  * @param generator     pointer to the generator to populate
- * @param record        pointer to a BGP Stream Record instance
+ * @param bd_entry      pointer to a BGPdump entry
  * @return 0 if the generator was populated successfully, -1 otherwise
  *
  * @note This function may defer processing of the record until each call to
  * bgpstream_elem_generator_next_elem
  */
 int bgpstream_elem_generator_populate(bgpstream_elem_generator_t *generator,
-                                      struct struct_bgpstream_record_t *record);
+                                      BGPDUMP_ENTRY *bd_entry);
 
 /** Get the next elem from the generator
  *

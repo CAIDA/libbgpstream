@@ -144,9 +144,6 @@ typedef struct struct_bgpstream_record_t {
   /** INTERNAL: raw data from the underlying resource */
   bgpstream_record_format_data_t *__format_data;
 
-  /** INTERNAL: state used to generate elems for get_next_elem */
-  struct bgpstream_elem_generator *elem_generator;
-
   /** Collection of attributes pertaining to this record */
   bgpstream_record_attributes_t attributes;
 
@@ -155,9 +152,6 @@ typedef struct struct_bgpstream_record_t {
 
   /** Position of this record in the dump */
   bgpstream_dump_position_t dump_pos;
-
-  // TMP... DELETEME
-  struct struct_BGPDUMP_ENTRY *bd_entry;
 
 } bgpstream_record_t;
 
