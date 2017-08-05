@@ -722,44 +722,41 @@ int bgpstream_elem_generator_is_populated(bgpstream_elem_generator_t *self)
 }
 
 int bgpstream_elem_generator_populate(bgpstream_elem_generator_t *self,
-                                      bgpstream_record_t *record)
+                                      BGPDUMP_ENTRY *bd_entry)
 {
-  assert(record != NULL);
-
-  /* bgpstream_record must have cleared already */
+  /* generator must have cleared already */
   assert(self->elems_cnt == -1);
 
   /* start with an empty set */
   self->elems_cnt = 0;
 
-  if (record->bd_entry == NULL ||
-      record->status != BGPSTREAM_RECORD_STATUS_VALID_RECORD) {
+  if (bd_entry == NULL) {
     return 0;
   }
 
-  switch (record->bd_entry->type) {
+  switch (bd_entry->type) {
   case BGPDUMP_TYPE_MRTD_TABLE_DUMP:
-    return table_line_mrtd_route(self, record->bd_entry);
+    return table_line_mrtd_route(self, bd_entry);
     break;
 
   case BGPDUMP_TYPE_TABLE_DUMP_V2:
-    return table_line_dump_v2_prefix(self, record->bd_entry);
+    return table_line_dump_v2_prefix(self, bd_entry);
     break;
 
   case BGPDUMP_TYPE_ZEBRA_BGP:
-    switch (record->bd_entry->subtype) {
+    switch (bd_entry->subtype) {
     case BGPDUMP_SUBTYPE_ZEBRA_BGP_MESSAGE:
     case BGPDUMP_SUBTYPE_ZEBRA_BGP_MESSAGE_AS4:
-      switch (record->bd_entry->body.zebra_message.type) {
+      switch (bd_entry->body.zebra_message.type) {
       case BGP_MSG_UPDATE:
-        return table_line_update(self, record->bd_entry);
+        return table_line_update(self, bd_entry);
         break;
       }
       break;
 
     case BGPDUMP_SUBTYPE_ZEBRA_BGP_STATE_CHANGE: // state messages
     case BGPDUMP_SUBTYPE_ZEBRA_BGP_STATE_CHANGE_AS4:
-      return bgp_state_change(self, record->bd_entry);
+      return bgp_state_change(self, bd_entry);
       break;
     }
   }

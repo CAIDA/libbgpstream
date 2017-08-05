@@ -25,6 +25,7 @@
 #include "bgpstream_format_interface.h"
 #include "bgpstream_record_int.h"
 #include "bgpdump_lib.h"
+#include "bgpstream_elem_generator.h"
 #include "bgpstream_log.h"
 #include "utils.h"
 #include <assert.h>
@@ -36,6 +37,9 @@ typedef struct state {
 
   // bgpdump instance (TODO: replace with parsebgp instance)
   BGPDUMP *bgpdump;
+
+  // elem generator instance
+  bgpstream_elem_generator_t *elem_generator;
 
   // the total number of successful (filtered and not) reads
   uint64_t successful_read_cnt;
@@ -77,6 +81,10 @@ int bs_format_mrt_create(bgpstream_format_t *format,
   BS_FORMAT_SET_METHODS(mrt, format);
 
   if ((format->state = malloc_zero(sizeof(state_t))) == NULL) {
+    return -1;
+  }
+
+  if ((STATE->elem_generator = bgpstream_elem_generator_create()) == NULL) {
     return -1;
   }
 
@@ -182,11 +190,24 @@ int bs_format_mrt_get_next_elem(bgpstream_format_t *format,
                                 bgpstream_record_t *record,
                                 bgpstream_elem_t **elem)
 {
-  return 0;
+  if (bgpstream_elem_generator_is_populated(STATE->elem_generator) == 0) {
+    bgpstream_log(BGPSTREAM_LOG_WARN, "populating elem generator");
+    if (bgpstream_elem_generator_populate(STATE->elem_generator, FDATA) != 0) {
+      return -1;
+    }
+  }
+  *elem = bgpstream_elem_generator_get_next_elem(STATE->elem_generator);
+  if (*elem == NULL) {
+      bgpstream_log(BGPSTREAM_LOG_WARN, "no more elems");
+    return 0;
+  }
+  bgpstream_log(BGPSTREAM_LOG_WARN, "returning useful elem");
+  return 1;
 }
 
 void bs_format_mrt_destroy_data(bgpstream_format_t *format, void *data)
 {
+  bgpstream_elem_generator_clear(STATE->elem_generator);
   bgpdump_free_mem((BGPDUMP_ENTRY*)data);
 }
 
@@ -194,6 +215,9 @@ void bs_format_mrt_destroy(bgpstream_format_t *format)
 {
   bgpdump_close_dump(STATE->bgpdump);
   STATE->bgpdump = NULL;
+
+  bgpstream_elem_generator_destroy(STATE->elem_generator);
+  STATE->elem_generator = NULL;
 
   free(format->state);
   format->state = NULL;
