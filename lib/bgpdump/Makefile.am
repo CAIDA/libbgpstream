@@ -24,7 +24,8 @@
 SUBDIRS=
 
 # to allow #include <config.h>
-AM_CPPFLAGS= -I$(top_srcdir)
+AM_CPPFLAGS= 	-I$(top_srcdir) \
+		-I$(top_srcdir)/lib/utils
 
 noinst_LTLIBRARIES = libbgpstream-bgpdump.la
 
