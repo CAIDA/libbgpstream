@@ -367,8 +367,8 @@ static int insert_resource_elem(bgpstream_resource_mgr_t *q,
 
     // which end of the list is this record closer to?
     // can probably be optimized somewhat, lists are not my specialty...
-    if (abs(el->res->current_time - q->head->time) <
-        abs(el->res->current_time - q->tail->time)) {
+    if (abs((int)el->res->current_time - (int)q->head->time) <
+        abs((int)el->res->current_time - (int)q->tail->time)) {
       // closer to the head of the list
       QUEUE_PUSH(el, head, tail, <, next, prev);
     } else {
