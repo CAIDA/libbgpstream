@@ -283,29 +283,12 @@ static int elem_check_filters(bgpstream_record_t *record,
   return 1;
 }
 
-bgpstream_elem_t *bgpstream_record_get_next_elem(bgpstream_record_t *record)
+int bgpstream_record_get_next_elem(bgpstream_record_t *record,
+                                   bgpstream_elem_t **elemp)
 {
-#if 0
-  if (bgpstream_elem_generator_is_populated(record->elem_generator) == 0 &&
-      bgpstream_format_populate_elem_generator(
-        record->__format_data->format, record, record->elem_generator) != 0) {
-    return NULL;
-  }
-  bgpstream_elem_t *elem =
-    bgpstream_elem_generator_get_next_elem(record->elem_generator);
-
-  /* if the elem is compatible with the current filters then return elem,
-   * otherwise run again bgpstream_record_get_next_elem(record) */
-  if (elem == NULL || elem_check_filters(record, elem) == 1) {
-    return elem;
-  }
-
-  return bgpstream_record_get_next_elem(record);
-#endif
-
-  // TODO: remove this and change to API same as get_next_record
-  bgpstream_elem_t *elem = NULL;
   int rc;
+  bgpstream_elem_t *elem = NULL;
+  *elemp = NULL;
 
   if (record == NULL || record->status != BGPSTREAM_RECORD_STATUS_VALID_RECORD ||
       record->__format_data->format == NULL) {
@@ -314,23 +297,19 @@ bgpstream_elem_t *bgpstream_record_get_next_elem(bgpstream_record_t *record)
 
   while (elem == NULL) {
     if ((rc = bgpstream_format_get_next_elem(record->__format_data->format,
-                                             record, &elem)) < 0) {
-      // TODO: handle this
-      assert(0);
-    }
-    if (rc == 0) {
-      // end-of-elems
-      assert(elem == NULL);
-      break;
+                                             record, &elem)) <= 0) {
+      // either error or end-of-elems
+      return rc;
     }
 
-    // TODO: consider moving elem filtering down to the formats
+    // TODO: push elem filtering down into the formats
     if (elem_check_filters(record, elem) == 0) {
       elem = NULL;
     }
   }
 
-  return elem;
+  *elemp = elem;
+  return 1;
 }
 
 int bgpstream_record_dump_type_snprintf(char *buf, size_t len,
