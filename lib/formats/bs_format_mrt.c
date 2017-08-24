@@ -594,7 +594,10 @@ static int populate_elem_generator(bgpstream_elem_generator_t *gen,
       break;
     }
   }
-  return -1;
+
+  /* if we fall through to here, then we have a record that we don't extract any
+     elems for, so don't return an error, just leave an empty elem generator */
+  return 0;
 }
 
 /* ==================== END BGPDUMP JUNK ==================== */
@@ -761,7 +764,6 @@ int bs_format_mrt_get_next_elem(bgpstream_format_t *format,
 {
   if (bgpstream_elem_generator_is_populated(STATE->elem_generator) == 0 &&
       populate_elem_generator(STATE->elem_generator, FDATA) != 0) {
-    assert(0);
     return -1;
   }
   *elem = bgpstream_elem_generator_get_next_elem(STATE->elem_generator);
