@@ -166,16 +166,18 @@ typedef struct struct_bgpstream_record_t {
  *
  * @param record        pointer to the BGP Stream Record to retrieve the elem
  *                      from
- * @return borrowed pointer to the next Elem in the record, NULL if there are no
- * more Elems
+
+ * @param[out] elem     set to point to a borrowed elem structure, or NULL if
+ *                      there are no more elems
+ * @return 1 if a valid elem was returned, 0 if there are no more elems, -1 if
+ * an error occurred
  *
  * The returned pointer is guaranteed to be valid until the record is re-used in
  * a subsequent call to bgpstream_get_next_record, or is destroyed with
  * bgpstream_record_destroy
- *
- * TODO: change to allow an error code to be returned in case of failure
  */
-bgpstream_elem_t *bgpstream_record_get_next_elem(bgpstream_record_t *record);
+int bgpstream_record_get_next_elem(bgpstream_record_t *record,
+                                   bgpstream_elem_t **elem);
 
 /** Dump the given record to stdout in bgpdump format
  *

@@ -535,41 +535,43 @@ int main(int argc, char *argv[])
   }
 
   /* use the interface */
-  int get_next_ret = 0;
+  int rrc = 0, erc = 0;
   bgpstream_elem_t *bs_elem;
-  do {
-    get_next_ret = bgpstream_get_next_record(bs, &bs_record);
-    if (get_next_ret && record_output_on) {
+
+  while ((rrc = bgpstream_get_next_record(bs, &bs_record)) > 0) {
+
+    if (record_output_on) {
       print_bs_record(bs_record);
     }
-    if (get_next_ret &&
-        bs_record->status == BGPSTREAM_RECORD_STATUS_VALID_RECORD) {
-      if (record_bgpdump_output_on) {
-        bgpstream_record_print_mrt_data(bs_record);
+
+    if (bs_record->status != BGPSTREAM_RECORD_STATUS_VALID_RECORD) {
+      continue;
+    }
+
+    if (record_bgpdump_output_on) {
+      bgpstream_record_print_mrt_data(bs_record);
+    }
+
+    if (elem_output_on) {
+      /* check if the record is of type RIB, in case extract the ID */
+      /* print the RIB start line */
+      if (bs_record->attributes.dump_type == BGPSTREAM_RIB &&
+          bs_record->dump_pos == BGPSTREAM_DUMP_START) {
+        print_rib_control_message(bs_record);
       }
-      if (elem_output_on) {
-        /* check if the record is of type RIB, in case extract the ID */
-        if (bs_record->attributes.dump_type == BGPSTREAM_RIB) {
 
-          /* print the RIB start line */
-          if (bs_record->dump_pos == BGPSTREAM_DUMP_START) {
-            print_rib_control_message(bs_record);
-          }
+      while ((erc = bgpstream_record_get_next_elem(bs_record, &bs_elem)) > 0) {
+        if (print_elem(bs_record, bs_elem) != 0) {
+          goto err;
         }
-
-        while ((bs_elem = bgpstream_record_get_next_elem(bs_record)) != NULL) {
-          if (print_elem(bs_record, bs_elem) != 0) {
-            goto err;
-          }
-        }
-        /* check if end of RIB has been reached */
-        if (bs_record->attributes.dump_type == BGPSTREAM_RIB &&
-            bs_record->dump_pos == BGPSTREAM_DUMP_END) {
-          print_rib_control_message(bs_record);
-        }
+      }
+      /* check if end of RIB has been reached */
+      if (bs_record->attributes.dump_type == BGPSTREAM_RIB &&
+          bs_record->dump_pos == BGPSTREAM_DUMP_END) {
+        print_rib_control_message(bs_record);
       }
     }
-  } while (get_next_ret > 0);
+  }
 
  done:
   /* deallocate memory for interface */
