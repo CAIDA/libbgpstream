@@ -26,8 +26,6 @@
 #include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "bgpdump_lib.h"
-#include "bgpdump_process.h"
 #include "bgpstream_elem_int.h"
 #include "bgpstream_int.h"
 #include "bgpstream_log.h"
