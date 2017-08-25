@@ -21,7 +21,7 @@
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-SUBDIRS=
+SUBDIRS= libparsebgp
 
 # to allow #include <config.h>
 AM_CPPFLAGS= 	-I$(top_srcdir) \

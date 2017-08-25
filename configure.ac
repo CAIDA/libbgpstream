@@ -139,6 +139,9 @@ AC_SEARCH_LIBS([wandio_create], [wandio], [with_wandio=yes],
 )])
 AM_CONDITIONAL([WITH_WANDIO], [test "x$with_wandio" == xyes])
 
+# build our bundled version of libparsebgp
+AC_CONFIG_SUBDIRS([lib/formats/libparsebgp])
+
 # Checks for doxygen
 AC_CHECK_PROG([bgpstream_doxygen_avail], [doxygen], [yes], [no])
 AC_MSG_CHECKING([whether to compile the docs])
