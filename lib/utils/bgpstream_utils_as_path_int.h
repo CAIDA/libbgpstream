@@ -25,7 +25,6 @@
 #define __BGPSTREAM_UTILS_AS_PATH_INT_H
 
 #include "bgpstream_utils_as_path.h"
-
 #include "bgpdump_lib.h"
 
 /** @file

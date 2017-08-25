@@ -21,17 +21,13 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "bgpstream_utils_as_path_int.h"
 #include "config.h"
-
+#include "khash.h"
+#include "utils.h"
 #include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
-
-#include "bgpdump_lib.h"
-#include "khash.h"
-#include "utils.h"
-
-#include "bgpstream_utils_as_path_int.h"
 
 #define SIZEOF_SEG_SET(segp)                                                   \
   (sizeof(bgpstream_as_path_seg_set_t) +                                       \

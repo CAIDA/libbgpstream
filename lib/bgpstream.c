@@ -27,7 +27,6 @@
 #include "bgpstream_int.h"
 #include "bgpstream_log.h"
 #include "bgpstream_di_mgr.h"
-#include "bgpdump_lib.h"
 #include "utils.h"
 
 struct bgpstream {

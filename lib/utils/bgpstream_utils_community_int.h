@@ -25,7 +25,6 @@
 #define __BGPSTREAM_UTILS_COMMUNITY_INT_H
 
 #include "bgpstream_utils_community.h"
-
 #include "bgpdump_lib.h"
 
 /** @file

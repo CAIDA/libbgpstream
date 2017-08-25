@@ -22,16 +22,12 @@
  */
 
 #include "config.h"
-
 #include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
-
-#include "bgpdump_lib.h"
 #include "khash.h"
 #include "utils.h"
-
 #include "bgpstream_utils_community_int.h"
 
 #define COMMUNITY_MAX_STR_LEN 16
