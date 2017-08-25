@@ -28,7 +28,11 @@ AM_CPPFLAGS= 	-I$(top_srcdir) \
 		-I$(top_srcdir)/lib \
                 -I$(top_srcdir)/lib/utils \
 		-I$(top_srcdir)/lib/bgpdump \
-	 	-I$(top_srcdir)/common
+	 	-I$(top_srcdir)/common \
+		-I$(top_srcdir)/lib/formats/libparsebgp/lib \
+		-I$(top_srcdir)/lib/formats/libparsebgp/lib/bgp \
+		-I$(top_srcdir)/lib/formats/libparsebgp/lib/mrt \
+		-I$(top_srcdir)/lib/formats/libparsebgp/lib/bmp
 
 
 noinst_LTLIBRARIES = libbgpstream-formats.la
@@ -39,6 +43,7 @@ LIBS=
 # for now we just build all formats, but some day something might be optional
 SOURCES+=bs_format_mrt.c \
 	 bs_format_mrt.h
+LIBS+=$(top_builddir)/lib/formats/libparsebgp/lib/libparsebgp.la
 
 #SOURCES+=bs_format_bmp.c \
 #	 bs_format_bmp.h
