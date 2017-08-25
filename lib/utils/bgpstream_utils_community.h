@@ -25,6 +25,8 @@
 #define __BGPSTREAM_UTILS_COMMUNITY_H
 
 #include <limits.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 /** @file
  *

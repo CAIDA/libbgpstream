@@ -122,6 +122,7 @@ int bgpstream_format_get_next_elem(bgpstream_format_t *format,
 void bgpstream_format_destroy_data(bgpstream_record_t *record)
 {
   if (record == NULL || DATA(record)->format == NULL) {
+    assert(DATA(record)->data == NULL);
     return;
   }
   DATA(record)->format->destroy_data(DATA(record)->format, DATA(record)->data);

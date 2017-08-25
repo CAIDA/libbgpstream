@@ -21,15 +21,16 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "bgpstream_elem_int.h"
+#include "bgpstream_log.h"
+#include "bgpstream_record.h"
+#include "bgpstream_utils.h"
 #include "config.h"
+#include "utils.h"
 #include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
-#include "utils.h"
-#include "bgpstream_utils.h"
-#include "bgpstream_record.h"
-#include "bgpstream_elem_int.h"
 
 /* ==================== PROTECTED FUNCTIONS ==================== */
 
@@ -38,28 +39,28 @@
 bgpstream_elem_t *bgpstream_elem_create()
 {
   // allocate memory for new element
-  bgpstream_elem_t *ri = NULL;
+  bgpstream_elem_t *elem = NULL;
 
-  if ((ri = (bgpstream_elem_t *)malloc_zero(sizeof(bgpstream_elem_t))) ==
+  if ((elem = (bgpstream_elem_t *)malloc_zero(sizeof(bgpstream_elem_t))) ==
       NULL) {
     goto err;
   }
   // all fields are initialized to zero
 
   // need to create as path
-  if ((ri->aspath = bgpstream_as_path_create()) == NULL) {
+  if ((elem->aspath = bgpstream_as_path_create()) == NULL) {
     goto err;
   }
 
   // and a community set
-  if ((ri->communities = bgpstream_community_set_create()) == NULL) {
+  if ((elem->communities = bgpstream_community_set_create()) == NULL) {
     goto err;
   }
 
-  return ri;
+  return elem;
 
 err:
-  bgpstream_elem_destroy(ri);
+  bgpstream_elem_destroy(elem);
   return NULL;
 }
 
@@ -234,12 +235,9 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
                                      bgpstream_elem_t const *elem,
                                      int print_type)
 {
-  assert(elem);
-
   size_t written = 0; /* < how many bytes we wanted to write */
   size_t c = 0;       /* < how many chars were written */
   char *buf_p = buf;
-
   bgpstream_as_path_seg_t *seg;
 
   /* common fields */
@@ -265,8 +263,10 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
   ADD_PIPE;
 
   /* PEER IP */
-  if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->peer_address) == NULL)
+  if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->peer_address) == NULL) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed peer address");
     return NULL;
+  }
   SEEK_STR_END;
   ADD_PIPE;
 
@@ -281,26 +281,24 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
     /* PREFIX */
     if (bgpstream_pfx_snprintf(buf_p, B_REMAIN,
                                (bgpstream_pfx_t *)&(elem->prefix)) == NULL) {
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed prefix (R/A)");
       return NULL;
     }
     SEEK_STR_END;
     ADD_PIPE;
 
     /* NEXT HOP */
-    if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->nexthop) == NULL) {
-      return NULL;
+    if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->nexthop) != NULL) {
+      SEEK_STR_END;
     }
-    SEEK_STR_END;
     ADD_PIPE;
 
     /* AS PATH */
     c = bgpstream_as_path_snprintf(buf_p, B_REMAIN, elem->aspath);
     written += c;
     buf_p += c;
-
     if (B_FULL)
       return NULL;
-
     ADD_PIPE;
 
     /* ORIGIN AS */
@@ -309,17 +307,14 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
       written += c;
       buf_p += c;
     }
-
     ADD_PIPE;
 
     /* COMMUNITIES */
     c = bgpstream_community_set_snprintf(buf_p, B_REMAIN, elem->communities);
     written += c;
     buf_p += c;
-
     if (B_FULL)
       return NULL;
-
     ADD_PIPE;
 
     /* OLD STATE (empty) */
@@ -337,6 +332,7 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
     /* PREFIX */
     if (bgpstream_pfx_snprintf(buf_p, B_REMAIN,
                                (bgpstream_pfx_t *)&(elem->prefix)) == NULL) {
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed prefix (W)");
       return NULL;
     }
     SEEK_STR_END;
