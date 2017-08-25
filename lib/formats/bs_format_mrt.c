@@ -24,10 +24,11 @@
 #include "bs_format_mrt.h"
 #include "bgpstream_format_interface.h"
 #include "bgpstream_record_int.h"
-#include "parsebgp.h"
+#include "bgpstream_utils_community_int.h"
 #include "bgpstream_elem_generator.h"
 #include "bgpstream_log.h"
 #include "utils.h"
+#include "parsebgp.h"
 #include <assert.h>
 
 #define STATE ((state_t*)(format->state))
@@ -35,7 +36,21 @@
 
 // read in chunks of 1MB to minimize the number of partial parses we end up
 // doing
+// TODO: check that this never forces wandio to read from more than 1 buffer
 #define BUFLEN 1024 * 1024
+
+typedef struct peer_index_entry {
+
+  /** Peer ASN */
+  uint32_t peer_asn;
+
+  /** Peer IP */
+  bgpstream_addr_storage_t peer_ip;
+
+} peer_index_entry_t;
+
+KHASH_INIT(td2_peer, int, peer_index_entry_t, 1, kh_int_hash_func,
+           kh_int_hash_equal);
 
 typedef struct state {
 
@@ -54,7 +69,7 @@ typedef struct state {
   uint8_t *ptr;
 
   // elem generator instance
-  bgpstream_elem_generator_t *elem_generator;
+  bgpstream_elem_generator_t *gen;
 
   // the total number of successful (filtered and not) reads
   uint64_t successful_read_cnt;
@@ -62,7 +77,522 @@ typedef struct state {
   // the number of non-filtered reads (i.e. "useful")
   uint64_t valid_read_cnt;
 
+  // state to store the "peer index table" when reading TABLE_DUMP_V2 records
+  khash_t(td2_peer) *peer_table;
+
 } state_t;
+
+// TODO move lots of this code into a common parsebgp helper module so that we
+// can reuse it for the BMP format
+
+#define COPY_IP(dst, afi, src, do_unknown)                                     \
+  do {                                                                         \
+    switch (afi) {                                                             \
+    case PARSEBGP_BGP_AFI_IPV4:                                                \
+      (dst)->version = BGPSTREAM_ADDR_VERSION_IPV4;                            \
+      memcpy(&(dst)->ipv4, src, 4);                                            \
+      break;                                                                   \
+                                                                               \
+    case PARSEBGP_BGP_AFI_IPV6:                                                \
+      (dst)->version = BGPSTREAM_ADDR_VERSION_IPV6;                            \
+      memcpy(&(dst)->ipv6, src, 16);                                           \
+      break;                                                                   \
+                                                                               \
+    default:                                                                   \
+      do_unknown;                                                              \
+    }                                                                          \
+  } while (0)
+
+static int handle_as_paths(bgpstream_as_path_t *path,
+                           parsebgp_bgp_update_as_path_t *aspath,
+                           parsebgp_bgp_update_as_path_t *as4path)
+{
+  if (aspath && as4path) {
+    bgpstream_log(BGPSTREAM_LOG_WARN, "Maybe merging");
+  }
+  if (as4path) {
+    bgpstream_log(BGPSTREAM_LOG_WARN, "AS4_PATH");
+  }
+
+  return 0;
+}
+
+static int handle_path_attrs(bgpstream_elem_t *el,
+                             parsebgp_bgp_update_path_attr_t *attrs)
+{
+  parsebgp_bgp_update_as_path_t *aspath = NULL;
+  parsebgp_bgp_update_as_path_t *as4path = NULL;
+
+  // AS Path(s)
+  if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS_PATH].type ==
+      PARSEBGP_BGP_PATH_ATTR_TYPE_AS_PATH) {
+    aspath = &attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS_PATH].data.as_path;
+  }
+  if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_PATH].type ==
+      PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_PATH) {
+    as4path = &attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_PATH].data.as_path;
+  }
+  if (handle_as_paths(el->aspath, aspath, as4path) != 0) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not parse AS_PATH");
+    return -1;
+  }
+
+  // Communities
+  if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_COMMUNITIES].type ==
+        PARSEBGP_BGP_PATH_ATTR_TYPE_COMMUNITIES &&
+      bgpstream_community_set_populate(
+        el->communities,
+        attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_COMMUNITIES].data.communities.raw,
+        attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_COMMUNITIES].len) != 0) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not parse COMMUNITIES");
+    return -1;
+  }
+  return 0;
+}
+
+// extract the appropriate NEXT-HOP information from the given attributes
+//
+// from my reading of RFC4760, it is theoretically possible for a single UPDATE
+// to carry reachability information for both v4 and another (v6) AFI, so we use
+// the is_mp_pfx flag to direct us to either the NEXT_HOP attr, or the MP_REACH
+// attr.
+static int handle_next_hop(bgpstream_elem_t *el,
+                           parsebgp_bgp_update_path_attr_t *attrs,
+                           int is_mp_pfx)
+{
+  parsebgp_bgp_update_mp_reach_t *mp_reach;
+
+  if (is_mp_pfx && attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI].type ==
+                     PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI) {
+    // extract next-hop from MP_REACH attribute
+    mp_reach = &attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI].data.mp_reach;
+    COPY_IP(&el->nexthop, mp_reach->afi, mp_reach->next_hop, return -1);
+  } else {
+    // extract next-hop from NEXT_HOP attribute
+    if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_NEXT_HOP].type !=
+        PARSEBGP_BGP_PATH_ATTR_TYPE_NEXT_HOP) {
+      return 0;
+    }
+    COPY_IP(&el->nexthop, PARSEBGP_BGP_AFI_IPV4,
+            attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_NEXT_HOP].data.next_hop,
+            return -1);
+  }
+
+  return 0;
+}
+
+static int handle_table_dump(bgpstream_elem_generator_t *gen,
+                             parsebgp_mrt_msg_t *mrt)
+{
+  bgpstream_elem_t *el;
+  parsebgp_mrt_table_dump_t *td = &mrt->types.table_dump;
+
+  if ((el = bgpstream_elem_generator_get_new_elem(gen)) == NULL) {
+    return -1;
+  }
+
+  // legacy table dump format is basically an elem
+
+  el->type = BGPSTREAM_ELEM_TYPE_RIB;
+  el->timestamp = mrt->timestamp_sec;
+  el->timestamp_usec = mrt->timestamp_usec; // not used
+
+  COPY_IP(&el->peer_address, mrt->subtype, &td->peer_ip, return -1);
+
+  el->peer_asnumber = td->peer_asn;
+
+  COPY_IP(&el->prefix.address, mrt->subtype, &td->prefix, return -1);
+  el->prefix.mask_len = td->prefix_len;
+
+  if (handle_next_hop(el, td->path_attrs.attrs,
+                      mrt->subtype == PARSEBGP_BGP_AFI_IPV6 ? 1 : 0) != 0) {
+    return -1;
+  }
+
+  if (handle_path_attrs(el, td->path_attrs.attrs) != 0) {
+    return -1;
+  }
+
+  bgpstream_elem_generator_commit_elem(gen, el);
+
+  return 0;
+}
+
+static int handle_td2_peer_index(bgpstream_format_t *format,
+                                 parsebgp_mrt_table_dump_v2_peer_index_t *pi)
+{
+  int i;
+  khiter_t k;
+  int khret;
+  peer_index_entry_t *bs_pie;
+  parsebgp_mrt_table_dump_v2_peer_entry_t *pie;
+
+  // alloc the table hash
+  if ((STATE->peer_table = kh_init(td2_peer)) == NULL) {
+    return -1;
+  }
+
+  // add peers to the table
+  for (i = 0; i < pi->peer_count; i++) {
+    k = kh_put(td2_peer, STATE->peer_table, i, &khret);
+    if (khret == -1) {
+      return -1;
+    }
+
+    pie = &pi->peer_entries[i];
+    bs_pie = &kh_val(STATE->peer_table, k);
+
+    bs_pie->peer_asn = pie->asn;
+    COPY_IP(&bs_pie->peer_ip, pie->ip_afi, pie->ip, return -1);
+  }
+
+  return 0;
+}
+
+static int handle_td2_rib_entry(bgpstream_format_t *format,
+                                bgpstream_elem_t *elem_tmpl,
+                                parsebgp_mrt_msg_t *mrt,
+                                parsebgp_bgp_afi_t afi,
+                                parsebgp_mrt_table_dump_v2_rib_entry_t *re)
+{
+  bgpstream_elem_t *el;
+  peer_index_entry_t *bs_pie;
+  khiter_t k;
+
+  if ((el = bgpstream_elem_generator_get_new_elem(STATE->gen)) == NULL) {
+    return -1;
+  }
+  el->type = BGPSTREAM_ELEM_TYPE_RIB;
+  el->timestamp = elem_tmpl->timestamp;
+  el->timestamp_usec = elem_tmpl->timestamp_usec;
+
+  // look the peer up in the peer index table
+  if ((k = kh_get(td2_peer, STATE->peer_table, re->peer_index)) ==
+      kh_end(STATE->peer_table)) {
+    bgpstream_log(BGPSTREAM_LOG_ERR,
+                  "Missing Peer Index Table entry for Peer ID %d",
+                  re->peer_index);
+    return -1;
+  }
+  bs_pie = &kh_val(STATE->peer_table, k);
+  bgpstream_addr_copy((bgpstream_ip_addr_t *)&el->peer_address,
+                      (bgpstream_ip_addr_t *)&bs_pie->peer_ip);
+
+  el->peer_asnumber = bs_pie->peer_asn;
+
+
+  bgpstream_pfx_copy((bgpstream_pfx_t *)&el->prefix,
+                      (bgpstream_pfx_t *)&elem_tmpl->prefix);
+
+  if (handle_next_hop(el, re->path_attrs.attrs,
+                      afi == PARSEBGP_BGP_AFI_IPV6 ? 1 : 0) != 0) {
+    return -1;
+  }
+
+  if (handle_path_attrs(el, re->path_attrs.attrs) != 0) {
+    return -1;
+  }
+
+  bgpstream_elem_generator_commit_elem(STATE->gen, el);
+
+  return 0;
+}
+
+static int
+handle_td2_afi_safi_rib(bgpstream_format_t *format, parsebgp_mrt_msg_t *mrt,
+                        parsebgp_bgp_afi_t afi,
+                        parsebgp_mrt_table_dump_v2_afi_safi_rib_t *asr)
+{
+  int i;
+
+  // we use this elem to pre-populate the timestamp, prefix and then populate
+  // peer and path information within the loop
+  bgpstream_elem_t *elem;
+
+  if ((elem = bgpstream_elem_create()) == NULL) {
+    return -1;
+  }
+
+  elem->timestamp = mrt->timestamp_sec;
+  elem->timestamp_usec = mrt->timestamp_usec;
+  COPY_IP(&elem->prefix.address, afi, asr->prefix, return 0);
+  elem->prefix.mask_len = asr->prefix_len;
+  // other elem fields are specific to the entry
+
+  // if we haven't seen a peer index table yet, then just give up
+  if (STATE->peer_table == NULL) {
+    bgpstream_log(BGPSTREAM_LOG_WARN,
+                  "Missing Peer Index Table, skipping RIB entry");
+    return -1;
+  }
+
+  for (i = 0; i < asr->entry_count; i++) {
+    if (handle_td2_rib_entry(format, elem, mrt, afi, &asr->entries[i]) != 0) {
+      return -1;
+    }
+  }
+
+  bgpstream_elem_destroy(elem);
+
+  return 0;
+}
+
+static int handle_table_dump_v2(bgpstream_format_t *format,
+                                parsebgp_mrt_msg_t *mrt)
+{
+  parsebgp_mrt_table_dump_v2_t *td2 = &mrt->types.table_dump_v2;
+
+  switch (mrt->subtype) {
+  case PARSEBGP_MRT_TABLE_DUMP_V2_PEER_INDEX_TABLE:
+    if (STATE->peer_table != NULL) {
+      bgpstream_log(BGPSTREAM_LOG_ERR,
+                    "Peer index table has already been processed");
+      return 0;
+    }
+    return handle_td2_peer_index(format, &td2->peer_index);
+    break;
+
+  case PARSEBGP_MRT_TABLE_DUMP_V2_RIB_IPV4_UNICAST:
+    return handle_td2_afi_safi_rib(format, mrt, PARSEBGP_BGP_AFI_IPV4,
+                                   &td2->afi_safi_rib);
+  case PARSEBGP_MRT_TABLE_DUMP_V2_RIB_IPV6_UNICAST:
+    return handle_td2_afi_safi_rib(format, mrt, PARSEBGP_BGP_AFI_IPV6,
+                                   &td2->afi_safi_rib);
+    break;
+
+  default:
+    // do nothing
+    break;
+  }
+
+  return 0;
+}
+
+/**
+ * Given a list of prefixes (NLRIs) and a mostly-filled elem to use as a
+ * template, populate the given elem generator with one elem per NLRI.
+ *
+ * TODO: consider using a custom elem generator that rather than replicating
+ * elems that mostly have the same content, it just serves the same elem over
+ * and over, but alters the prefix. This should use less memory, and be quite a
+ * bit faster. This would mean that we'd have to make the elem extraction
+ * process a generator itself, which could be quite complicated (e.g., how do we
+ * remember where we are in walking through the MRT message?)
+ */
+static int handle_bgp4mp_prefixes(bgpstream_elem_generator_t *gen,
+                                  bgpstream_elem_type_t elem_type,
+                                  bgpstream_elem_t *elem_tmpl,
+                                  parsebgp_bgp_prefix_t *prefixes,
+                                  int prefixes_cnt,
+                                  int is_announcement)
+{
+  bgpstream_elem_t *el;
+
+  int i;
+  for (i = 0; i < prefixes_cnt; i++) {
+    if (prefixes->type != PARSEBGP_BGP_PREFIX_UNICAST_IPV4 &&
+        prefixes->type != PARSEBGP_BGP_PREFIX_UNICAST_IPV6) {
+      continue;
+    }
+
+    if ((el = bgpstream_elem_generator_get_new_elem(gen)) == NULL) {
+      return -1;
+    }
+    el->type = elem_type;
+    el->timestamp = elem_tmpl->timestamp;
+    el->timestamp_usec = elem_tmpl->timestamp_usec;
+    bgpstream_addr_copy((bgpstream_ip_addr_t *)&el->peer_address,
+                        (bgpstream_ip_addr_t *)&elem_tmpl->peer_address);
+    el->peer_asnumber = elem_tmpl->peer_asnumber;
+
+    // Prefix
+    COPY_IP(&el->prefix.address, prefixes[i].afi, prefixes[i].addr, continue);
+    el->prefix.mask_len = prefixes[i].len;
+
+    if (is_announcement) {
+      // Next-Hop
+      bgpstream_addr_copy((bgpstream_ip_addr_t *)&el->nexthop,
+                          (bgpstream_ip_addr_t *)&elem_tmpl->nexthop);
+
+      // AS Path
+      // TODO
+
+      // Communities
+      if (bgpstream_community_set_copy(el->communities,
+                                       elem_tmpl->communities) != 0) {
+        return -1;
+      }
+    }
+
+    bgpstream_elem_generator_commit_elem(gen, el);
+  }
+
+  return 0;
+}
+
+static int handle_bgp4mp_bgp_msg(bgpstream_elem_generator_t *gen,
+                                 bgpstream_elem_t *elem_tmpl,
+                                 parsebgp_mrt_msg_t *mrt,
+                                 parsebgp_mrt_bgp4mp_t *bgp4mp)
+{
+  parsebgp_bgp_update_t *update;
+  parsebgp_bgp_update_path_attr_t *attr;
+
+  if (bgp4mp->data.bgp_msg.type != PARSEBGP_BGP_TYPE_UPDATE) {
+    return 0;
+  }
+
+  update = &bgp4mp->data.bgp_msg.types.update;
+
+  // generate one elem per withdrawal
+  // native (v4) withdrawals
+  if (handle_bgp4mp_prefixes(gen, BGPSTREAM_ELEM_TYPE_WITHDRAWAL, elem_tmpl,
+                             update->withdrawn_nlris.prefixes,
+                             update->withdrawn_nlris.prefixes_cnt, 0) != 0) {
+    return -1;
+  }
+  // MP_UNREACH (v6) withdrawals
+  attr = &update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI];
+  if (attr->type == PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI &&
+      handle_bgp4mp_prefixes(gen, BGPSTREAM_ELEM_TYPE_WITHDRAWAL, elem_tmpl,
+                             attr->data.mp_unreach.withdrawn_nlris,
+                             attr->data.mp_unreach.withdrawn_nlris_cnt, 0) != 0) {
+    return -1;
+  }
+
+  if (handle_path_attrs(elem_tmpl, update->path_attrs.attrs) != 0) {
+    return -1;
+  }
+
+  // generate one elem per announcement
+  // native (v4) announcements
+  if (handle_next_hop(elem_tmpl, update->path_attrs.attrs, 0) != 0) {
+    return -1;
+  }
+  if (handle_bgp4mp_prefixes(gen, BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT, elem_tmpl,
+                             update->announced_nlris.prefixes,
+                             update->announced_nlris.prefixes_cnt, 1) != 0) {
+    return -1;
+  }
+  // MP_REACH (v6) announcements
+  attr = &update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI];
+  if (attr->type == PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI) {
+    if (handle_next_hop(elem_tmpl, update->path_attrs.attrs, 1) != 0) {
+      return -1;
+    }
+    if (handle_bgp4mp_prefixes(gen, BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT, elem_tmpl,
+                               attr->data.mp_reach.nlris,
+                               attr->data.mp_reach.nlris_cnt, 1) != 0) {
+      return -1;
+    }
+  }
+  return 0;
+}
+
+static int handle_bgp4mp_state_change(bgpstream_elem_generator_t *gen,
+                                      bgpstream_elem_t *elem_tmpl,
+                                      parsebgp_mrt_msg_t *mrt,
+                                      parsebgp_mrt_bgp4mp_t *bgp4mp)
+{
+  // pointer to the elem in the generator
+  bgpstream_elem_t *el;
+  if ((el = bgpstream_elem_generator_get_new_elem(gen)) == NULL) {
+    return -1;
+  }
+  el->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
+  el->timestamp = elem_tmpl->timestamp;
+  el->timestamp_usec = elem_tmpl->timestamp_usec;
+  bgpstream_addr_copy((bgpstream_ip_addr_t *)&el->peer_address,
+                      (bgpstream_ip_addr_t *)&elem_tmpl->peer_address);
+  el->peer_asnumber = elem_tmpl->peer_asnumber;
+
+  el->old_state = bgp4mp->data.state_change.old_state;
+  el->new_state = bgp4mp->data.state_change.new_state;
+
+  bgpstream_elem_generator_commit_elem(gen, el);
+
+  return 0;
+}
+
+static int handle_bgp4mp(bgpstream_elem_generator_t *gen,
+                         parsebgp_mrt_msg_t *mrt)
+{
+  int rc = 0;
+  parsebgp_mrt_bgp4mp_t *bgp4mp = &mrt->types.bgp4mp;
+  // we use this elem to pre-populate some common fields among the elems we'll
+  // generate
+  bgpstream_elem_t *elem;
+  if ((elem = bgpstream_elem_create()) == NULL) {
+    return -1;
+  }
+
+  elem->timestamp = mrt->timestamp_sec;
+  elem->timestamp_usec = mrt->timestamp_usec;
+  COPY_IP(&elem->peer_address, bgp4mp->afi, bgp4mp->peer_ip, return 0);
+  elem->peer_asnumber = bgp4mp->peer_asn;
+  // other elem fields are specific to the message
+
+  switch (mrt->subtype) {
+  case PARSEBGP_MRT_BGP4MP_STATE_CHANGE:
+  case PARSEBGP_MRT_BGP4MP_STATE_CHANGE_AS4:
+    rc = handle_bgp4mp_state_change(gen, elem, mrt, bgp4mp);
+    break;
+
+  case PARSEBGP_MRT_BGP4MP_MESSAGE:
+  case PARSEBGP_MRT_BGP4MP_MESSAGE_AS4:
+  case PARSEBGP_MRT_BGP4MP_MESSAGE_LOCAL:
+  case PARSEBGP_MRT_BGP4MP_MESSAGE_AS4_LOCAL:
+    rc = handle_bgp4mp_bgp_msg(gen, elem, mrt, bgp4mp);
+    break;
+
+  default:
+    bgpstream_log(BGPSTREAM_LOG_WARN,
+                  "Skipping unknown BGP4MP record subtype %d", mrt->subtype);
+    break;
+  }
+
+  bgpstream_elem_destroy(elem);
+
+  return rc;
+}
+
+static int populate_elem_generator(bgpstream_format_t *format,
+                                   parsebgp_msg_t *msg)
+{
+  parsebgp_mrt_msg_t *mrt;
+
+  /* mark the generator as having no elems */
+  bgpstream_elem_generator_empty(STATE->gen);
+
+  if (msg == NULL) {
+    return 0;
+  }
+
+  mrt = &msg->types.mrt;
+
+  switch (mrt->type) {
+  case PARSEBGP_MRT_TYPE_TABLE_DUMP:
+    return handle_table_dump(STATE->gen, mrt);
+    break;
+
+  case PARSEBGP_MRT_TYPE_TABLE_DUMP_V2:
+    return handle_table_dump_v2(format, mrt);
+    break;
+
+  case PARSEBGP_MRT_TYPE_BGP4MP:
+  case PARSEBGP_MRT_TYPE_BGP4MP_ET:
+    return handle_bgp4mp(STATE->gen, mrt);
+    break;
+
+  default:
+    // a type we don't care about, so leave the elem generator empty
+    bgpstream_log(BGPSTREAM_LOG_WARN, "Skipping unknown MRT record type %d",
+                  mrt->type);
+    break;
+  }
+
+  return 0;
+}
 
 static int is_wanted_time(uint32_t record_time,
                           bgpstream_filter_mgr_t *filter_mgr)
@@ -84,21 +614,6 @@ static int is_wanted_time(uint32_t record_time,
     }
     tif = tif->next;
   }
-
-  return 0;
-}
-
-static int populate_elem_generator(bgpstream_elem_generator_t *gen,
-                                   parsebgp_msg_t *msg)
-{
-  /* mark the generator as having no elems */
-  bgpstream_elem_generator_empty(gen);
-
-  if (msg == NULL) {
-    return 0;
-  }
-
-  // TODO
 
   return 0;
 }
@@ -131,6 +646,8 @@ static bgpstream_format_status_t handle_eof(bgpstream_format_t *format,
                                             bgpstream_record_t *record,
                                             uint64_t skipped_cnt)
 {
+  assert(FDATA == NULL);
+
   // just to be kind, set the record time to the dump time
   record->attributes.record_time = record->attributes.dump_time;
 
@@ -171,7 +688,7 @@ int bs_format_mrt_create(bgpstream_format_t *format,
     return -1;
   }
 
-  if ((STATE->elem_generator = bgpstream_elem_generator_create()) == NULL) {
+  if ((STATE->gen = bgpstream_elem_generator_create()) == NULL) {
     return -1;
   }
 
@@ -183,15 +700,19 @@ int bs_format_mrt_create(bgpstream_format_t *format,
   opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_ORIGIN] = 1;
   opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_AS_PATH] = 1;
   opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_NEXT_HOP] = 1;
-  opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_MED] = 1;
-  opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_LOCAL_PREF] = 1;
-  opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_ATOMIC_AGGREGATE] = 1;
-  opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_AGGREGATOR] = 1;
+  //opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_MED] = 1;
+  //opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_LOCAL_PREF] = 1;
+  //opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_ATOMIC_AGGREGATE] = 1;
+  //opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_AGGREGATOR] = 1;
   opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_COMMUNITIES] = 1;
   opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI] = 1;
   opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI] = 1;
   opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_PATH] = 1;
-  opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR] = 1;
+  //opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR] = 1;
+
+  // and ask for shallow parsing of communities
+  opts->bgp.path_attr_raw_enabled = 1;
+  opts->bgp.path_attr_raw[PARSEBGP_BGP_PATH_ATTR_TYPE_COMMUNITIES] = 1;
 
   // DEBUG: (switch to ignore in production)
   opts->ignore_not_implemented = 0;
@@ -224,7 +745,6 @@ bs_format_mrt_populate_record(bgpstream_format_t *format,
       // read error
       // TODO: create a specific read error failure so that perhaps BGPStream
       // can retry
-      bgpstream_log(BGPSTREAM_LOG_WARN, "DEBUG: Failed read");
       return -1;
     }
     if (fill_len == STATE->remain) {
@@ -251,12 +771,16 @@ bs_format_mrt_populate_record(bgpstream_format_t *format,
       if (err == PARSEBGP_PARTIAL_MSG) {
         // refill the buffer and try again
         refill = 1;
+        parsebgp_destroy_msg(FDATA);
+        record->__format_data->data = NULL;
         goto refill;
       }
       // else: its a fatal error
       bgpstream_log(BGPSTREAM_LOG_ERR,
                     "ERROR: Failed to parse message (%d:%s)\n", err,
                     parsebgp_strerror(err));
+      parsebgp_destroy_msg(FDATA);
+      record->__format_data->data = NULL;
       return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
     }
     // else: successful read
@@ -267,9 +791,33 @@ bs_format_mrt_populate_record(bgpstream_format_t *format,
     assert(FDATA != NULL);
     assert(FDATA->type == PARSEBGP_MSG_TYPE_MRT);
 
+    // if this is a peer index table message, we parse it now and move on (we
+    // could also add a "filtered" flag to the peer_index_entry_t struct so that
+    // when elem parsing happens it can quickly filter out unwanted peers
+    // without having to check ASN or IP
+
+    if (FDATA->types.mrt.type == PARSEBGP_MRT_TYPE_TABLE_DUMP_V2 &&
+        FDATA->types.mrt.subtype ==
+          PARSEBGP_MRT_TABLE_DUMP_V2_PEER_INDEX_TABLE) {
+      if (handle_td2_peer_index(
+            format, &FDATA->types.mrt.types.table_dump_v2.peer_index) != 0) {
+        bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to process Peer Index Table");
+        parsebgp_destroy_msg(FDATA);
+        record->__format_data->data = NULL;
+        return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
+      }
+      // move on to the next record
+      parsebgp_destroy_msg(FDATA);
+      record->__format_data->data = NULL;
+      continue;
+    }
+
     STATE->successful_read_cnt++;
 
     // check the filters
+    // TODO: if this is a BGP4MP or TD1 message (UPDATE), then we can do some
+    // work to prep the path attributes (and then filter on them).
+
     if (is_wanted_time(FDATA->types.mrt.timestamp_sec, format->filter_mgr) !=
         0) {
       // we want this entry
@@ -319,11 +867,12 @@ int bs_format_mrt_get_next_elem(bgpstream_format_t *format,
                                 bgpstream_record_t *record,
                                 bgpstream_elem_t **elem)
 {
-  if (bgpstream_elem_generator_is_populated(STATE->elem_generator) == 0 &&
-      populate_elem_generator(STATE->elem_generator, FDATA) != 0) {
+  if (bgpstream_elem_generator_is_populated(STATE->gen) == 0 &&
+      populate_elem_generator(format, FDATA) != 0) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Elem generator population failed");
     return -1;
   }
-  *elem = bgpstream_elem_generator_get_next_elem(STATE->elem_generator);
+  *elem = bgpstream_elem_generator_get_next_elem(STATE->gen);
   if (*elem == NULL) {
     return 0;
   }
@@ -332,14 +881,19 @@ int bs_format_mrt_get_next_elem(bgpstream_format_t *format,
 
 void bs_format_mrt_destroy_data(bgpstream_format_t *format, void *data)
 {
-  bgpstream_elem_generator_clear(STATE->elem_generator);
+  bgpstream_elem_generator_clear(STATE->gen);
   parsebgp_destroy_msg((parsebgp_msg_t*)data);
 }
 
 void bs_format_mrt_destroy(bgpstream_format_t *format)
 {
-  bgpstream_elem_generator_destroy(STATE->elem_generator);
-  STATE->elem_generator = NULL;
+  bgpstream_elem_generator_destroy(STATE->gen);
+  STATE->gen = NULL;
+
+  if (STATE->peer_table != NULL) {
+    kh_destroy(td2_peer, STATE->peer_table);
+    STATE->peer_table = NULL;
+  }
 
   free(format->state);
   format->state = NULL;

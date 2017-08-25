@@ -21,14 +21,15 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "bgpstream_utils_community_int.h"
 #include "config.h"
+#include "khash.h"
+#include "utils.h"
+#include <arpa/inet.h>
 #include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
-#include "khash.h"
-#include "utils.h"
-#include "bgpstream_utils_community_int.h"
 
 #define COMMUNITY_MAX_STR_LEN 16
 
@@ -332,39 +333,38 @@ int bgpstream_community_set_equal(bgpstream_community_set_t *set1,
 /* ========== PROTECTED FUNCTIONS ========== */
 
 int bgpstream_community_set_populate(bgpstream_community_set_t *set,
-                                     struct community *bd_comms)
+                                     uint8_t *buf, size_t len)
 {
+  int cnt;
   int i;
-  uint32_t comval;
   bgpstream_community_t *c = NULL;
 
   bgpstream_community_set_clear(set);
 
-  if (bd_comms == NULL) {
+  if (buf == NULL || len == 0) {
     return 0;
   }
 
-  if (set->communities_alloc_cnt < bd_comms->size) {
-    if ((set->communities =
-           realloc(set->communities,
-                   sizeof(bgpstream_community_t) * bd_comms->size)) == NULL) {
+  cnt = len / sizeof(uint32_t);
+
+  if (set->communities_alloc_cnt < cnt) {
+    if ((set->communities = realloc(
+           set->communities, sizeof(bgpstream_community_t) * cnt)) == NULL) {
       return -1;
     }
-    set->communities_alloc_cnt = bd_comms->size;
+    set->communities_alloc_cnt = cnt;
   }
 
-  for (i = 0; i < bd_comms->size; i++) {
+  for (i = 0; i < cnt; i++) {
     c = &set->communities[i];
-    /* this could be made more efficient by manually copying each half and
-       then byte flipping... one day */
-    memcpy(&comval, &bd_comms->val[i], sizeof(uint32_t));
-    comval = ntohl(comval);
-    c->asn = (comval >> 16) & 0xFFFF;
-    c->value = comval & 0xFFFF;
+    c->asn = ntohs(*(uint16_t*)buf);
+    buf += sizeof(uint16_t);
+    c->value = ntohs(*(uint16_t*)buf);
+    buf += sizeof(uint16_t);
     set->communities_hash = set->communities_hash | *((uint32_t *)c);
   }
 
-  set->communities_cnt = bd_comms->size;
+  set->communities_cnt = cnt;
 
   return 0;
 }

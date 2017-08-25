@@ -25,7 +25,7 @@
 #define __BGPSTREAM_UTILS_COMMUNITY_INT_H
 
 #include "bgpstream_utils_community.h"
-#include "bgpdump_lib.h"
+#include <stdlib.h>
 
 /** @file
  *
@@ -69,14 +69,16 @@
  *
  * @{ */
 
-/** Populate a community set structure based on a BGP Dump Community Attribute
+/** Populate a community set structure based on the raw data from a BGP
+ * COMMUNITIES attribute
  *
  * @param set           pointer to the community set to populate
- * @param bd_comms      pointer to a BGP Dump community attribute structure
+ * @param buf           pointer to the raw COMMUNITIES attribute data
+ * @param len           length of the raw COMMUNITIES attribute
  * @return 0 if the set was populated successfully, -1 otherwise
  */
 int bgpstream_community_set_populate(bgpstream_community_set_t *set,
-                                     struct community *bd_comms);
+                                     uint8_t *buf, size_t len);
 
 /** @} */
 

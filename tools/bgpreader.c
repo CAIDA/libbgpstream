@@ -22,7 +22,6 @@
  */
 
 #include "config.h"
-
 #include <assert.h>
 #include <ctype.h>
 #include <inttypes.h>
@@ -32,7 +31,6 @@
 #include <time.h>
 #include <unistd.h>
 #include <unistd.h>
-
 #include "bgpstream.h"
 
 #define PROJECT_CMD_CNT 10
@@ -698,5 +696,6 @@ static int print_elem(bgpstream_record_t *bs_record, bgpstream_elem_t *elem)
     return 0;
   }
 
+  fprintf(stderr, "ERROR: Could not print elem\n");
   return -1;
 }

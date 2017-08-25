@@ -23,6 +23,7 @@
 
 #include "utils.h"
 #include "bgpstream_elem_generator.h"
+#include <assert.h>
 
 struct bgpstream_elem_generator {
 
@@ -120,9 +121,16 @@ bgpstream_elem_generator_get_new_elem(bgpstream_elem_generator_t *self)
     self->elems_alloc_cnt++;
   }
 
-  elem = self->elems[self->elems_cnt++];
+  elem = self->elems[self->elems_cnt];
   bgpstream_elem_clear(elem);
   return elem;
+}
+
+void bgpstream_elem_generator_commit_elem(bgpstream_elem_generator_t *self,
+                                          bgpstream_elem_t *el)
+{
+  assert(self->elems[self->elems_cnt] == el);
+  self->elems_cnt++;
 }
 
 bgpstream_elem_t *

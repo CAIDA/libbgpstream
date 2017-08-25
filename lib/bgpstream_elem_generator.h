@@ -97,6 +97,18 @@ int bgpstream_elem_generator_is_populated(
 bgpstream_elem_t *
 bgpstream_elem_generator_get_new_elem(bgpstream_elem_generator_t *self);
 
+/** "Commit" the given elem to the generator
+ *
+ * @param generator     pointer to the generator the elem was obtained from
+ * @param elem          pointer to the elem to commit
+ *
+ * Note: this function must be called at most once per call to _get_new_elem. If
+ * _get_new_elem is called again before _commit_elem is called, then the *same*
+ * elem will be returned.
+ */
+void bgpstream_elem_generator_commit_elem(bgpstream_elem_generator_t *generator,
+                                          bgpstream_elem_t *elem);
+
 /** Get the next elem from the generator
  *
  * @param generator     pointer to the generator to retrieve an elem from
