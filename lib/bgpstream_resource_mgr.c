@@ -587,6 +587,7 @@ static int pop_record(bgpstream_resource_mgr_t *q, bgpstream_record_t **record)
     el = q->head->res_list[BGPSTREAM_UPDATE];
   }
   assert(el != NULL && el->res != NULL);
+  assert(el->open != 0);
 
   // cache the current time so we can check if we need to remove and re-insert
   prev_time = el->res->current_time;
@@ -776,9 +777,13 @@ bgpstream_resource_mgr_get_record(bgpstream_resource_mgr_t *q,
 
     // we know we have something in the queue, but if we have nothing open, then
     // it is time to open some resources!
-    if (q->res_open_cnt == 0 && open_batch(q, q->head) != 0) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to open resource batch");
-      goto err;
+    // we do this inside a loop since in some cases the first batch we open get
+    // sorted elsewhere in the queue, leaving the head still unopened.
+    while (q->head->res_open_cnt == 0) {
+      if (open_batch(q, q->head) != 0) {
+        bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to open resource batch");
+        goto err;
+      }
     }
     // its possible that we failed to open all the files, perhaps in that case
     // we shouldn't abort, but instead return EOS and let the caller decide what
