@@ -735,7 +735,6 @@ WARN_LOGFILE           =
 
 INPUT                  = @top_srcdir@ \
                          @top_srcdir@/lib \
-                         @top_srcdir@/lib/bgpdump \
                          @top_srcdir@/lib/utils \
                          @top_srcdir@/tools \
                          @top_srcdir@/common
