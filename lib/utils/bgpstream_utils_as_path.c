@@ -22,6 +22,7 @@
  */
 
 #include "bgpstream_utils_as_path_int.h"
+#include "bgpstream_log.h"
 #include "config.h"
 #include "khash.h"
 #include "utils.h"
@@ -316,92 +317,6 @@ int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src)
   return 0;
 }
 
-#if 0
-/* AK deprecates this version of the copy as it is unused and overly complex */
-int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src,
-                           int first_seg_idx, int excl_last_seg)
-{
-  uint16_t new_len = src->data_len;
-  uint16_t new_seg_cnt = src->seg_cnt;
-  int i;
-  bgpstream_as_path_seg_t *seg;
-  uint16_t seg_size = 0;
-  uint16_t new_begin_offset = 0;
-  uint16_t new_origin_offset = 0;
-
-  /* set dst to the empty path */
-  bgpstream_as_path_clear(dst);
-
-  if(new_len == 0 || new_seg_cnt == 0)
-    {
-      /* copy nothing, dst is already empty */
-      return 0;
-    }
-
-  assert(src->origin_offset != UINT16_MAX);
-
-  if(excl_last_seg != 0)
-    {
-      /* subtract the origin from the end of the path */
-      new_len = src->origin_offset;
-      new_seg_cnt--;
-
-      /* is the path now empty? */
-      if(new_len == 0 || new_seg_cnt == 0)
-        {
-          /* copy nothing */
-          return 0;
-        }
-    }
-
-  /* is there enough segments to satisfy the first_seg_idx requirement? */
-  if(new_seg_cnt < (first_seg_idx+1))
-    {
-      /* copy nothing */
-      return 0;
-    }
-
-  for(i=0; i<new_seg_cnt; i++)
-    {
-      seg = (bgpstream_as_path_seg_t*)(src->data+new_begin_offset);
-      seg_size = SIZEOF_SEG(seg);
-      if(i < first_seg_idx)
-        {
-          new_begin_offset += seg_size;
-        }
-
-      /* we're also looking for the new origin offset */
-      if(i < new_seg_cnt-1)
-        {
-          new_origin_offset += seg_size;
-        }
-    }
-  new_len -= new_begin_offset;
-  new_seg_cnt -= first_seg_idx;
-
-  /* ensure we have enough space */
-  if(dst->data_alloc_len < new_len)
-    {
-      if((dst->data = realloc(dst->data, new_len)) == NULL)
-        {
-          return -1;
-        }
-      dst->data_alloc_len = new_len;
-    }
-
-  /* copy the subpath into dst */
-  memcpy(dst->data, src->data+new_begin_offset, new_len);
-
-  /* update dst info */
-  dst->data_len = new_len;
-  dst->seg_cnt = new_seg_cnt;
-
-  dst->origin_offset = new_origin_offset - new_begin_offset;
-
-  return 0;
-}
-#endif
-
 bgpstream_as_path_seg_t *
 bgpstream_as_path_get_origin_seg(bgpstream_as_path_t *path)
 {
@@ -617,13 +532,11 @@ static void test_path_copy(bgpstream_as_path_t *path)
 }
 #endif
 
-int bgpstream_as_path_populate(bgpstream_as_path_t *path,
-                               struct aspath *bd_path)
+int bgpstream_as_path_append(bgpstream_as_path_t *path,
+                             bgpstream_as_path_seg_type_t type,
+                             uint32_t *asns,
+                             int asns_cnt)
 {
-  uint8_t *ptr;
-  uint8_t *end;
-
-  struct assegment *bd_seg;
   bgpstream_as_path_seg_t *seg;
   bgpstream_as_path_iter_t iter;
 
@@ -632,152 +545,78 @@ int bgpstream_as_path_populate(bgpstream_as_path_t *path,
 
   int i;
 
-  uint16_t *ptr16;
-  uint32_t *ptr32;
-  uint32_t asn;
+  // seek the iterator to the end of the path where we'll add our new segment
+  iter.cur_offset = path->data_len;
 
-  assert(path != NULL);
-  assert(bd_path != NULL);
-
-  ptr = (uint8_t *)bd_path->data;
-  end = ptr + bd_path->length;
-
-  /* we are going to overwrite the current path */
-  bgpstream_as_path_clear(path);
-  bgpstream_as_path_iter_reset(&iter);
-
-  bgpstream_as_path_seg_type_t last_type = BGPSTREAM_AS_PATH_SEG_ASN;
-
-  while (ptr < end) {
-    bd_seg = (struct assegment *)ptr;
-
-    /* Check AS type validity. */
-    if ((bd_seg->type != AS_SET) && (bd_seg->type != AS_SEQUENCE) &&
-        (bd_seg->type != AS_CONFED_SET) &&
-        (bd_seg->type != AS_CONFED_SEQUENCE)) {
-      fprintf(stderr, "WARN: AS_PATH with segment type %d\n", bd_seg->type);
-      return -1;
-    }
-
-    /* Check AS length. */
-    if ((ptr + (bd_seg->length * bd_path->asn_len) + AS_HEADER_SIZE) > end) {
-      fprintf(stderr, "ERROR: Corrupted AS_PATH\n");
-      return -1;
-    }
-
-    /* ensure that the data buffer is long enough */
-    if (bd_seg->type == AS_SEQUENCE) {
+  /* ensure that the path data buffer is long enough */
+  if (type == BGPSTREAM_AS_PATH_SEG_ASN) {
       new_len =
-        path->data_len + (sizeof(bgpstream_as_path_seg_asn_t) * bd_seg->length);
+        path->data_len + (sizeof(bgpstream_as_path_seg_asn_t) * asns_cnt);
       assert(new_len < UINT16_MAX);
-    } else {
-      /* a set */
-      new_len = path->data_len + sizeof(bgpstream_as_path_seg_set_t) +
-                (sizeof(uint32_t) * bd_seg->length);
-      assert(new_len < UINT16_MAX);
-    }
+  } else {
+    /* a set */
+    new_len = path->data_len + sizeof(bgpstream_as_path_seg_set_t) +
+      (sizeof(uint32_t) * asns_cnt);
+    assert(new_len < UINT16_MAX);
+  }
 
-    if (path->data_alloc_len < new_len) {
-      if ((path->data = realloc(path->data, new_len)) == NULL) {
-        return -1;
-      }
-      path->data_alloc_len = new_len;
-    }
-    path->data_len = new_len;
-
-    seg = CUR_SEG(path, &iter);
-    switch (bd_seg->type) {
-    case AS_SET:
-      seg->type = BGPSTREAM_AS_PATH_SEG_SET;
-      break;
-
-    case AS_SEQUENCE:
-      /* we break sequences into many segments */
-      break;
-
-    case AS_CONFED_SET:
-      seg->type = BGPSTREAM_AS_PATH_SEG_CONFED_SET;
-      break;
-
-    case AS_CONFED_SEQUENCE:
-      seg->type = BGPSTREAM_AS_PATH_SEG_CONFED_SEQ;
-      break;
-    }
-
-    /** @todo consider merging consecutive segments of the same type? */
-    if (last_type != BGPSTREAM_AS_PATH_SEG_ASN && seg->type == last_type) {
-      fprintf(stderr, "ERROR: Consecutive segments of identical type\n");
-      fprintf(stderr, "ERROR: This is an unhandled error.\n");
-      fprintf(stderr, "ERROR: Contact bgpstream-info@caida.org\n");
-      assert(0);
+  if (path->data_alloc_len < new_len) {
+    if ((path->data = realloc(path->data, new_len)) == NULL) {
       return -1;
     }
-
-    if (bd_seg->type != AS_SEQUENCE) {
-      path->origin_offset = iter.cur_offset;
-      ((bgpstream_as_path_seg_set_t *)seg)->asn_cnt = bd_seg->length;
-    }
-
-    for (i = 0; i < bd_seg->length; i++) {
-      switch (bd_path->asn_len) {
-      case ASN16_LEN:
-        ptr16 = (uint16_t *)(bd_seg->data + (i * bd_path->asn_len));
-        asn = ntohs(*ptr16);
-        break;
-      case ASN32_LEN:
-        ptr32 = (uint32_t *)(bd_seg->data + (i * bd_path->asn_len));
-        asn = ntohl(*ptr32);
-        break;
-      default:
-        asn = 0;
-        assert(0);
-        return -1;
-      }
-
-      if (bd_seg->type == AS_SEQUENCE) {
-        seg->type = BGPSTREAM_AS_PATH_SEG_ASN;
-        ((bgpstream_as_path_seg_asn_t *)seg)->asn = asn;
-
-        /* move on */
-        path->origin_offset = iter.cur_offset;
-        iter.cur_offset += sizeof(bgpstream_as_path_seg_asn_t);
-        path->seg_cnt++;
-        seg = CUR_SEG(path, &iter);
-      } else {
-        ((bgpstream_as_path_seg_set_t *)seg)->asn[i] = asn;
-      }
-    }
-
-    if (bd_seg->type != AS_SEQUENCE) {
-      iter.cur_offset = new_len;
-      path->seg_cnt++;
-    }
-
-    ptr += (bd_seg->length * bd_path->asn_len) + AS_HEADER_SIZE;
+    path->data_alloc_len = new_len;
   }
+  path->data_len = new_len;
 
-/* the following will cause a performance hit. only enable if debugging path
-   parsing */
-#ifdef PATH_DEBUG
-  char buffer[8000];
-  size_t written = bgpstream_as_path_snprintf(buffer, 8000, path);
-  if (bd_path->str != NULL) {
-    fprintf(stdout, "warn: as path string populated\n");
-  } else {
-    process_attr_aspath_string(bd_path);
-  }
-  if (written >= 8000 || strcmp(buffer, bd_path->str) != 0) {
-    fprintf(stderr, "Written: %lu\n", written);
-    fprintf(stderr, "BS Path: >>%s<<\n", buffer);
-    fprintf(stderr, "BD Path: %s\n", bd_path->str);
-    assert(0);
+  // get a pointer to the newly added segment
+  seg = CUR_SEG(path, &iter);
+
+  switch (type) {
+  case BGPSTREAM_AS_PATH_SEG_SET:
+  case BGPSTREAM_AS_PATH_SEG_ASN:
+  case BGPSTREAM_AS_PATH_SEG_CONFED_SET:
+  case BGPSTREAM_AS_PATH_SEG_CONFED_SEQ:
+    seg->type = type;
+    break;
+
+  default:
+    bgpstream_log(BGPSTREAM_LOG_ERR, "AS_PATH with unknown segment type %d\n",
+                  type);
     return -1;
   }
-#endif
 
-#ifdef PATH_COPY_DEBUG
-  test_path_copy(path);
-#endif
+  // TODO: this code will allow adjacent segments of the same type to be added
+  // which is technically illegal.
+
+  // if all the ASes we've been given will go in a single path segment, update
+  // the path origin pointer, and set the number of ASes now
+  if (type != BGPSTREAM_AS_PATH_SEG_ASN) {
+    path->origin_offset = iter.cur_offset;
+    ((bgpstream_as_path_seg_set_t *)seg)->asn_cnt = asns_cnt;
+  }
+
+  // loop through the ASNs and add them
+  for (i = 0; i < asns_cnt; i++) {
+    // if this is a normal "sequence" segment, split it into multiple
+    if (type == BGPSTREAM_AS_PATH_SEG_ASN) {
+      seg->type = BGPSTREAM_AS_PATH_SEG_ASN;
+      ((bgpstream_as_path_seg_asn_t *)seg)->asn = asns[i];
+
+      /* move on to the next segment (already alloc'd) */
+      path->origin_offset = iter.cur_offset;
+      iter.cur_offset += sizeof(bgpstream_as_path_seg_asn_t);
+      path->seg_cnt++;
+      seg = CUR_SEG(path, &iter);
+    } else {
+      // just add this ASN to the segment
+      ((bgpstream_as_path_seg_set_t *)seg)->asn[i] = asns[i];
+    }
+  }
+
+  if (type != BGPSTREAM_AS_PATH_SEG_ASN) {
+    iter.cur_offset = new_len;
+    path->seg_cnt++;
+  }
 
   return 0;
 }

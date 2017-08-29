@@ -25,7 +25,6 @@
 #define __BGPSTREAM_UTILS_AS_PATH_INT_H
 
 #include "bgpstream_utils_as_path.h"
-#include "bgpdump_lib.h"
 
 /** @file
  *
@@ -87,14 +86,17 @@ struct bgpstream_as_path {
  *
  * @{ */
 
-/** Populate an AS Path structure based on a BGP Dump AS Path Attribute
+/**
+ * Append an AS Path segment to the given AS Path
  *
- * @param path          pointer to the AS Path to populate
- * @param bd_path       pointer to a BGP Dump AS Path attribute structure
- * @return 0 if the path was populated successfully, -1 otherwise
+ * Even though BGPStream splits AS_SEQ segments into multiple segments
+ * internally, this function accepts multiple ASNs when using the
+ * "BGPSTREAM_AS_PATH_SEG_ASN" type to optimize addition of AS_SEQ segments
  */
-int bgpstream_as_path_populate(bgpstream_as_path_t *path,
-                               struct aspath *bd_path);
+int bgpstream_as_path_append(bgpstream_as_path_t *path,
+                             bgpstream_as_path_seg_type_t type,
+                             uint32_t *asns,
+                             int asns_cnt);
 
 /** Update the internal fields once the data array has been changed
  *
