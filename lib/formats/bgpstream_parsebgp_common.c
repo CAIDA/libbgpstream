@@ -1,4 +1,6 @@
 #include "bgpstream_parsebgp_common.h"
+#include "bgpstream_format_interface.h"
+#include "bgpstream_record_int.h"
 #include "bgpstream_utils_as_path_int.h"
 #include "bgpstream_utils_community_int.h"
 #include "bgpstream_log.h"
@@ -6,9 +8,9 @@
 #include <string.h>
 
 static bgpstream_as_path_seg_type_t as_path_types[] = {
-  BGPSTREAM_AS_PATH_SEG_INVALID, // INVALID
-  BGPSTREAM_AS_PATH_SEG_SET, // PARSEBGP_BGP_UPDATE_AS_PATH_SEG_AS_SET
-  BGPSTREAM_AS_PATH_SEG_ASN, // PARSEBGP_BGP_UPDATE_AS_PATH_SEG_AS_SEQ
+  BGPSTREAM_AS_PATH_SEG_INVALID,    // INVALID
+  BGPSTREAM_AS_PATH_SEG_SET,        // PARSEBGP_BGP_UPDATE_AS_PATH_SEG_AS_SET
+  BGPSTREAM_AS_PATH_SEG_ASN,        // PARSEBGP_BGP_UPDATE_AS_PATH_SEG_AS_SEQ
   BGPSTREAM_AS_PATH_SEG_CONFED_SET, // PARSEBGP_BGP_UPDATE_AS_PATH_SEG_CONFED_SET
   BGPSTREAM_AS_PATH_SEG_CONFED_SEQ, // PARSEBGP_BGP_UPDATE_AS_PATH_SEG_CONFED_SEQ
 };
@@ -142,6 +144,67 @@ static int handle_as_paths(bgpstream_as_path_t *path,
   return 0;
 }
 
+static ssize_t refill_buffer(bgpstream_parsebgp_decode_state_t *state,
+                             bgpstream_transport_t *transport)
+{
+  size_t len = 0;
+  int64_t new_read = 0;
+
+  if (state->remain > 0) {
+    // need to move remaining data to start of buffer
+    memmove(state->buffer,
+            state->buffer + BGPSTREAM_PARSEBGP_BUFLEN - state->remain,
+            state->remain);
+    len += state->remain;
+  }
+
+  // try and do a read
+  if ((new_read = bgpstream_transport_read(transport, state->buffer + len,
+                                           BGPSTREAM_PARSEBGP_BUFLEN - len)) <
+      0) {
+    // read failed
+    return new_read;
+  }
+
+  // new_read could be 0, indicating EOF, so need to check returned len is
+  // larger than passed in remain
+  return len + new_read;
+}
+
+static bgpstream_format_status_t
+handle_eof(bgpstream_parsebgp_decode_state_t *state, bgpstream_record_t *record,
+           uint64_t skipped_cnt)
+{
+  assert(BGPSTREAM_PARSEBGP_FDATA == NULL);
+
+  // just to be kind, set the record time to the dump time
+  record->attributes.record_time = record->attributes.dump_time;
+
+  if (skipped_cnt == 0) {
+    // signal that the previous record really was the last in the dump
+    record->dump_pos = BGPSTREAM_DUMP_END;
+  }
+  // was this the first thing we tried to read?
+  if (state->successful_read_cnt == 0) {
+    // then it is an empty file
+    record->status = BGPSTREAM_RECORD_STATUS_EMPTY_SOURCE;
+    record->dump_pos = BGPSTREAM_DUMP_END;
+    return BGPSTREAM_FORMAT_EMPTY_DUMP;
+  }
+
+  // so we managed to read some things, but did we get anything useful from
+  // this file?
+  if (state->valid_read_cnt == 0) {
+    // dump contained data, but we filtered all of them out
+    record->status = BGPSTREAM_RECORD_STATUS_FILTERED_SOURCE;
+    record->dump_pos = BGPSTREAM_DUMP_END;
+    return BGPSTREAM_FORMAT_FILTERED_DUMP;
+  }
+
+  // otherwise, signal end of dump (record has not been filled)
+  return BGPSTREAM_FORMAT_END_OF_DUMP;
+}
+
 /* -------------------- PUBLIC API FUNCTIONS -------------------- */
 
 int bgpstream_parsebgp_process_path_attrs(
@@ -201,4 +264,150 @@ int bgpstream_parsebgp_process_next_hop(bgpstream_elem_t *el,
   }
 
   return 0;
+}
+
+bgpstream_format_status_t bgpstream_parsebgp_populate_record(
+  bgpstream_parsebgp_decode_state_t *state, bgpstream_format_t *format,
+  bgpstream_record_t *record, bgpstream_parsebgp_check_filter_cb_t *cb)
+{
+  assert(record->__format_data->format == format);
+  assert(BGPSTREAM_PARSEBGP_FDATA == NULL);
+
+  int refill = 0;
+  ssize_t fill_len = 0;
+  size_t dec_len = 0;
+  uint64_t skipped_cnt = 0;
+  parsebgp_error_t err;
+  int filter;
+
+refill:
+  if (state->remain == 0 || refill != 0) {
+    // try to refill the buffer
+    if ((fill_len = refill_buffer(state, format->transport)) == 0) {
+      // EOF
+      return handle_eof(state, record, skipped_cnt);
+    }
+    if (fill_len < 0) {
+      // read error
+      // TODO: create a specific read error failure so that perhaps BGPStream
+      // can retry
+      return -1;
+    }
+    if (fill_len == state->remain) {
+      bgpstream_log(BGPSTREAM_LOG_WARN,
+                    "DEBUG: Corrupted dump or failed read\n");
+      return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
+    }
+    // here we have something new to read
+    state->remain = fill_len;
+    state->ptr = state->buffer;
+  }
+
+  while (state->remain > 0) {
+    if (BGPSTREAM_PARSEBGP_FDATA == NULL &&
+        (record->__format_data->data = parsebgp_create_msg()) == NULL) {
+      bgpstream_log(BGPSTREAM_LOG_ERR,
+                    "ERROR: Failed to create message structure\n");
+      return -1;
+    }
+
+    dec_len = state->remain;
+    if ((err = parsebgp_decode(state->parser_opts, PARSEBGP_MSG_TYPE_MRT,
+                               BGPSTREAM_PARSEBGP_FDATA, state->ptr,
+                               &dec_len)) != PARSEBGP_OK) {
+      if (err == PARSEBGP_PARTIAL_MSG) {
+        // refill the buffer and try again
+        refill = 1;
+        parsebgp_destroy_msg(BGPSTREAM_PARSEBGP_FDATA);
+        record->__format_data->data = NULL;
+        goto refill;
+      }
+      // else: its a fatal error
+      bgpstream_log(BGPSTREAM_LOG_ERR,
+                    "ERROR: Failed to parse message (%d:%s)\n", err,
+                    parsebgp_strerror(err));
+      parsebgp_destroy_msg(BGPSTREAM_PARSEBGP_FDATA);
+      record->__format_data->data = NULL;
+      return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
+    }
+    // else: successful read
+    state->ptr += dec_len;
+    state->remain -= dec_len;
+    state->successful_read_cnt++;
+    assert(BGPSTREAM_PARSEBGP_FDATA != NULL);
+
+    // got a message!
+    // let the caller decide if they want it
+    if ((filter = cb(format, BGPSTREAM_PARSEBGP_FDATA)) < 0) {
+      return -1;
+    }
+
+    if (filter == 0) {
+      // move on to the next record
+      if (skipped_cnt == UINT64_MAX) {
+        // probably this will never happen, but lets just be careful we don't
+        // wrap and think we haven't skipped anything
+        skipped_cnt = 0;
+      }
+      skipped_cnt++;
+      parsebgp_destroy_msg(BGPSTREAM_PARSEBGP_FDATA);
+      record->__format_data->data = NULL;
+      continue;
+    }
+
+    // otherwise, they want this
+    state->valid_read_cnt++;
+    break;
+  }
+
+  if (state->remain == 0 && BGPSTREAM_PARSEBGP_FDATA == NULL) {
+    // EOF
+    return handle_eof(state, record, skipped_cnt);
+  }
+
+  // valid message, and it passes our filters
+  record->status = BGPSTREAM_RECORD_STATUS_VALID_RECORD;
+
+  // if this is the first record we read and no previous
+  // valid record has been discarded because of time
+  if (state->valid_read_cnt == 1 && state->successful_read_cnt == 1) {
+    record->dump_pos = BGPSTREAM_DUMP_START;
+  } else {
+    record->dump_pos = BGPSTREAM_DUMP_MIDDLE;
+    // NB when the *next* record is pre-fetched, this may be changed to
+    // end-of-dump by the reader (since we'll discover that there are no more
+    // records)
+  }
+
+  // update the record time
+  record->attributes.record_time =
+    BGPSTREAM_PARSEBGP_FDATA->types.mrt.timestamp_sec;
+
+  // we successfully read a record, return it
+  return BGPSTREAM_FORMAT_OK;
+}
+
+void bgpstream_parsebgp_opts_init(parsebgp_opts_t *opts)
+{
+  // select only the Path Attributes that we care about
+  opts->bgp.path_attr_filter_enabled = 1;
+  opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_ORIGIN] = 1;
+  opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_AS_PATH] = 1;
+  opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_NEXT_HOP] = 1;
+  //opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_MED] = 1;
+  //opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_LOCAL_PREF] = 1;
+  //opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_ATOMIC_AGGREGATE] = 1;
+  //opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_AGGREGATOR] = 1;
+  opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_COMMUNITIES] = 1;
+  opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI] = 1;
+  opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI] = 1;
+  opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_PATH] = 1;
+  //opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR] = 1;
+
+  // and ask for shallow parsing of communities
+  opts->bgp.path_attr_raw_enabled = 1;
+  opts->bgp.path_attr_raw[PARSEBGP_BGP_PATH_ATTR_TYPE_COMMUNITIES] = 1;
+
+  // DEBUG: (switch to ignore in production)
+  opts->ignore_not_implemented = 0;
 }

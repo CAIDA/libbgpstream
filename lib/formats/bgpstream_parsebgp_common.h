@@ -25,7 +25,11 @@
 #define __BGPSTREAM_PARSEBGP_COMMON_H
 
 #include "bgpstream_elem.h"
+#include "bgpstream_format.h"
 #include "parsebgp.h"
+
+#define BGPSTREAM_PARSEBGP_FDATA                                               \
+  ((parsebgp_msg_t *)(record->__format_data->data))
 
 #define COPY_IP(dst, afi, src, do_unknown)                                     \
   do {                                                                         \
@@ -44,6 +48,11 @@
       do_unknown;                                                              \
     }                                                                          \
   } while (0)
+
+// read in chunks of 1MB to minimize the number of partial parses we end up
+// doing.  this is also the same length as the wandio thread buffer, so this
+// might help reduce the time waiting for locks
+#define BGPSTREAM_PARSEBGP_BUFLEN 1024 * 1024
 
 /** Process the given path attributes and populate the given elem
  *
@@ -72,5 +81,51 @@ int bgpstream_parsebgp_process_path_attrs(
 int bgpstream_parsebgp_process_next_hop(bgpstream_elem_t *el,
                                         parsebgp_bgp_update_path_attr_t *attrs,
                                         int is_mp_pfx);
+
+typedef struct bgpstream_parsebgp_decode_state {
+
+  // options for libparsebgp
+  parsebgp_opts_t parser_opts;
+
+  // raw data buffer
+  // TODO: once parsebgp supports reading using a read callback, just pass the
+  // transport callback to the parser
+  uint8_t buffer[BGPSTREAM_PARSEBGP_BUFLEN];
+
+  // number of bytes left to read in the buffer
+  size_t remain;
+
+  // pointer into buffer
+  uint8_t *ptr;
+
+  // the total number of successful (filtered and not) reads
+  uint64_t successful_read_cnt;
+
+  // the number of non-filtered reads (i.e. "useful")
+  uint64_t valid_read_cnt;
+
+} bgpstream_parsebgp_decode_state_t;
+
+/** Once a message has been read by _populate_record, this callback gives the
+ * caller a chance to check filters, and choose to skip the message
+ *
+ * @param format        pointer to the format that originally called
+ *                      _populate_record
+ * @param msg           pointer to the parsed message
+ * @return 1 if the message should be kept, 0 if it should be skipped, -1 if an
+ * error occurred.
+ */
+typedef int (bgpstream_parsebgp_check_filter_cb_t)(bgpstream_format_t *format,
+                                                   parsebgp_msg_t *msg);
+
+/** Use libparsebgp to decode a message */
+bgpstream_format_status_t
+bgpstream_parsebgp_populate_record(bgpstream_parsebgp_decode_state_t *state,
+                                   bgpstream_format_t *format,
+                                   bgpstream_record_t *record,
+                                   bgpstream_parsebgp_check_filter_cb_t *cb);
+
+/** Set options specific to how we use libparsebgp in BGPStream */
+void bgpstream_parsebgp_opts_init(parsebgp_opts_t *opts);
 
 #endif /* __BGPSTREAM_PARSEBGP_COMMON_H */
