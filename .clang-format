@@ -51,7 +51,7 @@ ForEachMacros:   [ foreach, Q_FOREACH, BOOST_FOREACH ]
 IncludeCategories:
   - Regex:           '^".+_int'
     Priority:        1
-  - Regex:           '^"(bgpstream|bsdi|bgpview|bvc|bgpdump|bgpcorsaro)'
+  - Regex:           '^"(bgpstream|bsdi|bgpview|bvc|bgpcorsaro)'
     Priority:        2
   - Regex:           '^"config'
     Priority:        3
