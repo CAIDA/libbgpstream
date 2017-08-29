@@ -36,8 +36,8 @@
 #define FDATA ((parsebgp_msg_t*)(record->__format_data->data))
 
 // read in chunks of 1MB to minimize the number of partial parses we end up
-// doing
-// TODO: check that this never forces wandio to read from more than 1 buffer
+// doing.  this is also the same length as the wandio thread buffer, so this
+// might help reduce the time waiting for locks
 #define BUFLEN 1024 * 1024
 
 typedef struct peer_index_entry {
@@ -130,26 +130,28 @@ static int append_segments(bgpstream_as_path_t *bs_path,
     seg = &pbgp_path->segs[i];
 
     // how many ASNs does this segment count for in the path merging algorithm?
-    if (asns_cnt < 0) { // "optimize" for common case
-      effective_cnt = to_append = seg->asns_cnt;
+    // RFC 4271 has some tricky rules for how we should count segments
+    if (seg->type == PARSEBGP_BGP_UPDATE_AS_PATH_SEG_AS_SEQ) {
+      effective_cnt = seg->asns_cnt;
+    } else if (seg->type == PARSEBGP_BGP_UPDATE_AS_PATH_SEG_AS_SET) {
+      effective_cnt = 1;
     } else {
-      // we're only appending a portion of the path
-      if (seg->type == PARSEBGP_BGP_UPDATE_AS_PATH_SEG_AS_SEQ) {
-        effective_cnt = seg->asns_cnt;
-      } else if (seg->type == PARSEBGP_BGP_UPDATE_AS_PATH_SEG_AS_SET) {
-        effective_cnt = 1;
-      } else {
-        effective_cnt = 0;
-      }
-
-      if (effective_cnt <= 1 ||
-          seg->asns_cnt <= (asns_cnt - appended)) {
-        to_append = seg->asns_cnt;
-      } else {
-        to_append = asns_cnt - appended;
-      }
+      effective_cnt = 0;
     }
 
+    // ok, now that we know how many "ASNs" this segment counts for, how many of
+    // its actual ASNs should we append?
+    if (effective_cnt <= 1 || seg->asns_cnt <= (asns_cnt - appended)) {
+      // its a special segment, or we have enough "budget" to append all of its
+      // ASNs
+      to_append = seg->asns_cnt;
+    } else {
+      // we need to append only a subset of its ASNs
+      to_append = asns_cnt - appended;
+    }
+    assert(to_append <= seg->asns_cnt && to_append > 0);
+
+    // ensure we're not going to wander off the end of as_path_types array
     if (seg->type < PARSEBGP_BGP_UPDATE_AS_PATH_SEG_AS_SET ||
         seg->type > PARSEBGP_BGP_UPDATE_AS_PATH_SEG_CONFED_SEQ) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Unknown AS Path segment type %d",
@@ -162,9 +164,37 @@ static int append_segments(bgpstream_as_path_t *bs_path,
       return -1;
     }
 
-    appended += effective_cnt;
-    if (asns_cnt > 0 && appended == asns_cnt) {
+    if (seg->type == PARSEBGP_BGP_UPDATE_AS_PATH_SEG_AS_SEQ) {
+      // we appended "to_append" ASNs
+      appended += to_append;
+    } else {
+      // in these special segments, we append the "effective_cnt"
+      appended += effective_cnt;
+    }
+    // have we reached our budget?
+    if (appended == asns_cnt) {
       break;
+    }
+    assert(appended < asns_cnt);
+  }
+  return 0;
+}
+
+// this is just an optimized version of the above function. there is some
+// repeated code, but this makes things easier to maintain because it simplifies
+// both cases (and perhaps yields faster code for the (overwhelmingly) common
+// case.
+static int append_segments_all(bgpstream_as_path_t *bs_path,
+                               parsebgp_bgp_update_as_path_t *pbgp_path)
+{
+  int i;
+  parsebgp_bgp_update_as_path_seg_t *seg;
+
+  for (i = 0; i < pbgp_path->segs_cnt; i++) {
+    seg = &pbgp_path->segs[i];
+    if (bgpstream_as_path_append(bs_path, as_path_types[seg->type], seg->asns,
+                                 seg->asns_cnt) != 0) {
+      return -1;
     }
   }
   return 0;
@@ -176,22 +206,38 @@ static int handle_as_paths(bgpstream_as_path_t *path,
 {
   bgpstream_as_path_clear(path);
 
-  if (aspath && as4path && aspath->asns_cnt >= as4path->asns_cnt) {
+  // common case?
+  if (aspath && !as4path) {
+    return append_segments_all(path, aspath);
+  }
+
+  // merge case?
+  if (as4path && aspath && aspath->asns_cnt >= as4path->asns_cnt) {
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Merging AS_PATH (%d) and AS4_PATH (%d)",
+                  aspath->asns_cnt, as4path->asns_cnt);
     // copy <diff> ASNs from AS_PATH into our new path and then copy ALL ASNs
     // from AS4_PATH into our new path
     if (append_segments(path, aspath, (aspath->asns_cnt - as4path->asns_cnt)) !=
           0 ||
-        append_segments(path, as4path, -1) != 0) {
+        append_segments_all(path, as4path) != 0) {
       return -1;
     }
-  } else if (aspath) {
-    // use aspath
-    return append_segments(path, aspath, -1);
-  } else if (as4path) {
+    return 0;
+  }
+
+  // rare: both (or neither) are present, but can't trust AS4_PATH
+  if (aspath) {
+    return append_segments_all(path, aspath);
+  }
+
+  // unheard of: only AS4_PATH is present
+  if (as4path) {
     // this a little bit bizarre since AS_PATH is mandatory, but we might as
     // well use what we've got
-    return append_segments(path, as4path, -1);
+    return append_segments_all(path, as4path);
   }
+
+  // possible: no AS_PATH and no AS4_PATH
   return 0;
 }
 
@@ -540,6 +586,16 @@ static int handle_bgp4mp_bgp_msg(bgpstream_elem_generator_t *gen,
     return -1;
   }
 
+  // Announcements
+  attr = &update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI];
+
+  // if there are no announcements, bail out now
+  if (update->announced_nlris.prefixes_cnt == 0 &&
+      (attr->type != PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI ||
+       attr->data.mp_reach.nlris_cnt == 0)) {
+    return 0;
+  }
+
   if (handle_path_attrs(elem_tmpl, update->path_attrs.attrs) != 0) {
     return -1;
   }
@@ -555,7 +611,6 @@ static int handle_bgp4mp_bgp_msg(bgpstream_elem_generator_t *gen,
     return -1;
   }
   // MP_REACH (v6) announcements
-  attr = &update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI];
   if (attr->type == PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI) {
     if (handle_next_hop(elem_tmpl, update->path_attrs.attrs, 1) != 0) {
       return -1;
