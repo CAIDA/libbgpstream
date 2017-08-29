@@ -24,6 +24,7 @@
 #include "bs_format_mrt.h"
 #include "bgpstream_format_interface.h"
 #include "bgpstream_record_int.h"
+#include "bgpstream_utils_as_path_int.h"
 #include "bgpstream_utils_community_int.h"
 #include "bgpstream_elem_generator.h"
 #include "bgpstream_log.h"
@@ -103,17 +104,94 @@ typedef struct state {
     }                                                                          \
   } while (0)
 
+static bgpstream_as_path_seg_type_t as_path_types[] = {
+  BGPSTREAM_AS_PATH_SEG_INVALID, // INVALID
+  BGPSTREAM_AS_PATH_SEG_SET, // PARSEBGP_BGP_UPDATE_AS_PATH_SEG_AS_SET
+  BGPSTREAM_AS_PATH_SEG_ASN, // PARSEBGP_BGP_UPDATE_AS_PATH_SEG_AS_SEQ
+  BGPSTREAM_AS_PATH_SEG_CONFED_SET, // PARSEBGP_BGP_UPDATE_AS_PATH_SEG_CONFED_SET
+  BGPSTREAM_AS_PATH_SEG_CONFED_SEQ, // PARSEBGP_BGP_UPDATE_AS_PATH_SEG_CONFED_SEQ
+};
+
+static int append_segments(bgpstream_as_path_t *bs_path,
+                           parsebgp_bgp_update_as_path_t *pbgp_path,
+                           int asns_cnt)
+{
+  int i;
+  int effective_cnt = 0;
+  int to_append = 0;
+  int appended = 0;
+  parsebgp_bgp_update_as_path_seg_t *seg;
+
+  if (asns_cnt == 0) {
+    return 0;
+  }
+
+  for (i = 0; i < pbgp_path->segs_cnt; i++) {
+    seg = &pbgp_path->segs[i];
+
+    // how many ASNs does this segment count for in the path merging algorithm?
+    if (asns_cnt < 0) { // "optimize" for common case
+      effective_cnt = to_append = seg->asns_cnt;
+    } else {
+      // we're only appending a portion of the path
+      if (seg->type == PARSEBGP_BGP_UPDATE_AS_PATH_SEG_AS_SEQ) {
+        effective_cnt = seg->asns_cnt;
+      } else if (seg->type == PARSEBGP_BGP_UPDATE_AS_PATH_SEG_AS_SET) {
+        effective_cnt = 1;
+      } else {
+        effective_cnt = 0;
+      }
+
+      if (effective_cnt <= 1 ||
+          seg->asns_cnt <= (asns_cnt - appended)) {
+        to_append = seg->asns_cnt;
+      } else {
+        to_append = asns_cnt - appended;
+      }
+    }
+
+    if (seg->type < PARSEBGP_BGP_UPDATE_AS_PATH_SEG_AS_SET ||
+        seg->type > PARSEBGP_BGP_UPDATE_AS_PATH_SEG_CONFED_SEQ) {
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Unknown AS Path segment type %d",
+                    seg->type);
+      return -1;
+    }
+
+    if (bgpstream_as_path_append(bs_path, as_path_types[seg->type], seg->asns,
+                                 to_append) != 0) {
+      return -1;
+    }
+
+    appended += effective_cnt;
+    if (asns_cnt > 0 && appended == asns_cnt) {
+      break;
+    }
+  }
+  return 0;
+}
+
 static int handle_as_paths(bgpstream_as_path_t *path,
                            parsebgp_bgp_update_as_path_t *aspath,
                            parsebgp_bgp_update_as_path_t *as4path)
 {
-  if (aspath && as4path) {
-    bgpstream_log(BGPSTREAM_LOG_WARN, "Maybe merging");
-  }
-  if (as4path) {
-    bgpstream_log(BGPSTREAM_LOG_WARN, "AS4_PATH");
-  }
+  bgpstream_as_path_clear(path);
 
+  if (aspath && as4path && aspath->asns_cnt >= as4path->asns_cnt) {
+    // copy <diff> ASNs from AS_PATH into our new path and then copy ALL ASNs
+    // from AS4_PATH into our new path
+    if (append_segments(path, aspath, (aspath->asns_cnt - as4path->asns_cnt)) !=
+          0 ||
+        append_segments(path, as4path, -1) != 0) {
+      return -1;
+    }
+  } else if (aspath) {
+    // use aspath
+    return append_segments(path, aspath, -1);
+  } else if (as4path) {
+    // this a little bit bizarre since AS_PATH is mandatory, but we might as
+    // well use what we've got
+    return append_segments(path, as4path, -1);
+  }
   return 0;
 }
 
@@ -415,7 +493,9 @@ static int handle_bgp4mp_prefixes(bgpstream_elem_generator_t *gen,
                           (bgpstream_ip_addr_t *)&elem_tmpl->nexthop);
 
       // AS Path
-      // TODO
+      if (bgpstream_as_path_copy(el->aspath, elem_tmpl->aspath) != 0) {
+        return -1;
+      }
 
       // Communities
       if (bgpstream_community_set_copy(el->communities,

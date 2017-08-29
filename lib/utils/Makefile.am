@@ -24,7 +24,7 @@
 SUBDIRS =
 
 AM_CPPFLAGS = -I$(top_srcdir)             \
-	      -I$(top_srcdir)/lib/bgpdump \
+	      -I$(top_srcdir)/lib	  \
 	      -I$(top_srcdir)/common
 
 
