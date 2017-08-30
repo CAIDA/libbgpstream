@@ -36,12 +36,20 @@
 
 #define STATE (BSDI_GET_STATE(di, singlefile))
 
+// mapping from type name to resource format type
+char *type_strs[] = {
+  "mrt", // BGPSTREAM_RESOURCE_FORMAT_MRT
+  "bmp", // BGPSTREAM_RESOURCE_FORMAT_BMP
+};
+
 /* ---------- START CLASS DEFINITION ---------- */
 
 /* define the internal option ID values */
 enum {
   OPTION_RIB_FILE,
+  OPTION_RIB_TYPE,
   OPTION_UPDATE_FILE,
+  OPTION_UPDATE_TYPE,
 };
 
 /* define the options this data interface accepts */
@@ -53,6 +61,13 @@ static bgpstream_data_interface_option_t options[] = {
     "rib-file", // name
     "rib mrt file to read (default: " STR(BGPSTREAM_DI_SINGLEFILE_RIB_FILE) ")",
   },
+  /* RIB file type */
+  {
+    BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
+    OPTION_RIB_TYPE, // internal ID
+    "rib-type", // name
+    "rib file type (mrt/bmp) (default: mrt)",
+  },
   /* Update file path */
   {
     BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
@@ -60,6 +75,13 @@ static bgpstream_data_interface_option_t options[] = {
     "upd-file", //name
     "updates mrt file to read (default: " STR(
       BGPSTREAM_DI_SINGLEFILE_UPDATE_FILE) ")",
+  },
+  /* RIB file type */
+  {
+    BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
+    OPTION_UPDATE_TYPE, // internal ID
+    "upd-type", // name
+    "update file type (mrt/bmp) (default: mrt)",
   },
 };
 
@@ -88,8 +110,14 @@ typedef struct bsdi_singlefile_state {
   // Path to a RIB file to read
   char *rib_file;
 
+  // Type of the given RIB file (MRT/BMP)
+  bgpstream_resource_format_type_t rib_type;
+
   // Path to an update file to read
   char *update_file;
+
+  // Type of the given Update file (MRT/BMP)
+  bgpstream_resource_format_type_t update_type;
 
   /* internal state: */
 
@@ -149,7 +177,8 @@ int bsdi_singlefile_init(bsdi_t *di)
   BSDI_SET_STATE(di, state);
 
   /* set default state */
-  // none
+  state->rib_type = BGPSTREAM_RESOURCE_FORMAT_MRT;
+  state->update_type = BGPSTREAM_RESOURCE_FORMAT_MRT;
 
   return 0;
 err:
@@ -173,6 +202,8 @@ int bsdi_singlefile_set_option(bsdi_t *di,
                            const bgpstream_data_interface_option_t *option_type,
                            const char *option_value)
 {
+  int i;
+
   switch (option_type->id) {
   case OPTION_RIB_FILE:
     // replaces our current RIB file
@@ -185,6 +216,15 @@ int bsdi_singlefile_set_option(bsdi_t *di,
     }
     break;
 
+  case OPTION_RIB_TYPE:
+    for (i = 0; i < ARR_CNT(type_strs); i++) {
+      if (strcmp(option_value, type_strs[i]) == 0) {
+        STATE->rib_type = i;
+        break;
+      }
+    }
+    break;
+
   case OPTION_UPDATE_FILE:
     // replaces our current update file
     if (STATE->update_file != NULL) {
@@ -193,6 +233,15 @@ int bsdi_singlefile_set_option(bsdi_t *di,
     }
     if ((STATE->update_file = strdup(option_value)) == NULL) {
       return -1;
+    }
+    break;
+
+  case OPTION_UPDATE_TYPE:
+    for (i = 0; i < ARR_CNT(type_strs); i++) {
+      if (strcmp(option_value, type_strs[i]) == 0) {
+        STATE->update_type = i;
+        break;
+      }
     }
     break;
 
@@ -233,7 +282,7 @@ int bsdi_singlefile_update_resources(bsdi_t *di)
 
     if (bgpstream_resource_mgr_push(BSDI_GET_RES_MGR(di),
                                     BGPSTREAM_RESOURCE_TRANSPORT_FILE,
-                                    BGPSTREAM_RESOURCE_FORMAT_MRT,
+                                    STATE->rib_type,
                                     STATE->rib_file,
                                     STATE->last_rib_filetime,
                                     RIB_FREQUENCY_CHECK,
@@ -251,7 +300,7 @@ int bsdi_singlefile_update_resources(bsdi_t *di)
 
     if (bgpstream_resource_mgr_push(BSDI_GET_RES_MGR(di),
                                     BGPSTREAM_RESOURCE_TRANSPORT_FILE,
-                                    BGPSTREAM_RESOURCE_FORMAT_MRT,
+                                    STATE->update_type,
                                     STATE->update_file,
                                     STATE->last_update_filetime,
                                     UPDATE_FREQUENCY_CHECK,

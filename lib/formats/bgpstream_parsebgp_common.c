@@ -279,6 +279,7 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
   uint64_t skipped_cnt = 0;
   parsebgp_error_t err;
   int filter;
+  uint32_t ts_sec = 0;
 
  refill:
   // if there's nothing left in the buffer, it could just be because we happened
@@ -328,7 +329,7 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
   }
 
   dec_len = state->remain;
-  if ((err = parsebgp_decode(state->parser_opts, PARSEBGP_MSG_TYPE_MRT,
+  if ((err = parsebgp_decode(state->parser_opts, state->msg_type,
                              BGPSTREAM_PARSEBGP_FDATA, state->ptr, &dec_len)) !=
       PARSEBGP_OK) {
     if (err == PARSEBGP_PARTIAL_MSG) {
@@ -353,7 +354,7 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
 
   // got a message!
   // let the caller decide if they want it
-  if ((filter = cb(format, BGPSTREAM_PARSEBGP_FDATA)) < 0) {
+  if ((filter = cb(format, BGPSTREAM_PARSEBGP_FDATA, &ts_sec)) < 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Format-specific filtering failed");
     return -1;
   }
@@ -396,8 +397,7 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
   }
 
   // update the record time
-  record->attributes.record_time =
-    BGPSTREAM_PARSEBGP_FDATA->types.mrt.timestamp_sec;
+  record->attributes.record_time = ts_sec;
 
   // we successfully read a record, return it
   return BGPSTREAM_FORMAT_OK;

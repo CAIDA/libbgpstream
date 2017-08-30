@@ -45,10 +45,10 @@ typedef enum {
 typedef enum bgpstream_resource_format_type {
 
   /** Native BGP data encapsulated in MRT */
-  BGPSTREAM_RESOURCE_FORMAT_MRT,
+  BGPSTREAM_RESOURCE_FORMAT_MRT = 0,
 
   /** Native BGP data encapsulated in BMP */
-  //  BGPSTREAM_RESOURCE_FORMAT_BMP,
+  BGPSTREAM_RESOURCE_FORMAT_BMP = 1,
 
   /** RIPE-format data encapsulated in JSON */
   //  BGPSTREAM_RESOURCE_FORMAT_RIPEJSON,
