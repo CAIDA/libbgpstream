@@ -25,8 +25,7 @@
 #include "bgpstream_log.h"
 #include "bs_transport_kafka.h"
 
-int bs_transport_kafka_create(bgpstream_transport_t *transport,
-                              bgpstream_resource_t *res)
+int bs_transport_kafka_create(bgpstream_transport_t *transport)
 {
   BS_TRANSPORT_SET_METHODS(kafka, transport);
 

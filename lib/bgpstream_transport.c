@@ -34,8 +34,7 @@
 #endif
 
 /** Convenience typedef for the transport create function type */
-typedef int (*transport_create_func_t)(bgpstream_transport_t *transport,
-                                       bgpstream_resource_t *res);
+typedef int (*transport_create_func_t)(bgpstream_transport_t *transport);
 
 /** Array of transport create functions.
  *
@@ -78,7 +77,10 @@ bgpstream_transport_t *bgpstream_transport_create(bgpstream_resource_t *res)
     goto err;
   }
 
-  if (create_functions[res->transport_type](transport, res) != 0) {
+  // store a pointer to the resource
+  transport->res = res;
+
+  if (create_functions[res->transport_type](transport) != 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open resource (%s)", res->uri);
     goto err;
   }

@@ -26,15 +26,15 @@
 #include "bs_transport_file.h"
 #include "wandio.h"
 
-int bs_transport_file_create(bgpstream_transport_t *transport,
-                             bgpstream_resource_t *res)
+int bs_transport_file_create(bgpstream_transport_t *transport)
 {
   io_t *fh = NULL;
 
   BS_TRANSPORT_SET_METHODS(file, transport);
 
-  if ((fh = wandio_create(res->uri)) == NULL) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for reading", res->uri);
+  if ((fh = wandio_create(transport->res->uri)) == NULL) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for reading",
+                  transport->res->uri);
     return -1;
   }
 
