@@ -207,6 +207,158 @@ handle_eof(bgpstream_parsebgp_decode_state_t *state, bgpstream_record_t *record,
 
 /* -------------------- PUBLIC API FUNCTIONS -------------------- */
 
+void bgpstream_parsebgp_upd_state_reset(
+  bgpstream_parsebgp_upd_state_t *upd_state)
+{
+  memset(upd_state, 0, sizeof(*upd_state));
+}
+
+static int handle_prefix(bgpstream_elem_t *elem,
+                         bgpstream_elem_type_t elem_type,
+                         parsebgp_bgp_prefix_t *prefix)
+{
+  if (prefix->type != PARSEBGP_BGP_PREFIX_UNICAST_IPV4 &&
+      prefix->type != PARSEBGP_BGP_PREFIX_UNICAST_IPV6) {
+    return 0;
+  }
+
+  elem->type = elem_type;
+
+  // Prefix
+  COPY_IP(&elem->prefix.address, prefix->afi, prefix->addr, return 0);
+  elem->prefix.mask_len = prefix->len;
+
+  return 1;
+}
+
+#define WITHDRAWAL_GENERATOR(nlri_type, prefixes)                              \
+  do {                                                                         \
+    rc = 0;                                                                    \
+    while (upd_state->withdrawal_##nlri_type##_cnt > 0 && rc == 0) {           \
+      if ((rc = handle_prefix(                                                 \
+             elem, BGPSTREAM_ELEM_TYPE_WITHDRAWAL,                             \
+             &prefixes[upd_state->withdrawal_##nlri_type##_idx])) < 0) {       \
+        bgpstream_log(BGPSTREAM_LOG_ERR, "Could not extract withdrawal elem"); \
+        return -1;                                                             \
+      }                                                                        \
+      upd_state->withdrawal_##nlri_type##_cnt--;                               \
+      upd_state->withdrawal_##nlri_type##_idx++;                               \
+    }                                                                          \
+    if (rc != 0) {                                                             \
+      return rc;                                                               \
+    }                                                                          \
+  } while (0)
+
+#define ANNOUNCEMENT_GENERATOR(nlri_type, prefixes, is_mp_reach)               \
+  do {                                                                         \
+    rc = 0;                                                                    \
+    while (upd_state->announce_##nlri_type##_cnt > 0 && rc == 0) {             \
+      if (upd_state->next_hop_##nlri_type##_done == 0) {                       \
+        if (bgpstream_parsebgp_process_next_hop(                               \
+              elem, update->path_attrs.attrs, is_mp_reach) != 0) {             \
+          bgpstream_log(BGPSTREAM_LOG_ERR, "Could not extract next-hop");      \
+          return -1;                                                           \
+        }                                                                      \
+        upd_state->next_hop_##nlri_type##_done = 1;                            \
+      }                                                                        \
+                                                                               \
+      if ((rc = handle_prefix(                                                 \
+             elem, BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT,                           \
+             &prefixes[upd_state->announce_##nlri_type##_idx])) < 0) {         \
+        bgpstream_log(BGPSTREAM_LOG_ERR,                                       \
+                      "Could not extract announcement elem");                  \
+        return -1;                                                             \
+      }                                                                        \
+      upd_state->announce_##nlri_type##_cnt--;                                 \
+      upd_state->announce_##nlri_type##_idx++;                                 \
+    }                                                                          \
+    if (rc != 0) {                                                             \
+      return rc;                                                               \
+    }                                                                          \
+  } while (0)
+
+int bgpstream_parsebgp_process_update(bgpstream_parsebgp_upd_state_t *upd_state,
+                                      bgpstream_elem_t *elem,
+                                      parsebgp_bgp_msg_t *bgp)
+{
+  parsebgp_bgp_update_t *update = &bgp->types.update;
+  int rc = 0;
+
+  if (upd_state->ready == 0) {
+    // need to check some things, and get ready to yield elems
+
+    // first, a sanity check
+    if (bgp->type != PARSEBGP_BGP_TYPE_UPDATE) {
+      return 0;
+    }
+
+    // how many native withdrawals will we process?
+    upd_state->withdrawal_v4_cnt = update->withdrawn_nlris.prefixes_cnt;
+
+    // how many MP_UNREACH (IPv6) withdrawals still to yield
+    if (update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI]
+          .type == PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI) {
+      upd_state->withdrawal_v6_cnt =
+        update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI]
+          .data.mp_unreach.withdrawn_nlris_cnt;
+    }
+
+    // how many native (IPv4) announcements still to yield
+    upd_state->announce_v4_cnt = update->announced_nlris.prefixes_cnt;
+
+    // how many MP_REACH (IPv6) announcements still to yield
+    if (update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI]
+          .type == PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI) {
+      upd_state->announce_v6_cnt =
+        update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI]
+          .data.mp_reach.nlris_cnt;
+    }
+
+    // all other flags left set to zero
+
+    upd_state->ready = 1;
+  }
+
+  // are we at end-of-elems?
+  if (upd_state->withdrawal_v4_cnt == 0 &&
+      upd_state->withdrawal_v6_cnt == 0 &&
+      upd_state->announce_v4_cnt == 0 &&
+      upd_state->announce_v6_cnt == 0) {
+    return 0;
+  }
+
+  // IPv4 Withdrawals
+  WITHDRAWAL_GENERATOR(v4, update->withdrawn_nlris.prefixes);
+
+  // IPv6 Withdrawals
+  WITHDRAWAL_GENERATOR(
+    v6, update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI]
+          .data.mp_unreach.withdrawn_nlris);
+
+  // at this point we need the path attributes processed
+  if (upd_state->path_attr_done == 0) {
+    if (bgpstream_parsebgp_process_path_attrs(elem,
+                                              update->path_attrs.attrs) != 0) {
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not extract path attributes");
+      return -1;
+    }
+    upd_state->path_attr_done = 1;
+  }
+
+  // IPv4 Announcements (will also trigger next-hop extraction)
+  ANNOUNCEMENT_GENERATOR(v4, update->announced_nlris.prefixes, 0);
+
+  // IPv6 Announcements (will also trigger next-hop extraction)
+  ANNOUNCEMENT_GENERATOR(
+    v6,
+    update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI]
+      .data.mp_reach.nlris,
+    1);
+
+  return 0;
+}
+
+
 int bgpstream_parsebgp_process_path_attrs(
   bgpstream_elem_t *el, parsebgp_bgp_update_path_attr_t *attrs)
 {

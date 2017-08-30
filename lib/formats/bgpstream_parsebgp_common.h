@@ -82,6 +82,55 @@ int bgpstream_parsebgp_process_next_hop(bgpstream_elem_t *el,
                                         parsebgp_bgp_update_path_attr_t *attrs,
                                         int is_mp_pfx);
 
+/** State used when extracting elems from an UPDATE message */
+typedef struct bgpstream_parsebgp_upd_state {
+
+  // has the BGP4MP state been prepared
+  int ready;
+
+  // how many native (IPv4) withdrawals still to yield
+  int withdrawal_v4_cnt;
+  int withdrawal_v4_idx;
+
+  // how many MP_UNREACH (IPv6) withdrawals still to yield
+  int withdrawal_v6_cnt;
+  int withdrawal_v6_idx;
+
+  // how many native (IPv4) announcements still to yield
+  int announce_v4_cnt;
+  int announce_v4_idx;
+
+  // how many MP_REACH (IPv6) announcements still to yield
+  int announce_v6_cnt;
+  int announce_v6_idx;
+
+  // have path attributes been processed
+  int path_attr_done;
+
+  // has the native next-hop been processed
+  int next_hop_v4_done;
+
+  // has the mp_reach next-hop been processed
+  int next_hop_v6_done;
+
+} bgpstream_parsebgp_upd_state_t;
+
+/** Reset the given update state */
+void bgpstream_parsebgp_upd_state_reset(
+  bgpstream_parsebgp_upd_state_t *upd_state);
+
+/** Process the given UPDATE message and extract a single elem from it
+ *
+ * @param upd_state     pointer to the generator state
+ * @param elem          pointer to the elem to populate
+ * @param bgp           pointer to a parsed BGP message
+ * @return 1 if the elem was populated, 0 if there are no more elems, -1 if an
+ * error occurred.
+ */
+int bgpstream_parsebgp_process_update(bgpstream_parsebgp_upd_state_t *upd_state,
+                                      bgpstream_elem_t *elem,
+                                      parsebgp_bgp_msg_t *bgp);
+
 typedef struct bgpstream_parsebgp_decode_state {
 
   // outer message type to decode (MRT or BMP)

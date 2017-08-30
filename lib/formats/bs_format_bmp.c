@@ -42,12 +42,70 @@ typedef struct state {
   // have we extracted all the possible elems out of the current message?
   int end_of_elems;
 
+  // have we extracted the peer header info into the elem?
+  int peer_hdr_done;
+
+  // state for UPDATE elem extraction
+  bgpstream_parsebgp_upd_state_t upd_state;
+
 } state_t;
+
+static int handle_update(bgpstream_format_t *format, parsebgp_bgp_msg_t *bgp)
+{
+  int rc;
+
+  if ((rc = bgpstream_parsebgp_process_update(&STATE->upd_state, STATE->elem,
+                                              bgp)) < 0) {
+    return rc;
+  }
+  if (rc == 0) {
+    STATE->end_of_elems = 1;
+  }
+  return rc;
+}
+
+static int handle_peer_up_down(bgpstream_format_t *format, int peer_up)
+{
+  bgpstream_elem_t *el = STATE->elem;
+
+  el->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
+
+  // TODO: fix this after talking with Tim
+  // it is possible we can assume UP means IDLE->ACTIVE
+  el->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
+  if (peer_up) {
+    el->new_state = BGPSTREAM_ELEM_PEERSTATE_ACTIVE;
+  } else {
+    el->new_state = BGPSTREAM_ELEM_PEERSTATE_IDLE;
+  }
+
+  STATE->end_of_elems = 1;
+  return 1;
+}
+
+static int handle_peer_hdr(bgpstream_elem_t *el, parsebgp_bmp_msg_t *bmp)
+{
+  parsebgp_bmp_peer_hdr_t *hdr = &bmp->peer_hdr;
+
+  // Timestamps
+  el->timestamp = hdr->ts_sec;
+  el->timestamp_usec = hdr->ts_usec;
+
+  // Peer Address
+  COPY_IP(&el->peer_address, hdr->afi, hdr->addr, return -1);
+
+  // Peer ASN
+  el->peer_asnumber = hdr->asn;
+
+  return 0;
+}
 
 static void reset_generator(bgpstream_format_t *format)
 {
   bgpstream_elem_clear(STATE->elem);
   STATE->end_of_elems = 0;
+  STATE->peer_hdr_done = 0;
+  bgpstream_parsebgp_upd_state_reset(&STATE->upd_state);
 }
 
 /* -------------------- RECORD FILTERING -------------------- */
@@ -153,13 +211,42 @@ int bs_format_bmp_get_next_elem(bgpstream_format_t *format,
                                 bgpstream_record_t *record,
                                 bgpstream_elem_t **elem)
 {
+  parsebgp_bmp_msg_t *bmp = &BGPSTREAM_PARSEBGP_FDATA->types.bmp;
+  int rc = 0;
   *elem = NULL;
 
-  // TODO: actually implement this
-  STATE->end_of_elems = 1;
   if (BGPSTREAM_PARSEBGP_FDATA == NULL || STATE->end_of_elems != 0) {
     // end-of-elems
     return 0;
+  }
+
+  // assume we'll find at least something juicy, so process the peer header and
+  // fill the common parts of the elem
+  if (STATE->peer_hdr_done == 0 && handle_peer_hdr(STATE->elem, bmp) != 0) {
+    return -1;
+  }
+  STATE->peer_hdr_done = 1;
+
+  // what kind of BMP message are we dealing with?
+  switch (bmp->type) {
+  case PARSEBGP_BMP_TYPE_ROUTE_MON:
+    rc = handle_update(format, &bmp->types.route_mon);
+    break;
+
+  case PARSEBGP_BMP_TYPE_PEER_DOWN:
+    rc = handle_peer_up_down(format, 0);
+    break;
+
+  case PARSEBGP_BMP_TYPE_PEER_UP:
+    rc = handle_peer_up_down(format, 1);
+    break;
+
+  default:
+    // not implemented
+    return 0;
+  }
+  if (rc <= 0) {
+    return rc;
   }
 
   // return a borrowed pointer to the elem we populated

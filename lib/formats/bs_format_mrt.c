@@ -44,42 +44,15 @@ typedef struct peer_index_entry {
 KHASH_INIT(td2_peer, int, peer_index_entry_t, 1, kh_int_hash_func,
            kh_int_hash_equal);
 
-struct bgp4mp_state {
-
-  // has the BGP4MP state been prepared
-  int ready;
-
-  // how many native (IPv4) withdrawals still to yield
-  int withdrawal_v4_cnt;
-  int withdrawal_v4_idx;
-
-  // how many MP_UNREACH (IPv6) withdrawals still to yield
-  int withdrawal_v6_cnt;
-  int withdrawal_v6_idx;
-
-  // how many native (IPv4) announcements still to yield
-  int announce_v4_cnt;
-  int announce_v4_idx;
-
-  // how many MP_REACH (IPv6) announcements still to yield
-  int announce_v6_cnt;
-  int announce_v6_idx;
-
-  // have path attributes been processed
-  int path_attr_done;
-
-  // has the native next-hop been processed
-  int next_hop_v4_done;
-
-  // has the mp_reach next-hop been processed
-  int next_hop_v6_done;
-
-};
-
 typedef struct state {
 
   // parsebgp decode wrapper state
   bgpstream_parsebgp_decode_state_t decoder;
+
+  /* TODO: it is a little unsafe to have the generator directly in the format if
+     the user tries to extract elems from two records simultaneously. consider
+     moving all the generator state into a wrapper for the message that is
+     stored in the format data pointer of the record */
 
   // reusable elem instance
   bgpstream_elem_t *elem;
@@ -93,7 +66,8 @@ typedef struct state {
   // index of the NEXT rib entry to read from a TDv2 message
   int next_re;
 
-  struct bgp4mp_state bgp4mp;
+  // state for UPDATE elem extraction
+  bgpstream_parsebgp_upd_state_t upd_state;
 
 } state_t;
 
@@ -235,153 +209,7 @@ static int handle_table_dump_v2(bgpstream_format_t *format,
   return 0;
 }
 
-static int handle_bgp4mp_prefix(bgpstream_format_t *format,
-                                bgpstream_elem_type_t elem_type,
-                                parsebgp_bgp_prefix_t *prefix)
-{
-  if (prefix->type != PARSEBGP_BGP_PREFIX_UNICAST_IPV4 &&
-      prefix->type != PARSEBGP_BGP_PREFIX_UNICAST_IPV6) {
-    return 0;
-  }
-
-  STATE->elem->type = elem_type;
-
-  // Prefix
-  COPY_IP(&STATE->elem->prefix.address, prefix->afi, prefix->addr, return 0);
-  STATE->elem->prefix.mask_len = prefix->len;
-
-  return 1;
-}
-
-#define WITHDRAWAL_GENERATOR(nlri_type, prefixes)                              \
-  do {                                                                         \
-    rc = 0;                                                                    \
-    while (STATE->bgp4mp.withdrawal_##nlri_type##_cnt > 0 && rc == 0) {        \
-      if ((rc = handle_bgp4mp_prefix(                                          \
-             format, BGPSTREAM_ELEM_TYPE_WITHDRAWAL,                           \
-             &prefixes[STATE->bgp4mp.withdrawal_##nlri_type##_idx])) < 0) {    \
-        bgpstream_log(BGPSTREAM_LOG_ERR, "Could not extract withdrawal elem"); \
-        return -1;                                                             \
-      }                                                                        \
-      STATE->bgp4mp.withdrawal_##nlri_type##_cnt--;                            \
-      STATE->bgp4mp.withdrawal_##nlri_type##_idx++;                            \
-    }                                                                          \
-    if (rc != 0) {                                                             \
-      goto done;                                                               \
-    }                                                                          \
-  } while (0)
-
-#define ANNOUNCEMENT_GENERATOR(nlri_type, prefixes, is_mp_reach)               \
-  do {                                                                         \
-    rc = 0;                                                                    \
-    while (STATE->bgp4mp.announce_##nlri_type##_cnt > 0 && rc == 0) {          \
-      if (STATE->bgp4mp.next_hop_##nlri_type##_done == 0) {                    \
-        if (bgpstream_parsebgp_process_next_hop(                               \
-              STATE->elem, update->path_attrs.attrs, is_mp_reach) != 0) {      \
-          bgpstream_log(BGPSTREAM_LOG_ERR, "Could not extract next-hop");      \
-          return -1;                                                           \
-        }                                                                      \
-        STATE->bgp4mp.next_hop_##nlri_type##_done = 1;                         \
-      }                                                                        \
-                                                                               \
-      if ((rc = handle_bgp4mp_prefix(                                          \
-             format, BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT,                         \
-             &prefixes[STATE->bgp4mp.announce_##nlri_type##_idx])) < 0) {      \
-        bgpstream_log(BGPSTREAM_LOG_ERR,                                       \
-                      "Could not extract announcement elem");                  \
-        return -1;                                                             \
-      }                                                                        \
-      STATE->bgp4mp.announce_##nlri_type##_cnt--;                              \
-      STATE->bgp4mp.announce_##nlri_type##_idx++;                              \
-    }                                                                          \
-    if (rc != 0) {                                                             \
-      goto done;                                                               \
-    }                                                                          \
-  } while (0)
-
-static int handle_bgp4mp_bgp_msg(bgpstream_format_t *format,
-                                 parsebgp_mrt_msg_t *mrt,
-                                 parsebgp_mrt_bgp4mp_t *bgp4mp)
-{
-  parsebgp_bgp_update_t *update = &bgp4mp->data.bgp_msg.types.update;
-  int rc = 0;
-
-  if (STATE->bgp4mp.ready == 0) {
-    // need to check some things, and get ready to yield elems
-
-    // first, a sanity check
-    if (bgp4mp->data.bgp_msg.type != PARSEBGP_BGP_TYPE_UPDATE) {
-      STATE->end_of_elems = 1;
-      return 0;
-    }
-
-    // how many native withdrawals will we process?
-    STATE->bgp4mp.withdrawal_v4_cnt = update->withdrawn_nlris.prefixes_cnt;
-
-    // how many MP_UNREACH (IPv6) withdrawals still to yield
-    if (update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI]
-          .type == PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI) {
-      STATE->bgp4mp.withdrawal_v6_cnt =
-        update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI]
-          .data.mp_unreach.withdrawn_nlris_cnt;
-    }
-
-    // how many native (IPv4) announcements still to yield
-    STATE->bgp4mp.announce_v4_cnt = update->announced_nlris.prefixes_cnt;
-
-    // how many MP_REACH (IPv6) announcements still to yield
-    if (update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI]
-          .type == PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI) {
-      STATE->bgp4mp.announce_v6_cnt =
-        update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI]
-          .data.mp_reach.nlris_cnt;
-    }
-
-    // all other flags left set to zero
-
-    STATE->bgp4mp.ready = 1;
-  }
-
-  // IPv4 Withdrawals
-  WITHDRAWAL_GENERATOR(v4, update->withdrawn_nlris.prefixes);
-
-  // IPv6 Withdrawals
-  WITHDRAWAL_GENERATOR(
-    v6, update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI]
-          .data.mp_unreach.withdrawn_nlris);
-
-  // at this point we need the path attributes processed
-  if (STATE->bgp4mp.path_attr_done == 0) {
-    if (bgpstream_parsebgp_process_path_attrs(STATE->elem,
-                                              update->path_attrs.attrs) != 0) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not extract path attributes");
-      return -1;
-    }
-    STATE->bgp4mp.path_attr_done = 1;
-  }
-
-  // IPv4 Announcements (will also trigger next-hop extraction)
-  ANNOUNCEMENT_GENERATOR(v4, update->announced_nlris.prefixes, 0);
-
-  // IPv6 Announcements (will also trigger next-hop extraction)
-  ANNOUNCEMENT_GENERATOR(
-    v6,
-    update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI]
-      .data.mp_reach.nlris,
-    1);
-
- done:
-   if (STATE->bgp4mp.withdrawal_v4_cnt == 0 &&
-       STATE->bgp4mp.withdrawal_v6_cnt == 0 &&
-       STATE->bgp4mp.announce_v4_cnt == 0 &&
-       STATE->bgp4mp.announce_v6_cnt == 0) {
-     STATE->end_of_elems = 1;
-  }
-  return 1;
-}
-
 static int handle_bgp4mp_state_change(bgpstream_format_t *format,
-                                      parsebgp_mrt_msg_t *mrt,
                                       parsebgp_mrt_bgp4mp_t *bgp4mp)
 {
   STATE->elem->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
@@ -406,14 +234,18 @@ static int handle_bgp4mp(bgpstream_format_t *format,
   switch (mrt->subtype) {
   case PARSEBGP_MRT_BGP4MP_STATE_CHANGE:
   case PARSEBGP_MRT_BGP4MP_STATE_CHANGE_AS4:
-    rc = handle_bgp4mp_state_change(format, mrt, bgp4mp);
+    rc = handle_bgp4mp_state_change(format, bgp4mp);
     break;
 
   case PARSEBGP_MRT_BGP4MP_MESSAGE:
   case PARSEBGP_MRT_BGP4MP_MESSAGE_AS4:
   case PARSEBGP_MRT_BGP4MP_MESSAGE_LOCAL:
   case PARSEBGP_MRT_BGP4MP_MESSAGE_AS4_LOCAL:
-    rc = handle_bgp4mp_bgp_msg(format, mrt, bgp4mp);
+    rc = bgpstream_parsebgp_process_update(&STATE->upd_state, STATE->elem,
+                                           &bgp4mp->data.bgp_msg);
+    if (rc == 0) {
+      STATE->end_of_elems = 1;
+    }
     break;
 
   default:
@@ -430,7 +262,7 @@ static void reset_generator(bgpstream_format_t *format)
   bgpstream_elem_clear(STATE->elem);
   STATE->end_of_elems = 0;
   STATE->next_re = 0;
-  memset(&STATE->bgp4mp, 0, sizeof(struct bgp4mp_state));
+  bgpstream_parsebgp_upd_state_reset(&STATE->upd_state);
 }
 
 /* -------------------- RECORD FILTERING -------------------- */
