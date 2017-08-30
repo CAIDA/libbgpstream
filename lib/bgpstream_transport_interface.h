@@ -40,8 +40,7 @@
 /** Convenience macro that defines all the function prototypes for the data
  * transport API */
 #define BS_TRANSPORT_GENERATE_PROTOS(name)                                     \
-  int bs_transport_##name##_create(bgpstream_transport_t *transport,           \
-                                   bgpstream_resource_t *res);                 \
+  int bs_transport_##name##_create(bgpstream_transport_t *transport);          \
   int64_t bs_transport_##name##_read(bgpstream_transport_t *t,                 \
                                      uint8_t *buffer, int64_t len);            \
   void bs_transport_##name##_destroy(bgpstream_transport_t *t);
@@ -87,6 +86,9 @@ struct bgpstream_transport {
    * transport manager.
    *
    * @{ */
+
+  /** Pointer to the resource the transport is reading from */
+  bgpstream_resource_t *res;
 
   /** An opaque pointer to transport-specific state if needed by the
       transport */
