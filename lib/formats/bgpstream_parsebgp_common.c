@@ -280,7 +280,14 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
   parsebgp_error_t err;
   int filter;
 
-refill:
+ refill:
+  // if there's nothing left in the buffer, it could just be because we happened
+  // to empty it, so let's try and get some more data from the transport just in
+  // case.
+  // on the other hand, if there are some bytes left in the buffer, but we've
+  // got to the end, and there's a partial message left, the "refill" flag will
+  // be set which causes us to do a forced refill (the remaining bytes will be
+  // shifted to the beginning of the buffer, and the rest filled).
   if (state->remain == 0 || refill != 0) {
     // try to refill the buffer
     if ((fill_len = refill_buffer(state, format->transport)) == 0) {
@@ -291,6 +298,7 @@ refill:
       // read error
       // TODO: create a specific read error failure so that perhaps BGPStream
       // can retry
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not refill buffer\n");
       return -1;
     }
     if (fill_len == state->remain) {
@@ -301,71 +309,79 @@ refill:
     // here we have something new to read
     state->remain = fill_len;
     state->ptr = state->buffer;
+
+    // reset the "force refill" flag
+    refill = 0;
   }
 
-  while (state->remain > 0) {
-    if (BGPSTREAM_PARSEBGP_FDATA == NULL &&
-        (record->__format_data->data = parsebgp_create_msg()) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_ERR,
-                    "ERROR: Failed to create message structure\n");
-      return -1;
-    }
-
-    dec_len = state->remain;
-    if ((err = parsebgp_decode(state->parser_opts, PARSEBGP_MSG_TYPE_MRT,
-                               BGPSTREAM_PARSEBGP_FDATA, state->ptr,
-                               &dec_len)) != PARSEBGP_OK) {
-      if (err == PARSEBGP_PARTIAL_MSG) {
-        // refill the buffer and try again
-        refill = 1;
-        parsebgp_destroy_msg(BGPSTREAM_PARSEBGP_FDATA);
-        record->__format_data->data = NULL;
-        goto refill;
-      }
-      // else: its a fatal error
-      bgpstream_log(BGPSTREAM_LOG_ERR,
-                    "ERROR: Failed to parse message (%d:%s)\n", err,
-                    parsebgp_strerror(err));
-      parsebgp_destroy_msg(BGPSTREAM_PARSEBGP_FDATA);
-      record->__format_data->data = NULL;
-      return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
-    }
-    // else: successful read
-    state->ptr += dec_len;
-    state->remain -= dec_len;
-    state->successful_read_cnt++;
-    assert(BGPSTREAM_PARSEBGP_FDATA != NULL);
-
-    // got a message!
-    // let the caller decide if they want it
-    if ((filter = cb(format, BGPSTREAM_PARSEBGP_FDATA)) < 0) {
-      return -1;
-    }
-
-    if (filter == 0) {
-      // move on to the next record
-      if (skipped_cnt == UINT64_MAX) {
-        // probably this will never happen, but lets just be careful we don't
-        // wrap and think we haven't skipped anything
-        skipped_cnt = 0;
-      }
-      skipped_cnt++;
-      parsebgp_destroy_msg(BGPSTREAM_PARSEBGP_FDATA);
-      record->__format_data->data = NULL;
-      continue;
-    }
-
-    // otherwise, they want this
-    state->valid_read_cnt++;
-    break;
-  }
-
-  if (state->remain == 0 && BGPSTREAM_PARSEBGP_FDATA == NULL) {
+  // if we still have nothing to read, then we have nothing to read!
+  if (state->remain == 0) {
     // EOF
     return handle_eof(state, record, skipped_cnt);
   }
 
+  if (BGPSTREAM_PARSEBGP_FDATA == NULL &&
+      (record->__format_data->data = parsebgp_create_msg()) == NULL) {
+    bgpstream_log(BGPSTREAM_LOG_ERR,
+                  "ERROR: Failed to create message structure\n");
+    return -1;
+  }
+
+  dec_len = state->remain;
+  if ((err = parsebgp_decode(state->parser_opts, PARSEBGP_MSG_TYPE_MRT,
+                             BGPSTREAM_PARSEBGP_FDATA, state->ptr, &dec_len)) !=
+      PARSEBGP_OK) {
+    if (err == PARSEBGP_PARTIAL_MSG) {
+      // refill the buffer and try again
+      parsebgp_destroy_msg(BGPSTREAM_PARSEBGP_FDATA);
+      record->__format_data->data = NULL;
+      refill = 1;
+      goto refill;
+    }
+    // else: its a fatal error
+    bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Failed to parse message (%d:%s)\n",
+                  err, parsebgp_strerror(err));
+    parsebgp_destroy_msg(BGPSTREAM_PARSEBGP_FDATA);
+    record->__format_data->data = NULL;
+    return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
+  }
+  // else: successful read
+  state->ptr += dec_len;
+  state->remain -= dec_len;
+  state->successful_read_cnt++;
+  assert(BGPSTREAM_PARSEBGP_FDATA != NULL);
+
+  // got a message!
+  // let the caller decide if they want it
+  if ((filter = cb(format, BGPSTREAM_PARSEBGP_FDATA)) < 0) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Format-specific filtering failed");
+    return -1;
+  }
+
+  if (filter == 0) {
+    // move on to the next record
+    if (skipped_cnt == UINT64_MAX) {
+      // probably this will never happen, but lets just be careful we don't
+      // wrap and think we haven't skipped anything
+      skipped_cnt = 0;
+    }
+    skipped_cnt++;
+    parsebgp_destroy_msg(BGPSTREAM_PARSEBGP_FDATA);
+    record->__format_data->data = NULL;
+    // there is a cool corner case here when our buffer ends perfectly at the
+    // end of a message, AND we filter the message out. previously i had a
+    // simple "continue" which would have dropped out of the loop (since
+    // remain == 0) and then would have been caught by the EOF check below.
+    // to avoid this, we jump back to the refill point (but without a forced
+    // refill), which in the normal case will drop into this loop as if a
+    // continue had been called, and in the special case where remain == 0,
+    // will try and refill the buffer.
+    refill = 0; // don't force the refill, just let it happen naturally
+    goto refill;
+  }
+
   // valid message, and it passes our filters
+  state->valid_read_cnt++;
   record->status = BGPSTREAM_RECORD_STATUS_VALID_RECORD;
 
   // if this is the first record we read and no previous
