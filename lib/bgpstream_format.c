@@ -30,9 +30,7 @@
 #include <assert.h>
 
 #include "bs_format_mrt.h"
-#if 0
 #include "bs_format_bmp.h"
-#endif
 
 /** Convenience typedef for the format create function type */
 typedef int (*format_create_func_t)(bgpstream_format_t *format,
@@ -47,11 +45,9 @@ static const format_create_func_t create_functions[] = {
 
   bs_format_mrt_create,
 
-#if 0
   bs_format_bmp_create,
-#else
-  NULL,
-#endif
+
+  NULL, // TODO: add support for RIPEJSON
 
 };
 

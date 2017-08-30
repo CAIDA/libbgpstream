@@ -84,6 +84,9 @@ int bgpstream_parsebgp_process_next_hop(bgpstream_elem_t *el,
 
 typedef struct bgpstream_parsebgp_decode_state {
 
+  // outer message type to decode (MRT or BMP)
+  parsebgp_msg_type_t msg_type;
+
   // options for libparsebgp
   parsebgp_opts_t parser_opts;
 
@@ -112,11 +115,13 @@ typedef struct bgpstream_parsebgp_decode_state {
  * @param format        pointer to the format that originally called
  *                      _populate_record
  * @param msg           pointer to the parsed message
+ * @param ts_sec[out]   must be set to the timestamp of the message
  * @return 1 if the message should be kept, 0 if it should be skipped, -1 if an
  * error occurred.
  */
 typedef int (bgpstream_parsebgp_check_filter_cb_t)(bgpstream_format_t *format,
-                                                   parsebgp_msg_t *msg);
+                                                   parsebgp_msg_t *msg,
+                                                   uint32_t *ts_sec);
 
 /** Use libparsebgp to decode a message */
 bgpstream_format_status_t

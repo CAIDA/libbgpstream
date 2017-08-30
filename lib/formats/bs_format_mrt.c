@@ -491,7 +491,8 @@ static int handle_td2_peer_index(bgpstream_format_t *format,
 }
 
 static int populate_filter_cb(bgpstream_format_t *format,
-                              parsebgp_msg_t *msg)
+                              parsebgp_msg_t *msg,
+                              uint32_t *ts_sec)
 {
   assert(msg->type == PARSEBGP_MSG_TYPE_MRT);
 
@@ -517,6 +518,7 @@ static int populate_filter_cb(bgpstream_format_t *format,
 
   if (is_wanted_time(msg->types.mrt.timestamp_sec, format->filter_mgr) != 0) {
     // we want this entry
+    *ts_sec = msg->types.mrt.timestamp_sec;
     return 1;
   } else {
     return 0;
@@ -538,6 +540,8 @@ int bs_format_mrt_create(bgpstream_format_t *format,
   if ((STATE->elem = bgpstream_elem_create()) == NULL) {
     return -1;
   }
+
+  STATE->decoder.msg_type = PARSEBGP_MSG_TYPE_MRT;
 
   opts = &STATE->decoder.parser_opts;
   parsebgp_opts_init(opts);

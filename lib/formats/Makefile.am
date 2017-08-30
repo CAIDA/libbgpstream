@@ -36,18 +36,15 @@ AM_CPPFLAGS= 	-I$(top_srcdir) \
 
 noinst_LTLIBRARIES = libbgpstream-formats.la
 
-SOURCES=
-LIBS=
-
-# for now we just build all formats, but some day something might be optional
-SOURCES+=bs_format_mrt.c \
-	 bs_format_mrt.h \
+SOURCES= 				\
+	bs_format_bmp.c			\
+	bs_format_bmp.h			\
+	bs_format_mrt.c 		\
+	bs_format_mrt.h 		\
 	bgpstream_parsebgp_common.c	\
 	bgpstream_parsebgp_common.h
-LIBS+=$(top_builddir)/lib/formats/libparsebgp/lib/libparsebgp.la
 
-#SOURCES+=bs_format_bmp.c \
-#	 bs_format_bmp.h
+LIBS=$(top_builddir)/lib/formats/libparsebgp/lib/libparsebgp.la
 
 libbgpstream_formats_la_SOURCES = $(SOURCES)
 
