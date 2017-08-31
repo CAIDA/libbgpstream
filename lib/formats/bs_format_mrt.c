@@ -322,9 +322,9 @@ static int handle_td2_peer_index(bgpstream_format_t *format,
   return 0;
 }
 
-static int populate_filter_cb(bgpstream_format_t *format,
-                              parsebgp_msg_t *msg,
-                              uint32_t *ts_sec)
+static bgpstream_parsebgp_check_filter_rc_t
+populate_filter_cb(bgpstream_format_t *format, parsebgp_msg_t *msg,
+                   uint32_t *ts_sec)
 {
   assert(msg->type == PARSEBGP_MSG_TYPE_MRT);
 
@@ -340,8 +340,8 @@ static int populate_filter_cb(bgpstream_format_t *format,
       bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to process Peer Index Table");
       return -1;
     }
-    // indicate that we want this message skipped
-    return 0;
+    // indicate that we want this message SKIPPED
+    return BGPSTREAM_PARSEBGP_SKIP;
   }
 
   // check the filters
@@ -351,9 +351,9 @@ static int populate_filter_cb(bgpstream_format_t *format,
   if (is_wanted_time(msg->types.mrt.timestamp_sec, format->filter_mgr) != 0) {
     // we want this entry
     *ts_sec = msg->types.mrt.timestamp_sec;
-    return 1;
+    return BGPSTREAM_PARSEBGP_KEEP;
   } else {
-    return 0;
+    return BGPSTREAM_PARSEBGP_FILTER_OUT;
   }
 }
 

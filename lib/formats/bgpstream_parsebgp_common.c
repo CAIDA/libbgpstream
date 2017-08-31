@@ -501,7 +501,6 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
   // else: successful read
   state->ptr += dec_len;
   state->remain -= dec_len;
-  state->successful_read_cnt++;
   assert(BGPSTREAM_PARSEBGP_FDATA != NULL);
 
   // got a message!
@@ -511,14 +510,23 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
     return -1;
   }
 
-  if (filter == 0) {
+  if (filter == BGPSTREAM_PARSEBGP_KEEP) {
+    // valid message, and it passes our filters
+    state->valid_read_cnt++;
+    state->successful_read_cnt++;
+    record->status = BGPSTREAM_RECORD_STATUS_VALID_RECORD;
+  } else {
     // move on to the next record
-    if (skipped_cnt == UINT64_MAX) {
-      // probably this will never happen, but lets just be careful we don't
-      // wrap and think we haven't skipped anything
-      skipped_cnt = 0;
+
+    if (filter == BGPSTREAM_PARSEBGP_FILTER_OUT) {
+      if (skipped_cnt == UINT64_MAX) {
+        // probably this will never happen, but lets just be careful we don't
+        // wrap and think we haven't skipped anything
+        skipped_cnt = 0;
+      }
+      skipped_cnt++;
+      state->successful_read_cnt++;
     }
-    skipped_cnt++;
     parsebgp_destroy_msg(BGPSTREAM_PARSEBGP_FDATA);
     record->__format_data->data = NULL;
     // there is a cool corner case here when our buffer ends perfectly at the
@@ -532,10 +540,6 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
     refill = 0; // don't force the refill, just let it happen naturally
     goto refill;
   }
-
-  // valid message, and it passes our filters
-  state->valid_read_cnt++;
-  record->status = BGPSTREAM_RECORD_STATUS_VALID_RECORD;
 
   // if this is the first record we read and no previous
   // valid record has been discarded because of time
