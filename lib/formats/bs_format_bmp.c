@@ -138,7 +138,7 @@ static bgpstream_parsebgp_check_filter_rc_t
 populate_filter_cb(bgpstream_format_t *format, parsebgp_msg_t *msg,
                    uint32_t *ts_sec)
 {
-  parsebgp_bmp_msg_t *bmp = &msg->types.bmp;
+  parsebgp_bmp_msg_t *bmp = msg->types.bmp;
   assert(msg->type == PARSEBGP_MSG_TYPE_BMP);
 
   // for now we only care about ROUTE_MON, PEER_DOWN, and PEER_UP messages
@@ -150,7 +150,7 @@ populate_filter_cb(bgpstream_format_t *format, parsebgp_msg_t *msg,
 
   // and we are only interested in UPDATE messages
   if (bmp->type == PARSEBGP_BMP_TYPE_ROUTE_MON &&
-      bmp->types.route_mon.type != PARSEBGP_BGP_TYPE_UPDATE) {
+      bmp->types.route_mon->type != PARSEBGP_BGP_TYPE_UPDATE) {
     return BGPSTREAM_PARSEBGP_FILTER_OUT;
   }
 
@@ -211,7 +211,7 @@ int bs_format_bmp_get_next_elem(bgpstream_format_t *format,
                                 bgpstream_record_t *record,
                                 bgpstream_elem_t **elem)
 {
-  parsebgp_bmp_msg_t *bmp = &BGPSTREAM_PARSEBGP_FDATA->types.bmp;
+  parsebgp_bmp_msg_t *bmp = BGPSTREAM_PARSEBGP_FDATA->types.bmp;
   int rc = 0;
   *elem = NULL;
 
@@ -231,7 +231,7 @@ int bs_format_bmp_get_next_elem(bgpstream_format_t *format,
   switch (bmp->type) {
   case PARSEBGP_BMP_TYPE_ROUTE_MON:
     // TODO: explicitly handle end-of-RIB marker
-    rc = handle_update(format, &bmp->types.route_mon);
+    rc = handle_update(format, bmp->types.route_mon);
     break;
 
   case PARSEBGP_BMP_TYPE_PEER_DOWN:
