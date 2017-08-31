@@ -134,9 +134,9 @@ static int is_wanted_time(uint32_t record_time,
   return 0;
 }
 
-static int populate_filter_cb(bgpstream_format_t *format,
-                              parsebgp_msg_t *msg,
-                              uint32_t *ts_sec)
+static bgpstream_parsebgp_check_filter_rc_t
+populate_filter_cb(bgpstream_format_t *format, parsebgp_msg_t *msg,
+                   uint32_t *ts_sec)
 {
   parsebgp_bmp_msg_t *bmp = &msg->types.bmp;
   assert(msg->type == PARSEBGP_MSG_TYPE_BMP);
@@ -145,13 +145,13 @@ static int populate_filter_cb(bgpstream_format_t *format,
   if (bmp->type != PARSEBGP_BMP_TYPE_ROUTE_MON &&
       bmp->type != PARSEBGP_BMP_TYPE_PEER_DOWN &&
       bmp->type != PARSEBGP_BMP_TYPE_PEER_UP) {
-    return 0;
+    return BGPSTREAM_PARSEBGP_FILTER_OUT;
   }
 
   // and we are only interested in UPDATE messages
   if (bmp->type == PARSEBGP_BMP_TYPE_ROUTE_MON &&
       bmp->types.route_mon.type != PARSEBGP_BGP_TYPE_UPDATE) {
-    return 0;
+    return BGPSTREAM_PARSEBGP_FILTER_OUT;
   }
 
   // be careful! PARSEBGP_BMP_TYPE_INIT_MSG and PARSEBGP_BMP_TYPE_TERM_MSG
@@ -162,9 +162,9 @@ static int populate_filter_cb(bgpstream_format_t *format,
   if (is_wanted_time(bmp->peer_hdr.ts_sec, format->filter_mgr) != 0) {
     // we want this entry
     *ts_sec = bmp->peer_hdr.ts_sec;
-    return 1;
+    return BGPSTREAM_PARSEBGP_KEEP;
   } else {
-    return 0;
+    return BGPSTREAM_PARSEBGP_FILTER_OUT;
   }
 }
 
@@ -230,6 +230,7 @@ int bs_format_bmp_get_next_elem(bgpstream_format_t *format,
   // what kind of BMP message are we dealing with?
   switch (bmp->type) {
   case PARSEBGP_BMP_TYPE_ROUTE_MON:
+    // TODO: explicitly handle end-of-RIB marker
     rc = handle_update(format, &bmp->types.route_mon);
     break;
 

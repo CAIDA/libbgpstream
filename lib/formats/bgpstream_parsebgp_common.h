@@ -158,6 +158,19 @@ typedef struct bgpstream_parsebgp_decode_state {
 
 } bgpstream_parsebgp_decode_state_t;
 
+typedef enum {
+
+  /** Indicates the message should be filtered */
+  BGPSTREAM_PARSEBGP_FILTER_OUT = 0,
+
+  /** Indicates the message should be silently skipped */
+  BGPSTREAM_PARSEBGP_SKIP = 1,
+
+  /** Indicates the message should be kept and given to the user */
+  BGPSTREAM_PARSEBGP_KEEP = 2,
+
+} bgpstream_parsebgp_check_filter_rc_t;
+
 /** Once a message has been read by _populate_record, this callback gives the
  * caller a chance to check filters, and choose to skip the message
  *
@@ -168,9 +181,9 @@ typedef struct bgpstream_parsebgp_decode_state {
  * @return 1 if the message should be kept, 0 if it should be skipped, -1 if an
  * error occurred.
  */
-typedef int (bgpstream_parsebgp_check_filter_cb_t)(bgpstream_format_t *format,
-                                                   parsebgp_msg_t *msg,
-                                                   uint32_t *ts_sec);
+typedef bgpstream_parsebgp_check_filter_rc_t (
+  bgpstream_parsebgp_check_filter_cb_t)(bgpstream_format_t *format,
+                                        parsebgp_msg_t *msg, uint32_t *ts_sec);
 
 /** Use libparsebgp to decode a message */
 bgpstream_format_status_t
