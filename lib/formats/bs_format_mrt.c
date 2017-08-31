@@ -75,7 +75,7 @@ static int handle_table_dump(bgpstream_format_t *format,
                              parsebgp_mrt_msg_t *mrt)
 {
   bgpstream_elem_t *el = STATE->elem;
-  parsebgp_mrt_table_dump_t *td = &mrt->types.table_dump;
+  parsebgp_mrt_table_dump_t *td = mrt->types.table_dump;
 
   // legacy table dump format is basically an elem
   el->type = BGPSTREAM_ELEM_TYPE_RIB;
@@ -180,7 +180,7 @@ handle_td2_afi_safi_rib(bgpstream_format_t *format, parsebgp_mrt_msg_t *mrt,
 static int handle_table_dump_v2(bgpstream_format_t *format,
                                 parsebgp_mrt_msg_t *mrt)
 {
-  parsebgp_mrt_table_dump_v2_t *td2 = &mrt->types.table_dump_v2;
+  parsebgp_mrt_table_dump_v2_t *td2 = mrt->types.table_dump_v2;
 
   switch (mrt->subtype) {
   case PARSEBGP_MRT_TABLE_DUMP_V2_PEER_INDEX_TABLE:
@@ -223,7 +223,7 @@ static int handle_bgp4mp(bgpstream_format_t *format,
                          parsebgp_mrt_msg_t *mrt)
 {
   int rc = 0;
-  parsebgp_mrt_bgp4mp_t *bgp4mp = &mrt->types.bgp4mp;
+  parsebgp_mrt_bgp4mp_t *bgp4mp = mrt->types.bgp4mp;
 
   STATE->elem->timestamp = mrt->timestamp_sec;
   STATE->elem->timestamp_usec = mrt->timestamp_usec;
@@ -242,7 +242,7 @@ static int handle_bgp4mp(bgpstream_format_t *format,
   case PARSEBGP_MRT_BGP4MP_MESSAGE_LOCAL:
   case PARSEBGP_MRT_BGP4MP_MESSAGE_AS4_LOCAL:
     rc = bgpstream_parsebgp_process_update(&STATE->upd_state, STATE->elem,
-                                           &bgp4mp->data.bgp_msg);
+                                           bgp4mp->data.bgp_msg);
     if (rc == 0) {
       STATE->end_of_elems = 1;
     }
@@ -332,11 +332,11 @@ populate_filter_cb(bgpstream_format_t *format, parsebgp_msg_t *msg,
   // could also add a "filtered" flag to the peer_index_entry_t struct so that
   // when elem parsing happens it can quickly filter out unwanted peers
   // without having to check ASN or IP
-  if (msg->types.mrt.type == PARSEBGP_MRT_TYPE_TABLE_DUMP_V2 &&
-      msg->types.mrt.subtype ==
+  if (msg->types.mrt->type == PARSEBGP_MRT_TYPE_TABLE_DUMP_V2 &&
+      msg->types.mrt->subtype ==
       PARSEBGP_MRT_TABLE_DUMP_V2_PEER_INDEX_TABLE) {
     if (handle_td2_peer_index(
-          format, &msg->types.mrt.types.table_dump_v2.peer_index) != 0) {
+          format, &msg->types.mrt->types.table_dump_v2->peer_index) != 0) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to process Peer Index Table");
       return -1;
     }
@@ -348,9 +348,9 @@ populate_filter_cb(bgpstream_format_t *format, parsebgp_msg_t *msg,
   // TODO: if this is a BGP4MP or TD1 message (UPDATE), then we can do some
   // work to prep the path attributes (and then filter on them).
 
-  if (is_wanted_time(msg->types.mrt.timestamp_sec, format->filter_mgr) != 0) {
+  if (is_wanted_time(msg->types.mrt->timestamp_sec, format->filter_mgr) != 0) {
     // we want this entry
-    *ts_sec = msg->types.mrt.timestamp_sec;
+    *ts_sec = msg->types.mrt->timestamp_sec;
     return BGPSTREAM_PARSEBGP_KEEP;
   } else {
     return BGPSTREAM_PARSEBGP_FILTER_OUT;
@@ -405,7 +405,7 @@ int bs_format_mrt_get_next_elem(bgpstream_format_t *format,
     return 0;
   }
 
-  mrt = &BGPSTREAM_PARSEBGP_FDATA->types.mrt;
+  mrt = BGPSTREAM_PARSEBGP_FDATA->types.mrt;
   switch (mrt->type) {
   case PARSEBGP_MRT_TYPE_TABLE_DUMP:
     rc = handle_table_dump(format, mrt);

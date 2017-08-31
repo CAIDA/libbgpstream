@@ -281,7 +281,7 @@ int bgpstream_parsebgp_process_update(bgpstream_parsebgp_upd_state_t *upd_state,
                                       bgpstream_elem_t *elem,
                                       parsebgp_bgp_msg_t *bgp)
 {
-  parsebgp_bgp_update_t *update = &bgp->types.update;
+  parsebgp_bgp_update_t *update = bgp->types.update; // could be NULL!
   int rc = 0;
 
   if (upd_state->ready == 0) {
@@ -300,7 +300,7 @@ int bgpstream_parsebgp_process_update(bgpstream_parsebgp_upd_state_t *upd_state,
           .type == PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI) {
       upd_state->withdrawal_v6_cnt =
         update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI]
-          .data.mp_unreach.withdrawn_nlris_cnt;
+          .data.mp_unreach->withdrawn_nlris_cnt;
     }
 
     // how many native (IPv4) announcements still to yield
@@ -311,7 +311,7 @@ int bgpstream_parsebgp_process_update(bgpstream_parsebgp_upd_state_t *upd_state,
           .type == PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI) {
       upd_state->announce_v6_cnt =
         update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI]
-          .data.mp_reach.nlris_cnt;
+          .data.mp_reach->nlris_cnt;
     }
 
     // all other flags left set to zero
@@ -333,7 +333,7 @@ int bgpstream_parsebgp_process_update(bgpstream_parsebgp_upd_state_t *upd_state,
   // IPv6 Withdrawals
   WITHDRAWAL_GENERATOR(
     v6, update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI]
-          .data.mp_unreach.withdrawn_nlris);
+          .data.mp_unreach->withdrawn_nlris);
 
   // at this point we need the path attributes processed
   if (upd_state->path_attr_done == 0) {
@@ -352,7 +352,7 @@ int bgpstream_parsebgp_process_update(bgpstream_parsebgp_upd_state_t *upd_state,
   ANNOUNCEMENT_GENERATOR(
     v6,
     update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI]
-      .data.mp_reach.nlris,
+      .data.mp_reach->nlris,
     1);
 
   return 0;
@@ -371,11 +371,11 @@ int bgpstream_parsebgp_process_path_attrs(
   // AS Path(s)
   if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS_PATH].type ==
       PARSEBGP_BGP_PATH_ATTR_TYPE_AS_PATH) {
-    aspath = &attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS_PATH].data.as_path;
+    aspath = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS_PATH].data.as_path;
   }
   if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_PATH].type ==
       PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_PATH) {
-    as4path = &attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_PATH].data.as_path;
+    as4path = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_PATH].data.as_path;
   }
   if (handle_as_paths(el->aspath, aspath, as4path) != 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not parse AS_PATH");
@@ -387,7 +387,7 @@ int bgpstream_parsebgp_process_path_attrs(
         PARSEBGP_BGP_PATH_ATTR_TYPE_COMMUNITIES &&
       bgpstream_community_set_populate(
         el->communities,
-        attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_COMMUNITIES].data.communities.raw,
+        attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_COMMUNITIES].data.communities->raw,
         attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_COMMUNITIES].len) != 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not parse COMMUNITIES");
     return -1;
@@ -405,7 +405,7 @@ int bgpstream_parsebgp_process_next_hop(bgpstream_elem_t *el,
   if (is_mp_pfx && attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI].type ==
                      PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI) {
     // extract next-hop from MP_REACH attribute
-    mp_reach = &attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI].data.mp_reach;
+    mp_reach = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI].data.mp_reach;
     COPY_IP(&el->nexthop, mp_reach->afi, mp_reach->next_hop, return -1);
   } else {
     // extract next-hop from NEXT_HOP attribute
