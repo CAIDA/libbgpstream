@@ -365,6 +365,9 @@ int bgpstream_parsebgp_process_path_attrs(
   parsebgp_bgp_update_as_path_t *aspath = NULL;
   parsebgp_bgp_update_as_path_t *as4path = NULL;
 
+  bgpstream_as_path_clear(el->aspath);
+  bgpstream_community_set_clear(el->communities);
+
   // AS Path(s)
   if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS_PATH].type ==
       PARSEBGP_BGP_PATH_ATTR_TYPE_AS_PATH) {
