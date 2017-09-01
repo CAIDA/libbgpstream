@@ -28,9 +28,6 @@
 #include "bgpstream_format.h"
 #include "parsebgp.h"
 
-#define BGPSTREAM_PARSEBGP_FDATA                                               \
-  ((parsebgp_msg_t *)(record->__format_data->data))
-
 #define COPY_IP(dst, afi, src, do_unknown)                                     \
   do {                                                                         \
     switch (afi) {                                                             \
@@ -188,6 +185,7 @@ typedef bgpstream_parsebgp_check_filter_rc_t (
 /** Use libparsebgp to decode a message */
 bgpstream_format_status_t
 bgpstream_parsebgp_populate_record(bgpstream_parsebgp_decode_state_t *state,
+                                   parsebgp_msg_t *msg,
                                    bgpstream_format_t *format,
                                    bgpstream_record_t *record,
                                    bgpstream_parsebgp_check_filter_cb_t *cb);

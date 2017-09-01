@@ -420,11 +420,11 @@ int bgpstream_parsebgp_process_next_hop(bgpstream_elem_t *el,
 }
 
 bgpstream_format_status_t bgpstream_parsebgp_populate_record(
-  bgpstream_parsebgp_decode_state_t *state, bgpstream_format_t *format,
-  bgpstream_record_t *record, bgpstream_parsebgp_check_filter_cb_t *cb)
+  bgpstream_parsebgp_decode_state_t *state, parsebgp_msg_t *msg,
+  bgpstream_format_t *format, bgpstream_record_t *record,
+  bgpstream_parsebgp_check_filter_cb_t *cb)
 {
   assert(record->__format_data->format == format);
-  assert(BGPSTREAM_PARSEBGP_FDATA != NULL);
 
   int refill = 0;
   ssize_t fill_len = 0;
@@ -475,19 +475,17 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
   }
 
   dec_len = state->remain;
-  if ((err = parsebgp_decode(state->parser_opts, state->msg_type,
-                             BGPSTREAM_PARSEBGP_FDATA, state->ptr, &dec_len)) !=
-      PARSEBGP_OK) {
+  if ((err = parsebgp_decode(state->parser_opts, state->msg_type, msg,
+                             state->ptr, &dec_len)) != PARSEBGP_OK) {
+    parsebgp_clear_msg(msg);
     if (err == PARSEBGP_PARTIAL_MSG) {
       // refill the buffer and try again
-      parsebgp_clear_msg(BGPSTREAM_PARSEBGP_FDATA);
       refill = 1;
       goto refill;
     }
     // else: its a fatal error
     bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Failed to parse message (%d:%s)\n",
                   err, parsebgp_strerror(err));
-    parsebgp_clear_msg(BGPSTREAM_PARSEBGP_FDATA);
     return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
   }
   // else: successful read
@@ -496,7 +494,7 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
 
   // got a message!
   // let the caller decide if they want it
-  if ((filter = cb(format, BGPSTREAM_PARSEBGP_FDATA, &ts_sec)) < 0) {
+  if ((filter = cb(format, msg, &ts_sec)) < 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Format-specific filtering failed");
     return -1;
   }
@@ -518,7 +516,7 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
       skipped_cnt++;
       state->successful_read_cnt++;
     }
-    parsebgp_clear_msg(BGPSTREAM_PARSEBGP_FDATA);
+    parsebgp_clear_msg(msg);
     // there is a cool corner case here when our buffer ends perfectly at the
     // end of a message, AND we filter the message out. previously i had a
     // simple "continue" which would have dropped out of the loop (since
