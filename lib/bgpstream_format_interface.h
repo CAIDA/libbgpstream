@@ -48,6 +48,8 @@
   int bs_format_##name##_get_next_elem(bgpstream_format_t *format,             \
                                        bgpstream_record_t *record,             \
                                        bgpstream_elem_t **elem);               \
+  int bs_format_##name##_init_data(bgpstream_format_t *format, void **data);   \
+  void bs_format_##name##_clear_data(bgpstream_format_t *format, void *data);  \
   void bs_format_##name##_destroy_data(bgpstream_format_t *format,             \
                                        void *data);                            \
   void bs_format_##name##_destroy(bgpstream_format_t *format);
@@ -56,6 +58,8 @@
   do {                                                                         \
     (format)->populate_record = bs_format_##classname##_populate_record;       \
     (format)->get_next_elem = bs_format_##classname##_get_next_elem;           \
+    (format)->init_data = bs_format_##classname##_init_data;                   \
+    (format)->clear_data = bs_format_##classname##_clear_data;                 \
     (format)->destroy_data = bs_format_##classname##_destroy_data;             \
     (format)->destroy = bs_format_##classname##_destroy;                       \
   } while (0)
@@ -94,13 +98,26 @@ struct bgpstream_format {
                        bgpstream_record_t *record,
                        bgpstream_elem_t **elem);
 
+  /** Initialize/create the given format-specific record data
+   *
+   * @param format      pointer to the format object to use
+   * @param data[out]   set to newly initialized data
+   */
+  int (*init_data)(struct bgpstream_format *format, void **data);
+
+  /** Clear the given format-specific record data
+   *
+   * @param format      pointer to the format object to use
+   * @param data        pointer to the data to clear
+   */
+  void (*clear_data)(struct bgpstream_format *format, void *data);
+
   /** Destroy the given format-specific record data
    *
    * @param format      pointer to the format object to use
    * @param data        pointer to the data to destroy
    */
-  void (*destroy_data)(struct bgpstream_format *format,
-                       void *data);
+  void (*destroy_data)(struct bgpstream_format *format, void *data);
 
   /** Destroy the given format module
    *

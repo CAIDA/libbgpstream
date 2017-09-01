@@ -88,9 +88,6 @@ static int prefetch_record(bgpstream_reader_t *reader)
   // try and get the next entry from the resource (will do filtering)
   reader->status = bgpstream_format_populate_record(reader->format, record);
 
-  assert(reader->status == BGPSTREAM_FORMAT_OK ||
-         record->__format_data->data == NULL);
-
   // did we read a record?
   if (reader->status == BGPSTREAM_FORMAT_OK) {
     // we did (the normal case)
@@ -112,45 +109,6 @@ static int prefetch_record(bgpstream_reader_t *reader)
   }
 
   return 0;
-}
-
-static void *threaded_opener(void *user)
-{
-  bgpstream_reader_t *reader = (bgpstream_reader_t *)user;
-  int retries = 0;
-  int delay = DUMP_OPEN_MIN_RETRY_WAIT;
-
-  /* all we do is open the dump */
-  /* but try a few times in case there is a transient failure */
-  while (retries < DUMP_OPEN_MAX_RETRIES && reader->format == NULL) {
-    if ((reader->format =
-           bgpstream_format_create(reader->res, reader->filter_mgr)) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_WARN,
-                    "Could not open (%s). Attempt %d of %d",
-                    reader->res->uri, retries + 1, DUMP_OPEN_MAX_RETRIES);
-      retries++;
-      if (retries < DUMP_OPEN_MAX_RETRIES) {
-        sleep(delay);
-        delay *= 2;
-      }
-    }
-  }
-
-  pthread_mutex_lock(&reader->mutex);
-  if (reader->format == NULL) {
-    bgpstream_log(BGPSTREAM_LOG_ERR,
-      "Could not open dumpfile (%s) after %d attempts. Giving up.",
-      reader->res->uri, DUMP_OPEN_MAX_RETRIES);
-    reader->status = BGPSTREAM_FORMAT_CANT_OPEN_DUMP;
-  } else {
-    // prefetch the first record (will set reader->status to error if needed)
-    prefetch_record(reader);
-  }
-  reader->dump_ready = 1;
-  pthread_cond_signal(&reader->dump_ready_cond);
-  pthread_mutex_unlock(&reader->mutex);
-
-  return NULL;
 }
 
 // fills the record with resource-level info that doesn't change per-record
@@ -176,6 +134,59 @@ static int prepopulate_record(bgpstream_record_t *record,
   return 0;
 }
 
+static void *threaded_opener(void *user)
+{
+  bgpstream_reader_t *reader = (bgpstream_reader_t *)user;
+  int retries = 0;
+  int delay = DUMP_OPEN_MIN_RETRY_WAIT;
+  int i;
+
+  /* all we do is open the dump */
+  /* but try a few times in case there is a transient failure */
+  while (retries < DUMP_OPEN_MAX_RETRIES && reader->format == NULL) {
+    if ((reader->format =
+           bgpstream_format_create(reader->res, reader->filter_mgr)) == NULL) {
+      bgpstream_log(BGPSTREAM_LOG_WARN,
+                    "Could not open (%s). Attempt %d of %d",
+                    reader->res->uri, retries + 1, DUMP_OPEN_MAX_RETRIES);
+      retries++;
+      if (retries < DUMP_OPEN_MAX_RETRIES) {
+        sleep(delay);
+        delay *= 2;
+      }
+    }
+  }
+
+  pthread_mutex_lock(&reader->mutex);
+  if (reader->format == NULL) {
+    bgpstream_log(BGPSTREAM_LOG_ERR,
+      "Could not open dumpfile (%s) after %d attempts. Giving up.",
+      reader->res->uri, DUMP_OPEN_MAX_RETRIES);
+    reader->status = BGPSTREAM_FORMAT_CANT_OPEN_DUMP;
+  } else {
+    // create the pair of records
+    for (i=0; i<2; i++) {
+      if ((reader->rec_buf[i] = bgpstream_record_create(reader->format)) ==
+          NULL ||
+          prepopulate_record(reader->rec_buf[i], reader->res) != 0) {
+        reader->status = BGPSTREAM_FORMAT_CANT_OPEN_DUMP;
+        break;
+      }
+      reader->rec_buf_filled[i] = 0;
+    }
+    reader->rec_buf_prefetch_idx = 0;
+    if (reader->status != BGPSTREAM_FORMAT_CANT_OPEN_DUMP) {
+      // prefetch the first record (will set reader->status to error if needed)
+      prefetch_record(reader);
+    }
+  }
+  reader->dump_ready = 1;
+  pthread_cond_signal(&reader->dump_ready_cond);
+  pthread_mutex_unlock(&reader->mutex);
+
+  return NULL;
+}
+
 /* ========== PUBLIC FUNCTIONS BELOW ========== */
 
 bgpstream_reader_t *
@@ -192,16 +203,6 @@ bgpstream_reader_create(bgpstream_resource_t *resource,
   reader->filter_mgr = filter_mgr;
   reader->status = BGPSTREAM_FORMAT_OK;
 
-  int i;
-  for (i=0; i<2; i++) {
-    if ((reader->rec_buf[i] = bgpstream_record_create()) == NULL ||
-        prepopulate_record(reader->rec_buf[i], resource) != 0) {
-      goto err;
-    }
-    reader->rec_buf_filled[i] = 0;
-  }
-  reader->rec_buf_prefetch_idx = 0;
-
   // initialize and start the thread to open the resource
   // this will also pre-fetch the first record
   pthread_mutex_init(&reader->mutex, NULL);
@@ -211,10 +212,6 @@ bgpstream_reader_create(bgpstream_resource_t *resource,
   pthread_create(&reader->opener_thread, NULL, threaded_opener, reader);
 
   return reader;
-
- err:
-  bgpstream_reader_destroy(reader);
-  return NULL;
 }
 
 void bgpstream_reader_destroy(bgpstream_reader_t *reader)

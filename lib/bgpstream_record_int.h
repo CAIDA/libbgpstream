@@ -62,7 +62,7 @@ struct bgpstream_record_format_data {
  * A Record may be reused for successive calls to bgpstream_get_next_record if
  * records are processed independently of each other
  */
-bgpstream_record_t *bgpstream_record_create();
+bgpstream_record_t *bgpstream_record_create(bgpstream_format_t *format);
 
 /** Destroy the given BGP Stream Record instance
  *

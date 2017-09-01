@@ -255,6 +255,20 @@ int bs_format_bmp_get_next_elem(bgpstream_format_t *format,
   return 1;
 }
 
+int bs_format_bmp_init_data(bgpstream_format_t *format, void **data)
+{
+  if ((*data = parsebgp_create_msg()) == NULL) {
+    return -1;
+  }
+  return 0;
+}
+
+void bs_format_bmp_clear_data(bgpstream_format_t *format, void *data)
+{
+  reset_generator(format);
+  parsebgp_clear_msg((parsebgp_msg_t*)data);
+}
+
 void bs_format_bmp_destroy_data(bgpstream_format_t *format, void *data)
 {
   reset_generator(format);

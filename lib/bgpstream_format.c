@@ -99,8 +99,8 @@ bgpstream_format_status_t
 bgpstream_format_populate_record(bgpstream_format_t *format,
                                  bgpstream_record_t *record)
 {
-  assert(record->__format_data->data == NULL);
-  record->__format_data->format = format;
+  // it is a programming error to use a record with a different format
+  assert(record->__format_data->format == format);
   return format->populate_record(format, record);
 }
 
@@ -114,6 +114,21 @@ int bgpstream_format_get_next_elem(bgpstream_format_t *format,
 }
 
 #define DATA(record) ((record)->__format_data)
+
+int bgpstream_format_init_data(bgpstream_record_t *record)
+{
+  return DATA(record)->format->init_data(DATA(record)->format,
+                                         &DATA(record)->data);
+}
+
+void bgpstream_format_clear_data(bgpstream_record_t *record)
+{
+  if (record == NULL || DATA(record)->format == NULL) {
+    assert(DATA(record)->data == NULL);
+    return;
+  }
+  DATA(record)->format->clear_data(DATA(record)->format, DATA(record)->data);
+}
 
 void bgpstream_format_destroy_data(bgpstream_record_t *record)
 {

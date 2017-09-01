@@ -32,7 +32,7 @@
 #include "bgpstream_record.h"
 #include "utils.h"
 
-bgpstream_record_t *bgpstream_record_create()
+bgpstream_record_t *bgpstream_record_create(bgpstream_format_t *format)
 {
   bgpstream_record_t *record;
 
@@ -43,6 +43,9 @@ bgpstream_record_t *bgpstream_record_create()
     bgpstream_record_destroy(record);
     return NULL;
   }
+
+  record->__format_data->format = format;
+  bgpstream_format_init_data(record);
 
   return record;
 }
@@ -64,7 +67,7 @@ void bgpstream_record_destroy(bgpstream_record_t *record)
    reader and thus these fields can be reused between reads. */
 void bgpstream_record_clear(bgpstream_record_t *record)
 {
-  bgpstream_format_destroy_data(record);
+  bgpstream_format_clear_data(record);
 }
 
 void bgpstream_record_print_mrt_data(bgpstream_record_t *const record)

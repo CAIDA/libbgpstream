@@ -175,8 +175,6 @@ static bgpstream_format_status_t
 handle_eof(bgpstream_parsebgp_decode_state_t *state, bgpstream_record_t *record,
            uint64_t skipped_cnt)
 {
-  assert(BGPSTREAM_PARSEBGP_FDATA == NULL);
-
   // just to be kind, set the record time to the dump time
   record->attributes.record_time = record->attributes.dump_time;
 
@@ -426,7 +424,7 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
   bgpstream_record_t *record, bgpstream_parsebgp_check_filter_cb_t *cb)
 {
   assert(record->__format_data->format == format);
-  assert(BGPSTREAM_PARSEBGP_FDATA == NULL);
+  assert(BGPSTREAM_PARSEBGP_FDATA != NULL);
 
   int refill = 0;
   ssize_t fill_len = 0;
@@ -476,35 +474,25 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
     return handle_eof(state, record, skipped_cnt);
   }
 
-  if (BGPSTREAM_PARSEBGP_FDATA == NULL &&
-      (record->__format_data->data = parsebgp_create_msg()) == NULL) {
-    bgpstream_log(BGPSTREAM_LOG_ERR,
-                  "ERROR: Failed to create message structure\n");
-    return -1;
-  }
-
   dec_len = state->remain;
   if ((err = parsebgp_decode(state->parser_opts, state->msg_type,
                              BGPSTREAM_PARSEBGP_FDATA, state->ptr, &dec_len)) !=
       PARSEBGP_OK) {
     if (err == PARSEBGP_PARTIAL_MSG) {
       // refill the buffer and try again
-      parsebgp_destroy_msg(BGPSTREAM_PARSEBGP_FDATA);
-      record->__format_data->data = NULL;
+      parsebgp_clear_msg(BGPSTREAM_PARSEBGP_FDATA);
       refill = 1;
       goto refill;
     }
     // else: its a fatal error
     bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Failed to parse message (%d:%s)\n",
                   err, parsebgp_strerror(err));
-    parsebgp_destroy_msg(BGPSTREAM_PARSEBGP_FDATA);
-    record->__format_data->data = NULL;
+    parsebgp_clear_msg(BGPSTREAM_PARSEBGP_FDATA);
     return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
   }
   // else: successful read
   state->ptr += dec_len;
   state->remain -= dec_len;
-  assert(BGPSTREAM_PARSEBGP_FDATA != NULL);
 
   // got a message!
   // let the caller decide if they want it
@@ -530,8 +518,7 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
       skipped_cnt++;
       state->successful_read_cnt++;
     }
-    parsebgp_destroy_msg(BGPSTREAM_PARSEBGP_FDATA);
-    record->__format_data->data = NULL;
+    parsebgp_clear_msg(BGPSTREAM_PARSEBGP_FDATA);
     // there is a cool corner case here when our buffer ends perfectly at the
     // end of a message, AND we filter the message out. previously i had a
     // simple "continue" which would have dropped out of the loop (since
