@@ -45,6 +45,11 @@ DI_SOURCES+=bsdi_singlefile.c \
 	    bsdi_singlefile.h
 endif
 
+if WITH_DATA_INTERFACE_KAFKA
+DI_SOURCES+=bsdi_kafka.c \
+	    bsdi_kafka.h
+endif
+
 if WITH_DATA_INTERFACE_CSVFILE
 DI_SOURCES+=bsdi_csvfile.c \
 	    bsdi_csvfile.h

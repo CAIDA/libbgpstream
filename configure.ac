@@ -161,8 +161,33 @@ AM_CONDITIONAL(HAS_DOXYGEN, [test x"$bgpstream_doxygen" = xyes])
 AC_MSG_NOTICE([])
 AC_MSG_NOTICE([---- BGPStream configuration ----])
 
+AC_MSG_NOTICE([checking transport modules...])
+
+# shall we build with support for the kafka transport module?
+AC_MSG_CHECKING([whether to build kafka transport module])
+AC_ARG_WITH([transport-kafka],
+	[AS_HELP_STRING([--without-transport-kafka],
+	  [do not compile the kafka transport module])],
+	  [],
+	  [with_transport_kafka=yes])
+AC_MSG_RESULT([$with_transport_kafka])
+
+AM_CONDITIONAL([WITH_TRANSPORT_KAFKA], [test "x$with_transport_kafka" != xno])
+
+if test x"$with_transport_kafka" = xyes; then
+   AC_CHECK_LIB([rdkafka], [rd_kafka_query_watermark_offsets], ,
+               [AC_MSG_ERROR(
+                 [librdkafka is required for kafka (--without-transport-kafka to disable)])])
+
+   AC_DEFINE([WITH_TRANSPORT_KAFKA],[1],[Building kafka transport module])
+fi
+
+AC_MSG_NOTICE([])
+AC_MSG_NOTICE([checking data interfaces...])
+
 BS_WITH_DI([bgpstream_broker],[broker],[BROKER],[yes])
 BS_WITH_DI([bgpstream_singlefile],[singlefile],[SINGLEFILE],[yes])
+BS_WITH_DI([bgpstream_kafka],[kafka],[KAFKA],[yes])
 BS_WITH_DI([bgpstream_csvfile],[csvfile],[CSVFILE],[yes])
 BS_WITH_DI([bgpstream_sqlite],[sqlite],[SQLITE],[no])
 
@@ -175,6 +200,12 @@ AC_MSG_NOTICE([checking data interface dependencies...])
 
 if test "x$with_di_broker" == xyes; then
   CHECK_WANDIO_HTTP("http://bgpstream.caida.org/broker")
+fi
+
+if test "x$with_di_kafka" == xyes; then
+   if test x"$with_transport_kafka" != xyes; then
+      AC_MSG_ERROR([Kafka data interface requires Kafka transport module (--without-kafka to disable)])
+   fi
 fi
 
 if test "x$with_di_sqlite" == xyes; then
@@ -215,30 +246,6 @@ fi
 if test "x$with_di_csvfile" == xyes; then
    BS_DI_OPT(csvfile-csv-file, CSVFILE_CSV_FILE, CSV file listing the MRT data to read, not-set)
 fi
-
-AC_MSG_NOTICE([])
-AC_MSG_NOTICE([checking transport modules...])
-
-# shall we build with support for the kafka transport module?
-AC_MSG_CHECKING([whether to build kafka transport module])
-AC_ARG_WITH([transport-kafka],
-	[AS_HELP_STRING([--without-transport-kafka],
-	  [do not compile the kafka transport module])],
-	  [],
-	  [with_transport_kafka=yes])
-AC_MSG_RESULT([$with_transport_kafka])
-
-AM_CONDITIONAL([WITH_TRANSPORT_KAFKA], [test "x$with_transport_kafka" != xno])
-
-if test x"$with_transport_kafka" = xyes; then
-AC_CHECK_LIB([rdkafka], [rd_kafka_query_watermark_offsets], ,
-               [AC_MSG_ERROR(
-                 [librdkafka is required for kafka (--without-transport-kafka to disable)])])
-
-AC_DEFINE([WITH_TRANSPORT_KAFKA],[1],[Building kafka transport module])
-fi
-
-AC_MSG_NOTICE([---------------------------------])
 
 # TODO: make BGPView optional
 AC_MSG_NOTICE([])

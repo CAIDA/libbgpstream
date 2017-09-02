@@ -38,6 +38,10 @@
 #include "bsdi_singlefile.h"
 #endif
 
+#ifdef WITH_DATA_INTERFACE_KAFKA
+#include "bsdi_kafka.h"
+#endif
+
 #ifdef WITH_DATA_INTERFACE_CSVFILE
 #include "bsdi_csvfile.h"
 #endif
@@ -101,6 +105,12 @@ static const di_alloc_func_t di_alloc_functions[] = {
 
 #ifdef WITH_DATA_INTERFACE_SINGLEFILE
   bsdi_singlefile_alloc,
+#else
+  NULL,
+#endif
+
+#ifdef WITH_DATA_INTERFACE_KAFKA
+  bsdi_kafka_alloc,
 #else
   NULL,
 #endif

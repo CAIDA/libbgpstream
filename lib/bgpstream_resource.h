@@ -89,7 +89,7 @@ typedef struct bgpstream_resource {
   char *uri;
 
   /** Time of first record offered by the resource. A value of -1 indicates that
-      the resource contains no historical data. */
+      the resource contains an unknown amount of historical data. */
   uint32_t initial_time;
 
   /** Time duration of data offered by the resource. A value of -1 indicates
