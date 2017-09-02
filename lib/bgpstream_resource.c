@@ -29,7 +29,7 @@
 #include <assert.h>
 
 /** A Type/Value structure for extra information about a specific resource */
-typedef struct {
+typedef struct attr {
 
   /** The type of this attribute */
   bgpstream_resource_attr_type_t type;
@@ -78,6 +78,8 @@ bgpstream_resource_create(bgpstream_resource_transport_type_t transport_type,
 
 void bgpstream_resource_destroy(bgpstream_resource_t *resource)
 {
+  int i;
+
   free(resource->uri);
   resource->uri = NULL;
 
@@ -87,19 +89,30 @@ void bgpstream_resource_destroy(bgpstream_resource_t *resource)
   free(resource->collector);
   resource->collector = NULL;
 
+  for (i = 0; i < _BGPSTREAM_RESOURCE_ATTR_CNT; i++) {
+    free(resource->attrs[i]->value);
+    resource->attrs[i]->value = NULL;
+    free(resource->attrs[i]);
+    resource->attrs[i] = NULL;
+  }
+
   free(resource);
 }
 
 /* ========== PUBLIC FUNCTIONS BELOW HERE ========== */
 
-#if 0
 int bgpstream_resource_set_attr(bgpstream_resource_t *resource,
                                 bgpstream_resource_attr_type_t type,
                                 const char *value)
 {
   assert(type >= 0 && type < _BGPSTREAM_RESOURCE_ATTR_CNT);
-  resource->attrs[type].type = type;
-  if ((resource->attrs[type].value = strdup(value)) == NULL) {
+  if (resource->attrs[type] == NULL &&
+      (resource->attrs[type] = malloc_zero(sizeof(attr_t))) == NULL) {
+    return -1;
+  }
+  resource->attrs[type]->type = type;
+  free(resource->attrs[type]->value);
+  if ((resource->attrs[type]->value = strdup(value)) == NULL) {
     return -1;
   }
 
@@ -111,9 +124,12 @@ bgpstream_resource_get_attr(bgpstream_resource_t *resource,
                             bgpstream_resource_attr_type_t type)
 {
   assert(type >= 0 && type < _BGPSTREAM_RESOURCE_ATTR_CNT);
-  return resource->attrs[type].value;
+  if (resource->attrs[type] != NULL) {
+    return resource->attrs[type]->value;
+  } else {
+    return NULL;
+  }
 }
-#endif
 
 bgpstream_resource_transport_type_t
 bgpstream_resource_get_transport_type(bgpstream_resource_t *resource)
