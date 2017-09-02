@@ -34,7 +34,7 @@ typedef enum {
   BGPSTREAM_RESOURCE_TRANSPORT_FILE = 0,
 
   /** Data is served from a Kafka queue */
-  //  BGPSTREAM_RESOURCE_TRANSPORT_KAFKA = 1,
+  BGPSTREAM_RESOURCE_TRANSPORT_KAFKA = 1,
 
   /** Data is streamed via websockets */
   //  BGPSTREAM_RESOURCE_TRANSPORT_WEBSOCKET = 2,
@@ -57,6 +57,10 @@ typedef enum bgpstream_resource_format_type {
 
 /** Set of possible resource attribute types */
 typedef enum bgpstream_resource_attr_type {
+
+  /* BGPSTREAM_RESOURCE_TRANSPORT_KAFKA options */
+  /** The topic to consume raw BMP data from */
+  BGPSTREAM_RESOURCE_ATTR_KAFKA_TOPIC = 0,
 
   /** INTERNAL: The total number of attribute types in use */
   _BGPSTREAM_RESOURCE_ATTR_CNT,
@@ -104,15 +108,13 @@ typedef struct bgpstream_resource {
   /** The type of records provided by the resource */
   bgpstream_record_dump_type_t record_type;
 
-#if 0
   /** Extra attributes provided by the data interface that can be used by the
    * transport or format layers (they are optional as some may be provided by
    * the transport or format layers)
    *
    * (e.g., project, collector, type, nominal dump time)
    */
-  struct attr attrs[_BGPSTREAM_RESOURCE_ATTR_CNT];
-#endif
+  struct attr *attrs[_BGPSTREAM_RESOURCE_ATTR_CNT];
 
 } bgpstream_resource_t;
 
@@ -129,7 +131,6 @@ bgpstream_resource_create(bgpstream_resource_transport_type_t transport_type,
 /** Destroy the given resource metadata object */
 void bgpstream_resource_destroy(bgpstream_resource_t *resource);
 
-#if 0
 /** Helper function for setting an attribute for a resource object
  *
  * @param resource      pointer to the resource object
@@ -151,6 +152,5 @@ int bgpstream_resource_set_attr(bgpstream_resource_t *resource,
 const char *
 bgpstream_resource_get_attr(bgpstream_resource_t *resource,
                             bgpstream_resource_attr_type_t type);
-#endif
 
 #endif /* __BGPSTREAM_RESOURCE_H */
