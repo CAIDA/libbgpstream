@@ -21,27 +21,11 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "bgpstream_transport_interface.h"
-#include "bgpstream_log.h"
-#include "bs_transport_kafka.h"
+#ifndef __BSDI_KAFKA_H
+#define __BSDI_KAFKA_H
 
-int bs_transport_kafka_create(bgpstream_transport_t *transport)
-{
-  BS_TRANSPORT_SET_METHODS(kafka, transport);
+#include "bgpstream_di_interface.h"
 
-  bgpstream_log(BGPSTREAM_LOG_WARN, "Creating Kafka transport for %s",
-                transport->res->uri);
+BSDI_GENERATE_PROTOS(kafka);
 
-  return 0;
-}
-
-int64_t bs_transport_kafka_read(bgpstream_transport_t *transport,
-                                uint8_t *buffer, int64_t len)
-{
-  return -1;
-}
-
-void bs_transport_kafka_destroy(bgpstream_transport_t *transport)
-{
-  return;
-}
+#endif /* __BSDI_KAFKA_H */

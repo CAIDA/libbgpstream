@@ -119,8 +119,11 @@ typedef enum {
   /** Broker data interface */
   BGPSTREAM_DATA_INTERFACE_BROKER,
 
-  /** Customlist interface */
+  /** Single-file interface */
   BGPSTREAM_DATA_INTERFACE_SINGLEFILE,
+
+  /** Kafka interface */
+  BGPSTREAM_DATA_INTERFACE_KAFKA,
 
   /** CSV file interface */
   BGPSTREAM_DATA_INTERFACE_CSVFILE,
