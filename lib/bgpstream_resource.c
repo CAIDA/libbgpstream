@@ -90,6 +90,9 @@ void bgpstream_resource_destroy(bgpstream_resource_t *resource)
   resource->collector = NULL;
 
   for (i = 0; i < _BGPSTREAM_RESOURCE_ATTR_CNT; i++) {
+    if (resource->attrs[i] == NULL) {
+      continue;
+    }
     free(resource->attrs[i]->value);
     resource->attrs[i]->value = NULL;
     free(resource->attrs[i]);
