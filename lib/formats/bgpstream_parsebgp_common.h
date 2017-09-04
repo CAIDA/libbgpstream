@@ -182,13 +182,27 @@ typedef bgpstream_parsebgp_check_filter_rc_t (
   bgpstream_parsebgp_check_filter_cb_t)(bgpstream_format_t *format,
                                         parsebgp_msg_t *msg, uint32_t *ts_sec);
 
+/** Called before a message is passed to parsebgp to parse any non-standard
+ * headers encapsulating a message
+ *
+ * @param format        pointer to the format that originally called
+ *                      _populate_record
+ * @param buf           pointer to the raw data buffer
+ * @param len[out]      length of the data buffer, should updated with the
+ *                      number of bytes read
+ * @param record        pointer to the record being populated
+ * @return 0 if successful, -1 otherwise
+ */
+typedef int (bgpstream_parsebgp_prep_buf_cb_t)(bgpstream_format_t *format,
+                                               uint8_t *buf, size_t *len,
+                                               bgpstream_record_t *record);
+
 /** Use libparsebgp to decode a message */
-bgpstream_format_status_t
-bgpstream_parsebgp_populate_record(bgpstream_parsebgp_decode_state_t *state,
-                                   parsebgp_msg_t *msg,
-                                   bgpstream_format_t *format,
-                                   bgpstream_record_t *record,
-                                   bgpstream_parsebgp_check_filter_cb_t *cb);
+bgpstream_format_status_t bgpstream_parsebgp_populate_record(
+  bgpstream_parsebgp_decode_state_t *state, parsebgp_msg_t *msg,
+  bgpstream_format_t *format, bgpstream_record_t *record,
+  bgpstream_parsebgp_prep_buf_cb_t *prep_cb,
+  bgpstream_parsebgp_check_filter_cb_t *filter_cb);
 
 /** Set options specific to how we use libparsebgp in BGPStream */
 void bgpstream_parsebgp_opts_init(parsebgp_opts_t *opts);

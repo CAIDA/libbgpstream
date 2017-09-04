@@ -380,7 +380,7 @@ bs_format_mrt_populate_record(bgpstream_format_t *format,
                               bgpstream_record_t *record)
 {
   return bgpstream_parsebgp_populate_record(&STATE->decoder, RDATA->msg, format,
-                                            record, populate_filter_cb);
+                                            record, NULL, populate_filter_cb);
 }
 
 int bs_format_mrt_get_next_elem(bgpstream_format_t *format,

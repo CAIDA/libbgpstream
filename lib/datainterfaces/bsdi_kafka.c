@@ -33,6 +33,7 @@
 #define STATE (BSDI_GET_STATE(di, kafka))
 
 #define DEFAULT_TOPIC "openbmp.bmp_raw"
+#define DEFAULT_OFFSET "latest"
 #define DEFAULT_PROJECT "kafka"
 #define DEFAULT_COLLECTOR "kafka"
 
@@ -42,17 +43,23 @@ static char *type_strs[] = {
   "bmp", // BGPSTREAM_RESOURCE_FORMAT_BMP
 };
 
+// allowed offset types
+static char *offset_strs[] = {
+  "earliest",     // start from the beginning of the topic
+  "latest",       // start from the end of the topic
+};
+
 /* ---------- START CLASS DEFINITION ---------- */
 
 /* define the internal option ID values */
 enum {
-  OPTION_BROKERS, // stored in res->uri
-  OPTION_TOPIC,   // stored in kafka_topic res attribute
-  OPTION_DATA_TYPE, //
-  OPTION_PROJECT, //
-  OPTION_COLLECTOR, //
-  // TODO: consumer group
-  // TODO: start-position (begin, end, last)
+  OPTION_BROKERS,        // stored in res->uri
+  OPTION_TOPIC,          // stored in kafka_topic res attribute
+  OPTION_CONSUMER_GROUP, // allow multiple BGPStream instances to load-balance
+  OPTION_OFFSET,         // begin, end, committed
+  OPTION_DATA_TYPE,      //
+  OPTION_PROJECT,        //
+  OPTION_COLLECTOR,      //
   // TODO: read time out (waiting for new data)
 };
 
@@ -61,36 +68,50 @@ static bgpstream_data_interface_option_t options[] = {
   /* Kafka Broker list */
   {
     BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
-    OPTION_BROKERS, // internal ID
-    "brokers", // name
+    OPTION_BROKERS,                 // internal ID
+    "brokers",                      // name
     "list of kafka brokers (comma-separated)",
   },
   /* Kafka Topic */
   {
     BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
-    OPTION_TOPIC, // internal ID
-    "topic", // name
-    "topic to consume from (default: "DEFAULT_TOPIC")",
+    OPTION_TOPIC,                   // internal ID
+    "topic",                        // name
+    "topic to consume from (default: " DEFAULT_TOPIC ")",
+  },
+  /* Kafka Consumer Group */
+  {
+    BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
+    OPTION_CONSUMER_GROUP,          // internal ID
+    "group",                        // name
+    "consumer group name (default: random)",
+  },
+  /* Initial offset */
+  {
+    BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
+    OPTION_OFFSET,             // internal ID
+    "offset",                       // name
+    "initial offset (earliest/latest) (default: " DEFAULT_OFFSET ")",
   },
   /* Data type */
   {
     BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
-    OPTION_DATA_TYPE, // internal ID
-    "data-type", // name
+    OPTION_DATA_TYPE,                    // internal ID
+    "data-type",                         // name
     "data type (mrt/bmp) (default: bmp)",
   },
   /* Project */
   {
     BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
-    OPTION_PROJECT, // internal ID
-    "project", // name
+    OPTION_PROJECT,                      // internal ID
+    "project",                           // name
     "set project name (default: " DEFAULT_PROJECT ")",
   },
   /* Collector */
   {
     BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
-    OPTION_COLLECTOR, // internal ID
-    "collector", // name
+    OPTION_COLLECTOR,                    // internal ID
+    "collector",                         // name
     "set collector name (default: " DEFAULT_COLLECTOR ")",
   },
 };
@@ -114,6 +135,12 @@ typedef struct bsdi_kafka_state {
 
   // Topic to consume from
   char *topic_name;
+
+  // Consumer group
+  char *group;
+
+  // Offset
+  char *offset;
 
   // explicitly set project name
   char *project;
@@ -142,7 +169,7 @@ int bsdi_kafka_init(bsdi_t *di)
 
   /* set default state */
   state->topic_name = strdup(DEFAULT_TOPIC);
-  state->data_type = BGPSTREAM_RESOURCE_FORMAT_MRT;
+  state->data_type = BGPSTREAM_RESOURCE_FORMAT_BMP;
   state->project = strdup(DEFAULT_PROJECT);
   state->collector = strdup(DEFAULT_COLLECTOR);
 
@@ -169,7 +196,7 @@ int bsdi_kafka_set_option(bsdi_t *di,
                            const char *option_value)
 {
   int i;
-  int data_type_found = 0;
+  int found = 0;
 
   switch (option_type->id) {
   case OPTION_BROKERS:
@@ -186,15 +213,42 @@ int bsdi_kafka_set_option(bsdi_t *di,
     }
     break;
 
+  case OPTION_CONSUMER_GROUP:
+    free(STATE->group);
+    if ((STATE->group = strdup(option_value)) == NULL) {
+      return -1;
+    }
+    break;
+
+  case OPTION_OFFSET:
+    for (i = 0; i < ARR_CNT(offset_strs); i++) {
+      if (strcmp(option_value, offset_strs[i]) == 0) {
+        found = 1;
+        break;
+      }
+    }
+    if (!found) {
+      fprintf(stderr,
+              "ERROR: Unknown offset type '%s'. Allowed options are: "
+              "earliest/latest\n",
+              option_value);
+      return -1;
+    }
+    free(STATE->offset);
+    if ((STATE->offset = strdup(option_value)) == NULL) {
+      return -1;
+    }
+    break;
+
   case OPTION_DATA_TYPE:
     for (i = 0; i < ARR_CNT(type_strs); i++) {
       if (strcmp(option_value, type_strs[i]) == 0) {
         STATE->data_type = i;
-        data_type_found = 1;
+        found = 1;
         break;
       }
     }
-    if (!data_type_found) {
+    if (!found) {
       fprintf(stderr, "ERROR: Unknown data type '%s'\n", option_value);
       return -1;
     }
@@ -233,6 +287,12 @@ void bsdi_kafka_destroy(bsdi_t *di)
   free(STATE->topic_name);
   STATE->topic_name = NULL;
 
+  free(STATE->group);
+  STATE->group = NULL;
+
+  free(STATE->offset);
+  STATE->offset = NULL;
+
   free(STATE->project);
   STATE->project = NULL;
 
@@ -267,6 +327,18 @@ int bsdi_kafka_update_resources(bsdi_t *di)
 
   if (bgpstream_resource_set_attr(res, BGPSTREAM_RESOURCE_ATTR_KAFKA_TOPIC,
                                   STATE->topic_name) != 0) {
+    return -1;
+  }
+
+  if (STATE->group != NULL &&
+      bgpstream_resource_set_attr(
+        res, BGPSTREAM_RESOURCE_ATTR_KAFKA_CONSUMER_GROUP, STATE->group) != 0) {
+    return -1;
+  }
+
+  if (STATE->offset != NULL &&
+      bgpstream_resource_set_attr(
+        res, BGPSTREAM_RESOURCE_ATTR_KAFKA_INIT_OFFSET, STATE->offset) != 0) {
     return -1;
   }
 

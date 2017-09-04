@@ -133,6 +133,66 @@ static int is_wanted_time(uint32_t record_time,
   return 0;
 }
 
+enum header_row_types {
+  OBMP_VERSION = 0,
+  OBMP_COLLECTOR_HASH_ID = 1,
+  OBMP_ROUTER_HASH = 2,
+  OBMP_ROUTER_IP = 3,
+  OBMP_LEN = 4,
+  OBMP_EMPTY = 5,
+};
+
+static int populate_prep_cb(bgpstream_format_t *format, uint8_t *buf,
+                            size_t *lenp, bgpstream_record_t *record)
+{
+  size_t len = *lenp, nread = 0;
+  int line_n = 0, done = 0;
+
+  /* Parse a gory openbmp raw header that looks like this:
+     V: 1.6\n
+     C_HASH_ID: 31391b6fca3a27567f55f56d113a204a\n
+     R_HASH: 53be25f18ec900afc90cb90bb942b889\n
+     R_IP: 128.223.51.103\n
+     L: 130\n
+     \n
+  */
+
+  if (*buf != 'V') {
+    // assume this is a raw BMP message (not OpenBMP)
+    *lenp = 0;
+    return 0;
+  }
+
+  // read each of the header rows
+  for (line_n = 0; line_n <= OBMP_EMPTY; line_n++) {
+    if (nread > len) {
+      return -1;
+    }
+
+    // TODO: do something with the data
+    // for now, just skip it
+
+    if (line_n == OBMP_EMPTY) {
+      done = 1;
+    }
+
+    // fast-forward to the end of the line
+    for (; nread <= len; nread++) {
+      if (buf[nread] == '\n') {
+        nread++;
+        break;
+      }
+    }
+  }
+
+  if (done != 0) {
+    *lenp = nread;
+    return 0;
+  }
+
+  return -1;
+}
+
 static bgpstream_parsebgp_check_filter_rc_t
 populate_filter_cb(bgpstream_format_t *format, parsebgp_msg_t *msg,
                    uint32_t *ts_sec)
@@ -198,7 +258,9 @@ bs_format_bmp_populate_record(bgpstream_format_t *format,
                               bgpstream_record_t *record)
 {
   return bgpstream_parsebgp_populate_record(&STATE->decoder, RDATA->msg, format,
-                                            record, populate_filter_cb);
+                                            record,
+                                            populate_prep_cb,
+                                            populate_filter_cb);
 }
 
 int bs_format_bmp_get_next_elem(bgpstream_format_t *format,
