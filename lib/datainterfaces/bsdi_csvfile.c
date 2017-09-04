@@ -266,7 +266,8 @@ static void parse_rowend(int c, void *user_data)
                                       STATE->time_span,
                                       STATE->project,
                                       STATE->collector,
-                                      STATE->record_type) != 0) {
+                                      STATE->record_type,
+                                      NULL) < 0) {
         assert(0);
       }
     }

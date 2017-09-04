@@ -716,10 +716,14 @@ bgpstream_resource_mgr_push(bgpstream_resource_mgr_t *q,
                             uint32_t initial_time,
                             uint32_t duration,
                             const char *project, const char *collector,
-                            bgpstream_record_dump_type_t record_type)
+                            bgpstream_record_dump_type_t record_type,
+                            bgpstream_resource_t **resp)
 {
   bgpstream_resource_t *res = NULL;
   struct res_list_elem *el = NULL;
+  if (resp != NULL) {
+    *resp = NULL;
+  }
 
   // first create the resource
   if ((res = bgpstream_resource_create(transport_type, format_type, uri,
@@ -740,7 +744,6 @@ bgpstream_resource_mgr_push(bgpstream_resource_mgr_t *q,
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not create list element");
     goto err;
   }
-  res = NULL;
 
   // now we know we want to keep it
   if (insert_resource_elem(q, el) != 0) {
@@ -748,7 +751,10 @@ bgpstream_resource_mgr_push(bgpstream_resource_mgr_t *q,
     goto err;
   }
 
-  return 0;
+  if (resp != NULL) {
+    *resp = res;
+  }
+  return 1;
 
  err:
   res_list_destroy(el, 1);

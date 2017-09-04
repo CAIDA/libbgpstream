@@ -372,7 +372,8 @@ int bsdi_sqlite_update_resources(bsdi_t *di)
                                     duration,
                                     proj,
                                     coll,
-                                    type) != 0) {
+                                    type,
+                                    NULL) < 0) {
       goto err;
     }
   }
