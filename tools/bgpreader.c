@@ -630,9 +630,15 @@ static void print_bs_record(bgpstream_record_t *bs_record)
   buf_p += c;
 
   /* dump time */
-  c = snprintf(buf_p, len - written, "|%ld", bs_record->attributes.dump_time);
-  written += c;
-  buf_p += c;
+  if (bs_record->attributes.dump_time == UINT32_MAX) {
+    c = snprintf(buf_p, len - written, "|");
+    written += c;
+    buf_p += c;
+  } else  {
+    c = snprintf(buf_p, len - written, "|%ld", bs_record->attributes.dump_time);
+    written += c;
+    buf_p += c;
+  }
 
   if (written >= len) {
     return;
