@@ -25,13 +25,9 @@
 #include "bgpstream_log.h"
 #include "config.h"
 #include "utils.h"
+#include <assert.h>
 #include <inttypes.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <unistd.h>
 #include <wandio.h>
 
 #define STATE (BSDI_GET_STATE(di, kafka))
@@ -237,29 +233,42 @@ void bsdi_kafka_destroy(bsdi_t *di)
   free(STATE->topic_name);
   STATE->topic_name = NULL;
 
+  free(STATE->project);
+  STATE->project = NULL;
+
+  free(STATE->collector);
+  STATE->collector = NULL;
+
   free(STATE);
   BSDI_SET_STATE(di, NULL);
 }
 
 int bsdi_kafka_update_resources(bsdi_t *di)
 {
+  int rc;
+  bgpstream_resource_t *res = NULL;
+
+  // we only ever yield one resource
   if (STATE->done != 0) {
     return 0;
   }
   STATE->done = 1;
 
   // we treat kafka as having data from <recent> to <forever>
+  if ((rc = bgpstream_resource_mgr_push(
+         BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_KAFKA,
+         STATE->data_type, STATE->brokers,
+         -1, // indicate we don't know how much historical data there is
+         -1, // indicate that the resource has no duration
+         STATE->project, STATE->collector, BGPSTREAM_UPDATE, &res)) <= 0) {
+    return rc;
+  }
+  assert(res != NULL);
 
-  // TODO change resource manager API to allow returning pointer to created
-  // resource so that we can set attrs
-  return bgpstream_resource_mgr_push(
-    BSDI_GET_RES_MGR(di),
-    BGPSTREAM_RESOURCE_TRANSPORT_KAFKA,
-    STATE->data_type,
-    STATE->brokers,
-    -1, // indicate we don't know how much historical data there is
-    -1, // indicate that the resource has no duration
-    STATE->project,
-    STATE->collector,
-    BGPSTREAM_UPDATE);
+  if (bgpstream_resource_set_attr(res, BGPSTREAM_RESOURCE_ATTR_KAFKA_TOPIC,
+                                  STATE->topic_name) != 0) {
+    return -1;
+  }
+
+  return 0;
 }

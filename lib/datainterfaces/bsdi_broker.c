@@ -422,7 +422,8 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                                         duration,
                                         project,
                                         collector,
-                                        type) != 0) {
+                                        type,
+                                        NULL) < 0) {
           goto err;
         }
       }

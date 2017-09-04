@@ -113,6 +113,12 @@ typedef struct bgpstream_resource {
    * the transport or format layers)
    *
    * (e.g., project, collector, type, nominal dump time)
+   *
+   * TODO: consider making some of the above fields that really only apply to
+   * file-based dumps into "attrs".
+   *
+   * TODO: figure out how to represent some (or all) of this information in the
+   * record structure.
    */
   struct attr *attrs[_BGPSTREAM_RESOURCE_ATTR_CNT];
 

@@ -53,7 +53,9 @@ bgpstream_resource_mgr_destroy(bgpstream_resource_mgr_t *q);
  * @param project         borrowed pointer to a project name string
  * @param collector       borrowed pointer to a collector name string
  * @param record_type     type of records provided by resource
- * @return 0 if successful, -1 otherwise
+ * @param res[out]        set to a pointer to the created resource
+ * @return 1 if the item was added to the queue, 0 if it was filtered out, and
+ * -1 if an error occurred
  */
 int
 bgpstream_resource_mgr_push(bgpstream_resource_mgr_t *q,
@@ -64,7 +66,8 @@ bgpstream_resource_mgr_push(bgpstream_resource_mgr_t *q,
                             uint32_t duration,
                             const char *project,
                             const char *collector,
-                            bgpstream_record_dump_type_t record_type);
+                            bgpstream_record_dump_type_t record_type,
+                            bgpstream_resource_t **res);
 
 /** Check if the resource manager queue contains any resources
  *
