@@ -434,6 +434,8 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
   int filter;
   uint32_t ts_sec = 0;
 
+  record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE;
+
  refill:
   // if there's nothing left in the buffer, it could just be because we happened
   // to empty it, so let's try and get some more data from the transport just in
@@ -452,12 +454,13 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
       // read error
       // TODO: create a specific read error failure so that perhaps BGPStream
       // can retry
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not refill buffer\n");
-      return -1;
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not refill buffer");
+      return BGPSTREAM_FORMAT_READ_ERROR;
     }
     if (fill_len == state->remain) {
       bgpstream_log(BGPSTREAM_LOG_WARN,
-                    "DEBUG: Corrupted dump or failed read\n");
+                    "DEBUG: Corrupted dump or failed read");
+      record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
       return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
     }
     // here we have something new to read
@@ -484,8 +487,9 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
       goto refill;
     }
     // else: its a fatal error
-    bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Failed to parse message (%d:%s)\n",
+    bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Failed to parse message (%d:%s)",
                   err, parsebgp_strerror(err));
+    record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
     return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
   }
   // else: successful read
@@ -496,7 +500,7 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
   // let the caller decide if they want it
   if ((filter = cb(format, msg, &ts_sec)) < 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Format-specific filtering failed");
-    return -1;
+    return BGPSTREAM_FORMAT_UNKNOWN_ERROR;
   }
 
   if (filter == BGPSTREAM_PARSEBGP_KEEP) {
