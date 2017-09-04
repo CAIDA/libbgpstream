@@ -99,7 +99,7 @@ typedef enum {
   /** Source has no entries */
   BGPSTREAM_RECORD_STATUS_EMPTY_SOURCE = 2,
 
-  /* Error in opening dump */
+  /* Error in opening or reading from dump */
   BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE = 3,
 
   /* Dump corrupted at some point */

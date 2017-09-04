@@ -39,6 +39,8 @@ typedef enum {
   BGPSTREAM_FORMAT_CANT_OPEN_DUMP,
   BGPSTREAM_FORMAT_CORRUPTED_DUMP,
   BGPSTREAM_FORMAT_END_OF_DUMP,
+  BGPSTREAM_FORMAT_READ_ERROR,
+  BGPSTREAM_FORMAT_UNKNOWN_ERROR,
 } bgpstream_format_status_t;
 
 /** Create a format handler for the given resource
