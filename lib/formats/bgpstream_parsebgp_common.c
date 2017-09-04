@@ -7,6 +7,13 @@
 #include <assert.h>
 #include <string.h>
 
+// if the parser encounters an "invalid" message, it will be written to
+// "debug.msg" if this is set
+// #define DEBUG_DUMP_CORRUPT_MSG
+#ifdef DEBUG_DUMP_CORRUPT_MSG
+#include <stdio.h>
+#endif
+
 static bgpstream_as_path_seg_type_t as_path_types[] = {
   BGPSTREAM_AS_PATH_SEG_INVALID,    // INVALID
   BGPSTREAM_AS_PATH_SEG_SET,        // PARSEBGP_BGP_UPDATE_AS_PATH_SEG_AS_SET
@@ -422,19 +429,23 @@ int bgpstream_parsebgp_process_next_hop(bgpstream_elem_t *el,
 bgpstream_format_status_t bgpstream_parsebgp_populate_record(
   bgpstream_parsebgp_decode_state_t *state, parsebgp_msg_t *msg,
   bgpstream_format_t *format, bgpstream_record_t *record,
-  bgpstream_parsebgp_check_filter_cb_t *cb)
+  bgpstream_parsebgp_prep_buf_cb_t *prep_cb,
+  bgpstream_parsebgp_check_filter_cb_t *filter_cb)
 {
   assert(record->__format_data->format == format);
 
   int refill = 0;
   ssize_t fill_len = 0;
-  size_t dec_len = 0;
+  size_t dec_len = 0, hdr_len = 0;
   uint64_t skipped_cnt = 0;
   parsebgp_error_t err;
   int filter;
   uint32_t ts_sec = 0;
 
   record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE;
+
+  // TODO: break our beautiful structure and check the transport type, because
+  // if it is kafka we really mustn't refill a partially filled buffer.
 
  refill:
   // if there's nothing left in the buffer, it could just be because we happened
@@ -477,6 +488,17 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
     return handle_eof(state, record, skipped_cnt);
   }
 
+  // see if the caller wants to parse some special headers (openbmp...)
+  if (prep_cb != NULL) {
+    hdr_len = state->remain;
+    if (prep_cb(format, state->ptr, &hdr_len, record) != 0) {
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to prep data buffer");
+      return BGPSTREAM_FORMAT_UNKNOWN_ERROR;
+    }
+    state->ptr += hdr_len;
+    state->remain -= hdr_len;
+  }
+
   dec_len = state->remain;
   if ((err = parsebgp_decode(state->parser_opts, state->msg_type, msg,
                              state->ptr, &dec_len)) != PARSEBGP_OK) {
@@ -487,8 +509,15 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
       goto refill;
     }
     // else: its a fatal error
-    bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Failed to parse message (%d:%s)",
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to parse message (%d:%s)",
                   err, parsebgp_strerror(err));
+
+#ifdef DEBUG_DUMP_CORRUPT_MSG
+    FILE *fp = fopen("debug.msg", "w");
+    fwrite(state->ptr, 1, state->remain, fp);
+    fclose(fp);
+#endif
+
     record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
     return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
   }
@@ -498,7 +527,7 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
 
   // got a message!
   // let the caller decide if they want it
-  if ((filter = cb(format, msg, &ts_sec)) < 0) {
+  if ((filter = filter_cb(format, msg, &ts_sec)) < 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Format-specific filtering failed");
     return BGPSTREAM_FORMAT_UNKNOWN_ERROR;
   }
