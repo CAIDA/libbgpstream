@@ -307,13 +307,14 @@ int64_t bs_transport_kafka_read(bgpstream_transport_t *transport,
 
   // copy the message into the provided buffer
   memcpy(buffer, rk_msg->payload, rk_msg->len);
+  len = rk_msg->len;
   rd_kafka_message_destroy(rk_msg);
 
   bgpstream_log(BGPSTREAM_LOG_FINE,
                 "DEBUG: Returning message from kafka (%d bytes)",
                 (int)rk_msg->len);
 
-  return rk_msg->len;
+  return len;
 }
 
 void bs_transport_kafka_destroy(bgpstream_transport_t *transport)
