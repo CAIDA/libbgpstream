@@ -263,16 +263,12 @@ int bs_transport_kafka_create(bgpstream_transport_t *transport)
 static int handle_err_msg(bgpstream_transport_t *transport,
                           rd_kafka_message_t *rk_msg)
 {
-  if (rk_msg->err == RD_KAFKA_RESP_ERR__PARTITION_EOF) {
-    // EOF
-    // TODO: should we poll for a bit?
-    return 0;
-  }
-
   // TODO: handle some more errors
   bgpstream_log(BGPSTREAM_LOG_ERR, "Unhandled Kafka error: %s: %s",
                 rd_kafka_err2str(rk_msg->err),
                 rd_kafka_message_errstr(rk_msg));
+
+  rd_kafka_message_destroy(rk_msg);
 
   return -1;
 }
@@ -295,6 +291,7 @@ int64_t bs_transport_kafka_read(bgpstream_transport_t *transport,
 
   if (rk_msg->err != 0) {
     if (rk_msg->err == RD_KAFKA_RESP_ERR__PARTITION_EOF) {
+      rd_kafka_message_destroy(rk_msg);
       sleep(1);
       goto retry;
     }
