@@ -43,7 +43,7 @@
 #define OPTION_CMD_CNT 1024
 #define BGPSTREAM_RECORD_OUTPUT_FORMAT                                         \
   "# Record format:\n"                                                         \
-  "# <dump-type>|<dump-pos>|<project>|<collector>|<status>|<dump-time>\n"      \
+  "# <dump-type>|<dump-pos>|<project>|<collector>|<router-ip>|<status>|<dump-time>\n"      \
   "#\n"                                                                        \
   "# <dump-type>: R RIB, U Update\n"                                           \
   "# <dump-pos>:  B begin, M middle, E end\n"                                  \
@@ -53,7 +53,7 @@
 #define BGPSTREAM_ELEM_OUTPUT_FORMAT                                           \
   "# Elem format:\n"                                                           \
   "# "                                                                         \
-  "<dump-type>|<elem-type>|<record-ts>|<project>|<collector>|<peer-ASN>|<"     \
+  "<dump-type>|<elem-type>|<record-ts>|<project>|<collector>|<router-ip>|<peer-ASN>|<"     \
   "peer-IP>|<prefix>|<next-hop-IP>|<AS-path>|<origin-AS>|<communities>|<old-"  \
   "state>|<new-state>\n"                                                       \
   "#\n"                                                                        \
@@ -621,6 +621,18 @@ static void print_bs_record(bgpstream_record_t *bs_record)
   written += c;
   buf_p += c;
 
+  /* Router IP */
+  if (bs_record->attributes.router_ip.version != 0) {
+    bgpstream_addr_ntop(buf_p, len - written, &bs_record->attributes.router_ip);
+    while (*buf_p != '\0') {
+      written++;
+      buf_p++;
+    }
+  }
+  c = snprintf(buf_p, len - written, "|");
+  written += c;
+  buf_p += c;
+
   /* record status */
   if ((c = bgpstream_record_status_snprintf(buf_p, len - written,
                                             bs_record->status)) < 0) {
@@ -680,6 +692,18 @@ static void print_rib_control_message(bgpstream_record_t *bs_record)
   c = snprintf(
     buf_p, len - written, "|%ld|%s|%s", bs_record->attributes.record_time,
     bs_record->attributes.dump_project, bs_record->attributes.dump_collector);
+  written += c;
+  buf_p += c;
+
+  /* Router IP */
+  if (bs_record->attributes.router_ip.version != 0) {
+    bgpstream_addr_ntop(buf_p, len - written, &bs_record->attributes.router_ip);
+    while (*buf_p != '\0') {
+      written++;
+      buf_p++;
+    }
+  }
+  c = snprintf(buf_p, len - written, "|");
   written += c;
   buf_p += c;
 
