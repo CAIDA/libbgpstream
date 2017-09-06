@@ -416,6 +416,14 @@ int bgpstream_record_status_snprintf(char *buf, size_t len,
     }                                                                          \
   } while (0)
 
+#define SEEK_STR_END                                                           \
+  do {                                                                         \
+    while (*buf_p != '\0') {                                                   \
+      written++;                                                               \
+      buf_p++;                                                                 \
+    }                                                                          \
+  } while (0)
+
 char *bgpstream_record_elem_snprintf(char *buf, size_t len,
                                      const bgpstream_record_t *record,
                                      const bgpstream_elem_t *elem)
@@ -454,6 +462,16 @@ char *bgpstream_record_elem_snprintf(char *buf, size_t len,
 
   if (B_FULL)
     return NULL;
+
+  /* Router IP (BMP only) */
+  if (record->attributes.router_ip.version != 0) {
+    if (bgpstream_addr_ntop(buf_p, B_REMAIN, &record->attributes.router_ip) == NULL) {
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed Router IP address");
+      return NULL;
+    }
+    SEEK_STR_END;
+  }
+  ADD_PIPE;
 
   if (bgpstream_elem_custom_snprintf(buf_p, B_REMAIN, elem, 0) == NULL) {
     return NULL;

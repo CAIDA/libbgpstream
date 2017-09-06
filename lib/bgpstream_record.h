@@ -123,6 +123,9 @@ typedef struct struct_bgpstream_record_attributes_t {
   /** Collector name */
   char dump_collector[BGPSTREAM_UTILS_STR_NAME_LEN];
 
+  /** Router IP */
+  bgpstream_addr_storage_t router_ip;
+
   /** Dump type */
   bgpstream_record_dump_type_t dump_type;
 
