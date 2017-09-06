@@ -147,6 +147,9 @@ static int populate_prep_cb(bgpstream_format_t *format, uint8_t *buf,
 {
   size_t len = *lenp, nread = 0;
   int line_n = 0, done = 0;
+  char *valp = NULL;
+  char ip_buf[INET6_ADDRSTRLEN];
+  char *ipp = ip_buf;
 
   /* Parse a gory openbmp raw header that looks like this:
      V: 1.6\n
@@ -172,8 +175,38 @@ static int populate_prep_cb(bgpstream_format_t *format, uint8_t *buf,
     // TODO: do something with the data
     // for now, just skip it
 
-    if (line_n == OBMP_EMPTY) {
+    switch (line_n) {
+    case OBMP_VERSION:
+    case OBMP_ROUTER_HASH:
+    case OBMP_LEN:
+      // ignore
+      break;
+
+    case OBMP_COLLECTOR_HASH_ID:
+      break;
+
+    case OBMP_ROUTER_IP:
+      if ((valp = memchr(buf+nread, ' ', len-nread)) != NULL) {
+        valp++;
+        nread++;
+        // copy the IP address into a temp buffer (so we can NUL terminate it)
+        while (nread <= len && *valp != '\n') {
+          *(ipp++) = *(valp++);
+          nread++;
+        }
+        if (*valp == '\n') {
+          *ipp = '\0';
+          bgpstream_str2addr(ip_buf, &record->attributes.router_ip);
+        }
+      } // else: malformed field, just move on
+      break;
+
+    case OBMP_EMPTY:
       done = 1;
+      break;
+
+    default:
+      return -1;
     }
 
     // fast-forward to the end of the line
