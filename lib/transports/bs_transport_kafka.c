@@ -29,7 +29,6 @@
 #include <librdkafka/rdkafka.h>
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 #define STATE ((state_t*)(transport->state))
 
@@ -263,13 +262,17 @@ int bs_transport_kafka_create(bgpstream_transport_t *transport)
 static int handle_err_msg(bgpstream_transport_t *transport,
                           rd_kafka_message_t *rk_msg)
 {
+  if (rk_msg->err == RD_KAFKA_RESP_ERR__PARTITION_EOF) {
+    rd_kafka_message_destroy(rk_msg);
+    return 0; // EOS
+  }
+
   // TODO: handle some more errors
   bgpstream_log(BGPSTREAM_LOG_ERR, "Unhandled Kafka error: %s: %s",
                 rd_kafka_err2str(rk_msg->err),
                 rd_kafka_message_errstr(rk_msg));
 
   rd_kafka_message_destroy(rk_msg);
-
   return -1;
 }
 
@@ -278,23 +281,12 @@ int64_t bs_transport_kafka_read(bgpstream_transport_t *transport,
 {
   rd_kafka_message_t *rk_msg;
 
-  // XXX DEBUG: this is not fully implemented. there should probably be no while
-  // loop in this code otherwise we can't properly interleave record from
-  // multiple sources
-
-  // we wait for 1 second for a message to show up, if none does, we return EOS.
-  // TODO: reader manager should re-insert EOS into queue when duration is -1
- retry:
-  while ((rk_msg = rd_kafka_consumer_poll(STATE->rk, 1000)) == NULL) {
-    sleep(1);
+  // we wait at most 1 second for a message to show up, if none does, we return
+  // EOS.
+  if ((rk_msg = rd_kafka_consumer_poll(STATE->rk, 1000)) == NULL) {
+    return 0;
   }
-
   if (rk_msg->err != 0) {
-    if (rk_msg->err == RD_KAFKA_RESP_ERR__PARTITION_EOF) {
-      rd_kafka_message_destroy(rk_msg);
-      sleep(1);
-      goto retry;
-    }
     return handle_err_msg(transport, rk_msg);
   }
 
@@ -309,10 +301,6 @@ int64_t bs_transport_kafka_read(bgpstream_transport_t *transport,
   memcpy(buffer, rk_msg->payload, rk_msg->len);
   len = rk_msg->len;
   rd_kafka_message_destroy(rk_msg);
-
-  bgpstream_log(BGPSTREAM_LOG_FINE,
-                "DEBUG: Returning message from kafka (%d bytes)",
-                (int)rk_msg->len);
 
   return len;
 }

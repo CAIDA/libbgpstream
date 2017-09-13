@@ -70,6 +70,9 @@ struct bgpstream_reader {
 
   // can the dump open check be skipped?
   int skip_dump_check;
+
+  // what is the time of the next record (PREFETCH)
+  uint32_t next_time;
 };
 
 static int prefetch_record(bgpstream_reader_t *reader)
@@ -91,7 +94,7 @@ static int prefetch_record(bgpstream_reader_t *reader)
   // did we read a record?
   if (reader->status == BGPSTREAM_FORMAT_OK) {
     // we did (the normal case)
-    reader->res->current_time = record->attributes.record_time;
+    reader->next_time = record->attributes.record_time;
   }
 
   // set the previous record position to END if we didn't skip any records. we
@@ -212,6 +215,12 @@ bgpstream_reader_create(bgpstream_resource_t *resource,
   pthread_create(&reader->opener_thread, NULL, threaded_opener, reader);
 
   return reader;
+}
+
+uint32_t bgpstream_reader_get_next_time(bgpstream_reader_t *reader)
+{
+  assert(bgpstream_reader_open_wait(reader) == 0);
+  return reader->next_time;
 }
 
 void bgpstream_reader_destroy(bgpstream_reader_t *reader)

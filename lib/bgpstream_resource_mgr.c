@@ -197,6 +197,16 @@ static void res_group_destroy(struct res_group *g, int destroy_resource) {
   free(g);
 }
 
+static uint32_t get_next_time(struct res_list_elem *el)
+{
+  if (el->reader != NULL) {
+    return bgpstream_reader_get_next_time(el->reader);
+  } else {
+    // our best guess
+    return el->res->initial_time;
+  }
+}
+
 static struct res_group *res_group_create(struct res_list_elem *el)
 {
   struct res_group *gp;
@@ -206,7 +216,7 @@ static struct res_group *res_group_create(struct res_list_elem *el)
     return NULL;
   }
 
-  gp->time = gp->overlap_start = el->res->current_time;
+  gp->time = gp->overlap_start = get_next_time(el);
   // hax since some RIBs start early
   if (el->res->record_type == BGPSTREAM_RIB) {
     gp->overlap_start -= el->res->duration;
@@ -228,7 +238,7 @@ static int res_group_add(bgpstream_resource_mgr_t *q,
                          struct res_group *gp,
                          struct res_list_elem *el)
 {
-  assert(gp->time == el->res->current_time);
+  assert(gp->time == get_next_time(el));
 
   // is this our first RIB in the group?
   if (gp->res_list[BGPSTREAM_RIB] == NULL &&
@@ -269,8 +279,8 @@ static int res_group_add(bgpstream_resource_mgr_t *q,
 static void list_dump(struct res_list_elem *el, int log_level)
 {
   while (el != NULL) {
-    bgpstream_log(log_level, "    res->current_time: %d",
-                  el->res->current_time);
+    bgpstream_log(log_level, "    next_time: %d",
+                  get_next_time(el));
     bgpstream_log(log_level, "    res->uri: %s",
                   el->res->uri);
     bgpstream_log(log_level, "    %s",
@@ -311,11 +321,11 @@ static void queue_dump(struct res_group *head, int log_level)
   do {                                                                  \
     cur = q->FROMEND;                                                   \
     last = NULL;                                                        \
-    while (cur != NULL && cur->time CMPOP el->res->current_time) {      \
+    while (cur != NULL && cur->time CMPOP get_next_time(el)) {          \
       last = cur;                                                       \
       cur = cur->TODIR;                                                 \
     }                                                                   \
-    if (cur != NULL && cur->time == el->res->current_time) {            \
+    if (cur != NULL && cur->time == get_next_time(el)) {                \
       /* just add to the current group */                               \
       if (res_group_add(q, cur, el) != 0) {                             \
         goto err;                                                       \
@@ -367,8 +377,8 @@ static int insert_resource_elem(bgpstream_resource_mgr_t *q,
 
     // which end of the list is this record closer to?
     // can probably be optimized somewhat, lists are not my specialty...
-    if (abs((int)el->res->current_time - (int)q->head->time) <
-        abs((int)el->res->current_time - (int)q->tail->time)) {
+    if (abs((int)get_next_time(el) - (int)q->head->time) <
+        abs((int)get_next_time(el) - (int)q->tail->time)) {
       // closer to the head of the list
       QUEUE_PUSH(el, head, tail, <, next, prev);
     } else {
@@ -472,7 +482,7 @@ static int sort_res_list(bgpstream_resource_mgr_t *q,
     if (bgpstream_reader_open_wait(el->reader) != 0) {
       return -1;
     }
-    if (el->res->current_time != el->res->initial_time) {
+    if (get_next_time(el) != el->res->initial_time) {
       // this needs to be popped and then re-inserted
       pop_res_el(q, gp, el);
       if (insert_resource_elem(q, el) != 0) {
@@ -590,7 +600,7 @@ static int pop_record(bgpstream_resource_mgr_t *q, bgpstream_record_t **record)
   assert(el->open != 0);
 
   // cache the current time so we can check if we need to remove and re-insert
-  prev_time = el->res->current_time;
+  prev_time = get_next_time(el);
 
   // ask the resource to give us the next record (that it has already read). it
   // will internally grab the next record from the resource and update the time
@@ -602,7 +612,7 @@ static int pop_record(bgpstream_resource_mgr_t *q, bgpstream_record_t **record)
   }
 
   // if the time has changed or we've reached EOS, pop from the queue
-  if (el->res->current_time != prev_time || rc == 0) {
+  if (get_next_time(el) != prev_time || rc == 0) {
     // first, remove this list elem from the group
     pop_res_el(q, q->head, el);
 
@@ -625,7 +635,7 @@ static int pop_record(bgpstream_resource_mgr_t *q, bgpstream_record_t **record)
     if (rc == 0) {
       // we're at EOS, so destroy the resource
       res_list_destroy(el, 1);
-    } else if (el->res->current_time != prev_time) {
+    } else if (get_next_time(el) != prev_time) {
       // time has changed, so we need to re-insert
       if (insert_resource_elem(q, el) != 0) {
         return -1;
