@@ -61,6 +61,7 @@ bgpstream_resource_create(bgpstream_resource_transport_type_t transport_type,
   if ((res->uri = strdup(uri)) == NULL) {
     goto err;
   }
+  res->initial_time = initial_time;
   res->duration = duration;
   if ((res->project = strdup(project)) == NULL) {
     goto err;
