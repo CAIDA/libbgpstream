@@ -104,8 +104,10 @@ typedef struct bgpstream_resource {
       that the resource contains a variable (probably live) length of data */
   uint32_t duration;
 
+#if 0
   /** The "current" time of the resource (i.e. the time of the next record). */
   uint32_t current_time;
+#endif
 
   /** The name of the collection project */
   char *project;

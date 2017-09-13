@@ -35,6 +35,13 @@ bgpstream_reader_t *
 bgpstream_reader_create(bgpstream_resource_t *resource,
                         bgpstream_filter_mgr_t *filter_mgr);
 
+/** Get the time of the next record available in the reader
+ *
+ * @param reader        pointer to the format object
+ * @return the time of the next record to be returned by the reader
+ */
+uint32_t bgpstream_reader_get_next_time(bgpstream_reader_t *reader);
+
 /** Block until the resource has opened */
 int bgpstream_reader_open_wait(bgpstream_reader_t *reader);
 
