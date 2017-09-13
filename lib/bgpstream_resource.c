@@ -39,6 +39,8 @@ typedef struct attr {
 
 } attr_t;
 
+/* ========== PUBLIC FUNCTIONS BELOW HERE ========== */
+
 bgpstream_resource_t *
 bgpstream_resource_create(bgpstream_resource_transport_type_t transport_type,
                           bgpstream_resource_format_type_t format_type,
@@ -101,8 +103,6 @@ void bgpstream_resource_destroy(bgpstream_resource_t *resource)
   free(resource);
 }
 
-/* ========== PUBLIC FUNCTIONS BELOW HERE ========== */
-
 int bgpstream_resource_set_attr(bgpstream_resource_t *resource,
                                 bgpstream_resource_attr_type_t type,
                                 const char *value)
@@ -133,50 +133,3 @@ bgpstream_resource_get_attr(bgpstream_resource_t *resource,
   }
 }
 
-bgpstream_resource_transport_type_t
-bgpstream_resource_get_transport_type(bgpstream_resource_t *resource)
-{
-  return resource->transport_type;
-}
-
-bgpstream_resource_format_type_t
-bgpstream_resource_get_format_type(bgpstream_resource_t *resource)
-{
-  return resource->format_type;
-}
-
-const char *
-bgpstream_resource_get_uri(bgpstream_resource_t *resource)
-{
-  return resource->uri;
-}
-
-uint32_t
-bgpstream_resource_get_initial_time(bgpstream_resource_t *resource)
-{
-  return resource->initial_time;
-}
-
-uint32_t
-bgpstream_resource_get_duration(bgpstream_resource_t *resource)
-{
-  return resource->duration;
-}
-
-const char *
-bgpstream_resource_get_project(bgpstream_resource_t *resource)
-{
-  return resource->project;
-}
-
-const char *
-bgpstream_resource_get_collector(bgpstream_resource_t *resource)
-{
-  return resource->collector;
-}
-
-bgpstream_record_dump_type_t
-bgpstream_resource_get_record_type(bgpstream_resource_t *resource)
-{
-  return resource->record_type;
-}
