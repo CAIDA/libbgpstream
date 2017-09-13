@@ -96,18 +96,14 @@ typedef struct bgpstream_resource {
    */
   char *uri;
 
-  /** Time of first record offered by the resource. A value of -1 indicates that
-      the resource contains an unknown amount of historical data. */
+  /** Time of first record offered by the resource. A value of 0 indicates that
+      the initial time is unknown. */
   uint32_t initial_time;
 
-  /** Time duration of data offered by the resource. A value of -1 indicates
-      that the resource contains a variable (probably live) length of data */
+  /** Time duration of data offered by the resource. A value of
+      BGPSTREAM_FOREVER indicates that the resource is a "stream" and should
+      continue to be polled even after EOS is returned. */
   uint32_t duration;
-
-#if 0
-  /** The "current" time of the resource (i.e. the time of the next record). */
-  uint32_t current_time;
-#endif
 
   /** The name of the collection project */
   char *project;

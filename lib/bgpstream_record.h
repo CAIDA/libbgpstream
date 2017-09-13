@@ -130,8 +130,8 @@ typedef struct struct_bgpstream_record_attributes_t {
   bgpstream_record_dump_type_t dump_type;
 
   /** Time that the BGP data was "aggregated". E.g. the start time of an MRT
-      dump file. If the record comes from a streaming source, this will be set
-      to UINT32_MAX, indicating that this field should be ignored. */
+      dump file. If the dump start time was unknown (e.g., the record came from
+      a streaming source), this will be set to 0. */
   long dump_time;
 
   /** Time from the MRT record. I.e. the time *this* record was dumped */
