@@ -318,8 +318,8 @@ int bsdi_kafka_update_resources(bsdi_t *di)
   if ((rc = bgpstream_resource_mgr_push(
          BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_KAFKA,
          STATE->data_type, STATE->brokers,
-         -1, // indicate we don't know how much historical data there is
-         -1, // indicate that the resource has no duration
+         0, // indicate we don't know how much historical data there is
+         BGPSTREAM_FOREVER, // indicate that the resource is a "stream"
          STATE->project, STATE->collector, BGPSTREAM_UPDATE, &res)) <= 0) {
     return rc;
   }
