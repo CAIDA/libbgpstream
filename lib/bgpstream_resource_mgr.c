@@ -203,7 +203,32 @@ static uint32_t get_next_time(struct res_list_elem *el)
     return bgpstream_reader_get_next_time(el->reader);
   } else {
     // our best guess
+    //
+    // this will be 0 for most stream resources, which will force them into the
+    // first group, we will then open the resource, and then re-sort
     return el->res->initial_time;
+  }
+}
+
+static void update_overlap(struct res_group *gp, struct res_list_elem *el)
+{
+  // if this is a "stream", the duration is 0 (BGPSTREAM_FOREVER), and so will
+  // not affect other items in the group
+
+  // is this a RIB, and is this our first RIB in the group, and are we safe to
+  // subtract without wrapping overlap_start?
+  if (el->res->record_type == BGPSTREAM_RIB &&
+      gp->res_list[BGPSTREAM_RIB] == NULL &&
+      gp->overlap_start > el->res->duration) {
+    // need to fudge the time because RIBs can start early
+    gp->overlap_start -= el->res->duration;
+  }
+
+  // update the max duration?
+  // if this is a new group, overlap_end will be 0, so this will always be true,
+  // except when dealing with a stream (then it will be left as 0)
+  if ((gp->time + el->res->duration) > gp->overlap_end) {
+    gp->overlap_end = gp->time + el->res->duration;
   }
 }
 
@@ -217,11 +242,8 @@ static struct res_group *res_group_create(struct res_list_elem *el)
   }
 
   gp->time = gp->overlap_start = get_next_time(el);
-  // hax since some RIBs start early
-  if (el->res->record_type == BGPSTREAM_RIB) {
-    gp->overlap_start -= el->res->duration;
-  }
-  gp->overlap_end = gp->time + el->res->duration;
+  // set the overlap start and end times
+  update_overlap(gp, el);
 
   gp->res_list[el->res->record_type] = el;
   el->next = NULL; el->prev = NULL;
@@ -240,17 +262,8 @@ static int res_group_add(bgpstream_resource_mgr_t *q,
 {
   assert(gp->time == get_next_time(el));
 
-  // is this our first RIB in the group?
-  if (gp->res_list[BGPSTREAM_RIB] == NULL &&
-      el->res->record_type == BGPSTREAM_RIB) {
-    // need to fudge the time because RIBs can start early
-    gp->overlap_start -= el->res->duration;
-  }
-
-  // update the max duration?
-  if ((gp->time + el->res->duration) > gp->overlap_end) {
-    gp->overlap_end = gp->time + el->res->duration;
-  }
+  // potentially extend the overlap window based on this new element
+  update_overlap(gp, el);
 
   // add to the appropriate list
   if (gp->res_list[el->res->record_type] == NULL) {
