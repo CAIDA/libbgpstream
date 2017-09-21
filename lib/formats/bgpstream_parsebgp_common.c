@@ -469,8 +469,6 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
       return BGPSTREAM_FORMAT_READ_ERROR;
     }
     if (fill_len == state->remain) {
-      bgpstream_log(BGPSTREAM_LOG_WARN,
-                    "DEBUG: Corrupted dump or failed read");
       record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
       return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
     }
