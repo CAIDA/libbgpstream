@@ -599,6 +599,7 @@ void bgpstream_parsebgp_opts_init(parsebgp_opts_t *opts)
   opts->bgp.path_attr_raw_enabled = 1;
   opts->bgp.path_attr_raw[PARSEBGP_BGP_PATH_ATTR_TYPE_COMMUNITIES] = 1;
 
-  // DEBUG: (switch to ignore in production)
-  opts->ignore_not_implemented = 0;
+  opts->ignore_not_implemented = 1;
+  opts->ignore_invalid = 1;
+  // TODO: allow user to silence parsebgp warnings at compile time
 }
