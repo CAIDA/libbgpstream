@@ -536,6 +536,10 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
     state->valid_read_cnt++;
     state->successful_read_cnt++;
     record->status = BGPSTREAM_RECORD_STATUS_VALID_RECORD;
+  } else if (filter == BGPSTREAM_PARSEBGP_EOS) {
+    record->attributes.record_time = ts_sec;
+    record->status = BGPSTREAM_RECORD_STATUS_OUTSIDE_TIME_INTERVAL;
+    return BGPSTREAM_FORMAT_OUTSIDE_TIME_INTERVAL;
   } else {
     // move on to the next record
 

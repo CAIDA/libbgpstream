@@ -59,6 +59,8 @@ typedef struct struct_bgpstream_filter_mgr_t {
   bgpstream_patricia_tree_t *prefixes;
   bgpstream_community_filter_t *communities;
   bgpstream_interval_filter_t *time_intervals;
+  int64_t time_intervals_min; // lower bound of all intervals
+  int64_t time_intervals_max; // upper bound of all intervals
   collector_ts_t *last_processed_ts;
   uint32_t rib_period;
   uint8_t ipversion;

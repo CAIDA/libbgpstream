@@ -345,9 +345,18 @@ populate_filter_cb(bgpstream_format_t *format, parsebgp_msg_t *msg,
   // TODO: if this is a BGP4MP or TD1 message (UPDATE), then we can do some
   // work to prep the path attributes (and then filter on them).
 
-  if (is_wanted_time(msg->types.mrt->timestamp_sec, format->filter_mgr) != 0) {
+  *ts_sec = msg->types.mrt->timestamp_sec;
+
+  // is this above all of our intervals?
+  if (format->filter_mgr->time_intervals != NULL &&
+      format->filter_mgr->time_intervals_max != BGPSTREAM_FOREVER &&
+      *ts_sec > format->filter_mgr->time_intervals_max) {
+    // force EOS
+    return BGPSTREAM_PARSEBGP_EOS;
+  }
+
+  if (is_wanted_time(*ts_sec, format->filter_mgr) != 0) {
     // we want this entry
-    *ts_sec = msg->types.mrt->timestamp_sec;
     return BGPSTREAM_PARSEBGP_KEEP;
   } else {
     return BGPSTREAM_PARSEBGP_FILTER_OUT;

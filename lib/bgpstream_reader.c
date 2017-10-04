@@ -308,7 +308,8 @@ int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
 
   // if the EXPORT record is not filled then we need to return EOS or AGAIN
   if (reader->rec_buf_filled[EXPORTED_IDX] == 0) {
-    if (reader->res->duration == BGPSTREAM_FOREVER) {
+    if (reader->res->duration == BGPSTREAM_FOREVER &&
+        reader->status != BGPSTREAM_FORMAT_OUTSIDE_TIME_INTERVAL) {
       return BGPSTREAM_READER_STATUS_AGAIN;
     } else {
       return BGPSTREAM_READER_STATUS_EOS;

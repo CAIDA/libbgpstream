@@ -99,11 +99,14 @@ typedef enum {
   /** Source has no entries */
   BGPSTREAM_RECORD_STATUS_EMPTY_SOURCE = 2,
 
+  /** Record read with timestamp "above" all interval filters. */
+  BGPSTREAM_RECORD_STATUS_OUTSIDE_TIME_INTERVAL = 3,
+
   /* Error in opening or reading from dump */
-  BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE = 3,
+  BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE = 4,
 
   /* Dump corrupted at some point */
-  BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD = 4,
+  BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD = 5,
 
 } bgpstream_record_status_t;
 

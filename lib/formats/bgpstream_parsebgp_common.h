@@ -166,6 +166,10 @@ typedef enum {
   /** Indicates the message should be kept and given to the user */
   BGPSTREAM_PARSEBGP_KEEP = 2,
 
+  /** Indicates the message should be treated as EOS (since no more filters
+     could possibly match) */
+  BGPSTREAM_PARSEBGP_EOS = 3,
+
 } bgpstream_parsebgp_check_filter_rc_t;
 
 /** Once a message has been read by _populate_record, this callback gives the
