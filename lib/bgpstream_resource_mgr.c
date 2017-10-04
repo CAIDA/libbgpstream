@@ -594,10 +594,11 @@ static int open_batch(bgpstream_resource_mgr_t *q, struct res_group *gp)
 // if things have gone right, we should read from the first resource in the
 // queue. once we have read from the resource, we should check the new time of
 // the resource and see if it needs to be moved.
-static int pop_record(bgpstream_resource_mgr_t *q, bgpstream_record_t **record)
+static bgpstream_reader_status_t pop_record(bgpstream_resource_mgr_t *q,
+                                            bgpstream_record_t **record)
 {
   uint32_t prev_time;
-  int rc;
+  bgpstream_reader_status_t rs;
   struct res_list_elem *el = NULL;
   struct res_group *gp = NULL;
 
@@ -618,14 +619,23 @@ static int pop_record(bgpstream_resource_mgr_t *q, bgpstream_record_t **record)
   // ask the resource to give us the next record (that it has already read). it
   // will internally grab the next record from the resource and update the time
   // of the resource.
-  if ((rc = bgpstream_reader_get_next_record(el->reader, record)) < 0) {
+  if ((rs = bgpstream_reader_get_next_record(el->reader, record)) ==
+      BGPSTREAM_READER_STATUS_ERROR) {
     // some kind of error occurred
     bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to get next record from reader");
-    return -1;
+    return rs;
   }
 
+  // if we got AGAIN, then just pass that along
+  if (rs == BGPSTREAM_READER_STATUS_AGAIN) {
+    return rs;
+  }
+
+  // otherwise we must valid, or EOS
+  assert(rs == BGPSTREAM_READER_STATUS_EOS || rs == BGPSTREAM_READER_STATUS_OK);
+
   // if the time has changed or we've reached EOS, pop from the queue
-  if (get_next_time(el) != prev_time || rc == 0) {
+  if (get_next_time(el) != prev_time || rs == BGPSTREAM_READER_STATUS_EOS) {
     // first, remove this list elem from the group
     pop_res_el(q, q->head, el);
 
@@ -645,7 +655,7 @@ static int pop_record(bgpstream_resource_mgr_t *q, bgpstream_record_t **record)
       res_group_destroy(gp, 0);
     }
 
-    if (rc == 0) {
+    if (rs == BGPSTREAM_READER_STATUS_EOS) {
       // we're at EOS, so destroy the resource
       res_list_destroy(el, 1);
     } else if (get_next_time(el) != prev_time) {
@@ -657,7 +667,7 @@ static int pop_record(bgpstream_resource_mgr_t *q, bgpstream_record_t **record)
   }
 
   // all is well
-  return rc;
+  return rs;
 }
 
 static int wanted_resource(bgpstream_resource_t *res,
@@ -795,10 +805,11 @@ int
 bgpstream_resource_mgr_get_record(bgpstream_resource_mgr_t *q,
                                   bgpstream_record_t **record)
 {
-  int rc = 0; // EOF
+  int rs = BGPSTREAM_READER_STATUS_EOS;
 
   // don't let EOF mean EOS until we have no more resources left
-  while (rc == 0) {
+  while (rs == BGPSTREAM_READER_STATUS_EOS ||
+         rs == BGPSTREAM_READER_STATUS_AGAIN) {
     if (q->res_cnt == 0) {
       // we have nothing in the queue, so now we can return EOS
       return 0;
@@ -810,7 +821,6 @@ bgpstream_resource_mgr_get_record(bgpstream_resource_mgr_t *q,
     // sorted elsewhere in the queue, leaving the head still unopened.
     while (q->head->res_open_cnt == 0) {
       if (open_batch(q, q->head) != 0) {
-        bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to open resource batch");
         goto err;
       }
     }
@@ -820,14 +830,13 @@ bgpstream_resource_mgr_get_record(bgpstream_resource_mgr_t *q,
     assert(q->res_open_cnt != 0);
 
     // we now know that we have open resources to read from, lets do it
-    if ((rc = pop_record(q, record)) < 0) {
-      return rc;
+    if ((rs = pop_record(q, record)) == BGPSTREAM_READER_STATUS_ERROR) {
+      return -1;
+    } else if (rs == BGPSTREAM_READER_STATUS_OK) {
+      return 1;
     }
-    // if we managed to read a record, then return it
-    if (rc > 0) {
-      return rc;
-    }
-    // otherwise, keep trying
+    // otherwise, could be EOS or AGAIN, so keep trying (from other resources in
+    // the case of EOS)
   }
 
  err:

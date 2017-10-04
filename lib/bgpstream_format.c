@@ -77,6 +77,8 @@ bgpstream_format_t *bgpstream_format_create(bgpstream_resource_t *res,
     goto err;
   }
 
+  format->res = res;
+
   // create the transport reader
   if ((format->transport = bgpstream_transport_create(res)) == NULL) {
     goto err;

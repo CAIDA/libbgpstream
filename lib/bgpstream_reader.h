@@ -30,6 +30,23 @@
 /** Opaque structure representing a reader instance */
 typedef struct bgpstream_reader bgpstream_reader_t;
 
+/** Return codes for get_next_record */
+typedef enum {
+
+  /** An error occurred */
+  BGPSTREAM_READER_STATUS_ERROR = -1,
+
+  /** End-Of-Stream */
+  BGPSTREAM_READER_STATUS_EOS = 0,
+
+  /** Empty stream (AGAIN) */
+  BGPSTREAM_READER_STATUS_AGAIN = 1,
+
+  /** Successful read */
+  BGPSTREAM_READER_STATUS_OK = 2,
+
+} bgpstream_reader_status_t;
+
 /** Create a new reader for the given resource */
 bgpstream_reader_t *
 bgpstream_reader_create(bgpstream_resource_t *resource,
@@ -53,17 +70,14 @@ void bgpstream_reader_destroy(bgpstream_reader_t *reader);
  * @param reader        pointer to a reader instance
  * @param[out] record   set to a borrowed pointer to a record if the return
  *                      code is >0
- * @return <0 if an error occurred, 0 if the record is populated correctly but
- * there are no further records to be read (i.e. EOF has been reached), >0 if
- * the record has been populated correctly, and there is at least one more
- * record to be read
- *
- * This function also updates the `current_time` field of the resource
- * associated with the reader to reflect the time of the _next_ record available
- * from the reader
+ * @return -1 if an unrecoverable error occurred, 0 if there are no further
+ * records to be read (i.e. EOS has been reached), 1 if the record has not been
+ * populated, but a future call yield data (only used by stream resource), and 2
+ * if the record has been populated correctly, and there is at least one more
+ * record to be read.
  */
-int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
-                                     bgpstream_record_t **record);
-
+bgpstream_reader_status_t
+bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
+                                 bgpstream_record_t **record);
 
 #endif /* __BGPSTREAM_READER_H */

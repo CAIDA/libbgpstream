@@ -132,6 +132,9 @@ struct bgpstream_format {
    *
    * @{ */
 
+  /** Pointer to the resource the format is parsing */
+  bgpstream_resource_t *res;
+
   /** Pointer to the transport instance to read data from */
   bgpstream_transport_t *transport;
 
