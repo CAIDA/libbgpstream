@@ -43,12 +43,14 @@
 #define OPTION_CMD_CNT 1024
 #define BGPSTREAM_RECORD_OUTPUT_FORMAT                                         \
   "# Record format:\n"                                                         \
-  "# <dump-type>|<dump-pos>|<project>|<collector>|<router-ip>|<status>|<dump-time>\n"      \
+  "# "                                                                         \
+  "<dump-type>|<dump-pos>|<project>|<collector>|<router-ip>|<status>|<dump-"   \
+  "time>\n"                                                                    \
   "#\n"                                                                        \
   "# <dump-type>: R RIB, U Update\n"                                           \
   "# <dump-pos>:  B begin, M middle, E end\n"                                  \
-  "# <status>:    V valid, E empty, F filtered, R corrupted record, S "        \
-  "corrupted source\n"                                                         \
+  "# <status>:    V valid, E empty, F filtered, O outside interval,\n"         \
+  "#              R corrupted record, S corrupted source\n"                    \
   "#\n"
 #define BGPSTREAM_ELEM_OUTPUT_FORMAT                                           \
   "# Elem format:\n"                                                           \

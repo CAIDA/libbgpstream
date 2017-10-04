@@ -388,6 +388,9 @@ int bgpstream_record_status_snprintf(char *buf, size_t len,
   case BGPSTREAM_RECORD_STATUS_EMPTY_SOURCE:
     buf[0] = 'E';
     break;
+  case BGPSTREAM_RECORD_STATUS_OUTSIDE_TIME_INTERVAL:
+    buf[0] = 'O';
+    break;
   case BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE:
     buf[0] = 'S';
     break;
@@ -395,7 +398,7 @@ int bgpstream_record_status_snprintf(char *buf, size_t len,
     buf[0] = 'R';
     break;
   default:
-    buf[0] = '\0';
+    buf[0] = '?';
     break;
   }
   buf[1] = '\0';

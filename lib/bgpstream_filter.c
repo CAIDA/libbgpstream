@@ -37,6 +37,8 @@ bgpstream_filter_mgr_t *bgpstream_filter_mgr_create()
   if (bs_filter_mgr == NULL) {
     return NULL; // can't allocate memory
   }
+  bs_filter_mgr->time_intervals_min = -1;
+  bs_filter_mgr->time_intervals_max = -1;
   bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSF_MGR: create end");
   return bs_filter_mgr;
 }
@@ -244,6 +246,16 @@ void bgpstream_filter_mgr_interval_filter_add(
   f->end_time = end_time;
   f->next = bs_filter_mgr->time_intervals;
   bs_filter_mgr->time_intervals = f;
+
+  if (bs_filter_mgr->time_intervals_min == -1 ||
+      begin_time < bs_filter_mgr->time_intervals_min) {
+    bs_filter_mgr->time_intervals_min = begin_time;
+  }
+  if (bs_filter_mgr->time_intervals_max == -1 ||
+      end_time > bs_filter_mgr->time_intervals_max ||
+      end_time == BGPSTREAM_FOREVER) {
+    bs_filter_mgr->time_intervals_max = end_time;
+  }
 
   bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSF_MGR:: add_filter stop");
 }

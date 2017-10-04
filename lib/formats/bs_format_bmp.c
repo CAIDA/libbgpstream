@@ -265,10 +265,19 @@ populate_filter_cb(bgpstream_format_t *format, parsebgp_msg_t *msg,
   // messages don't have the peer header, and so don't have a timestamp!
   // this format definitely wasn't made for data serialization...
 
+  *ts_sec = bmp->peer_hdr.ts_sec;
+
+  // is this above all of our intervals?
+  if (format->filter_mgr->time_intervals != NULL &&
+      format->filter_mgr->time_intervals_max != BGPSTREAM_FOREVER &&
+      *ts_sec > format->filter_mgr->time_intervals_max) {
+    // force EOS
+    return BGPSTREAM_PARSEBGP_EOS;
+  }
+
   // check the filters
-  if (is_wanted_time(bmp->peer_hdr.ts_sec, format->filter_mgr) != 0) {
+  if (is_wanted_time(*ts_sec, format->filter_mgr) != 0) {
     // we want this entry
-    *ts_sec = bmp->peer_hdr.ts_sec;
     return BGPSTREAM_PARSEBGP_KEEP;
   } else {
     return BGPSTREAM_PARSEBGP_FILTER_OUT;
