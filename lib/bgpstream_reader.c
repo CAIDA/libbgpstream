@@ -91,6 +91,17 @@ static int prefetch_record(bgpstream_reader_t *reader)
   // try and get the next entry from the resource (will do filtering)
   reader->status = bgpstream_format_populate_record(reader->format, record);
 
+  // if we got any of the non-error END_OF_DUMP messages but this is a stream
+  // resource, then pretend we're ok.  but beware that now we'll be "OK", with
+  // an unfilled prefetch record
+  if (reader->res->duration == BGPSTREAM_FOREVER &&
+      (reader->status == BGPSTREAM_FORMAT_END_OF_DUMP ||
+       reader->status == BGPSTREAM_FORMAT_FILTERED_DUMP ||
+       reader->status == BGPSTREAM_FORMAT_EMPTY_DUMP)) {
+    reader->status = BGPSTREAM_FORMAT_OK;
+    return 0;
+  }
+
   // did we read a record?
   if (reader->status == BGPSTREAM_FORMAT_OK) {
     // we did (the normal case)
@@ -277,15 +288,14 @@ int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
     *record = reader->rec_buf[PREFETCH_IDX];
     (*record)->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE;
     assert((*record)->__format_data->data == NULL);
-    return 0; // EOF
+    return BGPSTREAM_READER_STATUS_EOS;
   }
 
   // mark the previous record as unfilled (about to become PREFETCH_IDX)
   reader->rec_buf_filled[EXPORTED_IDX] = 0;
   // the record contents will be cleared by the next prefetch
 
-  // by here we are guaranteed to have a prefetched record waiting, so flip-flop
-  // the buffers
+  // flip-flop the buffers (EXPORTED will mean "about to export")
   reader->rec_buf_prefetch_idx = EXPORTED_IDX;
 
   // prefetch the next message (so we can see if the record we're about to
@@ -296,16 +306,18 @@ int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
     return -1;
   }
 
-  // if the EXPORT record is not filled, then we're done
+  // if the EXPORT record is not filled then we need to return EOS or AGAIN
   if (reader->rec_buf_filled[EXPORTED_IDX] == 0) {
-    // EOS
-    assert(reader->status != BGPSTREAM_FORMAT_OK);
-    return 0;
+    if (reader->res->duration == BGPSTREAM_FOREVER) {
+      return BGPSTREAM_READER_STATUS_AGAIN;
+    } else {
+      return BGPSTREAM_READER_STATUS_EOS;
+    }
   }
 
   // we have something in our EXPORT record, so go ahead and copy that into the
   // user's record
   *record = reader->rec_buf[EXPORTED_IDX];
 
-  return 1;
+  return BGPSTREAM_READER_STATUS_OK;
 }

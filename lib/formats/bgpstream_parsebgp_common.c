@@ -507,7 +507,8 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
       goto refill;
     }
     // else: its a fatal error
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to parse message (%d:%s)",
+    bgpstream_log(BGPSTREAM_LOG_ERR,
+                  "Failed to parse message from '%s' (%d:%s)", format->res->uri,
                   err, parsebgp_strerror(err));
 
 #ifdef DEBUG_DUMP_CORRUPT_MSG
