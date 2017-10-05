@@ -21,20 +21,26 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "bgpstream_resource_mgr.h"
+#include "bgpstream_filter.h"
+#include "bgpstream_log.h"
+#include "bgpstream_reader.h"
 #include "config.h"
 #include "utils.h"
-#include "bgpstream_filter.h"
-#include "bgpstream_reader.h"
-#include "bgpstream_resource_mgr.h"
-#include "bgpstream_log.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
+#include <unistd.h>
 
 /** TODO: Fix the rib period filter to not need to build this string as this
     will fail for collectors with really long names */
 #define BUFFER_LEN 1024
+
+/** Approximately how frequently should stream resources that return AGAIN be
+    polled? (in msec) */
+#define AGAIN_POLL_INTERVAL 500
+#define MSEC_TO_NSEC 1000000
 
 struct res_list_elem {
   /** The resource info */
@@ -45,6 +51,10 @@ struct res_list_elem {
 
   /** Is the reader open? (i.e. have we waited for it to open) */
   int open;
+
+  /** Time when this resource should next be polled (if 0 then poll
+      immediately) */
+  uint32_t next_poll;
 
   /** Previous list elem */
   struct res_list_elem *prev;
@@ -600,7 +610,11 @@ static bgpstream_reader_status_t pop_record(bgpstream_resource_mgr_t *q,
   uint32_t prev_time;
   bgpstream_reader_status_t rs;
   struct res_list_elem *el = NULL;
+  struct res_list_elem *tmp_el = NULL;
   struct res_group *gp = NULL;
+  uint32_t now;
+  uint64_t sleep_nsec;
+  struct timespec rqtp;
 
   // the resource we want to read from MUST be in the first group (q->head), and
   // will either be the head of the RIBS list if there are any ribs, otherwise
@@ -612,6 +626,23 @@ static bgpstream_reader_status_t pop_record(bgpstream_resource_mgr_t *q,
   }
   assert(el != NULL && el->res != NULL);
   assert(el->open != 0);
+
+  // we assume that if this resource has a poll timer set that has not expired
+  // then since it would have been pushed to the end of the group and as such
+  // all other resources already polled.
+  if (el->next_poll > 0) {
+    now = epoch_msec();
+    if (el->next_poll > now) {
+      sleep_nsec = (el->next_poll - now) * MSEC_TO_NSEC;
+      rqtp.tv_sec = sleep_nsec / 1000000000;
+      rqtp.tv_nsec = sleep_nsec % 1000000000;
+      if (nanosleep(&rqtp, NULL) != 0) {
+        // interrupted
+        return -1;
+      }
+    }
+    el->next_poll = 0;
+  }
 
   // cache the current time so we can check if we need to remove and re-insert
   prev_time = get_next_time(el);
@@ -626,8 +657,23 @@ static bgpstream_reader_status_t pop_record(bgpstream_resource_mgr_t *q,
     return rs;
   }
 
-  // if we got AGAIN, then just pass that along
+  // if we got AGAIN, then move ourselves to the end of our group to give others
+  // a fair shake
   if (rs == BGPSTREAM_READER_STATUS_AGAIN) {
+    assert(el->prev == NULL);
+    if (el->next != NULL) {
+      tmp_el = el;
+      while (tmp_el->next != NULL) {
+        tmp_el = tmp_el->next;
+      }
+      assert(el != tmp_el);
+      el->next = NULL;
+      tmp_el->next = el;
+      el->prev = tmp_el;
+    }
+    // and then tell the caller that while we didn't get anything useful, they
+    // should try again soon
+    el->next_poll = epoch_msec() + AGAIN_POLL_INTERVAL;
     return rs;
   }
 
