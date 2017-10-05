@@ -34,6 +34,8 @@
 
 #define DEFAULT_OFFSET "latest"
 
+#define POLL_TIMEOUT_MSEC 0
+
 typedef struct state {
 
   // convenience local copies of attrs
@@ -281,9 +283,10 @@ int64_t bs_transport_kafka_read(bgpstream_transport_t *transport,
 {
   rd_kafka_message_t *rk_msg;
 
-  // we wait at most 1 second for a message to show up, if none does, we return
-  // EOS.
-  if ((rk_msg = rd_kafka_consumer_poll(STATE->rk, 1000)) == NULL) {
+  // see if there is a message waiting for us
+  // POLL_TIMEOUT_MSEC is set very low (0) since the transport should be
+  // non-blocking
+  if ((rk_msg = rd_kafka_consumer_poll(STATE->rk, POLL_TIMEOUT_MSEC)) == NULL) {
     return 0;
   }
   if (rk_msg->err != 0) {
