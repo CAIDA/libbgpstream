@@ -23,10 +23,10 @@
 
 AC_PREREQ([2.68])
 
-AC_INIT([bgpstream-caida], [1.1.0], [bgpstream-info@caida.org])
+AC_INIT([bgpstream-caida], [2.0.0], [bgpstream-info@caida.org])
 
-BGPSTREAM_MAJOR_VERSION=1
-BGPSTREAM_MID_VERSION=1
+BGPSTREAM_MAJOR_VERSION=2
+BGPSTREAM_MID_VERSION=0
 BGPSTREAM_MINOR_VERSION=0
 
 LIBBGPSTREAM_MAJOR_VERSION=2
@@ -80,6 +80,7 @@ AC_CONFIG_HEADERS([config.h])
 AC_PROG_LIBTOOL
 AC_PROG_CXX
 AM_PROG_LIBTOOL
+# TODO: see if we can remove C99 requirement
 AC_PROG_CC_C99 # C99 is required because of bool
 
 AC_SYS_LARGEFILE
@@ -247,151 +248,9 @@ if test "x$with_di_csvfile" == xyes; then
    BS_DI_OPT(csvfile-csv-file, CSVFILE_CSV_FILE, CSV file listing the MRT data to read, not-set)
 fi
 
-# TODO: make BGPView optional
-AC_MSG_NOTICE([])
-AC_MSG_NOTICE([---- BGPView configuration ----])
-
-AC_MSG_NOTICE([checking consumer dependencies])
-# TODO: Make BGPView Consumers optional
-# TODO: also needed by bgpcorsaro
-AC_CHECK_LIB([timeseries], [timeseries_init], , [
-    AC_MSG_ERROR([libtimeseries is required for the Per-AS Visibility plugin])
-])
-AC_CHECK_LIB([ipmeta], [ipmeta_lookup], ,[AC_MSG_ERROR([ipmeta is required])])
-
-# BGPView IO modules
-AC_MSG_NOTICE([configuring BGPView IO modules])
-
-# Test module
-BS_WITH_IO_MOD([test],[TEST],[yes])
-
-# File module
-BS_WITH_IO_MOD([file],[FILE],[yes])
-
-# ZMQ module
-BS_WITH_IO_MOD([zmq],[ZMQ],[no])
-
-# Kafka module
-BS_WITH_IO_MOD([kafka],[KAFKA],[yes])
-
-# BGPView IO dependencies
-AC_MSG_NOTICE([checking BGPView IO module dependencies])
-
-if test "x$with_io_zmq" == xyes; then
-   AC_CHECK_LIB([czmq], [zctx_new], ,[AC_MSG_ERROR(
-		      [CZMQ is required for the ZMQ IO module])])
-fi
-
-if test "x$with_io_kafka" == xyes; then
-   # check for kafka
-   AC_CHECK_LIB([rdkafka], [rd_kafka_query_watermark_offsets], ,
-               [AC_MSG_ERROR( [librdkafka required for the Kafka IO module])])
-fi
-
-AC_MSG_NOTICE([-------------------------------])
-
-# BGPCorsaro configuration
-AC_MSG_NOTICE([])
-AC_MSG_NOTICE([---- BGPCorsaro configuration ----])
-# monitor name
-AC_MSG_CHECKING([for the monitor name to use])
-AC_ARG_WITH([bgpcorsaro-monitorname],
-	[AS_HELP_STRING([--with-bgpcorsaro-monitorname=NAME],
-	  [explicitly define the monitor name (defaults to system hostname)])],
-	  [if test "x$withval" == xyes || test "x$withval" == ""; then
-	  with_monitorname=`hostname`
-	  else
-	  with_monitorname=$withval
-	  fi],
-	  [with_monitorname=`hostname`])
-AC_MSG_RESULT([$with_monitorname])
-
-AC_DEFINE_UNQUOTED([BGPCORSARO_MONITOR_NAME],[$with_monitorname],[Monitor Name])
-
-# are we going to dump some plugin timing information? (useful for debugging
-# where bgpcorsaro spends its time given a complicated plugin chain)
-AC_MSG_CHECKING([whether to monitor plugin runtimes])
-AC_ARG_WITH([bgpcorsaro-plugin-timing],
-	[AS_HELP_STRING([--with-bgpcorsaro-plugin-timing],
-	  [time how long each plugin takes to process packets (defaults to no)])],
-	  [],
-	  [with_plugin_timing=no])
-
-AS_IF([test "x$with_plugin_timing" != xno],
-	[
-	    AC_DEFINE_UNQUOTED([WITH_PLUGIN_TIMING],[1],
-		[Monitor plugin timing])
-	])
-
-AC_MSG_RESULT([$with_plugin_timing])
-
-# are we going to use the bgpview connection?
-# turn on if people asked for it
-# TODO: make corsaro conditionally build depending on whether BGPView IO is built
-
-# configure options to disable plugins
-#AC_DEFINE([ED_PLUGIN_INIT_ALL_ENABLED],[],[Plugin init functions])
-
-################################################################################
-# Plugin Configuration Macros                                                  #
-# ---------------------------                                                  #
-#                                                                              #
-# Each ED_WITH_PLUGIN macro defines a plugin which can be compiled into        #
-# Bgpcorsaro.                                                                  #
-#                                                                              #
-# The order in which these plugins are listed is the _default_ order in which  #
-# they will be run.                                                            #
-################################################################################
-
-ED_WITH_PLUGIN([bgpcorsaro_pfxmonitor],[pfxmonitor],[PFXMONITOR],[yes])
-ED_WITH_PLUGIN([bgpcorsaro_asmonitor],[asmonitor],[ASMONITOR],[yes])
-ED_WITH_PLUGIN([bgpcorsaro_routingtables],[routingtables],[ROUTINGTABLES],[yes])
-ED_WITH_PLUGIN([bgpcorsaro_pacifier],[pacifier],[PACIFIER],[yes])
-ED_WITH_PLUGIN([bgpcorsaro_viewconsumer],[viewconsumer],[VIEWCONSUMER],[yes])
-
-# this MUST go after all the ED_WITH_PLUGIN macro calls
-AC_DEFINE_UNQUOTED([ED_PLUGIN_INIT_ALL_ENABLED], $ED_PLUGIN_INIT_ALL_ENABLED,
-		   [plugins to call the init macro for in bgpcorsaro_plugin.c])
-
-#------------------------------------------------------------------------------#
-# Extra tests or config needed for plugins should go below here                #
-#------------------------------------------------------------------------------#
-
-# TODO: the routingtables plugin requires BGPView
-#if test "x$with_plugin_routingtables" == xyes; then
-#fi
-AC_DEFINE(WITH_BGPVIEW, 1, "TODO: fixme!")
-
-# the viewconsumer plugin requires the routingtables plugin
-if test "x$with_plugin_viewconsumer" == xyes &&
-   test "x$with_plugin_routingtables" != xyes; then
-   AC_MSG_ERROR([the viewconsumer plugin requires the routingtables plugin])
-fi
-
-AC_MSG_NOTICE([----------------------------------])
-
-# we may want to come back later and add compile-time configuration for things
-# like datastructure providers, but for now it will all get compiled
-
 AC_HEADER_ASSERT
 
 AC_CONFIG_FILES([Makefile
-                bgpcorsaro/Makefile
-                bgpcorsaro/lib/Makefile
-                bgpcorsaro/lib/plugins/Makefile
-                bgpcorsaro/lib/plugins/libroutingtables/Makefile
-                bgpcorsaro/tools/Makefile
-                bgpview/Makefile
-                bgpview/lib/Makefile
-                bgpview/lib/consumers/Makefile
-                bgpview/lib/io/Makefile
-                bgpview/lib/io/file/Makefile
-                bgpview/lib/io/kafka/Makefile
-                bgpview/lib/io/test/Makefile
-                bgpview/lib/io/zmq/Makefile
-                bgpview/tools/Makefile
-                bgpview/tools/io/Makefile
-                bgpview/tools/consumers/Makefile
 		common/Makefile
 		common/libpatricia/Makefile
 		common/libinterval3/Makefile
