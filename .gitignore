@@ -22,23 +22,12 @@ TAGS
 # Compiled programs
 ChangeLog
 *.tar.gz
-tools/bgpreader
+tools/bgpreader-caida
 test/bgpstream-test
 test/bgpstream-test-filters
 test/bgpstream-test-utils-addr
 test/bgpstream-test-utils-pfx
 test/bgpstream-test-utils-patricia
-bgpcorsaro/tools/bgpcorsaro
-bgpview/tools/consumers/bgpview-consumer
-bgpview/tools/io/bgpview-server-zmq
-bgpview/tools/io/bvcat
-
-# pybgpstream build files
-pybgpstream/MANIFEST
-pybgpstream/build/
-pybgpstream/dist/
-pybgpstream/docs/_build
-pybgpstream/*.egg-info/
 
 # doxygen/sphinx files
 docs/sphinx
@@ -57,14 +46,7 @@ test/*.log
 Makefile.in
 Makefile
 
-#rsrc consumer
-scripts/bgpview/consumers/moas/rsrc
-scripts/bgpview/consumers/moas/logs
-*.xml
-*.db
-*.swp
 # http://www.gnu.org/software/autoconf
-
 /autom4te.cache
 /aclocal.m4
 /compile

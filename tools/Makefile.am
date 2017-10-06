@@ -26,10 +26,10 @@ AM_CPPFLAGS = 	-I$(top_srcdir) \
 	 	-I$(top_srcdir)/lib/utils \
 	 	-I$(top_srcdir)/common
 
-bin_PROGRAMS =  bgpreader
+bin_PROGRAMS =  bgpreader-caida
 
-bgpreader_SOURCES = bgpreader.c
-bgpreader_LDADD   = $(top_builddir)/lib/libbgpstreamcaida.la
+bgpreader_caida_SOURCES = bgpreader.c
+bgpreader_caida_LDADD   = $(top_builddir)/lib/libbgpstreamcaida.la
 
 ACLOCAL_AMFLAGS = -I m4
 
