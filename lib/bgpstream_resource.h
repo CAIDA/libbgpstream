@@ -39,6 +39,9 @@ typedef enum {
   /** Data is streamed via websockets */
   //  BGPSTREAM_RESOURCE_TRANSPORT_WEBSOCKET = 2,
 
+  /** Data is locally cached */
+  BGPSTREAM_RESOURCE_TRANSPORT_CACHE = 2,
+
 } bgpstream_resource_transport_type_t;
 
 /** Encapsulation/encoding formats supported */
