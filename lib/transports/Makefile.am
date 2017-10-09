@@ -40,6 +40,9 @@ LIBS=
 SOURCES+=bs_transport_file.c \
 	 bs_transport_file.h
 
+SOURCES+=bs_transport_cache.c \
+	 bs_transport_cache.h
+
 if WITH_TRANSPORT_KAFKA
 SOURCES+=bs_transport_kafka.c \
 	 bs_transport_kafka.h
