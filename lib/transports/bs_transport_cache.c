@@ -25,6 +25,7 @@
 #include "bgpstream_log.h"
 #include "bs_transport_cache.h"
 #include "wandio.h"
+#include "utils.h"
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -32,12 +33,38 @@
 #include <unistd.h>
 #include <zlib.h>
 
+#define STATE ((cache_state_t*)(transport->state))
+
+typedef struct cache_state {
+  /* user-provided options: */
+
+  /** A 0/1 value indicates whether current read is from a local cache
+      file or a remote transport file:
+      0 - read from remote;
+      1 - read from local cache.
+  */
+  int read_from_cache;
+
+  /** absolute path for the local cache file */
+  char* cache_file_path;
+
+  /** content reader, either from local cache or from remote URI */
+  io_t* reader;
+
+  /** cache content writer */
+  iow_t* writer;
+
+} cache_state_t;
+
+
 int bs_transport_cache_create(bgpstream_transport_t *transport)
 {
-
-
+  // reset transport method
   BS_TRANSPORT_SET_METHODS(cache, transport);
-  io_t *fh = NULL;
+
+  if ((transport->state = malloc_zero(sizeof(cache_state_t))) == NULL) {
+    return -1;
+  }
 
   // create cache folder
   char *storage_folder_path = "/tmp/bgpstream_tmp";
@@ -55,44 +82,36 @@ int bs_transport_cache_create(bgpstream_transport_t *transport)
   strcpy(output_name, storage_folder_path);
   strcat(output_name, pLastSlash);
   strcat(output_name, file_suffix);
+  STATE->cache_file_path = output_name;
 
   // If the file exists, don't create writer, and set readFromCache = 1
-  if( access( output_name, F_OK ) != -1 ) {
+  if( access( STATE->cache_file_path, F_OK ) != -1 ) {
     // file exists
-    transport->read_from_cache = 1;
-    printf("READ FROM CACHE!\n");
-    printf("%s\n",output_name);
+    STATE->read_from_cache = 1;
+    bgpstream_log(BGPSTREAM_LOG_INFO, "READ FROM CACHE!\n%s\n", STATE->cache_file_path);
 
-    if ((fh = wandio_create(output_name)) == NULL) {
+    if ((STATE->reader = wandio_create(STATE->cache_file_path)) == NULL) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for reading",
-                    output_name);
+                    STATE->cache_file_path);
       return -1;
     }
-
-    transport->state = fh;
   } else {
-    // file doesn't exist
+    // if local cache file doesn't exist
 
-    printf("READ FROM REMOTE, WRITE TO CACHE!\n");
-    printf("%s\n",transport->res->uri);
-
-    if ((fh = wandio_create(transport->res->uri)) == NULL) {
+    // create file transport
+    if ((STATE->reader = wandio_create(transport->res->uri)) == NULL) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for reading",
                     transport->res->uri);
       return -1;
     }
 
-    transport->state = fh;
-
-    iow_t *fh2 = NULL;
     // ZLib default compression level is 6: https://zlib.net/manual.html
-    if ((fh2 = wandio_wcreate(output_name, WANDIO_COMPRESS_ZLIB, Z_DEFAULT_COMPRESSION, O_CREAT)) == NULL) {
+    if ((STATE->writer = wandio_wcreate(output_name, WANDIO_COMPRESS_ZLIB, Z_DEFAULT_COMPRESSION, O_CREAT)) == NULL) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for local caching", output_name);
       return -1;
     }
 
-    transport->read_from_cache = 0;
-    transport->cache_writer = fh2;
+    STATE->read_from_cache = 0;
   }
 
   return 0;
@@ -102,16 +121,14 @@ int64_t bs_transport_cache_read(bgpstream_transport_t *transport,
                                 uint8_t *buffer, int64_t len)
 {
 
-  int64_t ret = wandio_read((io_t*)transport->state, buffer, len);
+  int64_t ret = wandio_read(STATE->reader, buffer, len);
 
-  if(transport->read_from_cache == 0){
+  if(STATE->read_from_cache == 0){
     // not reading from cache, then write it
-
-    printf("write cache\n");
-    if(transport->cache_writer != NULL){
-      wandio_wwrite((iow_t*)transport->cache_writer, buffer, len);
+    if(STATE->writer != NULL){
+      wandio_wwrite(STATE->writer, buffer, len);
     } else{
-      printf("error writing cache!");
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Error writing cache");
     }
   }
 
@@ -120,13 +137,13 @@ int64_t bs_transport_cache_read(bgpstream_transport_t *transport,
 
 void bs_transport_cache_destroy(bgpstream_transport_t *transport)
 {
-  if (transport->state != NULL) {
-    wandio_destroy((io_t*)transport->state);
-    transport->state = NULL;
+  if (STATE->reader != NULL) {
+    wandio_destroy(STATE->reader);
+    STATE->reader = NULL;
   }
 
-  if (transport->cache_writer != NULL) {
-    wandio_wdestroy((iow_t*)transport->cache_writer);
-    transport->cache_writer = NULL;
+  if (STATE->writer != NULL) {
+    wandio_wdestroy(STATE->writer);
+    STATE->writer = NULL;
   }
 }

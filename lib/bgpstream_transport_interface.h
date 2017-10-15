@@ -94,12 +94,6 @@ struct bgpstream_transport {
       transport */
   void *state;
   
-  /** A pointer to the wandio writer used for outputting local cache
-   */
-  void *cache_writer;
-
-  int read_from_cache;
-
   /** }@ */
 };
 
