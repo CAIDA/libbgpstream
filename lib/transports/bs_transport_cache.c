@@ -28,7 +28,9 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <fcntl.h>
 #include <unistd.h>
+#include <zlib.h>
 
 int bs_transport_cache_create(bgpstream_transport_t *transport)
 {
@@ -39,13 +41,20 @@ int bs_transport_cache_create(bgpstream_transport_t *transport)
 
   // create cache folder
   char *storage_folder_path = "/tmp/bgpstream_tmp";
+  char *file_suffix = ".gz";
   mkdir(storage_folder_path, 0755);
   // get file name from url
   char *pLastSlash = strrchr(transport->res->uri, '/');
-  char *output_name = (char *) malloc( sizeof( char ) * (strlen(storage_folder_path) + strlen(pLastSlash) + 1) );
+  char *output_name = (char *) malloc( sizeof( char ) *
+                                       (
+                                        strlen(storage_folder_path) +
+                                        strlen(pLastSlash) +
+                                        strlen(file_suffix)+ 1
+                                        )
+                                       );
   strcpy(output_name, storage_folder_path);
   strcat(output_name, pLastSlash);
-  strcat(output_name, ".data");
+  strcat(output_name, file_suffix);
 
   // If the file exists, don't create writer, and set readFromCache = 1
   if( access( output_name, F_OK ) != -1 ) {
@@ -76,7 +85,8 @@ int bs_transport_cache_create(bgpstream_transport_t *transport)
     transport->state = fh;
 
     iow_t *fh2 = NULL;
-    if ((fh2 = wandio_wcreate(output_name, 0, 0, 0)) == NULL) {
+    // ZLib default compression level is 6: https://zlib.net/manual.html
+    if ((fh2 = wandio_wcreate(output_name, WANDIO_COMPRESS_ZLIB, Z_DEFAULT_COMPRESSION, O_CREAT)) == NULL) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for local caching", output_name);
       return -1;
     }
