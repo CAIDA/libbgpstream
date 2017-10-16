@@ -32,6 +32,13 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <zlib.h>
+#if defined(__APPLE__)
+#  define COMMON_DIGEST_FOR_OPENSSL
+#  include <CommonCrypto/CommonDigest.h>
+#  define SHA1 CC_SHA1
+#else
+#  include <openssl/md5.h>
+#endif
 
 #define STATE ((cache_state_t*)(transport->state))
 
@@ -45,11 +52,17 @@ typedef struct cache_state {
   */
   int write_to_cache;
 
+  /** absolute path for bgpstream local cache folder */
+  char* cache_folder_path;
+
   /** absolute path for the local cache file */
   char* cache_file_path;
 
-  /** absolute path for the local cache temporary write file */
-  char* temp_file_path;
+  /** absolute path for the local cache lock file */
+  char* lock_file_path;
+
+  /** absolute path for the local cache md5 checksum file */
+  char* md5_file_path;
 
   /** content reader, either from local cache or from remote URI */
   io_t* reader;
@@ -60,17 +73,89 @@ typedef struct cache_state {
 } cache_state_t;
 
 /**
+   construct md5 digest from file.
+   https://stackoverflow.com/questions/10324611/how-to-calculate-the-md5-hash-of-a-large-file-in-c
+
+   @return a 32 bytes of MD5 digest in hex number format.
+*/
+char* file2md5(const char* file_name)
+{
+  unsigned char digest[16];
+  int i;
+  FILE *inFile = fopen (file_name, "rb");
+  MD5_CTX mdContext;
+  int bytes;
+  unsigned char data[1024];
+  char *out = (char*)malloc(33);
+
+  if (inFile == NULL) {
+    bgpstream_log(BGPSTREAM_LOG_ERR,"MD5 source file %s can't be opened.\n", file_name);
+    free(out);
+    return NULL;
+  }
+
+  MD5_Init (&mdContext);
+  while ((bytes = fread (data, 1, 1024, inFile)) != 0)
+    MD5_Update (&mdContext, data, bytes);
+  MD5_Final (digest,&mdContext);
+
+  for (i = 0; i < 16; ++i) {
+    snprintf(&(out[i*2]), 32, "%02x", (unsigned int)digest[i]);
+  }
+
+  fclose (inFile);
+  return out;
+}
+
+/**
+   compare checksum from the current file and the previously written checksum file.
+
+   @return 0 if checksums match, otherwise -1.
+ */
+int compare_checksum(const char* cache_file_path, const char* md5_file_path){
+  char* checksum_1 = file2md5(cache_file_path);
+  char* checksum_2 = (char*)malloc(33);
+  int i;
+  FILE * fp;
+  char mystring [100];
+
+  // open file and check status
+  fp = fopen (md5_file_path, "r");
+  if(checksum_1==NULL || fp==NULL){
+    free(checksum_2);
+    return -1;
+  }
+
+  // read checksum
+  fgets( checksum_2, 32, fp );
+  fclose(fp);
+
+  // compare checksum
+  for(i=0;i<32;i++){
+    if(checksum_1[i]!=checksum_2[i]){
+      bgpstream_log(BGPSTREAM_LOG_INFO,"MD5 checksum not match for %s.\n", cache_file_path);
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
+/**
    Initialize the cache_state_t data structure;
 */
 int init_state(bgpstream_transport_t *transport){
 
   // define variables
-  char *temp_folder_path = "/tmp/bgpstream_temp";
-  char *cache_folder_path = "/tmp/bgpstream_cache";
+  char *cache_folder_path;
   char *file_suffix = ".gz";
+  char *lock_suffix = ".lock";
+  char *md5_suffix = ".md5";
   char *uri_file_name = strrchr(transport->res->uri, '/');
   char *cache_file_name;
-  char *temp_file_name;
+  char *lock_file_name;
+  char *md5_file_name;
+
 
   // allocate memory for cache_state type in transport data structure
   if ((transport->state = malloc_zero(sizeof(cache_state_t))) == NULL) {
@@ -82,16 +167,13 @@ int init_state(bgpstream_transport_t *transport){
   STATE->writer = NULL;
 
   // create storage folders
-  mkdir(temp_folder_path, 0755);
-  mkdir(cache_folder_path, 0755);
-  if( access( cache_folder_path, F_OK ) == -1 ) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not create cache folder %s.", cache_folder_path);
+  STATE->cache_folder_path = "/tmp/bgpstream_cache";
+  mkdir(STATE->cache_folder_path, 0755);
+  if( access( STATE->cache_folder_path, F_OK ) == -1 ) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not create cache folder %s.", STATE->cache_folder_path);
     return -1;
   }
-  if( access( temp_folder_path, F_OK ) == -1 ) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not create temp folder %s.", temp_folder_path);
-    return -1;
-  }
+  cache_folder_path = STATE->cache_folder_path;
 
   // set cache file name
   if((cache_file_name = (char *) malloc( sizeof( char ) *
@@ -109,21 +191,37 @@ int init_state(bgpstream_transport_t *transport){
   strcat(cache_file_name, file_suffix);
   STATE->cache_file_path = cache_file_name;
 
-  // set temp file name
-  if((temp_file_name = (char *) malloc( sizeof( char ) *
+  // set lock file name
+  if((lock_file_name = (char *) malloc( sizeof( char ) *
                                          (
-                                          strlen(temp_folder_path) +
+                                          strlen(cache_folder_path) +
                                           strlen(uri_file_name) +
-                                          strlen(file_suffix)+ 1
+                                          strlen(lock_suffix)+ 1
                                           )
                                          )) == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not allocate file name variable space.");
     return -1;
   }
-  strcpy(temp_file_name, temp_folder_path);
-  strcat(temp_file_name, uri_file_name);
-  strcat(temp_file_name, file_suffix);
-  STATE->temp_file_path = temp_file_name;
+  strcpy(lock_file_name, cache_folder_path);
+  strcat(lock_file_name, uri_file_name);
+  strcat(lock_file_name, lock_suffix);
+  STATE->lock_file_path = lock_file_name;
+
+  // set md5 file name
+  if((md5_file_name = (char *) malloc( sizeof( char ) *
+                                        (
+                                         strlen(cache_folder_path) +
+                                         strlen(uri_file_name) +
+                                         strlen(md5_suffix)+ 1
+                                         )
+                                        )) == NULL) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not allocate file name variable space.");
+    return -1;
+  }
+  strcpy(lock_file_name, cache_folder_path);
+  strcat(lock_file_name, uri_file_name);
+  strcat(lock_file_name, md5_suffix);
+  STATE->md5_file_path = md5_file_name;
 
   return 0;
 }
@@ -131,6 +229,9 @@ int init_state(bgpstream_transport_t *transport){
 
 int bs_transport_cache_create(bgpstream_transport_t *transport)
 {
+
+  int lock_fd;  // lock file descriptor
+
   // reset transport method
   BS_TRANSPORT_SET_METHODS(cache, transport);
 
@@ -140,10 +241,17 @@ int bs_transport_cache_create(bgpstream_transport_t *transport)
   }
 
   // If the file exists, don't create writer, and set readFromCache = 1
-  if( access( STATE->cache_file_path, F_OK ) != -1 ) {
-    // local cache file exists
+  if(
+     access( STATE->cache_file_path, F_OK ) != -1 && // cache file must exist
+     access( STATE->lock_file_path, F_OK ) == -1 &&  // lock file must NOT exist
+     access( STATE->md5_file_path, F_OK ) == -1 &&   // checksum file must exist
+     compare_checksum(STATE->cache_file_path, STATE->md5_file_path) == 0 // checksum must match
+     ) {
+    // local cache file exists, and no lock file exists -> good to read
     STATE->write_to_cache = 0;
     bgpstream_log(BGPSTREAM_LOG_INFO, "READ FROM CACHE!\n%s\n", STATE->cache_file_path);
+
+    // TODO: check integrity of the cache file.
 
     if ((STATE->reader = wandio_create(STATE->cache_file_path)) == NULL) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for reading",
@@ -151,24 +259,28 @@ int bs_transport_cache_create(bgpstream_transport_t *transport)
       return -1;
     }
   } else {
-    // if local cache file doesn't exist
+    // if local cache file doesn't exist, or cache is being written at this moment
 
-    // open reader for remote file
+    lock_fd = open(STATE->lock_file_path,O_CREAT);  // atomic action: try to create a lock file
+    if(lock_fd<0){
+      // lock file creation failed: other thread is writing the cache
+      STATE->write_to_cache = 0;
+    } else {
+      // lock file created successfully, now safe to create write cache
+      STATE->write_to_cache = 1;
+
+      // ZLib default compression level is 6: https://zlib.net/manual.html
+      if ((STATE->writer = wandio_wcreate(STATE->cache_file_path, WANDIO_COMPRESS_ZLIB, Z_DEFAULT_COMPRESSION, O_CREAT)) == NULL) {
+        bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for local caching", STATE->cache_file_path);
+        return -1;
+      }
+    }
+
+    // in either case: open reader for remote file
     if ((STATE->reader = wandio_create(transport->res->uri)) == NULL) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for reading",
                     transport->res->uri);
       return -1;
-    }
-
-    // create new writer ONLY IF there is no other writers working on the cache
-    if( access( STATE->temp_file_path, F_OK ) == -1 ) {
-      STATE->write_to_cache = 1;
-
-      // ZLib default compression level is 6: https://zlib.net/manual.html
-      if ((STATE->writer = wandio_wcreate(STATE->temp_file_path, WANDIO_COMPRESS_ZLIB, Z_DEFAULT_COMPRESSION, O_CREAT)) == NULL) {
-        bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for local caching", STATE->temp_file_path);
-        return -1;
-      }
     }
   }
 
@@ -186,7 +298,7 @@ int64_t bs_transport_cache_read(bgpstream_transport_t *transport,
     if(STATE->writer != NULL){
       wandio_wwrite(STATE->writer, buffer, len);
     } else{
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Error writing cache to %s.", STATE->temp_file_path);
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Error writing cache to %s.", STATE->cache_file_path);
     }
   }
 
@@ -195,6 +307,10 @@ int64_t bs_transport_cache_read(bgpstream_transport_t *transport,
 
 void bs_transport_cache_destroy(bgpstream_transport_t *transport)
 {
+
+  char* md5_digest;
+  int i;
+
   if (transport->state == NULL) {
     return;
   }
@@ -205,33 +321,33 @@ void bs_transport_cache_destroy(bgpstream_transport_t *transport)
   }
 
   if (STATE->writer != NULL) {
-    // finished writing a temporary file
-    char* command;
-    if((command = (char *) malloc( sizeof( char ) *
-                                           (
-                                            strlen(STATE->cache_file_path) +
-                                            strlen(STATE->temp_file_path) +
-                                            10
-                                            )
-                                           )) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not allocate file name variable space.");
-    }
+    // finished writing cache file
 
-    // construct "mv" command to move temporary cache file to cache folder
-    strcpy(command, "mv ");
-    strcpy(command, STATE->temp_file_path);
-    strcpy(command, " ");
-    strcpy(command, STATE->cache_file_path);
-    if(system(command) != 0){
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to move cache file from temporary folder to cache folder.");
+    // remove lock file
+    if(remove(STATE->lock_file_path) !=0){
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Error removing lock file %s.", STATE->lock_file_path);
     }
 
     wandio_wdestroy(STATE->writer);
     STATE->writer = NULL;
+
+    // write checksum file
+    md5_digest = file2md5(STATE->cache_file_path);
+    if(md5_digest != NULL){
+      FILE *f = fopen(STATE->md5_file_path, "w");
+      if (f == NULL) {
+        bgpstream_log(BGPSTREAM_LOG_ERR,"MD5 output file %s can't be opened.\n", STATE->md5_file_path);
+      } else {
+        for(i = 0; i < 16; i++)
+          printf("%02x", md5_digest[i]);
+        fclose(f);
+      }
+    }
   }
 
+  free(STATE->cache_folder_path);
   free(STATE->cache_file_path);
-  free(STATE->temp_file_path);
+  free(STATE->lock_file_path);
 
   free(transport->state);
   transport->state = NULL;
