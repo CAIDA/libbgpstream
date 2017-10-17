@@ -253,7 +253,7 @@ int bs_transport_cache_create(bgpstream_transport_t *transport)
   } else {
     // if local cache file doesn't exist, or cache is being written at this moment
 
-    lock_fd = open(STATE->lock_file_path,O_CREAT);  // atomic action: try to create a lock file
+    lock_fd = open(STATE->lock_file_path,O_CREAT|O_EXCL);  // atomic action: try to create a lock file
     if(lock_fd<0){
       // lock file creation failed: other thread is writing the cache
       STATE->write_to_cache = 0;
