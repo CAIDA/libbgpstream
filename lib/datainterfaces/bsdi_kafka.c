@@ -32,7 +32,7 @@
 
 #define STATE (BSDI_GET_STATE(di, kafka))
 
-#define DEFAULT_TOPIC "openbmp.bmp_raw"
+#define DEFAULT_TOPIC "^openbmp\\.router--.+\\.peer-as--.+\\.bmp_raw"
 #define DEFAULT_OFFSET "latest"
 #define DEFAULT_PROJECT ""
 #define DEFAULT_COLLECTOR ""
