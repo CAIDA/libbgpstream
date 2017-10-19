@@ -73,6 +73,9 @@ typedef enum bgpstream_resource_attr_type {
   /** The initial offset to read from within the topic ("earliest", "latest") */
   BGPSTREAM_RESOURCE_ATTR_KAFKA_INIT_OFFSET = 2,
 
+  /** The path toward a local cache */
+  BGPSTREAM_RESOURCE_ATTR_CACHE_FOLDER_PATH = 3,
+
   /** INTERNAL: The total number of attribute types in use */
   _BGPSTREAM_RESOURCE_ATTR_CNT,
 
