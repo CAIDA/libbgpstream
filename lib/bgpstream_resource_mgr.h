@@ -66,7 +66,7 @@ bgpstream_resource_mgr_push(bgpstream_resource_mgr_t *q,
                             uint32_t duration,
                             const char *project,
                             const char *collector,
-                            bgpstream_record_dump_type_t record_type,
+                            bgpstream_record_type_t record_type,
                             bgpstream_resource_t **res);
 
 /** Check if the resource manager queue contains any resources

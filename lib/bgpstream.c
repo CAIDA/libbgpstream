@@ -237,7 +237,7 @@ int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t **record)
   rc = bgpstream_di_mgr_get_next_record(bs->di_mgr, record);
   // inject a pointer to the bgpstream instance if it is a valid record ptr
   if (*record != NULL) {
-    (*record)->bs = bs;
+    (*record)->__bs = bs;
   }
   return rc;
 }

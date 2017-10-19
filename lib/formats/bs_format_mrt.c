@@ -342,10 +342,17 @@ populate_filter_cb(bgpstream_format_t *format, bgpstream_record_t *record,
     return BGPSTREAM_PARSEBGP_SKIP;
   }
 
+  // set record timestamps
+  ts_sec = record->attrs.time_sec = msg->types.mrt->timestamp_sec;
+  record->attrs.time_usec = msg->types.mrt->timestamp_usec;
+
+  // ensure the router fields are unset
+  record->attrs.router_name[0] = '\0';
+  record->attrs.router_ip.version = 0;
+
   // check the filters
   // TODO: if this is a BGP4MP or TD1 message (UPDATE), then we can do some
   // work to prep the path attributes (and then filter on them).
-  ts_sec = record->attributes.record_time = msg->types.mrt->timestamp_sec;
 
   // is this above all of our intervals?
   if (format->filter_mgr->time_intervals != NULL &&

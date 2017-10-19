@@ -196,9 +196,9 @@ static int populate_prep_cb(bgpstream_format_t *format, uint8_t *buf,
 
   // load the time stamps into the record
   DESERIALIZE_VAL(u32);
-  record->attributes.record_time = ntohl(u32);
+  record->attrs.time_sec = ntohl(u32);
   DESERIALIZE_VAL(u32);
-  record->attributes.record_time_usecs = ntohl(u32);
+  record->attrs.time_usec = ntohl(u32);
 
   // skip past the collector hash
   nread += 16;
@@ -218,8 +218,8 @@ static int populate_prep_cb(bgpstream_format_t *format, uint8_t *buf,
   if ((len - nread) < u16) {
     return -1;
   }
-  memcpy(record->attributes.dump_collector, buf, name_len);
-  record->attributes.dump_collector[name_len] = '\0';
+  memcpy(record->attrs.collector_name, buf, name_len);
+  record->attrs.collector_name[name_len] = '\0';
   nread += u16;
   buf += u16;
 
@@ -234,11 +234,11 @@ static int populate_prep_cb(bgpstream_format_t *format, uint8_t *buf,
 
   // grab the router IP
   if (IS_ROUTER_IPV6) {
-    record->attributes.router_ip.version = BGPSTREAM_ADDR_VERSION_IPV6;
-    memcpy(&record->attributes.router_ip.ipv6, buf, 16);
+    record->attrs.router_ip.version = BGPSTREAM_ADDR_VERSION_IPV6;
+    memcpy(&record->attrs.router_ip.ipv6, buf, 16);
   } else {
-    record->attributes.router_ip.version = BGPSTREAM_ADDR_VERSION_IPV4;
-    memcpy(&record->attributes.router_ip.ipv4, buf, 4);
+    record->attrs.router_ip.version = BGPSTREAM_ADDR_VERSION_IPV4;
+    memcpy(&record->attrs.router_ip.ipv4, buf, 4);
   }
   nread += 16;
   buf += 16;
@@ -257,8 +257,8 @@ static int populate_prep_cb(bgpstream_format_t *format, uint8_t *buf,
   if ((len - nread) < u16) {
     return -1;
   }
-  memcpy(record->attributes.router_name, buf, name_len);
-  record->attributes.router_name[name_len] = '\0';
+  memcpy(record->attrs.router_name, buf, name_len);
+  record->attrs.router_name[name_len] = '\0';
   nread += u16;
   buf += u16;
 
@@ -276,7 +276,7 @@ populate_filter_cb(bgpstream_format_t *format,
                    parsebgp_msg_t *msg)
 {
   parsebgp_bmp_msg_t *bmp = msg->types.bmp;
-  uint32_t ts_sec = record->attributes.record_time;
+  uint32_t ts_sec = record->attrs.time_sec;
   assert(msg->type == PARSEBGP_MSG_TYPE_BMP);
 
   // for now we only care about ROUTE_MON, PEER_DOWN, and PEER_UP messages
@@ -292,15 +292,7 @@ populate_filter_cb(bgpstream_format_t *format,
     return BGPSTREAM_PARSEBGP_FILTER_OUT;
   }
 
-  // if this is pure BMP, then the record timestamps will be unset, so we'll do
-  // our best and copy the timestamp from the peer header
-
-  if (ts_sec == 0) {
-    // be careful! PARSEBGP_BMP_TYPE_INIT_MSG and PARSEBGP_BMP_TYPE_TERM_MSG
-    // messages don't have the peer header, and so don't have a timestamp!
-    // this format definitely wasn't made for data serialization...
-    ts_sec = record->attributes.record_time = bmp->peer_hdr.ts_sec;
-  }
+  // if this is pure BMP, then the record timestamps will be unset!
 
   // is this above all of our intervals?
   if (format->filter_mgr->time_intervals != NULL &&

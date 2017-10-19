@@ -267,7 +267,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
   int collector_set = 0;
   char project[BGPSTREAM_UTILS_STR_NAME_LEN] = "";
   int project_set = 0;
-  bgpstream_record_dump_type_t type = 0;
+  bgpstream_record_type_t type = 0;
   int type_set = 0;
   uint32_t initial_time = 0;
   int initial_time_set = 0;

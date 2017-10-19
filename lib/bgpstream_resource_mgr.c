@@ -75,7 +75,7 @@ struct res_group {
 
   /** List of RIBs/updates at this timestamp
       (use BGPSTREAM_UPDATE / BGPSTREAM_RIB to index */
-  struct res_list_elem *res_list[_BGPSTREAM_RECORD_DUMP_TYPE_CNT];
+  struct res_list_elem *res_list[_BGPSTREAM_RECORD_TYPE_CNT];
 
   /** Total number of resources in this group */
   int res_cnt;
@@ -200,7 +200,7 @@ static void res_group_destroy(struct res_group *g, int destroy_resource) {
   g->prev = NULL;
   g->next = NULL;
   int i;
-  for (i=0; i<_BGPSTREAM_RECORD_DUMP_TYPE_CNT; i++) {
+  for (i=0; i<_BGPSTREAM_RECORD_TYPE_CNT; i++) {
     res_list_destroy(g->res_list[i], destroy_resource);
     g->res_list[i] = NULL;
   }
@@ -795,7 +795,7 @@ bgpstream_resource_mgr_push(bgpstream_resource_mgr_t *q,
                             uint32_t initial_time,
                             uint32_t duration,
                             const char *project, const char *collector,
-                            bgpstream_record_dump_type_t record_type,
+                            bgpstream_record_type_t record_type,
                             bgpstream_resource_t **resp)
 {
   bgpstream_resource_t *res = NULL;
