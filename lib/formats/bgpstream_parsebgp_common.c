@@ -183,7 +183,7 @@ handle_eof(bgpstream_parsebgp_decode_state_t *state, bgpstream_record_t *record,
            uint64_t skipped_cnt)
 {
   // just to be kind, set the record time to the dump time
-  record->attributes.record_time = record->attributes.dump_time;
+  record->attrs.time_sec = record->attrs.dump_time_sec;
 
   if (skipped_cnt == 0) {
     // signal that the previous record really was the last in the dump
@@ -443,9 +443,7 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
 
   record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE;
 
-  // reset the record timestamps
-  record->attributes.record_time = 0;
-  record->attributes.record_time_usecs = 0;
+  assert(record->attrs.time_sec == 0);
 
   // TODO: break our beautiful structure and check the transport type, because
   // if it is kafka we really mustn't refill a partially filled buffer.

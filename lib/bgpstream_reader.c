@@ -105,7 +105,7 @@ static int prefetch_record(bgpstream_reader_t *reader)
   // did we read a record?
   if (reader->status == BGPSTREAM_FORMAT_OK) {
     // we did (the normal case)
-    reader->next_time = record->attributes.record_time;
+    reader->next_time = record->attrs.time_sec;
   }
 
   // set the previous record position to END if we didn't skip any records. we
@@ -130,20 +130,20 @@ static int prepopulate_record(bgpstream_record_t *record,
                               bgpstream_resource_t *res)
 {
   // project
-  strncpy(record->attributes.dump_project, res->project,
+  strncpy(record->attrs.project_name, res->project,
           BGPSTREAM_UTILS_STR_NAME_LEN);
-  record->attributes.dump_project[BGPSTREAM_UTILS_STR_NAME_LEN-1] = '\0';
+  record->attrs.project_name[BGPSTREAM_UTILS_STR_NAME_LEN-1] = '\0';
 
   // collector
-  strncpy(record->attributes.dump_collector, res->collector,
+  strncpy(record->attrs.collector_name, res->collector,
           BGPSTREAM_UTILS_STR_NAME_LEN);
-  record->attributes.dump_collector[BGPSTREAM_UTILS_STR_NAME_LEN-1] = '\0';
+  record->attrs.collector_name[BGPSTREAM_UTILS_STR_NAME_LEN-1] = '\0';
 
   // dump type
-  record->attributes.dump_type = res->record_type;
+  record->attrs.type = res->record_type;
 
   // dump time
-  record->attributes.dump_time = res->initial_time;
+  record->attrs.dump_time_sec = res->initial_time;
 
   return 0;
 }

@@ -44,10 +44,10 @@
 #define BGPSTREAM_RECORD_OUTPUT_FORMAT                                         \
   "# Record format:\n"                                                         \
   "# "                                                                         \
-  "<dump-type>|<dump-pos>|<project>|<collector>|<router-ip>|<status>|<dump-"   \
-  "time>\n"                                                                    \
+  "<type>|<dump-pos>|<rec-ts-sec>.<rec-ts-usec>|<project>|<collector>|<"       \
+  "router>|<router-ip>|<status>|<dump-time>\n"                                 \
   "#\n"                                                                        \
-  "# <dump-type>: R RIB, U Update\n"                                           \
+  "# <type>: R RIB, U Update\n"                                                \
   "# <dump-pos>:  B begin, M middle, E end\n"                                  \
   "# <status>:    V valid, E empty, F filtered, O outside interval,\n"         \
   "#              R corrupted record, S corrupted source\n"                    \
@@ -55,23 +55,20 @@
 #define BGPSTREAM_ELEM_OUTPUT_FORMAT                                           \
   "# Elem format:\n"                                                           \
   "# "                                                                         \
-  "<dump-type>|<elem-type>|<record-ts>|<project>|<collector>|<router-ip>|<peer-ASN>|<"     \
-  "peer-IP>|<prefix>|<next-hop-IP>|<AS-path>|<origin-AS>|<communities>|<old-"  \
-  "state>|<new-state>\n"                                                       \
+  "<rec-type>|<elem-type>|<rec-ts-sec>.<rec-ts-usec>|<project>|<collector>|<"  \
+  "router>|<router-ip>|<peer-ASN>|<peer-IP>|<prefix>|<next-hop-IP>|<AS-path>|" \
+  "<origin-AS>|<communities>|<old-state>|<new-state>\n"                        \
   "#\n"                                                                        \
-  "# <dump-type>: R RIB, U Update\n"                                           \
+  "# <rec-type>: R RIB, U Update\n"                                            \
   "# <elem-type>: R RIB, A announcement, W withdrawal, S state message\n"      \
   "#\n"                                                                        \
-  "# RIB control messages (signal Begin and End of RIB):\n"                    \
-  "# <dump-type>|<dump-pos>|<record-ts>|<project>|<collector>\n"               \
-  "#\n"                                                                        \
-  "# <dump-pos>:  B begin, E end\n"                                            \
-  "#\n"
 
 struct window {
   uint32_t start;
   uint32_t end;
 };
+
+static char buf[65536];
 
 static bgpstream_t *bs;
 static bgpstream_data_interface_id_t di_id_default = 0;
@@ -183,9 +180,8 @@ static void usage()
 
 // print / utility functions
 
-static void print_bs_record(bgpstream_record_t *bs_record);
-static int print_elem(bgpstream_record_t *bs_record, bgpstream_elem_t *elem);
-static void print_rib_control_message(bgpstream_record_t *bs_record);
+static int print_record(bgpstream_record_t *record);
+static int print_elem(bgpstream_record_t *record, bgpstream_elem_t *elem);
 
 int main(int argc, char *argv[])
 {
@@ -540,8 +536,8 @@ int main(int argc, char *argv[])
 
   while ((rrc = bgpstream_get_next_record(bs, &bs_record)) > 0) {
 
-    if (record_output_on) {
-      print_bs_record(bs_record);
+    if (record_output_on && print_record(bs_record) != 0) {
+      goto err;
     }
 
     if (bs_record->status != BGPSTREAM_RECORD_STATUS_VALID_RECORD) {
@@ -555,9 +551,10 @@ int main(int argc, char *argv[])
     if (elem_output_on) {
       /* check if the record is of type RIB, in case extract the ID */
       /* print the RIB start line */
-      if (bs_record->attributes.dump_type == BGPSTREAM_RIB &&
-          bs_record->dump_pos == BGPSTREAM_DUMP_START) {
-        print_rib_control_message(bs_record);
+      if (bs_record->attrs.type == BGPSTREAM_RIB &&
+          bs_record->dump_pos == BGPSTREAM_DUMP_START &&
+          print_record(bs_record) != 0) {
+        goto err;
       }
 
       while ((erc = bgpstream_record_get_next_elem(bs_record, &bs_elem)) > 0) {
@@ -566,9 +563,10 @@ int main(int argc, char *argv[])
         }
       }
       /* check if end of RIB has been reached */
-      if (bs_record->attributes.dump_type == BGPSTREAM_RIB &&
-          bs_record->dump_pos == BGPSTREAM_DUMP_END) {
-        print_rib_control_message(bs_record);
+      if (bs_record->attrs.type == BGPSTREAM_RIB &&
+          bs_record->dump_pos == BGPSTREAM_DUMP_END &&
+          print_record(bs_record) != 0) {
+        goto err;
       }
     }
   }
@@ -585,149 +583,24 @@ err:
 
 /* print utility functions */
 
-static char record_buf[65536];
-
-static void print_bs_record(bgpstream_record_t *bs_record)
+static int print_record(bgpstream_record_t *record)
 {
-  assert(bs_record);
-
-  size_t written = 0; /* < how many bytes we wanted to write */
-  ssize_t c = 0;      /* < how many chars were written */
-  char *buf_p = record_buf;
-  int len = 65536;
-
-  /* record type */
-  if ((c = bgpstream_record_dump_type_snprintf(
-         buf_p, len - written, bs_record->attributes.dump_type)) < 0) {
-    return;
-  }
-  written += c;
-  buf_p += c;
-
-  c = snprintf(buf_p, len - written, "|");
-  written += c;
-  buf_p += c;
-
-  /* record position */
-  if ((c = bgpstream_record_dump_pos_snprintf(buf_p, len - written,
-                                              bs_record->dump_pos)) < 0) {
-    return;
-  }
-  written += c;
-  buf_p += c;
-
-  /* Record timestamp, project, collector */
-  c = snprintf(
-    buf_p, len - written, "|%ld|%s|%s|", bs_record->attributes.record_time,
-    bs_record->attributes.dump_project, bs_record->attributes.dump_collector);
-  written += c;
-  buf_p += c;
-
-  /* Router IP */
-  if (bs_record->attributes.router_ip.version != 0) {
-    bgpstream_addr_ntop(buf_p, len - written, &bs_record->attributes.router_ip);
-    while (*buf_p != '\0') {
-      written++;
-      buf_p++;
-    }
-  }
-  c = snprintf(buf_p, len - written, "|");
-  written += c;
-  buf_p += c;
-
-  /* record status */
-  if ((c = bgpstream_record_status_snprintf(buf_p, len - written,
-                                            bs_record->status)) < 0) {
-    return;
-  }
-  written += c;
-  buf_p += c;
-
-  /* dump time */
-  if (bs_record->attributes.dump_time == UINT32_MAX) {
-    c = snprintf(buf_p, len - written, "|");
-    written += c;
-    buf_p += c;
-  } else  {
-    c = snprintf(buf_p, len - written, "|%ld", bs_record->attributes.dump_time);
-    written += c;
-    buf_p += c;
+  if (bgpstream_record_snprintf(buf, sizeof(buf), record) == NULL) {
+    fprintf(stderr, "ERROR: Could not convert record to string\n");
+    return -1;
   }
 
-  if (written >= len) {
-    return;
-  }
-
-  printf("%s\n", record_buf);
+  printf("%s\n", buf);
+  return 0;
 }
 
-static void print_rib_control_message(bgpstream_record_t *bs_record)
+static int print_elem(bgpstream_record_t *record, bgpstream_elem_t *elem)
 {
-  assert(bs_record);
-
-  size_t written = 0; /* < how many bytes we wanted to write */
-  ssize_t c = 0;      /* < how many chars were written */
-  char *buf_p = record_buf;
-  int len = 65536;
-
-  /* record type */
-  if ((c = bgpstream_record_dump_type_snprintf(
-         buf_p, len - written, bs_record->attributes.dump_type)) < 0) {
-    return;
-  }
-  written += c;
-  buf_p += c;
-
-  c = snprintf(buf_p, len - written, "|");
-  written += c;
-  buf_p += c;
-
-  /* record position */
-  if ((c = bgpstream_record_dump_pos_snprintf(buf_p, len - written,
-                                              bs_record->dump_pos)) < 0) {
-    return;
-  }
-  written += c;
-  buf_p += c;
-
-  /* Record timestamp, project, collector */
-  c = snprintf(
-    buf_p, len - written, "|%ld|%s|%s", bs_record->attributes.record_time,
-    bs_record->attributes.dump_project, bs_record->attributes.dump_collector);
-  written += c;
-  buf_p += c;
-
-  /* Router IP */
-  if (bs_record->attributes.router_ip.version != 0) {
-    bgpstream_addr_ntop(buf_p, len - written, &bs_record->attributes.router_ip);
-    while (*buf_p != '\0') {
-      written++;
-      buf_p++;
-    }
-  }
-  c = snprintf(buf_p, len - written, "|");
-  written += c;
-  buf_p += c;
-
-  if (written >= len) {
-    return;
+  if (bgpstream_record_elem_snprintf(buf, sizeof(buf), record, elem) == NULL) {
+    fprintf(stderr, "ERROR: Could not convert record/elem to string\n");
+    return -1;
   }
 
-  printf("%s\n", record_buf);
-}
-
-static char elem_buf[65536];
-static int print_elem(bgpstream_record_t *bs_record, bgpstream_elem_t *elem)
-{
-  assert(bs_record);
-  assert(elem);
-  int len = 65536;
-
-  if (bgpstream_record_elem_snprintf(elem_buf, len, bs_record, elem) != NULL) {
-    printf("%s\n", elem_buf);
-    return 0;
-  }
-
-  fprintf(stderr, "ERROR: Could not print elem\n");
-  return -1;
+  printf("%s\n", buf);
+  return 0;
 }

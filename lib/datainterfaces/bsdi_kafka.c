@@ -60,7 +60,6 @@ enum {
   OPTION_DATA_TYPE,      //
   OPTION_PROJECT,        //
   OPTION_COLLECTOR,      //
-  // TODO: read time out (waiting for new data)
 };
 
 /* define the options this data interface accepts */

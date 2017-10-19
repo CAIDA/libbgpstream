@@ -85,7 +85,7 @@ typedef struct bsdi_csvfile_state {
   /* record metadata: */
   char filename[BGPSTREAM_DUMP_MAX_LEN];
   char project[BGPSTREAM_PAR_MAX_LEN];
-  bgpstream_record_dump_type_t record_type;
+  bgpstream_record_type_t record_type;
   char collector[BGPSTREAM_PAR_MAX_LEN];
   uint32_t filetime;
   uint32_t time_span;
