@@ -32,13 +32,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <zlib.h>
-#if defined(__APPLE__)
-#  define COMMON_DIGEST_FOR_OPENSSL
-#  include <CommonCrypto/CommonDigest.h>
-#  define SHA1 CC_SHA1
-#else
-#  include <openssl/md5.h>
-#endif
 
 #define STATE ((cache_state_t*)(transport->state))
 
@@ -73,75 +66,6 @@ typedef struct cache_state {
 } cache_state_t;
 
 /**
-   construct md5 digest from file.
-   https://stackoverflow.com/questions/10324611/how-to-calculate-the-md5-hash-of-a-large-file-in-c
-
-   @return a 32 bytes of MD5 digest in hex number format.
-*/
-char* file2md5(const char* file_name)
-{
-  unsigned char digest[16];
-  int i;
-  FILE *inFile = fopen (file_name, "rb");
-  MD5_CTX mdContext;
-  int bytes;
-  unsigned char data[1024];
-  char *out = (char*)malloc(33);
-
-  if (inFile == NULL) {
-    bgpstream_log(BGPSTREAM_LOG_ERR,"MD5 source file %s can't be opened.\n", file_name);
-    free(out);
-    return NULL;
-  }
-
-  MD5_Init (&mdContext);
-  while ((bytes = fread (data, 1, 1024, inFile)) != 0)
-    MD5_Update (&mdContext, data, bytes);
-  MD5_Final (digest,&mdContext);
-
-  for (i = 0; i < 16; ++i) {
-    snprintf(&(out[i*2]), 32, "%02x", (unsigned int)digest[i]);
-  }
-
-  fclose (inFile);
-  return out;
-}
-
-/**
-   compare checksum from the current file and the previously written checksum file.
-
-   @return 0 if checksums match, otherwise -1.
- */
-int compare_checksum(const char* cache_file_path, const char* md5_file_path){
-  char* checksum_1 = file2md5(cache_file_path);
-  char* checksum_2 = (char*)malloc(33);
-  int i;
-  FILE * fp;
-  char mystring [100];
-
-  // open file and check status
-  fp = fopen (md5_file_path, "r");
-  if(checksum_1==NULL || fp==NULL){
-    free(checksum_2);
-    return -1;
-  }
-
-  // read checksum
-  fgets( checksum_2, 32, fp );
-  fclose(fp);
-
-  // compare checksum
-  for(i=0;i<32;i++){
-    if(checksum_1[i]!=checksum_2[i]){
-      bgpstream_log(BGPSTREAM_LOG_INFO,"MD5 checksum not match for %s.\n", cache_file_path);
-      return 1;
-    }
-  }
-
-  return 0;
-}
-
-/**
    Initialize the cache_state_t data structure;
 */
 int init_state(bgpstream_transport_t *transport){
@@ -166,11 +90,10 @@ int init_state(bgpstream_transport_t *transport){
   STATE->reader = NULL;
   STATE->writer = NULL;
 
-  // create storage folders
-  STATE->cache_folder_path = "/tmp/bgpstream_cache";
-  mkdir(STATE->cache_folder_path, 0755);
-  if( access( STATE->cache_folder_path, F_OK ) == -1 ) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not create cache folder %s.", STATE->cache_folder_path);
+  // set storage folder path
+  if ((STATE->cache_folder_path = strdup(bgpstream_resource_get_attr(
+          transport->res, BGPSTREAM_RESOURCE_ATTR_CACHE_FOLDER_PATH))) == NULL) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Could not local cache folder path in resource.");
     return -1;
   }
   cache_folder_path = STATE->cache_folder_path;
@@ -239,6 +162,7 @@ int bs_transport_cache_create(bgpstream_transport_t *transport)
   if(init_state(transport) != 0){
     return -1;
   }
+
 
   // If the file exists, don't create writer, and set readFromCache = 1
   if(access( STATE->cache_file_path, F_OK ) != -1) {
