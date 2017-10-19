@@ -320,9 +320,10 @@ static int handle_td2_peer_index(bgpstream_format_t *format,
 }
 
 static bgpstream_parsebgp_check_filter_rc_t
-populate_filter_cb(bgpstream_format_t *format, parsebgp_msg_t *msg,
-                   uint32_t *ts_sec)
+populate_filter_cb(bgpstream_format_t *format, bgpstream_record_t *record,
+                   parsebgp_msg_t *msg)
 {
+  uint32_t ts_sec;
   assert(msg->type == PARSEBGP_MSG_TYPE_MRT);
 
   // if this is a peer index table message, we parse it now and move on (we
@@ -344,18 +345,17 @@ populate_filter_cb(bgpstream_format_t *format, parsebgp_msg_t *msg,
   // check the filters
   // TODO: if this is a BGP4MP or TD1 message (UPDATE), then we can do some
   // work to prep the path attributes (and then filter on them).
-
-  *ts_sec = msg->types.mrt->timestamp_sec;
+  ts_sec = record->attributes.record_time = msg->types.mrt->timestamp_sec;
 
   // is this above all of our intervals?
   if (format->filter_mgr->time_intervals != NULL &&
       format->filter_mgr->time_intervals_max != BGPSTREAM_FOREVER &&
-      *ts_sec > format->filter_mgr->time_intervals_max) {
+      ts_sec > format->filter_mgr->time_intervals_max) {
     // force EOS
     return BGPSTREAM_PARSEBGP_EOS;
   }
 
-  if (is_wanted_time(*ts_sec, format->filter_mgr) != 0) {
+  if (is_wanted_time(ts_sec, format->filter_mgr) != 0) {
     // we want this entry
     return BGPSTREAM_PARSEBGP_KEEP;
   } else {

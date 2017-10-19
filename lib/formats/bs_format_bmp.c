@@ -133,119 +133,150 @@ static int is_wanted_time(uint32_t record_time,
   return 0;
 }
 
-enum header_row_types {
-  OBMP_VERSION = 0,
-  OBMP_COLLECTOR_HASH_ID = 1,
-  OBMP_ROUTER_HASH = 2,
-  OBMP_ROUTER_IP = 3,
-  OBMP_LEN = 4,
-  OBMP_EMPTY = 5,
-};
+#define DESERIALIZE_VAL(to)                                                    \
+  do {                                                                         \
+    if (((len) - (nread)) < sizeof(to)) {                                      \
+      return -1;                                                               \
+    }                                                                          \
+    memcpy(&(to), (buf), sizeof(to));                                          \
+    nread += sizeof(to);                                                       \
+    buf += sizeof(to);                                                         \
+  } while (0)
+
+#define IS_ROUTER_MSG (flags & 0x80)
+#define IS_ROUTER_IPV6 (flags & 0x40)
 
 static int populate_prep_cb(bgpstream_format_t *format, uint8_t *buf,
                             size_t *lenp, bgpstream_record_t *record)
 {
-  size_t len = *lenp, nread = 0, coll_len = 0;
-  int line_n = 0, done = 0;
-  char *valp = NULL;
-  char ip_buf[INET6_ADDRSTRLEN];
-  char *charp = NULL;
+  size_t len = *lenp, nread = 0;
+  uint8_t ver_maj, ver_min, flags, u8;
+  uint16_t u16;
+  uint32_t u32;
+  int name_len = 0;
 
-  /* Parse a gory openbmp raw header that looks like this:
-     V: 1.6\n
-     C_HASH_ID: 31391b6fca3a27567f55f56d113a204a\n
-     R_HASH: 53be25f18ec900afc90cb90bb942b889\n
-     R_IP: 128.223.51.103\n
-     L: 130\n
-     \n
-  */
-
-  if (*buf != 'V') {
-    // assume this is a raw BMP message (not OpenBMP)
+  // find out if we're looking at an OpenBMP-encapsulated BMP message
+  if (len < 4 || *buf != 'O' || *(uint32_t *)buf != htonl(0x4F424D50)) {
+    // it's not OpenBMP binary format, assume that it is raw BMP
     *lenp = 0;
     return 0;
   }
+  nread += 4;
+  buf += 4;
 
-  // read each of the header rows
-  for (line_n = 0; line_n <= OBMP_EMPTY; line_n++) {
-    if (nread > len) {
-      return -1;
-    }
-
-    // TODO: do something with the data
-    // for now, just skip it
-
-    switch (line_n) {
-    case OBMP_VERSION:
-    case OBMP_ROUTER_HASH:
-    case OBMP_LEN:
-      // ignore
-      break;
-
-    case OBMP_COLLECTOR_HASH_ID:
-      if ((valp = memchr(buf+nread, ' ', len-nread)) != NULL) {
-        valp++;
-        nread++;
-        // copy the collector hash
-        charp = record->attributes.dump_collector;
-        while (nread <= len &&
-               coll_len < sizeof(record->attributes.dump_collector) &&
-               *valp != '\n') {
-          *(charp++) = *(valp++);
-          nread++;
-          coll_len++;
-        }
-        record->attributes.dump_collector[coll_len] = '\0';
-      } // else: malformed field, just move on
-      break;
-
-    case OBMP_ROUTER_IP:
-      if ((valp = memchr(buf+nread, ' ', len-nread)) != NULL) {
-        valp++;
-        nread++;
-        // copy the IP address into a temp buffer (so we can NUL terminate it)
-        charp = ip_buf;
-        while (nread <= len && *valp != '\n') {
-          *(charp++) = *(valp++);
-          nread++;
-        }
-        if (*valp == '\n') {
-          *charp = '\0';
-          bgpstream_str2addr(ip_buf, &record->attributes.router_ip);
-        }
-      } // else: malformed field, just move on
-      break;
-
-    case OBMP_EMPTY:
-      done = 1;
-      break;
-
-    default:
-      return -1;
-    }
-
-    // fast-forward to the end of the line
-    for (; nread <= len; nread++) {
-      if (buf[nread] == '\n') {
-        nread++;
-        break;
-      }
-    }
-  }
-
-  if (done != 0) {
-    *lenp = nread;
+  // Confirm the version number
+  DESERIALIZE_VAL(ver_maj);
+  DESERIALIZE_VAL(ver_min);
+  if (ver_maj != 1 || ver_min!= 7) {
+    bgpstream_log(BGPSTREAM_LOG_WARN,
+                  "Unrecognized OpenBMP header version (%" PRIu8 ".%" PRIu8 ")",
+                  ver_maj, ver_min);
     return 0;
   }
 
-  return -1;
+  // skip past the header length and the message length (since we'll parse the
+  // entire header anyway).
+  nread += 2 + 4;
+  buf += 2 + 4;
+
+  // read the flags
+  DESERIALIZE_VAL(flags);
+  // check the flags
+  if (!IS_ROUTER_MSG) {
+    // we only care about bmp raw messages, which are always router messages
+    return 0;
+  }
+
+  // check the object type
+  DESERIALIZE_VAL(u8);
+  if (u8 != 12) {
+    // we only want BMP RAW messages, so skip this one
+    return 0;
+  }
+
+  // load the time stamps into the record
+  DESERIALIZE_VAL(u32);
+  record->attributes.record_time = ntohl(u32);
+  DESERIALIZE_VAL(u32);
+  record->attributes.record_time_usecs = ntohl(u32);
+
+  // skip past the collector hash
+  nread += 16;
+  buf += 16;
+
+  // grab the collector admin ID as collector name
+  // TODO: if there is no admin ID, use the hash
+  DESERIALIZE_VAL(u16);
+  u16 = ntohs(u16);
+  // maybe truncate the collector name
+  if (u16 < BGPSTREAM_UTILS_STR_NAME_LEN) {
+    name_len = u16;
+  } else {
+    name_len = BGPSTREAM_UTILS_STR_NAME_LEN - 1;
+  }
+  // copy the collector name in
+  if ((len - nread) < u16) {
+    return -1;
+  }
+  memcpy(record->attributes.dump_collector, buf, name_len);
+  record->attributes.dump_collector[name_len] = '\0';
+  nread += u16;
+  buf += u16;
+
+  if ((len - nread) < 32) {
+    // not enough buffer left for router hash and IP
+    return -1;
+  }
+
+  // skip past the router hash
+  nread += 16;
+  buf += 16;
+
+  // grab the router IP
+  if (IS_ROUTER_IPV6) {
+    record->attributes.router_ip.version = BGPSTREAM_ADDR_VERSION_IPV6;
+    memcpy(&record->attributes.router_ip.ipv6, buf, 16);
+  } else {
+    record->attributes.router_ip.version = BGPSTREAM_ADDR_VERSION_IPV4;
+    memcpy(&record->attributes.router_ip.ipv4, buf, 4);
+  }
+  nread += 16;
+  buf += 16;
+
+  // router name
+  // TODO: if there is no name, or it is "default", use the IP
+  DESERIALIZE_VAL(u16);
+  u16 = ntohs(u16);
+  // maybe truncate the router name
+  if (u16 < BGPSTREAM_UTILS_STR_NAME_LEN) {
+    name_len = u16;
+  } else {
+    name_len = BGPSTREAM_UTILS_STR_NAME_LEN - 1;
+  }
+  // copy the router name in
+  if ((len - nread) < u16) {
+    return -1;
+  }
+  memcpy(record->attributes.router_name, buf, name_len);
+  record->attributes.router_name[name_len] = '\0';
+  nread += u16;
+  buf += u16;
+
+  // and then ignore the row count
+  nread += 4;
+  buf += 4;
+
+  *lenp = nread;
+  return 0;
 }
 
 static bgpstream_parsebgp_check_filter_rc_t
-populate_filter_cb(bgpstream_format_t *format, parsebgp_msg_t *msg,
-                   uint32_t *ts_sec)
+populate_filter_cb(bgpstream_format_t *format,
+                   bgpstream_record_t *record,
+                   parsebgp_msg_t *msg)
 {
   parsebgp_bmp_msg_t *bmp = msg->types.bmp;
+  uint32_t ts_sec = record->attributes.record_time;
   assert(msg->type == PARSEBGP_MSG_TYPE_BMP);
 
   // for now we only care about ROUTE_MON, PEER_DOWN, and PEER_UP messages
@@ -261,22 +292,26 @@ populate_filter_cb(bgpstream_format_t *format, parsebgp_msg_t *msg,
     return BGPSTREAM_PARSEBGP_FILTER_OUT;
   }
 
-  // be careful! PARSEBGP_BMP_TYPE_INIT_MSG and PARSEBGP_BMP_TYPE_TERM_MSG
-  // messages don't have the peer header, and so don't have a timestamp!
-  // this format definitely wasn't made for data serialization...
+  // if this is pure BMP, then the record timestamps will be unset, so we'll do
+  // our best and copy the timestamp from the peer header
 
-  *ts_sec = bmp->peer_hdr.ts_sec;
+  if (ts_sec == 0) {
+    // be careful! PARSEBGP_BMP_TYPE_INIT_MSG and PARSEBGP_BMP_TYPE_TERM_MSG
+    // messages don't have the peer header, and so don't have a timestamp!
+    // this format definitely wasn't made for data serialization...
+    ts_sec = record->attributes.record_time = bmp->peer_hdr.ts_sec;
+  }
 
   // is this above all of our intervals?
   if (format->filter_mgr->time_intervals != NULL &&
       format->filter_mgr->time_intervals_max != BGPSTREAM_FOREVER &&
-      *ts_sec > format->filter_mgr->time_intervals_max) {
+      ts_sec > format->filter_mgr->time_intervals_max) {
     // force EOS
     return BGPSTREAM_PARSEBGP_EOS;
   }
 
   // check the filters
-  if (is_wanted_time(*ts_sec, format->filter_mgr) != 0) {
+  if (is_wanted_time(ts_sec, format->filter_mgr) != 0) {
     // we want this entry
     return BGPSTREAM_PARSEBGP_KEEP;
   } else {

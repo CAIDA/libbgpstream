@@ -177,14 +177,17 @@ typedef enum {
  *
  * @param format        pointer to the format that originally called
  *                      _populate_record
+ * @param record        pointer to the record being populated
  * @param msg           pointer to the parsed message
- * @param ts_sec[out]   must be set to the timestamp of the message
  * @return 1 if the message should be kept, 0 if it should be skipped, -1 if an
  * error occurred.
+ *
+ * It is the responsibility of the callee to set the record timestamp fields.
  */
 typedef bgpstream_parsebgp_check_filter_rc_t (
   bgpstream_parsebgp_check_filter_cb_t)(bgpstream_format_t *format,
-                                        parsebgp_msg_t *msg, uint32_t *ts_sec);
+                                        bgpstream_record_t *record,
+                                        parsebgp_msg_t *msg);
 
 /** Called before a message is passed to parsebgp to parse any non-standard
  * headers encapsulating a message
