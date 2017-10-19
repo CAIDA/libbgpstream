@@ -32,10 +32,10 @@
 
 #define STATE (BSDI_GET_STATE(di, kafka))
 
-#define DEFAULT_TOPIC "openbmp.bmp_raw"
+#define DEFAULT_TOPIC "^openbmp\\.router--.+\\.peer-as--.+\\.bmp_raw"
 #define DEFAULT_OFFSET "latest"
-#define DEFAULT_PROJECT "kafka"
-#define DEFAULT_COLLECTOR "kafka"
+#define DEFAULT_PROJECT ""
+#define DEFAULT_COLLECTOR ""
 
 // mapping from type name to resource format type
 static char *type_strs[] = {
@@ -105,14 +105,14 @@ static bgpstream_data_interface_option_t options[] = {
     BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
     OPTION_PROJECT,                      // internal ID
     "project",                           // name
-    "set project name (default: " DEFAULT_PROJECT ")",
+    "set project name (default: unset)",
   },
   /* Collector */
   {
     BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
     OPTION_COLLECTOR,                    // internal ID
     "collector",                         // name
-    "set collector name (default: " DEFAULT_COLLECTOR ")",
+    "set collector name (default: unset)",
   },
 };
 

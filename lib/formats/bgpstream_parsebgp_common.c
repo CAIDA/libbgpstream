@@ -440,9 +440,12 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
   uint64_t skipped_cnt = 0;
   parsebgp_error_t err;
   int filter;
-  uint32_t ts_sec = 0;
 
   record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE;
+
+  // reset the record timestamps
+  record->attributes.record_time = 0;
+  record->attributes.record_time_usecs = 0;
 
   // TODO: break our beautiful structure and check the transport type, because
   // if it is kafka we really mustn't refill a partially filled buffer.
@@ -526,7 +529,7 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
 
   // got a message!
   // let the caller decide if they want it
-  if ((filter = filter_cb(format, msg, &ts_sec)) < 0) {
+  if ((filter = filter_cb(format, record, msg)) < 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Format-specific filtering failed");
     return BGPSTREAM_FORMAT_UNKNOWN_ERROR;
   }
@@ -537,7 +540,6 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
     state->successful_read_cnt++;
     record->status = BGPSTREAM_RECORD_STATUS_VALID_RECORD;
   } else if (filter == BGPSTREAM_PARSEBGP_EOS) {
-    record->attributes.record_time = ts_sec;
     record->status = BGPSTREAM_RECORD_STATUS_OUTSIDE_TIME_INTERVAL;
     return BGPSTREAM_FORMAT_OUTSIDE_TIME_INTERVAL;
   } else {
@@ -576,8 +578,7 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
     // records)
   }
 
-  // update the record time
-  record->attributes.record_time = ts_sec;
+  // record time was updated by filter_cb
 
   // we successfully read a record, return it
   return BGPSTREAM_FORMAT_OK;
