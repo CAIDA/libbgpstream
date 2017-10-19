@@ -129,6 +129,9 @@ typedef struct struct_bgpstream_record_attributes_t {
   /** Router IP */
   bgpstream_addr_storage_t router_ip;
 
+  /** Router name */
+  char router_name[BGPSTREAM_UTILS_STR_NAME_LEN];
+
   /** Dump type */
   bgpstream_record_dump_type_t dump_type;
 
@@ -137,8 +140,11 @@ typedef struct struct_bgpstream_record_attributes_t {
       a streaming source), this will be set to 0. */
   long dump_time;
 
-  /** Time from the MRT record. I.e. the time *this* record was dumped */
+  /** Record collection time (seconds component) */
   long record_time;
+
+  /** Record collection time (microseconds component) */
+  uint32_t record_time_usecs;
 
 } bgpstream_record_attributes_t;
 
