@@ -48,7 +48,7 @@ bgpstream_elem_t *bgpstream_elem_create()
   // all fields are initialized to zero
 
   // need to create as path
-  if ((elem->aspath = bgpstream_as_path_create()) == NULL) {
+  if ((elem->as_path = bgpstream_as_path_create()) == NULL) {
     goto err;
   }
 
@@ -71,8 +71,8 @@ void bgpstream_elem_destroy(bgpstream_elem_t *elem)
     return;
   }
 
-  bgpstream_as_path_destroy(elem->aspath);
-  elem->aspath = NULL;
+  bgpstream_as_path_destroy(elem->as_path);
+  elem->as_path = NULL;
 
   bgpstream_community_set_destroy(elem->communities);
   elem->communities = NULL;
@@ -82,7 +82,7 @@ void bgpstream_elem_destroy(bgpstream_elem_t *elem)
 
 void bgpstream_elem_clear(bgpstream_elem_t *elem)
 {
-  bgpstream_as_path_clear(elem->aspath);
+  bgpstream_as_path_clear(elem->as_path);
   bgpstream_community_set_clear(elem->communities);
 }
 
@@ -90,17 +90,17 @@ bgpstream_elem_t *bgpstream_elem_copy(bgpstream_elem_t *dst,
                                       bgpstream_elem_t *src)
 {
   /* save all ptrs before memcpy */
-  bgpstream_as_path_t *dst_aspath = dst->aspath;
+  bgpstream_as_path_t *dst_aspath = dst->as_path;
   bgpstream_community_set_t *dst_comms = dst->communities;
 
   /* do a memcpy and then manually copy the as path and communities */
   memcpy(dst, src, sizeof(bgpstream_elem_t));
 
   /* restore all ptrs */
-  dst->aspath = dst_aspath;
+  dst->as_path = dst_aspath;
   dst->communities = dst_comms;
 
-  if (bgpstream_as_path_copy(dst->aspath, src->aspath) != 0) {
+  if (bgpstream_as_path_copy(dst->as_path, src->as_path) != 0) {
     return NULL;
   }
 
@@ -257,13 +257,13 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
   }
 
   /* PEER ASN */
-  c = snprintf(buf_p, B_REMAIN, "%" PRIu32, elem->peer_asnumber);
+  c = snprintf(buf_p, B_REMAIN, "%" PRIu32, elem->peer_asn);
   written += c;
   buf_p += c;
   ADD_PIPE;
 
   /* PEER IP */
-  if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->peer_address) == NULL) {
+  if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->peer_ip) == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed peer address");
     return NULL;
   }
@@ -294,7 +294,7 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
     ADD_PIPE;
 
     /* AS PATH */
-    c = bgpstream_as_path_snprintf(buf_p, B_REMAIN, elem->aspath);
+    c = bgpstream_as_path_snprintf(buf_p, B_REMAIN, elem->as_path);
     written += c;
     buf_p += c;
     if (B_FULL)
@@ -302,7 +302,7 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
     ADD_PIPE;
 
     /* ORIGIN AS */
-    if ((seg = bgpstream_as_path_get_origin_seg(elem->aspath)) != NULL) {
+    if ((seg = bgpstream_as_path_get_origin_seg(elem->as_path)) != NULL) {
       c = bgpstream_as_path_seg_snprintf(buf_p, B_REMAIN, seg);
       written += c;
       buf_p += c;

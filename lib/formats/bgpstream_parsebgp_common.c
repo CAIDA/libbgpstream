@@ -370,7 +370,7 @@ int bgpstream_parsebgp_process_path_attrs(
   parsebgp_bgp_update_as_path_t *aspath = NULL;
   parsebgp_bgp_update_as_path_t *as4path = NULL;
 
-  bgpstream_as_path_clear(el->aspath);
+  bgpstream_as_path_clear(el->as_path);
   bgpstream_community_set_clear(el->communities);
 
   // AS Path(s)
@@ -382,7 +382,7 @@ int bgpstream_parsebgp_process_path_attrs(
       PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_PATH) {
     as4path = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_PATH].data.as_path;
   }
-  if (handle_as_paths(el->aspath, aspath, as4path) != 0) {
+  if (handle_as_paths(el->as_path, aspath, as4path) != 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not parse AS_PATH");
     return -1;
   }

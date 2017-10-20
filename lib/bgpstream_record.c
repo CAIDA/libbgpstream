@@ -165,7 +165,7 @@ static int elem_check_filters(bgpstream_record_t *record,
   /* Checking peer ASNs: if the filter is on and the peer asn is not in the
    * set, return 0 */
   if (filter_mgr->peer_asns &&
-      bgpstream_id_set_exists(filter_mgr->peer_asns, elem->peer_asnumber) ==
+      bgpstream_id_set_exists(filter_mgr->peer_asns, elem->peer_asn) ==
         0) {
     return 0;
   }
@@ -206,7 +206,7 @@ static int elem_check_filters(bgpstream_record_t *record,
       return 0;
     }
 
-    pathlen = bgpstream_as_path_get_filterable(aspath, 65535, elem->aspath);
+    pathlen = bgpstream_as_path_get_filterable(aspath, 65535, elem->as_path);
 
     if (pathlen == 65535) {
       bgpstream_log(BGPSTREAM_LOG_WARN,
