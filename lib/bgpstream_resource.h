@@ -173,10 +173,11 @@ bgpstream_resource_get_attr(bgpstream_resource_t *resource,
 
 /** Get a unique hash of the resource
  *
+ * @param buf           pointer to the buffer that stores the hash value
+ * @param buf_len       buffer size
  * @param resource      pointer to the resource object
  * @return pointer to a unique hash of this resource
  */
-const char *
-bgpstream_resource_get_hash(bgpstream_resource_t *resource);
+int bgpstream_resource_hash_snprintf(char* buf, size_t buf_len, bgpstream_resource_t *resource);
 
 #endif /* __BGPSTREAM_RESOURCE_H */
