@@ -102,11 +102,7 @@ static int prefetch_record(bgpstream_reader_t *reader)
     return 0;
   }
 
-  // did we read a record?
-  if (reader->status == BGPSTREAM_FORMAT_OK) {
-    // we did (the normal case)
-    reader->next_time = record->time_sec;
-  }
+  reader->next_time = record->time_sec;
 
   // set the previous record position to END if we didn't skip any records. we
   // know this because the format has set the position of the current record to

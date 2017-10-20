@@ -322,7 +322,7 @@ static void queue_dump(struct res_group *head, int log_level)
                   head->res_cnt);
 
     int i;
-    for (i=0; i<_BGPSTREAM_RECORD_DUMP_TYPE_CNT; i++) {
+    for (i=0; i<_BGPSTREAM_RECORD_TYPE_CNT; i++) {
       bgpstream_log(log_level, "  records (type %d):", i);
       list_dump(head->res_list[i], log_level);
     }
