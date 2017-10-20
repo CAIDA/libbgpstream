@@ -112,7 +112,7 @@ typedef struct bgpstream_resource {
   char *collector;
 
   /** The type of records provided by the resource */
-  bgpstream_record_dump_type_t record_type;
+  bgpstream_record_type_t record_type;
 
   /** Extra attributes provided by the data interface that can be used by the
    * transport or format layers (they are optional as some may be provided by
@@ -138,7 +138,7 @@ bgpstream_resource_create(bgpstream_resource_transport_type_t transport_type,
                           uint32_t initial_time,
                           uint32_t duration,
                           const char *project, const char *collector,
-                          bgpstream_record_dump_type_t record_type);
+                          bgpstream_record_type_t record_type);
 
 /** Destroy the given resource metadata object */
 void bgpstream_resource_destroy(bgpstream_resource_t *resource);

@@ -102,7 +102,7 @@ bgpstream_format_populate_record(bgpstream_format_t *format,
                                  bgpstream_record_t *record)
 {
   // it is a programming error to use a record with a different format
-  assert(record->__format_data->format == format);
+  assert(record->__int->format == format);
   return format->populate_record(format, record);
 }
 
@@ -110,12 +110,12 @@ int bgpstream_format_get_next_elem(bgpstream_format_t *format,
                                    bgpstream_record_t *record,
                                    bgpstream_elem_t **elem)
 {
-  assert(record->__format_data->format == format);
+  assert(record->__int->format == format);
   *elem = NULL;
   return format->get_next_elem(format, record, elem);
 }
 
-#define DATA(record) ((record)->__format_data)
+#define DATA(record) ((record)->__int)
 
 int bgpstream_format_init_data(bgpstream_record_t *record)
 {

@@ -105,7 +105,7 @@ static int prefetch_record(bgpstream_reader_t *reader)
   // did we read a record?
   if (reader->status == BGPSTREAM_FORMAT_OK) {
     // we did (the normal case)
-    reader->next_time = record->attributes.record_time;
+    reader->next_time = record->time_sec;
   }
 
   // set the previous record position to END if we didn't skip any records. we
@@ -130,20 +130,20 @@ static int prepopulate_record(bgpstream_record_t *record,
                               bgpstream_resource_t *res)
 {
   // project
-  strncpy(record->attributes.dump_project, res->project,
+  strncpy(record->project_name, res->project,
           BGPSTREAM_UTILS_STR_NAME_LEN);
-  record->attributes.dump_project[BGPSTREAM_UTILS_STR_NAME_LEN-1] = '\0';
+  record->project_name[BGPSTREAM_UTILS_STR_NAME_LEN-1] = '\0';
 
   // collector
-  strncpy(record->attributes.dump_collector, res->collector,
+  strncpy(record->collector_name, res->collector,
           BGPSTREAM_UTILS_STR_NAME_LEN);
-  record->attributes.dump_collector[BGPSTREAM_UTILS_STR_NAME_LEN-1] = '\0';
+  record->collector_name[BGPSTREAM_UTILS_STR_NAME_LEN-1] = '\0';
 
   // dump type
-  record->attributes.dump_type = res->record_type;
+  record->type = res->record_type;
 
   // dump time
-  record->attributes.dump_time = res->initial_time;
+  record->dump_time_sec = res->initial_time;
 
   return 0;
 }
@@ -287,7 +287,7 @@ int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
     // a failure
     *record = reader->rec_buf[PREFETCH_IDX];
     (*record)->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE;
-    assert((*record)->__format_data->data == NULL);
+    assert((*record)->__int->data == NULL);
     return BGPSTREAM_READER_STATUS_EOS;
   }
 

@@ -39,7 +39,7 @@
 
 /** @} */
 
-struct bgpstream_record_format_data {
+struct bgpstream_record_internal {
 
   /** Pointer to the format module that created this data */
   bgpstream_format_t *format;

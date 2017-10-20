@@ -48,7 +48,7 @@ bgpstream_resource_create(bgpstream_resource_transport_type_t transport_type,
                           uint32_t initial_time,
                           uint32_t duration,
                           const char *project, const char *collector,
-                          bgpstream_record_dump_type_t record_type)
+                          bgpstream_record_type_t record_type)
 {
   bgpstream_resource_t *res;
 

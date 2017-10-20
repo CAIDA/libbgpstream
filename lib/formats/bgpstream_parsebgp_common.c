@@ -183,7 +183,7 @@ handle_eof(bgpstream_parsebgp_decode_state_t *state, bgpstream_record_t *record,
            uint64_t skipped_cnt)
 {
   // just to be kind, set the record time to the dump time
-  record->attributes.record_time = record->attributes.dump_time;
+  record->time_sec = record->dump_time_sec;
 
   if (skipped_cnt == 0) {
     // signal that the previous record really was the last in the dump
@@ -370,7 +370,7 @@ int bgpstream_parsebgp_process_path_attrs(
   parsebgp_bgp_update_as_path_t *aspath = NULL;
   parsebgp_bgp_update_as_path_t *as4path = NULL;
 
-  bgpstream_as_path_clear(el->aspath);
+  bgpstream_as_path_clear(el->as_path);
   bgpstream_community_set_clear(el->communities);
 
   // AS Path(s)
@@ -382,7 +382,7 @@ int bgpstream_parsebgp_process_path_attrs(
       PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_PATH) {
     as4path = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_PATH].data.as_path;
   }
-  if (handle_as_paths(el->aspath, aspath, as4path) != 0) {
+  if (handle_as_paths(el->as_path, aspath, as4path) != 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not parse AS_PATH");
     return -1;
   }
@@ -432,7 +432,7 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
   bgpstream_parsebgp_prep_buf_cb_t *prep_cb,
   bgpstream_parsebgp_check_filter_cb_t *filter_cb)
 {
-  assert(record->__format_data->format == format);
+  assert(record->__int->format == format);
 
   int refill = 0;
   ssize_t fill_len = 0;
@@ -443,9 +443,7 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
 
   record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE;
 
-  // reset the record timestamps
-  record->attributes.record_time = 0;
-  record->attributes.record_time_usecs = 0;
+  assert(record->time_sec == 0);
 
   // TODO: break our beautiful structure and check the transport type, because
   // if it is kafka we really mustn't refill a partially filled buffer.
