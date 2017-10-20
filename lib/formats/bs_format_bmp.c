@@ -95,14 +95,14 @@ static int handle_peer_hdr(bgpstream_elem_t *el, parsebgp_bmp_msg_t *bmp)
   parsebgp_bmp_peer_hdr_t *hdr = &bmp->peer_hdr;
 
   // Timestamps
-  el->timestamp = hdr->ts_sec;
-  el->timestamp_usec = hdr->ts_usec;
+  el->orig_time_sec = hdr->ts_sec;
+  el->orig_time_usec = hdr->ts_usec;
 
   // Peer Address
-  COPY_IP(&el->peer_address, hdr->afi, hdr->addr, return -1);
+  COPY_IP(&el->peer_ip, hdr->afi, hdr->addr, return -1);
 
   // Peer ASN
-  el->peer_asnumber = hdr->asn;
+  el->peer_asn = hdr->asn;
 
   return 0;
 }

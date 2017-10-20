@@ -83,12 +83,12 @@ static int handle_table_dump(rec_data_t *rd,
 
   // legacy table dump format is basically an elem
   el->type = BGPSTREAM_ELEM_TYPE_RIB;
-  el->timestamp = mrt->timestamp_sec;
-  el->timestamp_usec = mrt->timestamp_usec; // not used
+  el->orig_time_sec = td->originated_time;
+  el->orig_time_usec = 0;
 
-  COPY_IP(&el->peer_address, mrt->subtype, &td->peer_ip, return -1);
+  COPY_IP(&el->peer_ip, mrt->subtype, &td->peer_ip, return -1);
 
-  el->peer_asnumber = td->peer_asn;
+  el->peer_asn = td->peer_asn;
 
   COPY_IP(&el->prefix.address, mrt->subtype, &td->prefix, return -1);
   el->prefix.mask_len = td->prefix_len;
@@ -117,6 +117,9 @@ static int handle_td2_rib_entry(rec_data_t *rd,
   peer_index_entry_t *bs_pie;
   khiter_t k;
 
+  rd->elem->orig_time_sec = re->originated_time;
+  rd->elem->orig_time_usec = 0;
+
   // look the peer up in the peer index table
   if ((k = kh_get(td2_peer, peer_table, re->peer_index)) ==
       kh_end(peer_table)) {
@@ -126,10 +129,10 @@ static int handle_td2_rib_entry(rec_data_t *rd,
     return -1;
   }
   bs_pie = &kh_val(peer_table, k);
-  bgpstream_addr_copy((bgpstream_ip_addr_t *)&rd->elem->peer_address,
+  bgpstream_addr_copy((bgpstream_ip_addr_t *)&rd->elem->peer_ip,
                       (bgpstream_ip_addr_t *)&bs_pie->peer_ip);
 
-  rd->elem->peer_asnumber = bs_pie->peer_asn;
+  rd->elem->peer_asn = bs_pie->peer_asn;
 
   if (bgpstream_parsebgp_process_next_hop(
         rd->elem, re->path_attrs.attrs,
@@ -153,8 +156,6 @@ handle_td2_afi_safi_rib(rec_data_t *rd, khash_t(td2_peer) * peer_table,
   // if this is the first time we've been called, prep the elem
   if (rd->next_re == 0) {
     rd->elem->type = BGPSTREAM_ELEM_TYPE_RIB;
-    rd->elem->timestamp = mrt->timestamp_sec;
-    rd->elem->timestamp_usec = mrt->timestamp_usec;
     COPY_IP(&rd->elem->prefix.address, afi, asr->prefix, return 0);
     rd->elem->prefix.mask_len = asr->prefix_len;
     // other elem fields are specific to the entry
@@ -168,8 +169,8 @@ handle_td2_afi_safi_rib(rec_data_t *rd, khash_t(td2_peer) * peer_table,
   }
 
   // since this is a generator, we just process one rib entry each time
-  if (handle_td2_rib_entry(rd, peer_table, mrt, afi, &asr->entries[rd->next_re]) !=
-      0) {
+  if (handle_td2_rib_entry(rd, peer_table, mrt, afi,
+                           &asr->entries[rd->next_re]) != 0) {
     return -1;
   }
 
@@ -230,10 +231,12 @@ static int handle_bgp4mp(rec_data_t *rd, parsebgp_mrt_msg_t *mrt)
   int rc = 0;
   parsebgp_mrt_bgp4mp_t *bgp4mp = mrt->types.bgp4mp;
 
-  rd->elem->timestamp = mrt->timestamp_sec;
-  rd->elem->timestamp_usec = mrt->timestamp_usec;
-  COPY_IP(&rd->elem->peer_address, bgp4mp->afi, bgp4mp->peer_ip, return 0);
-  rd->elem->peer_asnumber = bgp4mp->peer_asn;
+  // no originated time information in BGP4MP
+  rd->elem->orig_time_sec = 0;
+  rd->elem->orig_time_usec = 0;
+
+  COPY_IP(&rd->elem->peer_ip, bgp4mp->afi, bgp4mp->peer_ip, return 0);
+  rd->elem->peer_asn = bgp4mp->peer_asn;
   // other elem fields are specific to the message
 
   switch (mrt->subtype) {
