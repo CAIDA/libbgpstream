@@ -34,7 +34,7 @@ AM_CPPFLAGS = 	-I$(top_srcdir) \
 	 	-I$(top_srcdir)/common
 
 # Each _LTLIBRARIES variable is a list of libtool libraries to build.
-lib_LTLIBRARIES = libbgpstreamcaida.la
+lib_LTLIBRARIES = libbgpstream.la
 
 # Public header files that need to be installed in order for people to use the
 # library.
@@ -43,7 +43,7 @@ include_HEADERS = bgpstream.h		\
 		  bgpstream_record.h
 
 
-libbgpstreamcaida_la_SOURCES = 	\
+libbgpstream_la_SOURCES = 	\
 	bgpstream.h		\
 	bgpstream.c		\
 	bgpstream_constants.h	\
@@ -79,16 +79,16 @@ libbgpstreamcaida_la_SOURCES = 	\
 	bgpstream_transport_interface.h
 
 
-libbgpstreamcaida_la_CFLAGS = -Wall
+libbgpstream_la_CFLAGS = -Wall
 
-libbgpstreamcaida_la_LIBADD = \
+libbgpstream_la_LIBADD = \
 			$(top_builddir)/lib/datainterfaces/libbgpstream-data-interfaces.la \
 			$(top_builddir)/lib/transports/libbgpstream-transports.la \
 			$(top_builddir)/lib/formats/libbgpstream-formats.la \
 			$(top_builddir)/lib/utils/libbgpstream-utils.la \
 			$(top_builddir)/common/libcccommon.la
 
-libbgpstreamcaida_la_LDFLAGS = -version-info @LIBBGPSTREAM_MAJOR_VERSION@:@LIBBGPSTREAM_MINOR_VERSION@:@LIBBGPSTREAM_MID_VERSION@
+libbgpstream_la_LDFLAGS = -version-info @LIBBGPSTREAM_MAJOR_VERSION@:@LIBBGPSTREAM_MINOR_VERSION@:@LIBBGPSTREAM_MID_VERSION@
 
 ACLOCAL_AMFLAGS = -I m4
 
