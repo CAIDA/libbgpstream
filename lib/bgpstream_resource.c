@@ -135,57 +135,11 @@ bgpstream_resource_get_attr(bgpstream_resource_t *resource,
   }
 }
 
-const char * bgpstream_resource_get_hash(bgpstream_resource_t *res)
+int bgpstream_resource_hash_snprintf(char* buf, size_t buf_len, bgpstream_resource_t *res)
 {
-  // name format: PROJECT.COLLECTOR.TYPE.INIT-TIME.DURATION
-  char* hash;
-
-  char* project = res->project;
-  char* collector = res->collector;
-  char* record_type; // 0: update; 1: rib
-  char* initial_time; // zero error
-  char* duration;// 0: forever
-
-  if(res->record_type == 0){
-    record_type = "updates";
-  } else if (res->record_type == 1){
-    record_type = "rib";
-  } else {
-    return NULL;
-  }
-
-  if((duration = (char*) malloc (sizeof(char) * 16) )==NULL){
-    return NULL;
-  }
-  if((initial_time = (char*) malloc (sizeof(char) * 16) )==NULL){
-    return NULL;
-  }
-
-  snprintf(duration, 16, "%d", res->duration);
-  snprintf(initial_time, 16, "%d", res->initial_time);
-
-  if((hash = (char *) malloc( sizeof( char ) *
-                                        (
-                                         strlen(project) +
-                                         strlen(collector) +
-                                         strlen(record_type) +
-                                         strlen(initial_time) +
-                                         strlen(duration) +
-                                         10
-                                         )
-                                        )) == NULL) {
-    return NULL;
-  }
-
-  strcat(hash, project);
-  strcat(hash, ".");
-  strcat(hash, collector);
-  strcat(hash, ".");
-  strcat(hash, record_type);
-  strcat(hash, ".");
-  strcat(hash, initial_time);
-  strcat(hash, ".");
-  strcat(hash, duration);
-
-  return hash;
+  return snprintf(buf, buf_len,
+                  "%s.%s.%s.%"PRIu32".%"PRIu32,
+                  res->project, res->collector,
+                  res->record_type == BGPSTREAM_RIB ? "ribs" : "updates",
+                  res->initial_time, res->duration);
 }

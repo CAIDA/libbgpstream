@@ -75,12 +75,15 @@ int init_state(bgpstream_transport_t *transport){
   const char *file_suffix = ".gz";
   const char *lock_suffix = ".lock";
   const char *temp_suffix = ".temp";
-  const char *resource_hash;
+  char resource_hash[1024];
   char *cache_file_name;
   char *lock_file_name;
   char *temp_file_name;
 
-  if((resource_hash = bgpstream_resource_get_hash(transport->res)) == NULL){
+  if((bgpstream_resource_hash_snprintf(
+                        resource_hash,
+                        sizeof(resource_hash),
+                        transport->res)) >= sizeof(resource_hash)){
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not get resource hash for cache file naming.");
     return -1;
   }
