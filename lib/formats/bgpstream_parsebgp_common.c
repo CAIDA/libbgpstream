@@ -538,6 +538,11 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
     state->successful_read_cnt++;
     record->status = BGPSTREAM_RECORD_STATUS_VALID_RECORD;
   } else if (filter == BGPSTREAM_PARSEBGP_EOS) {
+    if (state->successful_read_cnt > 0) {
+      // we can't tell if it is the end since we're not going to read any more,
+      // so we'll call it the middle.
+      record->dump_pos = BGPSTREAM_DUMP_MIDDLE;
+    }
     record->status = BGPSTREAM_RECORD_STATUS_OUTSIDE_TIME_INTERVAL;
     return BGPSTREAM_FORMAT_OUTSIDE_TIME_INTERVAL;
   } else {
