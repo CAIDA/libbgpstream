@@ -22,7 +22,7 @@ TAGS
 # Compiled programs
 ChangeLog
 *.tar.gz
-tools/bgpreader-caida
+tools/bgpreader
 test/bgpstream-test
 test/bgpstream-test-filters
 test/bgpstream-test-utils-addr

@@ -41,19 +41,19 @@ check_PROGRAMS =  			\
 	bgpstream-test-utils-patricia
 
 bgpstream_test_SOURCES = bgpstream-test.c bgpstream_test.h
-bgpstream_test_LDADD   = $(top_builddir)/lib/libbgpstreamcaida.la
+bgpstream_test_LDADD   = $(top_builddir)/lib/libbgpstream.la
 
 bgpstream_test_filters_SOURCES = bgpstream-test-filters.c bgpstream_test.h
-bgpstream_test_filters_LDADD   = $(top_builddir)/lib/libbgpstreamcaida.la
+bgpstream_test_filters_LDADD   = $(top_builddir)/lib/libbgpstream.la
 
 bgpstream_test_utils_addr_SOURCES = bgpstream-test-utils-addr.c bgpstream_test.h
-bgpstream_test_utils_addr_LDADD   = $(top_builddir)/lib/libbgpstreamcaida.la
+bgpstream_test_utils_addr_LDADD   = $(top_builddir)/lib/libbgpstream.la
 
 bgpstream_test_utils_pfx_SOURCES = bgpstream-test-utils-pfx.c bgpstream_test.h
-bgpstream_test_utils_pfx_LDADD   = $(top_builddir)/lib/libbgpstreamcaida.la
+bgpstream_test_utils_pfx_LDADD   = $(top_builddir)/lib/libbgpstream.la
 
 bgpstream_test_utils_patricia_SOURCES = bgpstream-test-utils-patricia.c bgpstream_test.h
-bgpstream_test_utils_patricia_LDADD   = $(top_builddir)/lib/libbgpstreamcaida.la
+bgpstream_test_utils_patricia_LDADD   = $(top_builddir)/lib/libbgpstream.la
 
 ACLOCAL_AMFLAGS = -I m4
 
