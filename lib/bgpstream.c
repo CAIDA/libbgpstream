@@ -43,10 +43,6 @@ struct bgpstream {
 
 /* ========== INTERNAL METHODS (see bgpstream_int.h) ========== */
 
-bgpstream_filter_mgr_t *bgpstream_int_get_filter_mgr(bgpstream_t *bs)
-{
-  return bs->filter_mgr;
-}
 
 /* ========== PUBLIC METHODS (see bgpstream_int.h) ========== */
 
@@ -230,16 +226,10 @@ int bgpstream_start(bgpstream_t *bs)
 
 int bgpstream_get_next_record(bgpstream_t *bs, bgpstream_record_t **record)
 {
-  int rc;
   assert(bs->started);
   *record = NULL;
   // simply ask the DI manager to get us a record
-  rc = bgpstream_di_mgr_get_next_record(bs->di_mgr, record);
-  // inject a pointer to the bgpstream instance if it is a valid record ptr
-  if (*record != NULL) {
-    (*record)->__bs = bs;
-  }
-  return rc;
+  return bgpstream_di_mgr_get_next_record(bs->di_mgr, record);
 }
 
 /* destroy a bgpstream interface instance */

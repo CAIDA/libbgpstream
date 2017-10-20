@@ -42,7 +42,7 @@
 
 /** Opaque structure used internally by BGPStream to store raw data obtained
     from the underlying data resource. */
-typedef struct bgpstream_record_format_data bgpstream_record_format_data_t;
+typedef struct bgpstream_record_internal bgpstream_record_internal_t;
 
 /** @} */
 
@@ -213,11 +213,8 @@ typedef struct struct_bgpstream_record_t {
   /** Position of this record in the dump */
   bgpstream_dump_position_t dump_pos;
 
-  /** INTERNAL: pointer to the originating bgpstream instance */
-  struct bgpstream *__bs;
-
-  /** INTERNAL: raw data from the underlying resource */
-  bgpstream_record_format_data_t *__format_data;
+  /** INTERNAL BGPStream State. Do not use. */
+  bgpstream_record_internal_t *__int;
 
 } bgpstream_record_t;
 

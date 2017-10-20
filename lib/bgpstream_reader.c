@@ -287,7 +287,7 @@ int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
     // a failure
     *record = reader->rec_buf[PREFETCH_IDX];
     (*record)->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE;
-    assert((*record)->__format_data->data == NULL);
+    assert((*record)->__int->data == NULL);
     return BGPSTREAM_READER_STATUS_EOS;
   }
 

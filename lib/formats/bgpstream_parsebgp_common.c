@@ -432,7 +432,7 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
   bgpstream_parsebgp_prep_buf_cb_t *prep_cb,
   bgpstream_parsebgp_check_filter_cb_t *filter_cb)
 {
-  assert(record->__format_data->format == format);
+  assert(record->__int->format == format);
 
   int refill = 0;
   ssize_t fill_len = 0;
