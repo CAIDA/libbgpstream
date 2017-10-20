@@ -71,15 +71,19 @@ typedef struct cache_state {
 int init_state(bgpstream_transport_t *transport){
 
   // define variables
-  char *cache_folder_path;
-  char *file_suffix = ".gz";
-  char *lock_suffix = ".lock";
-  char *temp_suffix = ".temp";
-  char *uri_file_name = strrchr(transport->res->uri, '/');
+  const char *cache_folder_path;
+  const char *file_suffix = ".gz";
+  const char *lock_suffix = ".lock";
+  const char *temp_suffix = ".temp";
+  const char *resource_hash;
   char *cache_file_name;
   char *lock_file_name;
   char *temp_file_name;
 
+  if((resource_hash = bgpstream_resource_get_hash(transport->res)) == NULL){
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not get resource hash for cache file naming.");
+    return -1;
+  }
 
   // allocate memory for cache_state type in transport data structure
   if ((transport->state = malloc_zero(sizeof(cache_state_t))) == NULL) {
@@ -102,15 +106,16 @@ int init_state(bgpstream_transport_t *transport){
   if((cache_file_name = (char *) malloc( sizeof( char ) *
                                        (
                                         strlen(cache_folder_path) +
-                                        strlen(uri_file_name) +
-                                        strlen(file_suffix)+ 1
+                                        strlen(resource_hash) +
+                                        strlen(file_suffix)+ 2
                                         )
                                      )) == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not allocate file name variable space.");
     return -1;
   }
   strcpy(cache_file_name, cache_folder_path);
-  strcat(cache_file_name, uri_file_name);
+  strcat(cache_file_name, "/");
+  strcat(cache_file_name, resource_hash);
   strcat(cache_file_name, file_suffix);
   STATE->cache_file_path = cache_file_name;
 
@@ -118,15 +123,16 @@ int init_state(bgpstream_transport_t *transport){
   if((lock_file_name = (char *) malloc( sizeof( char ) *
                                          (
                                           strlen(cache_folder_path) +
-                                          strlen(uri_file_name) +
-                                          strlen(lock_suffix)+ 1
+                                          strlen(resource_hash) +
+                                          strlen(lock_suffix)+ 2
                                           )
                                          )) == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not allocate file name variable space.");
     return -1;
   }
   strcpy(lock_file_name, cache_folder_path);
-  strcat(lock_file_name, uri_file_name);
+  strcat(lock_file_name, "/");
+  strcat(lock_file_name, resource_hash);
   strcat(lock_file_name, lock_suffix);
   STATE->lock_file_path = lock_file_name;
 
@@ -134,15 +140,16 @@ int init_state(bgpstream_transport_t *transport){
   if((temp_file_name = (char *) malloc( sizeof( char ) *
                                         (
                                          strlen(cache_folder_path) +
-                                         strlen(uri_file_name) +
-                                         strlen(temp_suffix)+ 1
+                                         strlen(resource_hash) +
+                                         strlen(temp_suffix)+ 2
                                          )
                                         )) == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not allocate file name variable space.");
     return -1;
   }
   strcpy(temp_file_name, cache_folder_path);
-  strcat(temp_file_name, uri_file_name);
+  strcat(temp_file_name, "/");
+  strcat(temp_file_name, resource_hash);
   strcat(temp_file_name, temp_suffix);
   STATE->temp_file_path = temp_file_name;
 
