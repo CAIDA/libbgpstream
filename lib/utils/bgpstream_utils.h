@@ -37,8 +37,8 @@
  *
  * @{ */
 
-/** The maximum number of characters allowed in a collector name */
-#define BGPSTREAM_UTILS_STR_NAME_LEN 128
+/** The maximum number of characters allowed in a name string */
+#define BGPSTREAM_UTILS_STR_NAME_LEN 256
 
 /** @} */
 
