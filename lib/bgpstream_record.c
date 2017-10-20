@@ -71,8 +71,8 @@ void bgpstream_record_clear(bgpstream_record_t *record)
   bgpstream_format_clear_data(record);
 
   // reset the record timestamps
-  record->attrs.time_sec = 0;
-  record->attrs.time_usec = 0;
+  record->time_sec = 0;
+  record->time_usec = 0;
 }
 
 void bgpstream_record_print_mrt_data(bgpstream_record_t *const record)
@@ -443,7 +443,7 @@ char *bgpstream_record_snprintf(char *buf, size_t len,
 
   /* Record type */
   if ((c = bgpstream_record_type_snprintf(buf_p, B_REMAIN,
-                                          record->attrs.type)) < 0) {
+                                          record->type)) < 0) {
     return NULL;
   }
   written += c;
@@ -464,9 +464,9 @@ char *bgpstream_record_snprintf(char *buf, size_t len,
 
   /* Record timestamp, project, collector, router names */
   c = snprintf(buf_p, B_REMAIN, "%" PRIu32 ".%06" PRIu32 "|%s|%s|%s|",
-               record->attrs.time_sec, record->attrs.time_usec,
-               record->attrs.project_name, record->attrs.collector_name,
-               record->attrs.router_name);
+               record->time_sec, record->time_usec,
+               record->project_name, record->collector_name,
+               record->router_name);
   written += c;
   buf_p += c;
 
@@ -474,8 +474,8 @@ char *bgpstream_record_snprintf(char *buf, size_t len,
     return NULL;
 
   /* Router IP */
-  if (record->attrs.router_ip.version != 0) {
-    if (bgpstream_addr_ntop(buf_p, B_REMAIN, &record->attrs.router_ip) ==
+  if (record->router_ip.version != 0) {
+    if (bgpstream_addr_ntop(buf_p, B_REMAIN, &record->router_ip) ==
         NULL) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed Router IP address");
       return NULL;
@@ -496,7 +496,7 @@ char *bgpstream_record_snprintf(char *buf, size_t len,
     return NULL;
 
   /* dump time */
-  c = snprintf(buf_p, B_REMAIN, "|%" PRIu32, record->attrs.dump_time_sec);
+  c = snprintf(buf_p, B_REMAIN, "|%" PRIu32, record->dump_time_sec);
   written += c;
   buf_p += c;
 
@@ -519,7 +519,7 @@ char *bgpstream_record_elem_snprintf(char *buf, size_t len,
 
   /* Record type */
   if ((c = bgpstream_record_type_snprintf(buf_p, B_REMAIN,
-                                          record->attrs.type)) < 0) {
+                                          record->type)) < 0) {
     return NULL;
   }
   written += c;
@@ -536,9 +536,9 @@ char *bgpstream_record_elem_snprintf(char *buf, size_t len,
 
   /* Record timestamp, project, collector, router names */
   c = snprintf(buf_p, B_REMAIN, "%" PRIu32 ".%06" PRIu32 "|%s|%s|%s|",
-               record->attrs.time_sec, record->attrs.time_usec,
-               record->attrs.project_name, record->attrs.collector_name,
-               record->attrs.router_name);
+               record->time_sec, record->time_usec,
+               record->project_name, record->collector_name,
+               record->router_name);
   written += c;
   buf_p += c;
 
@@ -546,8 +546,8 @@ char *bgpstream_record_elem_snprintf(char *buf, size_t len,
     return NULL;
 
   /* Router IP */
-  if (record->attrs.router_ip.version != 0) {
-    if (bgpstream_addr_ntop(buf_p, B_REMAIN, &record->attrs.router_ip) ==
+  if (record->router_ip.version != 0) {
+    if (bgpstream_addr_ntop(buf_p, B_REMAIN, &record->router_ip) ==
         NULL) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed Router IP address");
       return NULL;

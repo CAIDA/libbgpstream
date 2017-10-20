@@ -343,12 +343,12 @@ populate_filter_cb(bgpstream_format_t *format, bgpstream_record_t *record,
   }
 
   // set record timestamps
-  ts_sec = record->attrs.time_sec = msg->types.mrt->timestamp_sec;
-  record->attrs.time_usec = msg->types.mrt->timestamp_usec;
+  ts_sec = record->time_sec = msg->types.mrt->timestamp_sec;
+  record->time_usec = msg->types.mrt->timestamp_usec;
 
   // ensure the router fields are unset
-  record->attrs.router_name[0] = '\0';
-  record->attrs.router_ip.version = 0;
+  record->router_name[0] = '\0';
+  record->router_ip.version = 0;
 
   // check the filters
   // TODO: if this is a BGP4MP or TD1 message (UPDATE), then we can do some

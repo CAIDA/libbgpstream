@@ -551,7 +551,7 @@ int main(int argc, char *argv[])
     if (elem_output_on) {
       /* check if the record is of type RIB, in case extract the ID */
       /* print the RIB start line */
-      if (bs_record->attrs.type == BGPSTREAM_RIB &&
+      if (bs_record->type == BGPSTREAM_RIB &&
           bs_record->dump_pos == BGPSTREAM_DUMP_START &&
           print_record(bs_record) != 0) {
         goto err;
@@ -563,7 +563,7 @@ int main(int argc, char *argv[])
         }
       }
       /* check if end of RIB has been reached */
-      if (bs_record->attrs.type == BGPSTREAM_RIB &&
+      if (bs_record->type == BGPSTREAM_RIB &&
           bs_record->dump_pos == BGPSTREAM_DUMP_END &&
           print_record(bs_record) != 0) {
         goto err;
