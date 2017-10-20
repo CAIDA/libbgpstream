@@ -78,10 +78,7 @@ AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
 AC_PROG_LIBTOOL
-AC_PROG_CXX
-AM_PROG_LIBTOOL
-# TODO: see if we can remove C99 requirement
-AC_PROG_CC_C99 # C99 is required because of bool
+AC_PROG_CC_C99
 
 AC_SYS_LARGEFILE
 
