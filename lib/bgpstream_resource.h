@@ -171,4 +171,12 @@ const char *
 bgpstream_resource_get_attr(bgpstream_resource_t *resource,
                             bgpstream_resource_attr_type_t type);
 
+/** Get a unique hash of the resource
+ *
+ * @param resource      pointer to the resource object
+ * @return pointer to a unique hash of this resource
+ */
+const char *
+bgpstream_resource_get_hash(bgpstream_resource_t *resource);
+
 #endif /* __BGPSTREAM_RESOURCE_H */
