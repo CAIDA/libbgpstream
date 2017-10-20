@@ -30,6 +30,7 @@
 #include "bgpstream_int.h"
 #include "bgpstream_log.h"
 #include "bgpstream_record.h"
+#include "bgpstream_format_interface.h" //< to access filter mgr
 #include "utils.h"
 
 bgpstream_record_t *bgpstream_record_create(bgpstream_format_t *format)
@@ -38,13 +39,13 @@ bgpstream_record_t *bgpstream_record_create(bgpstream_format_t *format)
 
   if ((record = (bgpstream_record_t *)malloc_zero(
          sizeof(bgpstream_record_t))) == NULL ||
-      (record->__format_data =
-         malloc_zero(sizeof(bgpstream_record_format_data_t))) == NULL) {
+      (record->__int =
+         malloc_zero(sizeof(bgpstream_record_internal_t))) == NULL) {
     bgpstream_record_destroy(record);
     return NULL;
   }
 
-  record->__format_data->format = format;
+  record->__int->format = format;
   bgpstream_format_init_data(record);
 
   return record;
@@ -58,7 +59,7 @@ void bgpstream_record_destroy(bgpstream_record_t *record)
 
   bgpstream_format_destroy_data(record);
 
-  free(record->__format_data);
+  free(record->__int);
   free(record);
 }
 
@@ -133,8 +134,7 @@ endmatch:
 static int elem_check_filters(bgpstream_record_t *record,
                               bgpstream_elem_t *elem)
 {
-  bgpstream_filter_mgr_t *filter_mgr =
-    bgpstream_int_get_filter_mgr(record->__bs);
+  bgpstream_filter_mgr_t *filter_mgr = record->__int->format->filter_mgr;
   int pass = 0;
 
   /* First up, check if this element is the right type */
@@ -297,12 +297,12 @@ int bgpstream_record_get_next_elem(bgpstream_record_t *record,
   *elemp = NULL;
 
   if (record == NULL || record->status != BGPSTREAM_RECORD_STATUS_VALID_RECORD ||
-      record->__format_data->format == NULL) {
+      record->__int->format == NULL) {
     return 0; // treat as end-of-elems
   }
 
   while (elem == NULL) {
-    if ((rc = bgpstream_format_get_next_elem(record->__format_data->format,
+    if ((rc = bgpstream_format_get_next_elem(record->__int->format,
                                              record, &elem)) <= 0) {
       // either error or end-of-elems
       return rc;

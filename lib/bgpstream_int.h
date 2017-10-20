@@ -28,7 +28,4 @@
 #include "bgpstream_filter.h"
 #include "bgpstream_record_int.h"
 
-/** Get a borrowed pointer to the filter manager currently in use */
-bgpstream_filter_mgr_t *bgpstream_int_get_filter_mgr(bgpstream_t *bs);
-
 #endif /* _BGPSTREAM_INT_H */

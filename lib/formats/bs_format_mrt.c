@@ -31,7 +31,7 @@
 
 #define STATE ((state_t*)(format->state))
 
-#define RDATA ((rec_data_t *)(record->__format_data->data))
+#define RDATA ((rec_data_t *)(record->__int->data))
 
 typedef struct peer_index_entry {
 
