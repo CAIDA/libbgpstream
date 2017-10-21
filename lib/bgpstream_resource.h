@@ -74,7 +74,7 @@ typedef enum bgpstream_resource_attr_type {
   BGPSTREAM_RESOURCE_ATTR_KAFKA_INIT_OFFSET = 2,
 
   /** The path toward a local cache */
-  BGPSTREAM_RESOURCE_ATTR_CACHE_FOLDER_PATH = 3,
+  BGPSTREAM_RESOURCE_ATTR_CACHE_DIR_PATH = 3,
 
   /** INTERNAL: The total number of attribute types in use */
   _BGPSTREAM_RESOURCE_ATTR_CNT,
