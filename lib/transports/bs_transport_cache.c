@@ -31,13 +31,14 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <zlib.h>
 
 #define STATE ((cache_state_t*)(transport->state))
 
-typedef struct cache_state {
-  /* user-provided options: */
+#define CACHE_FILE_SUFFIX ".cache"
+#define CACHE_LOCK_FILE_SUFFIX ".lock"
+#define CACHE_TEMP_FILE_SUFFIX ".temp"
 
+typedef struct cache_state {
   /** A 0/1 value indicates whether current read is from a local cache
       file or a remote transport file:
       0 - read from remote;
@@ -45,8 +46,8 @@ typedef struct cache_state {
   */
   int write_to_cache;
 
-  /** absolute path for bgpstream local cache folder */
-  char* cache_folder_path;
+  /** absolute path for bgpstream local cache directory */
+  char* cache_directory_path;
 
   /** absolute path for the local cache file */
   char* cache_file_path;
@@ -71,90 +72,82 @@ typedef struct cache_state {
 int init_state(bgpstream_transport_t *transport){
 
   // define variables
-  const char *cache_folder_path;
-  const char *file_suffix = ".gz";
-  const char *lock_suffix = ".lock";
-  const char *temp_suffix = ".temp";
   char resource_hash[1024];
-  char *cache_file_name;
-  char *lock_file_name;
-  char *temp_file_name;
+  int len_cache_file_path;
+  int len_lock_file_path;
+  int len_temp_file_path;
 
   if((bgpstream_resource_hash_snprintf(
                         resource_hash,
                         sizeof(resource_hash),
                         transport->res)) >= sizeof(resource_hash)){
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not get resource hash for cache file naming.");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Could not get resource hash for cache file naming.");
     return -1;
   }
 
   // allocate memory for cache_state type in transport data structure
   if ((transport->state = malloc_zero(sizeof(cache_state_t))) == NULL) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not allocate memory for cache_state_t.");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Could not allocate memory for cache_state_t.");
     return -1;
   }
 
   STATE->reader = NULL;
   STATE->writer = NULL;
 
-  // set storage folder path
-  if ((STATE->cache_folder_path = strdup(bgpstream_resource_get_attr(
-          transport->res, BGPSTREAM_RESOURCE_ATTR_CACHE_FOLDER_PATH))) == NULL) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Could not local cache folder path in resource.");
+  // set storage directory path
+  if ((STATE->cache_directory_path = strdup(bgpstream_resource_get_attr(
+          transport->res, BGPSTREAM_RESOURCE_ATTR_CACHE_DIR_PATH))) == NULL) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Could not read local cache directory path in resource.");
     return -1;
   }
-  cache_folder_path = STATE->cache_folder_path;
 
-  // set cache file name
-  if((cache_file_name = (char *) malloc( sizeof( char ) *
-                                       (
-                                        strlen(cache_folder_path) +
-                                        strlen(resource_hash) +
-                                        strlen(file_suffix)+ 2
-                                        )
-                                     )) == NULL) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not allocate file name variable space.");
+  // set cache file path
+  len_cache_file_path =
+    strlen(STATE->cache_directory_path) +
+    strlen(resource_hash) +
+    strlen(CACHE_FILE_SUFFIX)+ 2;
+  if((STATE->cache_file_path = (char *) malloc( sizeof( char ) * len_cache_file_path )
+      ) == NULL) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Could not allocate space for cache file name variable.");
     return -1;
   }
-  strcpy(cache_file_name, cache_folder_path);
-  strcat(cache_file_name, "/");
-  strcat(cache_file_name, resource_hash);
-  strcat(cache_file_name, file_suffix);
-  STATE->cache_file_path = cache_file_name;
+
+  if(
+     (snprintf(STATE->cache_file_path, len_cache_file_path,
+              "%s/%s%s", STATE->cache_directory_path, resource_hash, CACHE_FILE_SUFFIX))
+      >= len_cache_file_path){
+    printf("cache_file_path %s\n",STATE->cache_file_path);
+    bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Could not set cache file name variable.");
+    return-1;
+  }
 
   // set lock file name
-  if((lock_file_name = (char *) malloc( sizeof( char ) *
-                                         (
-                                          strlen(cache_folder_path) +
-                                          strlen(resource_hash) +
-                                          strlen(lock_suffix)+ 2
-                                          )
-                                         )) == NULL) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not allocate file name variable space.");
+  len_lock_file_path = strlen(STATE->cache_file_path) + strlen(CACHE_LOCK_FILE_SUFFIX)+ 2;
+  if((STATE->lock_file_path = (char *) malloc( sizeof( char ) * len_lock_file_path)) == NULL) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Could not allocate space for lock file name variable.");
     return -1;
   }
-  strcpy(lock_file_name, cache_folder_path);
-  strcat(lock_file_name, "/");
-  strcat(lock_file_name, resource_hash);
-  strcat(lock_file_name, lock_suffix);
-  STATE->lock_file_path = lock_file_name;
 
-  // set temp file name
-  if((temp_file_name = (char *) malloc( sizeof( char ) *
-                                        (
-                                         strlen(cache_folder_path) +
-                                         strlen(resource_hash) +
-                                         strlen(temp_suffix)+ 2
-                                         )
-                                        )) == NULL) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not allocate file name variable space.");
+  if((snprintf(STATE->lock_file_path, len_lock_file_path,
+               "%s%s", STATE->cache_file_path, CACHE_LOCK_FILE_SUFFIX) )
+     >= len_lock_file_path){
+    bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Could not set lock file name variable.");
+    return-1;
+  }
+
+  // set lock file name
+  len_temp_file_path = strlen(STATE->cache_file_path) + strlen(CACHE_TEMP_FILE_SUFFIX)+ 2;
+  if((STATE->temp_file_path = (char *) malloc( sizeof( char ) * len_temp_file_path)) == NULL) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Could not allocate space for temp file name variable.");
     return -1;
   }
-  strcpy(temp_file_name, cache_folder_path);
-  strcat(temp_file_name, "/");
-  strcat(temp_file_name, resource_hash);
-  strcat(temp_file_name, temp_suffix);
-  STATE->temp_file_path = temp_file_name;
+
+  if((snprintf(STATE->temp_file_path, len_temp_file_path,
+               "%s%s", STATE->cache_file_path, CACHE_TEMP_FILE_SUFFIX) )
+     >= len_temp_file_path){
+    bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Could not set temp file name variable.");
+    return-1;
+  }
 
   return 0;
 }
@@ -180,7 +173,7 @@ int bs_transport_cache_create(bgpstream_transport_t *transport)
     STATE->write_to_cache = 0;
 
     if ((STATE->reader = wandio_create(STATE->cache_file_path)) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for reading",
+      bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Could not open %s for reading",
                     STATE->cache_file_path);
       return -1;
     }
@@ -197,14 +190,14 @@ int bs_transport_cache_create(bgpstream_transport_t *transport)
 
       // ZLib default compression level is 6: https://zlib.net/manual.html
       if ((STATE->writer = wandio_wcreate(STATE->temp_file_path, WANDIO_COMPRESS_ZLIB, 6, O_CREAT)) == NULL) {
-        bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for local caching", STATE->temp_file_path);
+        bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Could not open %s for local caching", STATE->temp_file_path);
         return -1;
       }
     }
 
     // in either case: open reader for remote file
     if ((STATE->reader = wandio_create(transport->res->uri)) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for reading",
+      bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Could not open %s for reading",
                     transport->res->uri);
       return -1;
     }
@@ -219,12 +212,34 @@ int64_t bs_transport_cache_read(bgpstream_transport_t *transport,
 
   int64_t ret = wandio_read(STATE->reader, buffer, len);
 
-  // if write_to_cache is set to 1
+
+  // if cache file is opened and ready to write into
   if(STATE->write_to_cache == 1){
-    if(STATE->writer != NULL){
-      wandio_wwrite(STATE->writer, buffer, len);
-    } else{
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Error writing cache to %s.", STATE->cache_file_path);
+
+    if(ret == 0){
+      // EOF reached.
+
+      // close cache writer
+      wandio_wdestroy(STATE->writer);
+      STATE->writer = NULL;
+
+      // rename temp file to cache file
+      if(rename(STATE->temp_file_path, STATE->cache_file_path) !=0){
+        bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: renaming failed for file %s.", STATE->temp_file_path);
+      }
+
+      // remove lock file
+      if(remove(STATE->lock_file_path) !=0){
+        bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: removing lock file failed %s.", STATE->lock_file_path);
+      }
+
+    } else {
+      // has more content to write.
+
+      if((wandio_wwrite(STATE->writer, buffer, ret))!=ret){
+        bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: incomplete write of cache content.");
+        return -1;
+      }
     }
   }
 
@@ -233,9 +248,6 @@ int64_t bs_transport_cache_read(bgpstream_transport_t *transport,
 
 void bs_transport_cache_destroy(bgpstream_transport_t *transport)
 {
-
-  char* md5_digest;
-  int i;
 
   if (transport->state == NULL) {
     return;
@@ -247,18 +259,7 @@ void bs_transport_cache_destroy(bgpstream_transport_t *transport)
   }
 
   if (STATE->writer != NULL) {
-    // finished writing cache file
-
-    // rename temp file to cache file
-    if(rename(STATE->temp_file_path, STATE->cache_file_path) !=0){
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Error renaming finished file %s.", STATE->temp_file_path);
-    }
-
-    // remove lock file
-    if(remove(STATE->lock_file_path) !=0){
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Error removing lock file %s.", STATE->lock_file_path);
-    }
-
+    // the writer should already be closed when the reader reaches EOF
     wandio_wdestroy(STATE->writer);
     STATE->writer = NULL;
   }
