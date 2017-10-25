@@ -94,21 +94,21 @@ static bgpstream_data_interface_option_t options[] = {
   },
   /* Data type */
   {
-    BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
+    BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
     OPTION_DATA_TYPE,                    // internal ID
     "data-type",                         // name
     "data type (mrt/bmp) (default: bmp)",
   },
   /* Project */
   {
-    BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
+    BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
     OPTION_PROJECT,                      // internal ID
     "project",                           // name
     "set project name (default: unset)",
   },
   /* Collector */
   {
-    BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
+    BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
     OPTION_COLLECTOR,                    // internal ID
     "collector",                         // name
     "set collector name (default: unset)",
