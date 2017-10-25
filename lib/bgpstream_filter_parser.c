@@ -22,6 +22,8 @@ const char *bgpstream_filter_type_to_string(bgpstream_filter_type_t type)
     return "Project";
   case BGPSTREAM_FILTER_TYPE_COLLECTOR:
     return "Collector";
+  case BGPSTREAM_FILTER_TYPE_ROUTER:
+    return "Router";
   case BGPSTREAM_FILTER_TYPE_ELEM_ASPATH:
     return "AS Path";
   case BGPSTREAM_FILTER_TYPE_ELEM_EXTENDED_COMMUNITY:
@@ -58,6 +60,7 @@ static void instantiate_filter(bgpstream_t *bs, bgpstream_filter_item_t *item)
   case BGPSTREAM_FILTER_TYPE_ELEM_PEER_ASN:
   case BGPSTREAM_FILTER_TYPE_PROJECT:
   case BGPSTREAM_FILTER_TYPE_COLLECTOR:
+  case BGPSTREAM_FILTER_TYPE_ROUTER:
   case BGPSTREAM_FILTER_TYPE_ELEM_ASPATH:
   case BGPSTREAM_FILTER_TYPE_ELEM_IP_VERSION:
   case BGPSTREAM_FILTER_TYPE_ELEM_TYPE:
@@ -93,6 +96,14 @@ static int bgpstream_parse_filter_term(char *term, fp_state_t *state,
     /* Collector */
     bgpstream_log(BGPSTREAM_LOG_FINE, "Got a collector term");
     curr->termtype = BGPSTREAM_FILTER_TYPE_COLLECTOR;
+    *state = VALUE;
+    return *state;
+  }
+
+  if (strcmp(term, "router") == 0 || strcmp(term, "rout") == 0) {
+    /* Router */
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Got a router term");
+    curr->termtype = BGPSTREAM_FILTER_TYPE_ROUTER;
     *state = VALUE;
     return *state;
   }

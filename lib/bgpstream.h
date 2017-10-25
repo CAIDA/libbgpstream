@@ -68,46 +68,49 @@ typedef struct bgpstream bgpstream_t;
 typedef enum {
 
   /** Filter records based on associated project (e.g. 'ris') */
-  BGPSTREAM_FILTER_TYPE_PROJECT = 1,
+  BGPSTREAM_FILTER_TYPE_PROJECT,
 
   /** Filter records based on collector (e.g. 'rrc01') */
-  BGPSTREAM_FILTER_TYPE_COLLECTOR = 2,
+  BGPSTREAM_FILTER_TYPE_COLLECTOR,
+
+  /** Filter records based on router (e.g. 'route-views.routeviews.org') */
+  BGPSTREAM_FILTER_TYPE_ROUTER,
 
   /** Filter records based on record type (e.g. 'updates') */
-  BGPSTREAM_FILTER_TYPE_RECORD_TYPE = 3,
+  BGPSTREAM_FILTER_TYPE_RECORD_TYPE,
 
   /** Filter elems based on peer ASN  */
-  BGPSTREAM_FILTER_TYPE_ELEM_PEER_ASN = 4,
+  BGPSTREAM_FILTER_TYPE_ELEM_PEER_ASN,
 
   /** Filter elems based on prefix  */
-  BGPSTREAM_FILTER_TYPE_ELEM_PREFIX = 5,
+  BGPSTREAM_FILTER_TYPE_ELEM_PREFIX,
 
   /** Filter elems based on the community attribute  */
-  BGPSTREAM_FILTER_TYPE_ELEM_COMMUNITY = 6,
+  BGPSTREAM_FILTER_TYPE_ELEM_COMMUNITY,
 
   /** Filter elems based on exact prefix */
-  BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_EXACT = 7,
+  BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_EXACT,
 
   /** Filter elems based on a more specific prefix */
-  BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_MORE = 8,
+  BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_MORE,
 
   /** Filter elems based on a less specific prefix */
-  BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_LESS = 9,
+  BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_LESS,
 
   /** Filter elems based on any matching prefix, regardless of specificity */
-  BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_ANY = 10,
+  BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_ANY,
 
   /** Filter elems based on an AS path regex */
-  BGPSTREAM_FILTER_TYPE_ELEM_ASPATH = 11,
+  BGPSTREAM_FILTER_TYPE_ELEM_ASPATH,
 
   /** Filter elems based on an extended community attribute */
-  BGPSTREAM_FILTER_TYPE_ELEM_EXTENDED_COMMUNITY = 12,
+  BGPSTREAM_FILTER_TYPE_ELEM_EXTENDED_COMMUNITY,
 
   /** Filter elems based on the IP address version */
-  BGPSTREAM_FILTER_TYPE_ELEM_IP_VERSION = 13,
+  BGPSTREAM_FILTER_TYPE_ELEM_IP_VERSION,
 
   /** Filter elems based on the element type, e.g. withdrawals, announcements */
-  BGPSTREAM_FILTER_TYPE_ELEM_TYPE = 14
+  BGPSTREAM_FILTER_TYPE_ELEM_TYPE,
 
 } bgpstream_filter_type_t;
 

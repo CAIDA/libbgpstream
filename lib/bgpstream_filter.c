@@ -190,6 +190,9 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
   case BGPSTREAM_FILTER_TYPE_COLLECTOR:
     v = &bs_filter_mgr->collectors;
     break;
+  case BGPSTREAM_FILTER_TYPE_ROUTER:
+    v = &bs_filter_mgr->routers;
+    break;
   case BGPSTREAM_FILTER_TYPE_RECORD_TYPE:
     v = &bs_filter_mgr->bgp_types;
     break;
@@ -300,6 +303,10 @@ void bgpstream_filter_mgr_destroy(bgpstream_filter_mgr_t *bs_filter_mgr)
   // collectors
   if (bs_filter_mgr->collectors != NULL) {
     bgpstream_str_set_destroy(bs_filter_mgr->collectors);
+  }
+  // routers
+  if (bs_filter_mgr->routers != NULL) {
+    bgpstream_str_set_destroy(bs_filter_mgr->routers);
   }
   // bgp_types
   if (bs_filter_mgr->bgp_types != NULL) {

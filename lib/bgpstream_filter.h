@@ -53,6 +53,7 @@ typedef khash_t(collector_ts) collector_ts_t;
 typedef struct struct_bgpstream_filter_mgr_t {
   bgpstream_str_set_t *projects;
   bgpstream_str_set_t *collectors;
+  bgpstream_str_set_t *routers;
   bgpstream_str_set_t *bgp_types;
   bgpstream_str_set_t *aspath_exprs;
   bgpstream_id_set_t *peer_asns;
