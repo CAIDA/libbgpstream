@@ -109,6 +109,32 @@ static int handle_peer_hdr(bgpstream_elem_t *el, parsebgp_bmp_msg_t *bmp)
 
 /* -------------------- RECORD FILTERING -------------------- */
 
+static int check_filters(bgpstream_record_t *record,
+                         bgpstream_filter_mgr_t *filter_mgr)
+{
+  // Collector
+  if (filter_mgr->collectors != NULL) {
+    // TODO: this is a little inefficient, especially if the filtering has been
+    // done at the topic (or even broker) level. fixme
+    if (bgpstream_str_set_exists(filter_mgr->collectors,
+                                 record->collector_name) == 0) {
+      return 0;
+    }
+  }
+
+  // Router
+  if (filter_mgr->routers != NULL) {
+    // TODO: this is a little inefficient, especially if the filtering has been
+    // done at the topic (or even broker) level. fixme
+    if (bgpstream_str_set_exists(filter_mgr->routers, record->router_name) ==
+        0) {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
 static int is_wanted_time(uint32_t record_time,
                           bgpstream_filter_mgr_t *filter_mgr)
 {
@@ -289,6 +315,11 @@ populate_filter_cb(bgpstream_format_t *format,
   // and we are only interested in UPDATE messages
   if (bmp->type == PARSEBGP_BMP_TYPE_ROUTE_MON &&
       bmp->types.route_mon->type != PARSEBGP_BGP_TYPE_UPDATE) {
+    return BGPSTREAM_PARSEBGP_FILTER_OUT;
+  }
+
+  // is this from a collector and router that we care about?
+  if (check_filters(record, format->filter_mgr) == 0) {
     return BGPSTREAM_PARSEBGP_FILTER_OUT;
   }
 
