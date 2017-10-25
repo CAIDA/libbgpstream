@@ -93,7 +93,7 @@ struct bgpstream_transport {
   /** An opaque pointer to transport-specific state if needed by the
       transport */
   void *state;
-
+  
   /** }@ */
 };
 

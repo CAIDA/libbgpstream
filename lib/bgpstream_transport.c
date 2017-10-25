@@ -28,6 +28,7 @@
 
 // WITH_TRANSPORT_FILE
 #include "bs_transport_file.h"
+#include "bs_transport_cache.h"
 
 #ifdef WITH_TRANSPORT_KAFKA
 #include "bs_transport_kafka.h"
@@ -49,6 +50,8 @@ static const transport_create_func_t create_functions[] = {
 #else
   NULL,
 #endif
+
+ bs_transport_cache_create,
 
 };
 

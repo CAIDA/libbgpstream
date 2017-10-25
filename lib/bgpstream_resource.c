@@ -25,6 +25,7 @@
 #include "utils.h"
 #include "bgpstream_resource.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <assert.h>
 
@@ -134,3 +135,11 @@ bgpstream_resource_get_attr(bgpstream_resource_t *resource,
   }
 }
 
+int bgpstream_resource_hash_snprintf(char* buf, size_t buf_len, bgpstream_resource_t *res)
+{
+  return snprintf(buf, buf_len,
+                  "%s.%s.%s.%"PRIu32".%"PRIu32,
+                  res->project, res->collector,
+                  res->record_type == BGPSTREAM_RIB ? "ribs" : "updates",
+                  res->initial_time, res->duration);
+}

@@ -39,6 +39,9 @@ typedef enum {
   /** Data is streamed via websockets */
   //  BGPSTREAM_RESOURCE_TRANSPORT_WEBSOCKET = 2,
 
+  /** Data is locally cached */
+  BGPSTREAM_RESOURCE_TRANSPORT_CACHE = 2,
+
 } bgpstream_resource_transport_type_t;
 
 /** Encapsulation/encoding formats supported */
@@ -69,6 +72,9 @@ typedef enum bgpstream_resource_attr_type {
 
   /** The initial offset to read from within the topic ("earliest", "latest") */
   BGPSTREAM_RESOURCE_ATTR_KAFKA_INIT_OFFSET = 2,
+
+  /** The path toward a local cache */
+  BGPSTREAM_RESOURCE_ATTR_CACHE_DIR_PATH = 3,
 
   /** INTERNAL: The total number of attribute types in use */
   _BGPSTREAM_RESOURCE_ATTR_CNT,
@@ -164,5 +170,14 @@ int bgpstream_resource_set_attr(bgpstream_resource_t *resource,
 const char *
 bgpstream_resource_get_attr(bgpstream_resource_t *resource,
                             bgpstream_resource_attr_type_t type);
+
+/** Get a unique hash of the resource
+ *
+ * @param buf           pointer to the buffer that stores the hash value
+ * @param buf_len       buffer size
+ * @param resource      pointer to the resource object
+ * @return pointer to a unique hash of this resource
+ */
+int bgpstream_resource_hash_snprintf(char* buf, size_t buf_len, bgpstream_resource_t *resource);
 
 #endif /* __BGPSTREAM_RESOURCE_H */

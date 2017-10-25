@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <wandio.h>
 
@@ -43,6 +44,7 @@
 enum {
   OPTION_BROKER_URL,
   OPTION_PARAM,
+  OPTION_CACHE_DIR,
 };
 
 /* define the options this data interface accepts */
@@ -60,6 +62,13 @@ static bgpstream_data_interface_option_t options[] = {
     OPTION_PARAM, // internal ID
     "param", // name
     "Additional Broker GET parameter*", // description
+  },
+  /* Broker Cache */
+  {
+    BGPSTREAM_DATA_INTERFACE_BROKER, // interface ID
+    OPTION_CACHE_DIR, // internal ID
+    "cache_dir", // name
+    "Enable local cache at provided directory.", // description
   },
 };
 
@@ -93,6 +102,9 @@ typedef struct bsdi_broker_state {
 
   // Number of parameters in the params array
   int params_cnt;
+
+  // User-specified location for cache: NULL means cache disabled
+  char *cache_dir;
 
   /* internal state: */
 
@@ -262,6 +274,11 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
   uint32_t duration = 0;
   int duration_set = 0;
 
+  // local cache related variables.
+  bgpstream_resource_t *res = NULL;
+  int transport_type = 0;
+
+
   if (count == 0) {
     fprintf(stderr, "ERROR: Empty JSON response from broker\n");
     goto retry;
@@ -414,8 +431,9 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
           STATE->current_window_end = (initial_time + duration);
         }
 
+        transport_type = STATE->cache_dir == NULL? BGPSTREAM_RESOURCE_TRANSPORT_FILE: BGPSTREAM_RESOURCE_TRANSPORT_CACHE;
         if (bgpstream_resource_mgr_push(BSDI_GET_RES_MGR(di),
-                                        BGPSTREAM_RESOURCE_TRANSPORT_FILE,
+                                        transport_type,
                                         BGPSTREAM_RESOURCE_FORMAT_MRT,
                                         url,
                                         initial_time,
@@ -423,8 +441,13 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                                         project,
                                         collector,
                                         type,
-                                        NULL) < 0) {
+                                        &res) < 0) {
           goto err;
+        }
+        // set cache attribute to resource
+        if (transport_type == BGPSTREAM_RESOURCE_TRANSPORT_CACHE &&
+            bgpstream_resource_set_attr(res, BGPSTREAM_RESOURCE_ATTR_CACHE_DIR_PATH, STATE->cache_dir) != 0) {
+          return -1;
         }
       }
     }
@@ -671,6 +694,17 @@ int bsdi_broker_set_option(bsdi_t *di,
       return -1;
     }
     STATE->params[STATE->params_cnt++] = strdup(option_value);
+    break;
+
+  case OPTION_CACHE_DIR:
+    // enable cache, no option_value needed
+    if( access( option_value, F_OK ) == -1 ) {
+      fprintf(stderr, "ERROR: Cache directory %s does not exist.\n", option_value);
+      STATE->cache_dir= NULL;
+      return -1;
+    } else {
+      STATE->cache_dir = strdup(option_value);
+    }
     break;
 
   default:
