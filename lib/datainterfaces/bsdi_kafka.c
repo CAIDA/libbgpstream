@@ -32,7 +32,6 @@
 
 #define STATE (BSDI_GET_STATE(di, kafka))
 
-#define DEFAULT_TOPIC "^openbmp\\.router--.+\\.peer-as--.+\\.bmp_raw"
 #define DEFAULT_OFFSET "latest"
 #define DEFAULT_PROJECT ""
 #define DEFAULT_COLLECTOR ""
@@ -76,7 +75,7 @@ static bgpstream_data_interface_option_t options[] = {
     BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
     OPTION_TOPIC,                   // internal ID
     "topic",                        // name
-    "topic to consume from (default: " DEFAULT_TOPIC ")",
+    "topic to consume from",
   },
   /* Kafka Consumer Group */
   {
@@ -167,7 +166,6 @@ int bsdi_kafka_init(bsdi_t *di)
   BSDI_SET_STATE(di, state);
 
   /* set default state */
-  state->topic_name = strdup(DEFAULT_TOPIC);
   state->data_type = BGPSTREAM_RESOURCE_FORMAT_BMP;
   state->project = strdup(DEFAULT_PROJECT);
   state->collector = strdup(DEFAULT_COLLECTOR);
@@ -180,14 +178,19 @@ err:
 
 int bsdi_kafka_start(bsdi_t *di)
 {
-  if (STATE->brokers != NULL) {
-    return 0;
-  } else {
+  if (STATE->brokers == NULL) {
     fprintf(
       stderr,
       "ERROR: The kafka data interface requires the 'brokers' option be set\n");
     return -1;
   }
+  if (STATE->topic_name == NULL) {
+    fprintf(
+      stderr,
+      "ERROR: The kafka data interface requires the 'topic' option be set\n");
+    return -1;
+  }
+  return 0;
 }
 
 int bsdi_kafka_set_option(bsdi_t *di,
