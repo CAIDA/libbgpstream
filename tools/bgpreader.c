@@ -89,7 +89,7 @@ static void data_if_usage()
     info = bgpstream_get_data_interface_info(bs, ids[i]);
 
     if (info != NULL) {
-      fprintf(stderr, "       %-15s%s%s\n", info->name, info->description,
+      fprintf(stderr, "       %-16s%s%s\n", info->name, info->description,
               (ids[i] == di_id_default) ? " (default)" : "");
     }
   }
