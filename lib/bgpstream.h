@@ -134,6 +134,9 @@ typedef enum {
   /** SQLITE file interface */
   BGPSTREAM_DATA_INTERFACE_SQLITE,
 
+  /** (Beta) BMP Stream interface */
+  BGPSTREAM_DATA_INTERFACE_BETABMP,
+
   /** The number of data interfaces */
   _BGPSTREAM_DATA_INTERFACE_CNT,
 
