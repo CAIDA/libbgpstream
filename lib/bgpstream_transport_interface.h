@@ -80,10 +80,7 @@ struct bgpstream_transport {
   /**
    * @name Data transport state fields
    *
-   * These fields are only set if the transport is initialized
-   * @note These fields should *not* be directly manipulated by
-   * transports. Instead they should use accessor functions provided by the
-   * transport manager.
+   * These fields are only set if the transport is initialized.
    *
    * @{ */
 
