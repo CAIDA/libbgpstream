@@ -33,9 +33,12 @@
 #define STATE (BSDI_GET_STATE(di, betabmp))
 
 #define DEFAULT_BROKERS "bmp.bgpstream.caida.org"
-#define DEFAULT_TOPIC "^openbmp\\.router--.+\\.peer-as--.+\\.bmp_raw"
 #define DEFAULT_OFFSET "latest"
 #define DEFAULT_PROJECT "caida"
+
+#define TOPIC_PATTERN "^openbmp\\.router--%s\\.peer-as--%s\\.bmp_raw"
+#define ALL_ROUTERS ".+"
+#define ALL_PEERS ".+"
 
 // allowed offset types
 static char *offset_strs[] = {
@@ -48,9 +51,8 @@ static char *offset_strs[] = {
 /* define the internal option ID values */
 enum {
   OPTION_BROKERS,        // stored in res->uri
-  OPTION_TOPIC,          // stored in kafka_topic res attribute
   OPTION_CONSUMER_GROUP, // allow multiple BGPStream instances to load-balance
-  OPTION_OFFSET,         // begin, end, committed
+  OPTION_OFFSET,         // earliest, latest
 };
 
 /* define the options this data interface accepts */
@@ -61,13 +63,6 @@ static bgpstream_data_interface_option_t options[] = {
     OPTION_BROKERS,                 // internal ID
     "brokers",                      // name
     "comma-separated list of kafka brokers (default: " DEFAULT_BROKERS ")",
-  },
-  /* Kafka Topic */
-  {
-    BGPSTREAM_DATA_INTERFACE_BETABMP, // interface ID
-    OPTION_TOPIC,                   // internal ID
-    "topic",                        // name
-    "topic to consume from (default: " DEFAULT_TOPIC ")",
   },
   /* Kafka Consumer Group */
   {
@@ -117,6 +112,102 @@ typedef struct bsdi_betabmp_state {
 
 } bsdi_betabmp_state_t;
 
+/* ========== PRIVATE METHODS BELOW HERE ========== */
+
+static int append_topic(char **list, char *router, uint32_t *peer_asn)
+{
+  char buf[256]; // temp buffer for this topic
+  char as_buf[12];
+  char *peer_str = ALL_PEERS;
+  int new_len = 0;
+  int need_comma = (*list != NULL);
+
+  if (router == NULL) {
+    router = ALL_ROUTERS;
+  }
+
+  if (peer_asn != NULL) {
+    // build the string representation of the peer AS
+    if (snprintf(as_buf, sizeof(as_buf), "%" PRIu32, *peer_asn) >=
+        sizeof(as_buf)) {
+      return -1;
+    }
+    peer_str = as_buf;
+  }
+
+  // build the string for this topic
+  if (snprintf(buf, sizeof(buf), TOPIC_PATTERN, router, peer_str) >=
+      sizeof(buf)) {
+    return -1;
+  }
+
+  // and append it to the list
+  if (need_comma) {
+    new_len = strlen(*list) + need_comma;
+  }
+  new_len += strlen(buf) + 1;
+
+  if ((*list = realloc(*list, new_len)) == NULL) {
+    return -1;
+  }
+
+  if (need_comma) {
+    strcat(*list, ",");
+  } else {
+    *list[0] = '\0';
+  }
+
+  strcat(*list, buf);
+
+  return new_len;
+}
+
+static int build_topic_list_peers(bsdi_t *di, char **list, char *router)
+{
+  bgpstream_filter_mgr_t *filter_mgr = BSDI_GET_FILTER_MGR(di);
+  uint32_t *peer_asn = NULL;
+
+  if (filter_mgr->peer_asns == NULL) {
+    return append_topic(list, router, NULL);
+  }
+
+  bgpstream_id_set_rewind(filter_mgr->peer_asns);
+  while ((peer_asn = bgpstream_id_set_next(filter_mgr->peer_asns)) != NULL) {
+    if (append_topic(list, router, peer_asn) < 0) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+static char *build_topic_list(bsdi_t *di)
+{
+  bgpstream_filter_mgr_t *filter_mgr = BSDI_GET_FILTER_MGR(di);
+  char *topic_list = NULL;
+  char *router = NULL;
+
+  // we need r * p topics, one for each router/peer combination
+  if (filter_mgr->routers == NULL) {
+    if (build_topic_list_peers(di, &topic_list, ALL_ROUTERS) < 0) {
+      goto err;
+    }
+  } else {
+    bgpstream_str_set_rewind(filter_mgr->routers);
+    while ((router = bgpstream_str_set_next(filter_mgr->routers)) != NULL) {
+      if (build_topic_list_peers(di, &topic_list, router) < 0) {
+        goto err;
+      }
+    }
+  }
+
+  return topic_list;
+
+ err:
+  free(topic_list);
+  return NULL;
+}
+
 /* ========== PUBLIC METHODS BELOW HERE ========== */
 
 int bsdi_betabmp_init(bsdi_t *di)
@@ -130,9 +221,10 @@ int bsdi_betabmp_init(bsdi_t *di)
 
   /* set default state */
   state->brokers = strdup(DEFAULT_BROKERS);
-  state->topic_name = strdup(DEFAULT_TOPIC);
+  // can't build topic list now since filters aren't yet set
 
   return 0;
+
 err:
   bsdi_betabmp_destroy(di);
   return -1;
@@ -155,13 +247,6 @@ int bsdi_betabmp_set_option(bsdi_t *di,
   case OPTION_BROKERS:
     free(STATE->brokers);
     if ((STATE->brokers = strdup(option_value)) == NULL) {
-      return -1;
-    }
-    break;
-
-  case OPTION_TOPIC:
-    free(STATE->topic_name);
-    if ((STATE->topic_name = strdup(option_value)) == NULL) {
       return -1;
     }
     break;
@@ -233,9 +318,11 @@ int bsdi_betabmp_update_resources(bsdi_t *di)
   }
   STATE->done = 1;
 
-  // TODO: if router or peer filters are set, then replace the topic with one
-  // that we construct to filter for the given routers/peers. as usual, if
-  // router AND peer is set, it means this peer from this router
+  if ((STATE->topic_name = build_topic_list(di)) == NULL) {
+    bgpstream_log(BGPSTREAM_LOG_ERR,
+                  "Could not build topic list. Check filters.");
+    return -1;
+  }
 
   // we treat kafka as having data from <recent> to <forever>
   if ((rc = bgpstream_resource_mgr_push(
@@ -251,7 +338,7 @@ int bsdi_betabmp_update_resources(bsdi_t *di)
   }
   assert(res != NULL);
 
-  if (bgpstream_resource_set_attr(res, BGPSTREAM_RESOURCE_ATTR_KAFKA_TOPIC,
+  if (bgpstream_resource_set_attr(res, BGPSTREAM_RESOURCE_ATTR_KAFKA_TOPICS,
                                   STATE->topic_name) != 0) {
     return -1;
   }
