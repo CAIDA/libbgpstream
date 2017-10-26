@@ -64,13 +64,13 @@ static int parse_attrs(bgpstream_transport_t *transport)
 
   // Topic Name (required)
   if (bgpstream_resource_get_attr(
-        transport->res, BGPSTREAM_RESOURCE_ATTR_KAFKA_TOPIC) == NULL) {
+        transport->res, BGPSTREAM_RESOURCE_ATTR_KAFKA_TOPICS) == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR,
                   "Kafka transport requires KAFKA_TOPIC attribute to be set");
     return -1;
   } else {
     if ((STATE->topic = strdup(bgpstream_resource_get_attr(
-           transport->res, BGPSTREAM_RESOURCE_ATTR_KAFKA_TOPIC))) == NULL) {
+           transport->res, BGPSTREAM_RESOURCE_ATTR_KAFKA_TOPICS))) == NULL) {
       return -1;
     }
   }
@@ -113,7 +113,7 @@ static int parse_attrs(bgpstream_transport_t *transport)
 
   bgpstream_log(
     BGPSTREAM_LOG_WARN,
-    "Kafka transport: brokers: %s, topic: %s, group: %s, offset: %s",
+    "Kafka transport: brokers: '%s', topic: '%s', group: '%s', offset: %s",
     transport->res->uri, STATE->topic, STATE->group, STATE->offset);
   return 0;
 }
@@ -185,14 +185,30 @@ static int init_kafka_config(bgpstream_transport_t *transport,
 static int init_topic(bgpstream_transport_t *transport)
 {
   rd_kafka_resp_err_t err;
+  int topics_cnt = 1;
+  char *t, *tok;
 
-  if ((STATE->topics = rd_kafka_topic_partition_list_new(1)) == NULL) {
+  // sigh, first we need to count the topics
+  t = STATE->topic;
+  while (*t != '\0') {
+    if (*(t++) == ',') {
+      topics_cnt++;
+    }
+  }
+
+  bgpstream_log(BGPSTREAM_LOG_WARN, "DEBUG: Subscribing to %d topics",
+                topics_cnt);
+
+  if ((STATE->topics = rd_kafka_topic_partition_list_new(topics_cnt)) == NULL) {
     return -1;
   }
 
-  rd_kafka_topic_partition_list_add(STATE->topics, STATE->topic, -1);
-
-  bgpstream_log(BGPSTREAM_LOG_WARN, "DEBUG: Subscribing to %s", STATE->topic);
+  // and now go through and split the string
+  t = STATE->topic;
+  while ((tok = strsep(&t, ",")) != NULL) {
+    bgpstream_log(BGPSTREAM_LOG_WARN, "DEBUG: Subscribing to %s", tok);
+    rd_kafka_topic_partition_list_add(STATE->topics, tok, -1);
+  }
 
   if ((err = rd_kafka_subscribe(STATE->rk, STATE->topics)) != 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not start topic consumer: %s",

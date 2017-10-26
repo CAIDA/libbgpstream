@@ -63,8 +63,8 @@ typedef enum bgpstream_resource_attr_type {
 
   /* BGPSTREAM_RESOURCE_TRANSPORT_KAFKA options */
 
-  /** The topic to consume raw BMP data from */
-  BGPSTREAM_RESOURCE_ATTR_KAFKA_TOPIC = 0,
+  /** The topics to consume raw BMP data from (comma-separated) */
+  BGPSTREAM_RESOURCE_ATTR_KAFKA_TOPICS = 0,
 
   /** The consumer group to use (for load balancing). If unset, defaults to a
       random group name */

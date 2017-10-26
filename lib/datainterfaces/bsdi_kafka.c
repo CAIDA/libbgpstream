@@ -327,7 +327,7 @@ int bsdi_kafka_update_resources(bsdi_t *di)
   }
   assert(res != NULL);
 
-  if (bgpstream_resource_set_attr(res, BGPSTREAM_RESOURCE_ATTR_KAFKA_TOPIC,
+  if (bgpstream_resource_set_attr(res, BGPSTREAM_RESOURCE_ATTR_KAFKA_TOPICS,
                                   STATE->topic_name) != 0) {
     return -1;
   }
