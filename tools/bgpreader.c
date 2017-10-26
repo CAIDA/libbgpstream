@@ -89,7 +89,7 @@ static void data_if_usage()
     info = bgpstream_get_data_interface_info(bs, ids[i]);
 
     if (info != NULL) {
-      fprintf(stderr, "       %-15s%s%s\n", info->name, info->description,
+      fprintf(stderr, "       %-16s%s%s\n", info->name, info->description,
               (ids[i] == di_id_default) ? " (default)" : "");
     }
   }
@@ -174,6 +174,7 @@ static void usage()
     "debugging BGPStream)\n"
     "   -i             print format information before output\n"
     "\n"
+    "   -n <rec-cnt>   process at most <rec-cnt> records\n"
     "   -h             print this help menu\n"
     "* denotes an option that can be given multiple times\n");
 }
@@ -227,6 +228,8 @@ int main(int argc, char *argv[])
   int record_bgpdump_output_on = 0;
   int elem_output_on = 0;
 
+  int rec_limit = -1;
+
   bgpstream_data_interface_option_t *option;
 
   int i;
@@ -245,7 +248,7 @@ int main(int argc, char *argv[])
   bgpstream_record_t *bs_record = NULL;
 
   while (prevoptind = optind,
-         (opt = getopt(argc, argv, "f:I:d:o:p:c:t:w:j:k:y:P:lrmeivh?")) >= 0) {
+         (opt = getopt(argc, argv, "f:I:d:o:p:c:t:w:j:k:y:P:n:lrmeivh?")) >= 0) {
     if (optind == prevoptind + 2 && (optarg == NULL || *optarg == '-')) {
       opt = ':';
       --optind;
@@ -351,6 +354,11 @@ int main(int argc, char *argv[])
         goto err;
       }
       interface_options[interface_options_cnt++] = strdup(optarg);
+      break;
+
+    case 'n':
+      rec_limit = atoi(optarg);
+      fprintf(stderr, "INFO: Processing at most %d records\n", rec_limit);
       break;
 
     case 'l':
@@ -531,10 +539,12 @@ int main(int argc, char *argv[])
   }
 
   /* use the interface */
-  int rrc = 0, erc = 0;
+  int rrc = 0, erc = 0, rec_cnt = 0;
   bgpstream_elem_t *bs_elem;
 
-  while ((rrc = bgpstream_get_next_record(bs, &bs_record)) > 0) {
+  while ((rrc = bgpstream_get_next_record(bs, &bs_record)) > 0 &&
+         (rec_limit < 0 || rec_cnt < rec_limit)) {
+    rec_cnt++;
 
     if (record_output_on && print_record(bs_record) != 0) {
       goto err;

@@ -21,7 +21,7 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "bsdi_kafka.h"
+#include "bsdi_betabmp.h"
 #include "bgpstream_log.h"
 #include "config.h"
 #include "utils.h"
@@ -30,17 +30,15 @@
 #include <string.h>
 #include <wandio.h>
 
-#define STATE (BSDI_GET_STATE(di, kafka))
+#define STATE (BSDI_GET_STATE(di, betabmp))
 
+#define DEFAULT_BROKERS "bmp.bgpstream.caida.org"
 #define DEFAULT_OFFSET "latest"
-#define DEFAULT_PROJECT ""
-#define DEFAULT_COLLECTOR ""
+#define DEFAULT_PROJECT "caida"
 
-// mapping from type name to resource format type
-static char *type_strs[] = {
-  "mrt", // BGPSTREAM_RESOURCE_FORMAT_MRT
-  "bmp", // BGPSTREAM_RESOURCE_FORMAT_BMP
-};
+#define TOPIC_PATTERN "^openbmp\\.router--%s\\.peer-as--%s\\.bmp_raw"
+#define ALL_ROUTERS ".+"
+#define ALL_PEERS ".+"
 
 // allowed offset types
 static char *offset_strs[] = {
@@ -53,33 +51,22 @@ static char *offset_strs[] = {
 /* define the internal option ID values */
 enum {
   OPTION_BROKERS,        // stored in res->uri
-  OPTION_TOPIC,          // stored in kafka_topic res attribute
   OPTION_CONSUMER_GROUP, // allow multiple BGPStream instances to load-balance
-  OPTION_OFFSET,         // begin, end, committed
-  OPTION_DATA_TYPE,      //
-  OPTION_PROJECT,        //
-  OPTION_COLLECTOR,      //
+  OPTION_OFFSET,         // earliest, latest
 };
 
 /* define the options this data interface accepts */
 static bgpstream_data_interface_option_t options[] = {
   /* Kafka Broker list */
   {
-    BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
+    BGPSTREAM_DATA_INTERFACE_BETABMP, // interface ID
     OPTION_BROKERS,                 // internal ID
     "brokers",                      // name
-    "list of kafka brokers (comma-separated)",
-  },
-  /* Kafka Topic */
-  {
-    BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
-    OPTION_TOPIC,                   // internal ID
-    "topic",                        // name
-    "topic to consume from",
+    "comma-separated list of kafka brokers (default: " DEFAULT_BROKERS ")",
   },
   /* Kafka Consumer Group */
   {
-    BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
+    BGPSTREAM_DATA_INTERFACE_BETABMP, // interface ID
     OPTION_CONSUMER_GROUP,          // internal ID
     "group",                        // name
     "consumer group name (default: random)",
@@ -91,41 +78,21 @@ static bgpstream_data_interface_option_t options[] = {
     "offset",                       // name
     "initial offset (earliest/latest) (default: " DEFAULT_OFFSET ")",
   },
-  /* Data type */
-  {
-    BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
-    OPTION_DATA_TYPE,                    // internal ID
-    "data-type",                         // name
-    "data type (mrt/bmp) (default: bmp)",
-  },
-  /* Project */
-  {
-    BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
-    OPTION_PROJECT,                      // internal ID
-    "project",                           // name
-    "set project name (default: unset)",
-  },
-  /* Collector */
-  {
-    BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
-    OPTION_COLLECTOR,                    // internal ID
-    "collector",                         // name
-    "set collector name (default: unset)",
-  },
 };
 
 /* create the class structure for this data interface */
-BSDI_CREATE_CLASS(
-  kafka,
-  BGPSTREAM_DATA_INTERFACE_KAFKA,
-  "Read updates in real-time from an Apache Kafka topic",
+BSDI_CREATE_CLASS_FULL(
+  betabmp,
+  "beta-bmp-stream",
+  BGPSTREAM_DATA_INTERFACE_BETABMP,
+  "Read updates in real-time from the public BGPStream BMP feed (BETA)",
   options
-);
+  );
 
 /* ---------- END CLASS DEFINITION ---------- */
 
 
-typedef struct bsdi_kafka_state {
+typedef struct bsdi_betabmp_state {
   /* user-provided options: */
 
   // Comma-separated list of Kafka brokers
@@ -140,60 +107,136 @@ typedef struct bsdi_kafka_state {
   // Offset
   char *offset;
 
-  // explicitly set project name
-  char *project;
-
-  // explicitly set collector name
-  char *collector;
-
-  // Type of the data to be consumed
-  bgpstream_resource_format_type_t data_type;
-
   // we only ever yield one resource
   int done;
 
-} bsdi_kafka_state_t;
+} bsdi_betabmp_state_t;
+
+/* ========== PRIVATE METHODS BELOW HERE ========== */
+
+static int append_topic(char **list, char *router, uint32_t *peer_asn)
+{
+  char buf[256]; // temp buffer for this topic
+  char as_buf[12];
+  char *peer_str = ALL_PEERS;
+  int new_len = 0;
+  int need_comma = (*list != NULL);
+
+  if (router == NULL) {
+    router = ALL_ROUTERS;
+  }
+
+  if (peer_asn != NULL) {
+    // build the string representation of the peer AS
+    if (snprintf(as_buf, sizeof(as_buf), "%" PRIu32, *peer_asn) >=
+        sizeof(as_buf)) {
+      return -1;
+    }
+    peer_str = as_buf;
+  }
+
+  // build the string for this topic
+  if (snprintf(buf, sizeof(buf), TOPIC_PATTERN, router, peer_str) >=
+      sizeof(buf)) {
+    return -1;
+  }
+
+  // and append it to the list
+  if (need_comma) {
+    new_len = strlen(*list) + need_comma;
+  }
+  new_len += strlen(buf) + 1;
+
+  if ((*list = realloc(*list, new_len)) == NULL) {
+    return -1;
+  }
+
+  if (need_comma) {
+    strcat(*list, ",");
+  } else {
+    *list[0] = '\0';
+  }
+
+  strcat(*list, buf);
+
+  return new_len;
+}
+
+static int build_topic_list_peers(bsdi_t *di, char **list, char *router)
+{
+  bgpstream_filter_mgr_t *filter_mgr = BSDI_GET_FILTER_MGR(di);
+  uint32_t *peer_asn = NULL;
+
+  if (filter_mgr->peer_asns == NULL) {
+    return append_topic(list, router, NULL);
+  }
+
+  bgpstream_id_set_rewind(filter_mgr->peer_asns);
+  while ((peer_asn = bgpstream_id_set_next(filter_mgr->peer_asns)) != NULL) {
+    if (append_topic(list, router, peer_asn) < 0) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+static char *build_topic_list(bsdi_t *di)
+{
+  bgpstream_filter_mgr_t *filter_mgr = BSDI_GET_FILTER_MGR(di);
+  char *topic_list = NULL;
+  char *router = NULL;
+
+  // we need r * p topics, one for each router/peer combination
+  if (filter_mgr->routers == NULL) {
+    if (build_topic_list_peers(di, &topic_list, ALL_ROUTERS) < 0) {
+      goto err;
+    }
+  } else {
+    bgpstream_str_set_rewind(filter_mgr->routers);
+    while ((router = bgpstream_str_set_next(filter_mgr->routers)) != NULL) {
+      if (build_topic_list_peers(di, &topic_list, router) < 0) {
+        goto err;
+      }
+    }
+  }
+
+  return topic_list;
+
+ err:
+  free(topic_list);
+  return NULL;
+}
 
 /* ========== PUBLIC METHODS BELOW HERE ========== */
 
-int bsdi_kafka_init(bsdi_t *di)
+int bsdi_betabmp_init(bsdi_t *di)
 {
-  bsdi_kafka_state_t *state;
+  bsdi_betabmp_state_t *state;
 
-  if ((state = malloc_zero(sizeof(bsdi_kafka_state_t))) == NULL) {
+  if ((state = malloc_zero(sizeof(bsdi_betabmp_state_t))) == NULL) {
     goto err;
   }
   BSDI_SET_STATE(di, state);
 
   /* set default state */
-  state->data_type = BGPSTREAM_RESOURCE_FORMAT_BMP;
-  state->project = strdup(DEFAULT_PROJECT);
-  state->collector = strdup(DEFAULT_COLLECTOR);
+  state->brokers = strdup(DEFAULT_BROKERS);
+  // can't build topic list now since filters aren't yet set
 
   return 0;
+
 err:
-  bsdi_kafka_destroy(di);
+  bsdi_betabmp_destroy(di);
   return -1;
 }
 
-int bsdi_kafka_start(bsdi_t *di)
+int bsdi_betabmp_start(bsdi_t *di)
 {
-  if (STATE->brokers == NULL) {
-    fprintf(
-      stderr,
-      "ERROR: The kafka data interface requires the 'brokers' option be set\n");
-    return -1;
-  }
-  if (STATE->topic_name == NULL) {
-    fprintf(
-      stderr,
-      "ERROR: The kafka data interface requires the 'topic' option be set\n");
-    return -1;
-  }
+  // our defaults are sufficient to run
   return 0;
 }
 
-int bsdi_kafka_set_option(bsdi_t *di,
+int bsdi_betabmp_set_option(bsdi_t *di,
                            const bgpstream_data_interface_option_t *option_type,
                            const char *option_value)
 {
@@ -204,13 +247,6 @@ int bsdi_kafka_set_option(bsdi_t *di,
   case OPTION_BROKERS:
     free(STATE->brokers);
     if ((STATE->brokers = strdup(option_value)) == NULL) {
-      return -1;
-    }
-    break;
-
-  case OPTION_TOPIC:
-    free(STATE->topic_name);
-    if ((STATE->topic_name = strdup(option_value)) == NULL) {
       return -1;
     }
     break;
@@ -242,34 +278,6 @@ int bsdi_kafka_set_option(bsdi_t *di,
     }
     break;
 
-  case OPTION_DATA_TYPE:
-    for (i = 0; i < ARR_CNT(type_strs); i++) {
-      if (strcmp(option_value, type_strs[i]) == 0) {
-        STATE->data_type = i;
-        found = 1;
-        break;
-      }
-    }
-    if (!found) {
-      fprintf(stderr, "ERROR: Unknown data type '%s'\n", option_value);
-      return -1;
-    }
-    break;
-
-  case OPTION_PROJECT:
-    free(STATE->project);
-    if ((STATE->project = strdup(option_value)) == NULL) {
-      return -1;
-    }
-    break;
-
-  case OPTION_COLLECTOR:
-    free(STATE->collector);
-    if ((STATE->collector = strdup(option_value)) == NULL) {
-      return -1;
-    }
-    break;
-
   default:
     return -1;
   }
@@ -277,7 +285,7 @@ int bsdi_kafka_set_option(bsdi_t *di,
   return 0;
 }
 
-void bsdi_kafka_destroy(bsdi_t *di)
+void bsdi_betabmp_destroy(bsdi_t *di)
 {
   if (di == NULL || STATE == NULL) {
     return;
@@ -295,17 +303,11 @@ void bsdi_kafka_destroy(bsdi_t *di)
   free(STATE->offset);
   STATE->offset = NULL;
 
-  free(STATE->project);
-  STATE->project = NULL;
-
-  free(STATE->collector);
-  STATE->collector = NULL;
-
   free(STATE);
   BSDI_SET_STATE(di, NULL);
 }
 
-int bsdi_kafka_update_resources(bsdi_t *di)
+int bsdi_betabmp_update_resources(bsdi_t *di)
 {
   int rc;
   bgpstream_resource_t *res = NULL;
@@ -316,13 +318,22 @@ int bsdi_kafka_update_resources(bsdi_t *di)
   }
   STATE->done = 1;
 
+  if ((STATE->topic_name = build_topic_list(di)) == NULL) {
+    bgpstream_log(BGPSTREAM_LOG_ERR,
+                  "Could not build topic list. Check filters.");
+    return -1;
+  }
+
   // we treat kafka as having data from <recent> to <forever>
   if ((rc = bgpstream_resource_mgr_push(
          BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_KAFKA,
-         STATE->data_type, STATE->brokers,
+         BGPSTREAM_RESOURCE_FORMAT_BMP, STATE->brokers,
          0, // indicate we don't know how much historical data there is
          BGPSTREAM_FOREVER, // indicate that the resource is a "stream"
-         STATE->project, STATE->collector, BGPSTREAM_UPDATE, &res)) <= 0) {
+         DEFAULT_PROJECT, // fix our project to "caida"
+         "", // leave collector unset since we'll get it from openbmp hdrs
+         BGPSTREAM_UPDATE, //
+         &res)) <= 0) {
     return rc;
   }
   assert(res != NULL);

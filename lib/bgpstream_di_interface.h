@@ -64,28 +64,30 @@
   void bsdi_##ifname##_destroy(bsdi_t *di);                             \
   int bsdi_##ifname##_update_resources(bsdi_t *di);
 
-/** Convenience macro that creates a class structure for a data interface */
-#define BSDI_CREATE_CLASS(classname, id, desc, options)                 \
-  static bsdi_t bsdi_##classname = {                                    \
-    {                                                                   \
-      (id),                                                             \
-      STR(classname),                                                   \
-      desc,                                                             \
-    },                                                                  \
-    (options),                                                          \
-    ARR_CNT(options),                                                   \
-    bsdi_##classname##_init,                                            \
-    bsdi_##classname##_start,                                           \
-    bsdi_##classname##_set_option,                                      \
-    bsdi_##classname##_destroy,                                         \
-    bsdi_##classname##_update_resources,                                \
-    NULL,                                                               \
-    NULL,                                                               \
-    NULL,                                                               \
-  };                                                                    \
-  bsdi_t *bsdi_##classname##_alloc() {                                  \
-    return &bsdi_##classname;                                           \
+/** Convenience macros that create a class structure for a data interface */
+#define BSDI_CREATE_CLASS_FULL(classname, classnamestr, id, desc, options)     \
+  static bsdi_t bsdi_##classname = {                                           \
+    {                                                                          \
+      (id), classnamestr, desc,                                                \
+    },                                                                         \
+    (options),                                                                 \
+    ARR_CNT(options),                                                          \
+    bsdi_##classname##_init,                                                   \
+    bsdi_##classname##_start,                                                  \
+    bsdi_##classname##_set_option,                                             \
+    bsdi_##classname##_destroy,                                                \
+    bsdi_##classname##_update_resources,                                       \
+    NULL,                                                                      \
+    NULL,                                                                      \
+    NULL,                                                                      \
+  };                                                                           \
+  bsdi_t *bsdi_##classname##_alloc()                                           \
+  {                                                                            \
+    return &bsdi_##classname;                                                  \
   }
+
+#define BSDI_CREATE_CLASS(classname, id, desc, options)                 \
+  BSDI_CREATE_CLASS_FULL(classname, STR(classname), id, desc, options)
 
 /** Structure which represents a data interface */
 struct bsdi {
