@@ -127,7 +127,7 @@ static void usage()
   data_if_usage();
   fprintf(
     stderr,
-    "   -o <option-name,option-value>*\n"
+    "   -o <option-name=option-value>*\n"
     "                  set an option for the current data interface.\n"
     "                  use '-o ?' to get a list of available options for the "
     "current\n"
@@ -407,7 +407,7 @@ int main(int argc, char *argv[])
       goto done;
     } else {
       /* actually set this option */
-      if ((endp = strchr(interface_options[i], ',')) == NULL) {
+      if ((endp = strchr(interface_options[i], '=')) == NULL) {
         fprintf(stderr, "ERROR: Malformed data interface option (%s)\n",
                 interface_options[i]);
         fprintf(stderr, "ERROR: Expecting <option-name>,<option-value>\n");
@@ -525,7 +525,6 @@ int main(int argc, char *argv[])
 
   /* turn on interface */
   if (bgpstream_start(bs) < 0) {
-    fprintf(stderr, "ERROR: Could not init BGPStream\n");
     return -1;
   }
 
