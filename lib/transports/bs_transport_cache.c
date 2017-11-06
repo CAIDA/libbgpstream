@@ -177,7 +177,7 @@ int bs_transport_cache_create(bgpstream_transport_t *transport)
     // local cache file doesn't exist
 
     // try to create a lock file for cache writing
-    lock_fd = open(STATE->lock_file_path,O_CREAT|O_EXCL);
+    lock_fd = open(STATE->lock_file_path,O_CREAT|O_EXCL, 0644);
 
     if(lock_fd<0){
       // lock file creation failed: other thread is still writing the cache
