@@ -416,7 +416,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
           fprintf(stderr, "ERROR: Invalid dumpFile record\n");
           goto retry;
         }
-#ifdef WITH_BROKER_DEBUG
+#ifdef BROKER_DEBUG
         fprintf(stderr, "----------\n");
         fprintf(stderr, "URL: %s\n", url);
         fprintf(stderr, "Project: %s\n", project);
@@ -786,7 +786,7 @@ int bsdi_broker_update_resources(bsdi_t *di)
     }
     attempts++;
 
-#ifdef WITH_BROKER_DEBUG
+#ifdef BROKER_DEBUG
     fprintf(stderr, "\nQuery URL: \"%s\"\n", STATE->query_url_buf);
 #endif
 
