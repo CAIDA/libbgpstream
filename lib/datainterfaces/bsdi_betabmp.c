@@ -73,7 +73,7 @@ static bgpstream_data_interface_option_t options[] = {
   },
   /* Initial offset */
   {
-    BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
+    BGPSTREAM_DATA_INTERFACE_BETABMP, // interface ID
     OPTION_OFFSET,             // internal ID
     "offset",                       // name
     "initial offset (earliest/latest) (default: " DEFAULT_OFFSET ")",
