@@ -186,9 +186,7 @@ bgpstream_patricia_node_create(bgpstream_patricia_tree_t *pt,
     pt->ipv6_active_nodes++;
   }
 
-  node->prefix.mask_len = pfx->mask_len;
-  bgpstream_addr_copy((bgpstream_ip_addr_t *)&node->prefix.address,
-                      (bgpstream_ip_addr_t *)&pfx->address);
+  bgpstream_pfx_copy((bgpstream_pfx_t*)&node->prefix, pfx);
 
   node->parent = NULL;
   node->bit = pfx->mask_len;
