@@ -74,13 +74,11 @@ bgpstream_t *bgpstream_create()
 void bgpstream_add_filter(bgpstream_t *bs, bgpstream_filter_type_t filter_type,
                           const char *filter_value)
 {
-  assert(!bs->started);
   bgpstream_filter_mgr_filter_add(bs->filter_mgr, filter_type, filter_value);
 }
 
 void bgpstream_add_rib_period_filter(bgpstream_t *bs, uint32_t period)
 {
-  assert(!bs->started);
   bgpstream_filter_mgr_rib_period_filter_add(bs->filter_mgr, period);
 }
 
@@ -89,7 +87,6 @@ void bgpstream_add_recent_interval_filter(bgpstream_t *bs, const char *interval,
 {
 
   uint32_t starttime, endtime;
-  assert(!bs->started);
 
   if (bgpstream_time_calc_recent_interval(&starttime, &endtime, interval) ==
       0) {
@@ -109,8 +106,6 @@ void bgpstream_add_recent_interval_filter(bgpstream_t *bs, const char *interval,
 void bgpstream_add_interval_filter(bgpstream_t *bs, uint32_t begin_time,
                                    uint32_t end_time)
 {
-  assert(!bs->started);
-
   if (end_time == BGPSTREAM_FOREVER) {
     bgpstream_set_live_mode(bs);
   }
