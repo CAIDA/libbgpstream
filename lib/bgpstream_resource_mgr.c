@@ -180,6 +180,11 @@ static int open_res_list(bgpstream_resource_mgr_t *q,
 
 static int open_group(bgpstream_resource_mgr_t *q, struct res_group *gp)
 {
+  // do nothing if everything is open
+  if (gp->res_open_cnt == gp->res_cnt) {
+    return 0;
+  }
+
   // first open RIBs
   if (open_res_list(q, gp, gp->res_list[BGPSTREAM_RIB]) != 0) {
     return -1;
@@ -261,6 +266,11 @@ static struct res_group *res_group_create(struct res_list_elem *el)
 
   if (el->reader != NULL) {
     gp->res_open_cnt++;
+    if (el->open != 0) {
+      gp->res_open_checked_cnt++;
+    }
+  } else {
+    assert(el->open == 0);
   }
 
   return gp;
@@ -270,6 +280,8 @@ static int res_group_add(bgpstream_resource_mgr_t *q,
                          struct res_group *gp,
                          struct res_list_elem *el)
 {
+  int is_dirty = 0;
+
   assert(gp->time == get_next_time(el));
 
   // potentially extend the overlap window based on this new element
@@ -289,46 +301,52 @@ static int res_group_add(bgpstream_resource_mgr_t *q,
   if (el->reader != NULL) {
     gp->res_open_cnt++;
     // if we have just opened the first file in the group, then open the rest
-    if (gp->res_cnt > gp->res_open_cnt &&
-        open_batch(q, gp) != 0) {
-      return -1;
+    if (gp->res_cnt > gp->res_open_cnt) {
+      is_dirty = 1;
     }
+    if (el->open != 0) {
+      gp->res_open_checked_cnt++;
+    }
+  } else {
+    assert(el->open == 0);
   }
 
-  return 0;
+  return is_dirty;
 }
 
 #if 0
-static void list_dump(struct res_list_elem *el, int log_level)
+static void list_dump(struct res_list_elem *el)
 {
   while (el != NULL) {
-    bgpstream_log(log_level, "    next_time: %d",
+    fprintf(stderr, "    next_time: %d\n",
                   get_next_time(el));
-    bgpstream_log(log_level, "    res->uri: %s",
+    fprintf(stderr, "    res->uri: %s\n",
                   el->res->uri);
-    bgpstream_log(log_level, "    %s",
+    fprintf(stderr, "    %s\n",
                   (el->reader == NULL) ? "not-open" : "open");
     el = el->next;
   }
 }
 
-static void queue_dump(struct res_group *head, int log_level)
+static void queue_dump(struct res_group *head)
 {
   while (head != NULL) {
-    bgpstream_log(log_level,
-                  "res_group: time: %d, overlap_start: %d, "
-                  "overlap_end: %d, cnt: %d",
-                  head->time, head->overlap_start, head->overlap_end,
-                  head->res_cnt);
+    fprintf(stderr,
+            "res_group: time: %d, overlap_start: %d, "
+            "overlap_end: %d, "
+            "cnt: %d, open_cnt: %d, open_checked_cnt: %d\n",
+            head->time, head->overlap_start, head->overlap_end,
+            head->res_cnt, head->res_open_cnt, head->res_open_checked_cnt);
 
     int i;
     for (i=0; i<_BGPSTREAM_RECORD_TYPE_CNT; i++) {
-      bgpstream_log(log_level, "  records (type %d):", i);
-      list_dump(head->res_list[i], log_level);
+      fprintf(stderr, "  records (type %d):\n", i);
+      list_dump(head->res_list[i]);
     }
 
     head = head->next;
   }
+  fprintf(stderr, "\n");
 }
 #endif
 
@@ -340,48 +358,50 @@ static void queue_dump(struct res_group *head, int log_level)
  * TODIR = {next, prev};
  * FROMDIR = {prev, next};
  */
-#define QUEUE_PUSH(el, FROMEND, TOEND, CMPOP, TODIR, FROMDIR)           \
-  do {                                                                  \
-    cur = q->FROMEND;                                                   \
-    last = NULL;                                                        \
-    while (cur != NULL && cur->time CMPOP get_next_time(el)) {          \
-      last = cur;                                                       \
-      cur = cur->TODIR;                                                 \
-    }                                                                   \
-    if (cur != NULL && cur->time == get_next_time(el)) {                \
-      /* just add to the current group */                               \
-      if (res_group_add(q, cur, el) != 0) {                             \
-        goto err;                                                       \
-      }                                                                 \
-    } else {                                                            \
-      /* we first need to create a new group */                         \
-      if ((gp = res_group_create(el)) == NULL) {                        \
-        goto err;                                                       \
-      }                                                                 \
-      gp->TODIR = cur;                                                  \
-      gp->FROMDIR = last;                                               \
-      if (cur == NULL) {                                                \
-        /* creating a new TOEND */                                      \
-        assert(last == q->TOEND);                                       \
-        last->TODIR = gp;                                               \
-        q->TOEND = gp;                                                  \
-      } else if (last == NULL) {                                        \
-        /* creating a new FROMEND */                                    \
-        assert(q->FROMEND == cur);                                      \
-        cur->FROMDIR = gp;                                              \
-        q->FROMEND = gp;                                                \
-      } else {                                                          \
-        /* splicing into the list */                                    \
-        cur->FROMDIR = gp;                                              \
-        last->TODIR = gp;                                               \
-      }                                                                 \
-    }                                                                   \
+#define QUEUE_PUSH(el, FROMEND, TOEND, CMPOP, TODIR, FROMDIR)                  \
+  do {                                                                         \
+    cur = q->FROMEND;                                                          \
+    last = NULL;                                                               \
+    while (cur != NULL && cur->time CMPOP get_next_time(el)) {                 \
+      last = cur;                                                              \
+      cur = cur->TODIR;                                                        \
+    }                                                                          \
+    if (cur != NULL && cur->time == get_next_time(el)) {                       \
+      /* just add to the current group */                                      \
+      if ((is_dirty = res_group_add(q, cur, el)) < 0) {                        \
+        goto err;                                                              \
+      }                                                                        \
+      dirty_cnt += is_dirty;                                                   \
+    } else {                                                                   \
+      /* we first need to create a new group */                                \
+      if ((gp = res_group_create(el)) == NULL) {                               \
+        goto err;                                                              \
+      }                                                                        \
+      gp->TODIR = cur;                                                         \
+      gp->FROMDIR = last;                                                      \
+      if (cur == NULL) {                                                       \
+        /* creating a new TOEND */                                             \
+        assert(last == q->TOEND);                                              \
+        last->TODIR = gp;                                                      \
+        q->TOEND = gp;                                                         \
+      } else if (last == NULL) {                                               \
+        /* creating a new FROMEND */                                           \
+        assert(q->FROMEND == cur);                                             \
+        cur->FROMDIR = gp;                                                     \
+        q->FROMEND = gp;                                                       \
+      } else {                                                                 \
+        /* splicing into the list */                                           \
+        cur->FROMDIR = gp;                                                     \
+        last->TODIR = gp;                                                      \
+      }                                                                        \
+    }                                                                          \
   } while (0)
 
 static int insert_resource_elem(bgpstream_resource_mgr_t *q,
                                 struct res_list_elem *el)
 {
   struct res_group *gp = NULL, *cur = NULL, *last = NULL;
+  int dirty_cnt = 0, is_dirty = 0;
 
   // is the list empty?
   if (q->head == NULL) {
@@ -417,7 +437,7 @@ static int insert_resource_elem(bgpstream_resource_mgr_t *q,
   }
 
   // we're done!
-  return 0;
+  return dirty_cnt;
 
  err:
   res_group_destroy(gp, 1);
@@ -443,14 +463,21 @@ static void pop_res_el(bgpstream_resource_mgr_t *q,
 
   // update group and queue stats
   gp->res_cnt--;
-  gp->res_open_cnt--;
-  gp->res_open_checked_cnt--;
   q->res_cnt--;
-  q->res_open_cnt--;
+  if (el->open != 0) {
+    gp->res_open_cnt--;
+    gp->res_open_checked_cnt--;
+    q->res_open_cnt--;
+  }
   assert(gp->res_cnt >= 0);
   assert(gp->res_open_cnt >= 0);
+  assert(gp->res_open_checked_cnt >= 0);
   assert(q->res_cnt >= 0);
   assert(q->res_open_cnt >= 0);
+  assert(gp->res_open_checked_cnt <= gp->res_open_cnt);
+  assert(gp->res_open_cnt >= gp->res_cnt);
+  assert(gp->res_cnt <= q->res_cnt);
+  assert(gp->res_open_cnt <= q->res_open_cnt);
 
   el->prev = NULL;
   el->next = NULL;
@@ -494,10 +521,11 @@ static int sort_res_list(bgpstream_resource_mgr_t *q,
                          struct res_list_elem *el)
 {
   struct res_list_elem *el_nxt;
+  int dirty_cnt = 0;
 
   while (el != NULL) {
     el_nxt = el->next;
-    if (el->open != 0) {
+    if (el->open != 0 || el->reader == NULL) {
       el = el_nxt;
       continue;
     }
@@ -505,41 +533,47 @@ static int sort_res_list(bgpstream_resource_mgr_t *q,
     if (bgpstream_reader_open_wait(el->reader) != 0) {
       return -1;
     }
+    el->open = 1;
+    gp->res_open_checked_cnt++;
     if (get_next_time(el) != el->res->initial_time) {
       // this needs to be popped and then re-inserted
       pop_res_el(q, gp, el);
-      if (insert_resource_elem(q, el) != 0) {
+      if ((dirty_cnt = insert_resource_elem(q, el)) < 0) {
         return -1;
       }
     }
-    el->open = 1;
-    gp->res_open_checked_cnt++;
     el = el_nxt;
   }
 
-  return 0;
+  return dirty_cnt;
 }
 
 static int sort_group(bgpstream_resource_mgr_t *q,
                       struct res_group *gp)
 {
+  int dirty_up = 0, dirty_rib = 0;
+
   // wait for updates
-  if (sort_res_list(q, gp, gp->res_list[BGPSTREAM_UPDATE]) != 0) {
+  if ((dirty_up = sort_res_list(q, gp, gp->res_list[BGPSTREAM_UPDATE])) < 0) {
     return -1;
   }
 
   // wait for ribs
-  if (sort_res_list(q, gp, gp->res_list[BGPSTREAM_RIB]) != 0) {
+  if ((dirty_rib = sort_res_list(q, gp, gp->res_list[BGPSTREAM_RIB])) < 0) {
     return -1;
   }
 
-  return 0;
+  return dirty_up + dirty_rib;
 }
 
+/* returns the number of "dirty" groups. i.e. the number of groups that were not
+   open but now have an open resource added (since this will require another
+   call to open_batch) */
 static int sort_batch(bgpstream_resource_mgr_t *q)
 {
   struct res_group *cur = q->head;
   int empty_groups = 0;
+  int dirty_cnt_total = 0, dirty_cnt = 0;
 
   // wait for the batch to open first
   while (cur != NULL && cur->res_open_cnt != 0) {
@@ -549,9 +583,10 @@ static int sort_batch(bgpstream_resource_mgr_t *q)
       continue;
     }
 
-    if (sort_group(q, cur) != 0) {
+    if ((dirty_cnt = sort_group(q, cur)) < 0) {
       return -1;
     }
+    dirty_cnt_total += dirty_cnt;
 
     if (cur->res_cnt == 0) {
       empty_groups++;
@@ -565,7 +600,7 @@ static int sort_batch(bgpstream_resource_mgr_t *q)
     reap_groups(q);
   }
 
-  return 0;
+  return dirty_cnt_total;
 }
 
 // open all overlapping resources. does not modify the queue
@@ -594,10 +629,7 @@ static int open_batch(bgpstream_resource_mgr_t *q, struct res_group *gp)
     cur = cur->next;
   }
 
-  // its possible that the timestamp of the first record in a dump file doesn't
-  // match the initial time reported to us from the broker (e.g., in the case of
-  // filtering), so we re-sort the batch before we read anything from it.
-  return sort_batch(q);
+  return 0;
 }
 
 // when this is called we are guaranteed to have at least one open resource, and
@@ -852,6 +884,7 @@ bgpstream_resource_mgr_get_record(bgpstream_resource_mgr_t *q,
                                   bgpstream_record_t **record)
 {
   int rs = BGPSTREAM_READER_STATUS_EOS;
+  int dirty_cnt = 0;
 
   // don't let EOF mean EOS until we have no more resources left
   while (rs == BGPSTREAM_READER_STATUS_EOS ||
@@ -865,8 +898,16 @@ bgpstream_resource_mgr_get_record(bgpstream_resource_mgr_t *q,
     // it is time to open some resources!
     // we do this inside a loop since in some cases the first batch we open get
     // sorted elsewhere in the queue, leaving the head still unopened.
-    while (q->head->res_open_cnt == 0) {
+    dirty_cnt = 0;
+    while (q->head->res_open_cnt == 0 || dirty_cnt > 0) {
       if (open_batch(q, q->head) != 0) {
+        goto err;
+      }
+      // its possible that the timestamp of the first record in a dump file doesn't
+      // match the initial time reported to us from the broker (e.g., in the
+      // case of filtering), so we re-sort the batch before we read anything
+      // from it.
+      if ((dirty_cnt = sort_batch(q)) < 0) {
         goto err;
       }
     }
