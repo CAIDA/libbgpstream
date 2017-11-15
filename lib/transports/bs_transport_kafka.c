@@ -85,8 +85,6 @@ static int parse_attrs(bgpstream_transport_t *transport)
     if ((STATE->group = strdup(buf)) == NULL) {
       return -1;
     }
-    bgpstream_log(BGPSTREAM_LOG_WARN, "DEBUG: Using random group ID: %s",
-                  STATE->group);
   } else {
     if ((STATE->group = strdup(bgpstream_resource_get_attr(
            transport->res, BGPSTREAM_RESOURCE_ATTR_KAFKA_CONSUMER_GROUP))) ==
@@ -112,7 +110,7 @@ static int parse_attrs(bgpstream_transport_t *transport)
   }
 
   bgpstream_log(
-    BGPSTREAM_LOG_WARN,
+    BGPSTREAM_LOG_FINE,
     "Kafka transport: brokers: '%s', topic: '%s', group: '%s', offset: %s",
     transport->res->uri, STATE->topic, STATE->group, STATE->offset);
   return 0;
@@ -196,7 +194,7 @@ static int init_topic(bgpstream_transport_t *transport)
     }
   }
 
-  bgpstream_log(BGPSTREAM_LOG_WARN, "DEBUG: Subscribing to %d topics",
+  bgpstream_log(BGPSTREAM_LOG_FINE, "Subscribing to %d topics",
                 topics_cnt);
 
   if ((STATE->topics = rd_kafka_topic_partition_list_new(topics_cnt)) == NULL) {
@@ -206,7 +204,7 @@ static int init_topic(bgpstream_transport_t *transport)
   // and now go through and split the string
   t = STATE->topic;
   while ((tok = strsep(&t, ",")) != NULL) {
-    bgpstream_log(BGPSTREAM_LOG_WARN, "DEBUG: Subscribing to %s", tok);
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Subscribing to %s", tok);
     rd_kafka_topic_partition_list_add(STATE->topics, tok, -1);
   }
 
@@ -273,7 +271,7 @@ int bs_transport_kafka_create(bgpstream_transport_t *transport)
   // switch to consumer poll mode
   rd_kafka_poll_set_consumer(STATE->rk);
 
-  bgpstream_log(BGPSTREAM_LOG_WARN, "Kafka connected!");
+  bgpstream_log(BGPSTREAM_LOG_FINE, "Kafka connected!");
   return 0;
 }
 
