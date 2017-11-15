@@ -289,7 +289,7 @@ int bsdi_singlefile_update_resources(bsdi_t *di)
                                     "singlefile",
                                     "singlefile",
                                     BGPSTREAM_RIB,
-                                    NULL) != 0) {
+                                    NULL) < 0) {
       goto err;
     }
   }
