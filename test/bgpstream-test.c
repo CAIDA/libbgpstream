@@ -145,6 +145,7 @@ int test_sqlite()
   return 0;
 }
 
+#ifdef WITH_DATA_INTERFACE_BROKER
 int test_broker()
 {
   SETUP;
@@ -168,6 +169,7 @@ int test_broker()
   TEARDOWN;
   return 0;
 }
+#endif
 
 int main()
 {
