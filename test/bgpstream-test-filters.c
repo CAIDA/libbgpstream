@@ -58,13 +58,10 @@ static char *expected_results[7] = {
 #define SETUP                                                                  \
   do {                                                                         \
     bs = bgpstream_create();                                                   \
-    rec = bgpstream_record_create();                                           \
   } while (0)
 
 #define TEARDOWN                                                               \
   do {                                                                         \
-    bgpstream_record_destroy(rec);                                             \
-    rec = NULL;                                                                \
     bgpstream_destroy(bs);                                                     \
     bs = NULL;                                                                 \
   } while (0)
@@ -107,9 +104,9 @@ int test_bgpstream_filters()
   int check_res = 0;
   CHECK("stream start (" STR(interface) ")", bgpstream_start(bs) == 0);
 
-  while ((ret = bgpstream_get_next_record(bs, rec)) > 0) {
+  while ((ret = bgpstream_get_next_record(bs, &rec)) > 0) {
     if (rec->status == BGPSTREAM_RECORD_STATUS_VALID_RECORD) {
-      while ((elem = bgpstream_record_get_next_elem(rec)) != NULL) {
+      while (bgpstream_record_get_next_elem(rec, &elem) > 0) {
         if (bgpstream_record_elem_snprintf(elem_buf, 65536, rec, elem) !=
             NULL) {
           /* more results than the expected ones*/

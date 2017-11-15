@@ -43,7 +43,7 @@ bgpstream_data_interface_option_t *option;
     int ret;                                                                   \
     int counter = 0;                                                           \
     CHECK("stream start (" STR(interface) ")", bgpstream_start(bs) == 0);      \
-    while ((ret = bgpstream_get_next_record(bs, rec)) > 0) {                   \
+    while ((ret = bgpstream_get_next_record(bs, &rec)) > 0) {                   \
       if (rec->status == BGPSTREAM_RECORD_STATUS_VALID_RECORD) {               \
         counter++;                                                             \
       }                                                                        \
@@ -57,13 +57,10 @@ bgpstream_data_interface_option_t *option;
 #define SETUP                                                                  \
   do {                                                                         \
     bs = bgpstream_create();                                                   \
-    rec = bgpstream_record_create();                                           \
   } while (0)
 
 #define TEARDOWN                                                               \
   do {                                                                         \
-    bgpstream_record_destroy(rec);                                             \
-    rec = NULL;                                                                \
     bgpstream_destroy(bs);                                                     \
     bs = NULL;                                                                 \
   } while (0)
@@ -79,8 +76,6 @@ bgpstream_data_interface_option_t *option;
 int test_bgpstream()
 {
   CHECK("BGPStream create", (bs = bgpstream_create()) != NULL);
-
-  CHECK("BGPStream record create", (rec = bgpstream_record_create()) != NULL);
 
   TEARDOWN;
   return 0;
