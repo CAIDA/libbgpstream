@@ -30,8 +30,8 @@ AC_DEFUN([BS_DI_OPT],
 opt_val=$4
 AC_MSG_CHECKING([data interface option: $3])
 AC_ARG_WITH([$1],
-[AS_HELP_STRING([--with-$1=$opt_val],
-  [$3 (defaults to $opt_val)])],
+[AS_HELP_STRING([--with-$1=$4],
+  [$3 (defaults to $4)])],
   [opt_val=$withval],
   [])
 
