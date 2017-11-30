@@ -70,7 +70,7 @@ static bgpstream_data_interface_option_t options[] = {
   {
     BGPSTREAM_DATA_INTERFACE_BROKER, // interface ID
     OPTION_CACHE_DIR, // internal ID
-    "cache_dir", // name
+    "cache-dir", // name
     "Enable local cache at provided directory.", // description
   },
 };
