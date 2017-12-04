@@ -28,5 +28,6 @@ See the [GitHub Contributors
 page](https://github.com/CAIDA/libbgpstream/graphs/contributors) for more
 detail.
 
-This file acknowledges contributors and does not imply legal ownership. Please
-see copyright notices in file headers for ownership information.
+This file and the "Authors" section in file headers acknowledges contributors
+and does not imply legal ownership. Please see copyright notices in file headers
+for ownership information.
