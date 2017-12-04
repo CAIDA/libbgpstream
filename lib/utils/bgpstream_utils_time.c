@@ -22,10 +22,8 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- */
-
-/* This file written by Shane Alcock and freely contributed back to the
- * BGPStream project  <salcock@waikato.ac.nz>
+ *
+ * Author: Shane Alcock <salcock@waikato.ac.nz>
  */
 
 #include "config.h"

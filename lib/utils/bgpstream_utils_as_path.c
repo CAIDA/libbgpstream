@@ -22,6 +22,12 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * Authors:
+ *   Chiara Orsini
+ *   Alistair King
+ *   Shane Alcock <salcock@waikato.ac.nz>
+ *   Samir Al-Sheikh
  */
 
 #include "bgpstream_utils_as_path_int.h"
