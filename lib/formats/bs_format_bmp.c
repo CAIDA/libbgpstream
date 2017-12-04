@@ -179,14 +179,43 @@ static int populate_prep_cb(bgpstream_format_t *format, uint8_t *buf,
                             size_t *lenp, bgpstream_record_t *record)
 {
   size_t len = *lenp, nread = 0;
+  int newln = 0;
   uint8_t ver_maj, ver_min, flags, u8;
   uint16_t u16;
   uint32_t u32;
   int name_len = 0;
 
-  // find out if we're looking at an OpenBMP-encapsulated BMP message
-  if (len < 4 || *buf != 'O' || *(uint32_t *)buf != htonl(0x4F424D50)) {
-    // it's not OpenBMP binary format, assume that it is raw BMP
+  // we want at least a few bytes to do header checks
+  if (len < 4) {
+    *lenp = 0;
+    return 0;
+  }
+
+  // is this an OpenBMP ASCII header (either "text" or "legacy-text")?
+  if (*buf == 'V') {
+    // skip until we find double-newlines
+    while ((len - nread) > 0) {
+      if (newln == 2) {
+        // this is the first byte of the payload
+        *lenp = nread - 1;
+        return 0;
+      }
+      if (*buf == '\n') {
+        newln++;
+      } else {
+        newln = 0;
+      }
+      nread++;
+      buf++;
+    }
+    // if we reach here, then we've failed to parse the header. just give up
+    *lenp = 0;
+    return 0;
+  }
+
+  // double-check the magic number
+  if (*(uint32_t *)buf != htonl(0x4F424D50)) {
+    // it's not a known OpenBMP header, assume that it is raw BMP
     *lenp = 0;
     return 0;
   }
