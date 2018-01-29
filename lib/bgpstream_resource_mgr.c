@@ -741,7 +741,7 @@ static bgpstream_reader_status_t pop_record(bgpstream_resource_mgr_t *q,
       res_list_destroy(el, 1);
     } else if (get_next_time(el) != prev_time) {
       // time has changed, so we need to re-insert
-      if (insert_resource_elem(q, el) != 0) {
+      if (insert_resource_elem(q, el) < 0) {
         return -1;
       }
     }
@@ -860,7 +860,7 @@ bgpstream_resource_mgr_push(bgpstream_resource_mgr_t *q,
   }
 
   // now we know we want to keep it
-  if (insert_resource_elem(q, el) != 0) {
+  if (insert_resource_elem(q, el) < 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not insert resource into queue");
     goto err;
   }
@@ -902,7 +902,7 @@ bgpstream_resource_mgr_get_record(bgpstream_resource_mgr_t *q,
     // we do this inside a loop since in some cases the first batch we open get
     // sorted elsewhere in the queue, leaving the head still unopened.
     dirty_cnt = 0;
-    while (q->head->res_open_cnt == 0 || dirty_cnt > 0) {
+    while (q->head->res_open_cnt != q->head->res_cnt || dirty_cnt > 0) {
       if (open_batch(q, q->head) != 0) {
         goto err;
       }
