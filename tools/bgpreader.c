@@ -579,6 +579,10 @@ int main(int argc, char *argv[])
           goto err;
         }
       }
+      if (erc != 0) {
+        fprintf(stderr, "ERROR: Failed to get elem from record\n");
+        goto err;
+      }
       /* check if end of RIB has been reached */
       if (bs_record->type == BGPSTREAM_RIB &&
           bs_record->dump_pos == BGPSTREAM_DUMP_END &&
@@ -586,6 +590,10 @@ int main(int argc, char *argv[])
         goto err;
       }
     }
+  }
+  if (rrc != 0) {
+    fprintf(stderr, "ERROR: Failed to get record from stream\n");
+    goto err;
   }
 
  done:
