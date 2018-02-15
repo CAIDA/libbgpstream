@@ -28,6 +28,9 @@
 #include "bgpstream_log.h"
 #include "bgpstream_record.h"
 #include "bgpstream_utils.h"
+#ifdef WITH_RPKI
+#include "bgpstream_utils_rpki.h"
+#endif
 #include "config.h"
 #include "utils.h"
 #include <assert.h>
@@ -326,6 +329,18 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
     /* NEW STATE (empty) */
     if (B_FULL)
       return NULL;
+
+#ifdef WITH_RPKI
+    /* RPKI validation */
+    if(elem->annotations.rpki_active){
+      char result[B_REMAIN];
+      if(bgpstream_rpki_validate(elem, result, sizeof(result))){
+        c = snprintf(buf_p, B_REMAIN, "%s", result);
+        written += c;
+        buf_p += c;
+      }
+    }
+#endif
 
     /* END OF LINE */
     break;

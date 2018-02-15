@@ -39,6 +39,10 @@
 #include <time.h>
 #include <unistd.h>
 #include <unistd.h>
+#ifdef WITH_RPKI
+#include "utils/bgpstream_utils_rpki.h"
+#include <roafetchlib/roafetchlib.h>
+#endif
 #include "bgpstream.h"
 
 #define PROJECT_CMD_CNT 10
@@ -183,6 +187,14 @@ static void usage()
     "   -i             print format information before output\n"
     "\n"
     "   -n <rec-cnt>   process at most <rec-cnt> records\n"
+#ifdef WITH_RPKI
+    "   -H <historical-mode>,<unified>,<ssh_enabled>,\n"
+    "      [<ssh_user>,<ssh_hostkey_path>,<ssh_privkey_path>]?,\n"
+    "      <project_1>,<collector_1>[,<project_n>,<collector_n>]*\n"
+    "                  enables RPKI support for historical or live validation\n"
+    "                  where <historical-mode>, <unified> and <ssh_enabled> can be 0 or 1\n"
+    "\n"
+#endif
     "   -h             print this help menu\n"
     "* denotes an option that can be given multiple times\n");
 }
@@ -226,6 +238,16 @@ int main(int argc, char *argv[])
   char *interface_options[OPTION_CMD_CNT];
   int interface_options_cnt = 0;
 
+#ifdef WITH_RPKI
+  struct rpki_window rpki_windows[WINDOW_CMD_CNT];
+  bgpstream_rpki_input_t *rpki_input = NULL;
+  /*char* test_input = (char*) malloc(25*sizeof(char));
+  snprintf(test_input, 25, "%s", "1,0,0,FU-Berlin,CC01");
+  rpki_input = bgpstream_rpki_parse_input(test_input);
+  printf("%i\n", rpki_input->rpki_args_check);
+  exit(-1);*/
+#endif
+
   char *filterstring = NULL;
   char *intervalstring = NULL;
 
@@ -256,7 +278,7 @@ int main(int argc, char *argv[])
   bgpstream_record_t *bs_record = NULL;
 
   while (prevoptind = optind,
-         (opt = getopt(argc, argv, "f:I:d:o:p:c:t:w:j:k:y:P:n:lrmeivh?")) >= 0) {
+         (opt = getopt(argc, argv, "f:I:d:o:p:c:t:w:j:k:y:P:n:H:lrmeivh?")) >= 0) {
     if (optind == prevoptind + 2 && (optarg == NULL || *optarg == '-')) {
       opt = ':';
       --optind;
@@ -368,6 +390,16 @@ int main(int argc, char *argv[])
       rec_limit = atoi(optarg);
       fprintf(stderr, "INFO: Processing at most %d records\n", rec_limit);
       break;
+
+#ifdef WITH_RPKI
+    case 'H':      
+      rpki_input = bgpstream_rpki_parse_input(optarg);
+      if(!rpki_input->rpki_args_check){
+        bgpstream_rpki_destroy_input(rpki_input);
+        usage(); exit(-1);
+      }
+      break;
+#endif
 
     case 'l':
       live = 1;
@@ -549,6 +581,15 @@ int main(int argc, char *argv[])
   int rrc = 0, erc = 0, rec_cnt = 0;
   bgpstream_elem_t *bs_elem;
 
+#ifdef WITH_RPKI
+  rpki_cfg_t *cfg = NULL;
+  if(rpki_input != NULL && rpki_input->rpki_active){
+    memcpy(&rpki_windows, &windows, sizeof(rpki_windows));
+    rpki_input = bgpstream_rpki_parse_windows(rpki_input, rpki_windows, windows_cnt);
+    cfg = bgpstream_rpki_set_cfg(rpki_input);
+  }
+#endif
+
   while ((rrc = bgpstream_get_next_record(bs, &bs_record)) > 0 &&
          (rec_limit < 0 || rec_cnt < rec_limit)) {
     rec_cnt++;
@@ -575,6 +616,13 @@ int main(int argc, char *argv[])
       }
 
       while ((erc = bgpstream_record_get_next_elem(bs_record, &bs_elem)) > 0) {
+#ifdef WITH_RPKI
+        if(rpki_input != NULL && rpki_input->rpki_active){
+          bs_elem->annotations.cfg = cfg;
+          bs_elem->annotations.rpki_active = rpki_input->rpki_active;
+          bs_elem->annotations.timestamp = bs_record->time_sec;            
+        }
+#endif
         if (print_elem(bs_record, bs_elem) != 0) {
           goto err;
         }
@@ -596,6 +644,13 @@ int main(int argc, char *argv[])
     goto err;
   }
 
+#ifdef WITH_RPKI
+  if(rpki_input != NULL && rpki_input->rpki_active){
+    cfg_destroy(cfg);
+    bgpstream_rpki_destroy_input(rpki_input);
+  }
+#endif
+
  done:
   /* deallocate memory for interface */
   bgpstream_destroy(bs);
@@ -603,6 +658,12 @@ int main(int argc, char *argv[])
 
 err:
   bgpstream_destroy(bs);
+#ifdef WITH_RPKI
+  if(rpki_input != NULL && rpki_input->rpki_active){
+    cfg_destroy(cfg);
+    bgpstream_rpki_destroy_input(rpki_input);
+  }
+#endif
   return -1;
 }
 

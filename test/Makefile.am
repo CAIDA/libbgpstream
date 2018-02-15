@@ -34,11 +34,13 @@ TESTS = 				\
 	bgpstream-test-filters		\
 	bgpstream-test-utils-addr 	\
 	bgpstream-test-utils-pfx	\
-	bgpstream-test-utils-patricia
+	bgpstream-test-utils-patricia	\
+	bgpstream-test-rpki
 
 check_PROGRAMS =  			\
 	bgpstream-test 			\
 	bgpstream-test-filters		\
+	bgpstream-test-rpki 			\
 	bgpstream-test-utils-addr 	\
 	bgpstream-test-utils-pfx	\
 	bgpstream-test-utils-patricia
@@ -48,6 +50,9 @@ bgpstream_test_LDADD   = $(top_builddir)/lib/libbgpstream.la
 
 bgpstream_test_filters_SOURCES = bgpstream-test-filters.c bgpstream_test.h
 bgpstream_test_filters_LDADD   = $(top_builddir)/lib/libbgpstream.la
+
+bgpstream_test_rpki_SOURCES = bgpstream-test-rpki.c bgpstream_test.h
+bgpstream_test_rpki_LDADD   = $(top_builddir)/lib/libbgpstream.la
 
 bgpstream_test_utils_addr_SOURCES = bgpstream-test-utils-addr.c bgpstream_test.h
 bgpstream_test_utils_addr_LDADD   = $(top_builddir)/lib/libbgpstream.la

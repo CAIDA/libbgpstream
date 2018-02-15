@@ -48,6 +48,7 @@ include_HEADERS= bgpstream_utils.h 		     \
 		 bgpstream_utils_str_set.h	     \
 		 bgpstream_utils_ip_counter.h	     \
 	         bgpstream_utils_patricia.h  \
+	   bgpstream_utils_rpki.h  \
 		 bgpstream_utils_time.h
 
 
@@ -79,6 +80,8 @@ libbgpstream_utils_la_SOURCES =             \
 	bgpstream_utils_ip_counter.h	    \
 	bgpstream_utils_patricia.c	    \
 	bgpstream_utils_patricia.h		\
+	bgpstream_utils_rpki.c	    \
+	bgpstream_utils_rpki.h	    \
 	bgpstream_utils_time.c    \
 	bgpstream_utils_time.h
 

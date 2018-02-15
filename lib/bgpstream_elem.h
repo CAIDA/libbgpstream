@@ -27,6 +27,10 @@
 #ifndef __BGPSTREAM_ELEM_H
 #define __BGPSTREAM_ELEM_H
 
+#include "config.h"
+#ifdef WITH_RPKI
+#include <roafetchlib/roafetchlib.h>
+#endif
 #include "bgpstream_utils.h"
 
 /** @file
@@ -107,6 +111,21 @@ typedef enum {
 
 } bgpstream_elem_type_t;
 
+typedef struct struct_bgpstream_annotations_t {
+  
+#ifdef WITH_RPKI
+  /** RPKI active */
+  int rpki_active;
+
+  /** RPKI validation configuration */
+  rpki_cfg_t* cfg;
+
+  /** Record timestamp */
+  uint32_t timestamp;
+#endif
+
+} bgpstream_annotations_t;
+
 /** @} */
 
 /**
@@ -186,6 +205,12 @@ typedef struct bgpstream_elem {
    * Available only for the Peer-state elem type
    */
   bgpstream_elem_peerstate_t new_state;
+
+  /** Annotations
+   *
+   * Annotations from other libraries
+   */
+  bgpstream_annotations_t annotations;
 
 } bgpstream_elem_t;
 
