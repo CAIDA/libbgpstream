@@ -27,12 +27,12 @@
  *   Samir Al-Sheikh (s.al-sheikh@fu-berlin.de)
  */
 
+#include <stdio.h>
+#include <string.h>
+#include "utils.h"
 #include "bgpstream-test-rpki.h"
 #include "bgpstream_test.h"
 #include "bgpstream_utils_rpki.h"
-#include "utils.h"
-#include <stdio.h>
-#include <string.h>
 
 bgpstream_t *bs;
 bgpstream_data_interface_id_t di_id = 0;
@@ -45,13 +45,13 @@ static int val_compare(const void *cmp1, const void *cmp2) {
 
 void sort(char *buf[], int n) {
 
-  /* Sort the  validation results */
+  /* Sort the validation results */
   qsort(buf, n, sizeof(const char *), val_compare);
 }
 
 int split_result(char *val_result, char **val_result_buf) {
 
-  /* Split the validation result into an string array */
+  /* Split the validation result into a string array */
   int cnt = 0;
   val_result_buf[cnt] = strtok(val_result, ";");
   while (val_result_buf[cnt] != NULL) {

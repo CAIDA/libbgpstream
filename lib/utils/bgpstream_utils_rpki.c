@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "config.h"
+#include "utils.h"
 #include "bgpstream_utils.h"
 #include "bgpstream_constants.h"
 #include "bgpstream_utils_rpki.h"
@@ -37,24 +38,16 @@
 #define MIN_OPT_CNT 4
 #define MIN_SSH_CNT 7
 
-#ifdef WITH_RPKI
-
 bgpstream_rpki_input_t *bgpstream_rpki_create_input() {
 
   /* Create input */
   bgpstream_rpki_input_t *input = NULL;
   size_t input_size = sizeof(bgpstream_rpki_input_t);
-  if ((input = (bgpstream_rpki_input_t *)malloc(input_size)) == NULL) {
+  if ((input = (bgpstream_rpki_input_t *)malloc_zero(input_size)) == NULL) {
     return NULL;
-  } else {
-    memset(input, 0, input_size);
   }
 
   /* Initializing all members */
-  memset(input->rpki_projects, 0, sizeof(input->rpki_projects));
-  memset(input->rpki_collectors, 0, sizeof(input->rpki_collectors));
-  memset(input->rpki_ssh_arg, 0, sizeof(input->rpki_ssh_arg));
-  memset(input->rpki_windows, 0, sizeof(input->rpki_windows));
   input->rpki_historical = 0;
   input->rpki_unified = 0;
   input->rpki_ssh = 0;
@@ -90,6 +83,7 @@ bgpstream_rpki_input_t *bgpstream_rpki_parse_input(char *optarg) {
     fprintf(stderr, "ERROR:  Invalid RPKI options\n");
     fprintf(stderr, " * FORMAT: historical,unified,ssh,project,collector\n");
     inp->rpki_args_check = 0;
+    free(optarg_dup);
     return inp;
   }
 
@@ -113,6 +107,7 @@ bgpstream_rpki_input_t *bgpstream_rpki_parse_input(char *optarg) {
       (inp->rpki_ssh != 0 && inp->rpki_ssh != 1)) {
     fprintf(stderr, "ERROR: Invalid RPKI options\n");
     inp->rpki_args_check = 0;
+    free(optarg_dup);
     return inp;
   }
   
@@ -125,9 +120,9 @@ bgpstream_rpki_input_t *bgpstream_rpki_parse_input(char *optarg) {
       fprintf(stderr, "ERROR:  Invalid RPKI SSH options\n");
       fprintf(stderr, " * FORMAT: user,hostkey,private_key,project,collector\n");
       inp->rpki_args_check = 0;
+      free(optarg_dup);
       return inp;
     }
-    free(optarg_dup);
   }
 
   /* Parse all SSH related input arguments */
@@ -156,6 +151,7 @@ bgpstream_rpki_input_t *bgpstream_rpki_parse_input(char *optarg) {
   inp->rpki_active = 1;
   inp->rpki_args_check = 1;
 
+  free(optarg_dup);
   return inp;
 }
 
@@ -174,6 +170,15 @@ bgpstream_rpki_parse_windows(bgpstream_rpki_input_t *input,
   input->rpki_windows[strlen(input->rpki_windows) - 1] = '\0';
 
   return input;
+}
+
+void bgpstream_rpki_destroy_cfg(rpki_cfg_t *cfg) {
+
+  /* Destroy the ROAFetchlib configuration if necessary */
+  if (cfg == NULL) {
+    return;
+  }
+  cfg_destroy(cfg);
 }
 
 rpki_cfg_t *bgpstream_rpki_set_cfg(bgpstream_rpki_input_t *inp) {
@@ -197,6 +202,9 @@ int bgpstream_rpki_validate(bgpstream_elem_t const *elem, char *result,
                       &(((bgpstream_pfx_t *)&(elem->prefix))->address));
   uint32_t asn = 0;
 
+  /* Validate the BGP elem only if the origin ASN is a simple ASN value
+     (i.e. not a set). If the validation function of the ROAFetchlib
+     returns 0 -> a valid result (val_rst = 1) is available */
   if (!bgpstream_as_path_get_origin_val(elem->as_path, &asn)) {
     if (!rpki_validate(elem->annotations.cfg, elem->annotations.timestamp, asn,
                        prefix, elem->prefix.mask_len, result, size)) {
@@ -206,5 +214,3 @@ int bgpstream_rpki_validate(bgpstream_elem_t const *elem, char *result,
 
   return val_rst;
 }
-
-#endif

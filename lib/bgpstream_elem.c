@@ -332,6 +332,8 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
 
 #ifdef WITH_RPKI
     /* RPKI validation */
+    /* If the RPKI parameter was set, the corresponding input was valid and the 
+       configure was completely set up -> the elem can be validated by RPKI */
     if(elem->annotations.rpki_active){
       char result[B_REMAIN];
       if(bgpstream_rpki_validate(elem, result, sizeof(result))){

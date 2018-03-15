@@ -30,11 +30,10 @@
 #ifndef __BGPSTREAM_UTILS_RPKI_H
 #define __BGPSTREAM_UTILS_RPKI_H
 
-#ifdef WITH_RPKI
-#include "bgpstream_elem_int.h"
+#include <stdint.h>
 #include <inttypes.h>
 #include <roafetchlib/roafetchlib.h>
-#include <stdint.h>
+#include "bgpstream_elem_int.h"
 
 // Note the copy of the BGPStream - Window Command Count !!
 #define WINDOW_CMD_CNT 1024
@@ -161,6 +160,12 @@ bgpstream_rpki_parse_windows(bgpstream_rpki_input_t *input,
                              rpki_window_t windows[WINDOW_CMD_CNT],
                              int windows_cnt);
 
+/** Destroy the ROAFetchlib configuration
+ *
+ * @param cfg             Pointer to the ROAFetchlib configuration
+ */
+void bgpstream_rpki_destroy_cfg(rpki_cfg_t *cfg);
+
 /** Set up the ROAFetchlib configuration
  *
  * @param input           Pointer to the BGPStream RPKI input struct
@@ -179,5 +184,4 @@ rpki_cfg_t *bgpstream_rpki_set_cfg(bgpstream_rpki_input_t *input);
 int bgpstream_rpki_validate(bgpstream_elem_t const *elem, char *result,
                             size_t size);
 
-#endif
 #endif /* __BGPSTREAM_UTILS_H */

@@ -29,21 +29,28 @@ AM_CPPFLAGS = 	-I$(top_srcdir) \
 	 	-I$(top_srcdir)/lib/utils \
 	 	-I$(top_srcdir)/common
 
+# Run bgpstream-test-rpki only if WITH_RPKI is set
+if WITH_RPKI
+RPKI_TEST=bgpstream-test-rpki
+else
+RPKI_TEST=
+endif
+
 TESTS = 				\
 	bgpstream-test 			\
 	bgpstream-test-filters		\
 	bgpstream-test-utils-addr 	\
 	bgpstream-test-utils-pfx	\
-	bgpstream-test-utils-patricia	\
-	bgpstream-test-rpki
+	bgpstream-test-utils-patricia 			\
+  $(RPKI_TEST)
 
 check_PROGRAMS =  			\
 	bgpstream-test 			\
 	bgpstream-test-filters		\
-	bgpstream-test-rpki 			\
 	bgpstream-test-utils-addr 	\
 	bgpstream-test-utils-pfx	\
-	bgpstream-test-utils-patricia
+	bgpstream-test-utils-patricia  \
+  $(RPKI_TEST)
 
 bgpstream_test_SOURCES = bgpstream-test.c bgpstream_test.h
 bgpstream_test_LDADD   = $(top_builddir)/lib/libbgpstream.la

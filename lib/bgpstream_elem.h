@@ -27,10 +27,6 @@
 #ifndef __BGPSTREAM_ELEM_H
 #define __BGPSTREAM_ELEM_H
 
-#include "config.h"
-#ifdef WITH_RPKI
-#include <roafetchlib/roafetchlib.h>
-#endif
 #include "bgpstream_utils.h"
 
 /** @file
@@ -113,16 +109,14 @@ typedef enum {
 
 typedef struct struct_bgpstream_annotations_t {
   
-#ifdef WITH_RPKI
   /** RPKI active */
   int rpki_active;
 
   /** RPKI validation configuration */
-  rpki_cfg_t* cfg;
+  struct struct_rpki_config_t *cfg;
 
   /** Record timestamp */
   uint32_t timestamp;
-#endif
 
 } bgpstream_annotations_t;
 

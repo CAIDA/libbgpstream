@@ -241,11 +241,6 @@ int main(int argc, char *argv[])
 #ifdef WITH_RPKI
   struct rpki_window rpki_windows[WINDOW_CMD_CNT];
   bgpstream_rpki_input_t *rpki_input = NULL;
-  /*char* test_input = (char*) malloc(25*sizeof(char));
-  snprintf(test_input, 25, "%s", "1,0,0,FU-Berlin,CC01");
-  rpki_input = bgpstream_rpki_parse_input(test_input);
-  printf("%i\n", rpki_input->rpki_args_check);
-  exit(-1);*/
 #endif
 
   char *filterstring = NULL;
@@ -646,7 +641,7 @@ int main(int argc, char *argv[])
 
 #ifdef WITH_RPKI
   if(rpki_input != NULL && rpki_input->rpki_active){
-    cfg_destroy(cfg);
+    bgpstream_rpki_destroy_cfg(cfg);
     bgpstream_rpki_destroy_input(rpki_input);
   }
 #endif
@@ -660,7 +655,7 @@ err:
   bgpstream_destroy(bs);
 #ifdef WITH_RPKI
   if(rpki_input != NULL && rpki_input->rpki_active){
-    cfg_destroy(cfg);
+    bgpstream_rpki_destroy_cfg(cfg);
     bgpstream_rpki_destroy_input(rpki_input);
   }
 #endif
