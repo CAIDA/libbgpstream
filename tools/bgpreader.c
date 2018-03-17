@@ -159,6 +159,7 @@ static void usage()
     "                       minutes, hours, days).\n"
     "   -w <start>[,<end>]\n"
     "                  process records within the given time window\n"
+    "                    specified in Unix epoch time\n"
     "                    (omitting the end parameter enables live mode)*\n"
     "   -P <period>    process a rib files every <period> seconds (bgp "
     "time)\n"
