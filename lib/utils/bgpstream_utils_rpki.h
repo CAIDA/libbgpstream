@@ -31,9 +31,8 @@
 #define __BGPSTREAM_UTILS_RPKI_H
 
 #include <stdint.h>
-#include <inttypes.h>
 #include <roafetchlib/roafetchlib.h>
-#include "bgpstream_elem_int.h"
+#include "bgpstream_elem.h"
 
 // Note the copy of the BGPStream - Window Command Count !!
 #define WINDOW_CMD_CNT 1024

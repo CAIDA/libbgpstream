@@ -28,10 +28,10 @@
 #include "bgpstream_log.h"
 #include "bgpstream_record.h"
 #include "bgpstream_utils.h"
+#include "config.h"
 #ifdef WITH_RPKI
 #include "bgpstream_utils_rpki.h"
 #endif
-#include "config.h"
 #include "utils.h"
 #include <assert.h>
 #include <inttypes.h>
