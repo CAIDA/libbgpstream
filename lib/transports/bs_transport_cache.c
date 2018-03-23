@@ -189,6 +189,7 @@ int bs_transport_cache_create(bgpstream_transport_t *transport)
       // lock file creation failed: other thread is still writing the cache
       // disable write_to_cache flag
       STATE->write_to_cache = 0;
+      bgpstream_log(BGPSTREAM_LOG_WARN, "WARNING: Cache lock file %s exists, local cache will not be used.", STATE->lock_file_path);
     } else {
       // lock file created successfully, now safe to create write cache
       // enable write_to_cache flag
