@@ -178,7 +178,7 @@ void bgpstream_rpki_destroy_cfg(rpki_cfg_t *cfg) {
   if (cfg == NULL) {
     return;
   }
-  cfg_destroy(cfg);
+  rpki_destroy_config(cfg);
 }
 
 rpki_cfg_t *bgpstream_rpki_set_cfg(bgpstream_rpki_input_t *inp) {
