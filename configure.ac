@@ -258,6 +258,27 @@ if test "x$with_di_csvfile" == xyes; then
    BS_DI_OPT(csvfile-csv-file, CSVFILE_CSV_FILE, CSV file listing the MRT data to read, not-set)
 fi
 
+# RPKI configuration (ROAFetchLib)
+AC_MSG_NOTICE([])
+AC_MSG_NOTICE([---- RPKI support configuration ----])
+AC_ARG_WITH([rpki],
+        [AS_HELP_STRING([--without-rpki],
+        [do not compile with rpki support])],
+        [],
+        [with_rpki=yes])
+AM_CONDITIONAL([WITH_RPKI], [test "x$with_rpki" != xno])
+if test x"$with_rpki" = xyes; then
+    AC_CHECK_LIB([roafetch], [rpki_set_config],,
+         [AC_MSG_ERROR(
+            [ROAFetchlib is required (--without-rpki to disable)]
+    )])
+    AC_DEFINE([WITH_RPKI],[1],[Building with RPKI support])
+    AC_DEFINE([RPKI_BROKER],["http://roa-broker.realmv6.org/broker?"],[RPKI broker])
+else
+  AC_MSG_CHECKING([whether to build with RPKI support])
+  AC_MSG_RESULT([no])
+fi
+
 AC_HEADER_ASSERT
 
 AC_CONFIG_FILES([Makefile
