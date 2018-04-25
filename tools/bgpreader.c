@@ -41,6 +41,7 @@
 #include <unistd.h>
 #include "bgpstream.h"
 #include "getopt.h"
+#include "utils.h"
 
 #define PROJECT_CMD_CNT 10
 #define TYPE_CMD_CNT 10
@@ -75,31 +76,33 @@
 #define LONG_OPTIONS                                                           \
   (struct option [])                                                           \
   {                                                                            \
-    {"filterstring",    required_argument, 0, 'f'},                            \
-    {"interval",        required_argument, 0, 'I'},                            \
-    {"interface",       required_argument, 0, 'd'},                            \
-    {"option",          required_argument, 0, 'o'},                            \
-    {"project",         required_argument, 0, 'p'},                            \
-    {"collector",       required_argument, 0, 'c'},                            \
-    {"type",            required_argument, 0, 't'},                            \
-    {"window",          required_argument, 0, 'w'},                            \
-    {"peer ASN",        required_argument, 0, 'j'},                            \
-    {"prefix",          required_argument, 0, 'k'},                            \
-    {"community",       required_argument, 0, 'y'},                            \
-    {"period",          required_argument, 0, 'P'},                            \
-    {"number-records",  required_argument, 0, 'n'},                            \
-    {"live",            no_argument,       0, 'l'},                            \
-    {"record",          no_argument,       0, 'r'},                            \
-    {"bgpdump-record",  no_argument,       0, 'm'},                            \
-    {"element",         no_argument,       0, 'e'},                            \
-    {"information",     no_argument,       0, 'i'},                            \
-    {"version",         no_argument,       0, 'v'},                            \
-    {"help",            no_argument,       0, 'h'},                            \
-    {"help",            no_argument,       0, '?'},                            \
+    {"filter",                required_argument, 0, 'f'},                      \
+    {"interval",              required_argument, 0, 'I'},                      \
+    {"data-interface",        required_argument, 0, 'd'},                      \
+    {"data-interface-option", required_argument, 0, 'o'},                      \
+    {"project",               required_argument, 0, 'p'},                      \
+    {"collector",             required_argument, 0, 'c'},                      \
+    {"record-type",           required_argument, 0, 't'},                      \
+    {"time-window",           required_argument, 0, 'w'},                      \
+    {"peer-asn",              required_argument, 0, 'j'},                      \
+    {"prefix",                required_argument, 0, 'k'},                      \
+    {"community",             required_argument, 0, 'y'},                      \
+    {"rib-period",            required_argument, 0, 'P'},                      \
+    {"count",                 required_argument, 0, 'n'},                      \
+    {"live",                  no_argument,       0, 'l'},                      \
+    {"output-records",        no_argument,       0, 'r'},                      \
+    {"output-bgpdump",        no_argument,       0, 'm'},                      \
+    {"output-elems",          no_argument,       0, 'e'},                      \
+    {"output-headers",        no_argument,       0, 'i'},                      \
+    {"version",               no_argument,       0, 'v'},                      \
+    {"help",                  no_argument,       0, 'h'},                      \
+    {"help",                  no_argument,       0, '?'},                      \
     { 0, 0, 0, 0 }                                                             \
   }
 
-#define LONG_OPTIONS_CNT (sizeof(LONG_OPTIONS)/sizeof(struct option))
+#define LONG_OPTIONS_CNT (ARR_CNT(LONG_OPTIONS) - 1)
+
+static char short_options[LONG_OPTIONS_CNT * 2 + 1] = {0};
 
 struct window {
   uint32_t start;
@@ -287,11 +290,11 @@ int main(int argc, char *argv[])
   bgpstream_record_t *bs_record = NULL;
 
   /* build the short options */
-  char short_options[LONG_OPTIONS_CNT * sizeof(int)] = {0};
-  for (int i = 0; i < LONG_OPTIONS_CNT; i++) {
+  int k;
+  for (k = 0; k < LONG_OPTIONS_CNT; k++) {
     size_t size = strlen(short_options);
     snprintf(short_options + size, sizeof(short_options) - size,
-             LONG_OPTIONS[i].has_arg ? "%c:": "%c", LONG_OPTIONS[i].val);
+             LONG_OPTIONS[k].has_arg ? "%c:": "%c", LONG_OPTIONS[k].val);
   }
 
   while (prevoptind = optind,
