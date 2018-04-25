@@ -40,6 +40,7 @@
 #include <unistd.h>
 #include <unistd.h>
 #include "bgpstream.h"
+#include "getopt.h"
 
 #define PROJECT_CMD_CNT 10
 #define TYPE_CMD_CNT 10
@@ -70,6 +71,35 @@
   "# <rec-type>: R RIB, U Update\n"                                            \
   "# <elem-type>: R RIB, A announcement, W withdrawal, S state message\n"      \
   "#\n"                                                                        \
+
+#define LONG_OPTIONS                                                           \
+  (struct option [])                                                           \
+  {                                                                            \
+    {"filterstring",    required_argument, 0, 'f'},                            \
+    {"interval",        required_argument, 0, 'I'},                            \
+    {"interface",       required_argument, 0, 'd'},                            \
+    {"option",          required_argument, 0, 'o'},                            \
+    {"project",         required_argument, 0, 'p'},                            \
+    {"collector",       required_argument, 0, 'c'},                            \
+    {"type",            required_argument, 0, 't'},                            \
+    {"window",          required_argument, 0, 'w'},                            \
+    {"peer ASN",        required_argument, 0, 'j'},                            \
+    {"prefix",          required_argument, 0, 'k'},                            \
+    {"community",       required_argument, 0, 'y'},                            \
+    {"period",          required_argument, 0, 'P'},                            \
+    {"number-records",  required_argument, 0, 'n'},                            \
+    {"live",            no_argument,       0, 'l'},                            \
+    {"record",          no_argument,       0, 'r'},                            \
+    {"bgpdump-record",  no_argument,       0, 'm'},                            \
+    {"element",         no_argument,       0, 'e'},                            \
+    {"information",     no_argument,       0, 'i'},                            \
+    {"version",         no_argument,       0, 'v'},                            \
+    {"help",            no_argument,       0, 'h'},                            \
+    {"help",            no_argument,       0, '?'},                            \
+    { 0, 0, 0, 0 }                                                             \
+  }
+
+#define LONG_OPTIONS_CNT (sizeof(LONG_OPTIONS)/sizeof(struct option))
 
 struct window {
   uint32_t start;
@@ -256,8 +286,16 @@ int main(int argc, char *argv[])
   /* allocate memory for bs_record */
   bgpstream_record_t *bs_record = NULL;
 
+  /* build the short options */
+  char short_options[LONG_OPTIONS_CNT * sizeof(int)] = {0};
+  for (int i = 0; i < LONG_OPTIONS_CNT; i++) {
+    size_t size = strlen(short_options);
+    snprintf(short_options + size, sizeof(short_options) - size,
+             LONG_OPTIONS[i].has_arg ? "%c:": "%c", LONG_OPTIONS[i].val);
+  }
+
   while (prevoptind = optind,
-         (opt = getopt(argc, argv, "f:I:d:o:p:c:t:w:j:k:y:P:n:lrmeivh?")) >= 0) {
+         (opt = getopt_long(argc, argv, short_options, LONG_OPTIONS, 0)) >= 0) {
     if (optind == prevoptind + 2 && (optarg == NULL || *optarg == '-')) {
       opt = ':';
       --optind;
