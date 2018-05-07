@@ -137,8 +137,8 @@ struct options{
   char* expl;
 };
 
-static struct option long_options [OPTIONS_CNT + 1] = {0};
-static char short_options[OPTIONS_CNT * 2 + 1] = {0};
+static struct option long_options [OPTIONS_CNT + 1];
+static char short_options[OPTIONS_CNT * 2 + 1];
 
 struct window {
   uint32_t start;
