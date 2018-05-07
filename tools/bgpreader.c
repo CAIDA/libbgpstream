@@ -40,6 +40,8 @@
 #include <unistd.h>
 #include <unistd.h>
 #include "bgpstream.h"
+#include "getopt.h"
+#include "utils.h"
 
 #define PROJECT_CMD_CNT 10
 #define TYPE_CMD_CNT 10
@@ -49,6 +51,7 @@
 #define PEERASN_CMD_CNT 1000
 #define WINDOW_CMD_CNT 1024
 #define OPTION_CMD_CNT 1024
+#define OPTIONS_EXPL_LEN 1024
 #define BGPSTREAM_RECORD_OUTPUT_FORMAT                                         \
   "# Record format:\n"                                                         \
   "# "                                                                         \
@@ -70,6 +73,72 @@
   "# <rec-type>: R RIB, U Update\n"                                            \
   "# <elem-type>: R RIB, A announcement, W withdrawal, S state message\n"      \
   "#\n"                                                                        \
+
+#define OPTIONS                                                                \
+  (struct options [])                                                          \
+  {                                                                            \
+    { { "data-interface", required_argument, 0, 'd'}, "<interface>",           \
+        "use the given data interface to find available data\n"                \
+        "available data interfaces are:" },                                    \
+    { { "filter", required_argument, 0, 'f'}, "<filterstring>",                \
+        "filter records and elements using the rules\n"                        \
+        "described in the given filter string" },                              \
+    { { "interval", required_argument, 0, 'I'}, "<interval>",                  \
+        "process records that were received recently, where the\ninterval "    \
+        "describes how far back in time to go. The\ninterval should be "       \
+        "expressed as '<num> <unit>', where\n<unit> can be one of 's', "       \
+        "'m', 'h', 'd' (seconds,\nminutes, hours, days)." },                   \
+    { { "data-interface-option", required_argument, 0, 'o'},                   \
+        "<option-name=option-value>*", "\nset an option for the current data " \
+        "interface.\nuse '-o ?' to get a list of available options for the "   \
+        "current\ndata interface. (data interface can be selected using -d)" },\
+    { { "project", required_argument, 0, 'p'}, "<project>",                    \
+        "process records from only the given project (routeviews, ris)*" },    \
+    { { "collector", required_argument, 0, 'c'}, "<collector>",                \
+        "process records from only the given collector*" },                    \
+    { { "record-type",required_argument, 0, 't'}, "<type>",                    \
+        "process records with only the given type (ribs, updates)*" },         \
+    { { "time-window", required_argument, 0, 'w'}, "<start>[,<end>]",          \
+        "process records within the given time window\nspecified in Unix "     \
+        "epoch time\n(omitting the end parameter enables live mode)*" },       \
+    { { "rib-period",required_argument, 0, 'P'}, "<period>",                   \
+        "process a rib files every <period> seconds (bgp time)" },             \
+    { { "peer-asn", required_argument, 0, 'j'}, "<peer ASN>",                  \
+        "return valid elems originated by a specific peer ASN*" },             \
+    { { "prefix", required_argument, 0, 'k'}, "<prefix>",                      \
+        "return valid elems associated with a specific prefix*" },             \
+    { { "community", required_argument, 0, 'y'}, "<community>",                \
+        "return valid elems with the specified community*\n"                   \
+        "(format: asn:value,the '*' metacharacter is recognized)" },           \
+    { { "count", required_argument, 0, 'n'}, "<rec-cnt>",                      \
+        "process at most <rec-cnt> records" },                                 \
+    { { "live", no_argument, 0, 'l'}, "",                                      \
+        "enable live mode (make blocking requests for BGP records)\n"          \
+        "allows bgpstream to be used to process data in real-time" },          \
+    { { "output-elems", no_argument, 0, 'e'}, "", "print info "                \
+        "for each element of a valid BGP record (default)" },                  \
+    { { "output-bgpdump", no_argument, 0, 'm'}, "", "print info "              \
+        "for each BGP valid record in bgpdump -m format" },                    \
+    { { "output-records", no_argument, 0, 'r'}, "", "print info "              \
+        "for each BGP record (used mostly for debugging BGPStream)" },         \
+    { { "output-headers", no_argument, 0, 'i'}, "",                            \
+        "print format information before output" },                            \
+    { { "version", no_argument, 0, 'v'},"", "print the version of bgpreader" },\
+    { { "help", no_argument, 0, 'h'}, "", "print this help menu" },            \
+    { { "help", no_argument, 0, '?'},  "", "print this help menu" },           \
+    { { 0, 0, 0, 0 }, "", "" }                                                 \
+  }
+
+#define OPTIONS_CNT (ARR_CNT(OPTIONS) - 1)
+
+struct options{
+  struct option option;
+  char* usage;
+  char* expl;
+};
+
+static struct option long_options [OPTIONS_CNT + 1] = {0};
+static char short_options[OPTIONS_CNT * 2 + 1] = {0};
 
 struct window {
   uint32_t start;
@@ -97,7 +166,7 @@ static void data_if_usage()
     info = bgpstream_get_data_interface_info(bs, ids[i]);
 
     if (info != NULL) {
-      fprintf(stderr, "       %-16s%s%s\n", info->name, info->description,
+      fprintf(stderr, "%-30s%-17s%s%s\n", "", info->name, info->description,
               (ids[i] == di_id_default) ? " (default)" : "");
     }
   }
@@ -126,66 +195,30 @@ static void dump_if_options()
 
 static void usage()
 {
-  fprintf(
-    stderr,
-    "usage: bgpreader -w <start>[,<end>] [<options>]\n"
-    "Available options are:\n"
-    "   -d <interface> use the given data interface to find available data\n"
-    "                  available data interfaces are:\n");
-  data_if_usage();
-  fprintf(
-    stderr,
-    "   -o <option-name=option-value>*\n"
-    "                  set an option for the current data interface.\n"
-    "                  use '-o ?' to get a list of available options for the "
-    "current\n"
-    "                  data interface. (data interface can be selected using "
-    "-d)\n"
-    "   -p <project>   process records from only the given project "
-    "(routeviews, ris)*\n"
-    "   -c <collector> process records from only the given collector*\n"
-    "   -t <type>      process records with only the given type (ribs, "
-    "updates)*\n"
-    "   -f <filterstring>   filter records and elements using the rules \n"
-    "                       described in the given filter string\n"
-    "   -I <interval>       process records that were received recently, where "
-    "the\n"
-    "                       interval describes how far back in time to go. The "
-    "\n"
-    "                       interval should be expressed as '<num> <unit>', "
-    "where\n"
-    "                       where <unit> can be one of 's', 'm', 'h', 'd' "
-    "(seconds,\n"
-    "                       minutes, hours, days).\n"
-    "   -w <start>[,<end>]\n"
-    "                  process records within the given time window\n"
-    "                    specified in Unix epoch time\n"
-    "                    (omitting the end parameter enables live mode)*\n"
-    "   -P <period>    process a rib files every <period> seconds (bgp "
-    "time)\n"
-    "   -j <peer ASN>  return valid elems originated by a specific peer "
-    "ASN*\n"
-    "   -k <prefix>    return valid elems associated with a specific "
-    "prefix*\n"
-    "   -y <community> return valid elems with the specified community* \n"
-    "                  (format: asn:value, the '*' metacharacter is "
-    "recognized)\n"
-    "   -l             enable live mode (make blocking requests for BGP "
-    "records)\n"
-    "                  allows bgpstream to be used to process data in "
-    "real-time\n"
-    "\n"
-    "   -e             print info for each element of a valid BGP record "
-    "(default)\n"
-    "   -m             print info for each BGP valid record in bgpdump -m "
-    "format\n"
-    "   -r             print info for each BGP record (used mostly for "
-    "debugging BGPStream)\n"
-    "   -i             print format information before output\n"
-    "\n"
-    "   -n <rec-cnt>   process at most <rec-cnt> records\n"
-    "   -h             print this help menu\n"
-    "* denotes an option that can be given multiple times\n");
+  int k, j;
+  for (k = 0; k < OPTIONS_CNT - 1; k++) {
+    if(!k) {
+      fprintf(stderr, "usage: bgpreader -w <start>[,<end>] [<options>]\n"
+        "Available options are:\n");
+    }
+    
+    char expl_buf[OPTIONS_EXPL_LEN] = {0};
+    for (j = 0; j < strlen(OPTIONS[k].expl); j++) {
+      snprintf(expl_buf + strlen(expl_buf), sizeof(expl_buf) - strlen(expl_buf),
+               OPTIONS[k].expl[j] == '\n' ? "%-48c": "%c", OPTIONS[k].expl[j]);
+    }
+    if(isalpha(OPTIONS[k].option.val)) {
+      fprintf(stderr, " -%c, --%-23s%-15s  %s\n", OPTIONS[k].option.val,
+              OPTIONS[k].option.name, OPTIONS[k].usage, expl_buf);
+    } else {
+      fprintf(stderr, "     --%-23s%-15s  %s\n", OPTIONS[k].option.name,
+              OPTIONS[k].usage, expl_buf);
+    }
+    if(OPTIONS[k].option.val == 'd') {
+      data_if_usage();
+    }
+  }
+  fprintf(stderr, "* denotes an option that can be given multiple times\n");
 }
 
 // print / utility functions
@@ -256,8 +289,18 @@ int main(int argc, char *argv[])
   /* allocate memory for bs_record */
   bgpstream_record_t *bs_record = NULL;
 
+  /* build the short and long options */
+  int k;
+  for (k = 0; k < OPTIONS_CNT; k++) {
+    size_t size = strlen(short_options);
+    snprintf(short_options + size, sizeof(short_options) - size,
+             OPTIONS[k].option.has_arg ? "%c:": "%c", OPTIONS[k].option.val);
+    long_options[k] = OPTIONS[k].option;
+  }
+  long_options[k] = OPTIONS[k].option;
+
   while (prevoptind = optind,
-         (opt = getopt(argc, argv, "f:I:d:o:p:c:t:w:j:k:y:P:n:lrmeivh?")) >= 0) {
+         (opt = getopt_long(argc, argv, short_options, long_options, 0)) >= 0) {
     if (optind == prevoptind + 2 && (optarg == NULL || *optarg == '-')) {
       opt = ':';
       --optind;
