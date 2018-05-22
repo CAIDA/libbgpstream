@@ -39,6 +39,9 @@
 #include <time.h>
 #include <unistd.h>
 #include <unistd.h>
+#ifdef WITH_RPKI
+#include "utils/bgpstream_utils_rpki.h"
+#endif
 #include "bgpstream.h"
 #include "getopt.h"
 #include "utils.h"
@@ -125,6 +128,17 @@
         "print format information before output" },                            \
     { { "version", no_argument, 0, 'v'},"", "print the version of bgpreader" },\
     { { "help", no_argument, 0, 'h'}, "", "print this help menu" },            \
+    { { "rpki", no_argument, 0, 504}, "", "validate the BGP records with "     \
+        "historical RPKI dumps (default collector)" },                         \
+    { { "rpki-live", no_argument, 0, 502}, "", "validate the BGP records with" \
+        " the current RPKI dump (default collector)" },                        \
+    { { "rpki-collectors", required_argument, 0, 501},                         \
+        "<((*|project):(*|(collector(,collectors)*))(;)?)*>","\nspecify the "  \
+        "collectors used for (historical or live) RPKI validation " },         \
+    { { "rpki-unified", no_argument, 0, 503}, "",                              \
+        "whether the RPKI validation for different collectors is unified" },   \
+    { { "rpki-ssh", required_argument, 0, 500}, "<user,hostkey,private key>",  \
+        "\nenable SSH encryption for the live connection to the RTR server" }, \
     { { "help", no_argument, 0, '?'},  "", "print this help menu" },           \
     { { 0, 0, 0, 0 }, "", "" }                                                 \
   }
@@ -211,8 +225,10 @@ static void usage()
       fprintf(stderr, " -%c, --%-23s%-15s  %s\n", OPTIONS[k].option.val,
               OPTIONS[k].option.name, OPTIONS[k].usage, expl_buf);
     } else {
+#ifdef WITH_RPKI
       fprintf(stderr, "     --%-23s%-15s  %s\n", OPTIONS[k].option.name,
               OPTIONS[k].usage, expl_buf);
+#endif
     }
     if(OPTIONS[k].option.val == 'd') {
       data_if_usage();
@@ -260,6 +276,11 @@ int main(int argc, char *argv[])
   char *interface_options[OPTION_CMD_CNT];
   int interface_options_cnt = 0;
 
+#ifdef WITH_RPKI
+  struct rpki_window rpki_windows[WINDOW_CMD_CNT];
+  bgpstream_rpki_input_t *rpki_input = bgpstream_rpki_create_input();
+#endif
+
   char *filterstring = NULL;
   char *intervalstring = NULL;
 
@@ -293,8 +314,10 @@ int main(int argc, char *argv[])
   int k;
   for (k = 0; k < OPTIONS_CNT; k++) {
     size_t size = strlen(short_options);
-    snprintf(short_options + size, sizeof(short_options) - size,
-             OPTIONS[k].option.has_arg ? "%c:": "%c", OPTIONS[k].option.val);
+    if(isalpha(OPTIONS[k].option.val)) {
+      snprintf(short_options + size, sizeof(short_options) - size,
+               OPTIONS[k].option.has_arg ? "%c:": "%c", OPTIONS[k].option.val);
+    }
     long_options[k] = OPTIONS[k].option;
   }
   long_options[k] = OPTIONS[k].option;
@@ -446,6 +469,23 @@ int main(int argc, char *argv[])
       usage();
       goto done;
       break;
+#ifdef WITH_RPKI
+    case 500:
+      bgpstream_rpki_parse_ssh(optarg, rpki_input);
+      break;
+    case 501:
+      bgpstream_rpki_parse_collectors(optarg, rpki_input);
+      break;
+    case 502:
+      bgpstream_rpki_parse_live(rpki_input);
+      break;
+    case 503:
+      bgpstream_rpki_parse_unified(rpki_input);
+      break;
+    case 504:
+      bgpstream_rpki_parse_default(rpki_input);
+      break;
+#endif
     default:
       usage();
       goto err;
@@ -593,6 +633,18 @@ int main(int argc, char *argv[])
   int rrc = 0, erc = 0, rec_cnt = 0;
   bgpstream_elem_t *bs_elem;
 
+#ifdef WITH_RPKI
+  rpki_cfg_t *cfg = NULL;
+  if(rpki_input != NULL && rpki_input->rpki_active){
+    memcpy(&rpki_windows, &windows, sizeof(rpki_windows));
+    if(!bgpstream_rpki_parse_windows(rpki_input, rpki_windows, windows_cnt)) {
+      fprintf(stderr, "ERROR: Could not parse BGPStream windows\n");
+      goto err;
+    }
+    cfg = bgpstream_rpki_set_cfg(rpki_input);
+  }
+#endif
+
   while ((rrc = bgpstream_get_next_record(bs, &bs_record)) > 0 &&
          (rec_limit < 0 || rec_cnt < rec_limit)) {
     rec_cnt++;
@@ -619,6 +671,13 @@ int main(int argc, char *argv[])
       }
 
       while ((erc = bgpstream_record_get_next_elem(bs_record, &bs_elem)) > 0) {
+#ifdef WITH_RPKI
+        if(rpki_input != NULL && rpki_input->rpki_active){
+          bs_elem->annotations.cfg = cfg;
+          bs_elem->annotations.rpki_active = rpki_input->rpki_active;
+          bs_elem->annotations.timestamp = bs_record->time_sec;            
+        }
+#endif
         if (print_elem(bs_record, bs_elem) != 0) {
           goto err;
         }
@@ -640,6 +699,13 @@ int main(int argc, char *argv[])
     goto err;
   }
 
+#ifdef WITH_RPKI
+  if(rpki_input != NULL && rpki_input->rpki_active){
+    bgpstream_rpki_destroy_cfg(cfg);
+    bgpstream_rpki_destroy_input(rpki_input);
+  }
+#endif
+
  done:
   /* deallocate memory for interface */
   bgpstream_destroy(bs);
@@ -647,6 +713,12 @@ int main(int argc, char *argv[])
 
 err:
   bgpstream_destroy(bs);
+#ifdef WITH_RPKI
+  if(rpki_input != NULL && rpki_input->rpki_active){
+    bgpstream_rpki_destroy_cfg(cfg);
+    bgpstream_rpki_destroy_input(rpki_input);
+  }
+#endif
   return -1;
 }
 
