@@ -128,16 +128,17 @@
         "print format information before output" },                            \
     { { "version", no_argument, 0, 'v'},"", "print the version of bgpreader" },\
     { { "help", no_argument, 0, 'h'}, "", "print this help menu" },            \
-    { { "rpki", no_argument, 0, 504}, "", "validate the BGP records with "     \
-        "historical RPKI dumps (default collector)" },                         \
-    { { "rpki-live", no_argument, 0, 502}, "", "validate the BGP records with" \
-        " the current RPKI dump (default collector)" },                        \
-    { { "rpki-collectors", required_argument, 0, 501},                         \
+    { { "rpki", no_argument, 0, RPKI_OPTION_DEFAULT}, "", "validate the BGP "  \
+        "records with historical RPKI dumps (default collector)" },            \
+    { { "rpki-live", no_argument, 0, RPKI_OPTION_LIVE}, "", "validate the BGP "\
+        " records with the current RPKI dump (default collector)" },           \
+    { { "rpki-collectors", required_argument, 0, RPKI_OPTION_COLLECTORS},      \
         "<((*|project):(*|(collector(,collectors)*))(;)?)*>","\nspecify the "  \
         "collectors used for (historical or live) RPKI validation " },         \
-    { { "rpki-unified", no_argument, 0, 503}, "",                              \
+    { { "rpki-unified", no_argument, 0, RPKI_OPTION_UNIFIED}, "",              \
         "whether the RPKI validation for different collectors is unified" },   \
-    { { "rpki-ssh", required_argument, 0, 500}, "<user,hostkey,private key>",  \
+    { { "rpki-ssh", required_argument, 0, RPKI_OPTION_SSH},                    \
+        "<user,hostkey,private key>",                                          \
         "\nenable SSH encryption for the live connection to the RTR server" }, \
     { { "help", no_argument, 0, '?'},  "", "print this help menu" },           \
     { { 0, 0, 0, 0 }, "", "" }                                                 \
@@ -149,6 +150,14 @@ struct options{
   struct option option;
   char* usage;
   char* expl;
+};
+
+enum rpki_options {
+  RPKI_OPTION_SSH = 500,
+  RPKI_OPTION_COLLECTORS = 501,
+  RPKI_OPTION_LIVE = 502,
+  RPKI_OPTION_UNIFIED = 503,
+  RPKI_OPTION_DEFAULT = 504
 };
 
 static struct option long_options [OPTIONS_CNT + 1];
@@ -470,19 +479,19 @@ int main(int argc, char *argv[])
       goto done;
       break;
 #ifdef WITH_RPKI
-    case 500:
+    case RPKI_OPTION_SSH:
       bgpstream_rpki_parse_ssh(optarg, rpki_input);
       break;
-    case 501:
+    case RPKI_OPTION_COLLECTORS:
       bgpstream_rpki_parse_collectors(optarg, rpki_input);
       break;
-    case 502:
+    case RPKI_OPTION_LIVE:
       bgpstream_rpki_parse_live(rpki_input);
       break;
-    case 503:
+    case RPKI_OPTION_UNIFIED:
       bgpstream_rpki_parse_unified(rpki_input);
       break;
-    case 504:
+    case RPKI_OPTION_DEFAULT:
       bgpstream_rpki_parse_default(rpki_input);
       break;
 #endif
