@@ -262,10 +262,10 @@ fi
 AC_MSG_NOTICE([])
 AC_MSG_NOTICE([---- RPKI support configuration ----])
 AC_ARG_WITH([rpki],
-        [AS_HELP_STRING([--without-rpki],
-        [do not compile with rpki support])],
+        [AS_HELP_STRING([--with-rpki],
+        [bulding with rpki support])],
         [],
-        [with_rpki=yes])
+        [with_rpki=no])
 AM_CONDITIONAL([WITH_RPKI], [test "x$with_rpki" != xno])
 if test x"$with_rpki" = xyes; then
     AC_CHECK_LIB([roafetch], [rpki_set_config],,
