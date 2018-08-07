@@ -80,7 +80,7 @@ static bgpstream_data_interface_option_t options[] = {
     "updates mrt file to read (default: " STR(
       BGPSTREAM_DI_SINGLEFILE_UPDATE_FILE) ")",
   },
-  /* RIB file type */
+  /* Update file type */
   {
     BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
     OPTION_UPDATE_TYPE, // internal ID
