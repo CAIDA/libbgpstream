@@ -44,6 +44,8 @@ SOURCES= 				\
 	bs_format_bmp.h			\
 	bs_format_mrt.c 		\
 	bs_format_mrt.h 		\
+	bs_format_ripejson.c 		\
+	bs_format_ripejson.h 		\
 	bgpstream_parsebgp_common.c	\
 	bgpstream_parsebgp_common.h
 

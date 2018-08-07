@@ -93,7 +93,7 @@ static bgpstream_data_interface_option_t options[] = {
 BSDI_CREATE_CLASS(
   singlefile,
   BGPSTREAM_DATA_INTERFACE_SINGLEFILE,
-  "Read a single mrt data file (RIB and/or updates)",
+  "Read a single mrt/mbp data file (RIB and/or updates)",
   options
 );
 
