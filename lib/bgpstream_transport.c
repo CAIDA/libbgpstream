@@ -119,3 +119,45 @@ void bgpstream_transport_destroy(bgpstream_transport_t *transport)
 
   free(transport);
 }
+
+int64_t bgpstream_transport_readline(bgpstream_transport_t *transport,
+                                     void *buffer, int64_t len)
+{
+  char cbuf;
+  int rval;
+  int i;
+  int done = 0;
+
+  if(buffer == NULL || len <= 0)
+    {
+      return 0;
+    }
+
+  for(i=0; !done && i < len-1; i++)
+    {
+      if((rval = bgpstream_transport_read(transport, &cbuf, 1)) < 0)
+       {
+         return rval;
+       }
+      if(rval == 0)
+       {
+         done = 1;
+         i--;
+       }
+      else
+       {
+         ((char*)buffer)[i] = cbuf;
+         if(cbuf == '\n')
+           {
+             if(chomp != 0)
+               {
+                 ((char*)buffer)[i] = '\0';
+               }
+             done = 1;
+           }
+       }
+    }
+
+  ((char*)buffer)[i] = '\0';
+  return i;
+}
