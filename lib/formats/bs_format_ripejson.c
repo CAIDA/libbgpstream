@@ -29,6 +29,7 @@
 #include "bgpstream_record_int.h"
 #include "bgpstream_log.h"
 #include "bgpstream_parsebgp_common.h"
+#include "libjsmn/jsmn.h"
 #include "utils.h"
 #include <assert.h>
 
@@ -268,7 +269,7 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
   strcpy(record -> project_name , "ripe-stream");
   strcpy(record -> collector_name , "rrrrr");
 
-  unsigned char buffer[1024];
+  unsigned char buffer[2048];
 
   int newread = bgpstream_transport_readline(format->transport, &buffer, BGPSTREAM_PARSEBGP_BUFLEN);
 
@@ -280,13 +281,71 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
     return BGPSTREAM_FORMAT_END_OF_DUMP;
   }
 
-  printf("newread = %d\nBUFFER: %s\n", newread, buffer);
+  printf("newread = %d\nbuffer: %s\nstrlen(buffer): %d\n", newread, buffer, strlen(buffer));
 
+  bs_format_extract_json_fields(buffer);
 
     // return bgpstream_parsebgp_populate_record(&STATE->decoder, RDATA->msg, format,
     //                                           record, NULL, populate_filter_cb);
   return BGPSTREAM_FORMAT_OK;
-  // return BGPSTREAM_FORMAT_END_OF_DUMP;
+}
+
+static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
+  if (tok->type == JSMN_STRING && (int) strlen(s) == tok->end - tok->start &&
+      strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
+    return 0;
+  }
+  return -1;
+}
+
+int bs_format_extract_json_fields(const char* JSON_STRING){
+  int i;
+  int r;
+  jsmn_parser p;
+  jsmntok_t t[128]; /* We expect no more than 128 tokens */
+
+  jsmn_init(&p);
+  r = jsmn_parse(&p, JSON_STRING, strlen(JSON_STRING), t, sizeof(t)/sizeof(t[0]));
+  if (r < 0) {
+    printf("Failed to parse JSON: %d\n", r);
+    return 1;
+  }
+
+  /* Assume the top-level element is an object */
+  if (r < 1 || t[0].type != JSMN_OBJECT) {
+    printf("Object expected\n");
+    return 1;
+  }
+
+  /* Loop over all keys of the root object */
+  for (i = 1; i < r; i++) {
+    if (jsoneq(JSON_STRING, &t[i], "body") == 0) {
+      /* We may use strndup() to fetch string value */
+      printf("- body: %.*s\n", t[i+1].end-t[i+1].start,
+          JSON_STRING + t[i+1].start);
+      i++;
+    } else if (jsoneq(JSON_STRING, &t[i], "timestamp") == 0) {
+      /* We may additionally check if the value is either "true" or "false" */
+      printf("- timestamp: %.*s\n", t[i+1].end-t[i+1].start,
+          JSON_STRING + t[i+1].start);
+      i++;
+    } else if (jsoneq(JSON_STRING, &t[i], "host") == 0) {
+      /* We may want to do strtol() here to get numeric value */
+      printf("- host: %.*s\n", t[i+1].end-t[i+1].start,
+          JSON_STRING + t[i+1].start);
+      i++;
+    } else if (jsoneq(JSON_STRING, &t[i], "id") == 0) {
+      /* We may want to do strtol() here to get numeric value */
+      printf("- id: %.*s\n", t[i+1].end-t[i+1].start,
+          JSON_STRING + t[i+1].start);
+      i++;
+    } else {
+      // printf("Unexpected key: %.*s\n", t[i].end-t[i].start,
+      //     JSON_STRING + t[i].start);
+    }
+  }
+  return EXIT_SUCCESS;
+
 }
 
 int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
