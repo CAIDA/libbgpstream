@@ -261,7 +261,6 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
                               bgpstream_record_t *record)
 {
 
-  // FIXME: record only need to populate timestamp and host
   printf("ripejson populate record!\n");
   record -> time_sec = 1;
   record -> time_usec = 100;
@@ -309,13 +308,13 @@ unsigned char* bgp_hexstr_to_bytes(const char* hexstr, size_t msg_type)
     int total_len = msg_len + 16 + 2 + 1;
     unsigned char* chrs = (unsigned char*)malloc((total_len+1) * sizeof(*chrs));
 
+    uint64_t marker = 0xFFFFFFFFFFFFFFFF; // 16 bytes
+
     // 16 octets of marker, filled with 1
-    for(size_t j=0; j<16; j++){
-      chrs[j] = 1;
-    }
-    // 2 octests of message length, including header
-    chrs[17] = total_len & 0xFF;
-    chrs[16] = (total_len >> 8) & 0xFF;
+    memcpy(chrs, &marker, 16);
+    // 2 octests of message length, in network byte order
+    chrs[16] = total_len & 0xFF;
+    chrs[17] = (total_len >> 8) & 0xFF;
     // 1 octet for message type
     chrs[18] = msg_type;
 
