@@ -308,10 +308,11 @@ unsigned char* bgp_hexstr_to_bytes(const char* hexstr, size_t msg_type)
     int total_len = msg_len + 16 + 2 + 1;
     unsigned char* chrs = (unsigned char*)malloc((total_len+1) * sizeof(*chrs));
 
-    uint64_t marker = 0xFFFFFFFFFFFFFFFF; // 16 bytes
+    uint64_t marker = 0xFFFFFFFFFFFFFFFF; // 8 bytes of marker field filled with 1-bit
 
     // 16 octets of marker, filled with 1
-    memcpy(chrs, &marker, 16);
+    memcpy(&chrs[0], &marker, 8);
+    memcpy(&chrs[8], &marker, 8);
     // 2 octests of message length, in network byte order
     chrs[16] = total_len & 0xFF;
     chrs[17] = (total_len >> 8) & 0xFF;
