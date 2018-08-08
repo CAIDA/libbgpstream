@@ -339,6 +339,11 @@ int bs_format_extract_json_fields(const char* JSON_STRING){
       printf("- id: %.*s\n", t[i+1].end-t[i+1].start,
           JSON_STRING + t[i+1].start);
       i++;
+    } else if (jsoneq(JSON_STRING, &t[i], "peer_asn") == 0) {
+      /* We may want to do strtol() here to get numeric value */
+      printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start,
+          JSON_STRING + t[i+1].start);
+      i++;
     } else {
       // printf("Unexpected key: %.*s\n", t[i].end-t[i].start,
       //     JSON_STRING + t[i].start);
