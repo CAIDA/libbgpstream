@@ -298,6 +298,34 @@ static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
   return -1;
 }
 
+// convert bgp message hex string to char (byte) array, with added header marker
+unsigned char* bgp_hexstr_to_bytes(const char* hexstr, size_t msg_type)
+{
+    size_t len = strlen(hexstr);
+    if (len % 2 != 0){
+        return NULL;
+    }
+    size_t msg_len = len / 2;
+    int total_len = msg_len + 16 + 2 + 1;
+    unsigned char* chrs = (unsigned char*)malloc((total_len+1) * sizeof(*chrs));
+
+    // 16 octets of marker, filled with 1
+    for(size_t j=0; j<16; j++){
+      chrs[j] = 1;
+    }
+    // 2 octests of message length, including header
+    chrs[17] = total_len & 0xFF;
+    chrs[16] = (total_len >> 8) & 0xFF;
+    // 1 octet for message type
+    chrs[18] = msg_type;
+
+    for (size_t i=0, j=19; j<msg_len; i+=2, j++){
+        sscanf(hexstr+i, "%2x", &chrs[j]);
+    }
+    chrs[final_len] = '\0';
+    return chrs;
+}
+
 int bs_format_extract_json_fields(const char* JSON_STRING){
   int i;
   int r;
