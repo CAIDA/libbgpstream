@@ -305,21 +305,20 @@ unsigned char* bgp_hexstr_to_bytes(const char* hexstr, size_t msg_type)
         return NULL;
     }
     size_t msg_len = len / 2;
-    int total_len = msg_len + 16 + 2 + 1;
+    int total_len = msg_len + 2 + 1;
     unsigned char* chrs = (unsigned char*)malloc((total_len+1) * sizeof(*chrs));
 
-    uint64_t marker = 0xFFFFFFFFFFFFFFFF; // 8 bytes of marker field filled with 1-bit
-
-    // 16 octets of marker, filled with 1
-    memcpy(&chrs[0], &marker, 8);
-    memcpy(&chrs[8], &marker, 8);
+    // // 16 octets of marker, filled with 1
+    // uint64_t marker = 0xFFFFFFFFFFFFFFFF; // 8 bytes of marker field filled with 1-bit
+    // memcpy(&chrs[0], &marker, 8);
+    // memcpy(&chrs[8], &marker, 8);
     // 2 octests of message length, in network byte order
-    chrs[16] = total_len & 0xFF;
-    chrs[17] = (total_len >> 8) & 0xFF;
+    chrs[0] = total_len & 0xFF;
+    chrs[1] = (total_len >> 8) & 0xFF;
     // 1 octet for message type
-    chrs[18] = msg_type;
+    chrs[2] = msg_type;
 
-    for (size_t i=0, j=19; j<msg_len; i+=2, j++){
+    for (size_t i=0, j=3; j<msg_len; i+=2, j++){
         sscanf(hexstr+i, "%2x", &chrs[j]);
     }
     chrs[final_len] = '\0';
