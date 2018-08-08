@@ -107,6 +107,19 @@ typedef enum {
 
 } bgpstream_elem_type_t;
 
+typedef struct struct_bgpstream_annotations_t {
+  
+  /** RPKI active */
+  int rpki_active;
+
+  /** RPKI validation configuration */
+  struct struct_rpki_config_t *cfg;
+
+  /** Record timestamp */
+  uint32_t timestamp;
+
+} bgpstream_annotations_t;
+
 /** @} */
 
 /**
@@ -186,6 +199,12 @@ typedef struct bgpstream_elem {
    * Available only for the Peer-state elem type
    */
   bgpstream_elem_peerstate_t new_state;
+
+  /** Annotations
+   *
+   * Annotations from other libraries
+   */
+  bgpstream_annotations_t annotations;
 
 } bgpstream_elem_t;
 
