@@ -105,7 +105,6 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
                               bgpstream_record_t *record)
 {
 
-  printf("ripejson populate record!\n");
   record -> time_sec = 1;
   record -> time_usec = 100;
 
@@ -123,7 +122,7 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
     return BGPSTREAM_FORMAT_END_OF_DUMP;
   }
 
-  printf("newread = %d\nbuffer: %s\nstrlen(buffer): %d\n", newread, STATE->json_string_buffer, strlen(STATE->json_string_buffer));
+  // printf("newread = %d\nbuffer: %s\nstrlen(buffer): %d\n", newread, STATE->json_string_buffer, strlen(STATE->json_string_buffer));
 
   bs_format_extract_json_fields(format, record);
 
@@ -208,7 +207,7 @@ int bs_format_extract_json_fields(bgpstream_format_t *format, bgpstream_record_t
 
   /* Assume the top-level element is an object */
   if (r < 1 || t[0].type != JSMN_OBJECT) {
-    printf("Object expected\n");
+    printf("Object expected\n%s\n", STATE->json_string_buffer);
     return 1;
   }
 
@@ -216,8 +215,7 @@ int bs_format_extract_json_fields(bgpstream_format_t *format, bgpstream_record_t
   for (i = 1; i < r; i++) {
     if (jsoneq(json_string, &t[i], "body") == 0) {
       /* We may use strndup() to fetch string value */
-      printf("- body: %.*s\n", t[i+1].end-t[i+1].start,
-          json_string + t[i+1].start);
+      // printf("- body: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
 
       unsigned char* body_ptr = json_string + t[i+1].start;
       size_t body_size = t[i+1].end-t[i+1].start;
@@ -225,33 +223,29 @@ int bs_format_extract_json_fields(bgpstream_format_t *format, bgpstream_record_t
       ssize_t dec_len =  hexstr_to_bgpmsg(STATE->json_bytes_buffer, 4096, body_ptr, body_size, 2);
       size_t err;
 
-      printf("before parsing, dec_len = %ld, body_size = %d\n", dec_len, body_size);
-
       if ((err = parsebgp_decode(STATE->opts, PARSEBGP_MSG_TYPE_BGP, RDATA->msg,
                                  STATE->json_bytes_buffer, &dec_len)) != PARSEBGP_OK) {
         fprintf(stderr, "ERROR: Failed to parse message (%d:%s)\n", err, parsebgp_strerror(err));
         parsebgp_clear_msg(RDATA->msg);
       }
-      // FIXME: record with community fields would crash the `parsebgp_dump_msg`
-      parsebgp_dump_msg(RDATA->msg);
-      fprintf(stderr, "after parsing\n");
+      // parsebgp_dump_msg(RDATA->msg);
 
       i++;
     } else if (jsoneq(json_string, &t[i], "timestamp") == 0) {
       /* We may additionally check if the value is either "true" or "false" */
-      printf("- timestamp: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
+      // printf("- timestamp: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       i++;
     } else if (jsoneq(json_string, &t[i], "host") == 0) {
       /* We may want to do strtol() here to get numeric value */
-      printf("- host: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
+      // printf("- host: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       i++;
     } else if (jsoneq(json_string, &t[i], "id") == 0) {
       /* We may want to do strtol() here to get numeric value */
-      printf("- id: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
+      // printf("- id: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       i++;
     } else if (jsoneq(json_string, &t[i], "peer_asn") == 0) {
       /* We may want to do strtol() here to get numeric value */
-      printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
+      // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       i++;
     } else {
       // printf("Unexpected key: %.*s\n", t[i].end-t[i].start,
@@ -262,6 +256,55 @@ int bs_format_extract_json_fields(bgpstream_format_t *format, bgpstream_record_t
 
 }
 
+static int handle_bgp4mp_state_change(rec_data_t *rd,
+                                      parsebgp_mrt_bgp4mp_t *bgp4mp)
+{
+  rd->elem->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
+  rd->elem->old_state = bgp4mp->data.state_change.old_state;
+  rd->elem->new_state = bgp4mp->data.state_change.new_state;
+  rd->end_of_elems = 1;
+  return 1;
+}
+
+static int handle_bgp4mp(rec_data_t *rd, parsebgp_mrt_msg_t *mrt)
+{
+  int rc = 0;
+  parsebgp_mrt_bgp4mp_t *bgp4mp = mrt->types.bgp4mp;
+
+  // no originated time information in BGP4MP
+  rd->elem->orig_time_sec = 0;
+  rd->elem->orig_time_usec = 0;
+
+  COPY_IP(&rd->elem->peer_ip, bgp4mp->afi, bgp4mp->peer_ip, return 0);
+  rd->elem->peer_asn = bgp4mp->peer_asn;
+  // other elem fields are specific to the message
+
+  switch (mrt->subtype) {
+  case PARSEBGP_MRT_BGP4MP_STATE_CHANGE:
+  case PARSEBGP_MRT_BGP4MP_STATE_CHANGE_AS4:
+    rc = handle_bgp4mp_state_change(rd, bgp4mp);
+    break;
+
+  case PARSEBGP_MRT_BGP4MP_MESSAGE:
+  case PARSEBGP_MRT_BGP4MP_MESSAGE_AS4:
+  case PARSEBGP_MRT_BGP4MP_MESSAGE_LOCAL:
+  case PARSEBGP_MRT_BGP4MP_MESSAGE_AS4_LOCAL:
+    rc = bgpstream_parsebgp_process_update(&rd->upd_state, rd->elem,
+                                           bgp4mp->data.bgp_msg);
+    if (rc == 0) {
+      rd->end_of_elems = 1;
+    }
+    break;
+
+  default:
+    bgpstream_log(BGPSTREAM_LOG_WARN,
+                  "Skipping unknown BGP4MP record subtype %d", mrt->subtype);
+    break;
+  }
+
+  return rc;
+}
+
 int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
                                 bgpstream_record_t *record,
                                 bgpstream_elem_t **elem)
@@ -269,34 +312,35 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
   parsebgp_mrt_msg_t *mrt;
   int rc;
 
-  elem = NULL;
+  // elem = NULL;
 
-  // if (RDATA == NULL || RDATA->end_of_elems != 0) {
-  //   // end-of-elems
-  //   return 0;
-  // }
+  if (RDATA == NULL || RDATA->end_of_elems != 0) {
+    // end-of-elems
+    return 0;
+  }
 
-  // mrt = RDATA->msg->types.mrt;
-  // switch (mrt->type) {
-  // case PARSEBGP_MRT_TYPE_BGP4MP:
-  // case PARSEBGP_MRT_TYPE_BGP4MP_ET:
-  //   rc = handle_bgp4mp(RDATA, mrt);
-  //   break;
+  mrt = RDATA->msg->types.mrt;
+  switch (mrt->type) {
+  case PARSEBGP_MRT_TYPE_BGP4MP:
+  case PARSEBGP_MRT_TYPE_BGP4MP_ET:
+    rc = handle_bgp4mp(RDATA, mrt);
+    break;
 
-  // default:
-  //   // a type we don't care about, so return end-of-elems
-  //   bgpstream_log(BGPSTREAM_LOG_WARN, "Skipping unknown MRT record type %d",
-  //                 mrt->type);
-  //   rc = 0;
-  //   break;
-  // }
+  default:
+    // a type we don't care about, so return end-of-elems
+    bgpstream_log(BGPSTREAM_LOG_WARN, "Skipping unknown MRT record type %d",
+                  mrt->type);
+    rc = 0;
+    break;
+  }
 
-  // if (rc <= 0) {
-  //   return rc;
-  // }
+  if (rc <= 0) {
+    return rc;
+  }
 
-  // // return a borrowed pointer to the elem we populated
-  // *elem = RDATA->elem;
+  // return a borrowed pointer to the elem we populated
+  // printf("get_next_elem\n");
+  *elem = RDATA->elem;
   return 0;
 }
 
