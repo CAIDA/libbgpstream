@@ -238,13 +238,13 @@ int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t
   r = jsmn_parse(&p, json_string, strlen(json_string), t, sizeof(t)/sizeof(t[0]));
   if (r < 0) {
     printf("Failed to parse JSON: %d\n", r);
-    return 1;
+    return -1;
   }
 
   /* Assume the top-level element is an object */
   if (r < 1 || t[0].type != JSMN_OBJECT) {
     printf("Object expected\n%s\n", STATE->json_string_buffer);
-    return 1;
+    return -1;
   }
 
   /* Loop over all fields of the json string buffer */
@@ -307,7 +307,7 @@ int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t
     break;
   }
 
-  return EXIT_SUCCESS;
+  return 0;
 }
 
 
