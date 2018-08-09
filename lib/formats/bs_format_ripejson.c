@@ -75,6 +75,8 @@ typedef struct json_field_ptrs {
 
   json_field_t peer_asn;
 
+  json_field_t peer_ip;
+
   json_field_t type;
 
 } json_field_ptrs_t;
@@ -110,6 +112,8 @@ typedef struct state {
 
   // json bgp message bytes buffer
   uint8_t json_bytes_buffer[4096];
+
+  uint8_t field_buffer[100];
 
   bs_format_ripejson_msg_type_t msg_type;
 
@@ -193,6 +197,7 @@ static ssize_t hexstr_to_bgpmsg(uint8_t *buf, size_t buflen,
 
 int process_update_message(bgpstream_format_t *format, bgpstream_record_t *record){
 
+  // convert body to bytes
   ssize_t dec_len =  hexstr_to_bgpmsg(STATE->json_bytes_buffer,
                                       4096,
                                       STATE->json_fields.body.ptr,
@@ -208,8 +213,23 @@ int process_update_message(bgpstream_format_t *format, bgpstream_record_t *recor
     parsebgp_clear_msg(RDATA->msg);
   }
 
+  // populate collector name
   memcpy(record -> collector_name , STATE->json_fields.host.ptr, STATE->json_fields.host.len);
+  record -> collector_name[STATE->json_fields.host.len] = '\0';
+  // populate peer asn
   RDATA->elem->peer_asn = (uint32_t) strtol(STATE->json_fields.peer_asn.ptr, NULL, 10);
+  // populate peer ip
+  bgpstream_addr_storage_t addr;
+  memcpy(STATE->field_buffer, STATE->json_fields.peer_ip.ptr, STATE->json_fields.peer_ip.len);
+  STATE->field_buffer[STATE->json_fields.peer_ip.len] = '\0';
+  bgpstream_str2addr(STATE->field_buffer, &addr);
+  bgpstream_addr_copy((bgpstream_ip_addr_t *)&RDATA->elem->peer_ip,
+                      (bgpstream_ip_addr_t *)&addr);
+  // populate time-stamp
+  double time_double = strtod(STATE->json_fields.timestamp.ptr, NULL);
+  record->time_sec = (int) time_double;
+  record->time_usec = (int)((time_double - (int) time_double) * 1000000);
+
   return 0;
 }
 
@@ -232,23 +252,18 @@ int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t
 
   uint8_t* json_string = &STATE->json_string_buffer;
 
-  printf("announcement!");
-
   jsmn_init(&p);
   r = jsmn_parse(&p, json_string, strlen(json_string), t, sizeof(t)/sizeof(t[0]));
   if (r < 0) {
-    printf("Failed to parse JSON: %d\n", r);
     return -1;
   }
 
   /* Assume the top-level element is an object */
   if (r < 1 || t[0].type != JSMN_OBJECT) {
-    printf("Object expected\n%s\n", STATE->json_string_buffer);
     return -1;
   }
 
   /* Loop over all fields of the json string buffer */
-  printf("announcement!");
   for (i = 1; i < r; i++) {
     unsigned char* value_ptr = json_string + t[i+1].start;
     size_t value_size = t[i+1].end-t[i+1].start;
@@ -272,6 +287,10 @@ int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t
       // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       STATE->json_fields.peer_asn = (json_field_t) {value_ptr, value_size};
       i++;
+    } else if (jsoneq(json_string, &t[i], "peer") == 0) {
+      // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
+      STATE->json_fields.peer_ip = (json_field_t) {value_ptr, value_size};
+      i++;
     } else if (jsoneq(json_string, &t[i], "type") == 0) {
       // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       STATE->json_fields.type = (json_field_t) {value_ptr, value_size};
@@ -286,21 +305,21 @@ int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t
   // process each type of message separately
 
   switch(*STATE->json_fields.type.ptr){
-  case 65: // "A"
+  case 'A':
     STATE->msg_type = RIPE_JSON_MSG_TYPE_ANNOUNCE;
-    fprintf(stderr, "announcement!\n");
     process_update_message(format, record);
     break;
-  case 87: // "W"
+  case 'W':
     STATE->msg_type = RIPE_JSON_MSG_TYPE_WITHDRAW;
+    process_update_message(format, record);
     break;
-  case 83: // "S"
+  case 'S':
     STATE->msg_type = RIPE_JSON_MSG_TYPE_STATUS;
     break;
-  case 79: // "O"
+  case 'O':
     STATE->msg_type = RIPE_JSON_MSG_TYPE_OPEN;
     break;
-  case 78: // "N"
+  case 'N':
     STATE->msg_type = RIPE_JSON_MSG_TYPE_NOTIFY;
     break;
   default:
@@ -339,24 +358,14 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
                               bgpstream_record_t *record)
 {
 
-  record -> time_sec = 1;
-  record -> time_usec = 100;
-
-  strcpy(record -> project_name , "ripe-stream");
-  strcpy(record -> collector_name , "rrrrr");
-
-  // ensure the router fields are unset
-  record->router_name[0] = '\0';
-  record->router_ip.version = 0;
+  int rc, newread;
 
 
-  int newread = bgpstream_transport_readline(format->transport, &STATE->json_string_buffer, BGPSTREAM_PARSEBGP_BUFLEN);
+  newread = bgpstream_transport_readline(format->transport, &STATE->json_string_buffer, BGPSTREAM_PARSEBGP_BUFLEN);
 
   if (newread <0 || newread >= BGPSTREAM_PARSEBGP_BUFLEN) {
-    printf("read error!\n");
     return newread;
   } else if ( newread == 0 ){
-    printf("read finished!\n");
     return BGPSTREAM_FORMAT_END_OF_DUMP;
   }
 
@@ -366,9 +375,11 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
     return BGPSTREAM_FORMAT_CORRUPTED_JSON
   }
 
+  strcpy(record -> project_name , "ripe-stream");
+  // ensure the router fields are unset
+  record->router_name[0] = '\0';
+  record->router_ip.version = 0;
 
-    // return bgpstream_parsebgp_populate_record(&STATE->decoder, RDATA->msg, format,
-    //                                           record, NULL, populate_filter_cb);
   return BGPSTREAM_FORMAT_OK;
 }
 
@@ -391,9 +402,6 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
     rc = bgpstream_parsebgp_process_update(&RDATA->upd_state, RDATA->elem,
                                                RDATA->msg->types.bgp);
     if (rc <= 0) {
-      if(rc<0){
-        printf("get_next_elem failed\n");
-      }
       return rc;
     }
     break;
