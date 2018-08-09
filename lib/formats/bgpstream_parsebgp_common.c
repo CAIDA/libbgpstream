@@ -631,7 +631,7 @@ void bgpstream_parsebgp_opts_init(parsebgp_opts_t *opts)
   //opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR] = 1;
 
   // and ask for shallow parsing of communities
-  opts->bgp.path_attr_raw_enabled = 1;
+  opts->bgp.path_attr_raw_enabled = 0;
   opts->bgp.path_attr_raw[PARSEBGP_BGP_PATH_ATTR_TYPE_COMMUNITIES] = 1;
 
   opts->ignore_not_implemented = 1;
