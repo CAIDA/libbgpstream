@@ -361,9 +361,10 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
   }
 
 
-  bs_format_process_json_fields(format, record);
-  // COPY_IP(RDATA->elem->peer_ip, RDATA->msg->types.bgp->afi, RDATA->msg->types.bgp->peer_ip, return 0);
-  RDATA->elem->peer_ip.version = BGPSTREAM_ADDR_VERSION_IPV4;
+  if( ( bs_format_process_json_fields(format, record) )<0){
+
+    return BGPSTREAM_FORMAT_CORRUPTED_JSON
+  }
 
 
     // return bgpstream_parsebgp_populate_record(&STATE->decoder, RDATA->msg, format,
