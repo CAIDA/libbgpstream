@@ -372,7 +372,7 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
 
   if( ( bs_format_process_json_fields(format, record) )<0){
 
-    return BGPSTREAM_FORMAT_CORRUPTED_JSON
+    return BGPSTREAM_FORMAT_CORRUPTED_JSON;
   }
 
   strcpy(record -> project_name , "ripe-stream");
