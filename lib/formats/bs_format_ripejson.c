@@ -79,6 +79,16 @@ typedef struct json_field_ptrs {
 
   json_field_t type;
 
+  json_field_t asn;
+
+  json_field_t hold_time;
+
+  json_field_t router_id;
+
+  json_field_t state;
+
+  json_field_t reason;
+
 } json_field_ptrs_t;
 
 typedef struct rec_data {
@@ -195,52 +205,173 @@ static ssize_t hexstr_to_bgpmsg(uint8_t *buf, size_t buflen,
 /* ====================================================================== */
 /* ====================================================================== */
 
+void process_common_fields(bgpstream_format_t *format, bgpstream_record_t *record){
+
+  // populate collector name
+  memcpy(record -> collector_name , STATE->json_fields.host.ptr, STATE->json_fields.host.len);
+  record -> collector_name[STATE->json_fields.host.len] = '\0';
+  // populate peer asn
+  RDATA->elem->peer_asn = (uint32_t) strtol((char *)STATE->json_fields.peer_asn.ptr, NULL, 10);
+  // populate peer ip
+  bgpstream_addr_storage_t addr;
+  memcpy(STATE->field_buffer, STATE->json_fields.peer_ip.ptr, STATE->json_fields.peer_ip.len);
+  STATE->field_buffer[STATE->json_fields.peer_ip.len] = '\0';
+  bgpstream_str2addr((char *)STATE->field_buffer, &addr);
+  bgpstream_addr_copy((bgpstream_ip_addr_t *)&RDATA->elem->peer_ip,
+                      (bgpstream_ip_addr_t *)&addr);
+  // populate time-stamp
+  double time_double = strtod((char *)STATE->json_fields.timestamp.ptr, NULL);
+  record->time_sec = (int) time_double;
+  record->time_usec = (int)((time_double - (int) time_double) * 1000000);
+
+}
+
 int process_update_message(bgpstream_format_t *format, bgpstream_record_t *record){
 
   // convert body to bytes
-  ssize_t dec_len =  hexstr_to_bgpmsg(STATE->json_bytes_buffer,
+  // TODO: check return value
+  size_t dec_len =  (size_t) hexstr_to_bgpmsg(STATE->json_bytes_buffer,
                                       4096,
-                                      STATE->json_fields.body.ptr,
+                                      (char*) STATE->json_fields.body.ptr,
                                       STATE->json_fields.body.len,
-                                      2);
+                                      PARSEBGP_BGP_TYPE_UPDATE);
   size_t err;
 
-  RDATA->msg->type = PARSEBGP_MSG_TYPE_BGP; // TODO: necessary?
+  RDATA->msg->type = PARSEBGP_MSG_TYPE_BGP;
+  if ((err = parsebgp_decode(STATE->opts, RDATA->msg->type, RDATA->msg,
+                             STATE->json_bytes_buffer, &dec_len)) != PARSEBGP_OK) {
+    fprintf(stderr, "ERROR: Failed to parse message (%zu:%s)\n", err, parsebgp_strerror(err));
+    parsebgp_clear_msg(RDATA->msg);
+  }
 
+  process_common_fields(format, record);
+
+  return 0;
+}
+
+/*
+{
+  "reason": "connection to peer failed",
+  "timestamp": 1533848922.12,
+  "state": "down",
+  "host": "rrc21",
+  "peer": "37.49.237.31",
+  "type": "S",
+  "id": "JTHtHw-23b673b734-15282",
+  "peer_asn": "31122"
+}
+*/
+int process_status_message(bgpstream_format_t *format, bgpstream_record_t *record){
+  // TODO: to finish
+
+  return 0;
+}
+
+/*
+  OPEN:
+{
+  "body": "06010400020001020641040000316E",
+  "router_id": "37.49.237.99",
+  "direction": "sent",
+  "hold_time": 180,
+  "timestamp": 1533848954.14,
+  "capabilities": {
+    "1": {
+      "families": [
+        "ipv4/unicast",
+        "ipv6/unicast"
+      ],
+      "name": "multiprotocol"
+    },
+    "65": {
+      "asn4": 12654,
+      "name": "asn4"
+    }
+  },
+  "asn": 12654,
+  "host": "rrc21",
+  "version": 4,
+  "peer": "2001:7f8:54::201",
+  "type": "O",
+  "id": "2001_7f8_54__201-23b673c3b6-27f58",
+  "peer_asn": "49375"
+}
+ */
+int process_open_message(bgpstream_format_t *format, bgpstream_record_t *record){
+
+  int json_str_len = STATE->json_fields.body.len;
+  uint8_t* json_str_ptr = STATE->json_fields.body.ptr;
+  int missing_type = 0;
+  int err;
+  uint8_t* ptr = STATE->json_bytes_buffer;
+
+  /* add missing open message headers */
+
+  // version
+  ptr[0] = 4;
+
+  // my autonomous system
+  uint32_t asn4 = strtol((char*)STATE->json_fields.asn.ptr, NULL, 10);
+  uint16_t asn = htons( (uint16_t) (asn4 > UINT16_MAX ?  23456: asn4) );
+  memcpy(&ptr[1], &asn, sizeof(uint16_t));
+
+  // hold time
+  uint16_t hold_time = htons( (uint16_t) strtol((char*)STATE->json_fields.hold_time.ptr, NULL, 10) );
+  memcpy(&ptr[3], &hold_time, sizeof(uint16_t));
+
+  // bgp identifier
+  bgpstream_addr_storage_t addr;
+  memcpy(STATE->field_buffer, STATE->json_fields.router_id.ptr, STATE->json_fields.router_id.len);
+  STATE->field_buffer[STATE->json_fields.router_id.len] = '\0';
+  void* rc = bgpstream_str2addr((char*)STATE->field_buffer, &addr);
+  if(rc==NULL){
+    uint32_t router_id = htons(strtoul((char*)STATE->json_fields.router_id.ptr, NULL, 10) );
+    memcpy(&ptr[5], &router_id, sizeof(uint32_t));
+  } else {
+    memcpy(&ptr[5], &addr.ipv4, sizeof(uint32_t));
+  }
+
+  // opt parm len
+  if(json_str_ptr[0] == '0' && json_str_ptr[1] == '2'){
+    // if body starts with correct parameter type "0x02"
+    // no missing param type
+    missing_type = 0;
+    ptr[7] = (uint8_t) ( json_str_len/2 ); // adding
+  } else {
+    // if misses param type
+    missing_type = 1;
+    ptr[7] = (uint8_t) ( json_str_len/2 + 1 ); // adding
+    ptr[8] = (uint8_t) 2;
+  }
+
+  // convert body to bytes
+  uint8_t* start_ptr = missing_type==0? STATE->json_bytes_buffer+ 10: STATE->json_bytes_buffer+ 10+1;
+
+  // TODO: process return value
+  size_t dec_len = (size_t) hexstr_to_bgpmsg(start_ptr,
+                                      4096,
+                                      (char*)STATE->json_fields.body.ptr ,
+                                      STATE->json_fields.body.len,
+                                      PARSEBGP_BGP_TYPE_OPEN);
+
+  RDATA->msg->type = PARSEBGP_MSG_TYPE_BGP;
   if ((err = parsebgp_decode(STATE->opts, RDATA->msg->type, RDATA->msg,
                              STATE->json_bytes_buffer, &dec_len)) != PARSEBGP_OK) {
     fprintf(stderr, "ERROR: Failed to parse message (%d:%s)\n", err, parsebgp_strerror(err));
     parsebgp_clear_msg(RDATA->msg);
   }
 
-  // populate collector name
-  memcpy(record -> collector_name , STATE->json_fields.host.ptr, STATE->json_fields.host.len);
-  record -> collector_name[STATE->json_fields.host.len] = '\0';
-  // populate peer asn
-  RDATA->elem->peer_asn = (uint32_t) strtol(STATE->json_fields.peer_asn.ptr, NULL, 10);
-  // populate peer ip
-  bgpstream_addr_storage_t addr;
-  memcpy(STATE->field_buffer, STATE->json_fields.peer_ip.ptr, STATE->json_fields.peer_ip.len);
-  STATE->field_buffer[STATE->json_fields.peer_ip.len] = '\0';
-  bgpstream_str2addr(STATE->field_buffer, &addr);
-  bgpstream_addr_copy((bgpstream_ip_addr_t *)&RDATA->elem->peer_ip,
-                      (bgpstream_ip_addr_t *)&addr);
-  // populate time-stamp
-  double time_double = strtod(STATE->json_fields.timestamp.ptr, NULL);
-  record->time_sec = (int) time_double;
-  record->time_usec = (int)((time_double - (int) time_double) * 1000000);
+  process_common_fields(format, record);
+
+  fprintf(stderr, "OPEN message processed!\n");
 
   return 0;
 }
 
-int process_status_message(bgpstream_format_t *format, bgpstream_record_t *record){
-
-}
-int process_open_message(bgpstream_format_t *format, bgpstream_record_t *record){
-
-}
 int process_notify_message(bgpstream_format_t *format, bgpstream_record_t *record){
+  // TODO: to finish
 
+  return 0;
 }
 
 
@@ -250,7 +381,7 @@ int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t
   jsmn_parser p;
   jsmntok_t t[128]; /* We expect no more than 128 tokens */
 
-  uint8_t* json_string = &STATE->json_string_buffer;
+  char* json_string = (char*)&STATE->json_string_buffer;
 
   jsmn_init(&p);
   r = jsmn_parse(&p, json_string, strlen(json_string), t, sizeof(t)/sizeof(t[0]));
@@ -265,7 +396,7 @@ int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t
 
   /* Loop over all fields of the json string buffer */
   for (i = 1; i < r; i++) {
-    unsigned char* value_ptr = json_string + t[i+1].start;
+    unsigned char* value_ptr = (unsigned char*)json_string + t[i+1].start;
     size_t value_size = t[i+1].end-t[i+1].start;
 
     if (jsoneq(json_string, &t[i], "body") == 0) {
@@ -287,9 +418,29 @@ int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t
       // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       STATE->json_fields.peer_asn = (json_field_t) {value_ptr, value_size};
       i++;
+    } else if (jsoneq(json_string, &t[i], "asn") == 0) {
+      // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
+      STATE->json_fields.asn = (json_field_t) {value_ptr, value_size};
+      i++;
+    } else if (jsoneq(json_string, &t[i], "hold_time") == 0) {
+      // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
+      STATE->json_fields.hold_time = (json_field_t) {value_ptr, value_size};
+      i++;
+    } else if (jsoneq(json_string, &t[i], "router_id") == 0) {
+      // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
+      STATE->json_fields.router_id = (json_field_t) {value_ptr, value_size};
+      i++;
     } else if (jsoneq(json_string, &t[i], "peer") == 0) {
       // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       STATE->json_fields.peer_ip = (json_field_t) {value_ptr, value_size};
+      i++;
+    } else if (jsoneq(json_string, &t[i], "state") == 0) {
+      // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
+      STATE->json_fields.state = (json_field_t) {value_ptr, value_size};
+      i++;
+    } else if (jsoneq(json_string, &t[i], "reason") == 0) {
+      // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
+      STATE->json_fields.reason = (json_field_t) {value_ptr, value_size};
       i++;
     } else if (jsoneq(json_string, &t[i], "type") == 0) {
       // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
@@ -315,12 +466,15 @@ int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t
     break;
   case 'S':
     STATE->msg_type = RIPE_JSON_MSG_TYPE_STATUS;
+    process_status_message(format, record);
     break;
   case 'O':
     STATE->msg_type = RIPE_JSON_MSG_TYPE_OPEN;
+    process_open_message(format, record);
     break;
   case 'N':
     STATE->msg_type = RIPE_JSON_MSG_TYPE_NOTIFY;
+    process_notify_message(format, record);
     break;
   default:
     break;
@@ -358,7 +512,7 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
                               bgpstream_record_t *record)
 {
 
-  int rc, newread;
+  int newread;
 
 
   newread = bgpstream_transport_readline(format->transport, &STATE->json_string_buffer, BGPSTREAM_PARSEBGP_BUFLEN);

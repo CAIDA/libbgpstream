@@ -149,10 +149,6 @@ int64_t bgpstream_transport_readline(bgpstream_transport_t *transport,
          ((char*)buffer)[i] = cbuf;
          if(cbuf == '\n')
            {
-             if(chomp != 0)
-               {
-                 ((char*)buffer)[i] = '\0';
-               }
              done = 1;
            }
        }
