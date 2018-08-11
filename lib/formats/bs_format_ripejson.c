@@ -109,7 +109,7 @@ typedef struct rec_data {
   parsebgp_msg_t *msg;
 
   // message type: OPEN, UDPATE, STATUS, NOTIFY
-  int message_type;
+  bs_format_ripejson_msg_type_t msg_type;
 
 } rec_data_t;
 
@@ -124,8 +124,6 @@ typedef struct state {
   uint8_t json_bytes_buffer[4096];
 
   uint8_t field_buffer[100];
-
-  bs_format_ripejson_msg_type_t msg_type;
 
   json_field_ptrs_t json_fields;
 
@@ -148,32 +146,9 @@ static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
   return -1;
 }
 
-// convert bgp message hex string to char (byte) array, with added header marker
-// by @alistairking
-static ssize_t hexstr_to_bgpmsg(uint8_t *buf, size_t buflen,
-                                const char* hexstr, size_t hexstr_len,
-                                uint8_t msg_type)
-{
-  // 2 characters per octet, and BGP messages cannot be more than 4096 bytes
-  if ((hexstr_len & 0x1) != 0 || hexstr_len > (4096*2)){
-    return -1;
-  }
-  uint16_t msg_len = (hexstr_len / 2) + 2 + 1;
-  uint16_t tmp = htons(msg_len);
+static int hexstr_to_bytes(uint8_t *buf, const char* hexstr, size_t hexstr_len){
   size_t i;
   char c;
-  uint8_t *bufp = buf;
-
-  if (msg_len > buflen) {
-    return -1;
-  }
-
-  // populate the message header (but don't include the marker)
-  memcpy(buf, &tmp, sizeof(tmp));
-  buf[2] = msg_type;
-
-  // parse the hex string, one nybble at a time
-  bufp = buf + 3;
   for (i = 0; i < hexstr_len; i++) {
     c = hexstr[i];
     // sanity check on input characters
@@ -189,12 +164,40 @@ static ssize_t hexstr_to_bgpmsg(uint8_t *buf, size_t buflen,
 
     if ((i & 0x1) == 0) {
       // high-order
-      *bufp = c << 4;
+      *buf = c << 4;
     } else {
       // low-order
-      *(bufp++) |= c;
+      *(buf++) |= c;
     }
   }
+  return 0;
+}
+
+// convert bgp message hex string to char (byte) array, with added header marker
+// by @alistairking
+static ssize_t hexstr_to_bgpmsg(uint8_t *buf, size_t buflen,
+                                const char* hexstr, size_t hexstr_len,
+                                uint8_t msg_type)
+{
+  // 2 characters per octet, and BGP messages cannot be more than 4096 bytes
+  if ((hexstr_len & 0x1) != 0 || hexstr_len > (4096*2)){
+    return -1;
+  }
+  uint16_t msg_len = (hexstr_len / 2) + 2 + 1;
+  uint16_t tmp = htons(msg_len);
+  uint8_t *bufp = buf;
+
+  if (msg_len > buflen) {
+    return -1;
+  }
+
+  // populate the message header (but don't include the marker)
+  memcpy(buf, &tmp, sizeof(tmp));
+  buf[2] = msg_type;
+
+  // parse the hex string, one nybble at a time
+  bufp = buf + 3;
+  hexstr_to_bytes(bufp, hexstr, hexstr_len);
 
   return msg_len;
 }
@@ -304,20 +307,29 @@ int process_open_message(bgpstream_format_t *format, bgpstream_record_t *record)
   int missing_type = 0;
   int err;
   uint8_t* ptr = STATE->json_bytes_buffer;
+  int loc = 2;
+  int msg_len = 0;
+
+
+  ptr[loc] = PARSEBGP_BGP_TYPE_OPEN;
+  loc += 1;
 
   /* add missing open message headers */
 
   // version
-  ptr[0] = 4;
+  ptr[loc] = 4;
+  loc += 1;
 
   // my autonomous system
   uint32_t asn4 = strtol((char*)STATE->json_fields.asn.ptr, NULL, 10);
   uint16_t asn = htons( (uint16_t) (asn4 > UINT16_MAX ?  23456: asn4) );
-  memcpy(&ptr[1], &asn, sizeof(uint16_t));
+  memcpy(&ptr[loc], &asn, sizeof(uint16_t));
+  loc += 2;
 
   // hold time
   uint16_t hold_time = htons( (uint16_t) strtol((char*)STATE->json_fields.hold_time.ptr, NULL, 10) );
-  memcpy(&ptr[3], &hold_time, sizeof(uint16_t));
+  memcpy(&ptr[loc], &hold_time, sizeof(uint16_t));
+  loc += 2;
 
   // bgp identifier
   bgpstream_addr_storage_t addr;
@@ -326,33 +338,36 @@ int process_open_message(bgpstream_format_t *format, bgpstream_record_t *record)
   void* rc = bgpstream_str2addr((char*)STATE->field_buffer, &addr);
   if(rc==NULL){
     uint32_t router_id = htons(strtoul((char*)STATE->json_fields.router_id.ptr, NULL, 10) );
-    memcpy(&ptr[5], &router_id, sizeof(uint32_t));
+    memcpy(&ptr[loc], &router_id, sizeof(uint32_t));
   } else {
-    memcpy(&ptr[5], &addr.ipv4, sizeof(uint32_t));
+    memcpy(&ptr[loc], &addr.ipv4, sizeof(uint32_t));
   }
+  loc += 4;
 
   // opt parm len
   if(json_str_ptr[0] == '0' && json_str_ptr[1] == '2'){
     // if body starts with correct parameter type "0x02"
     // no missing param type
     missing_type = 0;
-    ptr[7] = (uint8_t) ( json_str_len/2 ); // adding
+    msg_len = json_str_len/2;
+    ptr[loc] = (uint8_t) ( msg_len ); // adding
+    loc += 1;
   } else {
     // if misses param type
     missing_type = 1;
-    ptr[7] = (uint8_t) ( json_str_len/2 + 1 ); // adding
-    ptr[8] = (uint8_t) 2;
+    msg_len = json_str_len/2 + 1 ;
+    ptr[loc] = (uint8_t) ( msg_len ); // adding
+    ptr[loc+1] = (uint8_t) 2;
+    loc += 2;
   }
 
-  // convert body to bytes
-  uint8_t* start_ptr = missing_type==0? STATE->json_bytes_buffer+ 10: STATE->json_bytes_buffer+ 10+1;
+  hexstr_to_bytes(&ptr[loc], (char*)STATE->json_fields.body.ptr , STATE->json_fields.body.len);
 
-  // TODO: process return value
-  size_t dec_len = (size_t) hexstr_to_bgpmsg(start_ptr,
-                                      4096,
-                                      (char*)STATE->json_fields.body.ptr ,
-                                      STATE->json_fields.body.len,
-                                      PARSEBGP_BGP_TYPE_OPEN);
+  // set msg length
+  uint16_t total_length = htons(msg_len+10+2+1);
+  memcpy(&ptr[0], &total_length, sizeof(total_length));
+
+  size_t dec_len = (size_t) total_length;
 
   RDATA->msg->type = PARSEBGP_MSG_TYPE_BGP;
   if ((err = parsebgp_decode(STATE->opts, RDATA->msg->type, RDATA->msg,
@@ -457,23 +472,23 @@ int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t
 
   switch(*STATE->json_fields.type.ptr){
   case 'A':
-    STATE->msg_type = RIPE_JSON_MSG_TYPE_ANNOUNCE;
+    RDATA->msg_type = RIPE_JSON_MSG_TYPE_ANNOUNCE;
     process_update_message(format, record);
     break;
   case 'W':
-    STATE->msg_type = RIPE_JSON_MSG_TYPE_WITHDRAW;
+    RDATA->msg_type = RIPE_JSON_MSG_TYPE_WITHDRAW;
     process_update_message(format, record);
     break;
   case 'S':
-    STATE->msg_type = RIPE_JSON_MSG_TYPE_STATUS;
+    RDATA->msg_type = RIPE_JSON_MSG_TYPE_STATUS;
     process_status_message(format, record);
     break;
   case 'O':
-    STATE->msg_type = RIPE_JSON_MSG_TYPE_OPEN;
+    RDATA->msg_type = RIPE_JSON_MSG_TYPE_OPEN;
     process_open_message(format, record);
     break;
   case 'N':
-    STATE->msg_type = RIPE_JSON_MSG_TYPE_NOTIFY;
+    RDATA->msg_type = RIPE_JSON_MSG_TYPE_NOTIFY;
     process_notify_message(format, record);
     break;
   default:
@@ -541,7 +556,7 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
                                 bgpstream_record_t *record,
                                 bgpstream_elem_t **elem)
 {
-  int rc;
+  int rc = 0;
 
   if (RDATA == NULL || RDATA->end_of_elems != 0) {
     // end-of-elems
@@ -550,7 +565,7 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
 
 
   // TODO: deal with other types of messages (OPEN, STATUS, NOTIFY)
-  switch(STATE->msg_type){
+  switch(RDATA->msg_type){
   case RIPE_JSON_MSG_TYPE_ANNOUNCE:
   case RIPE_JSON_MSG_TYPE_WITHDRAW:
     rc = bgpstream_parsebgp_process_update(&RDATA->upd_state, RDATA->elem,
@@ -561,6 +576,12 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
     break;
   case RIPE_JSON_MSG_TYPE_STATUS:
   case RIPE_JSON_MSG_TYPE_OPEN:
+    RDATA->elem->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
+    RDATA->elem->old_state = 0; // UNKNOWN
+    RDATA->elem->new_state = 4; // OPENSENT
+    RDATA->end_of_elems = 1;
+    rc = 1;
+    break;
   case RIPE_JSON_MSG_TYPE_NOTIFY:
     fprintf(stderr, "WARNING: unsupported message type\n");
     break;
@@ -571,7 +592,7 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
 
   // return a borrowed pointer to the elem we populated
   *elem = RDATA->elem;
-  return 1;
+  return rc;
 }
 
 int bs_format_ripejson_init_data(bgpstream_format_t *format, void **data)
