@@ -380,6 +380,37 @@ int process_unsupported_message(bgpstream_format_t *format, bgpstream_record_t *
   return 0;
 }
 
+static int json_skip(jsmntok_t *array, int idx)
+{
+  int i;
+  int skip_cnt = 0;
+  jsmntok_t *s;
+
+  switch (array[idx].type) {
+  case JSMN_PRIMITIVE:
+  case JSMN_STRING:
+    idx++;
+    skip_cnt++;
+    break;
+  case JSMN_OBJECT:
+  case JSMN_ARRAY:
+    s = &array[idx];
+    idx++; // move onto first key
+    skip_cnt++;
+    for (i = 0; i < s->size; i++) {
+      idx += json_skip(array, idx);
+      if (s->type == JSMN_OBJECT) {
+        idx += json_skip(array, idx);
+      }
+    }
+    break;
+  default:
+    assert(0);
+  }
+
+  return skip_cnt;
+}
+
 
 int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t *record){
   int i;
@@ -559,8 +590,6 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
     return 0;
   }
 
-
-  // TODO: deal with other types of messages (OPEN, STATUS, NOTIFY)
   switch(RDATA->msg_type){
   case RIPE_JSON_MSG_TYPE_ANNOUNCE:
   case RIPE_JSON_MSG_TYPE_WITHDRAW:

@@ -33,6 +33,7 @@
 #include "bgpstream_transport.h"
 #include "bgpstream_log.h"
 #include "utils.h"
+#include <stdio.h>
 
 // WITH_TRANSPORT_FILE
 #include "bs_transport_file.h"
@@ -121,39 +122,7 @@ void bgpstream_transport_destroy(bgpstream_transport_t *transport)
 }
 
 int64_t bgpstream_transport_readline(bgpstream_transport_t *transport,
-                                     void *buffer, int64_t len)
+                                 void *buffer, int64_t len)
 {
-  char cbuf;
-  int rval;
-  int i;
-  int done = 0;
-
-  if(buffer == NULL || len <= 0)
-    {
-      return 0;
-    }
-
-  for(i=0; !done && i < len-1; i++)
-    {
-      if((rval = bgpstream_transport_read(transport, &cbuf, 1)) < 0)
-       {
-         return rval;
-       }
-      if(rval == 0)
-       {
-         done = 1;
-         i--;
-       }
-      else
-       {
-         ((char*)buffer)[i] = cbuf;
-         if(cbuf == '\n')
-           {
-             done = 1;
-           }
-       }
-    }
-
-  ((char*)buffer)[i] = '\0';
-  return i;
+  return transport->readline(transport, buffer, len);
 }

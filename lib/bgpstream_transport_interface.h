@@ -51,11 +51,14 @@
   int bs_transport_##name##_create(bgpstream_transport_t *transport);          \
   int64_t bs_transport_##name##_read(bgpstream_transport_t *t,                 \
                                      uint8_t *buffer, int64_t len);            \
+  int64_t bs_transport_##name##_readline(bgpstream_transport_t *t,             \
+                                     uint8_t *buffer, int64_t len);            \
   void bs_transport_##name##_destroy(bgpstream_transport_t *t);
 
 #define BS_TRANSPORT_SET_METHODS(classname, transport)                         \
   do {                                                                         \
     (transport)->read = bs_transport_##classname##_read;                       \
+    (transport)->readline = bs_transport_##classname##_readline;               \
     (transport)->destroy = bs_transport_##classname##_destroy;                 \
   } while (0)
 
@@ -73,6 +76,13 @@ struct bgpstream_transport {
    * @return the number of bytes read if successful, -1 otherwise
    */
   int64_t (*read)(struct bgpstream_transport *t, uint8_t *buffer, int64_t len);
+
+  /** Read bytes from this transport
+   *
+   * @param t           The data transport object to read from
+   * @return the number of bytes read if successful, -1 otherwise
+   */
+  int64_t (*readline)(struct bgpstream_transport *t, uint8_t *buffer, int64_t len);
 
   /** Shutdown and free this data transport
    *
@@ -98,7 +108,7 @@ struct bgpstream_transport {
   /** An opaque pointer to transport-specific state if needed by the
       transport */
   void *state;
-  
+
   /** }@ */
 };
 

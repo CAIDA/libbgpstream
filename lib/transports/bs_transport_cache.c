@@ -214,6 +214,12 @@ int bs_transport_cache_create(bgpstream_transport_t *transport)
   return 0;
 }
 
+int64_t bs_transport_cache_readline(bgpstream_transport_t *transport,
+                                uint8_t *buffer, int64_t len)
+{
+  return 0;
+}
+
 int64_t bs_transport_cache_read(bgpstream_transport_t *transport,
                                 uint8_t *buffer, int64_t len)
 {
