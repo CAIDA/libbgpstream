@@ -116,6 +116,9 @@ typedef struct rec_data {
   // message direction: special type for OPEN message, 0 - sent, or 1 - received
   int open_msg_direction;
 
+  // status state: 0 - down, 1 - connected
+  int status_msg_state;
+
 } rec_data_t;
 
 typedef struct state {
@@ -257,20 +260,20 @@ int process_update_message(bgpstream_format_t *format, bgpstream_record_t *recor
   return 0;
 }
 
-/*
-{
-  "reason": "connection to peer failed",
-  "timestamp": 1533848922.12,
-  "state": "down",
-  "host": "rrc21",
-  "peer": "37.49.237.31",
-  "type": "S",
-  "id": "JTHtHw-23b673b734-15282",
-  "peer_asn": "31122"
-}
-*/
 int process_status_message(bgpstream_format_t *format, bgpstream_record_t *record){
-  // TODO: to finish
+
+  // process direction
+  if( bcmp(&"down", STATE->json_fields.state.ptr, STATE->json_fields.state.len) == 0){
+    // equals
+    RDATA->status_msg_state = 0;
+  } else if( bcmp(&"connected", STATE->json_fields.state.ptr, STATE->json_fields.state.len) == 0){
+    RDATA->status_msg_state = 1;
+  } else {
+    // unknown
+    RDATA->status_msg_state = -1;
+  }
+
+  process_common_fields(format, record);
 
   return 0;
 }
@@ -592,6 +595,23 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
     }
     break;
   case RIPE_JSON_MSG_TYPE_STATUS:
+    RDATA->elem->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
+    if(RDATA->status_msg_state == 0){
+      // "down" state
+      RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
+      RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_IDLE;
+    } else if (RDATA->status_msg_state == 1  ){
+      // "connected" state
+      RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
+      RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_ESTABLISHED;
+    } else {
+      RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
+      RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
+      fprintf(stderr, "WARNING: unsupported status type, %d\n", RDATA->status_msg_state);
+    }
+    RDATA->end_of_elems = 1;
+    rc = 1;
+    break;
   case RIPE_JSON_MSG_TYPE_OPEN:
     RDATA->elem->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
     if(RDATA->open_msg_direction == 0){
