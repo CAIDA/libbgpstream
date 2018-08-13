@@ -180,19 +180,6 @@ static void unescape_url(char *url)
 
 #define NEXT_TOK t++
 
-#define json_strtoul(dest, t)                                                  \
-  do {                                                                         \
-    char intbuf[20];                                                           \
-    char *endptr = NULL;                                                       \
-    assert(t->end - t->start < 20);                                            \
-    strncpy(intbuf, js + t->start, t->end - t->start);                         \
-    intbuf[t->end - t->start] = '\0';                                          \
-    dest = strtoul(intbuf, &endptr, 10);                                       \
-    if (*endptr != '\0') {                                                     \
-      goto err;                                                                \
-    }                                                                          \
-  } while (0)
-
 static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                         size_t count)
 {
@@ -213,9 +200,9 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
   int project_set = 0;
   bgpstream_record_type_t type = 0;
   int type_set = 0;
-  uint32_t initial_time = 0;
+  unsigned long initial_time = 0;
   int initial_time_set = 0;
-  uint32_t duration = 0;
+  unsigned long duration = 0;
   int duration_set = 0;
 
   // local cache related variables.
@@ -245,7 +232,9 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
     if (jsmn_streq(js, t, "time") == 1) {
       NEXT_TOK;
       jsmn_type_assert(t, JSMN_PRIMITIVE);
-      json_strtoul(STATE->last_response_time, t);
+      unsigned long tmp = 0;
+      jsmn_strtoul(&tmp, js, t);
+      STATE->last_response_time = (int) tmp;
       time_set = 1;
       NEXT_TOK;
     } else if (jsmn_streq(js, t, "type") == 1) {
@@ -339,13 +328,13 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
           } else if (jsmn_streq(js, t, "initialTime") == 1) {
             NEXT_TOK;
             jsmn_type_assert(t, JSMN_PRIMITIVE);
-            json_strtoul(initial_time, t);
+            jsmn_strtoul(&initial_time, js, t);
             initial_time_set = 1;
             NEXT_TOK;
           } else if (jsmn_streq(js, t, "duration") == 1) {
             NEXT_TOK;
             jsmn_type_assert(t, JSMN_PRIMITIVE);
-            json_strtoul(duration, t);
+            jsmn_strtoul(&duration, js, t);
             duration_set = 1;
             NEXT_TOK;
           } else {
