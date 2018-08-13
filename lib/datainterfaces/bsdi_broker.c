@@ -32,6 +32,7 @@
 #include "bsdi_broker.h"
 #include "config.h"
 #include "utils.h"
+#include "jsmn_utils.h"
 #include "libjsmn/jsmn.h"
 #include <assert.h>
 #include <inttypes.h>
@@ -163,24 +164,6 @@ enum {
     }                                                                          \
   } while (0)
 
-static int json_isnull(const char *json, jsmntok_t *tok)
-{
-  if (tok->type == JSMN_PRIMITIVE &&
-      strncmp("null", json + tok->start, tok->end - tok->start) == 0) {
-    return 1;
-  }
-  return 0;
-}
-
-static int json_strcmp(const char *json, jsmntok_t *tok, const char *s)
-{
-  if (tok->type == JSMN_STRING && (int)strlen(s) == tok->end - tok->start &&
-      strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
-    return 0;
-  }
-  return -1;
-}
-
 // NB: this ONLY replaces \/ with /
 static void unescape_url(char *url)
 {
@@ -195,67 +178,7 @@ static void unescape_url(char *url)
   }
 }
 
-static jsmntok_t *json_skip(jsmntok_t *t)
-{
-  int i;
-  jsmntok_t *s;
-  switch (t->type) {
-  case JSMN_PRIMITIVE:
-  case JSMN_STRING:
-    t++;
-    break;
-  case JSMN_OBJECT:
-  case JSMN_ARRAY:
-    s = t;
-    t++; // move onto first key
-    for (i = 0; i < s->size; i++) {
-      t = json_skip(t);
-      if (s->type == JSMN_OBJECT) {
-        t = json_skip(t);
-      }
-    }
-    break;
-  default:
-    assert(0);
-  }
-
-  return t;
-}
-
-#define json_str_assert(js, t, str)                                            \
-  do {                                                                         \
-    if (json_strcmp(js, t, str) != 0) {                                        \
-      goto err;                                                                \
-    }                                                                          \
-  } while (0)
-
-#define json_type_assert(t, asstype)                                           \
-  do {                                                                         \
-    if (t->type != asstype) {                                                  \
-      goto err;                                                                \
-    }                                                                          \
-  } while (0)
-
 #define NEXT_TOK t++
-
-#define json_strcpy(dest, t, js)                                               \
-  do {                                                                         \
-    memcpy(dest, js + t->start, t->end - t->start);                            \
-    dest[t->end - t->start] = '\0';                                            \
-  } while (0)
-
-#define json_strtoul(dest, t)                                                  \
-  do {                                                                         \
-    char intbuf[20];                                                           \
-    char *endptr = NULL;                                                       \
-    assert(t->end - t->start < 20);                                            \
-    strncpy(intbuf, js + t->start, t->end - t->start);                         \
-    intbuf[t->end - t->start] = '\0';                                          \
-    dest = strtoul(intbuf, &endptr, 10);                                       \
-    if (*endptr != '\0') {                                                     \
-      goto err;                                                                \
-    }                                                                          \
-  } while (0)
 
 static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                         size_t count)
@@ -277,9 +200,9 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
   int project_set = 0;
   bgpstream_record_type_t type = 0;
   int type_set = 0;
-  uint32_t initial_time = 0;
+  unsigned long initial_time = 0;
   int initial_time_set = 0;
-  uint32_t duration = 0;
+  unsigned long duration = 0;
   int duration_set = 0;
 
   // local cache related variables.
@@ -306,40 +229,42 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
               t->end - t->start, js + t->start);
       goto err;
     }
-    if (json_strcmp(js, t, "time") == 0) {
+    if (jsmn_streq(js, t, "time") == 1) {
       NEXT_TOK;
-      json_type_assert(t, JSMN_PRIMITIVE);
-      json_strtoul(STATE->last_response_time, t);
+      jsmn_type_assert(t, JSMN_PRIMITIVE);
+      unsigned long tmp = 0;
+      jsmn_strtoul(&tmp, js, t);
+      STATE->last_response_time = (int) tmp;
       time_set = 1;
       NEXT_TOK;
-    } else if (json_strcmp(js, t, "type") == 0) {
+    } else if (jsmn_streq(js, t, "type") == 1) {
       NEXT_TOK;
-      json_str_assert(js, t, "data");
+      jsmn_str_assert(js, t, "data");
       NEXT_TOK;
-    } else if (json_strcmp(js, t, "error") == 0) {
+    } else if (jsmn_streq(js, t, "error") == 1) {
       NEXT_TOK;
-      if (json_isnull(js, t) == 0) { // i.e. there is an error set
+      if (jsmn_isnull(js, t) == 0) { // i.e. there is an error set
         fprintf(stderr, "ERROR: Broker reported an error: %.*s\n",
                 t->end - t->start, js + t->start);
         goto err;
       }
       NEXT_TOK;
-    } else if (json_strcmp(js, t, "queryParameters") == 0) {
+    } else if (jsmn_streq(js, t, "queryParameters") == 1) {
       NEXT_TOK;
-      json_type_assert(t, JSMN_OBJECT);
+      jsmn_type_assert(t, JSMN_OBJECT);
       // skip over this object
-      t = json_skip(t);
-    } else if (json_strcmp(js, t, "data") == 0) {
+      t = jsmn_skip(t);
+    } else if (jsmn_streq(js, t, "data") == 1) {
       NEXT_TOK;
-      json_type_assert(t, JSMN_OBJECT);
+      jsmn_type_assert(t, JSMN_OBJECT);
       NEXT_TOK;
-      json_str_assert(js, t, "dumpFiles");
+      jsmn_str_assert(js, t, "dumpFiles");
       NEXT_TOK;
-      json_type_assert(t, JSMN_ARRAY);
+      jsmn_type_assert(t, JSMN_ARRAY);
       arr_len = t->size; // number of dump files
       NEXT_TOK;          // first elem in array
       for (j = 0; j < arr_len; j++) {
-        json_type_assert(t, JSMN_OBJECT);
+        jsmn_type_assert(t, JSMN_OBJECT);
         obj_len = t->size;
         NEXT_TOK;
 
@@ -351,18 +276,18 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
         duration_set = 0;
 
         for (k = 0; k < obj_len; k++) {
-          if (json_strcmp(js, t, "urlType") == 0) {
+          if (jsmn_streq(js, t, "urlType") == 1) {
             NEXT_TOK;
-            if (json_strcmp(js, t, "simple") != 0) {
+            if (jsmn_streq(js, t, "simple") != 1) {
               // not yet supported?
               fprintf(stderr, "ERROR: Unsupported URL type '%.*s'\n",
                       t->end - t->start, js + t->start);
               goto err;
             }
             NEXT_TOK;
-          } else if (json_strcmp(js, t, "url") == 0) {
+          } else if (jsmn_streq(js, t, "url") == 1) {
             NEXT_TOK;
-            json_type_assert(t, JSMN_STRING);
+            jsmn_type_assert(t, JSMN_STRING);
             if (url_len < (t->end - t->start + 1)) {
               url_len = t->end - t->start + 1;
               if ((url = realloc(url, url_len)) == NULL) {
@@ -370,28 +295,28 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                 goto err;
               }
             }
-            json_strcpy(url, t, js);
+            jsmn_strcpy(url, t, js);
             unescape_url(url);
             url_set = 1;
             NEXT_TOK;
-          } else if (json_strcmp(js, t, "project") == 0) {
+          } else if (jsmn_streq(js, t, "project") == 1) {
             NEXT_TOK;
-            json_type_assert(t, JSMN_STRING);
-            json_strcpy(project, t, js);
+            jsmn_type_assert(t, JSMN_STRING);
+            jsmn_strcpy(project, t, js);
             project_set = 1;
             NEXT_TOK;
-          } else if (json_strcmp(js, t, "collector") == 0) {
+          } else if (jsmn_streq(js, t, "collector") == 1) {
             NEXT_TOK;
-            json_type_assert(t, JSMN_STRING);
-            json_strcpy(collector, t, js);
+            jsmn_type_assert(t, JSMN_STRING);
+            jsmn_strcpy(collector, t, js);
             collector_set = 1;
             NEXT_TOK;
-          } else if (json_strcmp(js, t, "type") == 0) {
+          } else if (jsmn_streq(js, t, "type") == 1) {
             NEXT_TOK;
-            json_type_assert(t, JSMN_STRING);
-            if (json_strcmp(js, t, "ribs") == 0) {
+            jsmn_type_assert(t, JSMN_STRING);
+            if (jsmn_streq(js, t, "ribs") == 1) {
               type = BGPSTREAM_RIB;
-            } else if (json_strcmp(js, t, "updates") == 0) {
+            } else if (jsmn_streq(js, t, "updates") == 1) {
               type = BGPSTREAM_UPDATE;
             } else {
               fprintf(stderr, "ERROR: Invalid type '%.*s'\n",
@@ -400,16 +325,16 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
             }
             type_set = 1;
             NEXT_TOK;
-          } else if (json_strcmp(js, t, "initialTime") == 0) {
+          } else if (jsmn_streq(js, t, "initialTime") == 1) {
             NEXT_TOK;
-            json_type_assert(t, JSMN_PRIMITIVE);
-            json_strtoul(initial_time, t);
+            jsmn_type_assert(t, JSMN_PRIMITIVE);
+            jsmn_strtoul(&initial_time, js, t);
             initial_time_set = 1;
             NEXT_TOK;
-          } else if (json_strcmp(js, t, "duration") == 0) {
+          } else if (jsmn_streq(js, t, "duration") == 1) {
             NEXT_TOK;
-            json_type_assert(t, JSMN_PRIMITIVE);
-            json_strtoul(duration, t);
+            jsmn_type_assert(t, JSMN_PRIMITIVE);
+            jsmn_strtoul(&duration, js, t);
             duration_set = 1;
             NEXT_TOK;
           } else {
@@ -450,6 +375,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                                         collector,
                                         type,
                                         &res) < 0) {
+
           goto err;
         }
         // set cache attribute to resource
