@@ -221,8 +221,10 @@ void process_common_fields(bgpstream_format_t *format, bgpstream_record_t *recor
   // populate collector name
   memcpy(record -> collector_name , STATE->json_fields.host.ptr, STATE->json_fields.host.len);
   record -> collector_name[STATE->json_fields.host.len] = '\0';
+
   // populate peer asn
   RDATA->elem->peer_asn = (uint32_t) strtol((char *)STATE->json_fields.peer_asn.ptr, NULL, 10);
+
   // populate peer ip
   bgpstream_addr_storage_t addr;
   memcpy(STATE->field_buffer, STATE->json_fields.peer_ip.ptr, STATE->json_fields.peer_ip.len);
@@ -278,36 +280,6 @@ int process_status_message(bgpstream_format_t *format, bgpstream_record_t *recor
   return 0;
 }
 
-/*
-  OPEN:
-{
-  "body": "06010400020001020641040000316E",
-  "router_id": "37.49.237.99",
-  "direction": "sent",
-  "hold_time": 180,
-  "timestamp": 1533848954.14,
-  "capabilities": {
-    "1": {
-      "families": [
-        "ipv4/unicast",
-        "ipv6/unicast"
-      ],
-      "name": "multiprotocol"
-    },
-    "65": {
-      "asn4": 12654,
-      "name": "asn4"
-    }
-  },
-  "asn": 12654,
-  "host": "rrc21",
-  "version": 4,
-  "peer": "2001:7f8:54::201",
-  "type": "O",
-  "id": "2001_7f8_54__201-23b673c3b6-27f58",
-  "peer_asn": "49375"
-}
- */
 int process_open_message(bgpstream_format_t *format, bgpstream_record_t *record){
 
   int json_str_len = STATE->json_fields.body.len;
@@ -393,8 +365,6 @@ int process_open_message(bgpstream_format_t *format, bgpstream_record_t *record)
   }
 
   process_common_fields(format, record);
-
-  fprintf(stderr, "OPEN message processed!\n");
 
   return 0;
 }
@@ -570,7 +540,7 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
     return BGPSTREAM_FORMAT_CORRUPTED_JSON;
   }
 
-  strcpy(record -> project_name , "ripe-stream");
+  strcpy(record -> project_name , "ris-stream");
   // ensure the router fields are unset
   record->router_name[0] = '\0';
   record->router_ip.version = 0;
@@ -633,10 +603,8 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
     rc = 1;
     break;
   case RIPE_JSON_MSG_TYPE_NOTIFY:
-    fprintf(stderr, "WARNING: unsupported message type\n");
     break;
   default:
-    fprintf(stderr, "WARNING: unsupported message type\n");
     break;
   }
 
