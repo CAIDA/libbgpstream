@@ -298,7 +298,18 @@ static int handle_err_msg(bgpstream_transport_t *transport,
 int64_t bs_transport_kafka_readline(bgpstream_transport_t *transport,
                                 uint8_t *buffer, int64_t len)
 {
-  return 0;
+  int rc = bs_transport_kafka_read(transport, buffer, len);
+
+  // check if newline characters in it
+  char * pch;
+  pch=strchr(str,'\n');
+  while (pch!=NULL && pch < rc){
+    // if found, replace it with NIL
+    buffer[pch] = '\0';
+    rc--;
+  }
+
+  return rc;
 }
 
 int64_t bs_transport_kafka_read(bgpstream_transport_t *transport,
