@@ -400,8 +400,13 @@ int process_open_message(bgpstream_format_t *format, bgpstream_record_t *record)
 }
 
 int process_notify_message(bgpstream_format_t *format, bgpstream_record_t *record){
-  // TODO: to finish
+  return 0;
+}
 
+int process_unsupported_message(bgpstream_format_t *format, bgpstream_record_t *record){
+  fprintf(stderr, "WARN: unsupported ris-stream message: ");
+  STATE->json_string_buffer[strcspn(STATE->json_string_buffer, "\n")] = 0;
+  fprintf(stderr, "%s\n",STATE->json_string_buffer);
   return 0;
 }
 
@@ -509,9 +514,10 @@ int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t
     break;
   case 'N':
     RDATA->msg_type = RIPE_JSON_MSG_TYPE_NOTIFY;
-    process_notify_message(format, record);
+    process_unsupported_message(format, record);
     break;
   default:
+    process_unsupported_message(format, record);
     break;
   }
 
