@@ -89,6 +89,8 @@ typedef struct json_field_ptrs {
 
   json_field_t reason;
 
+  json_field_t direction;
+
 } json_field_ptrs_t;
 
 typedef struct rec_data {
@@ -110,6 +112,9 @@ typedef struct rec_data {
 
   // message type: OPEN, UDPATE, STATUS, NOTIFY
   bs_format_ripejson_msg_type_t msg_type;
+
+  // message direction: special type for OPEN message, 0 - sent, or 1 - received
+  int open_msg_direction;
 
 } rec_data_t;
 
@@ -376,6 +381,14 @@ int process_open_message(bgpstream_format_t *format, bgpstream_record_t *record)
     parsebgp_clear_msg(RDATA->msg);
   }
 
+  // process direction
+  if( bcmp(&"sent", STATE->json_fields.direction.ptr, STATE->json_fields.direction.len) == 0){
+    // equals
+    RDATA->open_msg_direction = 0;
+  } else {
+    RDATA->open_msg_direction = 1;
+  }
+
   process_common_fields(format, record);
 
   fprintf(stderr, "OPEN message processed!\n");
@@ -460,6 +473,10 @@ int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t
     } else if (jsoneq(json_string, &t[i], "type") == 0) {
       // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       STATE->json_fields.type = (json_field_t) {value_ptr, value_size};
+      i++;
+    } else if (jsoneq(json_string, &t[i], "direction") == 0) {
+      // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
+      STATE->json_fields.direction = (json_field_t) {value_ptr, value_size};
       i++;
     } else {
       // printf("Unexpected key: %.*s\n", t[i].end-t[i].start,
@@ -577,8 +594,15 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
   case RIPE_JSON_MSG_TYPE_STATUS:
   case RIPE_JSON_MSG_TYPE_OPEN:
     RDATA->elem->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
-    RDATA->elem->old_state = 0; // UNKNOWN
-    RDATA->elem->new_state = 4; // OPENSENT
+    if(RDATA->open_msg_direction == 0){
+      // "sent" OPEN
+      RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
+      RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_OPENSENT;
+    } else {
+      // "received" OPEN
+      RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
+      RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_OPENCONFIRM;
+    }
     RDATA->end_of_elems = 1;
     rc = 1;
     break;
