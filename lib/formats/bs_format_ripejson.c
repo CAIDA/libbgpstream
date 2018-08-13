@@ -375,7 +375,7 @@ int process_notify_message(bgpstream_format_t *format, bgpstream_record_t *recor
 
 int process_unsupported_message(bgpstream_format_t *format, bgpstream_record_t *record){
   fprintf(stderr, "WARN: unsupported ris-stream message: ");
-  STATE->json_string_buffer[strcspn(STATE->json_string_buffer, "\n")] = 0;
+  STATE->json_string_buffer[strcspn((char*)STATE->json_string_buffer, "\n")] = 0;
   fprintf(stderr, "%s\n",STATE->json_string_buffer);
   return 0;
 }
