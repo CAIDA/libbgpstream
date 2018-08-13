@@ -255,6 +255,7 @@ int process_update_message(bgpstream_format_t *format, bgpstream_record_t *recor
                              STATE->json_bytes_buffer, &dec_len)) != PARSEBGP_OK) {
     fprintf(stderr, "ERROR: Failed to parse message (%zu:%s)\n", err, parsebgp_strerror(err));
     parsebgp_clear_msg(RDATA->msg);
+    return -1;
   }
 
   process_common_fields(format, record);
@@ -380,43 +381,14 @@ int process_unsupported_message(bgpstream_format_t *format, bgpstream_record_t *
   return 0;
 }
 
-static int json_skip(jsmntok_t *array, int idx)
-{
-  int i;
-  int skip_cnt = 0;
-  jsmntok_t *s;
-
-  switch (array[idx].type) {
-  case JSMN_PRIMITIVE:
-  case JSMN_STRING:
-    idx++;
-    skip_cnt++;
-    break;
-  case JSMN_OBJECT:
-  case JSMN_ARRAY:
-    s = &array[idx];
-    idx++; // move onto first key
-    skip_cnt++;
-    for (i = 0; i < s->size; i++) {
-      idx += json_skip(array, idx);
-      if (s->type == JSMN_OBJECT) {
-        idx += json_skip(array, idx);
-      }
-    }
-    break;
-  default:
-    assert(0);
-  }
-
-  return skip_cnt;
-}
-
-
 int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t *record){
   int i;
-  int r;
+  int r, rc;
   jsmn_parser p;
   jsmntok_t t[128]; /* We expect no more than 128 tokens */
+
+  unsigned char* key_ptr, *value_ptr, *next_ptr;
+  size_t key_size, value_size;
 
   char* json_string = (char*)&STATE->json_string_buffer;
 
@@ -433,63 +405,64 @@ int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t
 
   /* Loop over all fields of the json string buffer */
   for (i = 1; i < r; i++) {
-    unsigned char* value_ptr = (unsigned char*)json_string + t[i+1].start;
-    size_t value_size = t[i+1].end-t[i+1].start;
+    key_ptr = (unsigned char*)json_string + t[i].start;
+    key_size = t[i].end-t[i].start;
+    value_ptr = (unsigned char*)json_string + t[i+1].start;
+    value_size = t[i+1].end-t[i+1].start;
+
+    /* Assume the top-level element is an object */
+    if (t[i].type != JSMN_STRING) {
+      if (t[i].type == JSMN_OBJECT) {
+        fprintf(stderr, "ERROR: multiple json object in one record! '%.*s'\n", (int) strlen(json_string), json_string);
+      }
+      return -1;
+    }
 
     if (jsoneq(json_string, &t[i], "body") == 0) {
       STATE->json_fields.body = (json_field_t) {value_ptr, value_size};
       i++;
     } else if (jsoneq(json_string, &t[i], "timestamp") == 0) {
-      // printf("- timestamp: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       STATE->json_fields.timestamp = (json_field_t) {value_ptr, value_size};
       i++;
     } else if (jsoneq(json_string, &t[i], "host") == 0) {
-      // printf("- host: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       STATE->json_fields.host = (json_field_t) {value_ptr, value_size};
       i++;
     } else if (jsoneq(json_string, &t[i], "id") == 0) {
-      // printf("- id: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       STATE->json_fields.id = (json_field_t) {value_ptr, value_size};
       i++;
     } else if (jsoneq(json_string, &t[i], "peer_asn") == 0) {
-      // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       STATE->json_fields.peer_asn = (json_field_t) {value_ptr, value_size};
       i++;
     } else if (jsoneq(json_string, &t[i], "asn") == 0) {
-      // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       STATE->json_fields.asn = (json_field_t) {value_ptr, value_size};
       i++;
     } else if (jsoneq(json_string, &t[i], "hold_time") == 0) {
-      // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       STATE->json_fields.hold_time = (json_field_t) {value_ptr, value_size};
       i++;
     } else if (jsoneq(json_string, &t[i], "router_id") == 0) {
-      // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       STATE->json_fields.router_id = (json_field_t) {value_ptr, value_size};
       i++;
     } else if (jsoneq(json_string, &t[i], "peer") == 0) {
-      // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       STATE->json_fields.peer_ip = (json_field_t) {value_ptr, value_size};
       i++;
     } else if (jsoneq(json_string, &t[i], "state") == 0) {
-      // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       STATE->json_fields.state = (json_field_t) {value_ptr, value_size};
       i++;
     } else if (jsoneq(json_string, &t[i], "reason") == 0) {
-      // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       STATE->json_fields.reason = (json_field_t) {value_ptr, value_size};
       i++;
     } else if (jsoneq(json_string, &t[i], "type") == 0) {
-      // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       STATE->json_fields.type = (json_field_t) {value_ptr, value_size};
       i++;
     } else if (jsoneq(json_string, &t[i], "direction") == 0) {
-      // printf("- peer_asn: %.*s\n", t[i+1].end-t[i+1].start, json_string + t[i+1].start);
       STATE->json_fields.direction = (json_field_t) {value_ptr, value_size};
       i++;
     } else {
-      // printf("Unexpected key: %.*s\n", t[i].end-t[i].start,
-      //     json_string + t[i].start);
+      // skipping all
+      next_ptr = value_ptr + value_size;
+      while((unsigned char*)json_string + t[i+1].start < next_ptr){
+        i++;
+      }
     }
   }
 
@@ -499,30 +472,30 @@ int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t
   switch(*STATE->json_fields.type.ptr){
   case 'A':
     RDATA->msg_type = RIPE_JSON_MSG_TYPE_ANNOUNCE;
-    process_update_message(format, record);
+    rc = process_update_message(format, record);
     break;
   case 'W':
     RDATA->msg_type = RIPE_JSON_MSG_TYPE_WITHDRAW;
-    process_update_message(format, record);
+    rc = process_update_message(format, record);
     break;
   case 'S':
     RDATA->msg_type = RIPE_JSON_MSG_TYPE_STATUS;
-    process_status_message(format, record);
+    rc = process_status_message(format, record);
     break;
   case 'O':
     RDATA->msg_type = RIPE_JSON_MSG_TYPE_OPEN;
-    process_open_message(format, record);
+    rc = process_open_message(format, record);
     break;
   case 'N':
     RDATA->msg_type = RIPE_JSON_MSG_TYPE_NOTIFY;
-    process_unsupported_message(format, record);
+    rc = process_unsupported_message(format, record);
     break;
   default:
-    process_unsupported_message(format, record);
+    rc = process_unsupported_message(format, record);
     break;
   }
 
-  return 0;
+  return rc;
 }
 
 
