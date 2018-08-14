@@ -307,6 +307,18 @@ char *bgpstream_record_elem_snprintf(char *buf, size_t len,
                                      bgpstream_record_t *record,
                                      bgpstream_elem_t *elem);
 
+/** Write the string representation of the record/elem into the provided buffer
+ *
+ * @param buf           pointer to a char array
+ * @param len           length of the char array
+ * @param elem          pointer to a BGP Stream Record to convert to string
+ * @param elem          pointer to a BGP Stream Elem to convert to string
+ * @return pointer to the start of the buffer if successful, NULL otherwise
+ */
+char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
+                                     bgpstream_record_t *record,
+                                     bgpstream_elem_t *elem);
+
 /** @} */
 
 #endif /* __BGPSTREAM_RECORD_H */

@@ -224,7 +224,7 @@ static void usage()
       fprintf(stderr, "usage: bgpreader -w <start>[,<end>] [<options>]\n"
         "Available options are:\n");
     }
-    
+
     char expl_buf[OPTIONS_EXPL_LEN] = {0};
     for (j = 0; j < strlen(OPTIONS[k].expl); j++) {
       snprintf(expl_buf + strlen(expl_buf), sizeof(expl_buf) - strlen(expl_buf),
@@ -250,6 +250,7 @@ static void usage()
 
 static int print_record(bgpstream_record_t *record);
 static int print_elem(bgpstream_record_t *record, bgpstream_elem_t *elem);
+static int print_elem_bgpdump(bgpstream_record_t *record, bgpstream_elem_t *elem);
 
 int main(int argc, char *argv[])
 {
@@ -667,7 +668,17 @@ int main(int argc, char *argv[])
     }
 
     if (record_bgpdump_output_on) {
-      bgpstream_record_print_mrt_data(bs_record);
+      // print record following bgpdump format
+
+      while ((erc = bgpstream_record_get_next_elem(bs_record, &bs_elem)) > 0) {
+        if (print_elem_bgpdump(bs_record, bs_elem) != 0) {
+          goto err;
+        }
+      }
+      if (erc != 0) {
+        fprintf(stderr, "ERROR: Failed to get elem from record\n");
+        goto err;
+      }
     }
 
     if (elem_output_on) {
@@ -684,7 +695,7 @@ int main(int argc, char *argv[])
         if(rpki_input != NULL && rpki_input->rpki_active){
           bs_elem->annotations.cfg = cfg;
           bs_elem->annotations.rpki_active = rpki_input->rpki_active;
-          bs_elem->annotations.timestamp = bs_record->time_sec;            
+          bs_elem->annotations.timestamp = bs_record->time_sec;
         }
 #endif
         if (print_elem(bs_record, bs_elem) != 0) {
@@ -747,6 +758,17 @@ static int print_record(bgpstream_record_t *record)
 static int print_elem(bgpstream_record_t *record, bgpstream_elem_t *elem)
 {
   if (bgpstream_record_elem_snprintf(buf, sizeof(buf), record, elem) == NULL) {
+    fprintf(stderr, "ERROR: Could not convert record/elem to string\n");
+    return -1;
+  }
+
+  printf("%s\n", buf);
+  return 0;
+}
+
+static int print_elem_bgpdump(bgpstream_record_t *record, bgpstream_elem_t *elem)
+{
+  if (bgpstream_record_elem_bgpdump_snprintf(buf, sizeof(buf), record, elem) == NULL) {
     fprintf(stderr, "ERROR: Could not convert record/elem to string\n");
     return -1;
   }
