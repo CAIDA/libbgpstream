@@ -408,6 +408,10 @@ int bgpstream_parsebgp_process_path_attrs(
       PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_PATH) {
     as4path = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_PATH].data.as_path;
   }
+  if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_ORIGIN].type ==
+      PARSEBGP_BGP_PATH_ATTR_TYPE_ORIGIN) {
+    el->origin = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_ORIGIN].data.origin;
+  }
   if (handle_as_paths(el->as_path, aspath, as4path) != 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not parse AS_PATH");
     return -1;

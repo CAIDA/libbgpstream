@@ -162,6 +162,9 @@ typedef struct bgpstream_elem {
   /** Peer AS number */
   uint32_t peer_asn;
 
+  /** Origin attribute */
+  uint8_t origin;
+
   /* Type-dependent fields */
 
   /** IP prefix
