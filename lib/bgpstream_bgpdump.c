@@ -28,6 +28,7 @@
  *   Alistair King
  */
 
+#include "bgpstream_parsebgp_common.h"
 #include "bgpstream_bgpdump.h"
 #include "bgpstream_int.h"
 #include "bgpstream_elem_int.h"
@@ -69,63 +70,191 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
   ssize_t c = 0;      /* < how many chars were written */
   char *buf_p = buf;
 
-  switch(record->type){
-  case BGPSTREAM_UPDATE:
+  /* Record type */
+  switch (elem->type) {
+  case BGPSTREAM_ELEM_TYPE_RIB:
+    c = snprintf(buf_p, B_REMAIN, "TABLE_DUMP2|%u", record->time_sec);
     break;
-  case BGPSTREAM_RIB:
+
+  case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT:
+  case BGPSTREAM_ELEM_TYPE_WITHDRAWAL:
+  case BGPSTREAM_ELEM_TYPE_PEERSTATE:
+    c = snprintf(buf_p, B_REMAIN, "BGP4MP|%u", record->time_sec);
+    break;
+  default:
+    break;
+  }
+  written += c;
+  buf_p += c;
+  ADD_PIPE;
+
+  switch(elem->type){
+  case BGPSTREAM_ELEM_TYPE_RIB:
+    c = snprintf(buf_p, B_REMAIN, "B");
+    break;
+  case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT:
+    c = snprintf(buf_p, B_REMAIN, "A");
+    break;
+  case BGPSTREAM_ELEM_TYPE_WITHDRAWAL:
+    c = snprintf(buf_p, B_REMAIN, "W");
+    break;
+  case BGPSTREAM_ELEM_TYPE_PEERSTATE:
+    c = snprintf(buf_p, B_REMAIN, "STATE");
     break;
   default:
     break;
   }
 
-  /* Record type */
-  if ((c = bgpstream_record_type_snprintf(buf_p, B_REMAIN,
-                                          record->type)) < 0) {
-    return NULL;
-  }
   written += c;
   buf_p += c;
   ADD_PIPE;
 
-  /* Elem type */
-  if ((c = bgpstream_elem_type_snprintf(buf_p, B_REMAIN, elem->type)) < 0) {
+  /* PEER IP */
+  if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->peer_ip) == NULL) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed peer address");
     return NULL;
   }
+  SEEK_STR_END;
+  ADD_PIPE;
+
+  /* PEER ASN */
+  c = snprintf(buf_p, B_REMAIN, "%" PRIu32, elem->peer_asn);
   written += c;
   buf_p += c;
   ADD_PIPE;
 
-  /* Record timestamp, project, collector, router names */
-  c = snprintf(buf_p, B_REMAIN, "%" PRIu32 ".%06" PRIu32 "|BGPDUMP!|%s|%s|%s|",
-               record->time_sec, record->time_usec,
-               record->project_name, record->collector_name,
-               record->router_name);
-  written += c;
-  buf_p += c;
-
-  if (B_FULL)
-    return NULL;
-
-  /* Router IP */
-  if (record->router_ip.version != 0) {
-    if (bgpstream_addr_ntop(buf_p, B_REMAIN, &record->router_ip) ==
-        NULL) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed Router IP address");
+  switch(elem->type){
+  case BGPSTREAM_ELEM_TYPE_RIB:
+  case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT:
+    /* PREFIX */
+    if (bgpstream_pfx_snprintf(buf_p, B_REMAIN,
+                               (bgpstream_pfx_t *)&(elem->prefix)) == NULL) {
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed prefix (R/A)");
       return NULL;
     }
     SEEK_STR_END;
-  }
-  ADD_PIPE;
+    ADD_PIPE;
 
-  if (bgpstream_elem_custom_snprintf(buf_p, B_REMAIN, elem, 0) == NULL) {
-    return NULL;
-  }
+    /* AS PATH */
+    c = bgpstream_as_path_snprintf(buf_p, B_REMAIN, elem->as_path);
+    written += c;
+    buf_p += c;
+    if (B_FULL)
+      return NULL;
+    ADD_PIPE;
 
-  written += c;
-  buf_p += c;
+    /* SOURCE (IGP) */
+    switch(elem->origin){
+    case PARSEBGP_BGP_UPDATE_ORIGIN_IGP:
+      c = snprintf(buf_p, B_REMAIN, "IGP");
+      break;
+    case PARSEBGP_BGP_UPDATE_ORIGIN_EGP:
+      c = snprintf(buf_p, B_REMAIN, "EGP");
+      break;
+    case PARSEBGP_BGP_UPDATE_ORIGIN_INCOMPLETE:
+      c = snprintf(buf_p, B_REMAIN, "INCOMPLETE");
+      break;
+    default:
+      break;
+    }
+    written += c;
+    buf_p += c;
+    ADD_PIPE;
+
+    /* NEXT HOP */
+    if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->nexthop) != NULL) {
+      SEEK_STR_END;
+    }
+    ADD_PIPE;
+
+    /* LOCAL_PREF */
+    c = snprintf(buf_p, B_REMAIN, "0");
+    written += c;
+    buf_p += c;
+    ADD_PIPE;
+    // FIXME
+
+    /* MED */
+    c = snprintf(buf_p, B_REMAIN, "0");
+    written += c;
+    buf_p += c;
+    ADD_PIPE;
+    // FIXME
+
+    /* COMMUNITIES */
+    c = bgpstream_community_set_snprintf(buf_p, B_REMAIN, elem->communities);
+    written += c;
+    buf_p += c;
+    if (B_FULL)
+      return NULL;
+    ADD_PIPE;
+
+    /* AGGREGATE AG/NAG */
+    // FIXME
+    c = snprintf(buf_p, B_REMAIN, "NAG");
+    written += c;
+    buf_p += c;
+    ADD_PIPE;
+
+    /* AGGREGATOR AS AND IP */
+    // FIXME
+    ADD_PIPE;
+
+    break;
+  case BGPSTREAM_ELEM_TYPE_WITHDRAWAL:
+    /* PREFIX */
+    if (bgpstream_pfx_snprintf(buf_p, B_REMAIN,
+                               (bgpstream_pfx_t *)&(elem->prefix)) == NULL) {
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed prefix (R/A)");
+      return NULL;
+    }
+    SEEK_STR_END;
+    break;
+  case BGPSTREAM_ELEM_TYPE_PEERSTATE:
+    c = snprintf(buf_p, B_REMAIN, "%u|%u", elem->old_state, elem->new_state);
+    written += c;
+    buf_p += c;
+    break;
+  default:
+    break;
+  }
 
   if (B_FULL)
     return NULL;
 
   return buf;
+}
+
+/** Write the string representation of the record type into the provided buffer
+ *
+ * @param buf           pointer to a char array
+ * @param len           length of the char array
+ * @param type          record type to convert to string
+ * @return the number of characters that would have been written if len was
+ * unlimited
+ */
+int bgpstream_record_type_bgpdump_snprintf(char *buf, size_t len,
+                                   bgpstream_record_type_t type){
+
+  /* ensure we have enough bytes to write our single character */
+  if (len == 0) {
+    return -1;
+  } else if (len == 1) {
+    buf[0] = '\0';
+    return -1;
+  }
+  switch (type) {
+  case BGPSTREAM_RIB:
+    buf[0] = 'R';
+    break;
+  case BGPSTREAM_UPDATE:
+    buf[0] = 'U';
+    break;
+  default:
+    buf[0] = '\0';
+    break;
+  }
+  buf[1] = '\0';
+  return 1;
+
 }
