@@ -392,22 +392,43 @@ int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t
   int i;
   int r, rc;
   jsmn_parser p;
-  jsmntok_t t[128]; /* We expect no more than 128 tokens */
-
   unsigned char* key_ptr, *value_ptr, *next_ptr;
   size_t key_size, value_size;
 
+  jsmntok_t *t; /* We expect no more than 128 tokens */
+  size_t tokcount = 128;
   char* json_string = (char*)&STATE->json_string_buffer;
 
+  // prepare parser
   jsmn_init(&p);
-  r = jsmn_parse(&p, json_string, strlen(json_string), t, sizeof(t)/sizeof(t[0]));
-  if (r < 0) {
-    return -1;
+
+  // allocate some tokens to start
+  if ((t = malloc(sizeof(jsmntok_t) * tokcount)) == NULL) {
+    fprintf(stderr, "ERROR: Could not malloc initial tokens\n");
+    goto err;
+  }
+
+again:
+  if ((r = jsmn_parse(&p, json_string, strlen(json_string), t, tokcount)) < 0) {
+    if (r == JSMN_ERROR_NOMEM) {
+      tokcount *= 2;
+      if ((t = realloc(t, sizeof(jsmntok_t) * tokcount)) == NULL) {
+        fprintf(stderr, "ERROR: Could not realloc tokens\n");
+        goto err;
+      }
+      goto again;
+    }
+    if (r == JSMN_ERROR_INVAL) {
+      fprintf(stderr, "ERROR: Invalid character in JSON string\n");
+      goto err;
+    }
+    fprintf(stderr, "ERROR: JSON parser returned %d\n", r);
+    goto err;
   }
 
   /* Assume the top-level element is an object */
   if (r < 1 || t[0].type != JSMN_OBJECT) {
-    return -1;
+    goto err;
   }
 
   /* Loop over all fields of the json string buffer */
@@ -419,8 +440,7 @@ int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t
 
     /* Assume the top-level element is an object */
     if (t[i].type != JSMN_STRING) {
-      fprintf(stderr, "ERROR: unexpected JSON field '%s'\n", json_string);
-      return -1;
+      goto err;
     }
 
     PARSEFIELD(body)
@@ -444,7 +464,6 @@ int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t
           }
         }
   }
-
 
   // process each type of message separately
 
@@ -474,7 +493,14 @@ int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t
     break;
   }
 
+
+
   return rc;
+
+ err:
+
+  process_unsupported_message(format, record);
+  return -1;
 }
 
 
@@ -505,22 +531,20 @@ bgpstream_format_status_t
 bs_format_ripejson_populate_record(bgpstream_format_t *format,
                               bgpstream_record_t *record)
 {
-
   int newread;
-
 
   newread = bgpstream_transport_readline(format->transport, &STATE->json_string_buffer, BGPSTREAM_PARSEBGP_BUFLEN);
 
-  if (newread <0 || newread >= BGPSTREAM_PARSEBGP_BUFLEN) {
+  if (newread <0 ) {
     return newread;
+  } else if (newread >= BGPSTREAM_PARSEBGP_BUFLEN){
+    return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
   } else if ( newread == 0 ){
     return BGPSTREAM_FORMAT_END_OF_DUMP;
   }
 
-
   if( ( bs_format_process_json_fields(format, record) )<0){
-
-    return BGPSTREAM_FORMAT_CORRUPTED_JSON;
+    return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
   }
 
   strcpy(record -> project_name , "ris-stream");
