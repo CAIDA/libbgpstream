@@ -34,6 +34,13 @@
 #include <assert.h>
 #include <stdio.h>
 
+#define PARSEFIELD(field)                                               \
+  if (jsoneq(json_string, &t[i], STR(field)) == 0) {                    \
+    STATE->json_fields.field = (json_field_t) {value_ptr, value_size};  \
+    i++;                                                                \
+  }
+
+
 #define STATE ((state_t*)(format->state))
 
 #define RDATA ((rec_data_t *)(record->__int->data))
@@ -75,7 +82,7 @@ typedef struct json_field_ptrs {
 
   json_field_t peer_asn;
 
-  json_field_t peer_ip;
+  json_field_t peer;
 
   json_field_t type;
 
@@ -227,8 +234,8 @@ void process_common_fields(bgpstream_format_t *format, bgpstream_record_t *recor
 
   // populate peer ip
   bgpstream_addr_storage_t addr;
-  memcpy(STATE->field_buffer, STATE->json_fields.peer_ip.ptr, STATE->json_fields.peer_ip.len);
-  STATE->field_buffer[STATE->json_fields.peer_ip.len] = '\0';
+  memcpy(STATE->field_buffer, STATE->json_fields.peer.ptr, STATE->json_fields.peer.len);
+  STATE->field_buffer[STATE->json_fields.peer.len] = '\0';
   bgpstream_str2addr((char *)STATE->field_buffer, &addr);
   bgpstream_addr_copy((bgpstream_ip_addr_t *)&RDATA->elem->peer_ip,
                       (bgpstream_ip_addr_t *)&addr);
@@ -412,58 +419,30 @@ int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t
 
     /* Assume the top-level element is an object */
     if (t[i].type != JSMN_STRING) {
-      if (t[i].type == JSMN_OBJECT) {
-        fprintf(stderr, "ERROR: multiple json object in one record! '%.*s'\n", (int) strlen(json_string), json_string);
-      }
+      fprintf(stderr, "ERROR: unexpected JSON field '%s'\n", json_string);
       return -1;
     }
 
-    if (jsoneq(json_string, &t[i], "body") == 0) {
-      STATE->json_fields.body = (json_field_t) {value_ptr, value_size};
-      i++;
-    } else if (jsoneq(json_string, &t[i], "timestamp") == 0) {
-      STATE->json_fields.timestamp = (json_field_t) {value_ptr, value_size};
-      i++;
-    } else if (jsoneq(json_string, &t[i], "host") == 0) {
-      STATE->json_fields.host = (json_field_t) {value_ptr, value_size};
-      i++;
-    } else if (jsoneq(json_string, &t[i], "id") == 0) {
-      STATE->json_fields.id = (json_field_t) {value_ptr, value_size};
-      i++;
-    } else if (jsoneq(json_string, &t[i], "peer_asn") == 0) {
-      STATE->json_fields.peer_asn = (json_field_t) {value_ptr, value_size};
-      i++;
-    } else if (jsoneq(json_string, &t[i], "asn") == 0) {
-      STATE->json_fields.asn = (json_field_t) {value_ptr, value_size};
-      i++;
-    } else if (jsoneq(json_string, &t[i], "hold_time") == 0) {
-      STATE->json_fields.hold_time = (json_field_t) {value_ptr, value_size};
-      i++;
-    } else if (jsoneq(json_string, &t[i], "router_id") == 0) {
-      STATE->json_fields.router_id = (json_field_t) {value_ptr, value_size};
-      i++;
-    } else if (jsoneq(json_string, &t[i], "peer") == 0) {
-      STATE->json_fields.peer_ip = (json_field_t) {value_ptr, value_size};
-      i++;
-    } else if (jsoneq(json_string, &t[i], "state") == 0) {
-      STATE->json_fields.state = (json_field_t) {value_ptr, value_size};
-      i++;
-    } else if (jsoneq(json_string, &t[i], "reason") == 0) {
-      STATE->json_fields.reason = (json_field_t) {value_ptr, value_size};
-      i++;
-    } else if (jsoneq(json_string, &t[i], "type") == 0) {
-      STATE->json_fields.type = (json_field_t) {value_ptr, value_size};
-      i++;
-    } else if (jsoneq(json_string, &t[i], "direction") == 0) {
-      STATE->json_fields.direction = (json_field_t) {value_ptr, value_size};
-      i++;
-    } else {
-      // skipping all
-      next_ptr = value_ptr + value_size;
-      while((unsigned char*)json_string + t[i+1].start < next_ptr){
-        i++;
-      }
-    }
+    PARSEFIELD(body)
+    else PARSEFIELD(timestamp)
+    else PARSEFIELD(host)
+    else PARSEFIELD(id)
+    else PARSEFIELD(peer_asn)
+    else PARSEFIELD(asn)
+    else PARSEFIELD(hold_time)
+    else PARSEFIELD(router_id)
+    else PARSEFIELD(peer) // TODO: fix
+    else PARSEFIELD(state)
+    else PARSEFIELD(reason)
+    else PARSEFIELD(type)
+    else PARSEFIELD(direction)
+    else {
+          // skipping all
+          next_ptr = value_ptr + value_size;
+          while((unsigned char*)json_string + t[i+1].start < next_ptr){
+            i++;
+          }
+        }
   }
 
 

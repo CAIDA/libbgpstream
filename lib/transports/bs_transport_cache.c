@@ -31,6 +31,7 @@
 #include "bgpstream_log.h"
 #include "bs_transport_cache.h"
 #include "wandio.h"
+#include "wandio_utils.h"
 #include "utils.h"
 #include <string.h>
 #include <sys/stat.h>
@@ -217,7 +218,8 @@ int bs_transport_cache_create(bgpstream_transport_t *transport)
 int64_t bs_transport_cache_readline(bgpstream_transport_t *transport,
                                 uint8_t *buffer, int64_t len)
 {
-  return 0;
+
+  return generic_fgets(transport, buffer, len, 1, (read_cb_t*)bs_transport_cache_read);
 }
 
 int64_t bs_transport_cache_read(bgpstream_transport_t *transport,

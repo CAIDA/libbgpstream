@@ -300,14 +300,12 @@ int64_t bs_transport_kafka_readline(bgpstream_transport_t *transport,
 {
   int rc = bs_transport_kafka_read(transport, buffer, len);
 
-  // check if newline characters in it
-  char * pch;
-  pch=strchr(str,'\n');
-  while (pch!=NULL && pch < rc){
-    // if found, replace it with NIL
-    buffer[pch] = '\0';
-    rc--;
+  if(rc<=0){
+    return rc;
   }
+
+  // NOTE: we assume there is only one line per kafka message
+  assert(strchr(str,'\n') == NULL);
 
   return rc;
 }
