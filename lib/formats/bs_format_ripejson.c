@@ -249,7 +249,6 @@ void process_common_fields(bgpstream_format_t *format, bgpstream_record_t *recor
 int process_update_message(bgpstream_format_t *format, bgpstream_record_t *record){
 
   // convert body to bytes
-  // TODO: check return value
   size_t dec_len =  (size_t) hexstr_to_bgpmsg(STATE->json_bytes_buffer,
                                       4096,
                                       (char*) STATE->json_fields.body.ptr,
@@ -451,7 +450,7 @@ again:
     else PARSEFIELD(asn)
     else PARSEFIELD(hold_time)
     else PARSEFIELD(router_id)
-    else PARSEFIELD(peer) // TODO: fix
+    else PARSEFIELD(peer)
     else PARSEFIELD(state)
     else PARSEFIELD(reason)
     else PARSEFIELD(type)

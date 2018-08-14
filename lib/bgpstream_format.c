@@ -51,7 +51,7 @@ static const format_create_func_t create_functions[] = {
 
   bs_format_bmp_create,
 
-  bs_format_ripejson_create, // TODO: add support for RIPEJSON
+  bs_format_ripejson_create,
 
 };
 
