@@ -98,9 +98,11 @@ static int prefetch_record(bgpstream_reader_t *reader)
   // resource, then pretend we're ok.  but beware that now we'll be "OK", with
   // an unfilled prefetch record
   if (reader->res->duration == BGPSTREAM_FOREVER &&
-      (reader->status == BGPSTREAM_FORMAT_END_OF_DUMP ||
-       reader->status == BGPSTREAM_FORMAT_FILTERED_DUMP ||
-       reader->status == BGPSTREAM_FORMAT_EMPTY_DUMP)) {
+      (reader->status == BGPSTREAM_FORMAT_END_OF_DUMP     ||
+       reader->status == BGPSTREAM_FORMAT_FILTERED_DUMP   ||
+       reader->status == BGPSTREAM_FORMAT_EMPTY_DUMP      ||
+       reader->status == BGPSTREAM_FORMAT_CORRUPTED_DUMP
+       )) {
     reader->status = BGPSTREAM_FORMAT_OK;
     return 0;
   }
@@ -308,7 +310,7 @@ int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
   // if the EXPORT record is not filled then we need to return EOS or AGAIN
   if (reader->rec_buf_filled[EXPORTED_IDX] == 0) {
     if (reader->res->duration == BGPSTREAM_FOREVER &&
-        reader->status != BGPSTREAM_FORMAT_OUTSIDE_TIME_INTERVAL) {
+        reader->status == BGPSTREAM_FORMAT_OK) {
       return BGPSTREAM_READER_STATUS_AGAIN;
     } else {
       return BGPSTREAM_READER_STATUS_EOS;
