@@ -305,7 +305,8 @@ int64_t bs_transport_kafka_readline(bgpstream_transport_t *transport,
   }
 
   // NOTE: we assume there is only one line per kafka message
-  assert(strchr(str,'\n') == NULL);
+  char * pch = strchr((char*)buffer,'\n');
+  assert(pch == NULL || pch - (char*)buffer >= rc);
 
   return rc;
 }
