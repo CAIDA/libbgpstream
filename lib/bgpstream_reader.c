@@ -308,7 +308,7 @@ int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
   if (reader->status == BGPSTREAM_FORMAT_OK &&
       prefetch_record(reader) != 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Prefetch failed");
-    return -1;
+    return BGPSTREAM_READER_STATUS_ERROR;
   }
 
   // if the EXPORT record is not filled then we need to return EOS or AGAIN
@@ -316,6 +316,12 @@ int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
     if (reader->res->duration == BGPSTREAM_FOREVER &&
         reader->status == BGPSTREAM_FORMAT_OK) {
       return BGPSTREAM_READER_STATUS_AGAIN;
+    } else if ( reader->status != BGPSTREAM_FORMAT_END_OF_DUMP &&
+               (reader->rec_buf[PREFETCH_IDX]->status == BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD ||
+                reader->rec_buf[PREFETCH_IDX]->status == BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD) ) {
+      // continue read through processing if record are corrupted or unsupported
+      *record = reader->rec_buf[EXPORTED_IDX];
+      return BGPSTREAM_READER_STATUS_OK;
     } else {
       return BGPSTREAM_READER_STATUS_EOS;
     }
