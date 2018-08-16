@@ -5,3 +5,5 @@
 {"timestamp":1534175211.49,"state":"connected","host":"rrc21","peer":"2001:7f8:54::201","type":"S","id":"2001_7f8_54__201-23b86597fd-2bbf6","peer_asn":"49375"}
 {"reason":"connection to peer failed","timestamp":1534175193.45,"state":"down","host":"rrc21","peer":"37.49.237.31","type":"S","id":"JTHtHw-23b86590f1-16618","peer_asn":"31122"}
 {"timestamp":1534175211.49,"state":"connected","host":"rrc21","peer":"2001:7f8:54::201","type":"N","id":"2001_7f8_54__201-23b86597fd-2bbf6","peer_asn":"49375"}
+{"timestamp:1534175211.49,"state":"connected","host":"rrc21","peer":"2001:7f8:54::201","type":"N","id":"2001_7f8_54__201-23b86597fd-2bbf6","peer_asn":"49375"}
+{"body":"000816B97C6016B9A6B40000","host":"rrc21","peer":"37.49.236.123","timestamp":1534175898.17,"prefix":"185.124.96.0/22","type":"W","id":"JTHsew-23b866a439-14a9a93","peer_asn":"198290"} {"body":"000816B97C6016B9A6B40000","host":"rrc21","peer":"37.49.236.123","timestamp":1534175898.17,"prefix":"185.124.96.0/22","type":"W","id":"JTHsew-23b866a439-14a9a93","peer_asn":"198290"}
