@@ -73,13 +73,17 @@ struct bgpstream_transport {
   /** Read bytes from this transport
    *
    * @param t           The data transport object to read from
+   * @param buffer      The byte buffer to read data to
+   * @param len         The maximum number of bytes to read
    * @return the number of bytes read if successful, -1 otherwise
    */
   int64_t (*read)(struct bgpstream_transport *t, uint8_t *buffer, int64_t len);
 
-  /** Read bytes from this transport
+  /** Read line from this transport
    *
    * @param t           The data transport object to read from
+   * @param buffer      The byte buffer to read data to
+   * @param len         The maximum number of bytes to read
    * @return the number of bytes read if successful, -1 otherwise
    */
   int64_t (*readline)(struct bgpstream_transport *t, uint8_t *buffer, int64_t len);
