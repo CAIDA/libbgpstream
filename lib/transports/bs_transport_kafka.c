@@ -298,7 +298,7 @@ static int handle_err_msg(bgpstream_transport_t *transport,
 int64_t bs_transport_kafka_readline(bgpstream_transport_t *transport,
                                 uint8_t *buffer, int64_t len)
 {
-  int rc = bs_transport_kafka_read(transport, buffer, len);
+  int rc = bs_transport_kafka_read(transport, buffer, len-1);
 
   if(rc<=0){
     return rc;
@@ -306,8 +306,7 @@ int64_t bs_transport_kafka_readline(bgpstream_transport_t *transport,
 
   buffer[rc]='\0';
   // NOTE: we assume there is only one line per kafka message
-  char * pch = strchr((char*)buffer,'\n');
-  assert(pch == NULL);
+  assert(strchr((char*)buffer, '\n') == NULL);
 
   return rc;
 }
