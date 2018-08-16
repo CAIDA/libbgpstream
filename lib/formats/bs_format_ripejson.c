@@ -31,77 +31,49 @@
 #include "bgpstream_parsebgp_common.h"
 #include "libjsmn/jsmn.h"
 #include "utils.h"
+#include "jsmn_utils.h"
 #include <assert.h>
 #include <stdio.h>
 
-#define PARSEFIELD(field)                                               \
-  if (jsoneq(json_string, &t[i], STR(field)) == 0) {                    \
-    STATE->json_fields.field = (json_field_t) {value_ptr, value_size};  \
-    i++;                                                                \
-  }
-
-
 #define STATE ((state_t*)(format->state))
-
 #define RDATA ((rec_data_t *)(record->__int->data))
 
-#define RIPE_JSON_MSG_TYPE_UPDATE 0
-
-// might not very useful
 typedef enum {
-
   RIPE_JSON_MSG_TYPE_ANNOUNCE = 1,
-
   RIPE_JSON_MSG_TYPE_WITHDRAW = 2,
-
   RIPE_JSON_MSG_TYPE_STATUS   = 3,
-
   RIPE_JSON_MSG_TYPE_OPEN     = 4,
-
   RIPE_JSON_MSG_TYPE_NOTIFY   = 5,
-
 } bs_format_ripejson_msg_type_t;
 
 typedef struct json_field{
-
-  unsigned char* ptr;
-
-  size_t len;
-
+  char* ptr;  // field pointer
+  size_t len; // length of the field
 } json_field_t;
 
+// json fields that does not contain in the raw message bytes
 typedef struct json_field_ptrs {
+  /* common fields */
+  json_field_t body;       // raw bytes of the bgp message
+  json_field_t timestamp;  // timestamp of the message
+  json_field_t host;       // collector name (e.g. rrc21)
+  json_field_t id;         // message ID
+  json_field_t peer_asn;   // peer ASN
+  json_field_t peer;       // peer IP
+  json_field_t type;       // message type
 
-  json_field_t body;
+  /* open message fields */
+  json_field_t asn;        // AS number for connected router
+  json_field_t hold_time;  // up time
+  json_field_t router_id;  // router IP address
+  json_field_t direction;  // sent/receive
 
-  json_field_t timestamp;
-
-  json_field_t host;
-
-  json_field_t id;
-
-  json_field_t peer_asn;
-
-  json_field_t peer;
-
-  json_field_t type;
-
-  json_field_t asn;
-
-  json_field_t hold_time;
-
-  json_field_t router_id;
-
-  json_field_t state;
-
-  json_field_t reason;
-
-  json_field_t direction;
-
+  /* state message fields */
+  json_field_t state;      // new state: connected, down
+  json_field_t reason;     // reason of the state change
 } json_field_ptrs_t;
 
 typedef struct rec_data {
-
   // reusable elem instance
   bgpstream_elem_t *elem;
 
@@ -132,20 +104,19 @@ typedef struct state {
   // options
   parsebgp_opts_t opts;
 
-  // json string buffer
+  // json bgp message string buffer
   uint8_t json_string_buffer[BGPSTREAM_PARSEBGP_BUFLEN];
 
   // json bgp message bytes buffer
   uint8_t json_bytes_buffer[4096];
 
+  // json bgp message field buffer
   uint8_t field_buffer[100];
 
+  // json bgp message fields
   json_field_ptrs_t json_fields;
 
 } state_t;
-
-
-/* ==================== RECORD FILTERING ==================== */
 
 /* ======================================================== */
 /* ======================================================== */
@@ -153,14 +124,8 @@ typedef struct state {
 /* ======================================================== */
 /* ======================================================== */
 
-static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
-  if (tok->type == JSMN_STRING && (int) strlen(s) == tok->end - tok->start &&
-      bcmp(json + tok->start, s, tok->end - tok->start) == 0) {
-    return 0;
-  }
-  return -1;
-}
-
+// convert char array to bytes
+// by @alistair
 static int hexstr_to_bytes(uint8_t *buf, const char* hexstr, size_t hexstr_len){
   size_t i;
   char c;
@@ -223,6 +188,7 @@ static ssize_t hexstr_to_bgpmsg(uint8_t *buf, size_t buflen,
 /* ====================================================================== */
 /* ====================================================================== */
 
+// process common header fields for all message types
 void process_common_fields(bgpstream_format_t *format, bgpstream_record_t *record){
 
   // populate collector name
@@ -273,9 +239,10 @@ int process_status_message(bgpstream_format_t *format, bgpstream_record_t *recor
 
   // process direction
   if( bcmp(&"down", STATE->json_fields.state.ptr, STATE->json_fields.state.len) == 0){
-    // equals
+    // down message
     RDATA->status_msg_state = 0;
   } else if( bcmp(&"connected", STATE->json_fields.state.ptr, STATE->json_fields.state.len) == 0){
+    // connected message
     RDATA->status_msg_state = 1;
   } else {
     // unknown
@@ -290,7 +257,7 @@ int process_status_message(bgpstream_format_t *format, bgpstream_record_t *recor
 int process_open_message(bgpstream_format_t *format, bgpstream_record_t *record){
 
   int json_str_len = STATE->json_fields.body.len;
-  uint8_t* json_str_ptr = STATE->json_fields.body.ptr;
+  char* json_str_ptr = STATE->json_fields.body.ptr;
   int missing_type = 0;
   int err;
   uint8_t* ptr = STATE->json_bytes_buffer;
@@ -387,11 +354,17 @@ int process_unsupported_message(bgpstream_format_t *format, bgpstream_record_t *
   return 0;
 }
 
+#define PARSEFIELD(field)                                               \
+  if (jsmn_streq(json_string, &t[i], STR(field)) == 1) {                \
+    STATE->json_fields.field = (json_field_t) {value_ptr, value_size};  \
+    i++;                                                                \
+  }
+
 int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t *record){
   int i;
   int r, rc;
   jsmn_parser p;
-  unsigned char* key_ptr, *value_ptr, *next_ptr;
+  char* key_ptr, *value_ptr, *next_ptr;
   size_t key_size, value_size;
 
   jsmntok_t *t; /* We expect no more than 128 tokens */
@@ -432,9 +405,9 @@ again:
 
   /* Loop over all fields of the json string buffer */
   for (i = 1; i < r; i++) {
-    key_ptr = (unsigned char*)json_string + t[i].start;
+    key_ptr = (char*)json_string + t[i].start;
     key_size = t[i].end-t[i].start;
-    value_ptr = (unsigned char*)json_string + t[i+1].start;
+    value_ptr = (char*)json_string + t[i+1].start;
     value_size = t[i+1].end-t[i+1].start;
 
     /* Assume the top-level element is an object */
@@ -447,25 +420,24 @@ again:
     else PARSEFIELD(host)
     else PARSEFIELD(id)
     else PARSEFIELD(peer_asn)
+    else PARSEFIELD(peer)
+    else PARSEFIELD(type)
     else PARSEFIELD(asn)
     else PARSEFIELD(hold_time)
     else PARSEFIELD(router_id)
-    else PARSEFIELD(peer)
+    else PARSEFIELD(direction)
     else PARSEFIELD(state)
     else PARSEFIELD(reason)
-    else PARSEFIELD(type)
-    else PARSEFIELD(direction)
     else {
           // skipping all
           next_ptr = value_ptr + value_size;
-          while((unsigned char*)json_string + t[i+1].start < next_ptr){
+          while((char*)json_string + t[i+1].start < next_ptr){
             i++;
           }
         }
   }
 
   // process each type of message separately
-
   switch(*STATE->json_fields.type.ptr){
   case 'A':
     RDATA->msg_type = RIPE_JSON_MSG_TYPE_ANNOUNCE;
@@ -491,8 +463,6 @@ again:
     rc = process_unsupported_message(format, record);
     break;
   }
-
-
 
   return rc;
 
