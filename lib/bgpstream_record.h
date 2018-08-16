@@ -111,6 +111,9 @@ typedef enum {
   /* Dump corrupted at some point */
   BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD = 5,
 
+  /* Record unsupported */
+  BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD = 6,
+
 } bgpstream_record_status_t;
 
 /** @} */

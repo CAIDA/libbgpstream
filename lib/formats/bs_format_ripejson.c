@@ -227,12 +227,12 @@ int process_update_message(bgpstream_format_t *format, bgpstream_record_t *recor
                              STATE->json_bytes_buffer, &dec_len)) != PARSEBGP_OK) {
     fprintf(stderr, "ERROR: Failed to parse message (%zu:%s)\n", err, parsebgp_strerror(err));
     parsebgp_clear_msg(RDATA->msg);
-    return -1;
+    return BGPSTREAM_FORMAT_CORRUPTED_MSG;
   }
 
   process_common_fields(format, record);
 
-  return 0;
+  return BGPSTREAM_FORMAT_OK;
 }
 
 int process_status_message(bgpstream_format_t *format, bgpstream_record_t *record){
@@ -251,7 +251,7 @@ int process_status_message(bgpstream_format_t *format, bgpstream_record_t *recor
 
   process_common_fields(format, record);
 
-  return 0;
+  return BGPSTREAM_FORMAT_OK;
 }
 
 int process_open_message(bgpstream_format_t *format, bgpstream_record_t *record){
@@ -328,6 +328,7 @@ int process_open_message(bgpstream_format_t *format, bgpstream_record_t *record)
                              STATE->json_bytes_buffer, &dec_len)) != PARSEBGP_OK) {
     fprintf(stderr, "ERROR: Failed to parse message (%d:%s)\n", err, parsebgp_strerror(err));
     parsebgp_clear_msg(RDATA->msg);
+    return BGPSTREAM_FORMAT_CORRUPTED_MSG ;
   }
 
   // process direction
@@ -340,18 +341,23 @@ int process_open_message(bgpstream_format_t *format, bgpstream_record_t *record)
 
   process_common_fields(format, record);
 
-  return 0;
-}
-
-int process_notify_message(bgpstream_format_t *format, bgpstream_record_t *record){
-  return 0;
+  return BGPSTREAM_FORMAT_OK;
 }
 
 int process_unsupported_message(bgpstream_format_t *format, bgpstream_record_t *record){
   fprintf(stderr, "WARN: unsupported ris-stream message: ");
   STATE->json_string_buffer[strcspn((char*)STATE->json_string_buffer, "\n")] = 0;
   fprintf(stderr, "%s\n",STATE->json_string_buffer);
-  return 0;
+  record -> status = BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD;
+  return BGPSTREAM_FORMAT_UNSUPPORTED_MSG;
+}
+
+int process_corrupted_message(bgpstream_format_t *format, bgpstream_record_t *record){
+  fprintf(stderr, "WARN: corrupted ris-stream message: ");
+  STATE->json_string_buffer[strcspn((char*)STATE->json_string_buffer, "\n")] = 0;
+  fprintf(stderr, "%s\n",STATE->json_string_buffer);
+  record -> status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
+  return BGPSTREAM_FORMAT_CORRUPTED_MSG;
 }
 
 #define PARSEFIELD(field)                                               \
@@ -400,6 +406,7 @@ again:
 
   /* Assume the top-level element is an object */
   if (r < 1 || t[0].type != JSMN_OBJECT) {
+    fprintf(stderr, "ERROR: JSON top-level not object\n");
     goto err;
   }
 
@@ -412,6 +419,7 @@ again:
 
     /* Assume the top-level element is an object */
     if (t[i].type != JSMN_STRING) {
+      fprintf(stderr, "ERROR: JSON key not string\n");
       goto err;
     }
 
@@ -460,7 +468,7 @@ again:
     rc = process_unsupported_message(format, record);
     break;
   default:
-    rc = process_unsupported_message(format, record);
+    rc = process_corrupted_message(format, record);
     break;
   }
 
@@ -468,8 +476,7 @@ again:
 
  err:
 
-  process_unsupported_message(format, record);
-  return -1;
+  return process_corrupted_message(format, record);
 }
 
 
@@ -500,20 +507,21 @@ bgpstream_format_status_t
 bs_format_ripejson_populate_record(bgpstream_format_t *format,
                               bgpstream_record_t *record)
 {
-  int newread;
+  int newread, rc;
 
   newread = bgpstream_transport_readline(format->transport, &STATE->json_string_buffer, BGPSTREAM_PARSEBGP_BUFLEN);
 
+  assert(newread < BGPSTREAM_PARSEBGP_BUFLEN);
+
   if (newread <0 ) {
-    return newread;
-  } else if (newread >= BGPSTREAM_PARSEBGP_BUFLEN){
+    record -> status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
     return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
   } else if ( newread == 0 ){
     return BGPSTREAM_FORMAT_END_OF_DUMP;
   }
 
-  if( ( bs_format_process_json_fields(format, record) )<0){
-    return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
+  if( ( rc = bs_format_process_json_fields(format, record) ) != 0){
+    return rc;
   }
 
   strcpy(record -> project_name , "ris-stream");

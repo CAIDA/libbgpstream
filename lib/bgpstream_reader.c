@@ -31,6 +31,7 @@
 #include <assert.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #define DUMP_OPEN_MAX_RETRIES 5
 #define DUMP_OPEN_MIN_RETRY_WAIT 10
@@ -97,12 +98,15 @@ static int prefetch_record(bgpstream_reader_t *reader)
   // if we got any of the non-error END_OF_DUMP messages but this is a stream
   // resource, then pretend we're ok.  but beware that now we'll be "OK", with
   // an unfilled prefetch record
-  if (reader->res->duration == BGPSTREAM_FOREVER &&
+  if ((reader->res->duration == BGPSTREAM_FOREVER &&
       (reader->status == BGPSTREAM_FORMAT_END_OF_DUMP     ||
        reader->status == BGPSTREAM_FORMAT_FILTERED_DUMP   ||
        reader->status == BGPSTREAM_FORMAT_EMPTY_DUMP      ||
        reader->status == BGPSTREAM_FORMAT_CORRUPTED_DUMP
-       )) {
+       )) ||
+      (reader->status == BGPSTREAM_FORMAT_CORRUPTED_MSG ||
+       reader->status == BGPSTREAM_FORMAT_UNSUPPORTED_MSG )
+      ) {
     reader->status = BGPSTREAM_FORMAT_OK;
     return 0;
   }
