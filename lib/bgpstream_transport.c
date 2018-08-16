@@ -33,7 +33,6 @@
 #include "bgpstream_transport.h"
 #include "bgpstream_log.h"
 #include "utils.h"
-#include <stdio.h>
 
 // WITH_TRANSPORT_FILE
 #include "bs_transport_file.h"
