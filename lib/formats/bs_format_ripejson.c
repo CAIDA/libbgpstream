@@ -124,6 +124,24 @@ typedef struct state {
 /* ======================================================== */
 /* ======================================================== */
 
+#define FIELDPTR(field) STATE->json_fields.field.ptr
+#define FIELDLEN(field) STATE->json_fields.field.len
+
+#define STRTOUL(field, dest)                        \
+  do {                                              \
+    char tmp=FIELDPTR(field)[FIELDLEN(field)];      \
+    FIELDPTR(field)[FIELDLEN(field)]='\0';          \
+    dest=strtoul((char*)FIELDPTR(field), NULL, 10); \
+    FIELDPTR(field)[FIELDLEN(field)]=tmp;           \
+  } while(0)
+#define STRTOD(field, dest)                         \
+  do {                                              \
+    char tmp=FIELDPTR(field)[FIELDLEN(field)];      \
+    FIELDPTR(field)[FIELDLEN(field)]='\0';          \
+    dest=strtod((char*)FIELDPTR(field), NULL    );  \
+    FIELDPTR(field)[FIELDLEN(field)]=tmp;           \
+  } while(0)
+
 // convert char array to bytes
 // by @alistair
 static int hexstr_to_bytes(uint8_t *buf, const char* hexstr, size_t hexstr_len){
@@ -191,12 +209,13 @@ static ssize_t hexstr_to_bgpmsg(uint8_t *buf, size_t buflen,
 // process common header fields for all message types
 void process_common_fields(bgpstream_format_t *format, bgpstream_record_t *record){
 
+  double time_double;
   // populate collector name
   memcpy(record -> collector_name , STATE->json_fields.host.ptr, STATE->json_fields.host.len);
   record -> collector_name[STATE->json_fields.host.len] = '\0';
 
   // populate peer asn
-  RDATA->elem->peer_asn = (uint32_t) strtol((char *)STATE->json_fields.peer_asn.ptr, NULL, 10);
+  STRTOUL(peer_asn, RDATA->elem->peer_asn);
 
   // populate peer ip
   bgpstream_addr_storage_t addr;
@@ -206,9 +225,9 @@ void process_common_fields(bgpstream_format_t *format, bgpstream_record_t *recor
   bgpstream_addr_copy((bgpstream_ip_addr_t *)&RDATA->elem->peer_ip,
                       (bgpstream_ip_addr_t *)&addr);
   // populate time-stamp
-  double time_double = strtod((char *)STATE->json_fields.timestamp.ptr, NULL);
-  record->time_sec = (int) time_double;
-  record->time_usec = (int)((time_double - (int) time_double) * 1000000);
+  STRTOD(timestamp, time_double);
+  record->time_sec = (uint32_t) time_double;
+  record->time_usec = (uint32_t)((time_double - (uint32_t) time_double) * 1000000);
 
 }
 
@@ -258,40 +277,49 @@ int process_open_message(bgpstream_format_t *format, bgpstream_record_t *record)
 
   int json_str_len = STATE->json_fields.body.len;
   char* json_str_ptr = STATE->json_fields.body.ptr;
-  int missing_type = 0;
-  int err;
+  parsebgp_error_t err;
   uint8_t* ptr = STATE->json_bytes_buffer;
-  int loc = 2;
   int msg_len = 0;
 
+  // fields
+  uint32_t asn4;
+  uint16_t hold_time;
+  uint32_t router_id;
+  uint16_t total_length;
+ size_t dec_len;
+  bgpstream_addr_storage_t addr;
+
+  // the first two bytes will be filled with the message length later
+  int loc = 2;
 
   ptr[loc] = PARSEBGP_BGP_TYPE_OPEN;
-  loc += 1;
+  loc ++;
 
   /* add missing open message headers */
 
   // version
   ptr[loc] = 4;
-  loc += 1;
+  loc ++;
 
   // my autonomous system
-  uint32_t asn4 = strtol((char*)STATE->json_fields.asn.ptr, NULL, 10);
+  STRTOUL(asn, asn4);
+  // if the ASN is 4 byte, use ASN23456 as placeholder
   uint16_t asn = htons( (uint16_t) (asn4 > UINT16_MAX ?  23456: asn4) );
   memcpy(&ptr[loc], &asn, sizeof(uint16_t));
   loc += 2;
 
   // hold time
-  uint16_t hold_time = htons( (uint16_t) strtol((char*)STATE->json_fields.hold_time.ptr, NULL, 10) );
+  STRTOUL(hold_time, hold_time);
   memcpy(&ptr[loc], &hold_time, sizeof(uint16_t));
   loc += 2;
 
   // bgp identifier
-  bgpstream_addr_storage_t addr;
   memcpy(STATE->field_buffer, STATE->json_fields.router_id.ptr, STATE->json_fields.router_id.len);
   STATE->field_buffer[STATE->json_fields.router_id.len] = '\0';
-  void* rc = bgpstream_str2addr((char*)STATE->field_buffer, &addr);
-  if(rc==NULL){
-    uint32_t router_id = htons(strtoul((char*)STATE->json_fields.router_id.ptr, NULL, 10) );
+  if(bgpstream_str2addr((char*)STATE->field_buffer, &addr)==NULL){
+    // if the field is not an IP address, it is then an 4 byte integer
+    STRTOUL(router_id, router_id);
+    router_id = htonl(router_id);
     memcpy(&ptr[loc], &router_id, sizeof(uint32_t));
   } else {
     memcpy(&ptr[loc], &addr.ipv4, sizeof(uint32_t));
