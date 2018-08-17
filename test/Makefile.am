@@ -39,7 +39,7 @@ endif
 TESTS = 				\
 	bgpstream-test 			\
 	bgpstream-test-filters		\
-	bgpstream-test-ripejson 			\
+	bgpstream-test-ripejson 	\
 	bgpstream-test-utils-addr 	\
 	bgpstream-test-utils-pfx	\
 	bgpstream-test-utils-patricia 			\
@@ -48,7 +48,7 @@ TESTS = 				\
 check_PROGRAMS =  			\
 	bgpstream-test 			\
 	bgpstream-test-filters		\
-	bgpstream-test-ripejson 			\
+	bgpstream-test-ripejson 	\
 	bgpstream-test-utils-addr 	\
 	bgpstream-test-utils-pfx	\
 	bgpstream-test-utils-patricia  \

@@ -195,7 +195,9 @@ static ssize_t hexstr_to_bgpmsg(uint8_t *buf, size_t buflen,
 
   // parse the hex string, one nybble at a time
   bufp = buf + 3;
-  hexstr_to_bytes(bufp, hexstr, hexstr_len);
+  if(hexstr_to_bytes(bufp, hexstr, hexstr_len)<0){
+    return -1;
+  }
 
   return msg_len;
 }
@@ -207,7 +209,7 @@ static ssize_t hexstr_to_bgpmsg(uint8_t *buf, size_t buflen,
 /* ====================================================================== */
 
 // process common header fields for all message types
-void process_common_fields(bgpstream_format_t *format, bgpstream_record_t *record){
+int process_common_fields(bgpstream_format_t *format, bgpstream_record_t *record){
 
   double time_double;
   // populate collector name
@@ -218,38 +220,46 @@ void process_common_fields(bgpstream_format_t *format, bgpstream_record_t *recor
   STRTOUL(peer_asn, RDATA->elem->peer_asn);
 
   // populate peer ip
-  bgpstream_addr_storage_t addr;
   memcpy(STATE->field_buffer, STATE->json_fields.peer.ptr, STATE->json_fields.peer.len);
   STATE->field_buffer[STATE->json_fields.peer.len] = '\0';
-  bgpstream_str2addr((char *)STATE->field_buffer, &addr);
-  bgpstream_addr_copy((bgpstream_ip_addr_t *)&RDATA->elem->peer_ip,
-                      (bgpstream_ip_addr_t *)&addr);
+  if(bgpstream_str2addr((char *)STATE->field_buffer, &RDATA->elem->peer_ip)==NULL){
+    fprintf(stderr, "ERROR: error parsing address\n");
+    return -1;
+  }
+
   // populate time-stamp
   STRTOD(timestamp, time_double);
   record->time_sec = (uint32_t) time_double;
   record->time_usec = (uint32_t)((time_double - (uint32_t) time_double) * 1000000);
 
+  return 0;
 }
 
 int process_update_message(bgpstream_format_t *format, bgpstream_record_t *record){
 
   // convert body to bytes
-  size_t dec_len =  (size_t) hexstr_to_bgpmsg(STATE->json_bytes_buffer,
-                                      4096,
-                                      (char*) STATE->json_fields.body.ptr,
-                                      STATE->json_fields.body.len,
-                                      PARSEBGP_BGP_TYPE_UPDATE);
-  size_t err;
+  ssize_t rc =  hexstr_to_bgpmsg(STATE->json_bytes_buffer,
+                                 sizeof(STATE->json_bytes_buffer),
+                                 (char*) STATE->json_fields.body.ptr,
+                                 STATE->json_fields.body.len,
+                                 PARSEBGP_BGP_TYPE_UPDATE);
+  if(rc<0){
+    return BGPSTREAM_FORMAT_CORRUPTED_MSG;
+  }
 
-  RDATA->msg->type = PARSEBGP_MSG_TYPE_BGP;
-  if ((err = parsebgp_decode(STATE->opts, RDATA->msg->type, RDATA->msg,
+  parsebgp_error_t err;
+  size_t dec_len =  (size_t) rc;
+
+  if ((err = parsebgp_decode(STATE->opts, PARSEBGP_MSG_TYPE_BGP, RDATA->msg,
                              STATE->json_bytes_buffer, &dec_len)) != PARSEBGP_OK) {
-    fprintf(stderr, "ERROR: Failed to parse message (%zu:%s)\n", err, parsebgp_strerror(err));
+    fprintf(stderr, "ERROR: Failed to parse message (%s)\n", parsebgp_strerror(err));
     parsebgp_clear_msg(RDATA->msg);
     return BGPSTREAM_FORMAT_CORRUPTED_MSG;
   }
 
-  process_common_fields(format, record);
+  if(process_common_fields(format, record)<0){
+    return BGPSTREAM_FORMAT_CORRUPTED_MSG;
+  }
 
   return BGPSTREAM_FORMAT_OK;
 }
@@ -257,10 +267,10 @@ int process_update_message(bgpstream_format_t *format, bgpstream_record_t *recor
 int process_status_message(bgpstream_format_t *format, bgpstream_record_t *record){
 
   // process direction
-  if( bcmp(&"down", STATE->json_fields.state.ptr, STATE->json_fields.state.len) == 0){
+  if(STATE->json_fields.state.len == 4 && bcmp("down", STATE->json_fields.state.ptr, STATE->json_fields.state.len) == 0){
     // down message
     RDATA->status_msg_state = 0;
-  } else if( bcmp(&"connected", STATE->json_fields.state.ptr, STATE->json_fields.state.len) == 0){
+  } else if(STATE->json_fields.state.len == 9 && bcmp("connected", STATE->json_fields.state.ptr, STATE->json_fields.state.len) == 0){
     // connected message
     RDATA->status_msg_state = 1;
   } else {
@@ -268,7 +278,9 @@ int process_status_message(bgpstream_format_t *format, bgpstream_record_t *recor
     RDATA->status_msg_state = -1;
   }
 
-  process_common_fields(format, record);
+  if(process_common_fields(format, record)<0){
+    return BGPSTREAM_FORMAT_CORRUPTED_MSG;
+  }
 
   return BGPSTREAM_FORMAT_OK;
 }
@@ -330,29 +342,25 @@ int process_open_message(bgpstream_format_t *format, bgpstream_record_t *record)
   if(json_str_ptr[0] == '0' && json_str_ptr[1] == '2'){
     // if body starts with correct parameter type "0x02"
     // no missing param type
-    missing_type = 0;
     msg_len = json_str_len/2;
     ptr[loc] = (uint8_t) ( msg_len ); // adding
-    loc += 1;
+    loc ++;
   } else {
     // if misses param type
-    missing_type = 1;
     msg_len = json_str_len/2 + 1 ;
     ptr[loc] = (uint8_t) ( msg_len ); // adding
-    ptr[loc+1] = (uint8_t) 2;
+    ptr[loc+1] = 2;
     loc += 2;
   }
 
   hexstr_to_bytes(&ptr[loc], (char*)STATE->json_fields.body.ptr , STATE->json_fields.body.len);
 
   // set msg length
-  uint16_t total_length = htons(msg_len+10+2+1);
-  memcpy(&ptr[0], &total_length, sizeof(total_length));
+  total_length = htons(msg_len+10+2+1);
+  memcpy(ptr, &total_length, sizeof(total_length));
 
-  size_t dec_len = (size_t) total_length;
-
-  RDATA->msg->type = PARSEBGP_MSG_TYPE_BGP;
-  if ((err = parsebgp_decode(STATE->opts, RDATA->msg->type, RDATA->msg,
+  dec_len = (size_t) total_length;
+  if ((err = parsebgp_decode(STATE->opts, PARSEBGP_MSG_TYPE_BGP, RDATA->msg,
                              STATE->json_bytes_buffer, &dec_len)) != PARSEBGP_OK) {
     fprintf(stderr, "ERROR: Failed to parse message (%d:%s)\n", err, parsebgp_strerror(err));
     parsebgp_clear_msg(RDATA->msg);
@@ -367,24 +375,24 @@ int process_open_message(bgpstream_format_t *format, bgpstream_record_t *record)
     RDATA->open_msg_direction = 1;
   }
 
-  process_common_fields(format, record);
+  if(process_common_fields(format, record)<0){
+    return BGPSTREAM_FORMAT_CORRUPTED_MSG;
+  }
 
   return BGPSTREAM_FORMAT_OK;
 }
 
 int process_unsupported_message(bgpstream_format_t *format, bgpstream_record_t *record){
-  fprintf(stderr, "WARN: unsupported ris-stream message: ");
-  STATE->json_string_buffer[strcspn((char*)STATE->json_string_buffer, "\n")] = 0;
-  fprintf(stderr, "%s\n",STATE->json_string_buffer);
+  fprintf(stderr, "WARN: unsupported ris-stream message: %s\n", STATE->json_string_buffer);
   record -> status = BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD;
+  record -> collector_name [0] = '\0';
   return BGPSTREAM_FORMAT_UNSUPPORTED_MSG;
 }
 
 int process_corrupted_message(bgpstream_format_t *format, bgpstream_record_t *record){
-  fprintf(stderr, "WARN: corrupted ris-stream message: ");
-  STATE->json_string_buffer[strcspn((char*)STATE->json_string_buffer, "\n")] = 0;
-  fprintf(stderr, "%s\n",STATE->json_string_buffer);
+  fprintf(stderr, "WARN: corrupted ris-stream message: %s\n",STATE->json_string_buffer);
   record -> status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
+  record -> collector_name [0] = '\0';
   return BGPSTREAM_FORMAT_CORRUPTED_MSG;
 }
 
@@ -543,6 +551,7 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
 
   if (newread <0 ) {
     record -> status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
+    record -> collector_name [0] = '\0';
     return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
   } else if ( newread == 0 ){
     return BGPSTREAM_FORMAT_END_OF_DUMP;
@@ -551,11 +560,6 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
   if( ( rc = bs_format_process_json_fields(format, record) ) != 0){
     return rc;
   }
-
-  strcpy(record -> project_name , "ris-stream");
-  // ensure the router fields are unset
-  record->router_name[0] = '\0';
-  record->router_ip.version = 0;
 
   return BGPSTREAM_FORMAT_OK;
 }
@@ -593,7 +597,7 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
     } else {
       RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
       RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
-      fprintf(stderr, "WARNING: unsupported status type, %d\n", RDATA->status_msg_state);
+      fprintf(stderr, "WARN: unsupported status type, %d\n", RDATA->status_msg_state);
     }
     RDATA->end_of_elems = 1;
     rc = 1;
