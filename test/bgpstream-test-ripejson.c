@@ -90,20 +90,20 @@ int test_bgpstream_ripejson(){
       break;
 
     case BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD:
-      fprintf(stderr, "correctly unsupported record %d\n\n", rcount);
       if(rcount != 6){
         // only item 6 is unsupported
         fprintf(stderr, "record %d shouldn't be unsupported\n", rcount);
         goto err;
       }
+      fprintf(stderr, "correctly unsupported record %d\n\n", rcount);
       break;
 
     case BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD:
-      fprintf(stderr, "correctly corrupted record %d\n\n", rcount);
       if(rcount <= 6){
         fprintf(stderr, "record %d shouldn't be corrupted\n", rcount);
         goto err;
       }
+      fprintf(stderr, "correctly corrupted record %d\n", rcount);
       break;
 
     default:
