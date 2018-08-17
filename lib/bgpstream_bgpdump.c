@@ -28,7 +28,6 @@
  *   Alistair King
  */
 
-#include "bgpstream_parsebgp_common.h"
 #include "bgpstream_bgpdump.h"
 #include "bgpstream_int.h"
 #include "bgpstream_elem_int.h"
@@ -145,13 +144,13 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
 
     /* SOURCE (IGP) */
     switch(elem->origin){
-    case PARSEBGP_BGP_UPDATE_ORIGIN_IGP:
+    case BGPSTREAM_ELEM_BGP_UPDATE_ORIGIN_IGP:
       c = snprintf(buf_p, B_REMAIN, "IGP");
       break;
-    case PARSEBGP_BGP_UPDATE_ORIGIN_EGP:
+    case BGPSTREAM_ELEM_BGP_UPDATE_ORIGIN_EGP:
       c = snprintf(buf_p, B_REMAIN, "EGP");
       break;
-    case PARSEBGP_BGP_UPDATE_ORIGIN_INCOMPLETE:
+    case BGPSTREAM_ELEM_BGP_UPDATE_ORIGIN_INCOMPLETE:
       c = snprintf(buf_p, B_REMAIN, "INCOMPLETE");
       break;
     default:

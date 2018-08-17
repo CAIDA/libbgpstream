@@ -87,6 +87,26 @@ typedef enum {
 
 } bgpstream_elem_peerstate_t;
 
+/**
+ * BGP ORIGIN Path Attribute values
+ */
+typedef enum {
+
+  /** IGP - Network Layer Reachability Information is interior to the
+      originating AS */
+  BGPSTREAM_ELEM_BGP_UPDATE_ORIGIN_IGP = 0,
+
+  /** EGP - Network Layer Reachability Information learned via the EGP protocol
+      [RFC904] */
+  BGPSTREAM_ELEM_BGP_UPDATE_ORIGIN_EGP = 1,
+
+  /** INCOMPLETE - Network Layer Reachability Information learned by some other
+      means */
+  BGPSTREAM_ELEM_BGP_UPDATE_ORIGIN_INCOMPLETE = 2,
+
+} bgpstream_elem_origin_type_t;
+
+
 /** Elem types */
 typedef enum {
 
@@ -108,7 +128,7 @@ typedef enum {
 } bgpstream_elem_type_t;
 
 typedef struct struct_bgpstream_annotations_t {
-  
+
   /** RPKI active */
   int rpki_active;
 
@@ -166,7 +186,7 @@ typedef struct bgpstream_elem {
     * This attribute indicates where the update comes from:
     * internal network (IGP), external network (EGP), or other means (INCOMPLETE).
     */
-  uint8_t origin;
+  bgpstream_elem_origin_type_t origin;
 
   /** MED attribute */
   uint32_t med;
