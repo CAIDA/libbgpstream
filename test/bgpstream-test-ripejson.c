@@ -31,21 +31,35 @@
 #include <stdio.h>
 #include <string.h>
 
+#define BUFFER_LEN 1024
+char buffer[BUFFER_LEN];
+
+bgpstream_t *bs;
+bgpstream_record_t *rec;
+bgpstream_elem_t *elem;
+static bgpstream_data_interface_id_t di_id = 0;
 
 static char buf[65536];
+static int print_record(bgpstream_record_t *record)
+{
+  if (bgpstream_record_snprintf(buf, sizeof(buf), record) == NULL) {
+    fprintf(stderr, "ERROR: Could not convert record to string\n");
+    return -1;
+  }
+
+  printf("%s\n", buf);
+  return 0;
+}
 
 int test_bgpstream_ripejson(){
   /* Declare BGPStream requirements */
-  int rrc = 0, count= 0, rcount=0, erc = 0;
+  int rrc = 0, counter = 0, erc = 0;
+  bgpstream_elem_t *bs_elem;
   bgpstream_t *bs = bgpstream_create();
-  bgpstream_elem_t *elem;
   bgpstream_record_t *rec = NULL;
-  static bgpstream_data_interface_id_t di_id = 0;
-
   SETUP;
   CHECK_SET_INTERFACE(singlefile);
   bgpstream_data_interface_option_t *option;
-
   if ((option = bgpstream_get_data_interface_option_by_name(bs, di_id, "upd-type"))==NULL){
     return -1;
   }
@@ -64,10 +78,14 @@ int test_bgpstream_ripejson(){
     return -1;
   }
 
+  int count = 0;
   while ((rrc = bgpstream_get_next_record(bs, &rec)) > 0) {
-    switch(rec->status){
-    case BGPSTREAM_RECORD_STATUS_VALID_RECORD:
-
+    if (rec->status != BGPSTREAM_RECORD_STATUS_VALID_RECORD) {
+      fprintf(stderr, "ERC=%d; ERROR!\n", erc);
+      fprintf(stderr, "\t%s\n", buf);
+      return -1;
+    }
+    if (rec->status == BGPSTREAM_RECORD_STATUS_VALID_RECORD) {
       while ((erc = bgpstream_record_get_next_elem(rec, &elem)) > 0) {
 
         if (bgpstream_record_elem_snprintf(buf, sizeof(buf), rec, elem) == NULL) {
@@ -76,41 +94,23 @@ int test_bgpstream_ripejson(){
         }
 
         if (strcmp(buf, valid_output[count]) != 0) {
-          // Strings are not identical
-          fprintf(stderr, "elem output different, rcount %d, count %d\n", rcount, count);
-          fprintf(stderr, "INVALID: %s\nCORRECT: %s\n", buf, valid_output[rcount+count]);
+          // Strings are identical
+            fprintf(stderr, "DIFF: %d; RECORD_STATUS: %d\n", count, rec->status);
+            fprintf(stderr, "\t%s\n", buf);
+            fprintf(stderr, "\t%s\n", valid_output[count]);
           goto err;
         }
+        fprintf(stderr, "DONE: %d; RECORD_STATUS: %d\n", count, rec->status);
+        fprintf(stderr, "\t%s\n", buf);
+        fprintf(stderr, "\t%s\n", valid_output[count]);
         count++;
         buf[0]='\0';
+        // if(count>=6 ){
+        //   return -1;
+        //   goto end;
+        // }
       }
-
-      fprintf(stderr, "correctly valid record %d\n\n", rcount);
-      break;
-
-    case BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD:
-      fprintf(stderr, "correctly unsupported record %d\n\n", rcount);
-      if(rcount != 6){
-        // only item 6 is unsupported
-        fprintf(stderr, "record %d shouldn't be unsupported\n", rcount);
-        goto err;
-      }
-      break;
-
-    case BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD:
-      fprintf(stderr, "correctly corrupted record %d\n\n", rcount);
-      if(rcount <= 6){
-        fprintf(stderr, "record %d shouldn't be corrupted\n", rcount);
-        goto err;
-      }
-      break;
-
-    default:
-      goto err;
-      break;
     }
-
-    rcount ++;
   }
 
  end:

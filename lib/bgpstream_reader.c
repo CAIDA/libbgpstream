@@ -98,16 +98,21 @@ static int prefetch_record(bgpstream_reader_t *reader)
   // if we got any of the non-error END_OF_DUMP messages but this is a stream
   // resource, then pretend we're ok.  but beware that now we'll be "OK", with
   // an unfilled prefetch record
-  if ((reader->res->duration == BGPSTREAM_FOREVER &&
+  if (reader->res->duration == BGPSTREAM_FOREVER &&
       (reader->status == BGPSTREAM_FORMAT_END_OF_DUMP     ||
        reader->status == BGPSTREAM_FORMAT_FILTERED_DUMP   ||
        reader->status == BGPSTREAM_FORMAT_EMPTY_DUMP      ||
        reader->status == BGPSTREAM_FORMAT_CORRUPTED_DUMP
-       )) ||
-      (reader->status == BGPSTREAM_FORMAT_CORRUPTED_MSG ||
-       reader->status == BGPSTREAM_FORMAT_UNSUPPORTED_MSG )
-      ) {
+       )) {
     reader->status = BGPSTREAM_FORMAT_OK;
+    return 0;
+  }
+
+  // if we see corrupted or unsupported message, we still
+  // fill the buffer and should continue reading
+  if(reader->status == BGPSTREAM_FORMAT_CORRUPTED_MSG ||
+     reader->status == BGPSTREAM_FORMAT_UNSUPPORTED_MSG ) {
+    reader->rec_buf_filled[PREFETCH_IDX] = 1;
     return 0;
   }
 
@@ -316,12 +321,6 @@ int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
     if (reader->res->duration == BGPSTREAM_FOREVER &&
         reader->status == BGPSTREAM_FORMAT_OK) {
       return BGPSTREAM_READER_STATUS_AGAIN;
-    } else if ( reader->status != BGPSTREAM_FORMAT_END_OF_DUMP &&
-               (reader->rec_buf[PREFETCH_IDX]->status == BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD ||
-                reader->rec_buf[PREFETCH_IDX]->status == BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD) ) {
-      // continue read through processing if record are corrupted or unsupported
-      *record = reader->rec_buf[EXPORTED_IDX];
-      return BGPSTREAM_READER_STATUS_OK;
     } else {
       return BGPSTREAM_READER_STATUS_EOS;
     }
