@@ -113,6 +113,7 @@ static int prefetch_record(bgpstream_reader_t *reader)
   if(reader->status == BGPSTREAM_FORMAT_CORRUPTED_MSG ||
      reader->status == BGPSTREAM_FORMAT_UNSUPPORTED_MSG ) {
     reader->rec_buf_filled[PREFETCH_IDX] = 1;
+    reader->status = BGPSTREAM_FORMAT_OK;
     return 0;
   }
 
