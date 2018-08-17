@@ -162,8 +162,26 @@ typedef struct bgpstream_elem {
   /** Peer AS number */
   uint32_t peer_asn;
 
-  /** Origin attribute */
+  /** ORIGIN as-path attribute
+    * This attribute indicates where the update comes from:
+    * internal network (IGP), external network (EGP), or other means (INCOMPLETE).
+    */
   uint8_t origin;
+
+  /** MED attribute */
+  uint32_t med;
+
+  /** LOCAL_PREF attribute */
+  uint32_t local_pref;
+
+  /** Atomic aggregate attribute */
+  uint8_t atomic_aggregate;
+
+  /** Aggregator ASN */
+  uint32_t aggregator_asn;
+
+  /** Aggregator IP */
+  bgpstream_addr_storage_t aggregator_addr;
 
   /* Type-dependent fields */
 

@@ -168,18 +168,16 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     ADD_PIPE;
 
     /* LOCAL_PREF */
-    c = snprintf(buf_p, B_REMAIN, "0");
+    c = snprintf(buf_p, B_REMAIN, "%d", elem->local_pref);
     written += c;
     buf_p += c;
     ADD_PIPE;
-    // FIXME
 
     /* MED */
-    c = snprintf(buf_p, B_REMAIN, "0");
+    c = snprintf(buf_p, B_REMAIN, "%d", elem->med);
     written += c;
     buf_p += c;
     ADD_PIPE;
-    // FIXME
 
     /* COMMUNITIES */
     c = bgpstream_community_set_snprintf(buf_p, B_REMAIN, elem->communities);
@@ -190,14 +188,26 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     ADD_PIPE;
 
     /* AGGREGATE AG/NAG */
-    // FIXME
-    c = snprintf(buf_p, B_REMAIN, "NAG");
+    if(elem->atomic_aggregate == 1){
+      c = snprintf(buf_p, B_REMAIN, "AG");
+    } else {
+      c = snprintf(buf_p, B_REMAIN, "NAG");
+    }
     written += c;
     buf_p += c;
     ADD_PIPE;
 
     /* AGGREGATOR AS AND IP */
-    // FIXME
+    if(elem->aggregator_asn > 0){
+      c = snprintf(buf_p, B_REMAIN, "%d ", elem->aggregator_asn);
+      written += c;
+      buf_p += c;
+      if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->aggregator_addr) != NULL) {
+        SEEK_STR_END;
+      }
+      SEEK_STR_END;
+    }
+
     ADD_PIPE;
 
     break;
