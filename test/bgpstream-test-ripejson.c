@@ -81,6 +81,7 @@ int test_bgpstream_ripejson(){
           fprintf(stderr, "INVALID: %s\nCORRECT: %s\n", buf, valid_output[rcount+count]);
           goto err;
         }
+        fprintf(stderr, "VALID: %s\n", buf);
         count++;
         buf[0]='\0';
       }
@@ -110,7 +111,13 @@ int test_bgpstream_ripejson(){
       break;
     }
 
+    // record test correctly passed
     rcount ++;
+  }
+
+  if(rcount != 9){
+    // if not all 9 records passed
+    return -1;
   }
 
   return 0;
