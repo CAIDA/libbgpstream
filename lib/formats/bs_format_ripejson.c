@@ -105,7 +105,7 @@ typedef struct state {
   parsebgp_opts_t opts;
 
   // json bgp message string buffer
-  uint8_t json_string_buffer[BGPSTREAM_PARSEBGP_BUFLEN];
+  char* json_string_buffer;
 
   // json bgp message bytes buffer
   uint8_t json_bytes_buffer[4096];
@@ -401,7 +401,7 @@ static bgpstream_format_status_t process_corrupted_message(bgpstream_format_t *f
 }
 
 #define PARSEFIELD(field)                                               \
-  if (jsmn_streq(json_string, &t[i], STR(field)) == 1) {                \
+  if (jsmn_streq(STATE->json_string_buffer, &t[i], STR(field)) == 1) {                \
     STATE->json_fields.field = (json_field_t) {value_ptr, value_size};  \
     i++;                                                                \
   }
@@ -414,9 +414,8 @@ static bgpstream_format_status_t bs_format_process_json_fields(bgpstream_format_
   char* key_ptr, *value_ptr, *next_ptr;
   size_t key_size, value_size;
 
-  jsmntok_t *t; /* We expect no more than 128 tokens */
+  jsmntok_t *t;
   size_t tokcount = 128;
-  char* json_string = (char*)&STATE->json_string_buffer;
 
   // prepare parser
   jsmn_init(&p);
@@ -428,7 +427,7 @@ static bgpstream_format_status_t bs_format_process_json_fields(bgpstream_format_
   }
 
 again:
-  if ((r = jsmn_parse(&p, json_string, strlen(json_string), t, tokcount)) < 0) {
+  if ((r = jsmn_parse(&p, STATE->json_string_buffer, strlen(STATE->json_string_buffer), t, tokcount)) < 0) {
     if (r == JSMN_ERROR_NOMEM) {
       tokcount *= 2;
       if ((t = realloc(t, sizeof(jsmntok_t) * tokcount)) == NULL) {
@@ -453,9 +452,9 @@ again:
 
   /* Loop over all fields of the json string buffer */
   for (i = 1; i < r; i++) {
-    key_ptr = (char*)json_string + t[i].start;
+    key_ptr = STATE->json_string_buffer + t[i].start;
     key_size = t[i].end-t[i].start;
-    value_ptr = (char*)json_string + t[i+1].start;
+    value_ptr = STATE->json_string_buffer + t[i+1].start;
     value_size = t[i+1].end-t[i+1].start;
 
     /* Assume the top-level element is an object */
@@ -480,7 +479,7 @@ again:
     else {
           // skipping all
           next_ptr = value_ptr + value_size;
-          while((char*)json_string + t[i+1].start < next_ptr){
+          while(STATE->json_string_buffer + t[i+1].start < next_ptr){
             i++;
           }
         }
@@ -509,7 +508,7 @@ again:
     rc = BGPSTREAM_FORMAT_UNSUPPORTED_MSG;
     break;
   default:
-    rc = BGPSTREAM_FORMAT_UNSUPPORTED_MSG;
+    rc = BGPSTREAM_FORMAT_CORRUPTED_MSG;
     break;
   }
 
@@ -520,15 +519,9 @@ again:
     goto corrupted;
   case BGPSTREAM_FORMAT_UNSUPPORTED_MSG:
     goto unsupported;
-  // all status codes below should not happen
-  case BGPSTREAM_FORMAT_FILTERED_DUMP:
-  case BGPSTREAM_FORMAT_EMPTY_DUMP:
-  case BGPSTREAM_FORMAT_CANT_OPEN_DUMP:
-  case BGPSTREAM_FORMAT_CORRUPTED_DUMP:
-  case BGPSTREAM_FORMAT_END_OF_DUMP:
-  case BGPSTREAM_FORMAT_OUTSIDE_TIME_INTERVAL:
-  case BGPSTREAM_FORMAT_READ_ERROR:
-  case BGPSTREAM_FORMAT_UNKNOWN_ERROR:
+  default:
+    // other status codes should not appear
+    assert(0);
     goto corrupted;
     break;
   }
@@ -538,6 +531,7 @@ again:
 
  corrupted:
   return process_corrupted_message(format, record);
+
  unsupported:
   return process_unsupported_message(format, record);
 }
@@ -558,6 +552,10 @@ int bs_format_ripejson_create(bgpstream_format_t *format,
     return -1;
   }
 
+  if ((STATE->json_string_buffer = malloc(BGPSTREAM_PARSEBGP_BUFLEN)) == NULL) {
+    return -1;
+  }
+
   parsebgp_opts_init(&STATE->opts);
   bgpstream_parsebgp_opts_init(&STATE->opts);
   STATE->opts.bgp.marker_omitted = 1;
@@ -572,7 +570,7 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
 {
   int newread, rc;
 
-  newread = bgpstream_transport_readline(format->transport, &STATE->json_string_buffer, BGPSTREAM_PARSEBGP_BUFLEN);
+  newread = bgpstream_transport_readline(format->transport, STATE->json_string_buffer, BGPSTREAM_PARSEBGP_BUFLEN);
 
   assert(newread < BGPSTREAM_PARSEBGP_BUFLEN);
 
