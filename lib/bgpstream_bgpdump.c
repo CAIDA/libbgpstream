@@ -74,7 +74,6 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
   case BGPSTREAM_ELEM_TYPE_RIB:
     c = snprintf(buf_p, B_REMAIN, "TABLE_DUMP2|%u", record->time_sec);
     break;
-
   case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT:
   case BGPSTREAM_ELEM_TYPE_WITHDRAWAL:
   case BGPSTREAM_ELEM_TYPE_PEERSTATE:
@@ -232,38 +231,4 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     return NULL;
 
   return buf;
-}
-
-/** Write the string representation of the record type into the provided buffer
- *
- * @param buf           pointer to a char array
- * @param len           length of the char array
- * @param type          record type to convert to string
- * @return the number of characters that would have been written if len was
- * unlimited
- */
-int bgpstream_record_type_bgpdump_snprintf(char *buf, size_t len,
-                                   bgpstream_record_type_t type){
-
-  /* ensure we have enough bytes to write our single character */
-  if (len == 0) {
-    return -1;
-  } else if (len == 1) {
-    buf[0] = '\0';
-    return -1;
-  }
-  switch (type) {
-  case BGPSTREAM_RIB:
-    buf[0] = 'R';
-    break;
-  case BGPSTREAM_UPDATE:
-    buf[0] = 'U';
-    break;
-  default:
-    buf[0] = '\0';
-    break;
-  }
-  buf[1] = '\0';
-  return 1;
-
 }

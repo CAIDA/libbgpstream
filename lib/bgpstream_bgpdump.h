@@ -43,35 +43,4 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
                                      bgpstream_record_t *record,
                                      bgpstream_elem_t *elem);
 
-/** Write the string representation of the record type into the provided buffer
- *
- * @param buf           pointer to a char array
- * @param len           length of the char array
- * @param type          record type to convert to string
- * @return the number of characters that would have been written if len was
- * unlimited
- */
-int bgpstream_record_type_bgpdump_snprintf(char *buf, size_t len,
-                                   bgpstream_record_type_t type);
-
-/** Write the string representation of the elem type into the provided buffer
- *
- * @param buf           pointer to a char array
- * @param len           length of the char array
- * @param type          BGP Stream Elem type to convert to string
- * @return the number of characters that would have been written if len was
- * unlimited
- */
-int bgpstream_elem_type_bgpdump_snprintf(char *buf, size_t len,
-                                 bgpstream_elem_type_t type);
-
-/** Write the string representation of the elem into the provided buffer
- *
- * @param buf           pointer to a char array
- * @param len           length of the char array
- * @param elem          pointer to a BGP Stream Elem to convert to string
- * @return pointer to the start of the buffer if successful, NULL otherwise
- */
-char *bgpstream_elem_bgpdump_snprintf(char *buf, size_t len,
-                              const bgpstream_elem_t *elem);
 #endif // __BGPSTREAM_BGPDUMP_H_
