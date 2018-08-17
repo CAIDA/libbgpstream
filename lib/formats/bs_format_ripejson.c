@@ -388,15 +388,15 @@ static bgpstream_format_status_t process_open_message(bgpstream_format_t *format
 
 static bgpstream_format_status_t process_unsupported_message(bgpstream_format_t *format, bgpstream_record_t *record){
   fprintf(stderr, "WARN: unsupported ris-stream message: %s\n", STATE->json_string_buffer);
-  record -> status = BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD;
-  record -> collector_name [0] = '\0';
+  record->status = BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD;
+  record->collector_name [0] = '\0';
   return BGPSTREAM_FORMAT_UNSUPPORTED_MSG;
 }
 
 static bgpstream_format_status_t process_corrupted_message(bgpstream_format_t *format, bgpstream_record_t *record){
   fprintf(stderr, "WARN: corrupted ris-stream message: %s\n",STATE->json_string_buffer);
-  record -> status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
-  record -> collector_name [0] = '\0';
+  record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
+  record->collector_name [0] = '\0';
   return BGPSTREAM_FORMAT_CORRUPTED_MSG;
 }
 
@@ -487,7 +487,7 @@ again:
   }
 
   // process each type of message separately
-  switch(*STATE->json_fields.type.ptr){
+  switch(*FIELDPTR(type)){
   case 'A':
     RDATA->msg_type = RIPE_JSON_MSG_TYPE_ANNOUNCE;
     rc = process_update_message(format, record);
@@ -577,8 +577,8 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
   assert(newread < BGPSTREAM_PARSEBGP_BUFLEN);
 
   if (newread <0 ) {
-    record -> status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
-    record -> collector_name [0] = '\0';
+    record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
+    record->collector_name [0] = '\0';
     return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
   } else if ( newread == 0 ){
     return BGPSTREAM_FORMAT_END_OF_DUMP;
@@ -613,32 +613,42 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
     break;
   case RIPE_JSON_MSG_TYPE_STATUS:
     RDATA->elem->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
-    if(RDATA->status_msg_state == 0){
-      // "down" state
+    switch(RDATA->status_msg_state){
+    case 0:
       RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
       RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_IDLE;
-    } else if (RDATA->status_msg_state == 1  ){
-      // "connected" state
+      break;
+    case 1:
       RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
       RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_ESTABLISHED;
-    } else {
+      break;
+    default:
       RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
       RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
       fprintf(stderr, "WARN: unsupported status type, %d\n", RDATA->status_msg_state);
+      break;
     }
     RDATA->end_of_elems = 1;
     rc = 1;
     break;
   case RIPE_JSON_MSG_TYPE_OPEN:
     RDATA->elem->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
-    if(RDATA->open_msg_direction == 0){
+    switch(RDATA->open_msg_direction){
+    case 0:
       // "sent" OPEN
       RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
       RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_OPENSENT;
-    } else {
+      break;
+    case 1:
       // "received" OPEN
       RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
       RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_OPENCONFIRM;
+      break;
+    default:
+      RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
+      RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
+      fprintf(stderr, "WARN: unsupported open message direction, %d\n", RDATA->open_msg_direction);
+
     }
     RDATA->end_of_elems = 1;
     rc = 1;
