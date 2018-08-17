@@ -37,12 +37,6 @@ const char *valid_output[] = {
 "",
 };
 
-// WARN: unsupported ris-stream message: {"timestamp":1534175211.49,"state":"connected","host":"rrc21","peer":"2001:7f8:54::201","type":"N","id":"2001_7f8_54__201-23b86597fd-2bbf6","peer_asn":"49375"}
-// WARN: unsupported ris-stream message: {"timestamp:1534175211.49,"state":"connected","host":"rrc21","peer":"2001:7f8:54::201","type":"N","id":"2001_7f8_54__201-23b86597fd-2bbf6","peer_asn":"49375"}
-// WARN: unsupported ris-stream message: {"body":"000816B97C6016B9A6B40000","host":"rrc21","peer":"37.49.236.123","timestamp":1534175898.17,"prefix":"185.124.96.0/22","type":"W","id":"JTHsew-23b866a439-14a9a93","peer_asn":"198290"} {"body":"000816B97C6016B9A6B40000","host":"rrc21","peer":"37.49.236.123","timestamp":1534175898.17,"prefix":"185.124.96.0/22","type":"W","id":"JTHsew-23b866a439-14a9a93","peer_asn":"198290"}
-// U|S|0.000000|ris-stream|rrc21|||31122|37.49.237.31|||||||IDLE
-
-
 #define SETUP                                                                  \
   do {                                                                         \
     bs = bgpstream_create();                                                   \
