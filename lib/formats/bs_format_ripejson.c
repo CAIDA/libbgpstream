@@ -107,6 +107,9 @@ typedef struct state {
   // json bgp message string buffer
   char* json_string_buffer;
 
+  // json bgp message string buffer length
+  int json_string_buffer_len;
+
   // json bgp message bytes buffer
   uint8_t json_bytes_buffer[4096];
 
@@ -427,7 +430,7 @@ static bgpstream_format_status_t bs_format_process_json_fields(bgpstream_format_
   }
 
 again:
-  if ((r = jsmn_parse(&p, STATE->json_string_buffer, strlen(STATE->json_string_buffer), t, tokcount)) < 0) {
+  if ((r = jsmn_parse(&p, STATE->json_string_buffer, STATE->json_string_buffer_len, t, tokcount)) < 0) {
     if (r == JSMN_ERROR_NOMEM) {
       tokcount *= 2;
       if ((t = realloc(t, sizeof(jsmntok_t) * tokcount)) == NULL) {
@@ -568,17 +571,17 @@ bgpstream_format_status_t
 bs_format_ripejson_populate_record(bgpstream_format_t *format,
                               bgpstream_record_t *record)
 {
-  int newread, rc;
+  int rc;
 
-  newread = bgpstream_transport_readline(format->transport, STATE->json_string_buffer, BGPSTREAM_PARSEBGP_BUFLEN);
+  STATE->json_string_buffer_len = bgpstream_transport_readline(format->transport, STATE->json_string_buffer, BGPSTREAM_PARSEBGP_BUFLEN);
 
-  assert(newread < BGPSTREAM_PARSEBGP_BUFLEN);
+  assert(STATE->json_string_buffer_len < BGPSTREAM_PARSEBGP_BUFLEN);
 
-  if (newread <0 ) {
+  if (STATE->json_string_buffer_len <0 ) {
     record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
     record->collector_name [0] = '\0';
     return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
-  } else if ( newread == 0 ){
+  } else if ( STATE->json_string_buffer_len == 0 ){
     return BGPSTREAM_FORMAT_END_OF_DUMP;
   }
 
