@@ -393,7 +393,7 @@ static bgpstream_format_status_t process_unsupported_message(bgpstream_format_t 
   return BGPSTREAM_FORMAT_UNSUPPORTED_MSG;
 }
 
-int process_corrupted_message(bgpstream_format_t *format, bgpstream_record_t *record){
+static bgpstream_format_status_t process_corrupted_message(bgpstream_format_t *format, bgpstream_record_t *record){
   fprintf(stderr, "WARN: corrupted ris-stream message: %s\n",STATE->json_string_buffer);
   record -> status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
   record -> collector_name [0] = '\0';
@@ -408,7 +408,8 @@ int process_corrupted_message(bgpstream_format_t *format, bgpstream_record_t *re
 
 static bgpstream_format_status_t bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t *record){
   int i;
-  int r, rc;
+  int r;
+  bgpstream_format_status_t rc;
   jsmn_parser p;
   char* key_ptr, *value_ptr, *next_ptr;
   size_t key_size, value_size;
@@ -423,7 +424,7 @@ static bgpstream_format_status_t bs_format_process_json_fields(bgpstream_format_
   // allocate some tokens to start
   if ((t = malloc(sizeof(jsmntok_t) * tokcount)) == NULL) {
     fprintf(stderr, "ERROR: Could not malloc initial tokens\n");
-    goto err;
+    goto corrupted;
   }
 
 again:
@@ -432,22 +433,22 @@ again:
       tokcount *= 2;
       if ((t = realloc(t, sizeof(jsmntok_t) * tokcount)) == NULL) {
         fprintf(stderr, "ERROR: Could not realloc tokens\n");
-        goto err;
+        goto corrupted;
       }
       goto again;
     }
     if (r == JSMN_ERROR_INVAL) {
       fprintf(stderr, "ERROR: Invalid character in JSON string\n");
-      goto err;
+      goto corrupted;
     }
     fprintf(stderr, "ERROR: JSON parser returned %d\n", r);
-    goto err;
+    goto corrupted;
   }
 
   /* Assume the top-level element is an object */
   if (r < 1 || t[0].type != JSMN_OBJECT) {
     fprintf(stderr, "ERROR: JSON top-level not object\n");
-    goto err;
+    goto corrupted;
   }
 
   /* Loop over all fields of the json string buffer */
@@ -460,7 +461,7 @@ again:
     /* Assume the top-level element is an object */
     if (t[i].type != JSMN_STRING) {
       fprintf(stderr, "ERROR: JSON key not string\n");
-      goto err;
+      goto corrupted;
     }
 
     PARSEFIELD(body)
@@ -505,18 +506,40 @@ again:
     break;
   case 'N':
     RDATA->msg_type = RIPE_JSON_MSG_TYPE_NOTIFY;
-    rc = process_unsupported_message(format, record);
+    rc = BGPSTREAM_FORMAT_UNSUPPORTED_MSG;
     break;
   default:
-    rc = process_corrupted_message(format, record);
+    rc = BGPSTREAM_FORMAT_UNSUPPORTED_MSG;
     break;
   }
 
-  return rc;
+  switch(rc){
+  case BGPSTREAM_FORMAT_OK:
+    goto ok;
+  case BGPSTREAM_FORMAT_CORRUPTED_MSG:
+    goto corrupted;
+  case BGPSTREAM_FORMAT_UNSUPPORTED_MSG:
+    goto unsupported;
+  // all status codes below should not happen
+  case BGPSTREAM_FORMAT_FILTERED_DUMP:
+  case BGPSTREAM_FORMAT_EMPTY_DUMP:
+  case BGPSTREAM_FORMAT_CANT_OPEN_DUMP:
+  case BGPSTREAM_FORMAT_CORRUPTED_DUMP:
+  case BGPSTREAM_FORMAT_END_OF_DUMP:
+  case BGPSTREAM_FORMAT_OUTSIDE_TIME_INTERVAL:
+  case BGPSTREAM_FORMAT_READ_ERROR:
+  case BGPSTREAM_FORMAT_UNKNOWN_ERROR:
+    goto corrupted;
+    break;
+  }
 
- err:
+ ok:
+  return BGPSTREAM_FORMAT_OK;
 
+ corrupted:
   return process_corrupted_message(format, record);
+ unsupported:
+  return process_unsupported_message(format, record);
 }
 
 
