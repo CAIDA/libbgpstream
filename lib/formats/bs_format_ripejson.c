@@ -213,19 +213,21 @@ static int process_common_fields(bgpstream_format_t *format, bgpstream_record_t 
 
   double time_double;
   // populate collector name
-  memcpy(record -> collector_name , STATE->json_fields.host.ptr, STATE->json_fields.host.len);
-  record -> collector_name[STATE->json_fields.host.len] = '\0';
+  memcpy(record->collector_name , FIELDPTR(host), FIELDLEN(host));
+  record->collector_name[FIELDLEN(host)] = '\0';
 
   // populate peer asn
   STRTOUL(peer_asn, RDATA->elem->peer_asn);
 
   // populate peer ip
-  memcpy(STATE->field_buffer, STATE->json_fields.peer.ptr, STATE->json_fields.peer.len);
-  STATE->field_buffer[STATE->json_fields.peer.len] = '\0';
-  if(bgpstream_str2addr((char *)STATE->field_buffer, &RDATA->elem->peer_ip)==NULL){
+  char tmp;
+  tmp = FIELDPTR(peer)[FIELDLEN(peer)];
+  FIELDPTR(peer)[FIELDLEN(peer)] = '\0';
+  if(bgpstream_str2addr((char *)FIELDPTR(peer), &RDATA->elem->peer_ip)==NULL){
     fprintf(stderr, "ERROR: error parsing address\n");
     return -1;
   }
+  FIELDPTR(peer)[FIELDLEN(peer)] = tmp;
 
   // populate time-stamp
   STRTOD(timestamp, time_double);
@@ -240,8 +242,8 @@ static bgpstream_format_status_t process_update_message(bgpstream_format_t *form
   // convert body to bytes
   ssize_t rc =  hexstr_to_bgpmsg(STATE->json_bytes_buffer,
                                  sizeof(STATE->json_bytes_buffer),
-                                 (char*) STATE->json_fields.body.ptr,
-                                 STATE->json_fields.body.len,
+                                 (char*) FIELDPTR(body),
+                                 FIELDLEN(body),
                                  PARSEBGP_BGP_TYPE_UPDATE);
   if(rc<0){
     return BGPSTREAM_FORMAT_CORRUPTED_MSG;
@@ -267,10 +269,10 @@ static bgpstream_format_status_t process_update_message(bgpstream_format_t *form
 static bgpstream_format_status_t process_status_message(bgpstream_format_t *format, bgpstream_record_t *record){
 
   // process direction
-  if(STATE->json_fields.state.len == 4 && bcmp("down", STATE->json_fields.state.ptr, STATE->json_fields.state.len) == 0){
+  if(FIELDLEN(state) == 4 && bcmp("down", FIELDPTR(state), FIELDLEN(state)) == 0){
     // down message
     RDATA->status_msg_state = 0;
-  } else if(STATE->json_fields.state.len == 9 && bcmp("connected", STATE->json_fields.state.ptr, STATE->json_fields.state.len) == 0){
+  } else if(FIELDLEN(state) == 9 && bcmp("connected", FIELDPTR(state), FIELDLEN(state)) == 0){
     // connected message
     RDATA->status_msg_state = 1;
   } else {
@@ -287,8 +289,8 @@ static bgpstream_format_status_t process_status_message(bgpstream_format_t *form
 
 static bgpstream_format_status_t process_open_message(bgpstream_format_t *format, bgpstream_record_t *record){
 
-  int json_str_len = STATE->json_fields.body.len;
-  char* json_str_ptr = STATE->json_fields.body.ptr;
+  int json_str_len = FIELDLEN(body);
+  char* json_str_ptr = FIELDPTR(body);
   parsebgp_error_t err;
   uint8_t* ptr = STATE->json_bytes_buffer;
   int msg_len = 0;
@@ -326,8 +328,8 @@ static bgpstream_format_status_t process_open_message(bgpstream_format_t *format
   loc += 2;
 
   // bgp identifier
-  memcpy(STATE->field_buffer, STATE->json_fields.router_id.ptr, STATE->json_fields.router_id.len);
-  STATE->field_buffer[STATE->json_fields.router_id.len] = '\0';
+  memcpy(STATE->field_buffer, FIELDPTR(router_id), FIELDLEN(router_id));
+  STATE->field_buffer[FIELDLEN(router_id)] = '\0';
   if(bgpstream_str2addr((char*)STATE->field_buffer, &addr)==NULL){
     // if the field is not an IP address, it is then an 4 byte integer
     STRTOUL(router_id, router_id);
@@ -353,7 +355,9 @@ static bgpstream_format_status_t process_open_message(bgpstream_format_t *format
     loc += 2;
   }
 
-  hexstr_to_bytes(&ptr[loc], (char*)STATE->json_fields.body.ptr , STATE->json_fields.body.len);
+  if(hexstr_to_bytes(&ptr[loc], (char*)FIELDPTR(body) , FIELDLEN(body))<0){
+    return BGPSTREAM_FORMAT_CORRUPTED_MSG ;
+  }
 
   // set msg length
   total_length = htons(msg_len+10+2+1);
@@ -368,7 +372,7 @@ static bgpstream_format_status_t process_open_message(bgpstream_format_t *format
   }
 
   // process direction
-  if( bcmp(&"sent", STATE->json_fields.direction.ptr, STATE->json_fields.direction.len) == 0){
+  if( FIELDLEN(direction) == 4 && bcmp("sent", FIELDPTR(direction), FIELDLEN(direction)) == 0){
     // equals
     RDATA->open_msg_direction = 0;
   } else {
