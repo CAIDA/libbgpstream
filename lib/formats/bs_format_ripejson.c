@@ -209,7 +209,7 @@ static ssize_t hexstr_to_bgpmsg(uint8_t *buf, size_t buflen,
 /* ====================================================================== */
 
 // process common header fields for all message types
-int process_common_fields(bgpstream_format_t *format, bgpstream_record_t *record){
+static int process_common_fields(bgpstream_format_t *format, bgpstream_record_t *record){
 
   double time_double;
   // populate collector name
@@ -235,7 +235,7 @@ int process_common_fields(bgpstream_format_t *format, bgpstream_record_t *record
   return 0;
 }
 
-int process_update_message(bgpstream_format_t *format, bgpstream_record_t *record){
+static bgpstream_format_status_t process_update_message(bgpstream_format_t *format, bgpstream_record_t *record){
 
   // convert body to bytes
   ssize_t rc =  hexstr_to_bgpmsg(STATE->json_bytes_buffer,
@@ -264,7 +264,7 @@ int process_update_message(bgpstream_format_t *format, bgpstream_record_t *recor
   return BGPSTREAM_FORMAT_OK;
 }
 
-int process_status_message(bgpstream_format_t *format, bgpstream_record_t *record){
+static bgpstream_format_status_t process_status_message(bgpstream_format_t *format, bgpstream_record_t *record){
 
   // process direction
   if(STATE->json_fields.state.len == 4 && bcmp("down", STATE->json_fields.state.ptr, STATE->json_fields.state.len) == 0){
@@ -285,7 +285,7 @@ int process_status_message(bgpstream_format_t *format, bgpstream_record_t *recor
   return BGPSTREAM_FORMAT_OK;
 }
 
-int process_open_message(bgpstream_format_t *format, bgpstream_record_t *record){
+static bgpstream_format_status_t process_open_message(bgpstream_format_t *format, bgpstream_record_t *record){
 
   int json_str_len = STATE->json_fields.body.len;
   char* json_str_ptr = STATE->json_fields.body.ptr;
@@ -382,7 +382,7 @@ int process_open_message(bgpstream_format_t *format, bgpstream_record_t *record)
   return BGPSTREAM_FORMAT_OK;
 }
 
-int process_unsupported_message(bgpstream_format_t *format, bgpstream_record_t *record){
+static bgpstream_format_status_t process_unsupported_message(bgpstream_format_t *format, bgpstream_record_t *record){
   fprintf(stderr, "WARN: unsupported ris-stream message: %s\n", STATE->json_string_buffer);
   record -> status = BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD;
   record -> collector_name [0] = '\0';
@@ -402,7 +402,7 @@ int process_corrupted_message(bgpstream_format_t *format, bgpstream_record_t *re
     i++;                                                                \
   }
 
-int bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t *record){
+static bgpstream_format_status_t bs_format_process_json_fields(bgpstream_format_t *format, bgpstream_record_t *record){
   int i;
   int r, rc;
   jsmn_parser p;
