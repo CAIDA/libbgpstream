@@ -410,9 +410,14 @@ int bgpstream_record_status_snprintf(char *buf, size_t len,
   case BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD:
     buf[0] = 'R';
     break;
+  case BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD:
+    buf[0] = 'U';
+    break;
+    /* removed default case to catch unchecked enum
   default:
     buf[0] = '?';
     break;
+    */
   }
   buf[1] = '\0';
   return 1;
