@@ -198,13 +198,13 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     ADD_PIPE;
 
     /* AGGREGATOR AS AND IP */
-    if(elem->aggregator_asn >= 0){
-      c = snprintf(buf_p, B_REMAIN, "%"PRIi32" ", elem->aggregator_asn);
+    if(elem->aggregator.has_aggregator > 0){
+      c = snprintf(buf_p, B_REMAIN, "%"PRIi32" ", elem->aggregator.aggregator_asn);
       written += c;
       buf_p += c;
-      if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->aggregator_addr) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed aggregator IP address");
-      return NULL;
+      if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->aggregator.aggregator_addr) == NULL) {
+        bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed aggregator IP address %d", elem->aggregator.aggregator_asn);
+        return NULL;
       }
       SEEK_STR_END;
     }

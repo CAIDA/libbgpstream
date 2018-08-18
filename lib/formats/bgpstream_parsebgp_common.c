@@ -433,19 +433,21 @@ int bgpstream_parsebgp_process_path_attrs(
   // Aggregator
   if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AGGREGATOR].type ==
       PARSEBGP_BGP_PATH_ATTR_TYPE_AGGREGATOR) {
-    el->aggregator_asn = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AGGREGATOR].data.aggregator.asn;
-    COPY_IP(&el->aggregator_addr, PARSEBGP_BGP_AFI_IPV4,
+    el->aggregator.has_aggregator = 1;
+    el->aggregator.aggregator_asn = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AGGREGATOR].data.aggregator.asn;
+    COPY_IP(&el->aggregator.aggregator_addr, PARSEBGP_BGP_AFI_IPV4,
             attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AGGREGATOR].data.aggregator.addr,
             return -1);
   } else if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR].type ==
       PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR){
-    el->aggregator_asn = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR].data.aggregator.asn;
-    COPY_IP(&el->aggregator_addr, PARSEBGP_BGP_AFI_IPV4,
+    el->aggregator.has_aggregator = 1;
+    el->aggregator.aggregator_asn = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR].data.aggregator.asn;
+    COPY_IP(&el->aggregator.aggregator_addr, PARSEBGP_BGP_AFI_IPV4,
             attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR].data.aggregator.addr,
             return -1);
   }
   else {
-    el->aggregator_asn = -1;
+    el->aggregator.has_aggregator = 0;
   }
 
   if (handle_as_paths(el->as_path, aspath, as4path) != 0) {

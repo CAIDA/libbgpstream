@@ -140,6 +140,20 @@ typedef struct struct_bgpstream_annotations_t {
 
 } bgpstream_annotations_t;
 
+/** Elem aggregator object */
+typedef struct bgpstream_elem_aggregator {
+
+  /** Boolean value to check if aggregator field is set */
+  uint8_t has_aggregator;
+
+  /** Aggregator ASN */
+  uint32_t aggregator_asn;
+
+  /** Aggregator IP */
+  bgpstream_addr_storage_t aggregator_addr;
+
+} bgpstream_elem_aggregator_t;
+
 /** @} */
 
 /**
@@ -181,27 +195,6 @@ typedef struct bgpstream_elem {
 
   /** Peer AS number */
   uint32_t peer_asn;
-
-  /** ORIGIN as-path attribute
-    * This attribute indicates where the update comes from:
-    * internal network (IGP), external network (EGP), or other means (INCOMPLETE).
-    */
-  bgpstream_elem_origin_type_t origin;
-
-  /** MED attribute */
-  uint32_t med;
-
-  /** LOCAL_PREF attribute */
-  uint32_t local_pref;
-
-  /** Atomic aggregate attribute */
-  uint8_t atomic_aggregate;
-
-  /** Aggregator ASN */
-  int32_t aggregator_asn;
-
-  /** Aggregator IP */
-  bgpstream_addr_storage_t aggregator_addr;
 
   /* Type-dependent fields */
 
@@ -246,6 +239,25 @@ typedef struct bgpstream_elem {
    * Annotations from other libraries
    */
   bgpstream_annotations_t annotations;
+
+
+  /** ORIGIN as-path attribute
+    * This attribute indicates where the update comes from:
+    * internal network (IGP), external network (EGP), or other means (INCOMPLETE).
+    */
+  bgpstream_elem_origin_type_t origin;
+
+  /** MED attribute */
+  uint32_t med;
+
+  /** LOCAL_PREF attribute */
+  uint32_t local_pref;
+
+  /** Atomic aggregate attribute */
+  uint8_t atomic_aggregate;
+
+  /** Atomic aggregate attribute */
+  bgpstream_elem_aggregator_t aggregator;
 
 } bgpstream_elem_t;
 
