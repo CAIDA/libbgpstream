@@ -72,12 +72,12 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
   /* Record type */
   switch (elem->type) {
   case BGPSTREAM_ELEM_TYPE_RIB:
-    c = snprintf(buf_p, B_REMAIN, "TABLE_DUMP2|%u", record->time_sec);
+    c = snprintf(buf_p, B_REMAIN, "TABLE_DUMP2|%"PRIu32, record->time_sec);
     break;
   case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT:
   case BGPSTREAM_ELEM_TYPE_WITHDRAWAL:
   case BGPSTREAM_ELEM_TYPE_PEERSTATE:
-    c = snprintf(buf_p, B_REMAIN, "BGP4MP|%u", record->time_sec);
+    c = snprintf(buf_p, B_REMAIN, "BGP4MP|%"PRIu32, record->time_sec);
     break;
   default:
     break;
@@ -127,7 +127,7 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     /* PREFIX */
     if (bgpstream_pfx_snprintf(buf_p, B_REMAIN,
                                (bgpstream_pfx_t *)&(elem->prefix)) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed prefix (R/A)");
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed prefix");
       return NULL;
     }
     SEEK_STR_END;
@@ -160,19 +160,21 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     ADD_PIPE;
 
     /* NEXT HOP */
-    if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->nexthop) != NULL) {
-      SEEK_STR_END;
+    if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->nexthop) == NULL) {
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed next_hop IP address");
+      return NULL;
     }
+    SEEK_STR_END;
     ADD_PIPE;
 
     /* LOCAL_PREF */
-    c = snprintf(buf_p, B_REMAIN, "%d", elem->local_pref);
+    c = snprintf(buf_p, B_REMAIN, "%" PRIu32, elem->local_pref);
     written += c;
     buf_p += c;
     ADD_PIPE;
 
     /* MED */
-    c = snprintf(buf_p, B_REMAIN, "%d", elem->med);
+    c = snprintf(buf_p, B_REMAIN, "%" PRIu32, elem->med);
     written += c;
     buf_p += c;
     ADD_PIPE;
@@ -196,12 +198,13 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     ADD_PIPE;
 
     /* AGGREGATOR AS AND IP */
-    if(elem->aggregator_asn > 0){
-      c = snprintf(buf_p, B_REMAIN, "%d ", elem->aggregator_asn);
+    if(elem->aggregator_asn >= 0){
+      c = snprintf(buf_p, B_REMAIN, "%"PRIi32" ", elem->aggregator_asn);
       written += c;
       buf_p += c;
-      if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->aggregator_addr) != NULL) {
-        SEEK_STR_END;
+      if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->aggregator_addr) == NULL) {
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed aggregator IP address");
+      return NULL;
       }
       SEEK_STR_END;
     }
@@ -213,7 +216,7 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     /* PREFIX */
     if (bgpstream_pfx_snprintf(buf_p, B_REMAIN,
                                (bgpstream_pfx_t *)&(elem->prefix)) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed prefix (R/A)");
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed prefix");
       return NULL;
     }
     SEEK_STR_END;

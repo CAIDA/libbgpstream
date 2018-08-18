@@ -445,7 +445,7 @@ int bgpstream_parsebgp_process_path_attrs(
             return -1);
   }
   else {
-    el->aggregator_asn = 0;
+    el->aggregator_asn = -1;
   }
 
   if (handle_as_paths(el->as_path, aspath, as4path) != 0) {

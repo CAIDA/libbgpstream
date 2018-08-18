@@ -198,7 +198,7 @@ typedef struct bgpstream_elem {
   uint8_t atomic_aggregate;
 
   /** Aggregator ASN */
-  uint32_t aggregator_asn;
+  int32_t aggregator_asn;
 
   /** Aggregator IP */
   bgpstream_addr_storage_t aggregator_addr;
