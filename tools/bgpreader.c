@@ -550,6 +550,15 @@ int main(int argc, char *argv[])
     }
   }
 
+  /* Cannot output in both bgpstream elem and bgpdump format
+   */
+  if(elem_output_on == 1 && record_bgpdump_output_on == 1){
+    fprintf(stderr,
+            "ERROR: Cannot output in both bgpstream elem (-e) and bgpdump format (-m).\n");
+    usage();
+    goto err;
+  }
+
   /* if the user did not specify any output format
    * then the default one is per elem */
   if (record_output_on == 0 && elem_output_on == 0 &&
@@ -659,37 +668,23 @@ int main(int argc, char *argv[])
          (rec_limit < 0 || rec_cnt < rec_limit)) {
     rec_cnt++;
 
-    if (record_output_on && print_record(bs_record) != 0) {
-      goto err;
-    }
-
     if (bs_record->status != BGPSTREAM_RECORD_STATUS_VALID_RECORD) {
       continue;
     }
 
-    if (record_bgpdump_output_on) {
-      // print record following bgpdump format
-
-      while ((erc = bgpstream_record_get_next_elem(bs_record, &bs_elem)) > 0) {
-        if (print_elem_bgpdump(bs_record, bs_elem) != 0) {
-          goto err;
-        }
-      }
-      if (erc != 0) {
-        fprintf(stderr, "ERROR: Failed to get elem from record\n");
-        goto err;
-      }
+    if (record_output_on && print_record(bs_record) != 0) {
+      goto err;
     }
 
-    if (elem_output_on) {
-      /* check if the record is of type RIB, in case extract the ID */
-      /* print the RIB start line */
-      if (bs_record->type == BGPSTREAM_RIB &&
-          bs_record->dump_pos == BGPSTREAM_DUMP_START &&
-          print_record(bs_record) != 0) {
-        goto err;
-      }
+    /* check if the record is of type RIB, in case extract the ID */
+    /* print the RIB start line */
+    if (bs_record->type == BGPSTREAM_RIB &&
+        bs_record->dump_pos == BGPSTREAM_DUMP_START &&
+        print_record(bs_record) != 0) {
+      goto err;
+    }
 
+    if (record_bgpdump_output_on || elem_output_on) {
       while ((erc = bgpstream_record_get_next_elem(bs_record, &bs_elem)) > 0) {
 #ifdef WITH_RPKI
         if(rpki_input != NULL && rpki_input->rpki_active){
@@ -698,14 +693,20 @@ int main(int argc, char *argv[])
           bs_elem->annotations.timestamp = bs_record->time_sec;
         }
 #endif
-        if (print_elem(bs_record, bs_elem) != 0) {
+        // print record following bgpdump format
+        if (record_bgpdump_output_on && print_elem_bgpdump(bs_record, bs_elem) != 0) {
+          goto err;
+        } else if (elem_output_on && print_elem(bs_record, bs_elem) != 0){
           goto err;
         }
+
       }
+
       if (erc != 0) {
         fprintf(stderr, "ERROR: Failed to get elem from record\n");
         goto err;
       }
+
       /* check if end of RIB has been reached */
       if (bs_record->type == BGPSTREAM_RIB &&
           bs_record->dump_pos == BGPSTREAM_DUMP_END &&
