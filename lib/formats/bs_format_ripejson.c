@@ -530,12 +530,15 @@ again:
   }
 
  ok:
+  free(t);
   return BGPSTREAM_FORMAT_OK;
 
  corrupted:
+  free(t);
   return process_corrupted_message(format, record);
 
  unsupported:
+  free(t);
   return process_unsupported_message(format, record);
 }
 
