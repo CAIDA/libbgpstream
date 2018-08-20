@@ -454,7 +454,7 @@ again:
   }
 
   /* Loop over all fields of the json string buffer */
-  for (i = 1; i < r; i++) {
+  for (i = 1; i < r-1; i++) {
     key_ptr = STATE->json_string_buffer + t[i].start;
     key_size = t[i].end-t[i].start;
     value_ptr = STATE->json_string_buffer + t[i+1].start;
