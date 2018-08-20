@@ -712,6 +712,7 @@ void bs_format_ripejson_destroy_data(bgpstream_format_t *format, void *data)
 
 void bs_format_ripejson_destroy(bgpstream_format_t *format)
 {
+  free(STATE->json_string_buffer);
   free(format->state);
   format->state = NULL;
 }

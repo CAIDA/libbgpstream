@@ -31,7 +31,6 @@
 #include <assert.h>
 #include <pthread.h>
 #include <unistd.h>
-#include <stdio.h>
 
 #define DUMP_OPEN_MAX_RETRIES 5
 #define DUMP_OPEN_MIN_RETRY_WAIT 10
