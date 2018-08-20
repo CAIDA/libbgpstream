@@ -116,7 +116,7 @@
        "process a rib files every <period> seconds (bgp time)"},               \
       {{"peer-asn", required_argument, 0, 'j'},                                \
        "<peer ASN>",                                                           \
-       "return valid elems originated by a specific peer ASN*"},               \
+       "return valid elems received by a specific peer ASN*"},                 \
       {{"prefix", required_argument, 0, 'k'},                                  \
        "<prefix>",                                                             \
        "return valid elems associated with a specific prefix*"},               \
