@@ -27,9 +27,9 @@
 #ifndef __BGPSTREAM_DATA_INTERFACE_MANAGER_H
 #define __BGPSTREAM_DATA_INTERFACE_MANAGER_H
 
-#include "config.h"
 #include "bgpstream_filter.h"
 #include "bgpstream_resource_mgr.h"
+#include "config.h"
 
 /** Opaque struct representing the Data Interface manager */
 typedef struct bgpstream_di_mgr bgpstream_di_mgr_t;
@@ -41,8 +41,7 @@ typedef struct bsdi bsdi_t;
  *
  * @return pointer to a manager instance if successful, NULL otherwise
  */
-bgpstream_di_mgr_t *
-bgpstream_di_mgr_create(bgpstream_filter_mgr_t *filter_mgr);
+bgpstream_di_mgr_t *bgpstream_di_mgr_create(bgpstream_filter_mgr_t *filter_mgr);
 
 /** Get a list of data interfaces that are currently supported
  *
@@ -54,8 +53,8 @@ bgpstream_di_mgr_create(bgpstream_filter_mgr_t *filter_mgr);
  * @note the returned array belongs to BGPStream. It must not be freed by the
  * user.
  */
-int bgpstream_di_mgr_get_data_interfaces(bgpstream_di_mgr_t *di_mgr,
-                                         bgpstream_data_interface_id_t **if_ids);
+int bgpstream_di_mgr_get_data_interfaces(
+  bgpstream_di_mgr_t *di_mgr, bgpstream_data_interface_id_t **if_ids);
 
 /** Get the ID of the data interface with the given name
  *
@@ -102,9 +101,8 @@ int bgpstream_di_mgr_get_data_interface_options(
  * There may only be one active data interface. Activating a data interface
  * implicitly deactivates all other interfaces
  */
-int
-bgpstream_di_mgr_set_data_interface(bgpstream_di_mgr_t *di_mgr,
-                                    bgpstream_data_interface_id_t di_id);
+int bgpstream_di_mgr_set_data_interface(bgpstream_di_mgr_t *di_mgr,
+                                        bgpstream_data_interface_id_t di_id);
 
 /** Get the ID of the currently active Data Interface
  *
@@ -154,9 +152,8 @@ int bgpstream_di_mgr_start(bgpstream_di_mgr_t *di_mgr);
  * If the stream is in live mode, this method will block until data is
  * available, otherwise it will return 0 to indicate EOF.
  */
-int
-bgpstream_di_mgr_get_next_record(bgpstream_di_mgr_t *di_mgr,
-                                 bgpstream_record_t **record);
+int bgpstream_di_mgr_get_next_record(bgpstream_di_mgr_t *di_mgr,
+                                     bgpstream_record_t **record);
 
 /** Destroy the given data interface manager
  *

@@ -24,11 +24,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "bs_transport_file.h"
 #include "bgpstream_transport_interface.h"
 #include "bgpstream_log.h"
-#include "bs_transport_file.h"
-#include "wandio.h"
 #include "wandio_utils.h"
+#include "wandio.h"
 
 int bs_transport_file_create(bgpstream_transport_t *transport)
 {
@@ -50,19 +50,19 @@ int bs_transport_file_create(bgpstream_transport_t *transport)
 int64_t bs_transport_file_read(bgpstream_transport_t *transport,
                                uint8_t *buffer, int64_t len)
 {
-  return wandio_read((io_t*)transport->state, buffer, len);
+  return wandio_read((io_t *)transport->state, buffer, len);
 }
 
 int64_t bs_transport_file_readline(bgpstream_transport_t *transport,
-                               uint8_t *buffer, int64_t len)
+                                   uint8_t *buffer, int64_t len)
 {
-  return wandio_fgets((io_t*)transport->state, buffer, len, 1);
+  return wandio_fgets((io_t *)transport->state, buffer, len, 1);
 }
 
 void bs_transport_file_destroy(bgpstream_transport_t *transport)
 {
   if (transport->state != NULL) {
-    wandio_destroy((io_t*)transport->state);
+    wandio_destroy((io_t *)transport->state);
     transport->state = NULL;
   }
 }

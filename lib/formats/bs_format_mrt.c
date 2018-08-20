@@ -32,7 +32,7 @@
 #include "utils.h"
 #include <assert.h>
 
-#define STATE ((state_t*)(format->state))
+#define STATE ((state_t *)(format->state))
 
 #define RDATA ((rec_data_t *)(record->__int->data))
 
@@ -74,12 +74,11 @@ typedef struct state {
   bgpstream_parsebgp_decode_state_t decoder;
 
   // state to store the "peer index table" when reading TABLE_DUMP_V2 records
-  khash_t(td2_peer) *peer_table;
+  khash_t(td2_peer) * peer_table;
 
 } state_t;
 
-static int handle_table_dump(rec_data_t *rd,
-                             parsebgp_mrt_msg_t *mrt)
+static int handle_table_dump(rec_data_t *rd, parsebgp_mrt_msg_t *mrt)
 {
   bgpstream_elem_t *el = rd->elem;
   parsebgp_mrt_table_dump_t *td = mrt->types.table_dump;
@@ -96,8 +95,9 @@ static int handle_table_dump(rec_data_t *rd,
   COPY_IP(&el->prefix.address, mrt->subtype, &td->prefix, return -1);
   el->prefix.mask_len = td->prefix_len;
 
-  if (bgpstream_parsebgp_process_next_hop(el, td->path_attrs.attrs,
-                      mrt->subtype == PARSEBGP_BGP_AFI_IPV6 ? 1 : 0) != 0) {
+  if (bgpstream_parsebgp_process_next_hop(
+        el, td->path_attrs.attrs,
+        mrt->subtype == PARSEBGP_BGP_AFI_IPV6 ? 1 : 0) != 0) {
     return -1;
   }
 
@@ -111,10 +111,8 @@ static int handle_table_dump(rec_data_t *rd,
   return 1;
 }
 
-static int handle_td2_rib_entry(rec_data_t *rd,
-                                khash_t(td2_peer) *peer_table,
-                                parsebgp_mrt_msg_t *mrt,
-                                parsebgp_bgp_afi_t afi,
+static int handle_td2_rib_entry(rec_data_t *rd, khash_t(td2_peer) * peer_table,
+                                parsebgp_mrt_msg_t *mrt, parsebgp_bgp_afi_t afi,
                                 parsebgp_mrt_table_dump_v2_rib_entry_t *re)
 {
   peer_index_entry_t *bs_pie;
@@ -138,13 +136,13 @@ static int handle_td2_rib_entry(rec_data_t *rd,
   rd->elem->peer_asn = bs_pie->peer_asn;
 
   if (bgpstream_parsebgp_process_next_hop(
-        rd->elem, re->path_attrs.attrs,
-        afi == PARSEBGP_BGP_AFI_IPV6 ? 1 : 0) != 0) {
+        rd->elem, re->path_attrs.attrs, afi == PARSEBGP_BGP_AFI_IPV6 ? 1 : 0) !=
+      0) {
     return -1;
   }
 
-  if (bgpstream_parsebgp_process_path_attrs(rd->elem,
-                                            re->path_attrs.attrs) != 0) {
+  if (bgpstream_parsebgp_process_path_attrs(rd->elem, re->path_attrs.attrs) !=
+      0) {
     return -1;
   }
 
@@ -186,8 +184,7 @@ handle_td2_afi_safi_rib(rec_data_t *rd, khash_t(td2_peer) * peer_table,
   return 1;
 }
 
-static int handle_table_dump_v2(rec_data_t *rd,
-                                khash_t(td2_peer) *peer_table,
+static int handle_table_dump_v2(rec_data_t *rd, khash_t(td2_peer) * peer_table,
                                 parsebgp_mrt_msg_t *mrt)
 {
   parsebgp_mrt_table_dump_v2_t *td2 = mrt->types.table_dump_v2;
@@ -337,8 +334,7 @@ populate_filter_cb(bgpstream_format_t *format, bgpstream_record_t *record,
   // when elem parsing happens it can quickly filter out unwanted peers
   // without having to check ASN or IP
   if (msg->types.mrt->type == PARSEBGP_MRT_TYPE_TABLE_DUMP_V2 &&
-      msg->types.mrt->subtype ==
-      PARSEBGP_MRT_TABLE_DUMP_V2_PEER_INDEX_TABLE) {
+      msg->types.mrt->subtype == PARSEBGP_MRT_TABLE_DUMP_V2_PEER_INDEX_TABLE) {
     if (handle_td2_peer_index(
           format, &msg->types.mrt->types.table_dump_v2->peer_index) != 0) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to process Peer Index Table");
@@ -378,8 +374,7 @@ populate_filter_cb(bgpstream_format_t *format, bgpstream_record_t *record,
 
 /* ==================== PUBLIC API BELOW HERE ==================== */
 
-int bs_format_mrt_create(bgpstream_format_t *format,
-                         bgpstream_resource_t *res)
+int bs_format_mrt_create(bgpstream_format_t *format, bgpstream_resource_t *res)
 {
   BS_FORMAT_SET_METHODS(mrt, format);
   parsebgp_opts_t *opts = NULL;
@@ -474,7 +469,7 @@ int bs_format_mrt_init_data(bgpstream_format_t *format, void **data)
 
 void bs_format_mrt_clear_data(bgpstream_format_t *format, void *data)
 {
-  rec_data_t *rd = (rec_data_t*)data;
+  rec_data_t *rd = (rec_data_t *)data;
   assert(rd != NULL);
   bgpstream_elem_clear(rd->elem);
   rd->end_of_elems = 0;
@@ -485,7 +480,7 @@ void bs_format_mrt_clear_data(bgpstream_format_t *format, void *data)
 
 void bs_format_mrt_destroy_data(bgpstream_format_t *format, void *data)
 {
-  rec_data_t *rd = (rec_data_t*)data;
+  rec_data_t *rd = (rec_data_t *)data;
   if (rd == NULL) {
     return;
   }

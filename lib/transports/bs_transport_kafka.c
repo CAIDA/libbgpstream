@@ -24,16 +24,16 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "bs_transport_kafka.h"
 #include "bgpstream_transport_interface.h"
 #include "bgpstream_log.h"
-#include "bs_transport_kafka.h"
 #include "utils.h"
 #include <assert.h>
 #include <librdkafka/rdkafka.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
-#define STATE ((state_t*)(transport->state))
+#define STATE ((state_t *)(transport->state))
 
 #define DEFAULT_OFFSET "latest"
 
@@ -84,7 +84,7 @@ static int parse_attrs(bgpstream_transport_t *transport)
     // generate a "random" group ID
     ts = epoch_msec();
     srand(ts);
-    snprintf(buf, sizeof(buf), "bgpstream-%"PRIx64"-%x", ts, rand());
+    snprintf(buf, sizeof(buf), "bgpstream-%" PRIx64 "-%x", ts, rand());
     if ((STATE->group = strdup(buf)) == NULL) {
       return -1;
     }
@@ -197,8 +197,7 @@ static int init_topic(bgpstream_transport_t *transport)
     }
   }
 
-  bgpstream_log(BGPSTREAM_LOG_FINE, "Subscribing to %d topics",
-                topics_cnt);
+  bgpstream_log(BGPSTREAM_LOG_FINE, "Subscribing to %d topics", topics_cnt);
 
   if ((STATE->topics = rd_kafka_topic_partition_list_new(topics_cnt)) == NULL) {
     return -1;
@@ -288,25 +287,24 @@ static int handle_err_msg(bgpstream_transport_t *transport,
 
   // TODO: handle some more errors
   bgpstream_log(BGPSTREAM_LOG_ERR, "Unhandled Kafka error: %s: %s",
-                rd_kafka_err2str(rk_msg->err),
-                rd_kafka_message_errstr(rk_msg));
+                rd_kafka_err2str(rk_msg->err), rd_kafka_message_errstr(rk_msg));
 
   rd_kafka_message_destroy(rk_msg);
   return -1;
 }
 
 int64_t bs_transport_kafka_readline(bgpstream_transport_t *transport,
-                                uint8_t *buffer, int64_t len)
+                                    uint8_t *buffer, int64_t len)
 {
-  int rc = bs_transport_kafka_read(transport, buffer, len-1);
+  int rc = bs_transport_kafka_read(transport, buffer, len - 1);
 
-  if(rc<=0){
+  if (rc <= 0) {
     return rc;
   }
 
-  buffer[rc]='\0';
+  buffer[rc] = '\0';
   // NOTE: we assume there is only one line per kafka message
-  assert(strchr((char*)buffer, '\n') == NULL);
+  assert(strchr((char *)buffer, '\n') == NULL);
 
   return rc;
 }
@@ -355,7 +353,7 @@ void bs_transport_kafka_destroy(bgpstream_transport_t *transport)
     // shut down consumer
     if ((err = rd_kafka_consumer_close(STATE->rk)) != 0) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Could not shut down consumer: %s",
-                  rd_kafka_err2str(err));
+                    rd_kafka_err2str(err));
     }
 
     // destroy topics list

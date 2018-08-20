@@ -29,13 +29,13 @@
  *   Shane Alcock <salcock@waikato.ac.nz>
  */
 
+#include "bgpstream_int.h"
+#include "bgpstream_di_mgr.h"
+#include "bgpstream_log.h"
+#include "utils.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "bgpstream_int.h"
-#include "bgpstream_log.h"
-#include "bgpstream_di_mgr.h"
-#include "utils.h"
 
 struct bgpstream {
 
@@ -50,7 +50,6 @@ struct bgpstream {
 };
 
 /* ========== INTERNAL METHODS (see bgpstream_int.h) ========== */
-
 
 /* ========== PUBLIC METHODS (see bgpstream_int.h) ========== */
 
@@ -72,7 +71,7 @@ bgpstream_t *bgpstream_create()
 
   return bs;
 
- err:
+err:
   bgpstream_destroy(bs);
   return NULL;
 }
@@ -176,8 +175,8 @@ int bgpstream_set_data_interface_option(
   const char *option_value)
 {
   assert(!bs->started);
-  return bgpstream_di_mgr_set_data_interface_option(bs->di_mgr,
-                                                    option_type, option_value);
+  return bgpstream_di_mgr_set_data_interface_option(bs->di_mgr, option_type,
+                                                    option_value);
 }
 
 /* configure the interface so that it connects
@@ -207,7 +206,7 @@ void bgpstream_set_live_mode(bgpstream_t *bs)
 /* turn on the bgpstream interface, i.e.:
  * it makes the interface ready
  * for a new get next call
-*/
+ */
 int bgpstream_start(bgpstream_t *bs)
 {
   assert(!bs->started);

@@ -319,8 +319,8 @@ char *bgpstream_record_elem_snprintf(char *buf, size_t len,
  * @return pointer to the start of the buffer if successful, NULL otherwise
  */
 char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
-                                     bgpstream_record_t *record,
-                                     bgpstream_elem_t *elem);
+                                             bgpstream_record_t *record,
+                                             bgpstream_elem_t *elem);
 
 /** @} */
 

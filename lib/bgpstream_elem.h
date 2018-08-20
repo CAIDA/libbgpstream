@@ -106,7 +106,6 @@ typedef enum {
 
 } bgpstream_elem_origin_type_t;
 
-
 /** Elem types */
 typedef enum {
 
@@ -240,11 +239,11 @@ typedef struct bgpstream_elem {
    */
   bgpstream_annotations_t annotations;
 
-
   /** ORIGIN as-path attribute
-    * This attribute indicates where the update comes from:
-    * internal network (IGP), external network (EGP), or other means (INCOMPLETE).
-    */
+   * This attribute indicates where the update comes from:
+   * internal network (IGP), external network (EGP), or other means
+   * (INCOMPLETE).
+   */
   bgpstream_elem_origin_type_t origin;
 
   /** MED attribute */

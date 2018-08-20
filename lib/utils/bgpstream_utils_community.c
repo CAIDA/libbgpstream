@@ -360,9 +360,9 @@ int bgpstream_community_set_populate(bgpstream_community_set_t *set,
 
   for (i = 0; i < cnt; i++) {
     c = &set->communities[i];
-    c->asn = ntohs(*(uint16_t*)buf);
+    c->asn = ntohs(*(uint16_t *)buf);
     buf += sizeof(uint16_t);
-    c->value = ntohs(*(uint16_t*)buf);
+    c->value = ntohs(*(uint16_t *)buf);
     buf += sizeof(uint16_t);
     set->communities_hash = set->communities_hash | *((uint32_t *)c);
   }

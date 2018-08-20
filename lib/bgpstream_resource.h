@@ -32,8 +32,8 @@
 #ifndef __BGPSTREAM_RESOURCE_H
 #define __BGPSTREAM_RESOURCE_H
 
-#include <stdint.h>
 #include "bgpstream_record.h"
+#include <stdint.h>
 
 /** Types of transport supported */
 typedef enum {
@@ -145,14 +145,11 @@ typedef struct bgpstream_resource {
 } bgpstream_resource_t;
 
 /** Create a new resource metadata object */
-bgpstream_resource_t *
-bgpstream_resource_create(bgpstream_resource_transport_type_t transport_type,
-                          bgpstream_resource_format_type_t format_type,
-                          const char *uri,
-                          uint32_t initial_time,
-                          uint32_t duration,
-                          const char *project, const char *collector,
-                          bgpstream_record_type_t record_type);
+bgpstream_resource_t *bgpstream_resource_create(
+  bgpstream_resource_transport_type_t transport_type,
+  bgpstream_resource_format_type_t format_type, const char *uri,
+  uint32_t initial_time, uint32_t duration, const char *project,
+  const char *collector, bgpstream_record_type_t record_type);
 
 /** Destroy the given resource metadata object */
 void bgpstream_resource_destroy(bgpstream_resource_t *resource);
@@ -175,9 +172,8 @@ int bgpstream_resource_set_attr(bgpstream_resource_t *resource,
  * @return borrowed pointer to the attribute value, NULL if the attribute is
  * unset
  */
-const char *
-bgpstream_resource_get_attr(bgpstream_resource_t *resource,
-                            bgpstream_resource_attr_type_t type);
+const char *bgpstream_resource_get_attr(bgpstream_resource_t *resource,
+                                        bgpstream_resource_attr_type_t type);
 
 /** Get a unique hash of the resource
  *
@@ -186,6 +182,7 @@ bgpstream_resource_get_attr(bgpstream_resource_t *resource,
  * @param resource      pointer to the resource object
  * @return pointer to a unique hash of this resource
  */
-int bgpstream_resource_hash_snprintf(char* buf, size_t buf_len, bgpstream_resource_t *resource);
+int bgpstream_resource_hash_snprintf(char *buf, size_t buf_len,
+                                     bgpstream_resource_t *resource);
 
 #endif /* __BGPSTREAM_RESOURCE_H */

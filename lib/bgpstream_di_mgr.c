@@ -227,7 +227,7 @@ bgpstream_di_mgr_t *bgpstream_di_mgr_create(bgpstream_filter_mgr_t *filter_mgr)
   }
 
   // default values
-  if((mgr->res_mgr = bgpstream_resource_mgr_create(filter_mgr)) == NULL) {
+  if ((mgr->res_mgr = bgpstream_resource_mgr_create(filter_mgr)) == NULL) {
     goto err;
   }
   mgr->active_di = BGPSTREAM_DATA_INTERFACE_BROKER;
@@ -235,9 +235,9 @@ bgpstream_di_mgr_t *bgpstream_di_mgr_create(bgpstream_filter_mgr_t *filter_mgr)
 
   /* allocate the interfaces (some may/will be NULL) */
   for (id = 0; id < _BGPSTREAM_DATA_INTERFACE_CNT; id++) {
-    if ((mgr->available_dis = realloc(mgr->available_dis,
-                                      sizeof(bgpstream_data_interface_id_t)*
-                                      (mgr->available_dis_cnt+1))) == NULL) {
+    if ((mgr->available_dis = realloc(
+           mgr->available_dis, sizeof(bgpstream_data_interface_id_t) *
+                                 (mgr->available_dis_cnt + 1))) == NULL) {
       goto err;
     }
     mgr->available_dis[mgr->available_dis_cnt++] = id;
@@ -246,7 +246,7 @@ bgpstream_di_mgr_t *bgpstream_di_mgr_create(bgpstream_filter_mgr_t *filter_mgr)
 
   return mgr;
 
- err:
+err:
   bgpstream_di_mgr_destroy(mgr);
   return NULL;
 }
@@ -299,7 +299,7 @@ int bgpstream_di_mgr_get_data_interface_options(
 }
 
 int bgpstream_di_mgr_set_data_interface(bgpstream_di_mgr_t *di_mgr,
-                                         bgpstream_data_interface_id_t di_id)
+                                        bgpstream_data_interface_id_t di_id)
 {
   if (di_mgr->interfaces[di_id] == NULL) {
     return -1;
@@ -314,9 +314,10 @@ bgpstream_di_mgr_get_data_interface_id(bgpstream_di_mgr_t *di_mgr)
   return di_mgr->active_di;
 }
 
-int bgpstream_di_mgr_set_data_interface_option(bgpstream_di_mgr_t *di_mgr,
-                           const bgpstream_data_interface_option_t *option_type,
-                           const char *option_value)
+int bgpstream_di_mgr_set_data_interface_option(
+  bgpstream_di_mgr_t *di_mgr,
+  const bgpstream_data_interface_option_t *option_type,
+  const char *option_value)
 {
   bsdi_t *di;
 
@@ -340,14 +341,13 @@ void bgpstream_di_mgr_set_blocking(bgpstream_di_mgr_t *di_mgr)
   di_mgr->blocking = 1;
 }
 
-int
-bgpstream_di_mgr_get_next_record(bgpstream_di_mgr_t *di_mgr,
-                                 bgpstream_record_t **record)
+int bgpstream_di_mgr_get_next_record(bgpstream_di_mgr_t *di_mgr,
+                                     bgpstream_record_t **record)
 {
   // this function is responsible for blocking if we're in live mode
   int rc;
 
-  while(1) {
+  while (1) {
     // if our queue is empty, ask the DI for more
     if (bgpstream_resource_mgr_empty(di_mgr->res_mgr) != 0 &&
         ACTIVE_DI->update_resources(ACTIVE_DI) != 0) {
@@ -357,8 +357,8 @@ bgpstream_di_mgr_get_next_record(bgpstream_di_mgr_t *di_mgr,
 
     // if the queue is not empty, then grab a record
     if (bgpstream_resource_mgr_empty(di_mgr->res_mgr) == 0) {
-      if ((rc = bgpstream_resource_mgr_get_record(di_mgr->res_mgr,
-                                                  record)) < 0) {
+      if ((rc = bgpstream_resource_mgr_get_record(di_mgr->res_mgr, record)) <
+          0) {
         // an error occurred
         return -1;
       }

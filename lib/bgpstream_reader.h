@@ -27,8 +27,8 @@
 #ifndef __BGPSTREAM_READER_H
 #define __BGPSTREAM_READER_H
 
-#include "bgpstream_resource.h"
 #include "bgpstream_filter.h"
+#include "bgpstream_resource.h"
 
 /** Opaque structure representing a reader instance */
 typedef struct bgpstream_reader bgpstream_reader_t;
@@ -51,9 +51,8 @@ typedef enum {
 } bgpstream_reader_status_t;
 
 /** Create a new reader for the given resource */
-bgpstream_reader_t *
-bgpstream_reader_create(bgpstream_resource_t *resource,
-                        bgpstream_filter_mgr_t *filter_mgr);
+bgpstream_reader_t *bgpstream_reader_create(bgpstream_resource_t *resource,
+                                            bgpstream_filter_mgr_t *filter_mgr);
 
 /** Get the time of the next record available in the reader
  *

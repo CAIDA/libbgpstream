@@ -29,14 +29,14 @@
  *   Mingwei Zhang
  */
 
-#include "bgpstream_resource.h"
 #include "bgpstream_transport.h"
 #include "bgpstream_log.h"
+#include "bgpstream_resource.h"
 #include "utils.h"
 
 // WITH_TRANSPORT_FILE
-#include "bs_transport_file.h"
 #include "bs_transport_cache.h"
+#include "bs_transport_file.h"
 
 #ifdef WITH_TRANSPORT_KAFKA
 #include "bs_transport_kafka.h"
@@ -59,7 +59,7 @@ static const transport_create_func_t create_functions[] = {
   NULL,
 #endif
 
- bs_transport_cache_create,
+  bs_transport_cache_create,
 
 };
 
@@ -69,8 +69,7 @@ bgpstream_transport_t *bgpstream_transport_create(bgpstream_resource_t *res)
 
   // check that the transport type is valid
   if ((int)res->transport_type >= ARR_CNT(create_functions)) {
-    bgpstream_log(BGPSTREAM_LOG_ERR,
-                  "Invalid transport module for %s (ID: %d)",
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid transport module for %s (ID: %d)",
                   res->uri, res->transport_type);
     goto err;
   }
@@ -78,8 +77,8 @@ bgpstream_transport_t *bgpstream_transport_create(bgpstream_resource_t *res)
   // check that the transport is enabled
   if (create_functions[res->transport_type] == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR,
-                  "Could not find transport module for %s (ID: %d)",
-                  res->uri, res->transport_type);
+                  "Could not find transport module for %s (ID: %d)", res->uri,
+                  res->transport_type);
     goto err;
   }
 
@@ -98,13 +97,13 @@ bgpstream_transport_t *bgpstream_transport_create(bgpstream_resource_t *res)
 
   return transport;
 
- err:
+err:
   free(transport);
   return NULL;
 }
 
-int64_t bgpstream_transport_read(bgpstream_transport_t *transport,
-                                 void *buffer, int64_t len)
+int64_t bgpstream_transport_read(bgpstream_transport_t *transport, void *buffer,
+                                 int64_t len)
 {
   return transport->read(transport, buffer, len);
 }
@@ -121,7 +120,7 @@ void bgpstream_transport_destroy(bgpstream_transport_t *transport)
 }
 
 int64_t bgpstream_transport_readline(bgpstream_transport_t *transport,
-                                 void *buffer, int64_t len)
+                                     void *buffer, int64_t len)
 {
   return transport->readline(transport, buffer, len);
 }

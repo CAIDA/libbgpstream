@@ -27,9 +27,9 @@
 #ifndef __BGPSTREAM_DI_INTERFACE_H
 #define __BGPSTREAM_DI_INTERFACE_H
 
-#include "config.h"
 #include "bgpstream.h"
 #include "bgpstream_di_mgr.h" /*< for bsdi_t */
+#include "config.h"
 
 /** @file
  *
@@ -42,13 +42,13 @@
 
 /** Convenience macro to allow implementations to retrieve their state object
  */
-#define BSDI_GET_STATE(interface, type)         \
+#define BSDI_GET_STATE(interface, type)                                        \
   ((bsdi_##type##_state_t *)(interface)->state)
 
 /** Convenience macro to allow implementations to store a state pointer */
-#define BSDI_SET_STATE(interface, ptr)                                  \
-  do {                                                                  \
-    (interface)->state = ptr;                                           \
+#define BSDI_SET_STATE(interface, ptr)                                         \
+  do {                                                                         \
+    (interface)->state = ptr;                                                  \
   } while (0)
 
 #define BSDI_GET_FILTER_MGR(interface) ((interface)->filter_mgr)
@@ -57,21 +57,23 @@
 /** Convenience macro that defines all the function prototypes for the data
  * interface API
  */
-#define BSDI_GENERATE_PROTOS(ifname)                                    \
-  bsdi_t *bsdi_##ifname##_alloc();                                      \
-  int bsdi_##ifname##_init(bsdi_t *di);                                 \
-  int bsdi_##ifname##_start(bsdi_t *di);                                \
-  int bsdi_##ifname##_set_option(bsdi_t *di,                            \
-                                 const bgpstream_data_interface_option_t *option_type, \
-                                 const char *option_value);             \
-  void bsdi_##ifname##_destroy(bsdi_t *di);                             \
+#define BSDI_GENERATE_PROTOS(ifname)                                           \
+  bsdi_t *bsdi_##ifname##_alloc();                                             \
+  int bsdi_##ifname##_init(bsdi_t *di);                                        \
+  int bsdi_##ifname##_start(bsdi_t *di);                                       \
+  int bsdi_##ifname##_set_option(                                              \
+    bsdi_t *di, const bgpstream_data_interface_option_t *option_type,          \
+    const char *option_value);                                                 \
+  void bsdi_##ifname##_destroy(bsdi_t *di);                                    \
   int bsdi_##ifname##_update_resources(bsdi_t *di);
 
 /** Convenience macros that create a class structure for a data interface */
 #define BSDI_CREATE_CLASS_FULL(classname, classnamestr, id, desc, options)     \
   static bsdi_t bsdi_##classname = {                                           \
     {                                                                          \
-      (id), classnamestr, desc,                                                \
+      (id),                                                                    \
+      classnamestr,                                                            \
+      desc,                                                                    \
     },                                                                         \
     (options),                                                                 \
     ARR_CNT(options),                                                          \
@@ -89,7 +91,7 @@
     return &bsdi_##classname;                                                  \
   }
 
-#define BSDI_CREATE_CLASS(classname, id, desc, options)                 \
+#define BSDI_CREATE_CLASS(classname, id, desc, options)                        \
   BSDI_CREATE_CLASS_FULL(classname, STR(classname), id, desc, options)
 
 /** Structure which represents a data interface */

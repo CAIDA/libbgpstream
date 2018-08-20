@@ -351,10 +351,8 @@ int bgpstream_parsebgp_process_update(bgpstream_parsebgp_upd_state_t *upd_state,
   }
 
   // are we at end-of-elems?
-  if (upd_state->withdrawal_v4_cnt == 0 &&
-      upd_state->withdrawal_v6_cnt == 0 &&
-      upd_state->announce_v4_cnt == 0 &&
-      upd_state->announce_v6_cnt == 0) {
+  if (upd_state->withdrawal_v4_cnt == 0 && upd_state->withdrawal_v6_cnt == 0 &&
+      upd_state->announce_v4_cnt == 0 && upd_state->announce_v6_cnt == 0) {
     return 0;
   }
 
@@ -368,8 +366,8 @@ int bgpstream_parsebgp_process_update(bgpstream_parsebgp_upd_state_t *upd_state,
 
   // at this point we need the path attributes processed
   if (upd_state->path_attr_done == 0) {
-    if (bgpstream_parsebgp_process_path_attrs(elem,
-                                              update->path_attrs.attrs) != 0) {
+    if (bgpstream_parsebgp_process_path_attrs(elem, update->path_attrs.attrs) !=
+        0) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Could not extract path attributes");
       return -1;
     }
@@ -388,7 +386,6 @@ int bgpstream_parsebgp_process_update(bgpstream_parsebgp_upd_state_t *upd_state,
 
   return 0;
 }
-
 
 int bgpstream_parsebgp_process_path_attrs(
   bgpstream_elem_t *el, parsebgp_bgp_update_path_attr_t *attrs)
@@ -421,7 +418,8 @@ int bgpstream_parsebgp_process_path_attrs(
   // LOCAL_PREF
   if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_LOCAL_PREF].type ==
       PARSEBGP_BGP_PATH_ATTR_TYPE_LOCAL_PREF) {
-    el->local_pref = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_LOCAL_PREF].data.local_pref;
+    el->local_pref =
+      attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_LOCAL_PREF].data.local_pref;
   }
   // Atomic aggregate: AG/NAG
   if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_ATOMIC_AGGREGATE].type ==
@@ -434,19 +432,21 @@ int bgpstream_parsebgp_process_path_attrs(
   if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AGGREGATOR].type ==
       PARSEBGP_BGP_PATH_ATTR_TYPE_AGGREGATOR) {
     el->aggregator.has_aggregator = 1;
-    el->aggregator.aggregator_asn = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AGGREGATOR].data.aggregator.asn;
+    el->aggregator.aggregator_asn =
+      attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AGGREGATOR].data.aggregator.asn;
     COPY_IP(&el->aggregator.aggregator_addr, PARSEBGP_BGP_AFI_IPV4,
             attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AGGREGATOR].data.aggregator.addr,
             return -1);
   } else if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR].type ==
-      PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR){
+             PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR) {
     el->aggregator.has_aggregator = 1;
-    el->aggregator.aggregator_asn = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR].data.aggregator.asn;
-    COPY_IP(&el->aggregator.aggregator_addr, PARSEBGP_BGP_AFI_IPV4,
-            attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR].data.aggregator.addr,
-            return -1);
-  }
-  else {
+    el->aggregator.aggregator_asn =
+      attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR].data.aggregator.asn;
+    COPY_IP(
+      &el->aggregator.aggregator_addr, PARSEBGP_BGP_AFI_IPV4,
+      attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR].data.aggregator.addr,
+      return -1);
+  } else {
     el->aggregator.has_aggregator = 0;
   }
 
@@ -516,7 +516,7 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
   // TODO: break our beautiful structure and check the transport type, because
   // if it is kafka we really mustn't refill a partially filled buffer.
 
- refill:
+refill:
   // if there's nothing left in the buffer, it could just be because we happened
   // to empty it, so let's try and get some more data from the transport just in
   // case.

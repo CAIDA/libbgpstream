@@ -32,9 +32,9 @@
 #ifndef __BGPSTREAM_TRANSPORT_INTERFACE_H
 #define __BGPSTREAM_TRANSPORT_INTERFACE_H
 
-#include "config.h"
 #include "bgpstream.h"
 #include "bgpstream_transport.h" /*< for bs_transport_t */
+#include "config.h"
 
 /** @file
  *
@@ -52,7 +52,7 @@
   int64_t bs_transport_##name##_read(bgpstream_transport_t *t,                 \
                                      uint8_t *buffer, int64_t len);            \
   int64_t bs_transport_##name##_readline(bgpstream_transport_t *t,             \
-                                     uint8_t *buffer, int64_t len);            \
+                                         uint8_t *buffer, int64_t len);        \
   void bs_transport_##name##_destroy(bgpstream_transport_t *t);
 
 #define BS_TRANSPORT_SET_METHODS(classname, transport)                         \
@@ -86,7 +86,8 @@ struct bgpstream_transport {
    * @param len         The maximum number of bytes to read
    * @return the number of bytes read if successful, -1 otherwise
    */
-  int64_t (*readline)(struct bgpstream_transport *t, uint8_t *buffer, int64_t len);
+  int64_t (*readline)(struct bgpstream_transport *t, uint8_t *buffer,
+                      int64_t len);
 
   /** Shutdown and free this data transport
    *

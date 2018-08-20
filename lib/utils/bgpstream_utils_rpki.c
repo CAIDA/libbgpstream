@@ -27,11 +27,11 @@
  *   Samir Al-Sheikh (s.al-sheikh@fu-berlin.de)
  */
 
-#include <stdio.h>
-#include <string.h>
+#include "bgpstream_utils_rpki.h"
 #include "config.h"
 #include "utils.h"
-#include "bgpstream_utils_rpki.h"
+#include <stdio.h>
+#include <string.h>
 
 bgpstream_rpki_input_t *bgpstream_rpki_create_input()
 {
@@ -58,7 +58,8 @@ rpki_cfg_t *bgpstream_rpki_set_cfg(bgpstream_rpki_input_t *inp)
 {
   /* Set up the ROAFetchlib configuration */
   return rpki_set_config(inp->rpki_collectors, inp->rpki_windows,
-      inp->rpki_unified, !inp->rpki_live, RPKI_BROKER, inp->rpki_ssh_ptr);
+                         inp->rpki_unified, !inp->rpki_live, RPKI_BROKER,
+                         inp->rpki_ssh_ptr);
 }
 
 void bgpstream_rpki_destroy_cfg(rpki_cfg_t *cfg)
@@ -80,9 +81,10 @@ int bgpstream_rpki_parse_windows(bgpstream_rpki_input_t *input,
   int chk_len = (windows_cnt * 2) * 10 + (2 * windows_cnt - 1);
   for (int i = 0; i < windows_cnt; i++) {
     size_t size = strlen(input->rpki_windows);
-    rst+= snprintf(input->rpki_windows + size, sizeof(input->rpki_windows)
-                       - size, i < windows_cnt - 1 ? "%"PRIu32 "-%"PRIu32 "," :
-                       "%"PRIu32 "-%"PRIu32, windows[i].start, windows[i].end);
+    rst += snprintf(
+      input->rpki_windows + size, sizeof(input->rpki_windows) - size,
+      i < windows_cnt - 1 ? "%" PRIu32 "-%" PRIu32 "," : "%" PRIu32 "-%" PRIu32,
+      windows[i].start, windows[i].end);
   }
 
   return rst == chk_len;

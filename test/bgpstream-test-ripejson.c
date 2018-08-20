@@ -24,19 +24,19 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "bgpstream-test-ripejson.h"
 #include "bgpstream.h"
 #include "bgpstream_test.h"
-#include "bgpstream-test-ripejson.h"
 #include "utils.h"
 #include <stdio.h>
 #include <string.h>
 
-
 static char buf[65536];
 
-int test_bgpstream_ripejson(){
+int test_bgpstream_ripejson()
+{
   /* Declare BGPStream requirements */
-  int rrc = 0, count= 0, rcount=0, erc = 0;
+  int rrc = 0, count = 0, rcount = 0, erc = 0;
   bgpstream_t *bs = bgpstream_create();
   bgpstream_elem_t *elem;
   bgpstream_record_t *rec = NULL;
@@ -46,16 +46,19 @@ int test_bgpstream_ripejson(){
   CHECK_SET_INTERFACE(singlefile);
   bgpstream_data_interface_option_t *option;
 
-  if ((option = bgpstream_get_data_interface_option_by_name(bs, di_id, "upd-type"))==NULL){
+  if ((option = bgpstream_get_data_interface_option_by_name(
+         bs, di_id, "upd-type")) == NULL) {
     return -1;
   }
   if (bgpstream_set_data_interface_option(bs, option, "ripejson") != 0) {
     return -1;
   }
-  if ((option = bgpstream_get_data_interface_option_by_name(bs, di_id, "upd-file"))==NULL){
+  if ((option = bgpstream_get_data_interface_option_by_name(
+         bs, di_id, "upd-file")) == NULL) {
     return -1;
   }
-  if (bgpstream_set_data_interface_option(bs, option, "ris-live-stream.json") != 0) {
+  if (bgpstream_set_data_interface_option(bs, option, "ris-live-stream.json") !=
+      0) {
     return -1;
   }
 
@@ -65,32 +68,35 @@ int test_bgpstream_ripejson(){
   }
 
   while ((rrc = bgpstream_get_next_record(bs, &rec)) > 0) {
-    switch(rec->status){
+    switch (rec->status) {
     case BGPSTREAM_RECORD_STATUS_VALID_RECORD:
 
       while ((erc = bgpstream_record_get_next_elem(rec, &elem)) > 0) {
 
-        if (bgpstream_record_elem_snprintf(buf, sizeof(buf), rec, elem) == NULL) {
+        if (bgpstream_record_elem_snprintf(buf, sizeof(buf), rec, elem) ==
+            NULL) {
           fprintf(stderr, "ERROR: Could not convert record/elem to string\n");
           return -1;
         }
 
         if (strcmp(buf, valid_output[count]) != 0) {
           // Strings are not identical
-          fprintf(stderr, "elem output different, rcount %d, count %d\n", rcount, count);
-          fprintf(stderr, "INVALID: %s\nCORRECT: %s\n", buf, valid_output[rcount+count]);
+          fprintf(stderr, "elem output different, rcount %d, count %d\n",
+                  rcount, count);
+          fprintf(stderr, "INVALID: %s\nCORRECT: %s\n", buf,
+                  valid_output[rcount + count]);
           goto err;
         }
         fprintf(stderr, "VALID: %s\n", buf);
         count++;
-        buf[0]='\0';
+        buf[0] = '\0';
       }
 
       fprintf(stderr, "correctly valid record %d\n\n", rcount);
       break;
 
     case BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD:
-      if(rcount != 6){
+      if (rcount != 6) {
         // only item 6 is unsupported
         fprintf(stderr, "record %d shouldn't be unsupported\n", rcount);
         goto err;
@@ -99,7 +105,7 @@ int test_bgpstream_ripejson(){
       break;
 
     case BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD:
-      if(rcount <= 6){
+      if (rcount <= 6) {
         fprintf(stderr, "record %d shouldn't be corrupted\n", rcount);
         goto err;
       }
@@ -112,16 +118,16 @@ int test_bgpstream_ripejson(){
     }
 
     // record test correctly passed
-    rcount ++;
+    rcount++;
   }
 
-  if(rcount != 9){
+  if (rcount != 9) {
     // if not all 9 records passed
     return -1;
   }
 
   return 0;
- err:
+err:
   return -1;
 }
 

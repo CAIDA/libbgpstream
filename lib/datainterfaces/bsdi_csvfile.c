@@ -33,7 +33,6 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdlib.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -53,20 +52,16 @@ static bgpstream_data_interface_option_t options[] = {
   /* CSV file name */
   {
     BGPSTREAM_DATA_INTERFACE_CSVFILE, // interface ID
-    OPTION_CSV_FILE, // internal ID
-    "csv-file", // name
+    OPTION_CSV_FILE,                  // internal ID
+    "csv-file",                       // name
     "csv file listing the mrt data to read (default: " STR(
       BGPSTREAM_DI_CSVFILE_CSV_FILE) ")",
   },
 };
 
 /* create the class structure for this data interface */
-BSDI_CREATE_CLASS(
-  csvfile,
-  BGPSTREAM_DATA_INTERFACE_CSVFILE,
-  "Retrieve metadata information from a csv file",
-  options
-);
+BSDI_CREATE_CLASS(csvfile, BGPSTREAM_DATA_INTERFACE_CSVFILE,
+                  "Retrieve metadata information from a csv file", options);
 
 /* ---------- END CLASS DEFINITION ---------- */
 
@@ -156,8 +151,8 @@ static int filters_match(bsdi_t *di)
   if (filter_mgr->bgp_types != NULL) {
     bgpstream_str_set_rewind(filter_mgr->bgp_types);
     while ((f = bgpstream_str_set_next(filter_mgr->bgp_types)) != NULL) {
-      if ((STATE->record_type == BGPSTREAM_UPDATE && strcmp("updates", f) == 0)
-          ||
+      if ((STATE->record_type == BGPSTREAM_UPDATE &&
+           strcmp("updates", f) == 0) ||
           (STATE->record_type == BGPSTREAM_RIB && strcmp("ribs", f) == 0)) {
         all_false = 0;
         break;
@@ -239,7 +234,6 @@ static void parse_field(void *field, size_t i, void *user_data)
   STATE->current_field++;
 }
 
-
 static void parse_rowend(int c, void *user_data)
 {
   bsdi_t *di = (bsdi_t *)user_data;
@@ -260,16 +254,11 @@ static void parse_rowend(int c, void *user_data)
       STATE->max_ts_infile = STATE->timestamp;
     }
     if (filters_match(di) != 0) {
-      if (bgpstream_resource_mgr_push(BSDI_GET_RES_MGR(di),
-                                      BGPSTREAM_RESOURCE_TRANSPORT_FILE,
-                                      BGPSTREAM_RESOURCE_FORMAT_MRT,
-                                      STATE->filename,
-                                      STATE->filetime,
-                                      STATE->time_span,
-                                      STATE->project,
-                                      STATE->collector,
-                                      STATE->record_type,
-                                      NULL) < 0) {
+      if (bgpstream_resource_mgr_push(
+            BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_FILE,
+            BGPSTREAM_RESOURCE_FORMAT_MRT, STATE->filename, STATE->filetime,
+            STATE->time_span, STATE->project, STATE->collector,
+            STATE->record_type, NULL) < 0) {
         assert(0);
       }
     }
@@ -291,9 +280,8 @@ int bsdi_csvfile_init(bsdi_t *di)
   /* set default state */
 
   /* initialize the CSV parser */
-  if (csv_init(&(STATE->parser),
-               (CSV_STRICT | CSV_REPALL_NL | CSV_STRICT_FINI |
-                CSV_APPEND_NULL | CSV_EMPTY_IS_NULL)) != 0) {
+  if (csv_init(&(STATE->parser), (CSV_STRICT | CSV_REPALL_NL | CSV_STRICT_FINI |
+                                  CSV_APPEND_NULL | CSV_EMPTY_IS_NULL)) != 0) {
     goto err;
   }
   STATE->current_field = CSVFILE_PATH;
@@ -309,14 +297,14 @@ int bsdi_csvfile_start(bsdi_t *di)
   if (STATE->csv_file) {
     return 0;
   } else {
-    fprintf(stderr, "ERROR: The 'csv-file' option must be set\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "The 'csv-file' option must be set\n");
     return -1;
   }
 }
 
-int bsdi_csvfile_set_option(bsdi_t *di,
-                           const bgpstream_data_interface_option_t *option_type,
-                           const char *option_value)
+int bsdi_csvfile_set_option(
+  bsdi_t *di, const bgpstream_data_interface_option_t *option_type,
+  const char *option_value)
 {
   switch (option_type->id) {
   case OPTION_CSV_FILE:
@@ -370,17 +358,17 @@ int bsdi_csvfile_update_resources(bsdi_t *di)
   }
 
   while ((read = wandio_read(file_io, &buffer, BUFFER_LEN)) > 0) {
-    if (csv_parse(&(STATE->parser), buffer, read, parse_field,
-                  parse_rowend, di) != read) {
+    if (csv_parse(&(STATE->parser), buffer, read, parse_field, parse_rowend,
+                  di) != read) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "CSV parsing error %s",
-                        csv_strerror(csv_error(&STATE->parser)));
+                    csv_strerror(csv_error(&STATE->parser)));
       goto err;
     }
   }
 
   if (csv_fini(&(STATE->parser), parse_field, parse_rowend, di) != 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "CSV parsing error %s",
-                      csv_strerror(csv_error(&STATE->parser)));
+                  csv_strerror(csv_error(&STATE->parser)));
     goto err;
   }
 
@@ -389,6 +377,6 @@ int bsdi_csvfile_update_resources(bsdi_t *di)
   STATE->last_processed_ts = STATE->max_ts_infile;
   return 0;
 
- err:
+err:
   return -1;
 }

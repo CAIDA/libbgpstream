@@ -97,8 +97,7 @@ struct bgpstream_as_path {
  * "BGPSTREAM_AS_PATH_SEG_ASN" type to optimize addition of AS_SEQ segments
  */
 int bgpstream_as_path_append(bgpstream_as_path_t *path,
-                             bgpstream_as_path_seg_type_t type,
-                             uint32_t *asns,
+                             bgpstream_as_path_seg_type_t type, uint32_t *asns,
                              int asns_cnt);
 
 /** Update the internal fields once the data array has been changed

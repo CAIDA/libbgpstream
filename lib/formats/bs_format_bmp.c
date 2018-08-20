@@ -32,7 +32,7 @@
 #include "utils.h"
 #include <assert.h>
 
-#define STATE ((state_t*)(format->state))
+#define STATE ((state_t *)(format->state))
 
 #define RDATA ((rec_data_t *)(record->__int->data))
 
@@ -66,8 +66,8 @@ static int handle_update(rec_data_t *rd, parsebgp_bgp_msg_t *bgp)
 {
   int rc;
 
-  if ((rc = bgpstream_parsebgp_process_update(&rd->upd_state, rd->elem,
-                                              bgp)) < 0) {
+  if ((rc = bgpstream_parsebgp_process_update(&rd->upd_state, rd->elem, bgp)) <
+      0) {
     return rc;
   }
   if (rc == 0) {
@@ -225,7 +225,7 @@ static int populate_prep_cb(bgpstream_format_t *format, uint8_t *buf,
   // Confirm the version number
   DESERIALIZE_VAL(ver_maj);
   DESERIALIZE_VAL(ver_min);
-  if (ver_maj != 1 || ver_min!= 7) {
+  if (ver_maj != 1 || ver_min != 7) {
     bgpstream_log(BGPSTREAM_LOG_WARN,
                   "Unrecognized OpenBMP header version (%" PRIu8 ".%" PRIu8 ")",
                   ver_maj, ver_min);
@@ -329,8 +329,7 @@ static int populate_prep_cb(bgpstream_format_t *format, uint8_t *buf,
 }
 
 static bgpstream_parsebgp_check_filter_rc_t
-populate_filter_cb(bgpstream_format_t *format,
-                   bgpstream_record_t *record,
+populate_filter_cb(bgpstream_format_t *format, bgpstream_record_t *record,
                    parsebgp_msg_t *msg)
 {
   parsebgp_bmp_msg_t *bmp = msg->types.bmp;
@@ -376,8 +375,7 @@ populate_filter_cb(bgpstream_format_t *format,
 
 /* ==================== PUBLIC API BELOW HERE ==================== */
 
-int bs_format_bmp_create(bgpstream_format_t *format,
-                         bgpstream_resource_t *res)
+int bs_format_bmp_create(bgpstream_format_t *format, bgpstream_resource_t *res)
 {
   BS_FORMAT_SET_METHODS(bmp, format);
   parsebgp_opts_t *opts = NULL;
@@ -404,12 +402,11 @@ bgpstream_format_status_t
 bs_format_bmp_populate_record(bgpstream_format_t *format,
                               bgpstream_record_t *record)
 {
-  bgpstream_format_status_t rc =  bgpstream_parsebgp_populate_record(&STATE->decoder, RDATA->msg, format,
-                                            record,
-                                            populate_prep_cb,
-                                            populate_filter_cb);
+  bgpstream_format_status_t rc = bgpstream_parsebgp_populate_record(
+    &STATE->decoder, RDATA->msg, format, record, populate_prep_cb,
+    populate_filter_cb);
 
-  if(record->status != BGPSTREAM_RECORD_STATUS_VALID_RECORD){
+  if (record->status != BGPSTREAM_RECORD_STATUS_VALID_RECORD) {
     record->router_name[0] = '\0';
     record->router_ip.version = 0;
   }
@@ -490,7 +487,7 @@ int bs_format_bmp_init_data(bgpstream_format_t *format, void **data)
 
 void bs_format_bmp_clear_data(bgpstream_format_t *format, void *data)
 {
-  rec_data_t *rd = (rec_data_t*)data;
+  rec_data_t *rd = (rec_data_t *)data;
   assert(rd != NULL);
   bgpstream_elem_clear(rd->elem);
   rd->end_of_elems = 0;
@@ -501,7 +498,7 @@ void bs_format_bmp_clear_data(bgpstream_format_t *format, void *data)
 
 void bs_format_bmp_destroy_data(bgpstream_format_t *format, void *data)
 {
-  rec_data_t *rd = (rec_data_t*)data;
+  rec_data_t *rd = (rec_data_t *)data;
   if (rd == NULL) {
     return;
   }

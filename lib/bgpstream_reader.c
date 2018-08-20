@@ -38,7 +38,6 @@
 #define PREFETCH_IDX (reader->rec_buf_prefetch_idx)
 #define EXPORTED_IDX ((reader->rec_buf_prefetch_idx + 1) % 2)
 
-
 struct bgpstream_reader {
 
   // borrowed pointer to the resource that we have opened
@@ -98,19 +97,18 @@ static int prefetch_record(bgpstream_reader_t *reader)
   // resource, then pretend we're ok.  but beware that now we'll be "OK", with
   // an unfilled prefetch record
   if (reader->res->duration == BGPSTREAM_FOREVER &&
-      (reader->status == BGPSTREAM_FORMAT_END_OF_DUMP     ||
-       reader->status == BGPSTREAM_FORMAT_FILTERED_DUMP   ||
-       reader->status == BGPSTREAM_FORMAT_EMPTY_DUMP      ||
-       reader->status == BGPSTREAM_FORMAT_CORRUPTED_DUMP
-       )) {
+      (reader->status == BGPSTREAM_FORMAT_END_OF_DUMP ||
+       reader->status == BGPSTREAM_FORMAT_FILTERED_DUMP ||
+       reader->status == BGPSTREAM_FORMAT_EMPTY_DUMP ||
+       reader->status == BGPSTREAM_FORMAT_CORRUPTED_DUMP)) {
     reader->status = BGPSTREAM_FORMAT_OK;
     return 0;
   }
 
   // if we see corrupted or unsupported message, we still
   // fill the buffer and should continue reading
-  if(reader->status == BGPSTREAM_FORMAT_CORRUPTED_MSG ||
-     reader->status == BGPSTREAM_FORMAT_UNSUPPORTED_MSG ) {
+  if (reader->status == BGPSTREAM_FORMAT_CORRUPTED_MSG ||
+      reader->status == BGPSTREAM_FORMAT_UNSUPPORTED_MSG) {
     reader->rec_buf_filled[PREFETCH_IDX] = 1;
     reader->status = BGPSTREAM_FORMAT_OK;
     return 0;
@@ -140,14 +138,12 @@ static int prepopulate_record(bgpstream_record_t *record,
                               bgpstream_resource_t *res)
 {
   // project
-  strncpy(record->project_name, res->project,
-          BGPSTREAM_UTILS_STR_NAME_LEN);
-  record->project_name[BGPSTREAM_UTILS_STR_NAME_LEN-1] = '\0';
+  strncpy(record->project_name, res->project, BGPSTREAM_UTILS_STR_NAME_LEN);
+  record->project_name[BGPSTREAM_UTILS_STR_NAME_LEN - 1] = '\0';
 
   // collector
-  strncpy(record->collector_name, res->collector,
-          BGPSTREAM_UTILS_STR_NAME_LEN);
-  record->collector_name[BGPSTREAM_UTILS_STR_NAME_LEN-1] = '\0';
+  strncpy(record->collector_name, res->collector, BGPSTREAM_UTILS_STR_NAME_LEN);
+  record->collector_name[BGPSTREAM_UTILS_STR_NAME_LEN - 1] = '\0';
 
   // dump type
   record->type = res->record_type;
@@ -170,8 +166,7 @@ static void *threaded_opener(void *user)
   while (retries < DUMP_OPEN_MAX_RETRIES && reader->format == NULL) {
     if ((reader->format =
            bgpstream_format_create(reader->res, reader->filter_mgr)) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_WARN,
-                    "Could not open (%s). Attempt %d of %d",
+      bgpstream_log(BGPSTREAM_LOG_WARN, "Could not open (%s). Attempt %d of %d",
                     reader->res->uri, retries + 1, DUMP_OPEN_MAX_RETRIES);
       retries++;
       if (retries < DUMP_OPEN_MAX_RETRIES) {
@@ -184,14 +179,14 @@ static void *threaded_opener(void *user)
   pthread_mutex_lock(&reader->mutex);
   if (reader->format == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR,
-      "Could not open dumpfile (%s) after %d attempts. Giving up.",
-      reader->res->uri, DUMP_OPEN_MAX_RETRIES);
+                  "Could not open dumpfile (%s) after %d attempts. Giving up.",
+                  reader->res->uri, DUMP_OPEN_MAX_RETRIES);
     reader->status = BGPSTREAM_FORMAT_CANT_OPEN_DUMP;
   } else {
     // create the pair of records
-    for (i=0; i<2; i++) {
+    for (i = 0; i < 2; i++) {
       if ((reader->rec_buf[i] = bgpstream_record_create(reader->format)) ==
-          NULL ||
+            NULL ||
           prepopulate_record(reader->rec_buf[i], reader->res) != 0) {
         reader->status = BGPSTREAM_FORMAT_CANT_OPEN_DUMP;
         break;
@@ -213,9 +208,8 @@ static void *threaded_opener(void *user)
 
 /* ========== PUBLIC FUNCTIONS BELOW ========== */
 
-bgpstream_reader_t *
-bgpstream_reader_create(bgpstream_resource_t *resource,
-                        bgpstream_filter_mgr_t *filter_mgr)
+bgpstream_reader_t *bgpstream_reader_create(bgpstream_resource_t *resource,
+                                            bgpstream_filter_mgr_t *filter_mgr)
 {
   bgpstream_reader_t *reader;
 
@@ -256,7 +250,7 @@ void bgpstream_reader_destroy(bgpstream_reader_t *reader)
   pthread_cond_destroy(&reader->dump_ready_cond);
 
   int i;
-  for (i=0; i<2; i++) {
+  for (i = 0; i < 2; i++) {
     bgpstream_record_destroy(reader->rec_buf[i]);
     reader->rec_buf[i] = NULL;
   }
@@ -293,8 +287,8 @@ int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
 
   if (bgpstream_reader_open_wait(reader) != 0) {
     // cant even open the dump file
-    // we're not going to last long, but we should return the record saying we're
-    // a failure
+    // we're not going to last long, but we should return the record saying
+    // we're a failure
     *record = reader->rec_buf[PREFETCH_IDX];
     (*record)->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE;
     assert((*record)->__int->data == NULL);
@@ -310,8 +304,7 @@ int bgpstream_reader_get_next_record(bgpstream_reader_t *reader,
 
   // prefetch the next message (so we can see if the record we're about to
   // export would be the last one)
-  if (reader->status == BGPSTREAM_FORMAT_OK &&
-      prefetch_record(reader) != 0) {
+  if (reader->status == BGPSTREAM_FORMAT_OK && prefetch_record(reader) != 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Prefetch failed");
     return BGPSTREAM_READER_STATUS_ERROR;
   }

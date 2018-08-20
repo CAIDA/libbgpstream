@@ -27,17 +27,18 @@
  *   Samir Al-Sheikh (s.al-sheikh@fu-berlin.de)
  */
 
-#include <stdio.h>
-#include <string.h>
-#include "utils.h"
 #include "bgpstream-test-rpki.h"
 #include "bgpstream_test.h"
 #include "bgpstream_utils_rpki.h"
+#include "utils.h"
+#include <stdio.h>
+#include <string.h>
 
 bgpstream_t *bs;
 bgpstream_data_interface_id_t di_id = 0;
 
-int check_val_result(char *val_result, char *comp, int cnt) {
+int check_val_result(char *val_result, char *comp, int cnt)
+{
 
   /* Check whether the validation results are equal */
   char test_num[VALIDATION_BUF] = {0};
@@ -47,7 +48,8 @@ int check_val_result(char *val_result, char *comp, int cnt) {
 }
 
 int generate_rpki_windows(rpki_window_t *rpki_windows, const int *testcase,
-                          int cnt) {
+                          int cnt)
+{
 
   /* Generate a RPKI Window Instance */
   int j = 0;
@@ -59,7 +61,8 @@ int generate_rpki_windows(rpki_window_t *rpki_windows, const int *testcase,
   return j;
 }
 
-int test_rpki_create_input() {
+int test_rpki_create_input()
+{
 
   bgpstream_rpki_input_t *input = bgpstream_rpki_create_input();
   CHECK_RPKI_RESULT("Create Input", input != NULL);
@@ -67,20 +70,21 @@ int test_rpki_create_input() {
   CHECK_RPKI_RESULT("SSH arguments", !strlen(input->rpki_ssh));
   CHECK_RPKI_RESULT("Window arguments", !strlen(input->rpki_windows));
   CHECK_RPKI_RESULT("Live argument", !input->rpki_live && !input->rpki_unified);
-  CHECK_RPKI_RESULT("Unified argument", !input->rpki_live &&
-                                        !input->rpki_unified);
-  CHECK_RPKI_RESULT("Meta flags", !input->rpki_active &&
-                                  input->rpki_ssh_ptr == NULL);
+  CHECK_RPKI_RESULT("Unified argument",
+                    !input->rpki_live && !input->rpki_unified);
+  CHECK_RPKI_RESULT("Meta flags",
+                    !input->rpki_active && input->rpki_ssh_ptr == NULL);
   return 0;
 }
 
-int test_rpki_parse_input() {
+int test_rpki_parse_input()
+{
 
   /* Check live/historical mode argument */
   bgpstream_rpki_input_t *input = bgpstream_rpki_create_input();
   bgpstream_rpki_parse_live(input);
-  CHECK_RPKI_RESULT("Parsing RPKI mode parameter", input->rpki_active &&
-                                                   input->rpki_live);
+  CHECK_RPKI_RESULT("Parsing RPKI mode parameter",
+                    input->rpki_active && input->rpki_live);
   bgpstream_rpki_destroy_input(input);
 
   /* Check unified argument */
@@ -92,8 +96,9 @@ int test_rpki_parse_input() {
   /* Check SSH arguments */
   input = bgpstream_rpki_create_input();
   bgpstream_rpki_parse_ssh(PARSING_SSH_TESTCASE_1, input);
-  CHECK_RPKI_RESULT("Parsing RPKI SSH arguments", !strcmp(input->rpki_ssh,
-                    PARSING_SSH_TESTCASE_1) && input->rpki_ssh_ptr != NULL);
+  CHECK_RPKI_RESULT("Parsing RPKI SSH arguments",
+                    !strcmp(input->rpki_ssh, PARSING_SSH_TESTCASE_1) &&
+                      input->rpki_ssh_ptr != NULL);
   bgpstream_rpki_destroy_input(input);
 
   /* Check collectors arguments */
@@ -101,7 +106,7 @@ int test_rpki_parse_input() {
   bgpstream_rpki_parse_collectors(PARSING_PCC_TESTCASE_1, input);
   CHECK_RPKI_RESULT("Parsing RPKI collectors arguments",
                     !strcmp(input->rpki_collectors, PARSING_PCC_TESTCASE_1) &&
-                    input->rpki_active);
+                      input->rpki_active);
   bgpstream_rpki_destroy_input(input);
 
   /* Check default arguments */
@@ -113,7 +118,8 @@ int test_rpki_parse_input() {
   return 0;
 }
 
-int test_rpki_parse_windows() {
+int test_rpki_parse_windows()
+{
 
   /* Check RPKI Window Input Case 1 */
   struct rpki_window rpki_windows[WINDOW_CMD_CNT];
@@ -122,7 +128,8 @@ int test_rpki_parse_windows() {
   bgpstream_rpki_input_t *input = bgpstream_rpki_create_input();
   int rst = bgpstream_rpki_parse_windows(input, rpki_windows, j);
   CHECK_RPKI_RESULT("Parsing Window Input #1",
-        !strcmp(input->rpki_windows, PARSING_WND_TESTCASE_1_RST) && rst);
+                    !strcmp(input->rpki_windows, PARSING_WND_TESTCASE_1_RST) &&
+                      rst);
   bgpstream_rpki_destroy_input(input);
 
   /* Check RPKI Window Input Case 2 */
@@ -131,20 +138,23 @@ int test_rpki_parse_windows() {
   j = generate_rpki_windows(rpki_windows, PARSING_WND_TESTCASE_2, cnt);
   rst = bgpstream_rpki_parse_windows(input, rpki_windows, j);
   CHECK_RPKI_RESULT("Parsing Window Input #2",
-        !strcmp(input->rpki_windows, PARSING_WND_TESTCASE_2_RST) && rst);
+                    !strcmp(input->rpki_windows, PARSING_WND_TESTCASE_2_RST) &&
+                      rst);
   bgpstream_rpki_destroy_input(input);
 
   return 0;
 }
 
-int test_rpki_validate() {
+int test_rpki_validate()
+{
 
   /* Declare BGPStream requirements */
   int rrc = 0, counter = 0, erc = 0;
   bgpstream_elem_t *bs_elem;
   bgpstream_t *bs = bgpstream_create();
   bgpstream_record_t *rec = NULL;
-  SETUP; CHECK_SET_INTERFACE(singlefile);
+  SETUP;
+  CHECK_SET_INTERFACE(singlefile);
   bgpstream_data_interface_option_t *option;
   option = bgpstream_get_data_interface_option_by_name(bs, di_id, "upd-file");
   bgpstream_set_data_interface_option(bs, option,
@@ -159,7 +169,7 @@ int test_rpki_validate() {
   int VALIDATE_WND[2] = {1427846400, 1427846500};
   struct rpki_window rpki_windows[WINDOW_CMD_CNT];
   int j =
-      generate_rpki_windows(rpki_windows, VALIDATE_WND, ARR_CNT(VALIDATE_WND));
+    generate_rpki_windows(rpki_windows, VALIDATE_WND, ARR_CNT(VALIDATE_WND));
   int rst = bgpstream_rpki_parse_windows(input, rpki_windows, j);
   bgpstream_add_interval_filter(bs, rpki_windows[0].start, rpki_windows[0].end);
 
@@ -180,7 +190,7 @@ int test_rpki_validate() {
           bgpstream_rpki_validate(bs_elem, val_result, sizeof(val_result));
           snprintf(val_comp, sizeof(val_comp), "%s",
                    VALIDATE_TESTCASE_1_RST[counter]);
-          if(check_val_result(val_result, val_comp, j++) != 0) {
+          if (check_val_result(val_result, val_comp, j++) != 0) {
             return -1;
           }
           counter++;
@@ -191,7 +201,8 @@ int test_rpki_validate() {
   return 0;
 }
 
-int main() {
+int main()
+{
 #ifdef WITH_RPKI
   CHECK_RPKI_SECTION("RPKI Input", !test_rpki_create_input());
   CHECK_RPKI_SECTION("RPKI Parsing", !test_rpki_parse_input());

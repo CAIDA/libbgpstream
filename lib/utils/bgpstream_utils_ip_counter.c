@@ -25,11 +25,10 @@
  */
 
 #include "bgpstream_utils_ip_counter.h"
+#include "bgpstream_log.h"
 #include "bgpstream_utils_addr.h"
 #include "utils.h"
 #include <inttypes.h>
-#include <inttypes.h>
-#include <stdio.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -167,7 +166,8 @@ static int merge_in_sorted_queue4(v4pfx_int_t **pil, uint32_t start,
     if (end < current->start) {
       /* found a position where to insert  */
       if ((p = (v4pfx_int_t *)malloc_zero(sizeof(v4pfx_int_t))) == NULL) {
-        fprintf(stderr, "ERROR: can't malloc v4pfx_int_t structure\n");
+        bgpstream_log(BGPSTREAM_LOG_ERR,
+                      "can't malloc v4pfx_int_t structure\n");
         return -1;
       }
       p->start = start;
@@ -198,7 +198,7 @@ static int merge_in_sorted_queue4(v4pfx_int_t **pil, uint32_t start,
   /*   if here we didn't find a place where to insert the
    * interval, it is either the first position or the last */
   if ((p = (v4pfx_int_t *)malloc_zero(sizeof(v4pfx_int_t))) == NULL) {
-    fprintf(stderr, "ERROR: can't malloc v4pfx_int_t structure\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "can't malloc v4pfx_int_t structure\n");
     return -1;
   }
   p->start = start;
@@ -236,7 +236,8 @@ static int merge_in_sorted_queue6(v6pfx_int_t **pil, uint64_t start_ms,
         (end_ms == current->start_ms && end_ls < current->start_ls)) {
       /* found a position where to insert  */
       if ((p = (v6pfx_int_t *)malloc_zero(sizeof(v6pfx_int_t))) == NULL) {
-        fprintf(stderr, "ERROR: can't malloc v6pfx_int_t structure\n");
+        bgpstream_log(BGPSTREAM_LOG_ERR,
+                      "can't malloc v6pfx_int_t structure\n");
         return -1;
       }
       p->start_ms = start_ms;
@@ -275,7 +276,7 @@ static int merge_in_sorted_queue6(v6pfx_int_t **pil, uint64_t start_ms,
   /*   if here we didn't find a place where to insert the
    * interval, it is either the first position or the last */
   if ((p = (v6pfx_int_t *)malloc_zero(sizeof(v6pfx_int_t))) == NULL) {
-    fprintf(stderr, "ERROR: can't malloc v6pfx_int_t structure\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "can't malloc v6pfx_int_t structure\n");
     return -1;
   }
   p->start_ms = start_ms;
@@ -298,7 +299,8 @@ bgpstream_ip_counter_t *bgpstream_ip_counter_create()
   bgpstream_ip_counter_t *ipc;
   if ((ipc = (bgpstream_ip_counter_t *)malloc_zero(
          sizeof(bgpstream_ip_counter_t))) == NULL) {
-    fprintf(stderr, "ERROR: can't malloc bgpstream_ip_counter_t structure\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR,
+                  "can't malloc bgpstream_ip_counter_t structure\n");
     return NULL;
   }
   ipc->v4list = NULL;

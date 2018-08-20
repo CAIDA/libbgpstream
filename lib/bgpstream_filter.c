@@ -65,7 +65,8 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
   case BGPSTREAM_FILTER_TYPE_ELEM_PEER_ASN:
     if (bs_filter_mgr->peer_asns == NULL) {
       if ((bs_filter_mgr->peer_asns = bgpstream_id_set_create()) == NULL) {
-        bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSF_MGR:: add_filter malloc failed");
+        bgpstream_log(BGPSTREAM_LOG_VFINE,
+                      "\tBSF_MGR:: add_filter malloc failed");
         bgpstream_log(BGPSTREAM_LOG_ERR, "can't allocate memory");
         /* TODO: this function should return failure code!! */
         /* look for other assert(0)'s */
@@ -88,8 +89,7 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
       bs_filter_mgr->elemtype_mask |= (BGPSTREAM_FILTER_ELEM_TYPE_PEERSTATE);
     } else {
       bgpstream_log(BGPSTREAM_LOG_ERR,
-                    "\tBSF_MGR: %s is not a known element type",
-                    filter_value);
+                    "\tBSF_MGR: %s is not a known element type", filter_value);
       assert(0);
     }
     return;
@@ -97,7 +97,8 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
   case BGPSTREAM_FILTER_TYPE_ELEM_ASPATH:
     if (bs_filter_mgr->aspath_exprs == NULL) {
       if ((bs_filter_mgr->aspath_exprs = bgpstream_str_set_create()) == NULL) {
-        bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSF_MGR:: add_filter malloc failed");
+        bgpstream_log(BGPSTREAM_LOG_VFINE,
+                      "\tBSF_MGR:: add_filter malloc failed");
         bgpstream_log(BGPSTREAM_LOG_ERR, "\tBSF_MGR: can't allocate memory");
         return;
       }
@@ -117,7 +118,8 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
     if (bs_filter_mgr->prefixes == NULL) {
       if ((bs_filter_mgr->prefixes = bgpstream_patricia_tree_create(NULL)) ==
           NULL) {
-        bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSF_MGR:: add_filter malloc failed");
+        bgpstream_log(BGPSTREAM_LOG_VFINE,
+                      "\tBSF_MGR:: add_filter malloc failed");
         bgpstream_log(BGPSTREAM_LOG_ERR, "\tBSF_MGR: can't allocate memory");
         return;
       }
@@ -137,7 +139,8 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
     pfx.allowed_matches = matchtype;
     if (bgpstream_patricia_tree_insert(bs_filter_mgr->prefixes,
                                        (bgpstream_pfx_t *)&pfx) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSF_MGR:: add_filter malloc failed");
+      bgpstream_log(BGPSTREAM_LOG_VFINE,
+                    "\tBSF_MGR:: add_filter malloc failed");
       bgpstream_log(BGPSTREAM_LOG_ERR, "\tBSF_MGR: can't add prefix");
       return;
     }
@@ -152,7 +155,8 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
     if (bs_filter_mgr->communities == NULL) {
       if ((bs_filter_mgr->communities = kh_init(bgpstream_community_filter)) ==
           NULL) {
-        bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSF_MGR:: add_filter malloc failed");
+        bgpstream_log(BGPSTREAM_LOG_VFINE,
+                      "\tBSF_MGR:: add_filter malloc failed");
         bgpstream_log(BGPSTREAM_LOG_ERR, "\tBSF_MGR: can't allocate memory");
         return;
       }
@@ -187,8 +191,8 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
     } else if (strcmp(filter_value, "6") == 0) {
       bs_filter_mgr->ipversion = BGPSTREAM_ADDR_VERSION_IPV6;
     } else {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "\tBSF_MGR: Unknown IP version %s, ignoring",
-                         filter_value);
+      bgpstream_log(BGPSTREAM_LOG_ERR,
+                    "\tBSF_MGR: Unknown IP version %s, ignoring", filter_value);
     }
     return;
 
@@ -211,7 +215,8 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
 
   if (*v == NULL) {
     if ((*v = bgpstream_str_set_create()) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSF_MGR:: add_filter malloc failed");
+      bgpstream_log(BGPSTREAM_LOG_VFINE,
+                    "\tBSF_MGR:: add_filter malloc failed");
       bgpstream_log(BGPSTREAM_LOG_ERR, "\tBSF_MGR: can't allocate memory");
       return;
     }
@@ -229,8 +234,8 @@ void bgpstream_filter_mgr_rib_period_filter_add(
   assert(bs_filter_mgr != NULL);
   if (period != 0 && bs_filter_mgr->last_processed_ts == NULL) {
     if ((bs_filter_mgr->last_processed_ts = kh_init(collector_ts)) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, 
-        "\tBSF_MGR: can't allocate memory for collectortype map");
+      bgpstream_log(BGPSTREAM_LOG_ERR,
+                    "\tBSF_MGR: can't allocate memory for collectortype map");
     }
   }
   bs_filter_mgr->rib_period = period;
@@ -282,8 +287,9 @@ int bgpstream_filter_mgr_validate(bgpstream_filter_mgr_t *filter_mgr)
       if (tif->end_time != BGPSTREAM_FOREVER &&
           tif->begin_time > tif->end_time) {
         /* invalid interval */
-        fprintf(stderr, "ERROR: Interval %" PRIu32 ",%" PRIu32 " is invalid\n",
-                tif->begin_time, tif->end_time);
+        bgpstream_log(BGPSTREAM_LOG_ERR,
+                      "Interval %" PRIu32 ",%" PRIu32 " is invalid\n",
+                      tif->begin_time, tif->end_time);
         return -1;
       }
 

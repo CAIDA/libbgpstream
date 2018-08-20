@@ -58,9 +58,8 @@ typedef enum {
  * TODO: allow return of fatal and non-fatal errors. This way the reader can
  * know whether it is worth retrying the creation of the format.
  */
-bgpstream_format_t *
-bgpstream_format_create(bgpstream_resource_t *res,
-                        bgpstream_filter_mgr_t *filter_mgr);
+bgpstream_format_t *bgpstream_format_create(bgpstream_resource_t *res,
+                                            bgpstream_filter_mgr_t *filter_mgr);
 
 /** Populate the given record with the next available record from this resource
  *
@@ -114,6 +113,5 @@ void bgpstream_format_destroy_data(bgpstream_record_t *record);
  * @param format        pointer to the format instance to destroy
  */
 void bgpstream_format_destroy(bgpstream_format_t *format);
-
 
 #endif /* __BGPSTREAM_FORMAT_H */

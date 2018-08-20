@@ -49,6 +49,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include "bgpstream_log.h"
 #include "bgpstream_utils_patricia.h"
 #include "bgpstream_utils_pfx.h"
 #include "utils.h"
@@ -153,7 +154,8 @@ static int bgpstream_patricia_tree_result_set_add_node(
     if ((set->result_nodes =
            realloc(set->result_nodes, sizeof(bgpstream_patricia_node_t *) *
                                         set->_alloc_size)) == NULL) {
-      fprintf(stderr, "Error: could not realloc result_nodes in result set\n");
+      bgpstream_log(BGPSTREAM_LOG_ERR,
+                    "could not realloc result_nodes in result set\n");
       return -1;
     }
   }
@@ -190,7 +192,7 @@ bgpstream_patricia_node_create(bgpstream_patricia_tree_t *pt,
     pt->ipv6_active_nodes++;
   }
 
-  bgpstream_pfx_copy((bgpstream_pfx_t*)&node->prefix, pfx);
+  bgpstream_pfx_copy((bgpstream_pfx_t *)&node->prefix, pfx);
 
   node->parent = NULL;
   node->bit = pfx->mask_len;
@@ -539,7 +541,7 @@ bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
   /* if Patricia Tree is empty, then insert new node */
   if (bgpstream_patricia_get_head(pt, v) == NULL) {
     if ((new_node = bgpstream_patricia_node_create(pt, pfx)) == NULL) {
-      fprintf(stderr, "Error creating pt node\n");
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Error creating pt node\n");
       return NULL;
     }
     /* attach first node in Tree */
@@ -646,7 +648,7 @@ bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
 
   /* Create a new node */
   if ((new_node = bgpstream_patricia_node_create(pt, pfx)) == NULL) {
-    fprintf(stderr, "Error creating pt node\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Error creating pt node\n");
     return NULL;
   }
 
@@ -855,9 +857,8 @@ void bgpstream_patricia_tree_remove_node(bgpstream_patricia_tree_t *pt,
     /* otherwise it makes no sense to have a glue node
      * with only one child, the parent has to be removed */
 
-    if (parent->parent ==
-        NULL) { /* if the parent parent is the head, then attach
-                 * the only child directly */
+    if (parent->parent == NULL) { /* if the parent parent is the head, then
+                                   * attach the only child directly */
       assert(parent == bgpstream_patricia_get_head(pt, v));
       bgpstream_patricia_set_head(pt, v, child);
     } else {

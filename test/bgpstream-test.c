@@ -47,15 +47,14 @@ bgpstream_data_interface_option_t *option;
     int ret;                                                                   \
     int counter = 0;                                                           \
     CHECK("stream start (" STR(interface) ")", bgpstream_start(bs) == 0);      \
-    while ((ret = bgpstream_get_next_record(bs, &rec)) > 0) {                   \
+    while ((ret = bgpstream_get_next_record(bs, &rec)) > 0) {                  \
       if (rec->status == BGPSTREAM_RECORD_STATUS_VALID_RECORD) {               \
         counter++;                                                             \
       }                                                                        \
     }                                                                          \
-    CHECK("final return code (" STR(interface) ")",                         \
-          ret == 0);                                                    \
+    CHECK("final return code (" STR(interface) ")", ret == 0);                 \
     CHECK("read records (" STR(interface) ")",                                 \
-          counter == interface##_RECORDS);                              \
+          counter == interface##_RECORDS);                                     \
   } while (0)
 
 #define SETUP                                                                  \
@@ -95,15 +94,15 @@ int test_singlefile()
         (option = bgpstream_get_data_interface_option_by_name(
            bs, di_id, "rib-file")) != NULL);
   CHECK("set option (rib-file)",
-        bgpstream_set_data_interface_option(bs, option,
-                                            "routeviews.route-views.jinx.ribs.1427846400.bz2") == 0);
+        bgpstream_set_data_interface_option(
+          bs, option, "routeviews.route-views.jinx.ribs.1427846400.bz2") == 0);
 
   CHECK("get option (upd-file)",
         (option = bgpstream_get_data_interface_option_by_name(
            bs, di_id, "upd-file")) != NULL);
   CHECK("set option (upd-file)",
-        bgpstream_set_data_interface_option(bs, option,
-                                            "ris.rrc06.updates.1427846400.gz") == 0);
+        bgpstream_set_data_interface_option(
+          bs, option, "ris.rrc06.updates.1427846400.gz") == 0);
 
   RUN(singlefile);
 

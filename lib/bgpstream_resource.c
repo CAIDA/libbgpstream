@@ -29,13 +29,13 @@
  *   Mingwei Zhang
  */
 
+#include "bgpstream_resource.h"
 #include "config.h"
 #include "utils.h"
-#include "bgpstream_resource.h"
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 /** A Type/Value structure for extra information about a specific resource */
 typedef struct attr {
@@ -50,14 +50,11 @@ typedef struct attr {
 
 /* ========== PUBLIC FUNCTIONS BELOW HERE ========== */
 
-bgpstream_resource_t *
-bgpstream_resource_create(bgpstream_resource_transport_type_t transport_type,
-                          bgpstream_resource_format_type_t format_type,
-                          const char *uri,
-                          uint32_t initial_time,
-                          uint32_t duration,
-                          const char *project, const char *collector,
-                          bgpstream_record_type_t record_type)
+bgpstream_resource_t *bgpstream_resource_create(
+  bgpstream_resource_transport_type_t transport_type,
+  bgpstream_resource_format_type_t format_type, const char *uri,
+  uint32_t initial_time, uint32_t duration, const char *project,
+  const char *collector, bgpstream_record_type_t record_type)
 {
   bgpstream_resource_t *res;
 
@@ -82,7 +79,7 @@ bgpstream_resource_create(bgpstream_resource_transport_type_t transport_type,
 
   return res;
 
- err:
+err:
   bgpstream_resource_destroy(res);
   return NULL;
 }
@@ -131,9 +128,8 @@ int bgpstream_resource_set_attr(bgpstream_resource_t *resource,
   return 0;
 }
 
-const char *
-bgpstream_resource_get_attr(bgpstream_resource_t *resource,
-                            bgpstream_resource_attr_type_t type)
+const char *bgpstream_resource_get_attr(bgpstream_resource_t *resource,
+                                        bgpstream_resource_attr_type_t type)
 {
   assert(type >= 0 && type < _BGPSTREAM_RESOURCE_ATTR_CNT);
   if (resource->attrs[type] != NULL) {
@@ -143,11 +139,11 @@ bgpstream_resource_get_attr(bgpstream_resource_t *resource,
   }
 }
 
-int bgpstream_resource_hash_snprintf(char* buf, size_t buf_len, bgpstream_resource_t *res)
+int bgpstream_resource_hash_snprintf(char *buf, size_t buf_len,
+                                     bgpstream_resource_t *res)
 {
-  return snprintf(buf, buf_len,
-                  "%s.%s.%s.%"PRIu32".%"PRIu32,
-                  res->project, res->collector,
+  return snprintf(buf, buf_len, "%s.%s.%s.%" PRIu32 ".%" PRIu32, res->project,
+                  res->collector,
                   res->record_type == BGPSTREAM_RIB ? "ribs" : "updates",
                   res->initial_time, res->duration);
 }

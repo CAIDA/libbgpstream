@@ -38,13 +38,12 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <unistd.h>
 #ifdef WITH_RPKI
 #include "utils/bgpstream_utils_rpki.h"
 #endif
 #include "bgpstream.h"
-#include "getopt.h"
 #include "utils.h"
+#include "getopt.h"
 
 #define PROJECT_CMD_CNT 10
 #define TYPE_CMD_CNT 10
@@ -75,81 +74,112 @@
   "#\n"                                                                        \
   "# <rec-type>: R RIB, U Update\n"                                            \
   "# <elem-type>: R RIB, A announcement, W withdrawal, S state message\n"      \
-  "#\n"                                                                        \
+  "#\n"
 
 #define OPTIONS                                                                \
-  (struct options [])                                                          \
+  (struct options[])                                                           \
   {                                                                            \
-    { { "data-interface", required_argument, 0, 'd'}, "<interface>",           \
-        "use the given data interface to find available data\n"                \
-        "available data interfaces are:" },                                    \
-    { { "filter", required_argument, 0, 'f'}, "<filterstring>",                \
-        "filter records and elements using the rules\n"                        \
-        "described in the given filter string" },                              \
-    { { "interval", required_argument, 0, 'I'}, "<interval>",                  \
-        "process records that were received recently, where the\ninterval "    \
-        "describes how far back in time to go. The\ninterval should be "       \
-        "expressed as '<num> <unit>', where\n<unit> can be one of 's', "       \
-        "'m', 'h', 'd' (seconds,\nminutes, hours, days)." },                   \
-    { { "data-interface-option", required_argument, 0, 'o'},                   \
-        "<option-name=option-value>*", "\nset an option for the current data " \
-        "interface.\nuse '-o ?' to get a list of available options for the "   \
-        "current\ndata interface. (data interface can be selected using -d)" },\
-    { { "project", required_argument, 0, 'p'}, "<project>",                    \
-        "process records from only the given project (routeviews, ris)*" },    \
-    { { "collector", required_argument, 0, 'c'}, "<collector>",                \
-        "process records from only the given collector*" },                    \
-    { { "record-type",required_argument, 0, 't'}, "<type>",                    \
-        "process records with only the given type (ribs, updates)*" },         \
-    { { "time-window", required_argument, 0, 'w'}, "<start>[,<end>]",          \
-        "process records within the given time window\nspecified in Unix "     \
-        "epoch time\n(omitting the end parameter enables live mode)*" },       \
-    { { "rib-period",required_argument, 0, 'P'}, "<period>",                   \
-        "process a rib files every <period> seconds (bgp time)" },             \
-    { { "peer-asn", required_argument, 0, 'j'}, "<peer ASN>",                  \
-        "return valid elems originated by a specific peer ASN*" },             \
-    { { "prefix", required_argument, 0, 'k'}, "<prefix>",                      \
-        "return valid elems associated with a specific prefix*" },             \
-    { { "community", required_argument, 0, 'y'}, "<community>",                \
-        "return valid elems with the specified community*\n"                   \
-        "(format: asn:value,the '*' metacharacter is recognized)" },           \
-    { { "count", required_argument, 0, 'n'}, "<rec-cnt>",                      \
-        "process at most <rec-cnt> records" },                                 \
-    { { "live", no_argument, 0, 'l'}, "",                                      \
-        "enable live mode (make blocking requests for BGP records)\n"          \
-        "allows bgpstream to be used to process data in real-time" },          \
-    { { "output-elems", no_argument, 0, 'e'}, "", "print info "                \
-        "for each element of a valid BGP record (default)" },                  \
-    { { "output-bgpdump", no_argument, 0, 'm'}, "", "print info "              \
-        "for each BGP valid record in bgpdump -m format" },                    \
-    { { "output-records", no_argument, 0, 'r'}, "", "print info "              \
-        "for each BGP record (used mostly for debugging BGPStream)" },         \
-    { { "output-headers", no_argument, 0, 'i'}, "",                            \
-        "print format information before output" },                            \
-    { { "version", no_argument, 0, 'v'},"", "print the version of bgpreader" },\
-    { { "help", no_argument, 0, 'h'}, "", "print this help menu" },            \
-    { { "rpki", no_argument, 0, RPKI_OPTION_DEFAULT}, "", "validate the BGP "  \
-        "records with historical RPKI dumps (default collector)" },            \
-    { { "rpki-live", no_argument, 0, RPKI_OPTION_LIVE}, "", "validate the BGP "\
-        " records with the current RPKI dump (default collector)" },           \
-    { { "rpki-collectors", required_argument, 0, RPKI_OPTION_COLLECTORS},      \
-        "<((*|project):(*|(collector(,collectors)*))(;)?)*>","\nspecify the "  \
-        "collectors used for (historical or live) RPKI validation " },         \
-    { { "rpki-unified", no_argument, 0, RPKI_OPTION_UNIFIED}, "",              \
-        "whether the RPKI validation for different collectors is unified" },   \
-    { { "rpki-ssh", required_argument, 0, RPKI_OPTION_SSH},                    \
-        "<user,hostkey,private key>",                                          \
-        "\nenable SSH encryption for the live connection to the RTR server" }, \
-    { { "help", no_argument, 0, '?'},  "", "print this help menu" },           \
-    { { 0, 0, 0, 0 }, "", "" }                                                 \
+    {{"data-interface", required_argument, 0, 'd'},                            \
+     "<interface>",                                                            \
+     "use the given data interface to find available data\n"                   \
+     "available data interfaces are:"},                                        \
+      {{"filter", required_argument, 0, 'f'},                                  \
+       "<filterstring>",                                                       \
+       "filter records and elements using the rules\n"                         \
+       "described in the given filter string"},                                \
+      {{"interval", required_argument, 0, 'I'},                                \
+       "<interval>",                                                           \
+       "process records that were received recently, where the\ninterval "     \
+       "describes how far back in time to go. The\ninterval should be "        \
+       "expressed as '<num> <unit>', where\n<unit> can be one of 's', "        \
+       "'m', 'h', 'd' (seconds,\nminutes, hours, days)."},                     \
+      {{"data-interface-option", required_argument, 0, 'o'},                   \
+       "<option-name=option-value>*",                                          \
+       "\nset an option for the current data "                                 \
+       "interface.\nuse '-o ?' to get a list of available options for the "    \
+       "current\ndata interface. (data interface can be selected using -d)"},  \
+      {{"project", required_argument, 0, 'p'},                                 \
+       "<project>",                                                            \
+       "process records from only the given project (routeviews, ris)*"},      \
+      {{"collector", required_argument, 0, 'c'},                               \
+       "<collector>",                                                          \
+       "process records from only the given collector*"},                      \
+      {{"record-type", required_argument, 0, 't'},                             \
+       "<type>",                                                               \
+       "process records with only the given type (ribs, updates)*"},           \
+      {{"time-window", required_argument, 0, 'w'},                             \
+       "<start>[,<end>]",                                                      \
+       "process records within the given time window\nspecified in Unix "      \
+       "epoch time\n(omitting the end parameter enables live mode)*"},         \
+      {{"rib-period", required_argument, 0, 'P'},                              \
+       "<period>",                                                             \
+       "process a rib files every <period> seconds (bgp time)"},               \
+      {{"peer-asn", required_argument, 0, 'j'},                                \
+       "<peer ASN>",                                                           \
+       "return valid elems originated by a specific peer ASN*"},               \
+      {{"prefix", required_argument, 0, 'k'},                                  \
+       "<prefix>",                                                             \
+       "return valid elems associated with a specific prefix*"},               \
+      {{"community", required_argument, 0, 'y'},                               \
+       "<community>",                                                          \
+       "return valid elems with the specified community*\n"                    \
+       "(format: asn:value,the '*' metacharacter is recognized)"},             \
+      {{"count", required_argument, 0, 'n'},                                   \
+       "<rec-cnt>",                                                            \
+       "process at most <rec-cnt> records"},                                   \
+      {{"live", no_argument, 0, 'l'},                                          \
+       "",                                                                     \
+       "enable live mode (make blocking requests for BGP records)\n"           \
+       "allows bgpstream to be used to process data in real-time"},            \
+      {{"output-elems", no_argument, 0, 'e'},                                  \
+       "",                                                                     \
+       "print info "                                                           \
+       "for each element of a valid BGP record (default)"},                    \
+      {{"output-bgpdump", no_argument, 0, 'm'},                                \
+       "",                                                                     \
+       "print info "                                                           \
+       "for each BGP valid record in bgpdump -m format"},                      \
+      {{"output-records", no_argument, 0, 'r'},                                \
+       "",                                                                     \
+       "print info "                                                           \
+       "for each BGP record (used mostly for debugging BGPStream)"},           \
+      {{"output-headers", no_argument, 0, 'i'},                                \
+       "",                                                                     \
+       "print format information before output"},                              \
+      {{"version", no_argument, 0, 'v'},                                       \
+       "",                                                                     \
+       "print the version of bgpreader"},                                      \
+      {{"help", no_argument, 0, 'h'}, "", "print this help menu"},             \
+      {{"rpki", no_argument, 0, RPKI_OPTION_DEFAULT},                          \
+       "",                                                                     \
+       "validate the BGP "                                                     \
+       "records with historical RPKI dumps (default collector)"},              \
+      {{"rpki-live", no_argument, 0, RPKI_OPTION_LIVE},                        \
+       "",                                                                     \
+       "validate the BGP "                                                     \
+       " records with the current RPKI dump (default collector)"},             \
+      {{"rpki-collectors", required_argument, 0, RPKI_OPTION_COLLECTORS},      \
+       "<((*|project):(*|(collector(,collectors)*))(;)?)*>",                   \
+       "\nspecify the "                                                        \
+       "collectors used for (historical or live) RPKI validation "},           \
+      {{"rpki-unified", no_argument, 0, RPKI_OPTION_UNIFIED},                  \
+       "",                                                                     \
+       "whether the RPKI validation for different collectors is unified"},     \
+      {{"rpki-ssh", required_argument, 0, RPKI_OPTION_SSH},                    \
+       "<user,hostkey,private key>",                                           \
+       "\nenable SSH encryption for the live connection to the RTR server"},   \
+      {{"help", no_argument, 0, '?'}, "", "print this help menu"},             \
+    {                                                                          \
+      {0, 0, 0, 0}, "", ""                                                     \
+    }                                                                          \
   }
 
 #define OPTIONS_CNT (ARR_CNT(OPTIONS) - 1)
 
-struct options{
+struct options {
   struct option option;
-  char* usage;
-  char* expl;
+  char *usage;
+  char *expl;
 };
 
 enum rpki_options {
@@ -160,7 +190,7 @@ enum rpki_options {
   RPKI_OPTION_DEFAULT = 504
 };
 
-static struct option long_options [OPTIONS_CNT + 1];
+static struct option long_options[OPTIONS_CNT + 1];
 static char short_options[OPTIONS_CNT * 2 + 1];
 
 struct window {
@@ -220,17 +250,17 @@ static void usage()
 {
   int k, j;
   for (k = 0; k < OPTIONS_CNT - 1; k++) {
-    if(!k) {
+    if (!k) {
       fprintf(stderr, "usage: bgpreader -w <start>[,<end>] [<options>]\n"
-        "Available options are:\n");
+                      "Available options are:\n");
     }
 
     char expl_buf[OPTIONS_EXPL_LEN] = {0};
     for (j = 0; j < strlen(OPTIONS[k].expl); j++) {
       snprintf(expl_buf + strlen(expl_buf), sizeof(expl_buf) - strlen(expl_buf),
-               OPTIONS[k].expl[j] == '\n' ? "%-48c": "%c", OPTIONS[k].expl[j]);
+               OPTIONS[k].expl[j] == '\n' ? "%-48c" : "%c", OPTIONS[k].expl[j]);
     }
-    if(isalpha(OPTIONS[k].option.val)) {
+    if (isalpha(OPTIONS[k].option.val)) {
       fprintf(stderr, " -%c, --%-23s%-15s  %s\n", OPTIONS[k].option.val,
               OPTIONS[k].option.name, OPTIONS[k].usage, expl_buf);
     } else {
@@ -239,7 +269,7 @@ static void usage()
               OPTIONS[k].usage, expl_buf);
 #endif
     }
-    if(OPTIONS[k].option.val == 'd') {
+    if (OPTIONS[k].option.val == 'd') {
       data_if_usage();
     }
   }
@@ -250,7 +280,8 @@ static void usage()
 
 static int print_record(bgpstream_record_t *record);
 static int print_elem(bgpstream_record_t *record, bgpstream_elem_t *elem);
-static int print_elem_bgpdump(bgpstream_record_t *record, bgpstream_elem_t *elem);
+static int print_elem_bgpdump(bgpstream_record_t *record,
+                              bgpstream_elem_t *elem);
 
 int main(int argc, char *argv[])
 {
@@ -324,9 +355,9 @@ int main(int argc, char *argv[])
   int k;
   for (k = 0; k < OPTIONS_CNT; k++) {
     size_t size = strlen(short_options);
-    if(isalpha(OPTIONS[k].option.val)) {
+    if (isalpha(OPTIONS[k].option.val)) {
       snprintf(short_options + size, sizeof(short_options) - size,
-               OPTIONS[k].option.has_arg ? "%c:": "%c", OPTIONS[k].option.val);
+               OPTIONS[k].option.has_arg ? "%c:" : "%c", OPTIONS[k].option.val);
     }
     long_options[k] = OPTIONS[k].option;
   }
@@ -341,8 +372,9 @@ int main(int argc, char *argv[])
     switch (opt) {
     case 'p':
       if (projects_cnt == PROJECT_CMD_CNT) {
-        fprintf(stderr, "ERROR: A maximum of %d projects can be specified on "
-                        "the command line\n",
+        fprintf(stderr,
+                "ERROR: A maximum of %d projects can be specified on "
+                "the command line\n",
                 PROJECT_CMD_CNT);
         usage();
         goto err;
@@ -351,8 +383,9 @@ int main(int argc, char *argv[])
       break;
     case 'c':
       if (collectors_cnt == COLLECTOR_CMD_CNT) {
-        fprintf(stderr, "ERROR: A maximum of %d collectors can be specified on "
-                        "the command line\n",
+        fprintf(stderr,
+                "ERROR: A maximum of %d collectors can be specified on "
+                "the command line\n",
                 COLLECTOR_CMD_CNT);
         usage();
         goto err;
@@ -361,8 +394,9 @@ int main(int argc, char *argv[])
       break;
     case 't':
       if (types_cnt == TYPE_CMD_CNT) {
-        fprintf(stderr, "ERROR: A maximum of %d types can be specified on "
-                        "the command line\n",
+        fprintf(stderr,
+                "ERROR: A maximum of %d types can be specified on "
+                "the command line\n",
                 TYPE_CMD_CNT);
         usage();
         goto err;
@@ -371,8 +405,9 @@ int main(int argc, char *argv[])
       break;
     case 'w':
       if (windows_cnt == WINDOW_CMD_CNT) {
-        fprintf(stderr, "ERROR: A maximum of %d windows can be specified on "
-                        "the command line\n",
+        fprintf(stderr,
+                "ERROR: A maximum of %d windows can be specified on "
+                "the command line\n",
                 WINDOW_CMD_CNT);
         usage();
         goto err;
@@ -390,8 +425,9 @@ int main(int argc, char *argv[])
       break;
     case 'j':
       if (peerasns_cnt == PEERASN_CMD_CNT) {
-        fprintf(stderr, "ERROR: A maximum of %d peer asns can be specified on "
-                        "the command line\n",
+        fprintf(stderr,
+                "ERROR: A maximum of %d peer asns can be specified on "
+                "the command line\n",
                 PEERASN_CMD_CNT);
         usage();
         goto err;
@@ -400,8 +436,9 @@ int main(int argc, char *argv[])
       break;
     case 'k':
       if (prefixes_cnt == PREFIX_CMD_CNT) {
-        fprintf(stderr, "ERROR: A maximum of %d peer asns can be specified on "
-                        "the command line\n",
+        fprintf(stderr,
+                "ERROR: A maximum of %d peer asns can be specified on "
+                "the command line\n",
                 PREFIX_CMD_CNT);
         usage();
         goto err;
@@ -526,7 +563,8 @@ int main(int argc, char *argv[])
         goto err;
       }
       if (bgpstream_set_data_interface_option(bs, option, endp) != 0) {
-        fprintf(stderr, "ERROR: Failed to set option '%s' for data interface '%s'\n",
+        fprintf(stderr,
+                "ERROR: Failed to set option '%s' for data interface '%s'\n",
                 interface_options[i], di_info->name);
         usage();
         goto err;
@@ -552,9 +590,9 @@ int main(int argc, char *argv[])
 
   /* Cannot output in both bgpstream elem and bgpdump format
    */
-  if(elem_output_on == 1 && record_bgpdump_output_on == 1){
-    fprintf(stderr,
-            "ERROR: Cannot output in both bgpstream elem (-e) and bgpdump format (-m).\n");
+  if (elem_output_on == 1 && record_bgpdump_output_on == 1) {
+    fprintf(stderr, "ERROR: Cannot output in both bgpstream elem (-e) and "
+                    "bgpdump format (-m).\n");
     usage();
     goto err;
   }
@@ -654,9 +692,9 @@ int main(int argc, char *argv[])
 
 #ifdef WITH_RPKI
   rpki_cfg_t *cfg = NULL;
-  if(rpki_input != NULL && rpki_input->rpki_active){
+  if (rpki_input != NULL && rpki_input->rpki_active) {
     memcpy(&rpki_windows, &windows, sizeof(rpki_windows));
-    if(!bgpstream_rpki_parse_windows(rpki_input, rpki_windows, windows_cnt)) {
+    if (!bgpstream_rpki_parse_windows(rpki_input, rpki_windows, windows_cnt)) {
       fprintf(stderr, "ERROR: Could not parse BGPStream windows\n");
       goto err;
     }
@@ -687,19 +725,19 @@ int main(int argc, char *argv[])
     if (record_bgpdump_output_on || elem_output_on) {
       while ((erc = bgpstream_record_get_next_elem(bs_record, &bs_elem)) > 0) {
 #ifdef WITH_RPKI
-        if(rpki_input != NULL && rpki_input->rpki_active){
+        if (rpki_input != NULL && rpki_input->rpki_active) {
           bs_elem->annotations.cfg = cfg;
           bs_elem->annotations.rpki_active = rpki_input->rpki_active;
           bs_elem->annotations.timestamp = bs_record->time_sec;
         }
 #endif
         // print record following bgpdump format
-        if (record_bgpdump_output_on && print_elem_bgpdump(bs_record, bs_elem) != 0) {
+        if (record_bgpdump_output_on &&
+            print_elem_bgpdump(bs_record, bs_elem) != 0) {
           goto err;
-        } else if (elem_output_on && print_elem(bs_record, bs_elem) != 0){
+        } else if (elem_output_on && print_elem(bs_record, bs_elem) != 0) {
           goto err;
         }
-
       }
 
       if (erc != 0) {
@@ -721,13 +759,13 @@ int main(int argc, char *argv[])
   }
 
 #ifdef WITH_RPKI
-  if(rpki_input != NULL && rpki_input->rpki_active){
+  if (rpki_input != NULL && rpki_input->rpki_active) {
     bgpstream_rpki_destroy_cfg(cfg);
     bgpstream_rpki_destroy_input(rpki_input);
   }
 #endif
 
- done:
+done:
   /* deallocate memory for interface */
   bgpstream_destroy(bs);
   return 0;
@@ -735,7 +773,7 @@ int main(int argc, char *argv[])
 err:
   bgpstream_destroy(bs);
 #ifdef WITH_RPKI
-  if(rpki_input != NULL && rpki_input->rpki_active){
+  if (rpki_input != NULL && rpki_input->rpki_active) {
     bgpstream_rpki_destroy_cfg(cfg);
     bgpstream_rpki_destroy_input(rpki_input);
   }
@@ -767,9 +805,11 @@ static int print_elem(bgpstream_record_t *record, bgpstream_elem_t *elem)
   return 0;
 }
 
-static int print_elem_bgpdump(bgpstream_record_t *record, bgpstream_elem_t *elem)
+static int print_elem_bgpdump(bgpstream_record_t *record,
+                              bgpstream_elem_t *elem)
 {
-  if (bgpstream_record_elem_bgpdump_snprintf(buf, sizeof(buf), record, elem) == NULL) {
+  if (bgpstream_record_elem_bgpdump_snprintf(buf, sizeof(buf), record, elem) ==
+      NULL) {
     fprintf(stderr, "ERROR: Could not convert record/elem to string\n");
     return -1;
   }

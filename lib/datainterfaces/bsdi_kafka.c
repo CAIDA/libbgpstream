@@ -48,8 +48,8 @@ static char *type_strs[] = {
 
 // allowed offset types
 static char *offset_strs[] = {
-  "earliest",     // start from the beginning of the topic
-  "latest",       // start from the end of the topic
+  "earliest", // start from the beginning of the topic
+  "latest",   // start from the end of the topic
 };
 
 /* ---------- START CLASS DEFINITION ---------- */
@@ -91,43 +91,39 @@ static bgpstream_data_interface_option_t options[] = {
   /* Initial offset */
   {
     BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
-    OPTION_OFFSET,             // internal ID
+    OPTION_OFFSET,                  // internal ID
     "offset",                       // name
     "initial offset (earliest/latest) (default: " DEFAULT_OFFSET ")",
   },
   /* Data type */
   {
     BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
-    OPTION_DATA_TYPE,                    // internal ID
-    "data-type",                         // name
+    OPTION_DATA_TYPE,               // internal ID
+    "data-type",                    // name
     "data type (mrt/bmp/ripejson) (default: bmp)",
   },
   /* Project */
   {
     BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
-    OPTION_PROJECT,                      // internal ID
-    "project",                           // name
+    OPTION_PROJECT,                 // internal ID
+    "project",                      // name
     "set project name (default: unset)",
   },
   /* Collector */
   {
     BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
-    OPTION_COLLECTOR,                    // internal ID
-    "collector",                         // name
+    OPTION_COLLECTOR,               // internal ID
+    "collector",                    // name
     "set collector name (default: unset)",
   },
 };
 
 /* create the class structure for this data interface */
-BSDI_CREATE_CLASS(
-  kafka,
-  BGPSTREAM_DATA_INTERFACE_KAFKA,
-  "Read updates in real-time from an Apache Kafka topic",
-  options
-);
+BSDI_CREATE_CLASS(kafka, BGPSTREAM_DATA_INTERFACE_KAFKA,
+                  "Read updates in real-time from an Apache Kafka topic",
+                  options);
 
 /* ---------- END CLASS DEFINITION ---------- */
-
 
 typedef struct bsdi_kafka_state {
   /* user-provided options: */
@@ -198,8 +194,8 @@ int bsdi_kafka_start(bsdi_t *di)
 }
 
 int bsdi_kafka_set_option(bsdi_t *di,
-                           const bgpstream_data_interface_option_t *option_type,
-                           const char *option_value)
+                          const bgpstream_data_interface_option_t *option_type,
+                          const char *option_value)
 {
   int i;
   int found = 0;

@@ -97,8 +97,7 @@ struct bgpstream_format {
    * @return 1 if a valid elem was returned, 0 if there are no more elems, -1 if
    * an error occurred.
    */
-  int (*get_next_elem)(bgpstream_format_t *format,
-                       bgpstream_record_t *record,
+  int (*get_next_elem)(bgpstream_format_t *format, bgpstream_record_t *record,
                        bgpstream_elem_t **elem);
 
   /** Initialize/create the given format-specific record data
