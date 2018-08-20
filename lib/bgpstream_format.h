@@ -36,7 +36,9 @@ typedef struct bgpstream_format bgpstream_format_t;
 /** Return codes for the populate_record method */
 typedef enum {
   BGPSTREAM_FORMAT_OK,
-  // all status codes other than OK signal EOF
+  BGPSTREAM_FORMAT_CORRUPTED_MSG,
+  BGPSTREAM_FORMAT_UNSUPPORTED_MSG,
+  // all status codes below signal EOF
   BGPSTREAM_FORMAT_FILTERED_DUMP,
   BGPSTREAM_FORMAT_EMPTY_DUMP,
   BGPSTREAM_FORMAT_CANT_OPEN_DUMP,

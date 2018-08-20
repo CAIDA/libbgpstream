@@ -404,10 +404,17 @@ bgpstream_format_status_t
 bs_format_bmp_populate_record(bgpstream_format_t *format,
                               bgpstream_record_t *record)
 {
-  return bgpstream_parsebgp_populate_record(&STATE->decoder, RDATA->msg, format,
+  bgpstream_format_status_t rc =  bgpstream_parsebgp_populate_record(&STATE->decoder, RDATA->msg, format,
                                             record,
                                             populate_prep_cb,
                                             populate_filter_cb);
+
+  if(record->status != BGPSTREAM_RECORD_STATUS_VALID_RECORD){
+    record->router_name[0] = '\0';
+    record->router_ip.version = 0;
+  }
+
+  return rc;
 }
 
 int bs_format_bmp_get_next_elem(bgpstream_format_t *format,

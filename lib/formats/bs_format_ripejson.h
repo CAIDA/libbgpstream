@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The Regents of the University of California.
+ * Copyright (C) 2015 The Regents of the University of California.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -24,45 +24,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "bgpstream_transport_interface.h"
-#include "bgpstream_log.h"
-#include "bs_transport_file.h"
-#include "wandio.h"
-#include "wandio_utils.h"
+#ifndef __BS_FORMAT_RIPEJSON_H
+#define __BS_FORMAT_RIPEJSON_H
 
-int bs_transport_file_create(bgpstream_transport_t *transport)
-{
-  io_t *fh = NULL;
+#include "bgpstream_format_interface.h"
 
-  BS_TRANSPORT_SET_METHODS(file, transport);
+BS_FORMAT_GENERATE_PROTOS(ripejson);
 
-  if ((fh = wandio_create(transport->res->uri)) == NULL) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for reading",
-                  transport->res->uri);
-    return -1;
-  }
-
-  transport->state = fh;
-
-  return 0;
-}
-
-int64_t bs_transport_file_read(bgpstream_transport_t *transport,
-                               uint8_t *buffer, int64_t len)
-{
-  return wandio_read((io_t*)transport->state, buffer, len);
-}
-
-int64_t bs_transport_file_readline(bgpstream_transport_t *transport,
-                               uint8_t *buffer, int64_t len)
-{
-  return wandio_fgets((io_t*)transport->state, buffer, len, 1);
-}
-
-void bs_transport_file_destroy(bgpstream_transport_t *transport)
-{
-  if (transport->state != NULL) {
-    wandio_destroy((io_t*)transport->state);
-    transport->state = NULL;
-  }
-}
+#endif /* __BS_FORMAT_RIPEJSON_H */

@@ -295,6 +295,22 @@ static int handle_err_msg(bgpstream_transport_t *transport,
   return -1;
 }
 
+int64_t bs_transport_kafka_readline(bgpstream_transport_t *transport,
+                                uint8_t *buffer, int64_t len)
+{
+  int rc = bs_transport_kafka_read(transport, buffer, len-1);
+
+  if(rc<=0){
+    return rc;
+  }
+
+  buffer[rc]='\0';
+  // NOTE: we assume there is only one line per kafka message
+  assert(strchr((char*)buffer, '\n') == NULL);
+
+  return rc;
+}
+
 int64_t bs_transport_kafka_read(bgpstream_transport_t *transport,
                                 uint8_t *buffer, int64_t len)
 {

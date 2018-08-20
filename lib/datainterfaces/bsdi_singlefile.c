@@ -41,8 +41,9 @@
 
 // mapping from type name to resource format type
 static char *type_strs[] = {
-  "mrt", // BGPSTREAM_RESOURCE_FORMAT_MRT
-  "bmp", // BGPSTREAM_RESOURCE_FORMAT_BMP
+  "mrt",                        // BGPSTREAM_RESOURCE_FORMAT_MRT
+  "bmp",                        // BGPSTREAM_RESOURCE_FORMAT_BMP
+  "ripejson",                   // BGPSTREAM_RESOURCE_FORMAT_RIPEJSON
 };
 
 /* ---------- START CLASS DEFINITION ---------- */
@@ -79,7 +80,7 @@ static bgpstream_data_interface_option_t options[] = {
     "updates mrt file to read (default: " STR(
       BGPSTREAM_DI_SINGLEFILE_UPDATE_FILE) ")",
   },
-  /* RIB file type */
+  /* Update file type */
   {
     BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
     OPTION_UPDATE_TYPE, // internal ID

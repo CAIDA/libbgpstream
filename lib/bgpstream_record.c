@@ -410,8 +410,8 @@ int bgpstream_record_status_snprintf(char *buf, size_t len,
   case BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD:
     buf[0] = 'R';
     break;
-  default:
-    buf[0] = '?';
+  case BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD:
+    buf[0] = 'U';
     break;
   }
   buf[1] = '\0';

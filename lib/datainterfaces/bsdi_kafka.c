@@ -41,8 +41,9 @@
 
 // mapping from type name to resource format type
 static char *type_strs[] = {
-  "mrt", // BGPSTREAM_RESOURCE_FORMAT_MRT
-  "bmp", // BGPSTREAM_RESOURCE_FORMAT_BMP
+  "mrt",      // BGPSTREAM_RESOURCE_FORMAT_MRT
+  "bmp",      // BGPSTREAM_RESOURCE_FORMAT_BMP
+  "ripejson", // BGPSTREAM_RESOURCE_FORMAT_RIPEJSON
 };
 
 // allowed offset types
@@ -99,7 +100,7 @@ static bgpstream_data_interface_option_t options[] = {
     BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
     OPTION_DATA_TYPE,                    // internal ID
     "data-type",                         // name
-    "data type (mrt/bmp) (default: bmp)",
+    "data type (mrt/bmp/ripejson) (default: bmp)",
   },
   /* Project */
   {

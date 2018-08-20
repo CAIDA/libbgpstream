@@ -119,3 +119,9 @@ void bgpstream_transport_destroy(bgpstream_transport_t *transport)
 
   free(transport);
 }
+
+int64_t bgpstream_transport_readline(bgpstream_transport_t *transport,
+                                 void *buffer, int64_t len)
+{
+  return transport->readline(transport, buffer, len);
+}

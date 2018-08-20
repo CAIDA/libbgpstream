@@ -55,6 +55,14 @@ bgpstream_transport_create(bgpstream_resource_t *res);
 int64_t bgpstream_transport_read(bgpstream_transport_t *transport,
                                  void *buffer, int64_t len);
 
+/** Read one line from the given transport handler
+ *
+ * @param transport     pointer to a transport handler to read from
+ * @return the number of bytes read if successful, -1 otherwise
+ */
+int64_t bgpstream_transport_readline(bgpstream_transport_t *transport,
+                                 void *buffer, int64_t len);
+
 /** Shutdown and destroy the given transport handler
  *
  * @param transport     pointer to a transport handler to destroy
