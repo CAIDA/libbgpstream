@@ -52,19 +52,16 @@ static bgpstream_data_interface_option_t options[] = {
   /* SQLITE database file name */
   {
     BGPSTREAM_DATA_INTERFACE_SQLITE, // interface ID
-    OPTION_DB_FILE, // internal ID
-    "db-file", // name
+    OPTION_DB_FILE,                  // internal ID
+    "db-file",                       // name
     "SQLite database file (default: " STR(BGPSTREAM_DI_SQLITE_DB_FILE) ")",
   },
 };
 
 /* create the class structure for this data interface */
-BSDI_CREATE_CLASS(
-  sqlite,
-  BGPSTREAM_DATA_INTERFACE_SQLITE,
-  "Retrieve metadata information from an SQLite database",
-  options
-);
+BSDI_CREATE_CLASS(sqlite, BGPSTREAM_DATA_INTERFACE_SQLITE,
+                  "Retrieve metadata information from an SQLite database",
+                  options);
 
 /* ---------- END CLASS DEFINITION ---------- */
 
@@ -100,23 +97,23 @@ typedef struct bsdi_sqlite_state {
   do {                                                                         \
     size_t len = strlen(str);                                                  \
     if (rem_buf_space < len + 1) {                                             \
-      goto err;                                                         \
+      goto err;                                                                \
     }                                                                          \
-    strncat(STATE->query_buf, str, rem_buf_space);                            \
+    strncat(STATE->query_buf, str, rem_buf_space);                             \
     rem_buf_space -= len;                                                      \
   } while (0)
 
 static int prepare_db(bsdi_t *di)
 {
-  if (sqlite3_open_v2(STATE->db_file, &STATE->db, SQLITE_OPEN_READONLY, NULL)
-      != SQLITE_OK) {
+  if (sqlite3_open_v2(STATE->db_file, &STATE->db, SQLITE_OPEN_READONLY, NULL) !=
+      SQLITE_OK) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "can't open database: %s",
                   sqlite3_errmsg(STATE->db));
     return -1;
   }
 
-  if (sqlite3_prepare_v2(STATE->db, STATE->query_buf, -1, &STATE->stmt, NULL)
-      != SQLITE_OK) {
+  if (sqlite3_prepare_v2(STATE->db, STATE->query_buf, -1, &STATE->stmt, NULL) !=
+      SQLITE_OK) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "failed to prepare statement: %s",
                   sqlite3_errmsg(STATE->db));
     return -1;
@@ -274,7 +271,7 @@ static int build_query(bsdi_t *di)
 
   return 0;
 
- err:
+err:
   return -1;
 }
 
@@ -345,8 +342,7 @@ int bsdi_sqlite_update_resources(bsdi_t *di)
 
   while ((rc = sqlite3_step(STATE->stmt)) != SQLITE_DONE) {
     if (rc != SQLITE_ROW) {
-      bgpstream_log(BGPSTREAM_LOG_ERR,
-                    "error while stepping through results");
+      bgpstream_log(BGPSTREAM_LOG_ERR, "error while stepping through results");
       goto err;
     }
 
@@ -367,16 +363,10 @@ int bsdi_sqlite_update_resources(bsdi_t *di)
     uint32_t file_time = sqlite3_column_int(STATE->stmt, 5);
     uint32_t duration = sqlite3_column_int(STATE->stmt, 4);
 
-    if (bgpstream_resource_mgr_push(BSDI_GET_RES_MGR(di),
-                                    BGPSTREAM_RESOURCE_TRANSPORT_FILE,
-                                    BGPSTREAM_RESOURCE_FORMAT_MRT,
-                                    path,
-                                    file_time,
-                                    duration,
-                                    proj,
-                                    coll,
-                                    type,
-                                    NULL) < 0) {
+    if (bgpstream_resource_mgr_push(
+          BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_FILE,
+          BGPSTREAM_RESOURCE_FORMAT_MRT, path, file_time, duration, proj, coll,
+          type, NULL) < 0) {
       goto err;
     }
   }
@@ -384,7 +374,6 @@ int bsdi_sqlite_update_resources(bsdi_t *di)
   sqlite3_reset(STATE->stmt);
   return 0;
 
- err:
+err:
   return -1;
 }
-

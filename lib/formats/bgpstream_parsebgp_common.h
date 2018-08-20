@@ -187,7 +187,7 @@ typedef enum {
  *
  * It is the responsibility of the callee to set the record timestamp fields.
  */
-typedef bgpstream_parsebgp_check_filter_rc_t (
+typedef bgpstream_parsebgp_check_filter_rc_t(
   bgpstream_parsebgp_check_filter_cb_t)(bgpstream_format_t *format,
                                         bgpstream_record_t *record,
                                         parsebgp_msg_t *msg);
@@ -203,9 +203,9 @@ typedef bgpstream_parsebgp_check_filter_rc_t (
  * @param record        pointer to the record being populated
  * @return 0 if successful, -1 otherwise
  */
-typedef int (bgpstream_parsebgp_prep_buf_cb_t)(bgpstream_format_t *format,
-                                               uint8_t *buf, size_t *len,
-                                               bgpstream_record_t *record);
+typedef int(bgpstream_parsebgp_prep_buf_cb_t)(bgpstream_format_t *format,
+                                              uint8_t *buf, size_t *len,
+                                              bgpstream_record_t *record);
 
 /** Use libparsebgp to decode a message */
 bgpstream_format_status_t bgpstream_parsebgp_populate_record(

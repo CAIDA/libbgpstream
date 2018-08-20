@@ -112,12 +112,12 @@ struct bgpstream_resource_mgr {
 
   // borrowed pointer to a filter manager instance
   bgpstream_filter_mgr_t *filter_mgr;
-
 };
 
 static int open_batch(bgpstream_resource_mgr_t *q, struct res_group *gp);
 
-static void res_list_destroy(struct res_list_elem *l, int destroy_resource) {
+static void res_list_destroy(struct res_list_elem *l, int destroy_resource)
+{
   if (l == NULL) {
     return;
   }
@@ -154,8 +154,7 @@ static struct res_list_elem *res_list_elem_create(bgpstream_resource_t *res)
   return el;
 }
 
-static int open_res_list(bgpstream_resource_mgr_t *q,
-                         struct res_group *gp,
+static int open_res_list(bgpstream_resource_mgr_t *q, struct res_group *gp,
                          struct res_list_elem *el)
 {
   while (el != NULL) {
@@ -166,10 +165,10 @@ static int open_res_list(bgpstream_resource_mgr_t *q,
       continue;
     }
     // open this resource
-    if ((el->reader =
-         bgpstream_reader_create(el->res, q->filter_mgr)) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_ERR,
-                    "Failed to open resource: %s", el->res->uri);
+    if ((el->reader = bgpstream_reader_create(el->res, q->filter_mgr)) ==
+        NULL) {
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to open resource: %s",
+                    el->res->uri);
       return -1;
     }
     // update stats
@@ -201,14 +200,15 @@ static int open_group(bgpstream_resource_mgr_t *q, struct res_group *gp)
   return 0;
 }
 
-static void res_group_destroy(struct res_group *g, int destroy_resource) {
+static void res_group_destroy(struct res_group *g, int destroy_resource)
+{
   if (g == NULL) {
     return;
   }
   g->prev = NULL;
   g->next = NULL;
   int i;
-  for (i=0; i<_BGPSTREAM_RECORD_TYPE_CNT; i++) {
+  for (i = 0; i < _BGPSTREAM_RECORD_TYPE_CNT; i++) {
     res_list_destroy(g->res_list[i], destroy_resource);
     g->res_list[i] = NULL;
   }
@@ -264,7 +264,8 @@ static struct res_group *res_group_create(struct res_list_elem *el)
   update_overlap(gp, el);
 
   gp->res_list[el->res->record_type] = el;
-  el->next = NULL; el->prev = NULL;
+  el->next = NULL;
+  el->prev = NULL;
   gp->res_cnt = 1;
 
   if (el->reader != NULL) {
@@ -279,8 +280,7 @@ static struct res_group *res_group_create(struct res_list_elem *el)
   return gp;
 }
 
-static int res_group_add(bgpstream_resource_mgr_t *q,
-                         struct res_group *gp,
+static int res_group_add(bgpstream_resource_mgr_t *q, struct res_group *gp,
                          struct res_list_elem *el)
 {
   int is_dirty = 0;
@@ -442,13 +442,12 @@ static int insert_resource_elem(bgpstream_resource_mgr_t *q,
   // we're done!
   return dirty_cnt;
 
- err:
+err:
   res_group_destroy(gp, 1);
   return -1;
 }
 
-static void pop_res_el(bgpstream_resource_mgr_t *q,
-                       struct res_group *gp,
+static void pop_res_el(bgpstream_resource_mgr_t *q, struct res_group *gp,
                        struct res_list_elem *el)
 {
   // disconnect from the list
@@ -519,8 +518,7 @@ static void reap_groups(bgpstream_resource_mgr_t *q)
   }
 }
 
-static int sort_res_list(bgpstream_resource_mgr_t *q,
-                         struct res_group *gp,
+static int sort_res_list(bgpstream_resource_mgr_t *q, struct res_group *gp,
                          struct res_list_elem *el)
 {
   struct res_list_elem *el_nxt;
@@ -551,8 +549,7 @@ static int sort_res_list(bgpstream_resource_mgr_t *q,
   return dirty_cnt;
 }
 
-static int sort_group(bgpstream_resource_mgr_t *q,
-                      struct res_group *gp)
+static int sort_group(bgpstream_resource_mgr_t *q, struct res_group *gp)
 {
   int dirty_up = 0, dirty_rib = 0;
 
@@ -615,8 +612,7 @@ static int open_batch(bgpstream_resource_mgr_t *q, struct res_group *gp)
   int first = 1;
   uint32_t last_overlap_end = 0;
 
-  while (cur != NULL &&
-         (first != 0 || last_overlap_end > cur->overlap_start)) {
+  while (cur != NULL && (first != 0 || last_overlap_end > cur->overlap_start)) {
     // this is included in the batch
 
     if (open_group(q, cur) != 0) {
@@ -801,8 +797,7 @@ bgpstream_resource_mgr_create(bgpstream_filter_mgr_t *filter_mgr)
   return q;
 }
 
-void
-bgpstream_resource_mgr_destroy(bgpstream_resource_mgr_t *q)
+void bgpstream_resource_mgr_destroy(bgpstream_resource_mgr_t *q)
 {
   if (q == NULL) {
     return;
@@ -822,16 +817,13 @@ bgpstream_resource_mgr_destroy(bgpstream_resource_mgr_t *q)
   free(q);
 }
 
-int
-bgpstream_resource_mgr_push(bgpstream_resource_mgr_t *q,
-                            bgpstream_resource_transport_type_t transport_type,
-                            bgpstream_resource_format_type_t format_type,
-                            const char *uri,
-                            uint32_t initial_time,
-                            uint32_t duration,
-                            const char *project, const char *collector,
-                            bgpstream_record_type_t record_type,
-                            bgpstream_resource_t **resp)
+int bgpstream_resource_mgr_push(
+  bgpstream_resource_mgr_t *q,
+  bgpstream_resource_transport_type_t transport_type,
+  bgpstream_resource_format_type_t format_type, const char *uri,
+  uint32_t initial_time, uint32_t duration, const char *project,
+  const char *collector, bgpstream_record_type_t record_type,
+  bgpstream_resource_t **resp)
 {
   bgpstream_resource_t *res = NULL;
   struct res_list_elem *el = NULL;
@@ -870,21 +862,19 @@ bgpstream_resource_mgr_push(bgpstream_resource_mgr_t *q,
   }
   return 1;
 
- err:
+err:
   res_list_destroy(el, 1);
   bgpstream_resource_destroy(res);
   return -1;
 }
 
-int
-bgpstream_resource_mgr_empty(bgpstream_resource_mgr_t *q)
+int bgpstream_resource_mgr_empty(bgpstream_resource_mgr_t *q)
 {
   return (q->head == NULL);
 }
 
-int
-bgpstream_resource_mgr_get_record(bgpstream_resource_mgr_t *q,
-                                  bgpstream_record_t **record)
+int bgpstream_resource_mgr_get_record(bgpstream_resource_mgr_t *q,
+                                      bgpstream_record_t **record)
 {
   int rs = BGPSTREAM_READER_STATUS_EOS;
   int dirty_cnt = 0;
@@ -906,9 +896,9 @@ bgpstream_resource_mgr_get_record(bgpstream_resource_mgr_t *q,
       if (open_batch(q, q->head) != 0) {
         goto err;
       }
-      // its possible that the timestamp of the first record in a dump file doesn't
-      // match the initial time reported to us from the broker (e.g., in the
-      // case of filtering), so we re-sort the batch before we read anything
+      // its possible that the timestamp of the first record in a dump file
+      // doesn't match the initial time reported to us from the broker (e.g., in
+      // the case of filtering), so we re-sort the batch before we read anything
       // from it.
       if ((dirty_cnt = sort_batch(q)) < 0) {
         goto err;
@@ -929,6 +919,6 @@ bgpstream_resource_mgr_get_record(bgpstream_resource_mgr_t *q,
     // the case of EOS)
   }
 
- err:
+err:
   return -1;
 }

@@ -29,26 +29,26 @@
 
 #include <stdarg.h>
 
-#define BGPSTREAM_LOG_ERR     0
-#define BGPSTREAM_LOG_WARN   10
-#define BGPSTREAM_LOG_INFO   20
+#define BGPSTREAM_LOG_ERR 0
+#define BGPSTREAM_LOG_WARN 10
+#define BGPSTREAM_LOG_INFO 20
 #define BGPSTREAM_LOG_CONFIG 30
-#define BGPSTREAM_LOG_FINE   40
-#define BGPSTREAM_LOG_VFINE  50
+#define BGPSTREAM_LOG_FINE 40
+#define BGPSTREAM_LOG_VFINE 50
 #define BGPSTREAM_LOG_FINEST 60
 
 // TODO: move this to configure (or even an API call)
 #define BGPSTREAM_LOG_LEVEL BGPSTREAM_LOG_INFO
 
-#define bgpstream_log(level, ...) \
-    do { \
-	if ((level) <= BGPSTREAM_LOG_LEVEL) { \
-	    bgpstream_log_func((level), __FILE__, __LINE__, __VA_ARGS__); \
-	} \
-    } while (0)
+#define bgpstream_log(level, ...)                                              \
+  do {                                                                         \
+    if ((level) <= BGPSTREAM_LOG_LEVEL) {                                      \
+      bgpstream_log_func((level), __FILE__, __LINE__, __VA_ARGS__);            \
+    }                                                                          \
+  } while (0)
 
 void bgpstream_log_func(int level, const char *file, int line,
-                        const char * format, ...)
-  __attribute__ ((format (printf, 4, 5)));
+                        const char *format, ...)
+  __attribute__((format(printf, 4, 5)));
 
 #endif /* _BGPSTREAM_DEBUG_H */

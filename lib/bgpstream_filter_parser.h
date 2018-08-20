@@ -26,7 +26,6 @@
  * Author: Shane Alcock <salcock@waikato.ac.nz>
  */
 
-
 #ifndef BGPSTREAM_FILTER_PARSER_H_
 #define BGPSTREAM_FILTER_PARSER_H_
 

@@ -27,8 +27,8 @@
 #ifndef _BGPSTREAM_INT_H
 #define _BGPSTREAM_INT_H
 
+#include "bgpstream_record_int.h"
 #include "bgpstream.h"
 #include "bgpstream_filter.h"
-#include "bgpstream_record_int.h"
 
 #endif /* _BGPSTREAM_INT_H */

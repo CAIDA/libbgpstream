@@ -24,15 +24,16 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "bgpstream_log.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-#include <time.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h> // getpid()
-#include "bgpstream_log.h"
 
-void bgpstream_log_func(int level, const char *file, int line, const char *fmt, ...)
+void bgpstream_log_func(int level, const char *file, int line, const char *fmt,
+                        ...)
 {
   va_list va_ap;
 
@@ -42,8 +43,8 @@ void bgpstream_log_func(int level, const char *file, int line, const char *fmt, 
   if (level <= BGPSTREAM_LOG_LEVEL) {
     char msgbuf[4096];
     va_start(va_ap, fmt);
-    vsnprintf(msgbuf, sizeof(msgbuf)-1, fmt, va_ap);
-    msgbuf[sizeof(msgbuf)-1] = '\0';
+    vsnprintf(msgbuf, sizeof(msgbuf) - 1, fmt, va_ap);
+    msgbuf[sizeof(msgbuf) - 1] = '\0';
     va_end(va_ap);
 
     char datebuf[32];
@@ -51,17 +52,22 @@ void bgpstream_log_func(int level, const char *file, int line, const char *fmt, 
     strftime(datebuf, sizeof(datebuf), "%Y-%m-%d %H:%M:%S", localtime(&t));
 
     const char *prefix =
-      (level <= BGPSTREAM_LOG_ERR)    ? "ERROR: "    :
-      (level <= BGPSTREAM_LOG_WARN)   ? "WARNING: "  :
-      (level <= BGPSTREAM_LOG_INFO)   ? "INFO: "     :
-      (level <= BGPSTREAM_LOG_CONFIG) ? "CONFIG: "   :
-      (level <= BGPSTREAM_LOG_FINE)   ? "FINE: "     :
-      (level <= BGPSTREAM_LOG_VFINE)  ? "VERYFINE: " :
-      (level <= BGPSTREAM_LOG_FINEST) ? "FINEST: "   :
-      "";
+      (level <= BGPSTREAM_LOG_ERR)
+        ? "ERROR: "
+        : (level <= BGPSTREAM_LOG_WARN)
+            ? "WARNING: "
+            : (level <= BGPSTREAM_LOG_INFO)
+                ? "INFO: "
+                : (level <= BGPSTREAM_LOG_CONFIG)
+                    ? "CONFIG: "
+                    : (level <= BGPSTREAM_LOG_FINE)
+                        ? "FINE: "
+                        : (level <= BGPSTREAM_LOG_VFINE)
+                            ? "VERYFINE: "
+                            : (level <= BGPSTREAM_LOG_FINEST) ? "FINEST: " : "";
 
-    fprintf(bgpstream_log_file, "%s %u: %s:%d: %s%s\n",
-            datebuf, getpid(), file, line, prefix, msgbuf);
+    fprintf(bgpstream_log_file, "%s %u: %s:%d: %s%s\n", datebuf, getpid(), file,
+            line, prefix, msgbuf);
 
     fflush(bgpstream_log_file);
   }

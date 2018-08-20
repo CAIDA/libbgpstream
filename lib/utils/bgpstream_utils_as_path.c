@@ -542,8 +542,7 @@ static void test_path_copy(bgpstream_as_path_t *path)
 #endif
 
 int bgpstream_as_path_append(bgpstream_as_path_t *path,
-                             bgpstream_as_path_seg_type_t type,
-                             uint32_t *asns,
+                             bgpstream_as_path_seg_type_t type, uint32_t *asns,
                              int asns_cnt)
 {
   bgpstream_as_path_seg_t *seg;
@@ -559,13 +558,12 @@ int bgpstream_as_path_append(bgpstream_as_path_t *path,
 
   /* ensure that the path data buffer is long enough */
   if (type == BGPSTREAM_AS_PATH_SEG_ASN) {
-      new_len =
-        path->data_len + (sizeof(bgpstream_as_path_seg_asn_t) * asns_cnt);
-      assert(new_len < UINT16_MAX);
+    new_len = path->data_len + (sizeof(bgpstream_as_path_seg_asn_t) * asns_cnt);
+    assert(new_len < UINT16_MAX);
   } else {
     /* a set */
     new_len = path->data_len + sizeof(bgpstream_as_path_seg_set_t) +
-      (sizeof(uint32_t) * asns_cnt);
+              (sizeof(uint32_t) * asns_cnt);
     assert(new_len < UINT16_MAX);
   }
 

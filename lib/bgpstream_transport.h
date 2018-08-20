@@ -34,26 +34,23 @@
 
 #include "bgpstream_resource.h"
 
-
 /** Generic interface to specific data transport modules */
 typedef struct bgpstream_transport bgpstream_transport_t;
-
 
 /** Create a transport handler for the given resource
  *
  * @param res           pointer to a resource
  * @return pointer to a transport module instance if successful, NULL otherwise
  */
-bgpstream_transport_t *
-bgpstream_transport_create(bgpstream_resource_t *res);
+bgpstream_transport_t *bgpstream_transport_create(bgpstream_resource_t *res);
 
 /** Read from the given transport handler
  *
  * @param transport     pointer to a transport handler to read from
  * @return the number of bytes read if successful, -1 otherwise
  */
-int64_t bgpstream_transport_read(bgpstream_transport_t *transport,
-                                 void *buffer, int64_t len);
+int64_t bgpstream_transport_read(bgpstream_transport_t *transport, void *buffer,
+                                 int64_t len);
 
 /** Read one line from the given transport handler
  *
@@ -61,7 +58,7 @@ int64_t bgpstream_transport_read(bgpstream_transport_t *transport,
  * @return the number of bytes read if successful, -1 otherwise
  */
 int64_t bgpstream_transport_readline(bgpstream_transport_t *transport,
-                                 void *buffer, int64_t len);
+                                     void *buffer, int64_t len);
 
 /** Shutdown and destroy the given transport handler
  *

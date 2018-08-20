@@ -41,8 +41,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <wandio.h>
 
@@ -61,34 +61,31 @@ enum {
 static bgpstream_data_interface_option_t options[] = {
   /* Broker URL */
   {
-    BGPSTREAM_DATA_INTERFACE_BROKER, // interface ID
-    OPTION_BROKER_URL, // internal ID
-    "url", // name
+    BGPSTREAM_DATA_INTERFACE_BROKER,                          // interface ID
+    OPTION_BROKER_URL,                                        // internal ID
+    "url",                                                    // name
     "Broker URL (default: " STR(BGPSTREAM_DI_BROKER_URL) ")", // description
   },
   /* Broker Param */
   {
-    BGPSTREAM_DATA_INTERFACE_BROKER, // interface ID
-    OPTION_PARAM, // internal ID
-    "param", // name
+    BGPSTREAM_DATA_INTERFACE_BROKER,    // interface ID
+    OPTION_PARAM,                       // internal ID
+    "param",                            // name
     "Additional Broker GET parameter*", // description
   },
   /* Broker Cache */
   {
-    BGPSTREAM_DATA_INTERFACE_BROKER, // interface ID
-    OPTION_CACHE_DIR, // internal ID
-    "cache-dir", // name
+    BGPSTREAM_DATA_INTERFACE_BROKER,             // interface ID
+    OPTION_CACHE_DIR,                            // internal ID
+    "cache-dir",                                 // name
     "Enable local cache at provided directory.", // description
   },
 };
 
 /* create the class structure for this data interface */
 BSDI_CREATE_CLASS(
-  broker,
-  BGPSTREAM_DATA_INTERFACE_BROKER,
-  "Retrieve metadata information from the BGPStream Broker service",
-  options
-);
+  broker, BGPSTREAM_DATA_INTERFACE_BROKER,
+  "Retrieve metadata information from the BGPStream Broker service", options);
 
 /* ---------- END CLASS DEFINITION ---------- */
 
@@ -148,18 +145,18 @@ enum {
 #define APPEND_STR(str)                                                        \
   do {                                                                         \
     size_t len = strlen(str);                                                  \
-    if (STATE->query_url_remaining < len + 1) {                               \
+    if (STATE->query_url_remaining < len + 1) {                                \
       goto err;                                                                \
     }                                                                          \
-    strncat(STATE->query_url_buf, str, STATE->query_url_remaining - 1);      \
-    STATE->query_url_remaining -= len;                                        \
+    strncat(STATE->query_url_buf, str, STATE->query_url_remaining - 1);        \
+    STATE->query_url_remaining -= len;                                         \
   } while (0)
 
 #define AMPORQ                                                                 \
   do {                                                                         \
-    if (STATE->first_param) {                                                 \
+    if (STATE->first_param) {                                                  \
       APPEND_STR("?");                                                         \
-      STATE->first_param = 0;                                                 \
+      STATE->first_param = 0;                                                  \
     } else {                                                                   \
       APPEND_STR("&");                                                         \
     }                                                                          \
@@ -210,7 +207,6 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
   bgpstream_resource_t *res = NULL;
   int transport_type = 0;
 
-
   if (count == 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Empty JSON response from broker\n");
     goto retry;
@@ -227,7 +223,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
     // all keys must be strings
     if (t->type != JSMN_STRING) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Encountered non-string key: '%.*s'\n",
-              t->end - t->start, js + t->start);
+                    t->end - t->start, js + t->start);
       goto err;
     }
     if (jsmn_streq(js, t, "time") == 1) {
@@ -235,7 +231,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
       jsmn_type_assert(t, JSMN_PRIMITIVE);
       unsigned long tmp = 0;
       jsmn_strtoul(&tmp, js, t);
-      STATE->last_response_time = (int) tmp;
+      STATE->last_response_time = (int)tmp;
       time_set = 1;
       NEXT_TOK;
     } else if (jsmn_streq(js, t, "type") == 1) {
@@ -246,7 +242,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
       NEXT_TOK;
       if (jsmn_isnull(js, t) == 0) { // i.e. there is an error set
         bgpstream_log(BGPSTREAM_LOG_ERR, "Broker reported an error: %.*s\n",
-                t->end - t->start, js + t->start);
+                      t->end - t->start, js + t->start);
         goto err;
       }
       NEXT_TOK;
@@ -282,7 +278,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
             if (jsmn_streq(js, t, "simple") != 1) {
               // not yet supported?
               bgpstream_log(BGPSTREAM_LOG_ERR, "Unsupported URL type '%.*s'\n",
-                      t->end - t->start, js + t->start);
+                            t->end - t->start, js + t->start);
               goto err;
             }
             NEXT_TOK;
@@ -292,7 +288,8 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
             if (url_len < (t->end - t->start + 1)) {
               url_len = t->end - t->start + 1;
               if ((url = realloc(url, url_len)) == NULL) {
-                bgpstream_log(BGPSTREAM_LOG_ERR, "Could not realloc URL string\n");
+                bgpstream_log(BGPSTREAM_LOG_ERR,
+                              "Could not realloc URL string\n");
                 goto err;
               }
             }
@@ -321,7 +318,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
               type = BGPSTREAM_UPDATE;
             } else {
               bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid type '%.*s'\n",
-                      t->end - t->start, js+t->start);
+                            t->end - t->start, js + t->start);
               goto err;
             }
             type_set = 1;
@@ -339,8 +336,8 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
             duration_set = 1;
             NEXT_TOK;
           } else {
-            bgpstream_log(BGPSTREAM_LOG_ERR, "Unknown field '%.*s'\n", t->end - t->start,
-                    js + t->start);
+            bgpstream_log(BGPSTREAM_LOG_ERR, "Unknown field '%.*s'\n",
+                          t->end - t->start, js + t->start);
             goto err;
           }
         }
@@ -365,23 +362,21 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
           STATE->current_window_end = (initial_time + duration);
         }
 
-        transport_type = STATE->cache_dir == NULL? BGPSTREAM_RESOURCE_TRANSPORT_FILE: BGPSTREAM_RESOURCE_TRANSPORT_CACHE;
-        if (bgpstream_resource_mgr_push(BSDI_GET_RES_MGR(di),
-                                        transport_type,
-                                        BGPSTREAM_RESOURCE_FORMAT_MRT,
-                                        url,
-                                        initial_time,
-                                        duration,
-                                        project,
-                                        collector,
-                                        type,
-                                        &res) < 0) {
+        transport_type = STATE->cache_dir == NULL
+                           ? BGPSTREAM_RESOURCE_TRANSPORT_FILE
+                           : BGPSTREAM_RESOURCE_TRANSPORT_CACHE;
+        if (bgpstream_resource_mgr_push(BSDI_GET_RES_MGR(di), transport_type,
+                                        BGPSTREAM_RESOURCE_FORMAT_MRT, url,
+                                        initial_time, duration, project,
+                                        collector, type, &res) < 0) {
 
           goto err;
         }
         // set cache attribute to resource
         if (transport_type == BGPSTREAM_RESOURCE_TRANSPORT_CACHE &&
-            bgpstream_resource_set_attr(res, BGPSTREAM_RESOURCE_ATTR_CACHE_DIR_PATH, STATE->cache_dir) != 0) {
+            bgpstream_resource_set_attr(res,
+                                        BGPSTREAM_RESOURCE_ATTR_CACHE_DIR_PATH,
+                                        STATE->cache_dir) != 0) {
           return -1;
         }
       }
@@ -401,7 +396,8 @@ retry:
   return ERR_RETRY;
 
 err:
-  bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid JSON response received from broker\n");
+  bgpstream_log(BGPSTREAM_LOG_ERR,
+                "Invalid JSON response received from broker\n");
   free(url);
   return ERR_RETRY;
 }
@@ -469,14 +465,16 @@ again:
   free(js);
   free(tok);
   if (ret == ERR_FATAL) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Received fatal error from process_json\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR,
+                  "Received fatal error from process_json\n");
   }
   return ret;
 
 err:
   free(js);
   free(tok);
-  bgpstream_log(BGPSTREAM_LOG_ERR, "%s: Returning fatal error code\n", __func__);
+  bgpstream_log(BGPSTREAM_LOG_ERR, "%s: Returning fatal error code\n",
+                __func__);
   return ERR_FATAL;
 }
 
@@ -574,7 +572,7 @@ static int update_query_url(bsdi_t *di)
 
   return 0;
 
- err:
+err:
   return -1;
 }
 
@@ -624,8 +622,9 @@ int bsdi_broker_set_option(bsdi_t *di,
   case OPTION_PARAM:
     // adds a parameter
     if (STATE->params_cnt == MAX_PARAMS) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "At most %d broker query parameters can be set\n",
-              MAX_PARAMS);
+      bgpstream_log(BGPSTREAM_LOG_ERR,
+                    "At most %d broker query parameters can be set\n",
+                    MAX_PARAMS);
       return -1;
     }
     STATE->params[STATE->params_cnt++] = strdup(option_value);
@@ -633,9 +632,10 @@ int bsdi_broker_set_option(bsdi_t *di,
 
   case OPTION_CACHE_DIR:
     // enable cache, no option_value needed
-    if( access( option_value, F_OK ) == -1 ) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Cache directory %s does not exist.\n", option_value);
-      STATE->cache_dir= NULL;
+    if (access(option_value, F_OK) == -1) {
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Cache directory %s does not exist.\n",
+                    option_value);
+      STATE->cache_dir = NULL;
       return -1;
     } else {
       STATE->cache_dir = strdup(option_value);
@@ -659,7 +659,7 @@ void bsdi_broker_destroy(bsdi_t *di)
   STATE->broker_url = NULL;
 
   int i;
-  for (i=0; i<STATE->params_cnt; i++) {
+  for (i = 0; i < STATE->params_cnt; i++) {
     free(STATE->params[i]);
     STATE->params[i] = NULL;
   }
@@ -672,9 +672,10 @@ void bsdi_broker_destroy(bsdi_t *di)
 int bsdi_broker_update_resources(bsdi_t *di)
 {
 
-// we need to set two parameters:
-//  - dataAddedSince ("time" from last response we got)
-//  - minInitialTime (max("initialTime"+"duration") of any file we've ever seen)
+  // we need to set two parameters:
+  //  - dataAddedSince ("time" from last response we got)
+  //  - minInitialTime (max("initialTime"+"duration") of any file we've ever
+  //  seen)
 
 #define BUFLEN 20
   char buf[BUFLEN];
@@ -691,7 +692,8 @@ int bsdi_broker_update_resources(bsdi_t *di)
     // need to add dataAddedSince
     if (snprintf(buf, BUFLEN, "%" PRIu32, STATE->last_response_time) >=
         BUFLEN) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not build dataAddedSince param string\n");
+      bgpstream_log(BGPSTREAM_LOG_ERR,
+                    "Could not build dataAddedSince param string\n");
       goto err;
     }
     AMPORQ;
@@ -702,7 +704,8 @@ int bsdi_broker_update_resources(bsdi_t *di)
     // need to add minInitialTime
     if (snprintf(buf, BUFLEN, "%" PRIu32, STATE->current_window_end) >=
         BUFLEN) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not build minInitialTime param string\n");
+      bgpstream_log(BGPSTREAM_LOG_ERR,
+                    "Could not build minInitialTime param string\n");
       goto err;
     }
     AMPORQ;
@@ -712,8 +715,9 @@ int bsdi_broker_update_resources(bsdi_t *di)
 
   do {
     if (attempts > 0) {
-      bgpstream_log(BGPSTREAM_LOG_WARN, "WARN: Broker request failed, waiting %ds before retry\n",
-              wait_time);
+      bgpstream_log(BGPSTREAM_LOG_WARN,
+                    "WARN: Broker request failed, waiting %ds before retry\n",
+                    wait_time);
       sleep(wait_time);
       if (wait_time < MAX_WAIT_TIME) {
         wait_time *= 2;
@@ -722,17 +726,19 @@ int bsdi_broker_update_resources(bsdi_t *di)
     attempts++;
 
 #ifdef BROKER_DEBUG
-    bgpstream_log(BGPSTREAM_LOG_INFO, "\nQuery URL: \"%s\"\n", STATE->query_url_buf);
+    bgpstream_log(BGPSTREAM_LOG_INFO, "\nQuery URL: \"%s\"\n",
+                  STATE->query_url_buf);
 #endif
 
     if ((jsonfile = wandio_create(STATE->query_url_buf)) == NULL) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for reading\n",
-              STATE->query_url_buf);
+                    STATE->query_url_buf);
       goto retry;
     }
 
     if ((rc = read_json(di, jsonfile)) == ERR_FATAL) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Received fatal error code from read_json\n");
+      bgpstream_log(BGPSTREAM_LOG_ERR,
+                    "Received fatal error code from read_json\n");
       goto err;
     } else if (rc == ERR_RETRY) {
       goto retry;
@@ -760,4 +766,3 @@ err:
   }
   return -1;
 }
-

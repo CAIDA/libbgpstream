@@ -30,9 +30,9 @@
 #ifndef __BGPSTREAM_UTILS_RPKI_H
 #define __BGPSTREAM_UTILS_RPKI_H
 
-#include <stdint.h>
-#include <roafetchlib/roafetchlib.h>
 #include "bgpstream_elem.h"
+#include <roafetchlib/roafetchlib.h>
+#include <stdint.h>
 
 // Note the copy of the BGPStream - Window Command Count !!
 #define WINDOW_CMD_CNT 1024
@@ -94,7 +94,6 @@ typedef struct bgpstream_rpki_input {
 
 } bgpstream_rpki_input_t;
 
-
 /** Public Functions */
 
 /** Create a BGPStream RPKI input struct instance
@@ -117,8 +116,8 @@ void bgpstream_rpki_destroy_input(bgpstream_rpki_input_t *input);
  * @return             1 if the parsing process was valid - 0 otherwise
  */
 int bgpstream_rpki_parse_windows(bgpstream_rpki_input_t *input,
-                             rpki_window_t windows[WINDOW_CMD_CNT],
-                             int windows_cnt);
+                                 rpki_window_t windows[WINDOW_CMD_CNT],
+                                 int windows_cnt);
 
 /** Add the mode argument to the input struct and set RPKI active
  *

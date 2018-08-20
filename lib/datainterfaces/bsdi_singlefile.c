@@ -41,9 +41,9 @@
 
 // mapping from type name to resource format type
 static char *type_strs[] = {
-  "mrt",                        // BGPSTREAM_RESOURCE_FORMAT_MRT
-  "bmp",                        // BGPSTREAM_RESOURCE_FORMAT_BMP
-  "ripejson",                   // BGPSTREAM_RESOURCE_FORMAT_RIPEJSON
+  "mrt",      // BGPSTREAM_RESOURCE_FORMAT_MRT
+  "bmp",      // BGPSTREAM_RESOURCE_FORMAT_BMP
+  "ripejson", // BGPSTREAM_RESOURCE_FORMAT_RIPEJSON
 };
 
 /* ---------- START CLASS DEFINITION ---------- */
@@ -61,41 +61,37 @@ static bgpstream_data_interface_option_t options[] = {
   /* RIB file path */
   {
     BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
-    OPTION_RIB_FILE, // internal ID
-    "rib-file", // name
+    OPTION_RIB_FILE,                     // internal ID
+    "rib-file",                          // name
     "rib mrt file to read (default: " STR(BGPSTREAM_DI_SINGLEFILE_RIB_FILE) ")",
   },
   /* RIB file type */
   {
     BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
-    OPTION_RIB_TYPE, // internal ID
-    "rib-type", // name
+    OPTION_RIB_TYPE,                     // internal ID
+    "rib-type",                          // name
     "rib file type (mrt/bmp) (default: mrt)",
   },
   /* Update file path */
   {
     BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
-    OPTION_UPDATE_FILE, //internal ID
-    "upd-file", //name
+    OPTION_UPDATE_FILE,                  // internal ID
+    "upd-file",                          // name
     "updates mrt file to read (default: " STR(
       BGPSTREAM_DI_SINGLEFILE_UPDATE_FILE) ")",
   },
   /* Update file type */
   {
     BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
-    OPTION_UPDATE_TYPE, // internal ID
-    "upd-type", // name
+    OPTION_UPDATE_TYPE,                  // internal ID
+    "upd-type",                          // name
     "update file type (mrt/bmp) (default: mrt)",
   },
 };
 
 /* create the class structure for this data interface */
-BSDI_CREATE_CLASS(
-  singlefile,
-  BGPSTREAM_DATA_INTERFACE_SINGLEFILE,
-  "Read a single mrt data file (RIB and/or updates)",
-  options
-);
+BSDI_CREATE_CLASS(singlefile, BGPSTREAM_DATA_INTERFACE_SINGLEFILE,
+                  "Read a single mrt data file (RIB and/or updates)", options);
 
 /* ---------- END CLASS DEFINITION ---------- */
 
@@ -151,8 +147,8 @@ static int same_header(char *filename, char *prev_hdr)
     return -1;
   }
 
-  if ((bread =
-       wandio_read(io_h, (void *)&(buffer[0]), MAX_HEADER_READ_BYTES)) < 0) {
+  if ((bread = wandio_read(io_h, (void *)&(buffer[0]), MAX_HEADER_READ_BYTES)) <
+      0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "can't read file '%s'", filename);
     wandio_destroy(io_h);
     return -1;
@@ -196,15 +192,15 @@ int bsdi_singlefile_start(bsdi_t *di)
     return 0;
   } else {
     bgpstream_log(BGPSTREAM_LOG_ERR,
-            "At least one of the 'rib-file' and 'upd-file' "
-            "options must be set\n");
+                  "At least one of the 'rib-file' and 'upd-file' "
+                  "options must be set\n");
     return -1;
   }
 }
 
-int bsdi_singlefile_set_option(bsdi_t *di,
-                           const bgpstream_data_interface_option_t *option_type,
-                           const char *option_value)
+int bsdi_singlefile_set_option(
+  bsdi_t *di, const bgpstream_data_interface_option_t *option_type,
+  const char *option_value)
 {
   int i;
 
@@ -284,16 +280,11 @@ int bsdi_singlefile_update_resources(bsdi_t *di)
       same_header(STATE->rib_file, STATE->rib_header) == 0) {
     STATE->last_rib_filetime = now;
 
-    if (bgpstream_resource_mgr_push(BSDI_GET_RES_MGR(di),
-                                    BGPSTREAM_RESOURCE_TRANSPORT_FILE,
-                                    STATE->rib_type,
-                                    STATE->rib_file,
-                                    STATE->last_rib_filetime,
-                                    RIB_FREQUENCY_CHECK,
-                                    "singlefile",
-                                    "singlefile",
-                                    BGPSTREAM_RIB,
-                                    NULL) < 0) {
+    if (bgpstream_resource_mgr_push(
+          BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_FILE,
+          STATE->rib_type, STATE->rib_file, STATE->last_rib_filetime,
+          RIB_FREQUENCY_CHECK, "singlefile", "singlefile", BGPSTREAM_RIB,
+          NULL) < 0) {
       goto err;
     }
   }
@@ -303,22 +294,17 @@ int bsdi_singlefile_update_resources(bsdi_t *di)
       same_header(STATE->update_file, STATE->update_header) == 0) {
     STATE->last_update_filetime = now;
 
-    if (bgpstream_resource_mgr_push(BSDI_GET_RES_MGR(di),
-                                    BGPSTREAM_RESOURCE_TRANSPORT_FILE,
-                                    STATE->update_type,
-                                    STATE->update_file,
-                                    STATE->last_update_filetime,
-                                    UPDATE_FREQUENCY_CHECK,
-                                    "singlefile",
-                                    "singlefile",
-                                    BGPSTREAM_UPDATE,
-                                    NULL) < 0) {
+    if (bgpstream_resource_mgr_push(
+          BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_FILE,
+          STATE->update_type, STATE->update_file, STATE->last_update_filetime,
+          UPDATE_FREQUENCY_CHECK, "singlefile", "singlefile", BGPSTREAM_UPDATE,
+          NULL) < 0) {
       goto err;
     }
   }
 
   return 0;
 
- err:
+err:
   return -1;
 }

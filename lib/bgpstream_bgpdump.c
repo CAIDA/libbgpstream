@@ -29,12 +29,12 @@
  */
 
 #include "bgpstream_bgpdump.h"
-#include "bgpstream_int.h"
 #include "bgpstream_elem_int.h"
+#include "bgpstream_int.h"
 #include "bgpstream_log.h"
 #include <assert.h>
-#include <stdio.h>
 #include <inttypes.h>
+#include <stdio.h>
 
 #define B_REMAIN (len - written)
 #define B_FULL (written >= len)
@@ -59,8 +59,8 @@
   } while (0)
 
 char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
-                                     bgpstream_record_t *record,
-                                     bgpstream_elem_t *elem)
+                                             bgpstream_record_t *record,
+                                             bgpstream_elem_t *elem)
 {
   assert(record);
   assert(elem);
@@ -72,12 +72,12 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
   /* Record type */
   switch (elem->type) {
   case BGPSTREAM_ELEM_TYPE_RIB:
-    c = snprintf(buf_p, B_REMAIN, "TABLE_DUMP2|%"PRIu32, record->time_sec);
+    c = snprintf(buf_p, B_REMAIN, "TABLE_DUMP2|%" PRIu32, record->time_sec);
     break;
   case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT:
   case BGPSTREAM_ELEM_TYPE_WITHDRAWAL:
   case BGPSTREAM_ELEM_TYPE_PEERSTATE:
-    c = snprintf(buf_p, B_REMAIN, "BGP4MP|%"PRIu32, record->time_sec);
+    c = snprintf(buf_p, B_REMAIN, "BGP4MP|%" PRIu32, record->time_sec);
     break;
   default:
     break;
@@ -86,7 +86,7 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
   buf_p += c;
   ADD_PIPE;
 
-  switch(elem->type){
+  switch (elem->type) {
   case BGPSTREAM_ELEM_TYPE_RIB:
     c = snprintf(buf_p, B_REMAIN, "B");
     break;
@@ -121,7 +121,7 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
   buf_p += c;
   ADD_PIPE;
 
-  switch(elem->type){
+  switch (elem->type) {
   case BGPSTREAM_ELEM_TYPE_RIB:
   case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT:
     /* PREFIX */
@@ -142,7 +142,7 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     ADD_PIPE;
 
     /* SOURCE (IGP) */
-    switch(elem->origin){
+    switch (elem->origin) {
     case BGPSTREAM_ELEM_BGP_UPDATE_ORIGIN_IGP:
       c = snprintf(buf_p, B_REMAIN, "IGP");
       break;
@@ -188,7 +188,7 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     ADD_PIPE;
 
     /* AGGREGATE AG/NAG */
-    if(elem->atomic_aggregate == 1){
+    if (elem->atomic_aggregate == 1) {
       c = snprintf(buf_p, B_REMAIN, "AG");
     } else {
       c = snprintf(buf_p, B_REMAIN, "NAG");
@@ -198,11 +198,13 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     ADD_PIPE;
 
     /* AGGREGATOR AS AND IP */
-    if(elem->aggregator.has_aggregator > 0){
-      c = snprintf(buf_p, B_REMAIN, "%"PRIu32" ", elem->aggregator.aggregator_asn);
+    if (elem->aggregator.has_aggregator > 0) {
+      c = snprintf(buf_p, B_REMAIN, "%" PRIu32 " ",
+                   elem->aggregator.aggregator_asn);
       written += c;
       buf_p += c;
-      if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->aggregator.aggregator_addr) == NULL) {
+      if (bgpstream_addr_ntop(buf_p, B_REMAIN,
+                              &elem->aggregator.aggregator_addr) == NULL) {
         bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed aggregator IP address");
         return NULL;
       }

@@ -45,8 +45,8 @@
 
 // allowed offset types
 static char *offset_strs[] = {
-  "earliest",     // start from the beginning of the topic
-  "latest",       // start from the end of the topic
+  "earliest", // start from the beginning of the topic
+  "latest",   // start from the end of the topic
 };
 
 /* ---------- START CLASS DEFINITION ---------- */
@@ -63,37 +63,33 @@ static bgpstream_data_interface_option_t options[] = {
   /* Kafka Broker list */
   {
     BGPSTREAM_DATA_INTERFACE_BETABMP, // interface ID
-    OPTION_BROKERS,                 // internal ID
-    "brokers",                      // name
+    OPTION_BROKERS,                   // internal ID
+    "brokers",                        // name
     "comma-separated list of kafka brokers (default: " DEFAULT_BROKERS ")",
   },
   /* Kafka Consumer Group */
   {
     BGPSTREAM_DATA_INTERFACE_BETABMP, // interface ID
-    OPTION_CONSUMER_GROUP,          // internal ID
-    "group",                        // name
+    OPTION_CONSUMER_GROUP,            // internal ID
+    "group",                          // name
     "consumer group name (default: random)",
   },
   /* Initial offset */
   {
     BGPSTREAM_DATA_INTERFACE_BETABMP, // interface ID
-    OPTION_OFFSET,             // internal ID
-    "offset",                       // name
+    OPTION_OFFSET,                    // internal ID
+    "offset",                         // name
     "initial offset (earliest/latest) (default: " DEFAULT_OFFSET ")",
   },
 };
 
 /* create the class structure for this data interface */
 BSDI_CREATE_CLASS_FULL(
-  betabmp,
-  "beta-bmp-stream",
-  BGPSTREAM_DATA_INTERFACE_BETABMP,
+  betabmp, "beta-bmp-stream", BGPSTREAM_DATA_INTERFACE_BETABMP,
   "Read updates in real-time from the public BGPStream BMP feed (BETA)",
-  options
-  );
+  options);
 
 /* ---------- END CLASS DEFINITION ---------- */
-
 
 typedef struct bsdi_betabmp_state {
   /* user-provided options: */
@@ -206,7 +202,7 @@ static char *build_topic_list(bsdi_t *di)
 
   return topic_list;
 
- err:
+err:
   free(topic_list);
   return NULL;
 }
@@ -239,9 +235,9 @@ int bsdi_betabmp_start(bsdi_t *di)
   return 0;
 }
 
-int bsdi_betabmp_set_option(bsdi_t *di,
-                           const bgpstream_data_interface_option_t *option_type,
-                           const char *option_value)
+int bsdi_betabmp_set_option(
+  bsdi_t *di, const bgpstream_data_interface_option_t *option_type,
+  const char *option_value)
 {
   int i;
   int found = 0;
@@ -270,9 +266,9 @@ int bsdi_betabmp_set_option(bsdi_t *di,
     }
     if (!found) {
       bgpstream_log(BGPSTREAM_LOG_ERR,
-              "Unknown offset type '%s'. Allowed options are: "
-              "earliest/latest\n",
-              option_value);
+                    "Unknown offset type '%s'. Allowed options are: "
+                    "earliest/latest\n",
+                    option_value);
       return -1;
     }
     free(STATE->offset);
@@ -333,7 +329,7 @@ int bsdi_betabmp_update_resources(bsdi_t *di)
          BGPSTREAM_RESOURCE_FORMAT_BMP, STATE->brokers,
          0, // indicate we don't know how much historical data there is
          BGPSTREAM_FOREVER, // indicate that the resource is a "stream"
-         DEFAULT_PROJECT, // fix our project to "caida"
+         DEFAULT_PROJECT,   // fix our project to "caida"
          "", // leave collector unset since we'll get it from openbmp hdrs
          BGPSTREAM_UPDATE, //
          &res)) <= 0) {

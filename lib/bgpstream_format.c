@@ -32,8 +32,8 @@
 #include "utils.h"
 #include <assert.h>
 
-#include "bs_format_mrt.h"
 #include "bs_format_bmp.h"
+#include "bs_format_mrt.h"
 #include "bs_format_ripejson.h"
 
 /** Convenience typedef for the format create function type */
@@ -62,8 +62,7 @@ bgpstream_format_t *bgpstream_format_create(bgpstream_resource_t *res,
 
   // check that the format type is valid
   if ((int)res->format_type >= ARR_CNT(create_functions)) {
-    bgpstream_log(BGPSTREAM_LOG_ERR,
-                  "Invalid format module for %s (ID: %d)",
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid format module for %s (ID: %d)",
                   res->uri, res->format_type);
     goto err;
   }
@@ -71,8 +70,8 @@ bgpstream_format_t *bgpstream_format_create(bgpstream_resource_t *res,
   // check that the format is enabled
   if (create_functions[res->format_type] == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR,
-                  "Could not find format module for %s (ID: %d)",
-                  res->uri, res->format_type);
+                  "Could not find format module for %s (ID: %d)", res->uri,
+                  res->format_type);
     goto err;
   }
 
@@ -96,7 +95,7 @@ bgpstream_format_t *bgpstream_format_create(bgpstream_resource_t *res,
 
   return format;
 
- err:
+err:
   free(format);
   return NULL;
 }

@@ -24,8 +24,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "utils.h"
 #include "bgpstream_elem_generator.h"
+#include "utils.h"
 #include <assert.h>
 
 struct bgpstream_elem_generator {

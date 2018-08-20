@@ -27,12 +27,12 @@
 #ifndef __BGPSTREAM_RESOURCE_MGR_H
 #define __BGPSTREAM_RESOURCE_MGR_H
 
-#include <stdint.h>
-#include "bgpstream_record.h"
-#include "bgpstream_transport.h"
-#include "bgpstream_format.h"
-#include "bgpstream_resource.h"
 #include "bgpstream_filter.h"
+#include "bgpstream_format.h"
+#include "bgpstream_record.h"
+#include "bgpstream_resource.h"
+#include "bgpstream_transport.h"
+#include <stdint.h>
 
 /** Opaque pointer representing a resource manager */
 typedef struct bgpstream_resource_mgr bgpstream_resource_mgr_t;
@@ -42,8 +42,7 @@ bgpstream_resource_mgr_t *
 bgpstream_resource_mgr_create(bgpstream_filter_mgr_t *filter_mgr);
 
 /** Destroy the given resource queue */
-void
-bgpstream_resource_mgr_destroy(bgpstream_resource_mgr_t *q);
+void bgpstream_resource_mgr_destroy(bgpstream_resource_mgr_t *q);
 
 /** Add a resource item to the queue
  *
@@ -60,25 +59,20 @@ bgpstream_resource_mgr_destroy(bgpstream_resource_mgr_t *q);
  * @return 1 if the item was added to the queue, 0 if it was filtered out, and
  * -1 if an error occurred
  */
-int
-bgpstream_resource_mgr_push(bgpstream_resource_mgr_t *q,
-                            bgpstream_resource_transport_type_t transport_type,
-                            bgpstream_resource_format_type_t format_type,
-                            const char *uri,
-                            uint32_t initial_time,
-                            uint32_t duration,
-                            const char *project,
-                            const char *collector,
-                            bgpstream_record_type_t record_type,
-                            bgpstream_resource_t **res);
+int bgpstream_resource_mgr_push(
+  bgpstream_resource_mgr_t *q,
+  bgpstream_resource_transport_type_t transport_type,
+  bgpstream_resource_format_type_t format_type, const char *uri,
+  uint32_t initial_time, uint32_t duration, const char *project,
+  const char *collector, bgpstream_record_type_t record_type,
+  bgpstream_resource_t **res);
 
 /** Check if the resource manager queue contains any resources
  *
  * @param q             pointer to the queue
  * @return 1 if the queue is empty, 0 otherwise
  */
-int
-bgpstream_resource_mgr_empty(bgpstream_resource_mgr_t *q);
+int bgpstream_resource_mgr_empty(bgpstream_resource_mgr_t *q);
 
 /** Get the next record from the stream
  *
@@ -89,9 +83,7 @@ bgpstream_resource_mgr_empty(bgpstream_resource_mgr_t *q);
  * reached, <0 if an error occurred.
  *
  */
-int
-bgpstream_resource_mgr_get_record(bgpstream_resource_mgr_t *q,
-                                  bgpstream_record_t **record);
-
+int bgpstream_resource_mgr_get_record(bgpstream_resource_mgr_t *q,
+                                      bgpstream_record_t **record);
 
 #endif /* __BGPSTREAM_RESOURCE_MGR_H */

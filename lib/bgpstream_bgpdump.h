@@ -27,9 +27,9 @@
 #ifndef __BGPSTREAM_BGPDUMP_H_
 #define __BGPSTREAM_BGPDUMP_H_
 
-#include "bgpstream_utils.h"
-#include "bgpstream_record.h"
 #include "bgpstream_elem.h"
+#include "bgpstream_record.h"
+#include "bgpstream_utils.h"
 
 /** Write the string representation of the record/elem into the provided buffer
  *
@@ -40,7 +40,7 @@
  * @return pointer to the start of the buffer if successful, NULL otherwise
  */
 char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
-                                     bgpstream_record_t *record,
-                                     bgpstream_elem_t *elem);
+                                             bgpstream_record_t *record,
+                                             bgpstream_elem_t *elem);
 
 #endif // __BGPSTREAM_BGPDUMP_H_

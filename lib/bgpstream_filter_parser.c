@@ -27,8 +27,8 @@
  */
 
 #include "bgpstream_filter_parser.h"
-#include "bgpstream_log.h"
 #include "bgpstream_filter.h"
+#include "bgpstream_log.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -235,7 +235,8 @@ static int bgpstream_parse_quotedvalue(char *value, fp_state_t *state,
 
   if (*state == ENDVALUE) {
     /* Create our new filter here? */
-    bgpstream_log(BGPSTREAM_LOG_FINE, "Set our quoted value to %s", curr->value);
+    bgpstream_log(BGPSTREAM_LOG_FINE, "Set our quoted value to %s",
+                  curr->value);
   }
 
   return *state;
@@ -258,7 +259,8 @@ static int bgpstream_parse_value(char *value, fp_state_t *state,
 
   /* At this point we can probably create our new filter */
   /* XXX this may not be true once we get around to OR support... */
-  bgpstream_log(BGPSTREAM_LOG_FINE, "Set our unquoted value to %s", curr->value);
+  bgpstream_log(BGPSTREAM_LOG_FINE, "Set our unquoted value to %s",
+                curr->value);
 
   return *state;
 }
