@@ -355,8 +355,8 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
         fprintf(stderr, "Project: %s\n", project);
         fprintf(stderr, "Collector: %s\n", collector);
         fprintf(stderr, "Type: %d\n", type);
-        fprintf(stderr, "InitialTime: %" PRIu32 "\n", initial_time);
-        fprintf(stderr, "Duration: %" PRIu32 "\n", duration);
+        fprintf(stderr, "InitialTime: %lu\n", initial_time);
+        fprintf(stderr, "Duration: %lu\n", duration);
 #endif
 
         // do we need to update our current_window_end?
