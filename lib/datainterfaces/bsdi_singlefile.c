@@ -195,8 +195,8 @@ int bsdi_singlefile_start(bsdi_t *di)
   if (STATE->rib_file || STATE->update_file) {
     return 0;
   } else {
-    fprintf(stderr,
-            "ERROR: At least one of the 'rib-file' and 'upd-file' "
+    bgpstream_log(BGPSTREAM_LOG_ERR,
+            "At least one of the 'rib-file' and 'upd-file' "
             "options must be set\n");
     return -1;
   }

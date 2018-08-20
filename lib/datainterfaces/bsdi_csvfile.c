@@ -309,7 +309,7 @@ int bsdi_csvfile_start(bsdi_t *di)
   if (STATE->csv_file) {
     return 0;
   } else {
-    fprintf(stderr, "ERROR: The 'csv-file' option must be set\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "The 'csv-file' option must be set\n");
     return -1;
   }
 }

@@ -509,7 +509,7 @@ static void test_path_copy(bgpstream_as_path_t *path)
 
   if (bgpstream_as_path_get_len(path) > 0 &&
       bgpstream_as_path_equal(path, corepath) != 0) {
-    fprintf(stderr, "ERROR: %s|%s\n", buf1, buf3);
+    bgpstream_log(BGPSTREAM_LOG_ERR, "%s|%s\n", buf1, buf3);
     assert(0);
   }
 

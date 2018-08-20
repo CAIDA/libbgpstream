@@ -269,8 +269,8 @@ int bsdi_betabmp_set_option(bsdi_t *di,
       }
     }
     if (!found) {
-      fprintf(stderr,
-              "ERROR: Unknown offset type '%s'. Allowed options are: "
+      bgpstream_log(BGPSTREAM_LOG_ERR,
+              "Unknown offset type '%s'. Allowed options are: "
               "earliest/latest\n",
               option_value);
       return -1;

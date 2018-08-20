@@ -51,6 +51,7 @@
 
 #include "bgpstream_utils_patricia.h"
 #include "bgpstream_utils_pfx.h"
+#include "bgpstream_log.h"
 #include "utils.h"
 
 /* for debug purposes */
@@ -153,7 +154,7 @@ static int bgpstream_patricia_tree_result_set_add_node(
     if ((set->result_nodes =
            realloc(set->result_nodes, sizeof(bgpstream_patricia_node_t *) *
                                         set->_alloc_size)) == NULL) {
-      fprintf(stderr, "Error: could not realloc result_nodes in result set\n");
+      bgpstream_log(BGPSTREAM_LOG_ERR, "could not realloc result_nodes in result set\n");
       return -1;
     }
   }
@@ -539,7 +540,7 @@ bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
   /* if Patricia Tree is empty, then insert new node */
   if (bgpstream_patricia_get_head(pt, v) == NULL) {
     if ((new_node = bgpstream_patricia_node_create(pt, pfx)) == NULL) {
-      fprintf(stderr, "Error creating pt node\n");
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Error creating pt node\n");
       return NULL;
     }
     /* attach first node in Tree */
@@ -646,7 +647,7 @@ bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
 
   /* Create a new node */
   if ((new_node = bgpstream_patricia_node_create(pt, pfx)) == NULL) {
-    fprintf(stderr, "Error creating pt node\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Error creating pt node\n");
     return NULL;
   }
 

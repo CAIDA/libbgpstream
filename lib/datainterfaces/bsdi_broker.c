@@ -30,6 +30,7 @@
  */
 
 #include "bsdi_broker.h"
+#include "bgpstream_log.h"
 #include "config.h"
 #include "utils.h"
 #include "jsmn_utils.h"
@@ -211,13 +212,13 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
 
 
   if (count == 0) {
-    fprintf(stderr, "ERROR: Empty JSON response from broker\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Empty JSON response from broker\n");
     goto retry;
   }
 
   if (root_tok->type != JSMN_OBJECT) {
-    fprintf(stderr, "ERROR: Root object is not JSON\n");
-    fprintf(stderr, "INFO: JSON: %s\n", js);
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Root object is not JSON\n");
+    bgpstream_log(BGPSTREAM_LOG_INFO, "JSON: %s\n", js);
     goto err;
   }
 
@@ -225,7 +226,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
   for (i = 0; i < root_tok->size; i++) {
     // all keys must be strings
     if (t->type != JSMN_STRING) {
-      fprintf(stderr, "ERROR: Encountered non-string key: '%.*s'\n",
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Encountered non-string key: '%.*s'\n",
               t->end - t->start, js + t->start);
       goto err;
     }
@@ -244,7 +245,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
     } else if (jsmn_streq(js, t, "error") == 1) {
       NEXT_TOK;
       if (jsmn_isnull(js, t) == 0) { // i.e. there is an error set
-        fprintf(stderr, "ERROR: Broker reported an error: %.*s\n",
+        bgpstream_log(BGPSTREAM_LOG_ERR, "Broker reported an error: %.*s\n",
                 t->end - t->start, js + t->start);
         goto err;
       }
@@ -280,7 +281,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
             NEXT_TOK;
             if (jsmn_streq(js, t, "simple") != 1) {
               // not yet supported?
-              fprintf(stderr, "ERROR: Unsupported URL type '%.*s'\n",
+              bgpstream_log(BGPSTREAM_LOG_ERR, "Unsupported URL type '%.*s'\n",
                       t->end - t->start, js + t->start);
               goto err;
             }
@@ -291,7 +292,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
             if (url_len < (t->end - t->start + 1)) {
               url_len = t->end - t->start + 1;
               if ((url = realloc(url, url_len)) == NULL) {
-                fprintf(stderr, "ERROR: Could not realloc URL string\n");
+                bgpstream_log(BGPSTREAM_LOG_ERR, "Could not realloc URL string\n");
                 goto err;
               }
             }
@@ -319,7 +320,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
             } else if (jsmn_streq(js, t, "updates") == 1) {
               type = BGPSTREAM_UPDATE;
             } else {
-              fprintf(stderr, "ERROR: Invalid type '%.*s'\n",
+              bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid type '%.*s'\n",
                       t->end - t->start, js+t->start);
               goto err;
             }
@@ -338,7 +339,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
             duration_set = 1;
             NEXT_TOK;
           } else {
-            fprintf(stderr, "ERROR: Unknown field '%.*s'\n", t->end - t->start,
+            bgpstream_log(BGPSTREAM_LOG_ERR, "Unknown field '%.*s'\n", t->end - t->start,
                     js + t->start);
             goto err;
           }
@@ -346,17 +347,17 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
         // file obj has been completely read
         if (url_set == 0 || project_set == 0 || collector_set == 0 ||
             type_set == 0 || initial_time_set == 0 || duration_set == 0) {
-          fprintf(stderr, "ERROR: Invalid dumpFile record\n");
+          bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid dumpFile record\n");
           goto retry;
         }
 #ifdef BROKER_DEBUG
-        fprintf(stderr, "----------\n");
-        fprintf(stderr, "URL: %s\n", url);
-        fprintf(stderr, "Project: %s\n", project);
-        fprintf(stderr, "Collector: %s\n", collector);
-        fprintf(stderr, "Type: %d\n", type);
-        fprintf(stderr, "InitialTime: %lu\n", initial_time);
-        fprintf(stderr, "Duration: %lu\n", duration);
+        bgpstream_log(BGPSTREAM_LOG_INFO, "----------\n");
+        bgpstream_log(BGPSTREAM_LOG_INFO, "URL: %s\n", url);
+        bgpstream_log(BGPSTREAM_LOG_INFO, "Project: %s\n", project);
+        bgpstream_log(BGPSTREAM_LOG_INFO, "Collector: %s\n", collector);
+        bgpstream_log(BGPSTREAM_LOG_INFO, "Type: %d\n", type);
+        bgpstream_log(BGPSTREAM_LOG_INFO, "InitialTime: %lu\n", initial_time);
+        bgpstream_log(BGPSTREAM_LOG_INFO, "Duration: %lu\n", duration);
 #endif
 
         // do we need to update our current_window_end?
@@ -400,7 +401,7 @@ retry:
   return ERR_RETRY;
 
 err:
-  fprintf(stderr, "ERROR: Invalid JSON response received from broker\n");
+  bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid JSON response received from broker\n");
   free(url);
   return ERR_RETRY;
 }
@@ -422,7 +423,7 @@ static int read_json(bsdi_t *di, io_t *jsonfile)
 
   // allocate some tokens to start
   if ((tok = malloc(sizeof(jsmntok_t) * tokcount)) == NULL) {
-    fprintf(stderr, "ERROR: Could not malloc initial tokens\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not malloc initial tokens\n");
     goto err;
   }
 
@@ -431,7 +432,7 @@ static int read_json(bsdi_t *di, io_t *jsonfile)
     /* do a read */
     ret = wandio_read(jsonfile, buf, BUFSIZE);
     if (ret < 0) {
-      fprintf(stderr, "ERROR: Reading from broker failed\n");
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Reading from broker failed\n");
       goto err;
     }
     if (ret == 0) {
@@ -439,7 +440,7 @@ static int read_json(bsdi_t *di, io_t *jsonfile)
       break;
     }
     if ((js = realloc(js, jslen + ret + 1)) == NULL) {
-      fprintf(stderr, "ERROR: Could not realloc json string\n");
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not realloc json string\n");
       goto err;
     }
     strncpy(js + jslen, buf, ret);
@@ -451,16 +452,16 @@ again:
     if (ret == JSMN_ERROR_NOMEM) {
       tokcount *= 2;
       if ((tok = realloc(tok, sizeof(jsmntok_t) * tokcount)) == NULL) {
-        fprintf(stderr, "ERROR: Could not realloc tokens\n");
+        bgpstream_log(BGPSTREAM_LOG_ERR, "Could not realloc tokens\n");
         goto err;
       }
       goto again;
     }
     if (ret == JSMN_ERROR_INVAL) {
-      fprintf(stderr, "ERROR: Invalid character in JSON string\n");
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid character in JSON string\n");
       goto err;
     }
-    fprintf(stderr, "ERROR: JSON parser returned %d\n", ret);
+    bgpstream_log(BGPSTREAM_LOG_ERR, "JSON parser returned %d\n", ret);
     goto err;
   }
   ret = process_json(di, js, tok, p.toknext);
@@ -468,14 +469,14 @@ again:
   free(js);
   free(tok);
   if (ret == ERR_FATAL) {
-    fprintf(stderr, "ERROR: Received fatal error from process_json\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Received fatal error from process_json\n");
   }
   return ret;
 
 err:
   free(js);
   free(tok);
-  fprintf(stderr, "%s: Returning fatal error code\n", __func__);
+  bgpstream_log(BGPSTREAM_LOG_ERR, "%s: Returning fatal error code\n", __func__);
   return ERR_FATAL;
 }
 
@@ -623,7 +624,7 @@ int bsdi_broker_set_option(bsdi_t *di,
   case OPTION_PARAM:
     // adds a parameter
     if (STATE->params_cnt == MAX_PARAMS) {
-      fprintf(stderr, "ERROR: At most %d broker query parameters can be set\n",
+      bgpstream_log(BGPSTREAM_LOG_ERR, "At most %d broker query parameters can be set\n",
               MAX_PARAMS);
       return -1;
     }
@@ -633,7 +634,7 @@ int bsdi_broker_set_option(bsdi_t *di,
   case OPTION_CACHE_DIR:
     // enable cache, no option_value needed
     if( access( option_value, F_OK ) == -1 ) {
-      fprintf(stderr, "ERROR: Cache directory %s does not exist.\n", option_value);
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Cache directory %s does not exist.\n", option_value);
       STATE->cache_dir= NULL;
       return -1;
     } else {
@@ -690,7 +691,7 @@ int bsdi_broker_update_resources(bsdi_t *di)
     // need to add dataAddedSince
     if (snprintf(buf, BUFLEN, "%" PRIu32, STATE->last_response_time) >=
         BUFLEN) {
-      fprintf(stderr, "ERROR: Could not build dataAddedSince param string\n");
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not build dataAddedSince param string\n");
       goto err;
     }
     AMPORQ;
@@ -701,7 +702,7 @@ int bsdi_broker_update_resources(bsdi_t *di)
     // need to add minInitialTime
     if (snprintf(buf, BUFLEN, "%" PRIu32, STATE->current_window_end) >=
         BUFLEN) {
-      fprintf(stderr, "ERROR: Could not build minInitialTime param string\n");
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not build minInitialTime param string\n");
       goto err;
     }
     AMPORQ;
@@ -711,7 +712,7 @@ int bsdi_broker_update_resources(bsdi_t *di)
 
   do {
     if (attempts > 0) {
-      fprintf(stderr, "WARN: Broker request failed, waiting %ds before retry\n",
+      bgpstream_log(BGPSTREAM_LOG_WARN, "WARN: Broker request failed, waiting %ds before retry\n",
               wait_time);
       sleep(wait_time);
       if (wait_time < MAX_WAIT_TIME) {
@@ -721,17 +722,17 @@ int bsdi_broker_update_resources(bsdi_t *di)
     attempts++;
 
 #ifdef BROKER_DEBUG
-    fprintf(stderr, "\nQuery URL: \"%s\"\n", STATE->query_url_buf);
+    bgpstream_log(BGPSTREAM_LOG_INFO, "\nQuery URL: \"%s\"\n", STATE->query_url_buf);
 #endif
 
     if ((jsonfile = wandio_create(STATE->query_url_buf)) == NULL) {
-      fprintf(stderr, "ERROR: Could not open %s for reading\n",
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for reading\n",
               STATE->query_url_buf);
       goto retry;
     }
 
     if ((rc = read_json(di, jsonfile)) == ERR_FATAL) {
-      fprintf(stderr, "ERROR: Received fatal error code from read_json\n");
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Received fatal error code from read_json\n");
       goto err;
     } else if (rc == ERR_RETRY) {
       goto retry;
@@ -753,7 +754,7 @@ int bsdi_broker_update_resources(bsdi_t *di)
   return 0;
 
 err:
-  fprintf(stderr, "ERROR: Fatal error in broker data source\n");
+  bgpstream_log(BGPSTREAM_LOG_ERR, "Fatal error in broker data source\n");
   if (jsonfile != NULL) {
     wandio_destroy(jsonfile);
   }
