@@ -414,8 +414,8 @@ static bgpstream_format_status_t bs_format_process_json_fields(bgpstream_format_
   int r;
   bgpstream_format_status_t rc;
   jsmn_parser p;
-  char* key_ptr, *value_ptr, *next_ptr;
-  size_t key_size, value_size;
+  char *value_ptr, *next_ptr;
+  size_t value_size;
 
   jsmntok_t *t;
   size_t tokcount = 128;
@@ -455,8 +455,6 @@ again:
 
   /* Loop over all fields of the json string buffer */
   for (i = 1; i < r-1; i++) {
-    key_ptr = STATE->json_string_buffer + t[i].start;
-    key_size = t[i].end-t[i].start;
     value_ptr = STATE->json_string_buffer + t[i+1].start;
     value_size = t[i+1].end-t[i+1].start;
 
