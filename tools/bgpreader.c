@@ -224,7 +224,7 @@ static void usage()
       fprintf(stderr, "usage: bgpreader -w <start>[,<end>] [<options>]\n"
         "Available options are:\n");
     }
-    
+
     char expl_buf[OPTIONS_EXPL_LEN] = {0};
     for (j = 0; j < strlen(OPTIONS[k].expl); j++) {
       snprintf(expl_buf + strlen(expl_buf), sizeof(expl_buf) - strlen(expl_buf),
@@ -250,6 +250,7 @@ static void usage()
 
 static int print_record(bgpstream_record_t *record);
 static int print_elem(bgpstream_record_t *record, bgpstream_elem_t *elem);
+static int print_elem_bgpdump(bgpstream_record_t *record, bgpstream_elem_t *elem);
 
 int main(int argc, char *argv[])
 {
@@ -549,6 +550,15 @@ int main(int argc, char *argv[])
     }
   }
 
+  /* Cannot output in both bgpstream elem and bgpdump format
+   */
+  if(elem_output_on == 1 && record_bgpdump_output_on == 1){
+    fprintf(stderr,
+            "ERROR: Cannot output in both bgpstream elem (-e) and bgpdump format (-m).\n");
+    usage();
+    goto err;
+  }
+
   /* if the user did not specify any output format
    * then the default one is per elem */
   if (record_output_on == 0 && elem_output_on == 0 &&
@@ -658,43 +668,45 @@ int main(int argc, char *argv[])
          (rec_limit < 0 || rec_cnt < rec_limit)) {
     rec_cnt++;
 
-    if (record_output_on && print_record(bs_record) != 0) {
-      goto err;
-    }
-
     if (bs_record->status != BGPSTREAM_RECORD_STATUS_VALID_RECORD) {
       continue;
     }
 
-    if (record_bgpdump_output_on) {
-      bgpstream_record_print_mrt_data(bs_record);
+    if (record_output_on && print_record(bs_record) != 0) {
+      goto err;
     }
 
-    if (elem_output_on) {
-      /* check if the record is of type RIB, in case extract the ID */
-      /* print the RIB start line */
-      if (bs_record->type == BGPSTREAM_RIB &&
-          bs_record->dump_pos == BGPSTREAM_DUMP_START &&
-          print_record(bs_record) != 0) {
-        goto err;
-      }
+    /* check if the record is of type RIB, in case extract the ID */
+    /* print the RIB start line */
+    if (bs_record->type == BGPSTREAM_RIB &&
+        bs_record->dump_pos == BGPSTREAM_DUMP_START &&
+        print_record(bs_record) != 0) {
+      goto err;
+    }
 
+    if (record_bgpdump_output_on || elem_output_on) {
       while ((erc = bgpstream_record_get_next_elem(bs_record, &bs_elem)) > 0) {
 #ifdef WITH_RPKI
         if(rpki_input != NULL && rpki_input->rpki_active){
           bs_elem->annotations.cfg = cfg;
           bs_elem->annotations.rpki_active = rpki_input->rpki_active;
-          bs_elem->annotations.timestamp = bs_record->time_sec;            
+          bs_elem->annotations.timestamp = bs_record->time_sec;
         }
 #endif
-        if (print_elem(bs_record, bs_elem) != 0) {
+        // print record following bgpdump format
+        if (record_bgpdump_output_on && print_elem_bgpdump(bs_record, bs_elem) != 0) {
+          goto err;
+        } else if (elem_output_on && print_elem(bs_record, bs_elem) != 0){
           goto err;
         }
+
       }
+
       if (erc != 0) {
         fprintf(stderr, "ERROR: Failed to get elem from record\n");
         goto err;
       }
+
       /* check if end of RIB has been reached */
       if (bs_record->type == BGPSTREAM_RIB &&
           bs_record->dump_pos == BGPSTREAM_DUMP_END &&
@@ -747,6 +759,17 @@ static int print_record(bgpstream_record_t *record)
 static int print_elem(bgpstream_record_t *record, bgpstream_elem_t *elem)
 {
   if (bgpstream_record_elem_snprintf(buf, sizeof(buf), record, elem) == NULL) {
+    fprintf(stderr, "ERROR: Could not convert record/elem to string\n");
+    return -1;
+  }
+
+  printf("%s\n", buf);
+  return 0;
+}
+
+static int print_elem_bgpdump(bgpstream_record_t *record, bgpstream_elem_t *elem)
+{
+  if (bgpstream_record_elem_bgpdump_snprintf(buf, sizeof(buf), record, elem) == NULL) {
     fprintf(stderr, "ERROR: Could not convert record/elem to string\n");
     return -1;
   }

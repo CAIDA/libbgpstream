@@ -408,6 +408,48 @@ int bgpstream_parsebgp_process_path_attrs(
       PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_PATH) {
     as4path = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_PATH].data.as_path;
   }
+  // ORIGIN: origin as-path attribute (IGP, EGP, INCOMPLETE)
+  if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_ORIGIN].type ==
+      PARSEBGP_BGP_PATH_ATTR_TYPE_ORIGIN) {
+    el->origin = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_ORIGIN].data.origin;
+  }
+  // MED
+  if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MED].type ==
+      PARSEBGP_BGP_PATH_ATTR_TYPE_MED) {
+    el->med = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MED].data.med;
+  }
+  // LOCAL_PREF
+  if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_LOCAL_PREF].type ==
+      PARSEBGP_BGP_PATH_ATTR_TYPE_LOCAL_PREF) {
+    el->local_pref = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_LOCAL_PREF].data.local_pref;
+  }
+  // Atomic aggregate: AG/NAG
+  if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_ATOMIC_AGGREGATE].type ==
+      PARSEBGP_BGP_PATH_ATTR_TYPE_ATOMIC_AGGREGATE) {
+    el->atomic_aggregate = 1;
+  } else {
+    el->atomic_aggregate = 0;
+  }
+  // Aggregator
+  if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AGGREGATOR].type ==
+      PARSEBGP_BGP_PATH_ATTR_TYPE_AGGREGATOR) {
+    el->aggregator.has_aggregator = 1;
+    el->aggregator.aggregator_asn = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AGGREGATOR].data.aggregator.asn;
+    COPY_IP(&el->aggregator.aggregator_addr, PARSEBGP_BGP_AFI_IPV4,
+            attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AGGREGATOR].data.aggregator.addr,
+            return -1);
+  } else if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR].type ==
+      PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR){
+    el->aggregator.has_aggregator = 1;
+    el->aggregator.aggregator_asn = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR].data.aggregator.asn;
+    COPY_IP(&el->aggregator.aggregator_addr, PARSEBGP_BGP_AFI_IPV4,
+            attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR].data.aggregator.addr,
+            return -1);
+  }
+  else {
+    el->aggregator.has_aggregator = 0;
+  }
+
   if (handle_as_paths(el->as_path, aspath, as4path) != 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not parse AS_PATH");
     return -1;
@@ -620,15 +662,15 @@ void bgpstream_parsebgp_opts_init(parsebgp_opts_t *opts)
   opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_ORIGIN] = 1;
   opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_AS_PATH] = 1;
   opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_NEXT_HOP] = 1;
-  //opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_MED] = 1;
-  //opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_LOCAL_PREF] = 1;
-  //opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_ATOMIC_AGGREGATE] = 1;
-  //opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_AGGREGATOR] = 1;
+  opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_MED] = 1;
+  opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_LOCAL_PREF] = 1;
+  opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_ATOMIC_AGGREGATE] = 1;
+  opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_AGGREGATOR] = 1;
   opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_COMMUNITIES] = 1;
   opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_REACH_NLRI] = 1;
   opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI] = 1;
   opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_PATH] = 1;
-  //opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR] = 1;
+  opts->bgp.path_attr_filter[PARSEBGP_BGP_PATH_ATTR_TYPE_AS4_AGGREGATOR] = 1;
 
   // and ask for shallow parsing of communities
   opts->bgp.path_attr_raw_enabled = 1;

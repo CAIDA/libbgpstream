@@ -87,6 +87,26 @@ typedef enum {
 
 } bgpstream_elem_peerstate_t;
 
+/**
+ * BGP ORIGIN Path Attribute values
+ */
+typedef enum {
+
+  /** IGP - Network Layer Reachability Information is interior to the
+      originating AS */
+  BGPSTREAM_ELEM_BGP_UPDATE_ORIGIN_IGP = 0,
+
+  /** EGP - Network Layer Reachability Information learned via the EGP protocol
+      [RFC904] */
+  BGPSTREAM_ELEM_BGP_UPDATE_ORIGIN_EGP = 1,
+
+  /** INCOMPLETE - Network Layer Reachability Information learned by some other
+      means */
+  BGPSTREAM_ELEM_BGP_UPDATE_ORIGIN_INCOMPLETE = 2,
+
+} bgpstream_elem_origin_type_t;
+
+
 /** Elem types */
 typedef enum {
 
@@ -108,7 +128,7 @@ typedef enum {
 } bgpstream_elem_type_t;
 
 typedef struct struct_bgpstream_annotations_t {
-  
+
   /** RPKI active */
   int rpki_active;
 
@@ -119,6 +139,20 @@ typedef struct struct_bgpstream_annotations_t {
   uint32_t timestamp;
 
 } bgpstream_annotations_t;
+
+/** Elem aggregator object */
+typedef struct bgpstream_elem_aggregator {
+
+  /** Boolean value to check if aggregator field is set */
+  uint8_t has_aggregator;
+
+  /** Aggregator ASN */
+  uint32_t aggregator_asn;
+
+  /** Aggregator IP */
+  bgpstream_addr_storage_t aggregator_addr;
+
+} bgpstream_elem_aggregator_t;
 
 /** @} */
 
@@ -205,6 +239,25 @@ typedef struct bgpstream_elem {
    * Annotations from other libraries
    */
   bgpstream_annotations_t annotations;
+
+
+  /** ORIGIN as-path attribute
+    * This attribute indicates where the update comes from:
+    * internal network (IGP), external network (EGP), or other means (INCOMPLETE).
+    */
+  bgpstream_elem_origin_type_t origin;
+
+  /** MED attribute */
+  uint32_t med;
+
+  /** LOCAL_PREF attribute */
+  uint32_t local_pref;
+
+  /** Atomic aggregate attribute */
+  uint8_t atomic_aggregate;
+
+  /** Atomic aggregate attribute */
+  bgpstream_elem_aggregator_t aggregator;
 
 } bgpstream_elem_t;
 

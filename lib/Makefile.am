@@ -49,6 +49,8 @@ include_HEADERS = bgpstream.h		\
 libbgpstream_la_SOURCES = 	\
 	bgpstream.h		\
 	bgpstream.c		\
+	bgpstream_bgpdump.c	\
+	bgpstream_bgpdump.h	\
 	bgpstream_constants.h	\
 	bgpstream_di_interface.h	\
 	bgpstream_di_mgr.c	\
