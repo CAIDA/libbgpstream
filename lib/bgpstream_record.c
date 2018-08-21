@@ -177,6 +177,23 @@ static int elem_check_filters(bgpstream_record_t *record,
     return 0;
   }
 
+  /* Checking origin ASN */
+  if (filter_mgr->origin_asns) {
+    if (elem->type == BGPSTREAM_ELEM_TYPE_WITHDRAWAL ||
+        elem->type == BGPSTREAM_ELEM_TYPE_PEERSTATE) {
+      return 0;
+    }
+    uint32_t origin_asn;
+
+    if (bgpstream_as_path_get_origin_val(elem->as_path, &origin_asn) < 0) {
+      return 0;
+    }
+
+    if (bgpstream_id_set_exists(filter_mgr->origin_asns, origin_asn) == 0) {
+      return 0;
+    }
+  }
+
   if (filter_mgr->ipversion) {
     /* Determine address version for the element prefix */
 
@@ -261,9 +278,7 @@ static int elem_check_filters(bgpstream_record_t *record,
         break;
       }
     }
-    if (positives == totalpositives && negatives == 0) {
-      return 1;
-    } else {
+    if (!(positives == totalpositives && negatives == 0)){
       return 0;
     }
   }
