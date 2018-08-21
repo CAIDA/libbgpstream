@@ -628,7 +628,9 @@ int main(int argc, char *argv[])
   }
 
   /* windows */
-  bgpstream_add_interval_filter(bs, time_window.start, time_window.end);
+  if(time_window.set == 1){
+    bgpstream_add_interval_filter(bs, time_window.start, time_window.end);
+  }
 
   /* peer asns */
   for (i = 0; i < peerasns_cnt; i++) {
