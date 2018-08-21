@@ -36,6 +36,8 @@
 
 #define RDATA ((rec_data_t *)(record->__int->data))
 
+#define TIF filter_mgr->time_interval
+
 typedef struct peer_index_entry {
 
   /** Peer ASN */
@@ -270,22 +272,11 @@ static int handle_bgp4mp(rec_data_t *rd, parsebgp_mrt_msg_t *mrt)
 static int is_wanted_time(uint32_t record_time,
                           bgpstream_filter_mgr_t *filter_mgr)
 {
-  bgpstream_interval_filter_t *tif;
-
-  if (filter_mgr->time_intervals == NULL) {
-    // no time filtering
+  if (TIF==NULL ||
+      (record_time >= TIF->begin_time &&
+      (TIF->end_time == BGPSTREAM_FOREVER || record_time <= TIF->end_time))) {
+    // matches a filter interval
     return 1;
-  }
-
-  tif = filter_mgr->time_intervals;
-
-  while (tif != NULL) {
-    if (record_time >= tif->begin_time &&
-        (tif->end_time == BGPSTREAM_FOREVER || record_time <= tif->end_time)) {
-      // matches a filter interval
-      return 1;
-    }
-    tif = tif->next;
   }
 
   return 0;
@@ -356,10 +347,10 @@ populate_filter_cb(bgpstream_format_t *format, bgpstream_record_t *record,
   // TODO: if this is a BGP4MP or TD1 message (UPDATE), then we can do some
   // work to prep the path attributes (and then filter on them).
 
-  // is this above all of our intervals?
-  if (format->filter_mgr->time_intervals != NULL &&
-      format->filter_mgr->time_intervals_max != BGPSTREAM_FOREVER &&
-      ts_sec > format->filter_mgr->time_intervals_max) {
+  // is this above our interval
+  if (format->TIF != NULL &&
+      format->TIF->end_time != BGPSTREAM_FOREVER &&
+      ts_sec > format->TIF->end_time) {
     // force EOS
     return BGPSTREAM_PARSEBGP_EOS;
   }

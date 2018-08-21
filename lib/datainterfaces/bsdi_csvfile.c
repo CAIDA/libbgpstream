@@ -39,6 +39,7 @@
 #include <wandio.h>
 
 #define STATE (BSDI_GET_STATE(di, csvfile))
+#define TIF filter_mgr->time_interval
 
 /* ---------- START CLASS DEFINITION ---------- */
 
@@ -111,7 +112,6 @@ enum {
 static int filters_match(bsdi_t *di)
 {
   bgpstream_filter_mgr_t *filter_mgr = BSDI_GET_FILTER_MGR(di);
-  bgpstream_interval_filter_t *tif;
   int all_false;
 
   char *f;
@@ -163,22 +163,13 @@ static int filters_match(bsdi_t *di)
     }
   }
 
-  // time_intervals
-  all_false = 1;
-  if (filter_mgr->time_intervals != NULL) {
-    tif = filter_mgr->time_intervals;
-    while (tif != NULL) {
-      // filetime (we consider 15 mins before to consider routeviews updates
-      // and 120 seconds to have some margins)
-      if (STATE->filetime >= (tif->begin_time - (15 * 60) - 120) &&
-          (tif->end_time == BGPSTREAM_FOREVER ||
-           STATE->filetime <= tif->end_time)) {
-        all_false = 0;
-        break;
-      }
-      tif = tif->next;
-    }
-    if (all_false != 0) {
+  // time_interval
+  if (TIF != NULL) {
+    // filetime (we consider 15 mins before to consider routeviews updates
+    // and 120 seconds to have some margins)
+    if (!(STATE->filetime >= (TIF->begin_time - (15 * 60) - 120) &&
+          (TIF->end_time == BGPSTREAM_FOREVER ||
+           STATE->filetime <= TIF->end_time))) {
       return 0;
     }
   }

@@ -36,6 +36,8 @@
 #include <inttypes.h>
 #include <stdio.h>
 
+#define TIF filter_mgr->time_interval
+
 /* allocate memory for a new bgpstream filter */
 bgpstream_filter_mgr_t *bgpstream_filter_mgr_create()
 {
@@ -45,8 +47,6 @@ bgpstream_filter_mgr_t *bgpstream_filter_mgr_create()
   if (bs_filter_mgr == NULL) {
     return NULL; // can't allocate memory
   }
-  bs_filter_mgr->time_intervals_min = -1;
-  bs_filter_mgr->time_intervals_max = -1;
   bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSF_MGR: create end");
   return bs_filter_mgr;
 }
@@ -260,41 +260,21 @@ void bgpstream_filter_mgr_interval_filter_add(
   // copying filter values
   f->begin_time = begin_time;
   f->end_time = end_time;
-  f->next = bs_filter_mgr->time_intervals;
-  bs_filter_mgr->time_intervals = f;
-
-  if (bs_filter_mgr->time_intervals_min == -1 ||
-      begin_time < bs_filter_mgr->time_intervals_min) {
-    bs_filter_mgr->time_intervals_min = begin_time;
-  }
-  if (bs_filter_mgr->time_intervals_max == -1 ||
-      end_time > bs_filter_mgr->time_intervals_max ||
-      end_time == BGPSTREAM_FOREVER) {
-    bs_filter_mgr->time_intervals_max = end_time;
-  }
+  bs_filter_mgr->time_interval = f;
 
   bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSF_MGR:: add_filter stop");
 }
 
 int bgpstream_filter_mgr_validate(bgpstream_filter_mgr_t *filter_mgr)
 {
-  bgpstream_interval_filter_t *tif;
-  /* currently we only validate the intervals */
-  if (filter_mgr->time_intervals != NULL) {
-    tif = filter_mgr->time_intervals;
-
-    while (tif != NULL) {
-      if (tif->end_time != BGPSTREAM_FOREVER &&
-          tif->begin_time > tif->end_time) {
-        /* invalid interval */
-        bgpstream_log(BGPSTREAM_LOG_ERR,
-                      "Interval %" PRIu32 ",%" PRIu32 " is invalid\n",
-                      tif->begin_time, tif->end_time);
-        return -1;
-      }
-
-      tif = tif->next;
-    }
+  /* currently we only validate the interval */
+  if (TIF != NULL && (TIF->end_time != BGPSTREAM_FOREVER &&
+                      TIF->begin_time > TIF->end_time)) {
+    /* invalid interval */
+    bgpstream_log(BGPSTREAM_LOG_ERR,
+                  "Interval %" PRIu32 ",%" PRIu32 " is invalid\n",
+                  TIF->begin_time, TIF->end_time);
+    return -1;
   }
 
   return 0;
@@ -308,7 +288,6 @@ void bgpstream_filter_mgr_destroy(bgpstream_filter_mgr_t *bs_filter_mgr)
     return; // nothing to destroy
   }
   // destroying filters
-  bgpstream_interval_filter_t *tif;
   khiter_t k;
   // projects
   if (bs_filter_mgr->projects != NULL) {
@@ -342,12 +321,9 @@ void bgpstream_filter_mgr_destroy(bgpstream_filter_mgr_t *bs_filter_mgr)
   if (bs_filter_mgr->communities != NULL) {
     kh_destroy(bgpstream_community_filter, bs_filter_mgr->communities);
   }
-  // time_intervals
-  tif = NULL;
-  while (bs_filter_mgr->time_intervals != NULL) {
-    tif = bs_filter_mgr->time_intervals;
-    bs_filter_mgr->time_intervals = bs_filter_mgr->time_intervals->next;
-    free(tif);
+  // time_interval
+  if (bs_filter_mgr->time_interval != NULL) {
+    free(bs_filter_mgr->time_interval);
   }
   // rib/update frequency
   if (bs_filter_mgr->last_processed_ts != NULL) {

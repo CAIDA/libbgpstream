@@ -47,6 +47,7 @@
 #include <wandio.h>
 
 #define STATE (BSDI_GET_STATE(di, broker))
+#define TIF filter_mgr->time_interval
 
 /* ---------- START CLASS DEFINITION ---------- */
 
@@ -497,9 +498,8 @@ static int update_query_url(bsdi_t *di)
   // http://bgpstream.caida.org/broker/data?
   APPEND_STR("/data");
 
-  // projects, collectors, bgp_types, and time_intervals are used as filters
+  // projects, collectors, bgp_types, and time_interval are used as filters
   // only if they are provided by the user
-  bgpstream_interval_filter_t *tif;
 
   // projects
   char *f;
@@ -538,31 +538,26 @@ static int update_query_url(bsdi_t *di)
     APPEND_STR(STATE->params[i]);
   }
 
-// time_intervals
+// time_interval
 #define BUFLEN 20
   char int_buf[BUFLEN];
-  if (filter_mgr->time_intervals != NULL) {
-    tif = filter_mgr->time_intervals;
+  if (TIF != NULL) {
 
-    while (tif != NULL) {
-      AMPORQ;
-      APPEND_STR("intervals[]=");
+    AMPORQ;
+    APPEND_STR("intervals[]=");
 
-      // BEGIN TIME
-      if (snprintf(int_buf, BUFLEN, "%" PRIu32, tif->begin_time) >= BUFLEN) {
-        goto err;
-      }
-      APPEND_STR(int_buf);
-      APPEND_STR(",");
-
-      // END TIME
-      if (snprintf(int_buf, BUFLEN, "%" PRIu32, tif->end_time) >= BUFLEN) {
-        goto err;
-      }
-      APPEND_STR(int_buf);
-
-      tif = tif->next;
+    // BEGIN TIME
+    if (snprintf(int_buf, BUFLEN, "%" PRIu32, TIF->begin_time) >= BUFLEN) {
+      goto err;
     }
+    APPEND_STR(int_buf);
+    APPEND_STR(",");
+
+    // END TIME
+    if (snprintf(int_buf, BUFLEN, "%" PRIu32, TIF->end_time) >= BUFLEN) {
+      goto err;
+    }
+    APPEND_STR(int_buf);
   }
 
   // grab pointer to the end of the current string to simplify modifying the

@@ -39,6 +39,7 @@
 #include <unistd.h>
 
 #define STATE (BSDI_GET_STATE(di, sqlite))
+#define TIF filter_mgr->time_interval
 
 /* ---------- START CLASS DEFINITION ---------- */
 
@@ -158,10 +159,9 @@ static int build_query(bsdi_t *di)
     "bgp_data.type_id = bgp_types.id AND "
     "bgp_data.type_id = time_span.bgp_type_id ");
 
-  // projects, collectors, bgp_types, and time_intervals are used as filters
+  // projects, collectors, bgp_types, and time_interval are used as filters
   // only if they are provided by the user
   bgpstream_filter_mgr_t *filter_mgr = BSDI_GET_FILTER_MGR(di);
-  bgpstream_interval_filter_t *tif;
   int first;
   char *f;
 
@@ -216,41 +216,33 @@ static int build_query(bsdi_t *di)
     APPEND_STR(" ) ");
   }
 
-  // time_intervals
+  // time_interval
   int written = 0;
-  if (filter_mgr->time_intervals != NULL) {
-    tif = filter_mgr->time_intervals;
+  if (TIF != NULL) {
     APPEND_STR(" AND ( ");
 
-    while (tif != NULL) {
-      APPEND_STR(" ( ");
+    APPEND_STR(" ( ");
 
-      // BEGIN TIME
-      APPEND_STR(" (bgp_data.file_time >=  ");
+    // BEGIN TIME
+    APPEND_STR(" (bgp_data.file_time >=  ");
+    interval_str[0] = '\0';
+    if ((written = snprintf(interval_str, MAX_INTERVAL_LEN, "%" PRIu32,
+                            TIF->begin_time)) < MAX_INTERVAL_LEN) {
+      APPEND_STR(interval_str);
+    }
+    APPEND_STR("  - time_span.time_span - 120 )");
+    APPEND_STR("  AND  ");
+
+    // END TIME
+    if (TIF->end_time != BGPSTREAM_FOREVER) {
+      APPEND_STR(" (bgp_data.file_time <=  ");
       interval_str[0] = '\0';
       if ((written = snprintf(interval_str, MAX_INTERVAL_LEN, "%" PRIu32,
-                              tif->begin_time)) < MAX_INTERVAL_LEN) {
+                              TIF->end_time)) < MAX_INTERVAL_LEN) {
         APPEND_STR(interval_str);
       }
-      APPEND_STR("  - time_span.time_span - 120 )");
-      APPEND_STR("  AND  ");
-
-      // END TIME
-      if (tif->end_time != BGPSTREAM_FOREVER) {
-        APPEND_STR(" (bgp_data.file_time <=  ");
-        interval_str[0] = '\0';
-        if ((written = snprintf(interval_str, MAX_INTERVAL_LEN, "%" PRIu32,
-                                tif->end_time)) < MAX_INTERVAL_LEN) {
-          APPEND_STR(interval_str);
-        }
-        APPEND_STR(") ");
-        APPEND_STR(" ) ");
-      }
-
-      tif = tif->next;
-      if (tif != NULL) {
-        APPEND_STR(" OR ");
-      }
+      APPEND_STR(") ");
+      APPEND_STR(" ) ");
     }
     APPEND_STR(" )");
   }
