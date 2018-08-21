@@ -117,16 +117,16 @@
        "process a rib files every <period> seconds (bgp time)"},               \
       {{"peer-asn", required_argument, 0, 'j'},                                \
        "<peer ASN>",                                                           \
-       "return valid elems received by a specific peer ASN*"},                 \
+       "return elems received by a given peer ASN*"},                 \
       {{"origin-asn", required_argument, 0, 'a'},                              \
        "<origin ASN>",                                                         \
-       "return valid elems originated by a specific origin ASN*"},             \
+       "return elems originated by a given origin ASN*"},             \
       {{"prefix", required_argument, 0, 'k'},                                  \
        "<prefix>",                                                             \
-       "return valid elems associated with a specific prefix*"},               \
+       "return elems associated with a given prefix*"},               \
       {{"community", required_argument, 0, 'y'},                               \
        "<community>",                                                          \
-       "return valid elems with the specified community*\n"                    \
+       "return elems with the specified community*\n"                    \
        "(format: asn:value,the '*' metacharacter is recognized)"},             \
       {{"count", required_argument, 0, 'n'},                                   \
        "<rec-cnt>",                                                            \
@@ -138,11 +138,11 @@
       {{"output-elems", no_argument, 0, 'e'},                                  \
        "",                                                                     \
        "print info "                                                           \
-       "for each element of a valid BGP record (default)"},                    \
+       "for each element of a BGP record (default)"},                    \
       {{"output-bgpdump", no_argument, 0, 'm'},                                \
        "",                                                                     \
        "print info "                                                           \
-       "for each BGP valid record in bgpdump -m format"},                      \
+       "for each BGP record in bgpdump -m format"},                      \
       {{"output-records", no_argument, 0, 'r'},                                \
        "",                                                                     \
        "print info "                                                           \
