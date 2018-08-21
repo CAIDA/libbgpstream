@@ -192,12 +192,6 @@ enum rpki_options {
 static struct option long_options[OPTIONS_CNT + 1];
 static char short_options[OPTIONS_CNT * 2 + 1];
 
-struct window {
-  uint8_t  set;
-  uint32_t start;
-  uint32_t end;
-};
-
 static char buf[65536];
 
 static bgpstream_t *bs;
@@ -322,9 +316,8 @@ int main(int argc, char *argv[])
 
   char *filterstring = NULL;
   char *intervalstring = NULL;
-  struct window time_window;
-  time_window.set = 0;
-
+  uint32_t interval_start = 0;
+  uint32_t interval_end = BGPSTREAM_FOREVER;
   int rib_period = 0;
   int live = 0;
   int output_info = 0;
@@ -406,14 +399,13 @@ int main(int argc, char *argv[])
     case 'w':
       /* split the window into a start and end */
       if ((endp = strchr(optarg, ',')) == NULL) {
-        time_window.end = BGPSTREAM_FOREVER;
+        interval_end = BGPSTREAM_FOREVER;
       } else {
         *endp = '\0';
         endp++;
-        time_window.end = atoi(endp);
+        interval_end = atoi(endp);
       }
-      time_window.start = atoi(optarg);
-      time_window.set = 1;
+      interval_start = atoi(optarg);
       break;
     case 'j':
       if (peerasns_cnt == PEERASN_CMD_CNT) {
@@ -567,7 +559,7 @@ int main(int argc, char *argv[])
   }
   interface_options_cnt = 0;
 
-  if (time_window.set == 0 && !intervalstring) {
+  if (interval_start == 0 && !intervalstring) {
     if (di_id == BGPSTREAM_DATA_INTERFACE_BROKER) {
       fprintf(stderr,
               "ERROR: At least one time window must be set when using the "
@@ -628,8 +620,8 @@ int main(int argc, char *argv[])
   }
 
   /* windows */
-  if(time_window.set == 1){
-    bgpstream_add_interval_filter(bs, time_window.start, time_window.end);
+  if(interval_start != 0){
+    bgpstream_add_interval_filter(bs, interval_start, interval_end);
   }
 
   /* peer asns */
