@@ -215,12 +215,6 @@ typedef struct bgpstream_elem {
    */
   bgpstream_as_path_t *as_path;
 
-  /** Prefix originator AS number
-   *
-   * Available only for RIB and Announcement elem types
-   */
-  int32_t origin_asn;
-
   /** Communities
    *
    * Available only for RIB and Announcement elem types
