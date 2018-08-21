@@ -52,7 +52,6 @@
 #define COMMUNITY_CMD_CNT 1000
 #define PEERASN_CMD_CNT 1000
 #define ORIGINASN_CMD_CNT 1000
-#define WINDOW_CMD_CNT 1024
 #define OPTION_CMD_CNT 1024
 #define OPTIONS_EXPL_LEN 1024
 #define BGPSTREAM_RECORD_OUTPUT_FORMAT                                         \
@@ -111,7 +110,7 @@
       {{"time-window", required_argument, 0, 'w'},                             \
        "<start>[,<end>]",                                                      \
        "process records within the given time window\nspecified in Unix "      \
-       "epoch time\n(omitting the end parameter enables live mode)*"},         \
+       "epoch time\n(omitting the end parameter enables live mode)"},          \
       {{"rib-period", required_argument, 0, 'P'},                              \
        "<period>",                                                             \
        "process a rib files every <period> seconds (bgp time)"},               \
@@ -196,11 +195,6 @@ enum rpki_options {
 
 static struct option long_options[OPTIONS_CNT + 1];
 static char short_options[OPTIONS_CNT * 2 + 1];
-
-struct window {
-  uint32_t start;
-  uint32_t end;
-};
 
 static char buf[65536];
 
@@ -317,9 +311,7 @@ int main(int argc, char *argv[])
   char *communities[COMMUNITY_CMD_CNT];
   int communities_cnt = 0;
 
-  struct window windows[WINDOW_CMD_CNT];
   char *endp;
-  int windows_cnt = 0;
 
   char *interface_options[OPTION_CMD_CNT];
   int interface_options_cnt = 0;
@@ -331,7 +323,8 @@ int main(int argc, char *argv[])
 
   char *filterstring = NULL;
   char *intervalstring = NULL;
-
+  uint32_t interval_start = 0;
+  uint32_t interval_end = BGPSTREAM_FOREVER;
   int rib_period = 0;
   int live = 0;
   int output_info = 0;
@@ -411,24 +404,15 @@ int main(int argc, char *argv[])
       types[types_cnt++] = strdup(optarg);
       break;
     case 'w':
-      if (windows_cnt == WINDOW_CMD_CNT) {
-        fprintf(stderr,
-                "ERROR: A maximum of %d windows can be specified on "
-                "the command line\n",
-                WINDOW_CMD_CNT);
-        usage();
-        goto err;
-      }
       /* split the window into a start and end */
       if ((endp = strchr(optarg, ',')) == NULL) {
-        windows[windows_cnt].end = BGPSTREAM_FOREVER;
+        interval_end = BGPSTREAM_FOREVER;
       } else {
         *endp = '\0';
         endp++;
-        windows[windows_cnt].end = atoi(endp);
+        interval_end = atoi(endp);
       }
-      windows[windows_cnt].start = atoi(optarg);
-      windows_cnt++;
+      interval_start = atoi(optarg);
       break;
     case 'j':
       if (peerasns_cnt == PEERASN_CMD_CNT) {
@@ -593,7 +577,7 @@ int main(int argc, char *argv[])
   }
   interface_options_cnt = 0;
 
-  if (windows_cnt == 0 && !intervalstring) {
+  if (interval_start == 0 && !intervalstring) {
     if (di_id == BGPSTREAM_DATA_INTERFACE_BROKER) {
       fprintf(stderr,
               "ERROR: At least one time window must be set when using the "
@@ -601,7 +585,7 @@ int main(int argc, char *argv[])
       usage();
       goto err;
     } else {
-      fprintf(stderr, "WARN: No time windows specified, defaulting to all "
+      fprintf(stderr, "WARN: No time window specified, defaulting to all "
                       "available data\n");
     }
   }
@@ -654,8 +638,8 @@ int main(int argc, char *argv[])
   }
 
   /* windows */
-  for (i = 0; i < windows_cnt; i++) {
-    bgpstream_add_interval_filter(bs, windows[i].start, windows[i].end);
+  if(interval_start != 0){
+    bgpstream_add_interval_filter(bs, interval_start, interval_end);
   }
 
   /* peer asns */

@@ -50,7 +50,6 @@ typedef khash_t(bgpstream_community_filter) bgpstream_community_filter_t;
 typedef struct struct_bgpstream_interval_filter_t {
   uint32_t begin_time;
   uint32_t end_time;
-  struct struct_bgpstream_interval_filter_t *next;
 } bgpstream_interval_filter_t;
 
 KHASH_INIT(collector_ts, char *, uint32_t, 1, kh_str_hash_func,
@@ -68,9 +67,7 @@ typedef struct struct_bgpstream_filter_mgr_t {
   bgpstream_id_set_t *origin_asns;
   bgpstream_patricia_tree_t *prefixes;
   bgpstream_community_filter_t *communities;
-  bgpstream_interval_filter_t *time_intervals;
-  int64_t time_intervals_min; // lower bound of all intervals
-  int64_t time_intervals_max; // upper bound of all intervals
+  bgpstream_interval_filter_t *time_interval;
   collector_ts_t *last_processed_ts;
   uint32_t rib_period;
   uint8_t ipversion;
