@@ -51,6 +51,7 @@
 #define PREFIX_CMD_CNT 1000
 #define COMMUNITY_CMD_CNT 1000
 #define PEERASN_CMD_CNT 1000
+#define ORIGINASN_CMD_CNT 1000
 #define OPTION_CMD_CNT 1024
 #define OPTIONS_EXPL_LEN 1024
 #define BGPSTREAM_RECORD_OUTPUT_FORMAT                                         \
@@ -115,13 +116,16 @@
        "process a rib files every <period> seconds (bgp time)"},               \
       {{"peer-asn", required_argument, 0, 'j'},                                \
        "<peer ASN>",                                                           \
-       "return valid elems originated by a specific peer ASN*"},               \
+       "return elems received by a given peer ASN*"},                 \
+      {{"origin-asn", required_argument, 0, 'a'},                              \
+       "<origin ASN>",                                                         \
+       "return elems originated by a given origin ASN*"},             \
       {{"prefix", required_argument, 0, 'k'},                                  \
        "<prefix>",                                                             \
-       "return valid elems associated with a specific prefix*"},               \
+       "return elems associated with a given prefix*"},               \
       {{"community", required_argument, 0, 'y'},                               \
        "<community>",                                                          \
-       "return valid elems with the specified community*\n"                    \
+       "return elems with the specified community*\n"                    \
        "(format: asn:value,the '*' metacharacter is recognized)"},             \
       {{"count", required_argument, 0, 'n'},                                   \
        "<rec-cnt>",                                                            \
@@ -133,11 +137,11 @@
       {{"output-elems", no_argument, 0, 'e'},                                  \
        "",                                                                     \
        "print info "                                                           \
-       "for each element of a valid BGP record (default)"},                    \
+       "for each element of a BGP record (default)"},                    \
       {{"output-bgpdump", no_argument, 0, 'm'},                                \
        "",                                                                     \
        "print info "                                                           \
-       "for each BGP valid record in bgpdump -m format"},                      \
+       "for each BGP record in bgpdump -m format"},                      \
       {{"output-records", no_argument, 0, 'r'},                                \
        "",                                                                     \
        "print info "                                                           \
@@ -298,6 +302,9 @@ int main(int argc, char *argv[])
   char *peerasns[PEERASN_CMD_CNT];
   int peerasns_cnt = 0;
 
+  char *originasns[ORIGINASN_CMD_CNT];
+  int originasns_cnt = 0;
+
   char *prefixes[PREFIX_CMD_CNT];
   int prefixes_cnt = 0;
 
@@ -417,6 +424,17 @@ int main(int argc, char *argv[])
         goto err;
       }
       peerasns[peerasns_cnt++] = strdup(optarg);
+      break;
+    case 'a':
+      if (originasns_cnt == ORIGINASN_CMD_CNT) {
+        fprintf(stderr,
+                "ERROR: A maximum of %d origin asns can be specified on "
+                "the command line\n",
+                ORIGINASN_CMD_CNT);
+        usage();
+        goto err;
+      }
+      originasns[originasns_cnt++] = strdup(optarg);
       break;
     case 'k':
       if (prefixes_cnt == PREFIX_CMD_CNT) {
@@ -628,6 +646,12 @@ int main(int argc, char *argv[])
   for (i = 0; i < peerasns_cnt; i++) {
     bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_ELEM_PEER_ASN, peerasns[i]);
     free(peerasns[i]);
+  }
+
+  /* origin asns */
+  for (i = 0; i < originasns_cnt; i++) {
+    bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_ELEM_ORIGIN_ASN, originasns[i]);
+    free(originasns[i]);
   }
 
   /* prefixes */

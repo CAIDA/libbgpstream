@@ -78,6 +78,20 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
                             (uint32_t)strtoul(filter_value, NULL, 10));
     return;
 
+  case BGPSTREAM_FILTER_TYPE_ELEM_ORIGIN_ASN:
+    if (bs_filter_mgr->origin_asns == NULL) {
+      if ((bs_filter_mgr->origin_asns = bgpstream_id_set_create()) == NULL) {
+        bgpstream_log(BGPSTREAM_LOG_VFINE,
+                      "\tBSF_MGR:: add_filter malloc failed");
+        bgpstream_log(BGPSTREAM_LOG_ERR, "can't allocate memory");
+        assert(0);
+        return;
+      }
+    }
+    bgpstream_id_set_insert(bs_filter_mgr->origin_asns,
+                            (uint32_t)strtoul(filter_value, NULL, 10));
+    return;
+
   case BGPSTREAM_FILTER_TYPE_ELEM_TYPE:
     if (strcmp(filter_value, "ribs") == 0) {
       bs_filter_mgr->elemtype_mask |= (BGPSTREAM_FILTER_ELEM_TYPE_RIB);
@@ -308,6 +322,10 @@ void bgpstream_filter_mgr_destroy(bgpstream_filter_mgr_t *bs_filter_mgr)
   // peer asns
   if (bs_filter_mgr->peer_asns != NULL) {
     bgpstream_id_set_destroy(bs_filter_mgr->peer_asns);
+  }
+  // origin asns
+  if (bs_filter_mgr->origin_asns != NULL) {
+    bgpstream_id_set_destroy(bs_filter_mgr->origin_asns);
   }
   // aspath expressions
   if (bs_filter_mgr->aspath_exprs != NULL) {

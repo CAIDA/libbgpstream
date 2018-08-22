@@ -90,6 +90,9 @@ typedef enum {
   /** Filter elems based on peer ASN  */
   BGPSTREAM_FILTER_TYPE_ELEM_PEER_ASN,
 
+  /** Filter elems based on peer ASN  */
+  BGPSTREAM_FILTER_TYPE_ELEM_ORIGIN_ASN,
+
   /** Filter elems based on prefix  */
   BGPSTREAM_FILTER_TYPE_ELEM_PREFIX,
 

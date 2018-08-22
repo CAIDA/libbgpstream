@@ -64,6 +64,7 @@ typedef struct struct_bgpstream_filter_mgr_t {
   bgpstream_str_set_t *bgp_types;
   bgpstream_str_set_t *aspath_exprs;
   bgpstream_id_set_t *peer_asns;
+  bgpstream_id_set_t *origin_asns;
   bgpstream_patricia_tree_t *prefixes;
   bgpstream_community_filter_t *communities;
   bgpstream_interval_filter_t *time_interval;
