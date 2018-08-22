@@ -45,6 +45,8 @@ const char *bgpstream_filter_type_to_string(bgpstream_filter_type_t type)
     return "Community";
   case BGPSTREAM_FILTER_TYPE_ELEM_PEER_ASN:
     return "Peer ASN";
+  case BGPSTREAM_FILTER_TYPE_ELEM_ORIGIN_ASN:
+    return "Origin ASN";
   case BGPSTREAM_FILTER_TYPE_PROJECT:
     return "Project";
   case BGPSTREAM_FILTER_TYPE_COLLECTOR:
