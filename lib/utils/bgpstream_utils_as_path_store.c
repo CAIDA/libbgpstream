@@ -154,11 +154,11 @@ static uint16_t pathset_get_path_id(bgpstream_as_path_store_t *store,
   /* need to append this path */
   if ((ps->paths = realloc(ps->paths, sizeof(bgpstream_as_path_store_path_t) *
                                         (ps->paths_cnt + 1))) == NULL) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not realloc paths\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not realloc paths");
     return UINT16_MAX;
   }
   if (store_path_dup(&ps->paths[ps->paths_cnt], findme) != 0) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not create store path\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not create store path");
     return UINT16_MAX;
   }
   path_id = ps->paths_cnt++;
@@ -226,14 +226,14 @@ static int get_path_id(bgpstream_as_path_store_t *store,
     kh_val(store->path_set, k).paths = NULL;
     kh_val(store->path_set, k).paths_cnt = 0;
   } else if (khret != 0) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not add path set to the store\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not add path set to the store");
     goto err;
   }
 
   /* now get the path id from the origin set */
   if ((id->path_id = pathset_get_path_id(store, &kh_val(store->path_set, k),
                                          findme)) == UINT16_MAX) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not add path to origin set\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not add path to origin set");
     goto err;
   }
 

@@ -407,7 +407,7 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
     break;
 
   default:
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Error during elem processing\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Error during elem processing");
     return NULL;
   }
 

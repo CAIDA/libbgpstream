@@ -509,7 +509,7 @@ static void test_path_copy(bgpstream_as_path_t *path)
 
   if (bgpstream_as_path_get_len(path) > 0 &&
       bgpstream_as_path_equal(path, corepath) != 0) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "%s|%s\n", buf1, buf3);
+    bgpstream_log(BGPSTREAM_LOG_ERR, "%s|%s", buf1, buf3);
     assert(0);
   }
 
@@ -587,7 +587,7 @@ int bgpstream_as_path_append(bgpstream_as_path_t *path,
     break;
 
   default:
-    bgpstream_log(BGPSTREAM_LOG_ERR, "AS_PATH with unknown segment type %d\n",
+    bgpstream_log(BGPSTREAM_LOG_ERR, "AS_PATH with unknown segment type %d",
                   type);
     return -1;
   }

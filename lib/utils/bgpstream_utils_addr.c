@@ -188,7 +188,7 @@ bgpstream_addr_storage_t *bgpstream_str2addr(char *addr_str,
   if (strchr(addr_str, ':') != NULL) {
     /* this looks like it will be an IPv6 address */
     if (inet_pton(AF_INET6, addr_str, &addr->ipv6) != 1) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not parse address string %s\n",
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not parse address string %s",
                     addr_str);
       return NULL;
     }
@@ -196,7 +196,7 @@ bgpstream_addr_storage_t *bgpstream_str2addr(char *addr_str,
   } else {
     /* probably a v4 address */
     if (inet_pton(AF_INET, addr_str, &addr->ipv4) != 1) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not parse address string %s\n",
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not parse address string %s",
                     addr_str);
       return NULL;
     }
