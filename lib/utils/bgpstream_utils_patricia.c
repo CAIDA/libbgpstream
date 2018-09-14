@@ -155,7 +155,7 @@ static int bgpstream_patricia_tree_result_set_add_node(
            realloc(set->result_nodes, sizeof(bgpstream_patricia_node_t *) *
                                         set->_alloc_size)) == NULL) {
       bgpstream_log(BGPSTREAM_LOG_ERR,
-                    "could not realloc result_nodes in result set\n");
+                    "could not realloc result_nodes in result set");
       return -1;
     }
   }
@@ -541,7 +541,7 @@ bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
   /* if Patricia Tree is empty, then insert new node */
   if (bgpstream_patricia_get_head(pt, v) == NULL) {
     if ((new_node = bgpstream_patricia_node_create(pt, pfx)) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Error creating pt node\n");
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Error creating pt node");
       return NULL;
     }
     /* attach first node in Tree */
@@ -648,7 +648,7 @@ bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
 
   /* Create a new node */
   if ((new_node = bgpstream_patricia_node_create(pt, pfx)) == NULL) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Error creating pt node\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Error creating pt node");
     return NULL;
   }
 

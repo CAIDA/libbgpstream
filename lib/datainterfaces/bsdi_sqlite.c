@@ -271,7 +271,7 @@ int bsdi_sqlite_start(bsdi_t *di)
 {
   /* check user-provided options */
   if (!STATE->db_file) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "The 'db-file' option must be set\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "The 'db-file' option must be set");
     return -1;
   }
 

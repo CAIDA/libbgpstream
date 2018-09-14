@@ -140,7 +140,7 @@ static void kafka_error_callback(rd_kafka_t *rk, int err, const char *reason,
     break;
   }
 
-  bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: %s (%d): %s\n",
+  bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: %s (%d): %s",
                 rd_kafka_err2str(err), err, reason);
 
   // TODO: handle other errors

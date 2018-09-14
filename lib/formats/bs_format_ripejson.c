@@ -230,7 +230,7 @@ static int process_common_fields(bgpstream_format_t *format,
   FIELDPTR(peer)[FIELDLEN(peer)] = '\0';
   if (bgpstream_str2addr((char *)FIELDPTR(peer), &RDATA->elem->peer_ip) ==
       NULL) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "error parsing address\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "error parsing address");
     return -1;
   }
   FIELDPTR(peer)[FIELDLEN(peer)] = tmp;
@@ -262,7 +262,7 @@ process_update_message(bgpstream_format_t *format, bgpstream_record_t *record)
   if ((err = parsebgp_decode(STATE->opts, PARSEBGP_MSG_TYPE_BGP, RDATA->msg,
                              STATE->json_bytes_buffer, &dec_len)) !=
       PARSEBGP_OK) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to parse message (%s)\n",
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to parse message (%s)",
                   parsebgp_strerror(err));
     parsebgp_clear_msg(RDATA->msg);
     return BGPSTREAM_FORMAT_CORRUPTED_MSG;
@@ -382,7 +382,7 @@ process_open_message(bgpstream_format_t *format, bgpstream_record_t *record)
   if ((err = parsebgp_decode(STATE->opts, PARSEBGP_MSG_TYPE_BGP, RDATA->msg,
                              STATE->json_bytes_buffer, &dec_len)) !=
       PARSEBGP_OK) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to parse message (%d:%s)\n", err,
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to parse message (%d:%s)", err,
                   parsebgp_strerror(err));
     parsebgp_clear_msg(RDATA->msg);
     return BGPSTREAM_FORMAT_CORRUPTED_MSG;
@@ -408,7 +408,7 @@ static bgpstream_format_status_t
 process_unsupported_message(bgpstream_format_t *format,
                             bgpstream_record_t *record)
 {
-  bgpstream_log(BGPSTREAM_LOG_WARN, "unsupported ris-stream message: %s\n",
+  bgpstream_log(BGPSTREAM_LOG_WARN, "unsupported ris-stream message: %s",
                 STATE->json_string_buffer);
   record->status = BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD;
   record->collector_name[0] = '\0';
@@ -419,7 +419,7 @@ static bgpstream_format_status_t
 process_corrupted_message(bgpstream_format_t *format,
                           bgpstream_record_t *record)
 {
-  bgpstream_log(BGPSTREAM_LOG_WARN, "corrupted ris-stream message: %s\n",
+  bgpstream_log(BGPSTREAM_LOG_WARN, "corrupted ris-stream message: %s",
                 STATE->json_string_buffer);
   record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
   record->collector_name[0] = '\0';
@@ -451,7 +451,7 @@ bs_format_process_json_fields(bgpstream_format_t *format,
 
   // allocate some tokens to start
   if ((t = malloc(sizeof(jsmntok_t) * tokcount)) == NULL) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not malloc initial tokens\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not malloc initial tokens");
     goto corrupted;
   }
 
@@ -461,22 +461,22 @@ again:
     if (r == JSMN_ERROR_NOMEM) {
       tokcount *= 2;
       if ((t = realloc(t, sizeof(jsmntok_t) * tokcount)) == NULL) {
-        bgpstream_log(BGPSTREAM_LOG_ERR, "Could not realloc tokens\n");
+        bgpstream_log(BGPSTREAM_LOG_ERR, "Could not realloc tokens");
         goto corrupted;
       }
       goto again;
     }
     if (r == JSMN_ERROR_INVAL) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid character in JSON string\n");
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid character in JSON string");
       goto corrupted;
     }
-    bgpstream_log(BGPSTREAM_LOG_ERR, "JSON parser returned %d\n", r);
+    bgpstream_log(BGPSTREAM_LOG_ERR, "JSON parser returned %d", r);
     goto corrupted;
   }
 
   /* Assume the top-level element is an object */
   if (r < 1 || t[0].type != JSMN_OBJECT) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "JSON top-level not object\n");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "JSON top-level not object");
     goto corrupted;
   }
 
@@ -487,7 +487,7 @@ again:
 
     /* Assume the top-level element is an object */
     if (t[i].type != JSMN_STRING) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "JSON key not string\n");
+      bgpstream_log(BGPSTREAM_LOG_ERR, "JSON key not string");
       goto corrupted;
     }
 
@@ -644,7 +644,7 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
     default:
       RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
       RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
-      bgpstream_log(BGPSTREAM_LOG_WARN, "unsupported status type, %d\n",
+      bgpstream_log(BGPSTREAM_LOG_WARN, "unsupported status type, %d",
                     RDATA->status_msg_state);
       break;
     }
@@ -668,7 +668,7 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
       RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
       RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
       bgpstream_log(BGPSTREAM_LOG_WARN,
-                    "unsupported open message direction, %d\n",
+                    "unsupported open message direction, %d",
                     RDATA->open_msg_direction);
     }
     RDATA->end_of_elems = 1;
