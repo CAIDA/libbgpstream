@@ -32,13 +32,6 @@ SUBDIRS = common	\
 
 AM_CPPFLAGS =
 
-EXTRA_DIST = 	test/sqlite_test.db \
-		test/csv_test.csv \
-		test/routeviews.route-views.jinx.ribs.1427846400.bz2 \
-		test/routeviews.route-views.jinx.updates.1427846400.bz2 \
-		test/ris.rrc06.updates.1427846400.gz \
-		test/ris.rrc06.ribs.1427846400.gz
-
 include_HEADERS =
 
 ACLOCAL_AMFLAGS = -I m4
