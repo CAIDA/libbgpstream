@@ -54,16 +54,25 @@ check_PROGRAMS =  			\
 	bgpstream-test-utils-patricia  \
   $(RPKI_TEST)
 
+# test data files
+EXTRA_DIST = 	sqlite_test.db \
+		csv_test.csv \
+		ris-live-stream.json \
+		routeviews.route-views.jinx.ribs.1427846400.bz2 \
+		routeviews.route-views.jinx.updates.1427846400.bz2 \
+		ris.rrc06.updates.1427846400.gz \
+		ris.rrc06.ribs.1427846400.gz
+
 bgpstream_test_SOURCES = bgpstream-test.c bgpstream_test.h
 bgpstream_test_LDADD   = $(top_builddir)/lib/libbgpstream.la
 
 bgpstream_test_filters_SOURCES = bgpstream-test-filters.c bgpstream_test.h
 bgpstream_test_filters_LDADD   = $(top_builddir)/lib/libbgpstream.la
 
-bgpstream_test_ripejson_SOURCES = bgpstream-test-ripejson.c bgpstream_test.h
+bgpstream_test_ripejson_SOURCES = bgpstream-test-ripejson.c bgpstream-test-ripejson.h bgpstream_test.h
 bgpstream_test_ripejson_LDADD   = $(top_builddir)/lib/libbgpstream.la
 
-bgpstream_test_rpki_SOURCES = bgpstream-test-rpki.c bgpstream_test.h
+bgpstream_test_rpki_SOURCES = bgpstream-test-rpki.c bgpstream-test-rpki.h bgpstream_test.h
 bgpstream_test_rpki_LDADD   = $(top_builddir)/lib/libbgpstream.la
 
 bgpstream_test_utils_addr_SOURCES = bgpstream-test-utils-addr.c bgpstream_test.h
