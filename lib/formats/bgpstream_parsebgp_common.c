@@ -24,6 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "config.h"
 #include "bgpstream_parsebgp_common.h"
 #include "bgpstream_format_interface.h"
 #include "bgpstream_record_int.h"
@@ -678,5 +679,8 @@ void bgpstream_parsebgp_opts_init(parsebgp_opts_t *opts)
 
   opts->ignore_not_implemented = 1;
   opts->ignore_invalid = 1;
-  // TODO: allow user to silence parsebgp warnings at compile time
+
+#ifdef PARSEBGP_SILENCE_WARNING
+  opts->silence_not_implemented = 1;
+#endif
 }
