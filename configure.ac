@@ -163,6 +163,25 @@ AM_CONDITIONAL(HAS_DOXYGEN, [test x"$bgpstream_doxygen" = xyes])
 AC_MSG_NOTICE([])
 AC_MSG_NOTICE([---- BGPStream configuration ----])
 
+AC_MSG_NOTICE([checking format modules...])
+
+# allow libparsebgp warnings to be silenced
+AC_MSG_CHECKING([whether to silence libparsebgp warnings])
+   AC_ARG_ENABLE([parser-warnings],
+       [AS_HELP_STRING([--disable-parser-warnings],
+               [disable BGP parse warnings (def=no)])],
+               [enable_parser_warnings="$enableval"],
+               [enable_parser_warnings=yes])
+   if test x"$enable_parser_warnings" != x"no"; then
+      disable_parser_warnings="no"
+   else
+      disable_parser_warnings="yes"
+   fi
+   AC_MSG_RESULT([$disable_parser_warnings])
+   if test x"$disable_parser_warnings" == x"yes"; then
+      AC_DEFINE([PARSEBGP_SILENCE_WARNING],[],[Disable parsebgp warnings])
+   fi
+
 AC_MSG_NOTICE([checking transport modules...])
 
 # shall we build with support for the kafka transport module?
