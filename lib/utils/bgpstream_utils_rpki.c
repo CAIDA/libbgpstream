@@ -57,7 +57,7 @@ void bgpstream_rpki_destroy_input(bgpstream_rpki_input_t *input)
 rpki_cfg_t *bgpstream_rpki_set_cfg(bgpstream_rpki_input_t *inp)
 {
   /* Set up the ROAFetchlib configuration */
-  return rpki_set_config(inp->rpki_collectors, inp->rpki_windows,
+  return rpki_set_config(inp->rpki_collectors, inp->rpki_interval,
                          inp->rpki_unified, !inp->rpki_live, RPKI_BROKER,
                          inp->rpki_ssh_ptr);
 }
@@ -71,23 +71,14 @@ void bgpstream_rpki_destroy_cfg(rpki_cfg_t *cfg)
   rpki_destroy_config(cfg);
 }
 
-int bgpstream_rpki_parse_windows(bgpstream_rpki_input_t *input,
-                                 rpki_window_t windows[WINDOW_CMD_CNT],
-                                 int windows_cnt)
-{
-  /* Parse all BGPReader window arguments (assuming a unix timestamp len of 10)
-     Format: WD_1-WD2,WD3-WD4, chk_len calculates the string length */
-  int rst = 0;
-  int chk_len = (windows_cnt * 2) * 10 + (2 * windows_cnt - 1);
-  for (int i = 0; i < windows_cnt; i++) {
-    size_t size = strlen(input->rpki_windows);
-    rst += snprintf(
-      input->rpki_windows + size, sizeof(input->rpki_windows) - size,
-      i < windows_cnt - 1 ? "%" PRIu32 "-%" PRIu32 "," : "%" PRIu32 "-%" PRIu32,
-      windows[i].start, windows[i].end);
-  }
-
-  return rst == chk_len;
+int bgpstream_rpki_parse_interval(bgpstream_rpki_input_t *input, 
+                                  uint32_t interval_start, 
+                                  uint32_t interval_end)
+{ 
+  /* Add the interval parameter to the input struct and check the length */  
+  snprintf(input->rpki_interval, sizeof(input->rpki_interval), 
+           "%" PRIu32 "-%" PRIu32, interval_start, interval_end);
+  return (strlen(input->rpki_interval) == RPKI_INTERVAL_LEN - 1);
 }
 
 void bgpstream_rpki_parse_live(bgpstream_rpki_input_t *inp)

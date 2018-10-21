@@ -34,27 +34,18 @@
 #include <roafetchlib/roafetchlib.h>
 #include <stdint.h>
 
-// Note the copy of the BGPStream - Window Command Count !!
-#define WINDOW_CMD_CNT 1024
-
 #define RPKI_CMD_CNT 2048
 #define RPKI_SSH_BUFLEN 2048
-#define RPKI_WINDOW_LEN 24
-
-/** A BGPStream RPKI Window object */
-typedef struct rpki_window {
-  uint32_t start;
-  uint32_t end;
-} rpki_window_t;
+#define RPKI_INTERVAL_LEN 22
 
 /** A BGPStream RPKI Input object */
 typedef struct bgpstream_rpki_input {
 
-  /** RPKI windows
+  /** RPKI interval
    *
-   * RPKI time interval windows for the validation
+   * RPKI time interval for the validation
    */
-  char rpki_windows[WINDOW_CMD_CNT * RPKI_WINDOW_LEN];
+  char rpki_interval[RPKI_INTERVAL_LEN];
 
   /** RPKI collectors
    *
@@ -108,16 +99,16 @@ bgpstream_rpki_input_t *bgpstream_rpki_create_input();
  */
 void bgpstream_rpki_destroy_input(bgpstream_rpki_input_t *input);
 
-/** Parse all BGPStream RPKI window arguments
+/** Parse the BGPStream RPKI window argument
  *
- * @param input        Pointer to the BGPStream RPKI input struct
- * @param windows      Array of rpki_window_t structs
- * @param windows_cnt  Number of BGPStream RPKI interval windows
- * @return             1 if the parsing process was valid - 0 otherwise
+ * @param input          Pointer to the BGPStream RPKI input struct
+ * @param interval_start Start of the time interval
+ * @param interval_end   End of the time interval
+ * @return               1 if the parsing process was valid - 0 otherwise
  */
-int bgpstream_rpki_parse_windows(bgpstream_rpki_input_t *input,
-                                 rpki_window_t windows[WINDOW_CMD_CNT],
-                                 int windows_cnt);
+int bgpstream_rpki_parse_interval(bgpstream_rpki_input_t *input, 
+                                  uint32_t interval_start, 
+                                  uint32_t interval_end);
 
 /** Add the mode argument to the input struct and set RPKI active
  *
