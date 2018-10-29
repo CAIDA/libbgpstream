@@ -47,20 +47,6 @@ int check_val_result(char *val_result, char *comp, int cnt)
   return strcmp(val_result, comp);
 }
 
-int generate_rpki_windows(rpki_window_t *rpki_windows, const int *testcase,
-                          int cnt)
-{
-
-  /* Generate a RPKI Window Instance */
-  int j = 0;
-  for (int i = 0; i < cnt; i += 2) {
-    rpki_windows[j].start = testcase[i];
-    rpki_windows[j].end = testcase[i + 1];
-    j++;
-  }
-  return j;
-}
-
 int test_rpki_create_input()
 {
 
@@ -68,7 +54,7 @@ int test_rpki_create_input()
   CHECK_RPKI_RESULT("Create Input", input != NULL);
   CHECK_RPKI_RESULT("Collectors arguments", !strlen(input->rpki_collectors));
   CHECK_RPKI_RESULT("SSH arguments", !strlen(input->rpki_ssh));
-  CHECK_RPKI_RESULT("Window arguments", !strlen(input->rpki_windows));
+  CHECK_RPKI_RESULT("Interval arguments", !strlen(input->rpki_interval));
   CHECK_RPKI_RESULT("Live argument", !input->rpki_live && !input->rpki_unified);
   CHECK_RPKI_RESULT("Unified argument",
                     !input->rpki_live && !input->rpki_unified);
@@ -118,33 +104,6 @@ int test_rpki_parse_input()
   return 0;
 }
 
-int test_rpki_parse_windows()
-{
-
-  /* Check RPKI Window Input Case 1 */
-  struct rpki_window rpki_windows[WINDOW_CMD_CNT];
-  int cnt = ARR_CNT(PARSING_WND_TESTCASE_1);
-  int j = generate_rpki_windows(rpki_windows, PARSING_WND_TESTCASE_1, cnt);
-  bgpstream_rpki_input_t *input = bgpstream_rpki_create_input();
-  int rst = bgpstream_rpki_parse_windows(input, rpki_windows, j);
-  CHECK_RPKI_RESULT("Parsing Window Input #1",
-                    !strcmp(input->rpki_windows, PARSING_WND_TESTCASE_1_RST) &&
-                      rst);
-  bgpstream_rpki_destroy_input(input);
-
-  /* Check RPKI Window Input Case 2 */
-  input = bgpstream_rpki_create_input();
-  cnt = ARR_CNT(PARSING_WND_TESTCASE_2);
-  j = generate_rpki_windows(rpki_windows, PARSING_WND_TESTCASE_2, cnt);
-  rst = bgpstream_rpki_parse_windows(input, rpki_windows, j);
-  CHECK_RPKI_RESULT("Parsing Window Input #2",
-                    !strcmp(input->rpki_windows, PARSING_WND_TESTCASE_2_RST) &&
-                      rst);
-  bgpstream_rpki_destroy_input(input);
-
-  return 0;
-}
-
 int test_rpki_validate()
 {
 
@@ -165,13 +124,11 @@ int test_rpki_validate()
   bgpstream_rpki_input_t *input = bgpstream_rpki_create_input();
   bgpstream_rpki_parse_collectors(VALIDATE_TESTCASE_1, input);
 
-  /* Create a RPKI window instance matching the testfile */
-  int VALIDATE_WND[2] = {1427846400, 1427846500};
-  struct rpki_window rpki_windows[WINDOW_CMD_CNT];
-  int j =
-    generate_rpki_windows(rpki_windows, VALIDATE_WND, ARR_CNT(VALIDATE_WND));
-  int rst = bgpstream_rpki_parse_windows(input, rpki_windows, j);
-  bgpstream_add_interval_filter(bs, rpki_windows[0].start, rpki_windows[0].end);
+  /* Parse the interval and set the bgpstream interval filter */
+  uint32_t interval_start = 1427846400;
+  uint32_t interval_end = 1427846500;
+  int rst = bgpstream_rpki_parse_interval(input, interval_start, interval_end);
+  bgpstream_add_interval_filter(bs, interval_start, interval_end);
 
   /* Set up a ROAFetchlib configuration */
   rpki_cfg_t *cfg = bgpstream_rpki_set_cfg(input);
@@ -179,7 +136,7 @@ int test_rpki_validate()
   char val_comp[VALIDATION_BUF];
 
   /* Process every BGPStream elem and check the validation */
-  j = 0;
+  int j = 0;
   while ((rrc = bgpstream_get_next_record(bs, &rec)) > 0) {
     if (rec->status == BGPSTREAM_RECORD_STATUS_VALID_RECORD) {
       while ((erc = bgpstream_record_get_next_elem(rec, &bs_elem)) > 0) {
@@ -206,7 +163,6 @@ int main()
 #ifdef WITH_RPKI
   CHECK_RPKI_SECTION("RPKI Input", !test_rpki_create_input());
   CHECK_RPKI_SECTION("RPKI Parsing", !test_rpki_parse_input());
-  CHECK_RPKI_SECTION("RPKI Window Parsing", !test_rpki_parse_windows());
   CHECK_RPKI_SECTION("RPKI Validation", !test_rpki_validate());
 #endif
   return 0;

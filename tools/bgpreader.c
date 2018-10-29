@@ -317,7 +317,6 @@ int main(int argc, char *argv[])
   int interface_options_cnt = 0;
 
 #ifdef WITH_RPKI
-  struct rpki_window rpki_windows[WINDOW_CMD_CNT];
   bgpstream_rpki_input_t *rpki_input = bgpstream_rpki_create_input();
 #endif
 
@@ -701,9 +700,8 @@ int main(int argc, char *argv[])
 #ifdef WITH_RPKI
   rpki_cfg_t *cfg = NULL;
   if (rpki_input != NULL && rpki_input->rpki_active) {
-    memcpy(&rpki_windows, &windows, sizeof(rpki_windows));
-    if (!bgpstream_rpki_parse_windows(rpki_input, rpki_windows, windows_cnt)) {
-      fprintf(stderr, "ERROR: Could not parse BGPStream windows\n");
+    if (!bgpstream_rpki_parse_interval(rpki_input, interval_start, interval_end)) {
+      fprintf(stderr, "ERROR: Could not parse time window for RPKI\n");
       goto err;
     }
     cfg = bgpstream_rpki_set_cfg(rpki_input);
