@@ -292,7 +292,7 @@ if test x"$with_rpki" = xyes; then
             [ROAFetchlib is required (--without-rpki to disable)]
     )])
     AC_DEFINE([WITH_RPKI],[1],[Building with RPKI support])
-    AC_DEFINE([RPKI_BROKER],["http://roa-broker.realmv6.org"],[RPKI broker])
+    AC_DEFINE([RPKI_BROKER],["https://roa-broker.imp.fu-berlin.de"],[RPKI broker])
 else
   AC_MSG_CHECKING([whether to build with RPKI support])
   AC_MSG_RESULT([no])
