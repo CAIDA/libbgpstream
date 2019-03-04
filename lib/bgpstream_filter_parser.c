@@ -231,8 +231,8 @@ static int bgpstream_parse_quotedvalue(char *value, fp_state_t *state,
     /* +2 = 1 byte for space, 1 byte for null */
     curr->value = realloc(curr->value, strlen(curr->value) + strlen(value) + 2);
     assert(curr->value);
-    strncat(curr->value, " ", 1);
-    strncat(curr->value, value, strlen(value));
+    strcat(curr->value, " ");
+    strcat(curr->value, value);
   }
 
   if (*state == ENDVALUE) {
