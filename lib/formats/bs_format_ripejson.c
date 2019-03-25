@@ -178,30 +178,20 @@ static int hexstr_to_bytes(uint8_t *buf, const char *hexstr, size_t hexstr_len)
 // convert bgp message hex string to char (byte) array, with added header marker
 // by @alistairking
 static ssize_t hexstr_to_bgpmsg(uint8_t *buf, size_t buflen, const char *hexstr,
-                                size_t hexstr_len, uint8_t msg_type)
+                                size_t hexstr_len)
 {
   // 2 characters per octet, and BGP messages cannot be more than 4096 bytes
   if ((hexstr_len & 0x1) != 0 || hexstr_len > (4096 * 2)) {
     return -1;
   }
   uint16_t msg_len = (hexstr_len / 2) + 2 + 1;
-  uint16_t tmp = htons(msg_len);
-  uint8_t *bufp = buf;
-
   if (msg_len > buflen) {
     return -1;
   }
-
-  // populate the message header (but don't include the marker)
-  memcpy(buf, &tmp, sizeof(tmp));
-  buf[2] = msg_type;
-
   // parse the hex string, one nybble at a time
-  bufp = buf + 3;
-  if (hexstr_to_bytes(bufp, hexstr, hexstr_len) < 0) {
+  if (hexstr_to_bytes(buf, hexstr, hexstr_len) < 0) {
     return -1;
   }
-
   return msg_len;
 }
 
@@ -251,7 +241,7 @@ process_update_message(bgpstream_format_t *format, bgpstream_record_t *record)
   // convert body to bytes
   ssize_t rc = hexstr_to_bgpmsg(
     STATE->json_bytes_buffer, sizeof(STATE->json_bytes_buffer),
-    (char *)FIELDPTR(body), FIELDLEN(body), PARSEBGP_BGP_TYPE_UPDATE);
+    (char *)FIELDPTR(body), FIELDLEN(body));
   if (rc < 0) {
     return BGPSTREAM_FORMAT_CORRUPTED_MSG;
   }
@@ -504,6 +494,13 @@ again:
   }
 
   // process each type of message separately
+  // the types of messages include 
+  //   - UPDATE
+  //   - OPEN
+  //   - NOTIFICATION
+  //   - KEEPALIVE
+  //   - RIS_PEER_STATE
+  // TODO: update the the switch statement to process updated types
   switch (*FIELDPTR(type)) {
   case 'A':
     RDATA->msg_type = RIPE_JSON_MSG_TYPE_ANNOUNCE;
