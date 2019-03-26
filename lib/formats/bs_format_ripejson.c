@@ -357,8 +357,21 @@ again:
     goto corrupted;
   }
 
+  /* first find the "data" key in json and loop through values for that key */
+  for(i=1;i<r-1;i++){
+    if (jsmn_streq(STATE->json_string_buffer, &t[i], STR(data)) == 1) {
+      break;
+    }
+  }
+  if(i>=r-2){
+    // we didn't find the "data" key or it's the last element (which should not happen)
+    bgpstream_log(BGPSTREAM_LOG_ERR, "JSON object does not contain 'data' field");
+    goto corrupted;
+  }
+  i++;  // advance the pointer to point to the next field inside "data"
+
   /* Loop over all fields of the json string buffer */
-  for (i = 1; i < r - 1; i++) {
+  for (; i < r - 1; i++) {
     value_ptr = STATE->json_string_buffer + t[i + 1].start;
     value_size = t[i + 1].end - t[i + 1].start;
 
