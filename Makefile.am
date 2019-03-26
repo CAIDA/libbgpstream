@@ -32,6 +32,8 @@ SUBDIRS = common	\
 
 AM_CPPFLAGS =
 
+EXTRA_DIST=LICENSE
+
 include_HEADERS =
 
 ACLOCAL_AMFLAGS = -I m4
