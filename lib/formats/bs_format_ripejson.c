@@ -373,16 +373,16 @@ again:
     bgpstream_log(BGPSTREAM_LOG_ERR, "JSON object does not contain 'data' field");
     goto corrupted;
   }
-  i++;  // advance the pointer to point to the next field inside "data"
 
   /* Loop over all fields of the json string buffer */
-  for (; i < r - 1; i++) {
+  for (i = i+2; i < r - 1; i++) {
     value_ptr = STATE->json_string_buffer + t[i + 1].start;
     value_size = t[i + 1].end - t[i + 1].start;
 
     /* Assume the top-level element is an object */
     if (t[i].type != JSMN_STRING) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "JSON key not string");
+      bgpstream_log(BGPSTREAM_LOG_ERR, "JSON key not string i=%d", i);
+      continue;
       goto corrupted;
     }
 
@@ -410,7 +410,6 @@ again:
   //   - NOTIFICATION
   //   - KEEPALIVE
   //   - RIS_PEER_STATE
-  // TODO: update the the switch statement to process updated types
   switch (*FIELDPTR(type)) {
   case 'U':
     RDATA->msg_type = RIPE_JSON_MSG_TYPE_UPDATE;
@@ -433,7 +432,7 @@ again:
     rc = process_status_message(format, record);
     break;
   default:
-    rc = BGPSTREAM_FORMAT_CORRUPTED_MSG;
+    rc = BGPSTREAM_FORMAT_UNSUPPORTED_MSG;
     break;
   }
 

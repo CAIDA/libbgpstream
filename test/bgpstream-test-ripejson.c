@@ -77,6 +77,7 @@ int test_bgpstream_ripejson()
   }
 
   while ((rrc = bgpstream_get_next_record(bs, &rec)) > 0) {
+    fprintf(stderr, "checking entry %d\n", rcount);
     switch (rec->status) {
     case BGPSTREAM_RECORD_STATUS_VALID_RECORD:
 
@@ -88,19 +89,18 @@ int test_bgpstream_ripejson()
           return -1;
         }
 
-        if (strcmp(buf, valid_output[count]) != 0) {
+        if (strcmp(buf, valid_output[rcount]) != 0) {
           // Strings are not identical
           fprintf(stderr, "elem output different, rcount %d, count %d\n",
                   rcount, count);
           fprintf(stderr, "INVALID: %s\nCORRECT: %s\n", buf,
-                  valid_output[rcount + count]);
+                  valid_output[rcount]);
           goto err;
         }
         fprintf(stderr, "VALID: %s\n", buf);
         count++;
         buf[0] = '\0';
       }
-
       fprintf(stderr, "correctly valid record %d\n\n", rcount);
       break;
 
