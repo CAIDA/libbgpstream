@@ -485,7 +485,7 @@ int bs_format_ripejson_create(bgpstream_format_t *format,
 
   parsebgp_opts_init(&STATE->opts);
   bgpstream_parsebgp_opts_init(&STATE->opts);
-  STATE->opts.bgp.marker_omitted = 1;
+  STATE->opts.bgp.marker_omitted = 0;
   STATE->opts.bgp.asn_4_byte = 1;
 
   return 0;
