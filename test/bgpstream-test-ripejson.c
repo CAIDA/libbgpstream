@@ -33,6 +33,15 @@
 
 static char buf[65536];
 
+/*
+ * 1. update
+ * 2. open
+ * 3. notification
+ * 4. keepalive
+ * 5. ris_peer_state
+ * 6. unsupported (change keepalive message's type to an unsupported one)
+ * 7. corrupted (change keepalive messages's raw bytes)
+ */
 int test_bgpstream_ripejson()
 {
   /* Declare BGPStream requirements */
@@ -96,8 +105,8 @@ int test_bgpstream_ripejson()
       break;
 
     case BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD:
-      if (rcount != 6) {
-        // only item 6 is unsupported
+      if (rcount != 5) {
+        // only item 5 is unsupported
         fprintf(stderr, "record %d shouldn't be unsupported\n", rcount);
         goto err;
       }
@@ -105,7 +114,7 @@ int test_bgpstream_ripejson()
       break;
 
     case BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD:
-      if (rcount <= 6) {
+      if (rcount <= 5) {
         fprintf(stderr, "record %d shouldn't be corrupted\n", rcount);
         goto err;
       }
@@ -121,8 +130,8 @@ int test_bgpstream_ripejson()
     rcount++;
   }
 
-  if (rcount != 9) {
-    // if not all 9 records passed
+  if (rcount != 7) {
+    // if not all 7 records passed
     return -1;
   }
 
