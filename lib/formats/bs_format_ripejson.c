@@ -54,23 +54,15 @@ typedef struct json_field {
 // json fields that does not contain in the raw message bytes
 typedef struct json_field_ptrs {
   /* common fields */
-  json_field_t body;      // raw bytes of the bgp message
   json_field_t timestamp; // timestamp of the message
-  json_field_t host;      // collector name (e.g. rrc21)
-  json_field_t id;        // message ID
-  json_field_t peer_asn;  // peer ASN
   json_field_t peer;      // peer IP
+  json_field_t peer_asn;  // peer ASN
+  json_field_t raw;       // raw bytes of the bgp message
+  json_field_t host;      // collector name (e.g. rrc21)
   json_field_t type;      // message type
-
-  /* open message fields */
-  json_field_t asn;       // AS number for connected router
-  json_field_t hold_time; // up time
-  json_field_t router_id; // router IP address
-  json_field_t direction; // sent/receive
 
   /* state message fields */
   json_field_t state;  // new state: connected, down
-  json_field_t reason; // reason of the state change
 } json_field_ptrs_t;
 
 typedef struct rec_data {
@@ -481,9 +473,14 @@ again:
       goto corrupted;
     }
 
-    PARSEFIELD(body)
-    else PARSEFIELD(timestamp) else PARSEFIELD(host) else PARSEFIELD(id) else PARSEFIELD(peer_asn) else PARSEFIELD(peer) else PARSEFIELD(type) else PARSEFIELD(
-      asn) else PARSEFIELD(hold_time) else PARSEFIELD(router_id) else PARSEFIELD(direction) else PARSEFIELD(state) else PARSEFIELD(reason) else
+    PARSEFIELD(raw)
+    else PARSEFIELD(timestamp)
+    else PARSEFIELD(host)
+    else PARSEFIELD(peer_asn)
+    else PARSEFIELD(peer)
+    else PARSEFIELD(type)
+    else PARSEFIELD(state)
+    else
     {
       // skipping all
       next_ptr = value_ptr + value_size;
