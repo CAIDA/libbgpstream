@@ -224,11 +224,8 @@ static int process_common_fields(bgpstream_format_t *format,
   double time_double;
   STRTOD(timestamp, time_double);
   record->time_sec = (uint32_t)time_double;
-  // round to 2 dp
   record->time_usec =
-    (uint32_t)(
-      (uint32_t)((time_double - (uint32_t)time_double) * 100+0.5)/100.0
-      * 1000000);
+    (uint32_t)((time_double - (uint32_t)time_double) * 1000000);
 
   return 0;
 }
