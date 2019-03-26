@@ -311,41 +311,72 @@ process_corrupted_message(bgpstream_format_t *format,
   return BGPSTREAM_FORMAT_CORRUPTED_MSG;
 }
 
+#define NEXT_TOK t++
+
 #define PARSEFIELD(field)                                                      \
-  if (jsmn_streq(STATE->json_string_buffer, &t[i], STR(field)) == 1) {         \
-    STATE->json_fields.field = (json_field_t){value_ptr, value_size};          \
-    i++;                                                                       \
+  if (jsmn_streq(STATE->json_string_buffer, t, STR(field)) == 1) {             \
+    NEXT_TOK;                                                                  \
+    STATE->json_fields.field.ptr = STATE->json_string_buffer + t->start;\
+    STATE->json_fields.field.len = t->end - t->start;                  \
+    NEXT_TOK;                                                                  \
   }
+
+static int process_data(bgpstream_format_t *format,
+                        jsmntok_t *root_tok)
+{
+  int i;
+  jsmntok_t *t = root_tok + 1;
+
+  for (i = 0; i < root_tok->size; i++) {
+    // all keys must be strings
+    if (t->type != JSMN_STRING) {
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Encountered non-string key: '%.*s'",
+                    t->end - t->start, STATE->json_string_buffer + t->start);
+      return -1;
+    }
+    PARSEFIELD(raw) //
+    else PARSEFIELD(timestamp)  //
+      else PARSEFIELD(host)     //
+      else PARSEFIELD(peer_asn) //
+      else PARSEFIELD(peer)     //
+      else PARSEFIELD(type)     //
+      else PARSEFIELD(state)    //
+      else
+    {
+      NEXT_TOK; // move past the key
+      t = jsmn_skip(t); // skip the value
+    }
+  }
+
+  return 0;
+}
 
 static bgpstream_format_status_t
 bs_format_process_json_fields(bgpstream_format_t *format,
                               bgpstream_record_t *record)
 {
-  int i;
-  int r;
+  int i, r;
   bgpstream_format_status_t rc;
   jsmn_parser p;
-  char *value_ptr, *next_ptr;
-  size_t value_size;
 
-  jsmntok_t *t;
+  jsmntok_t *t, *root_tok;
   size_t tokcount = 128;
 
   // prepare parser
   jsmn_init(&p);
 
   // allocate some tokens to start
-  if ((t = malloc(sizeof(jsmntok_t) * tokcount)) == NULL) {
+  if ((root_tok = malloc(sizeof(jsmntok_t) * tokcount)) == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not malloc initial tokens");
     goto corrupted;
   }
 
 again:
   if ((r = jsmn_parse(&p, STATE->json_string_buffer,
-                      STATE->json_string_buffer_len, t, tokcount)) < 0) {
+                      STATE->json_string_buffer_len, root_tok, tokcount)) < 0) {
     if (r == JSMN_ERROR_NOMEM) {
       tokcount *= 2;
-      if ((t = realloc(t, sizeof(jsmntok_t) * tokcount)) == NULL) {
+      if ((root_tok = realloc(root_tok, sizeof(jsmntok_t) * tokcount)) == NULL) {
         bgpstream_log(BGPSTREAM_LOG_ERR, "Could not realloc tokens");
         goto corrupted;
       }
@@ -360,54 +391,44 @@ again:
   }
 
   /* Assume the top-level element is an object */
-  if (r < 1 || t[0].type != JSMN_OBJECT) {
+  if (p.toknext < 1 || root_tok->type != JSMN_OBJECT) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "JSON top-level not object");
     goto corrupted;
   }
+  t = root_tok + 1;
 
-  /* first find the "data" key in json and loop through values for that key */
-  for(i=1;i<r-1;i++){
-    if (jsmn_streq(STATE->json_string_buffer, &t[i], STR(data)) == 1) {
-      break;
-    }
-  }
-  if(i>=r-2){
-    // we didn't find the "data" key or it's the last element (which should not happen)
-    bgpstream_log(BGPSTREAM_LOG_ERR, "JSON object does not contain 'data' field");
-    goto corrupted;
-  }
-
-  /* Loop over all fields of the json string buffer */
-  for (i = i+2; i < r - 1; i++) {
-    value_ptr = STATE->json_string_buffer + t[i + 1].start;
-    value_size = t[i + 1].end - t[i + 1].start;
-
-    /* Assume the top-level element is an object */
-    if (t[i].type != JSMN_STRING) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "JSON key not string i=%d", i);
-      continue;
+  /* iterate over the children of the root object */
+  for (i = 0; i < root_tok->size; i++) {
+    // all keys must be strings
+    if (t->type != JSMN_STRING) {
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Encountered non-string key: '%.*s'",
+                    t->end - t->start, STATE->json_string_buffer + t->start);
       goto corrupted;
     }
 
-    PARSEFIELD(raw)
-    else PARSEFIELD(timestamp)
-    else PARSEFIELD(host)
-    else PARSEFIELD(peer_asn)
-    else PARSEFIELD(peer)
-    else PARSEFIELD(type)
-    else PARSEFIELD(state)
-    else
-    {
-      // skipping all
-      next_ptr = value_ptr + value_size;
-      while (STATE->json_string_buffer + t[i + 1].start < next_ptr) {
-        i++;
+    if (jsmn_streq(STATE->json_string_buffer, t, "data") == 1) {
+      NEXT_TOK;
+      jsmn_type_assert(t, JSMN_OBJECT);
+      // handle data
+      if ((rc = process_data(format, t)) != 0) {
+        goto corrupted;
       }
+      break; // we have all we need, so no need to keep parsing
+    } else {
+      // skip any other top-level keys (e.g., "type")
+      NEXT_TOK;
+      // and their value
+      t = jsmn_skip(t);
     }
   }
 
+  if (FIELDLEN(type) == 0) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Missing message type");
+    goto corrupted;
+  }
+
   // process each type of message separately
-  // the types of messages include 
+  // the types of messages include
   //   - UPDATE
   //   - OPEN
   //   - NOTIFICATION
@@ -454,15 +475,16 @@ again:
   }
 
 ok:
-  free(t);
+  free(root_tok);
   return BGPSTREAM_FORMAT_OK;
 
+err:
 corrupted:
-  free(t);
+  free(root_tok);
   return process_corrupted_message(format, record);
 
 unsupported:
-  free(t);
+  free(root_tok);
   return process_unsupported_message(format, record);
 }
 
