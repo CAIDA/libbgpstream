@@ -194,11 +194,14 @@ static ssize_t hexstr_to_bgpmsg(uint8_t *buf, size_t buflen, const char *hexstr,
 /* ====================================================================== */
 
 // process common header fields for all message types
+// the fields are stored in the json_fields struct, include:
+// - host
+// - peer
+// - peer_asn
+// - timestamp
 static int process_common_fields(bgpstream_format_t *format,
                                  bgpstream_record_t *record)
 {
-
-  double time_double;
   // populate collector name
   memcpy(record->collector_name, FIELDPTR(host), FIELDLEN(host));
   record->collector_name[FIELDLEN(host)] = '\0';
@@ -218,6 +221,7 @@ static int process_common_fields(bgpstream_format_t *format,
   FIELDPTR(peer)[FIELDLEN(peer)] = tmp;
 
   // populate time-stamp
+  double time_double;
   STRTOD(timestamp, time_double);
   record->time_sec = (uint32_t)time_double;
   record->time_usec =
@@ -249,6 +253,7 @@ process_bgp_message(bgpstream_format_t *format, bgpstream_record_t *record)
     return BGPSTREAM_FORMAT_CORRUPTED_MSG;
   }
 
+  // extract other fields from the message: peer, peer_asn, host, timestamp
   if (process_common_fields(format, record) < 0) {
     return BGPSTREAM_FORMAT_CORRUPTED_MSG;
   }
