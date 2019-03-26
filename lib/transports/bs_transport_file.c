@@ -27,7 +27,6 @@
 #include "bs_transport_file.h"
 #include "bgpstream_transport_interface.h"
 #include "bgpstream_log.h"
-#include "wandio_utils.h"
 #include "wandio.h"
 
 int bs_transport_file_create(bgpstream_transport_t *transport)

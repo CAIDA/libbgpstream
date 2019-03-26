@@ -135,11 +135,10 @@ CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 CC="$PTHREAD_CC"
 
 # check that wandio is installed and HTTP support is enabled
-AC_SEARCH_LIBS([wandio_create], [wandio], [with_wandio=yes],
+AC_CHECK_LIB([wandio], [wandio_fgets], ,
                [AC_MSG_ERROR(
   [libwandio required (http://research.wand.net.nz/software/libwandio.php)]
 )])
-AM_CONDITIONAL([WITH_WANDIO], [test "x$with_wandio" == xyes])
 
 # build our bundled version of libparsebgp
 AC_CONFIG_SUBDIRS([lib/formats/libparsebgp])
