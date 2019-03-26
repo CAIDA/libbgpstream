@@ -39,11 +39,11 @@
 #define RDATA ((rec_data_t *)(record->__int->data))
 
 typedef enum {
-  RIPE_JSON_MSG_TYPE_ANNOUNCE = 1,
-  RIPE_JSON_MSG_TYPE_WITHDRAW = 2,
-  RIPE_JSON_MSG_TYPE_STATUS = 3,
-  RIPE_JSON_MSG_TYPE_OPEN = 4,
-  RIPE_JSON_MSG_TYPE_NOTIFY = 5,
+  RIPE_JSON_MSG_TYPE_OPEN = 1,
+  RIPE_JSON_MSG_TYPE_UPDATE = 2,
+  RIPE_JSON_MSG_TYPE_NOTIFICATION = 3,
+  RIPE_JSON_MSG_TYPE_KEEPALIVE = 4,
+  RIPE_JSON_MSG_TYPE_STATUS = 5,
 } bs_format_ripejson_msg_type_t;
 
 typedef struct json_field {
