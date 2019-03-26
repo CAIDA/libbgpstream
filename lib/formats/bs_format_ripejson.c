@@ -227,20 +227,19 @@ static int process_common_fields(bgpstream_format_t *format,
 }
 
 static bgpstream_format_status_t
-process_update_message(bgpstream_format_t *format, bgpstream_record_t *record)
+process_bgp_message(bgpstream_format_t *format, bgpstream_record_t *record)
 {
-
   // convert body to bytes
   ssize_t rc = hexstr_to_bgpmsg(
     STATE->json_bytes_buffer, sizeof(STATE->json_bytes_buffer),
-    (char *)FIELDPTR(body), FIELDLEN(body));
+    (char *)FIELDPTR(raw), FIELDLEN(raw));
   if (rc < 0) {
     return BGPSTREAM_FORMAT_CORRUPTED_MSG;
   }
 
+  // decode bytes of bgp message
   parsebgp_error_t err;
   size_t dec_len = (size_t)rc;
-
   if ((err = parsebgp_decode(STATE->opts, PARSEBGP_MSG_TYPE_BGP, RDATA->msg,
                              STATE->json_bytes_buffer, &dec_len)) !=
       PARSEBGP_OK) {
@@ -273,110 +272,6 @@ process_status_message(bgpstream_format_t *format, bgpstream_record_t *record)
   } else {
     // unknown
     RDATA->status_msg_state = -1;
-  }
-
-  if (process_common_fields(format, record) < 0) {
-    return BGPSTREAM_FORMAT_CORRUPTED_MSG;
-  }
-
-  return BGPSTREAM_FORMAT_OK;
-}
-
-static bgpstream_format_status_t
-process_open_message(bgpstream_format_t *format, bgpstream_record_t *record)
-{
-
-  int json_str_len = FIELDLEN(body);
-  char *json_str_ptr = FIELDPTR(body);
-  parsebgp_error_t err;
-  uint8_t *ptr = STATE->json_bytes_buffer;
-  int msg_len = 0;
-
-  // fields
-  uint32_t asn4;
-  uint16_t hold_time;
-  uint32_t router_id;
-  uint16_t total_length;
-  size_t dec_len;
-  bgpstream_addr_storage_t addr;
-
-  // the first two bytes will be filled with the message length later
-  int loc = 2;
-
-  ptr[loc] = PARSEBGP_BGP_TYPE_OPEN;
-  loc++;
-
-  /* add missing open message headers */
-
-  // version
-  ptr[loc] = 4;
-  loc++;
-
-  // my autonomous system
-  STRTOUL(asn, asn4);
-  // if the ASN is 4 byte, use ASN23456 as placeholder
-  uint16_t asn = htons((uint16_t)(asn4 > UINT16_MAX ? 23456 : asn4));
-  memcpy(&ptr[loc], &asn, sizeof(uint16_t));
-  loc += 2;
-
-  // hold time
-  STRTOUL(hold_time, hold_time);
-  memcpy(&ptr[loc], &hold_time, sizeof(uint16_t));
-  loc += 2;
-
-  // bgp identifier
-  memcpy(STATE->field_buffer, FIELDPTR(router_id), FIELDLEN(router_id));
-  STATE->field_buffer[FIELDLEN(router_id)] = '\0';
-  if (bgpstream_str2addr((char *)STATE->field_buffer, &addr) == NULL) {
-    // if the field is not an IP address, it is then an 4 byte integer
-    STRTOUL(router_id, router_id);
-    router_id = htonl(router_id);
-    memcpy(&ptr[loc], &router_id, sizeof(uint32_t));
-  } else {
-    memcpy(&ptr[loc], &addr.ipv4, sizeof(uint32_t));
-  }
-  loc += 4;
-
-  // opt parm len
-  if (json_str_ptr[0] == '0' && json_str_ptr[1] == '2') {
-    // if body starts with correct parameter type "0x02"
-    // no missing param type
-    msg_len = json_str_len / 2;
-    ptr[loc] = (uint8_t)(msg_len); // adding
-    loc++;
-  } else {
-    // if misses param type
-    msg_len = json_str_len / 2 + 1;
-    ptr[loc] = (uint8_t)(msg_len); // adding
-    ptr[loc + 1] = 2;
-    loc += 2;
-  }
-
-  if (hexstr_to_bytes(&ptr[loc], (char *)FIELDPTR(body), FIELDLEN(body)) < 0) {
-    return BGPSTREAM_FORMAT_CORRUPTED_MSG;
-  }
-
-  // set msg length
-  total_length = htons(msg_len + 10 + 2 + 1);
-  memcpy(ptr, &total_length, sizeof(total_length));
-
-  dec_len = (size_t)total_length;
-  if ((err = parsebgp_decode(STATE->opts, PARSEBGP_MSG_TYPE_BGP, RDATA->msg,
-                             STATE->json_bytes_buffer, &dec_len)) !=
-      PARSEBGP_OK) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to parse message (%d:%s)", err,
-                  parsebgp_strerror(err));
-    parsebgp_clear_msg(RDATA->msg);
-    return BGPSTREAM_FORMAT_CORRUPTED_MSG;
-  }
-
-  // process direction
-  if (FIELDLEN(direction) == 4 &&
-      bcmp("sent", FIELDPTR(direction), FIELDLEN(direction)) == 0) {
-    // equals
-    RDATA->open_msg_direction = 0;
-  } else {
-    RDATA->open_msg_direction = 1;
   }
 
   if (process_common_fields(format, record) < 0) {
@@ -499,25 +394,25 @@ again:
   //   - RIS_PEER_STATE
   // TODO: update the the switch statement to process updated types
   switch (*FIELDPTR(type)) {
-  case 'A':
-    RDATA->msg_type = RIPE_JSON_MSG_TYPE_ANNOUNCE;
-    rc = process_update_message(format, record);
-    break;
-  case 'W':
-    RDATA->msg_type = RIPE_JSON_MSG_TYPE_WITHDRAW;
-    rc = process_update_message(format, record);
-    break;
-  case 'S':
-    RDATA->msg_type = RIPE_JSON_MSG_TYPE_STATUS;
-    rc = process_status_message(format, record);
+  case 'U':
+    RDATA->msg_type = RIPE_JSON_MSG_TYPE_UPDATE;
+    rc = process_bgp_message(format, record);
     break;
   case 'O':
     RDATA->msg_type = RIPE_JSON_MSG_TYPE_OPEN;
-    rc = process_open_message(format, record);
+    rc = process_bgp_message(format, record);
     break;
   case 'N':
-    RDATA->msg_type = RIPE_JSON_MSG_TYPE_NOTIFY;
-    rc = BGPSTREAM_FORMAT_UNSUPPORTED_MSG;
+    RDATA->msg_type = RIPE_JSON_MSG_TYPE_NOTIFICATION;
+    rc = process_bgp_message(format, record);
+    break;
+  case 'K':
+    RDATA->msg_type = RIPE_JSON_MSG_TYPE_KEEPALIVE;
+    rc = process_bgp_message(format, record);
+    break;
+  case 'R':
+    RDATA->msg_type = RIPE_JSON_MSG_TYPE_STATUS;
+    rc = process_status_message(format, record);
     break;
   default:
     rc = BGPSTREAM_FORMAT_CORRUPTED_MSG;
@@ -616,8 +511,7 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
   }
 
   switch (RDATA->msg_type) {
-  case RIPE_JSON_MSG_TYPE_ANNOUNCE:
-  case RIPE_JSON_MSG_TYPE_WITHDRAW:
+  case RIPE_JSON_MSG_TYPE_UPDATE:
     rc = bgpstream_parsebgp_process_update(&RDATA->upd_state, RDATA->elem,
                                            RDATA->msg->types.bgp);
     if (rc <= 0) {
@@ -668,8 +562,8 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
     RDATA->end_of_elems = 1;
     rc = 1;
     break;
-  case RIPE_JSON_MSG_TYPE_NOTIFY:
-    break;
+  case RIPE_JSON_MSG_TYPE_NOTIFICATION:
+  case RIPE_JSON_MSG_TYPE_KEEPALIVE:
   default:
     break;
   }
