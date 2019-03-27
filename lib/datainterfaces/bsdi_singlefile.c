@@ -85,7 +85,7 @@ static bgpstream_data_interface_option_t options[] = {
     BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
     OPTION_UPDATE_TYPE,                  // internal ID
     "upd-type",                          // name
-    "update file type (mrt/bmp) (default: mrt)",
+    "update file type (mrt/bmp/ripejson) (default: mrt)",
   },
 };
 
