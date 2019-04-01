@@ -129,13 +129,6 @@ typedef struct state {
     dest = strtoul((char *)FIELDPTR(field), NULL, 10);                         \
     FIELDPTR(field)[FIELDLEN(field)] = tmp;                                    \
   } while (0)
-#define STRTOD(field, dest)                                                    \
-  do {                                                                         \
-    char tmp = FIELDPTR(field)[FIELDLEN(field)];                               \
-    FIELDPTR(field)[FIELDLEN(field)] = '\0';                                   \
-    dest = strtod((char *)FIELDPTR(field), NULL);                              \
-    FIELDPTR(field)[FIELDLEN(field)] = tmp;                                    \
-  } while (0)
 
 // convert char array to bytes
 // by @alistair
@@ -222,11 +215,7 @@ static int process_common_fields(bgpstream_format_t *format,
 
   // populate time-stamp
   double time_double;
-  STRTOD(timestamp, time_double);
-  record->time_sec = (uint32_t)time_double;
-  record->time_usec =
-    (uint32_t)((time_double - (uint32_t)time_double) * 1000000);
-
+  strntotime(FIELDPTR(timestamp), FIELDLEN(timestamp), &record->time_sec, &record->time_usec);
   return 0;
 }
 
