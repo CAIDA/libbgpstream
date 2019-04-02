@@ -214,8 +214,8 @@ static int process_common_fields(bgpstream_format_t *format,
   FIELDPTR(peer)[FIELDLEN(peer)] = tmp;
 
   // populate time-stamp
-  double time_double;
-  strntotime(FIELDPTR(timestamp), FIELDLEN(timestamp), &record->time_sec, &record->time_usec);
+  strntotime(FIELDPTR(timestamp), FIELDLEN(timestamp), &record->time_sec,
+             &record->time_usec);
   return 0;
 }
 
