@@ -393,7 +393,18 @@ again:
       goto corrupted;
     }
 
-    if (jsmn_streq(STATE->json_string_buffer, t, "data") == 1) {
+    if (jsmn_streq(STATE->json_string_buffer, t, "type") == 1) {
+      // outer message envelope type, must be "ris_message"
+      NEXT_TOK;
+      jsmn_type_assert(t, JSMN_STRING);
+      if (jsmn_streq(STATE->json_string_buffer, t, "ris_message") != 1) {
+        // TODO: consider handling error message (ris_error)
+        bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid RIS message type: '%.*s'",
+                      t->end - t->start, STATE->json_string_buffer + t->start);
+        goto corrupted;
+      }
+      NEXT_TOK;
+    } else if (jsmn_streq(STATE->json_string_buffer, t, "data") == 1) {
       NEXT_TOK;
       jsmn_type_assert(t, JSMN_OBJECT);
       // handle data
