@@ -121,6 +121,7 @@ typedef struct state {
 
 #define FIELDPTR(field) STATE->json_fields.field.ptr
 #define FIELDLEN(field) STATE->json_fields.field.len
+#define TIF filter_mgr->time_interval
 
 #define STRTOUL(field, dest)                                                   \
   do {                                                                         \
@@ -474,6 +475,78 @@ unsupported:
   return process_unsupported_message(format, record);
 }
 
+/* -------------------- RECORD FILTERING -------------------- */
+
+static int check_filters(bgpstream_record_t *record,
+                         bgpstream_filter_mgr_t *filter_mgr)
+{
+  // Collector
+  if (filter_mgr->collectors != NULL) {
+    // TODO: this is a little inefficient, especially if the filtering has been
+    // done at the topic (or even broker) level. fixme
+    if (bgpstream_str_set_exists(filter_mgr->collectors,
+                                 record->collector_name) == 0) {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+static int is_wanted_time(uint32_t record_time,
+                          bgpstream_filter_mgr_t *filter_mgr)
+{
+  if (TIF==NULL ||
+      (record_time >= TIF->begin_time &&
+      (TIF->end_time == BGPSTREAM_FOREVER || record_time <= TIF->end_time))) {
+    // matches a filter interval
+    return 1;
+  }
+  return 0;
+}
+
+// FIXME: adapt to json context
+static bgpstream_parsebgp_check_filter_rc_t
+populate_filter_cb(bgpstream_format_t *format, bgpstream_record_t *record,
+                   parsebgp_msg_t *msg)
+{
+  uint32_t ts_sec;
+  assert(msg->type == PARSEBGP_MSG_TYPE_BGP);  //
+
+  // set record timestamps
+  ts_sec = record->time_sec;
+  // record->time_usec = msg->types.mrt->timestamp_usec;
+
+  // ensure the router fields are unset
+  record->router_name[0] = '\0';
+  record->router_ip.version = 0;
+
+  // check the filters
+  //
+  // is this above our interval
+  if (format->TIF != NULL &&
+      format->TIF->end_time != BGPSTREAM_FOREVER &&
+      ts_sec > format->TIF->end_time) {
+    // force EOS
+    return BGPSTREAM_PARSEBGP_EOS;
+  }
+
+  // is this from a collector and router that we care about?
+  if (check_filters(record, format->filter_mgr) == 0) {
+    printf("collector=%s, not keep\n", record->collector_name);
+    return BGPSTREAM_PARSEBGP_FILTER_OUT;
+  }
+
+  if (is_wanted_time(ts_sec, format->filter_mgr) != 0) {
+    // we want this entry
+    printf("ts_sec = %u, keep\n", ts_sec);
+    return BGPSTREAM_PARSEBGP_KEEP;
+  } else {
+    printf("ts_sec = %u, not keep\n", ts_sec);
+    return BGPSTREAM_PARSEBGP_FILTER_OUT;
+  }
+}
+
 /* =============================================================== */
 /* =============================================================== */
 /* ==================== PUBLIC API BELOW HERE ==================== */
@@ -506,6 +579,7 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
                                    bgpstream_record_t *record)
 {
   int rc;
+  int filter;
 
   STATE->json_string_buffer_len = bgpstream_transport_readline(
     format->transport, STATE->json_string_buffer, BGPSTREAM_PARSEBGP_BUFLEN);
@@ -513,15 +587,34 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
   assert(STATE->json_string_buffer_len < BGPSTREAM_PARSEBGP_BUFLEN);
 
   if (STATE->json_string_buffer_len < 0) {
+    // corrupted record
     record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
     record->collector_name[0] = '\0';
     return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
   } else if (STATE->json_string_buffer_len == 0) {
+    // end of dump
     return BGPSTREAM_FORMAT_END_OF_DUMP;
   }
 
   if ((rc = bs_format_process_json_fields(format, record)) != 0) {
     return rc;
+  }
+
+  // reference: bgpstream_parsebgp_common.c:597
+  if ((filter = populate_filter_cb(format, record, RDATA->msg)) < 0) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Format-specific filtering failed");
+    return BGPSTREAM_FORMAT_UNKNOWN_ERROR;
+  }
+  if (filter == BGPSTREAM_PARSEBGP_KEEP) {
+    // valid message, and it passes our filters
+    record->status = BGPSTREAM_RECORD_STATUS_VALID_RECORD;
+  } else if (filter == BGPSTREAM_PARSEBGP_EOS) {
+    record->status = BGPSTREAM_RECORD_STATUS_OUTSIDE_TIME_INTERVAL;
+    return BGPSTREAM_FORMAT_OUTSIDE_TIME_INTERVAL;
+  } else {
+    // move on to the next record
+    printf("clear msg msg->type = %d \n", RDATA->msg->type);
+    parsebgp_clear_msg(RDATA->msg);
   }
 
   return BGPSTREAM_FORMAT_OK;
