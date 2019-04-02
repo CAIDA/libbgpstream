@@ -488,18 +488,6 @@ unsupported:
 
 /* -------------------- RECORD FILTERING -------------------- */
 
-static int is_wanted_time(uint32_t record_time,
-                          bgpstream_filter_mgr_t *filter_mgr)
-{
-  if (TIF==NULL ||
-      (record_time >= TIF->begin_time &&
-      (TIF->end_time == BGPSTREAM_FOREVER || record_time <= TIF->end_time))) {
-    // matches a filter interval
-    return 1;
-  }
-  return 0;
-}
-
 static bgpstream_parsebgp_check_filter_rc_t
 check_filters(bgpstream_record_t *record, bgpstream_filter_mgr_t *filter_mgr)
 {
@@ -563,6 +551,7 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
   int rc;
   int filter;
 
+retry:
   STATE->json_string_buffer_len = bgpstream_transport_readline(
     format->transport, STATE->json_string_buffer, BGPSTREAM_PARSEBGP_BUFLEN);
 
@@ -587,15 +576,13 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
     bgpstream_log(BGPSTREAM_LOG_ERR, "Format-specific filtering failed");
     return BGPSTREAM_FORMAT_UNKNOWN_ERROR;
   }
-  if (filter == BGPSTREAM_PARSEBGP_KEEP) {
-    // valid message, and it passes our filters
-    record->status = BGPSTREAM_RECORD_STATUS_VALID_RECORD;
-  } else {
+  if (filter != BGPSTREAM_PARSEBGP_KEEP) {
     // move on to the next record
-    printf("msg->type: %d\n", RDATA->msg->type);
     parsebgp_clear_msg(RDATA->msg);
+    goto retry;
   }
-
+  // valid message, and it passes our filters
+  record->status = BGPSTREAM_RECORD_STATUS_VALID_RECORD;
   return BGPSTREAM_FORMAT_OK;
 }
 
