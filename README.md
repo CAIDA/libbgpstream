@@ -28,6 +28,8 @@ $ make
 
 If you cloned BGPStream from GitHub, you will need to run `./autogen.sh` before
 `./configure`.
+Depending on your operating system, the `./autogen.sh` execution may require a few extra packages to run.
+On Ubuntu, for example, you need `autogen`, `autoconf`, and `libtool` installed on the system before running the command.
 
 For further information or support, please visit the
 [BGPStream website](http://bgpstream.caida.org), or contact
