@@ -33,6 +33,7 @@
 #include "bgpstream_log.h"
 #include <assert.h>
 #include <string.h>
+#include <errno.h>
 
 // if the parser encounters an "invalid" message, it will be written to
 // "debug.msg" if this is set
@@ -535,6 +536,16 @@ refill:
       // read error
       // TODO: create a specific read error failure so that perhaps BGPStream
       // can retry
+
+      // check if EIO happened during read. if so, return warning instead of error.
+      // EIO could happen if the file it's reading from is truncated.
+      if(errno == EIO){
+        bgpstream_log(BGPSTREAM_LOG_WARN, "EIO happened, potenially truncated file");
+        // return corrupted dump
+        record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
+        return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
+      }
+
       bgpstream_log(BGPSTREAM_LOG_ERR, "Could not refill buffer");
       return BGPSTREAM_FORMAT_READ_ERROR;
     }
