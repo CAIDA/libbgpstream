@@ -540,7 +540,7 @@ refill:
       // check if EIO happened during read. if so, return warning instead of error.
       // EIO could happen if the file it's reading from is truncated.
       if(errno == EIO){
-        bgpstream_log(BGPSTREAM_LOG_WARN, "EIO happened, potenially truncated file");
+        bgpstream_log(BGPSTREAM_LOG_WARN, "Unexpected EOF. Input file potentially truncated or corrupted.");
         // return corrupted dump
         record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
         return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
