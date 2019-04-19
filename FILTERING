@@ -76,7 +76,7 @@ The list of accepted terms and their meaning are:
       between two consecutive peers. Standard regex operators can also be
       used, e.g. *,?,+ and [].
 
-      For example, the expression '$681_1444_' will match any AS Paths that
+      For example, the expression '^681_1444_' will match any AS Paths that
       begin with AS681 followed by AS1444.
 
       Placing a '!' in front of the regular expression will cause the result
