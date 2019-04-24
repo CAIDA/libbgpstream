@@ -400,6 +400,12 @@ int main(int argc, char *argv[])
         usage();
         goto err;
       }
+      if (strcmp(optarg, "ribs") != 0 && strcmp(optarg, "updates") != 0) {
+        fprintf(stderr,
+                "ERROR: record-type must be one of \"ribs\" or \"updates\"\n");
+        usage();
+        goto err;
+      }
       types[types_cnt++] = strdup(optarg);
       break;
     case 'w':
