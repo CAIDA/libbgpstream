@@ -588,7 +588,7 @@ refill:
       goto refill;
     } else if (err == PARSEBGP_TRUNCATED_MSG) {
       bgpstream_log(BGPSTREAM_LOG_WARN,
-                    "Skipping truncated record %zu from '%s'",
+                    "Skipping truncated record %"PRIu64" from '%s'",
                     state->successful_read_cnt,
                     format->res->uri);
       state->successful_read_cnt++;
