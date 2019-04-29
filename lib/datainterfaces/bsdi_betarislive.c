@@ -80,11 +80,20 @@ typedef struct bsdi_betarislive_state {
 
 /* ========== PRIVATE METHODS BELOW HERE ========== */
 
-static int build_url(char *client_name, char *url)
+static int build_url(bsdi_t *di)
 {
-  size_t needed = snprintf(NULL, 0, "%s&client=%s", FIREHOSE_URL, client_name) + 1;
-  url = malloc(needed);
-  int written = sprintf(url, "%s&client=%s", FIREHOSE_URL, client_name);
+  if(STATE->client_name == NULL){
+    // assign default client name
+    if((STATE->client_name = strdup(DEFAULT_CLIENT)) == NULL){
+      bgpstream_log(BGPSTREAM_LOG_ERR,
+                    "Could not assign default ris-live firehose client.");
+      return -1;
+    }
+  }
+
+  size_t needed = snprintf(NULL, 0, "%s&client=%s", FIREHOSE_URL, STATE->client_name) + 1;
+  STATE->url = malloc(needed);
+  int written = sprintf(STATE->url, "%s&client=%s", FIREHOSE_URL, STATE->client_name);
   if(needed != written+1){
     return -1;
   }
@@ -135,19 +144,6 @@ int bsdi_betarislive_set_option(
     return -1;
   }
 
-  if(STATE->client_name == NULL){
-    // assign default client name
-    if((STATE->client_name = strdup(DEFAULT_CLIENT)) == NULL){
-      bgpstream_log(BGPSTREAM_LOG_ERR,
-                    "Could not assign default ris-live firehose client.");
-      return -1;
-    }
-  }
-
-  if(build_url(STATE->client_name, STATE->url)!=0){
-    return -1;
-  }
-
   return 0;
 }
 
@@ -177,6 +173,11 @@ int bsdi_betarislive_update_resources(bsdi_t *di)
     return 0;
   }
   STATE->done = 1;
+
+  // construct url
+  if(build_url(di) != 0){
+    return -1;
+  }
 
   // we treat kafka as having data from <recent> to <forever>
   if ((rc = bgpstream_resource_mgr_push(
