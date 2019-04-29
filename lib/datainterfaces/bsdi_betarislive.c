@@ -193,5 +193,8 @@ int bsdi_betarislive_update_resources(bsdi_t *di)
   }
   assert(res != NULL);
 
+  bgpstream_log(BGPSTREAM_LOG_INFO,
+                "start streaming from %s",STATE->url);
+
   return 0;
 }
