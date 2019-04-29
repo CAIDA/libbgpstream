@@ -40,6 +40,11 @@
 
 /* ---------- START CLASS DEFINITION ---------- */
 
+/* define the internal option ID values */
+enum {
+  OPTION_CLIENT,         // firehose client name
+};
+
 /* define the options this data interface accepts */
 static bgpstream_data_interface_option_t options[] = {
   /* Firehose Client */
@@ -53,7 +58,7 @@ static bgpstream_data_interface_option_t options[] = {
 
 /* create the class structure for this data interface */
 BSDI_CREATE_CLASS_FULL(
-  betarislive, "beta-rislive-stream", BGPSTREAM_DATA_INTERFACE_BETARISLIVE,
+  betarislive, "beta-ris-stream", BGPSTREAM_DATA_INTERFACE_BETARISLIVE,
   "Read updates in real-time from the RIPE RIS live stream (BETA)",
   options);
 
@@ -71,15 +76,15 @@ typedef struct bsdi_betarislive_state {
   // we only ever yield one resource
   int done;
 
-} bsdi_betabmp_state_t;
+} bsdi_betarislive_state_t;
 
 /* ========== PRIVATE METHODS BELOW HERE ========== */
 
-static int build_url()
+static int build_url(char *client_name, char *url)
 {
-  size_t needed = snprintf(NULL, 0, "%s&client=%s", FIREHOSE_URL, STATE->client_name) + 1;
-  STATE->url = malloc(needed);
-  int written = sprintf(STATE->url, "%s&client=%s", FIREHOSE_URL, STATE->client_name);
+  size_t needed = snprintf(NULL, 0, "%s&client=%s", FIREHOSE_URL, client_name) + 1;
+  url = malloc(needed);
+  int written = sprintf(url, "%s&client=%s", FIREHOSE_URL, client_name);
   if(needed != written+1){
     return -1;
   }
@@ -132,14 +137,14 @@ int bsdi_betarislive_set_option(
 
   if(STATE->client_name == NULL){
     // assign default client name
-    if((STATE->client_name = strdup(DEFAUL_CLIENT)) == NULL){
+    if((STATE->client_name = strdup(DEFAULT_CLIENT)) == NULL){
       bgpstream_log(BGPSTREAM_LOG_ERR,
                     "Could not assign default ris-live firehose client.");
       return -1;
     }
   }
 
-  if(build_url()!=0){
+  if(build_url(STATE->client_name, STATE->url)!=0){
     return -1;
   }
 
@@ -180,7 +185,7 @@ int bsdi_betarislive_update_resources(bsdi_t *di)
          0, // indicate we don't know how much historical data there is
          BGPSTREAM_FOREVER, // indicate that the resource is a "stream"
          "ris-live",   // fix our project to "caida"
-         "", // leave collector unset since we'll get it from openbmp hdrs
+         "", // leave collector unset
          BGPSTREAM_UPDATE, //
          &res)) <= 0) {
     return rc;

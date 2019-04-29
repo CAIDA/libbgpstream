@@ -209,6 +209,7 @@ BS_WITH_DI([bgpstream_broker],[broker],[BROKER],[yes])
 BS_WITH_DI([bgpstream_singlefile],[singlefile],[SINGLEFILE],[yes])
 BS_WITH_DI([bgpstream_kafka],[kafka],[KAFKA],[yes])
 BS_WITH_DI([bgpstream_betabmp],[betabmp],[BETABMP],[yes])
+BS_WITH_DI([bgpstream_betarislive],[betarislive],[BETARISLIVE],[yes])
 BS_WITH_DI([bgpstream_csvfile],[csvfile],[CSVFILE],[yes])
 BS_WITH_DI([bgpstream_sqlite],[sqlite],[SQLITE],[no])
 
@@ -232,6 +233,12 @@ fi
 if test "x$with_di_betabmp" == xyes; then
    if test x"$with_transport_kafka" != xyes; then
       AC_MSG_ERROR([(Beta) BMP Stream data interface requires Kafka transport module (--without-betabmp to disable)])
+   fi
+fi
+
+if test "x$with_di_betarislive" == xyes; then
+   if test x"$with_transport_kafka" != xyes; then
+      AC_MSG_ERROR([(Beta) BMP Stream data interface requires Kafka transport module (--without-betarislive to disable)])
    fi
 fi
 

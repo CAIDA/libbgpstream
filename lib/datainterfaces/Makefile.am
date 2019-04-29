@@ -29,7 +29,7 @@ SUBDIRS=
 # to allow #include <config.h>
 AM_CPPFLAGS= 	-I$(top_srcdir) \
 		-I$(top_srcdir)/lib \
-                -I$(top_srcdir)/lib/utils \
+		-I$(top_srcdir)/lib/utils \
 	 	-I$(top_srcdir)/common
 
 
@@ -66,6 +66,11 @@ endif
 if WITH_DATA_INTERFACE_BETABMP
 DI_SOURCES+=bsdi_betabmp.c \
 	    bsdi_betabmp.h
+endif
+
+if WITH_DATA_INTERFACE_BETARISLIVE
+DI_SOURCES+=bsdi_betarislive.c \
+	    bsdi_betarislive.h
 endif
 
 libbgpstream_data_interfaces_la_SOURCES = $(DI_SOURCES)
