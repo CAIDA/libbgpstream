@@ -50,8 +50,8 @@ static bgpstream_data_interface_option_t options[] = {
   /* Firehose Client */
   {
     BGPSTREAM_DATA_INTERFACE_BETARISLIVE, // interface ID
-    OPTION_CLIENT,                   // internal ID
-    "client",                        // name
+    OPTION_CLIENT,                        // internal ID
+    "client",                             // client name
     "client name for RIS-Live firehose stream (default: " DEFAULT_CLIENT ")",
   },
 };
@@ -179,15 +179,14 @@ int bsdi_betarislive_update_resources(bsdi_t *di)
     return -1;
   }
 
-  // we treat kafka as having data from <recent> to <forever>
   if ((rc = bgpstream_resource_mgr_push(
          BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_FILE,
          BGPSTREAM_RESOURCE_FORMAT_RIPEJSON, STATE->url,
-         0, // indicate we don't know how much historical data there is
-         BGPSTREAM_FOREVER, // indicate that the resource is a "stream"
-         "ris-live",   // fix our project to "caida"
-         "", // leave collector unset
-         BGPSTREAM_UPDATE, //
+         0,                   // indicate we don't know how much historical data there is
+         BGPSTREAM_FOREVER,   // indicate that the resource is a "stream"
+         "ris-live",          // fix project name to "ris-live"
+         "",                  // leave collector unset
+         BGPSTREAM_UPDATE,
          &res)) <= 0) {
     return rc;
   }
