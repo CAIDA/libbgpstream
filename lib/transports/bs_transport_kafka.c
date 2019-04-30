@@ -294,7 +294,7 @@ static int handle_err_msg(bgpstream_transport_t *transport,
 }
 
 int64_t bs_transport_kafka_readline(bgpstream_transport_t *transport,
-                                    uint8_t *buffer, int64_t len)
+                                    uint8_t *buffer, int64_t len, int chomp)
 {
   int rc = bs_transport_kafka_read(transport, buffer, len - 1);
 

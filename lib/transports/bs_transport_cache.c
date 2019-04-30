@@ -237,10 +237,10 @@ int bs_transport_cache_create(bgpstream_transport_t *transport)
 }
 
 int64_t bs_transport_cache_readline(bgpstream_transport_t *transport,
-                                    uint8_t *buffer, int64_t len)
+                                    uint8_t *buffer, int64_t len, int chomp)
 {
 
-  return wandio_generic_fgets(transport, buffer, len, 1,
+  return wandio_generic_fgets(transport, buffer, len, chomp,
                               (read_cb_t *)bs_transport_cache_read);
 }
 

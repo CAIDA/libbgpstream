@@ -53,9 +53,9 @@ int64_t bs_transport_file_read(bgpstream_transport_t *transport,
 }
 
 int64_t bs_transport_file_readline(bgpstream_transport_t *transport,
-                                   uint8_t *buffer, int64_t len)
+                                   uint8_t *buffer, int64_t len, int chomp)
 {
-  return wandio_fgets((io_t *)transport->state, buffer, len, 1);
+  return wandio_fgets((io_t *)transport->state, buffer, len, chomp);
 }
 
 void bs_transport_file_destroy(bgpstream_transport_t *transport)

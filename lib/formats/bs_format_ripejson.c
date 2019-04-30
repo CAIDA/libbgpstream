@@ -553,7 +553,7 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
 
 retry:
   STATE->json_string_buffer_len = bgpstream_transport_readline(
-    format->transport, STATE->json_string_buffer, BGPSTREAM_PARSEBGP_BUFLEN);
+    format->transport, STATE->json_string_buffer, BGPSTREAM_PARSEBGP_BUFLEN, 0);
 
   assert(STATE->json_string_buffer_len < BGPSTREAM_PARSEBGP_BUFLEN);
 

@@ -52,7 +52,7 @@
   int64_t bs_transport_##name##_read(bgpstream_transport_t *t,                 \
                                      uint8_t *buffer, int64_t len);            \
   int64_t bs_transport_##name##_readline(bgpstream_transport_t *t,             \
-                                         uint8_t *buffer, int64_t len);        \
+                                         uint8_t *buffer, int64_t len, chomp); \
   void bs_transport_##name##_destroy(bgpstream_transport_t *t);
 
 #define BS_TRANSPORT_SET_METHODS(classname, transport)                         \
@@ -87,7 +87,7 @@ struct bgpstream_transport {
    * @return the number of bytes read if successful, -1 otherwise
    */
   int64_t (*readline)(struct bgpstream_transport *t, uint8_t *buffer,
-                      int64_t len);
+                      int64_t len, int chomp);
 
   /** Shutdown and free this data transport
    *

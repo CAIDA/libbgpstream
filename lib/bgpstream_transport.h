@@ -58,7 +58,7 @@ int64_t bgpstream_transport_read(bgpstream_transport_t *transport, void *buffer,
  * @return the number of bytes read if successful, -1 otherwise
  */
 int64_t bgpstream_transport_readline(bgpstream_transport_t *transport,
-                                     void *buffer, int64_t len);
+                                     void *buffer, int64_t len, int chomp);
 
 /** Shutdown and destroy the given transport handler
  *
