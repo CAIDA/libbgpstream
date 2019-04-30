@@ -236,12 +236,6 @@ if test "x$with_di_betabmp" == xyes; then
    fi
 fi
 
-if test "x$with_di_betarislive" == xyes; then
-   if test x"$with_transport_kafka" != xyes; then
-      AC_MSG_ERROR([(Beta) BMP Stream data interface requires Kafka transport module (--without-betarislive to disable)])
-   fi
-fi
-
 if test "x$with_di_sqlite" == xyes; then
    # check for sqlite library
    AC_CHECK_LIB([sqlite3], [sqlite3_open_v2], ,
