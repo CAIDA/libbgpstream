@@ -148,6 +148,9 @@ typedef enum {
   /** (Beta) BMP Stream interface */
   BGPSTREAM_DATA_INTERFACE_BETABMP,
 
+  /** (Beta) RISLIVE Stream interface */
+  BGPSTREAM_DATA_INTERFACE_BETARISLIVE,
+
   /** The number of data interfaces */
   _BGPSTREAM_DATA_INTERFACE_CNT,
 

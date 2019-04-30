@@ -209,6 +209,7 @@ BS_WITH_DI([bgpstream_broker],[broker],[BROKER],[yes])
 BS_WITH_DI([bgpstream_singlefile],[singlefile],[SINGLEFILE],[yes])
 BS_WITH_DI([bgpstream_kafka],[kafka],[KAFKA],[yes])
 BS_WITH_DI([bgpstream_betabmp],[betabmp],[BETABMP],[yes])
+BS_WITH_DI([bgpstream_betarislive],[betarislive],[BETARISLIVE],[yes])
 BS_WITH_DI([bgpstream_csvfile],[csvfile],[CSVFILE],[yes])
 BS_WITH_DI([bgpstream_sqlite],[sqlite],[SQLITE],[no])
 
