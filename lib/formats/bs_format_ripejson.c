@@ -220,6 +220,47 @@ static int process_common_fields(bgpstream_format_t *format,
   return 0;
 }
 
+// readline
+static int
+readline(bgpstream_format_t *format)
+{
+  int total_read = 0;
+  int current_read = 0;
+  int current_buflen = BGPSTREAM_PARSEBGP_BUFLEN;
+  char *buffer_ptr = STATE->json_string_buffer;
+
+  while(1){
+    // read line, including linebreak
+    current_read = bgpstream_transport_readline(
+      format->transport, buffer_ptr, BGPSTREAM_PARSEBGP_BUFLEN, 1);
+
+    if(current_read == 0){
+      // reach EOF, no bytes read, return 0
+      return 0;
+    }
+
+    if(current_read < BGPSTREAM_PARSEBGP_BUFLEN ||
+      buffer_ptr[current_read-1] == '\n'){
+      // if read less than buffer, or last byte is an newline, readline is finished
+
+      // replace linebreak with null
+      buffer_ptr[current_read-1] = '\0';
+      buffer_ptr += current_read - 1;
+      break;
+    }
+
+    // if reaches here: no newline received yet, need to read more
+    // reallocate memory
+    current_buflen += BGPSTREAM_PARSEBGP_BUFLEN;
+    STATE->json_string_buffer = (char*) realloc (STATE->json_string_buffer, current_buflen * sizeof(char));
+    // move pointer forward one BGPSTREAM_PARSEBGP_BUFLEN
+    buffer_ptr = &STATE->json_string_buffer[current_buflen - BGPSTREAM_PARSEBGP_BUFLEN];
+  }
+
+  // calcualte how many bytes actually read
+  return buffer_ptr - STATE->json_string_buffer;
+}
+
 static bgpstream_format_status_t
 process_bgp_message(bgpstream_format_t *format, bgpstream_record_t *record)
 {
@@ -552,8 +593,10 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
   int filter;
 
 retry:
-  STATE->json_string_buffer_len = bgpstream_transport_readline(
-    format->transport, STATE->json_string_buffer, BGPSTREAM_PARSEBGP_BUFLEN, 0);
+  // STATE->json_string_buffer_len = bgpstream_transport_readline(
+  //   format->transport, STATE->json_string_buffer, BGPSTREAM_PARSEBGP_BUFLEN, 0);
+
+  STATE->json_string_buffer_len = readline(format);
 
   assert(STATE->json_string_buffer_len < BGPSTREAM_PARSEBGP_BUFLEN);
 
