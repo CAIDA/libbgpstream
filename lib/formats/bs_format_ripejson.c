@@ -221,8 +221,7 @@ static int process_common_fields(bgpstream_format_t *format,
 }
 
 // readline
-static int
-readline(bgpstream_format_t *format)
+static int readline(bgpstream_format_t *format)
 {
   int total_read = 0;
   int current_read = 0;
@@ -231,15 +230,17 @@ readline(bgpstream_format_t *format)
 
   while(1){
     // read line, including linebreak
+    // current_read is at most BGPSTREAM_PARSEBGP_BUFLEN-1
     current_read = bgpstream_transport_readline(
-      format->transport, buffer_ptr, BGPSTREAM_PARSEBGP_BUFLEN, 1);
+      format->transport, buffer_ptr, current_buflen - total_read, 0);
+    total_read+=current_read;
 
     if(current_read == 0){
       // reach EOF, no bytes read, return 0
       return 0;
     }
 
-    if(current_read < BGPSTREAM_PARSEBGP_BUFLEN ||
+    if(current_read < current_buflen - total_read -1 ||
       buffer_ptr[current_read-1] == '\n'){
       // if read less than buffer, or last byte is an newline, readline is finished
 
@@ -254,7 +255,7 @@ readline(bgpstream_format_t *format)
     current_buflen += BGPSTREAM_PARSEBGP_BUFLEN;
     STATE->json_string_buffer = (char*) realloc (STATE->json_string_buffer, current_buflen * sizeof(char));
     // move pointer forward one BGPSTREAM_PARSEBGP_BUFLEN
-    buffer_ptr = &STATE->json_string_buffer[current_buflen - BGPSTREAM_PARSEBGP_BUFLEN];
+    buffer_ptr = &STATE->json_string_buffer[total_read - 1];
   }
 
   // calcualte how many bytes actually read
