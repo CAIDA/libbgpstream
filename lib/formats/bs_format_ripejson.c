@@ -102,6 +102,9 @@ typedef struct state {
   // json bgp message string buffer length
   int json_string_buffer_len;
 
+  // json bgp message string buffer length
+  int json_string_buffer_alloc_len;
+
   // json bgp message bytes buffer
   uint8_t json_bytes_buffer[4096];
 
@@ -113,6 +116,8 @@ typedef struct state {
 
 } state_t;
 
+#define JSON_BUFFER_BLOCK_SIZE BGPSTREAM_PARSEBGP_BUFLEN
+
 /* ======================================================== */
 /* ======================================================== */
 /* ==================== JSON UTILITIES ==================== */
@@ -121,6 +126,7 @@ typedef struct state {
 
 #define FIELDPTR(field) STATE->json_fields.field.ptr
 #define FIELDLEN(field) STATE->json_fields.field.len
+#define BUFSIZE STATE->json_string_buffer_alloc_len
 #define TIF filter_mgr->time_interval
 
 #define STRTOUL(field, dest)                                                   \
@@ -225,14 +231,12 @@ static int readline(bgpstream_format_t *format)
 {
   int total_read = 0;
   int current_read = 0;
-  int current_buflen = BGPSTREAM_PARSEBGP_BUFLEN;
   char *buffer_ptr = STATE->json_string_buffer;
 
   while(1){
     // read line, including linebreak
-    // current_read is at most BGPSTREAM_PARSEBGP_BUFLEN-1
     current_read = bgpstream_transport_readline(
-      format->transport, buffer_ptr, current_buflen - total_read, 0);
+      format->transport, buffer_ptr, BUFSIZE - total_read, 0);
     total_read+=current_read;
 
     if(current_read == 0){
@@ -240,7 +244,7 @@ static int readline(bgpstream_format_t *format)
       return 0;
     }
 
-    if(current_read < current_buflen - total_read -1 ||
+    if(current_read < BUFSIZE - total_read -1 ||
       buffer_ptr[current_read-1] == '\n'){
       // if read less than buffer, or last byte is an newline, readline is finished
 
@@ -252,10 +256,10 @@ static int readline(bgpstream_format_t *format)
 
     // if reaches here: no newline received yet, need to read more
     // reallocate memory
-    current_buflen += BGPSTREAM_PARSEBGP_BUFLEN;
-    STATE->json_string_buffer = (char*) realloc (STATE->json_string_buffer, current_buflen * sizeof(char));
-    // move pointer forward one BGPSTREAM_PARSEBGP_BUFLEN
+    BUFSIZE += JSON_BUFFER_BLOCK_SIZE;
+    STATE->json_string_buffer = (char*) realloc (STATE->json_string_buffer, BUFSIZE * sizeof(char));
     buffer_ptr = &STATE->json_string_buffer[total_read - 1];
+    bgpstream_log(BGPSTREAM_LOG_INFO, "Json string buffer size increased to %d", BUFSIZE);
   }
 
   // calcualte how many bytes actually read
@@ -574,9 +578,10 @@ int bs_format_ripejson_create(bgpstream_format_t *format,
     return -1;
   }
 
-  if ((STATE->json_string_buffer = malloc(BGPSTREAM_PARSEBGP_BUFLEN)) == NULL) {
+  if ((STATE->json_string_buffer = malloc(JSON_BUFFER_BLOCK_SIZE)) == NULL) {
     return -1;
   }
+  STATE->json_string_buffer_alloc_len = JSON_BUFFER_BLOCK_SIZE;
 
   parsebgp_opts_init(&STATE->opts);
   bgpstream_parsebgp_opts_init(&STATE->opts);
@@ -594,12 +599,10 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
   int filter;
 
 retry:
-  // STATE->json_string_buffer_len = bgpstream_transport_readline(
-  //   format->transport, STATE->json_string_buffer, BGPSTREAM_PARSEBGP_BUFLEN, 0);
 
   STATE->json_string_buffer_len = readline(format);
 
-  assert(STATE->json_string_buffer_len < BGPSTREAM_PARSEBGP_BUFLEN);
+  assert(STATE->json_string_buffer_len < STATE->json_string_buffer_alloc_len);
 
   if (STATE->json_string_buffer_len < 0) {
     // corrupted record
