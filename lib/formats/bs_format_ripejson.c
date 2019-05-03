@@ -241,7 +241,7 @@ static int readline(bgpstream_format_t *format)
 
     if(current_read == 0){
       // reach EOF, no bytes read, return 0
-      return 0;
+      return total_read;
     }
 
     if(current_read < BUFSIZE - total_read -1 ||
