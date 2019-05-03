@@ -52,7 +52,8 @@
   int64_t bs_transport_##name##_read(bgpstream_transport_t *t,                 \
                                      uint8_t *buffer, int64_t len);            \
   int64_t bs_transport_##name##_readline(bgpstream_transport_t *t,             \
-                                         uint8_t *buffer, int64_t len, chomp); \
+                                         uint8_t *buffer, int64_t len,         \
+                                         int chomp);                           \
   void bs_transport_##name##_destroy(bgpstream_transport_t *t);
 
 #define BS_TRANSPORT_SET_METHODS(classname, transport)                         \
