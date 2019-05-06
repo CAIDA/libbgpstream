@@ -240,13 +240,13 @@ static int readline(bgpstream_format_t *format)
     total_read+=current_read;
 
     if(current_read == 0){
-      // reach EOF, no bytes read, return 0
+      // reaches EOF, no bytes read, return total_read
       return total_read;
     }
 
     if(current_read < BUFSIZE - total_read -1 ||
       buffer_ptr[current_read-1] == '\n'){
-      // if read less than buffer, or last byte is an newline, readline is finished
+      // if read less than a full buffer, or last byte is an newline, readline is finished
 
       // replace linebreak with null
       if(buffer_ptr[current_read-1] == '\n'){
