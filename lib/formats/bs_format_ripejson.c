@@ -248,11 +248,10 @@ static int readline(bgpstream_format_t *format)
       buffer_ptr[current_read-1] == '\n'){
       // if read less than a full buffer, or last byte is an newline, readline is finished
 
-      // replace linebreak with null
-      if(buffer_ptr[current_read-1] == '\n'){
-        buffer_ptr[current_read-1] = '\0';
-        total_read--;  // decrease the total reads count by one for the newline
-      }
+      // the last-read character on a successful readline should be '\n'
+      assert(buffer_ptr[current_read-1] == '\n');
+      buffer_ptr[current_read-1] = '\0'; // replace linebreak with null
+      total_read--;  // decrease the total reads count by one for the newline
       break;
     }
 
