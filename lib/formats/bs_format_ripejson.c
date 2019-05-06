@@ -260,7 +260,7 @@ static int readline(bgpstream_format_t *format)
     BUFSIZE += JSON_BUFFER_BLOCK_SIZE;
     STATE->json_string_buffer = (char*) realloc (STATE->json_string_buffer, BUFSIZE * sizeof(char));
     // point temporary buffer to the last read location
-    buffer_ptr = &STATE->json_string_buffer[total_read - 1];
+    buffer_ptr = &STATE->json_string_buffer[total_read];
     bgpstream_log(BGPSTREAM_LOG_INFO, "Json string buffer size increased to %d", BUFSIZE);
   }
 
