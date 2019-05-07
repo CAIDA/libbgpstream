@@ -113,6 +113,8 @@ typedef struct state {
 
 } state_t;
 
+#define JSON_BUFLEN 1024*1024 // 1 MB buffer
+
 /* ======================================================== */
 /* ======================================================== */
 /* ==================== JSON UTILITIES ==================== */
@@ -132,7 +134,6 @@ typedef struct state {
   } while (0)
 
 // convert char array to bytes
-// by @alistair
 static int hexstr_to_bytes(uint8_t *buf, const char *hexstr, size_t hexstr_len)
 {
   size_t i;
@@ -167,11 +168,14 @@ static ssize_t hexstr_to_bgpmsg(uint8_t *buf, size_t buflen, const char *hexstr,
                                 size_t hexstr_len)
 {
   // 2 characters per octet, and BGP messages cannot be more than 4096 bytes
-  if ((hexstr_len & 0x1) != 0 || hexstr_len > (4096 * 2)) {
+  uint16_t msg_len = hexstr_len / 2;
+  if ((hexstr_len & 0x1) != 0) {
+    bgpstream_log(BGPSTREAM_LOG_WARN, "Malformed RIS-Live raw BGP message");
     return -1;
   }
-  uint16_t msg_len = (hexstr_len / 2) + 2 + 1;
-  if (msg_len > buflen) {
+  if (hexstr_len > UINT16_MAX || msg_len > buflen) {
+    bgpstream_log(BGPSTREAM_LOG_WARN,
+                  "RIS-Live raw BGP message too long (%"PRIu16" bytes)", msg_len);
     return -1;
   }
   // parse the hex string, one nybble at a time
@@ -532,7 +536,7 @@ int bs_format_ripejson_create(bgpstream_format_t *format,
     return -1;
   }
 
-  if ((STATE->json_string_buffer = malloc(BGPSTREAM_PARSEBGP_BUFLEN)) == NULL) {
+  if ((STATE->json_string_buffer = malloc(JSON_BUFLEN)) == NULL) {
     return -1;
   }
 
