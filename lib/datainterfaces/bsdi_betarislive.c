@@ -129,9 +129,6 @@ int bsdi_betarislive_set_option(
   bsdi_t *di, const bgpstream_data_interface_option_t *option_type,
   const char *option_value)
 {
-  int i;
-  int found = 0;
-
   switch (option_type->id) {
   case OPTION_CLIENT:
     free(STATE->client_name);
