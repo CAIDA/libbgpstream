@@ -30,6 +30,7 @@
 #include "wandio.h"
 #include "config.h"
 #include <string.h>
+#include <assert.h>
 
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent
 #define HTTP_USER_AGENT_HDR "User-Agent: libbgpstream/"PACKAGE_VERSION
@@ -41,7 +42,7 @@ int bs_transport_http_create(bgpstream_transport_t *transport)
 
   BS_TRANSPORT_SET_METHODS(http, transport);
 
-  // TODO: double check `transport->res->uri` is a valid HTTP URI
+  assert(strncmp(transport->res->uri, "http", 4) == 0);
 
   if ((fh = http_open_hdrs(transport->res->uri, &http_hdr, 1)) == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for reading",
