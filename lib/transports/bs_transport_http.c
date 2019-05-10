@@ -34,31 +34,14 @@
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent
 #define HTTP_USER_AGENT_HDR "User-Agent: libbgpstream/"PACKAGE_VERSION
 
-static char *build_http_hdr() {
-        char *hdr;
-
-        if ((hdr = malloc(strlen(HTTP_USER_AGENT_HDR) + 1)) == NULL) {
-                return NULL;
-        }
-
-        strcpy(hdr, HTTP_USER_AGENT_HDR);
-
-        return hdr;
-}
-
 int bs_transport_http_create(bgpstream_transport_t *transport)
 {
   io_t *fh = NULL;
-  char *http_hdr = NULL;
+  char *http_hdr = HTTP_USER_AGENT_HDR;
 
   BS_TRANSPORT_SET_METHODS(http, transport);
 
   // TODO: double check `transport->res->uri` is a valid HTTP URI
-
-  if ((http_hdr = build_http_hdr()) == NULL) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not build HTTP header fields");
-    return -1;
-  }
 
   if ((fh = http_open_hdrs(transport->res->uri, &http_hdr, 1)) == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for reading",
