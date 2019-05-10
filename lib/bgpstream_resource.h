@@ -50,6 +50,9 @@ typedef enum {
   /** Data is locally cached */
   BGPSTREAM_RESOURCE_TRANSPORT_CACHE = 2,
 
+  /** Data is streamed via http */
+  BGPSTREAM_RESOURCE_TRANSPORT_HTTP = 3,
+
 } bgpstream_resource_transport_type_t;
 
 /** Encapsulation/encoding formats supported */
