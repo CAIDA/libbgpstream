@@ -34,7 +34,7 @@
 
 #include "bs_format_bmp.h"
 #include "bs_format_mrt.h"
-#include "bs_format_ripejson.h"
+#include "bs_format_rislive.h"
 
 /** Convenience typedef for the format create function type */
 typedef int (*format_create_func_t)(bgpstream_format_t *format,
@@ -51,7 +51,7 @@ static const format_create_func_t create_functions[] = {
 
   bs_format_bmp_create,
 
-  bs_format_ripejson_create,
+  bs_format_rislive_create,
 
 };
 

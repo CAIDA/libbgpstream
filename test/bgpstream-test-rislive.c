@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "bgpstream-test-ripejson.h"
+#include "bgpstream-test-rislive.h"
 #include "bgpstream.h"
 #include "bgpstream_test.h"
 #include "utils.h"
@@ -42,7 +42,7 @@ static char buf[65536];
  * 6. unsupported (change keepalive message's type to an unsupported one)
  * 7. corrupted (change keepalive messages's raw bytes)
  */
-int test_bgpstream_ripejson()
+int test_bgpstream_rislive()
 {
   /* Declare BGPStream requirements */
   int rrc = 0, count = 0, rcount = 0, erc = 0;
@@ -59,7 +59,7 @@ int test_bgpstream_ripejson()
          bs, di_id, "upd-type")) == NULL) {
     return -1;
   }
-  if (bgpstream_set_data_interface_option(bs, option, "ripejson") != 0) {
+  if (bgpstream_set_data_interface_option(bs, option, "rislive") != 0) {
     return -1;
   }
   if ((option = bgpstream_get_data_interface_option_by_name(
@@ -142,5 +142,5 @@ err:
 
 int main()
 {
-  return test_bgpstream_ripejson();
+  return test_bgpstream_rislive();
 }

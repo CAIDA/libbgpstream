@@ -24,11 +24,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __BS_FORMAT_RIPEJSON_H
-#define __BS_FORMAT_RIPEJSON_H
+#ifndef __BS_FORMAT_RISLIVE_H
+#define __BS_FORMAT_RISLIVE_H
 
 #include "bgpstream_format_interface.h"
 
-BS_FORMAT_GENERATE_PROTOS(ripejson);
+BS_FORMAT_GENERATE_PROTOS(rislive);
 
 #endif /* __BS_FORMAT_RIPEJSON_H */
