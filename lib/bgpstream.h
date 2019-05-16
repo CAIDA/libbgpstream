@@ -205,7 +205,7 @@ typedef struct struct_bgpstream_data_interface_option {
  *
  * @return a pointer to a BGP Stream instance if successful, NULL otherwise
  */
-bgpstream_t *bgpstream_create();
+bgpstream_t *bgpstream_create(void);
 
 /** Add a filter in order to select a subset of the bgp data available
  *

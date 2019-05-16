@@ -59,7 +59,7 @@ typedef struct bgpstream_ip_counter bgpstream_ip_counter_t;
  *
  * @return a pointer to the structure, or NULL if an error occurred
  */
-bgpstream_ip_counter_t *bgpstream_ip_counter_create();
+bgpstream_ip_counter_t *bgpstream_ip_counter_create(void);
 
 /** Add a prefix to the IP Counter
  *

@@ -109,7 +109,7 @@ typedef struct bgpstream_as_path_store_path_iter {
  *
  * @return pointer to the created store if successful, NULL otherwise
  */
-bgpstream_as_path_store_t *bgpstream_as_path_store_create();
+bgpstream_as_path_store_t *bgpstream_as_path_store_create(void);
 
 /** Destroy the given AS Path Store
  *

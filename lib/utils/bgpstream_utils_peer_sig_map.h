@@ -82,7 +82,7 @@ typedef struct struct_bgpstream_peer_sig_t {
  *
  * @return a pointer to the created peer sig map if successful, NULL otherwise.
  */
-bgpstream_peer_sig_map_t *bgpstream_peer_sig_map_create();
+bgpstream_peer_sig_map_t *bgpstream_peer_sig_map_create(void);
 
 /** Get (or set and get) the peer ID for the given peer signature
  *

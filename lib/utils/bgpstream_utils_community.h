@@ -196,7 +196,7 @@ int bgpstream_community_set_snprintf(char *buf, size_t len,
  * @return pointer to the created community set object if successful, NULL
  * otherwise
  */
-bgpstream_community_set_t *bgpstream_community_set_create();
+bgpstream_community_set_t *bgpstream_community_set_create(void);
 
 /** Clear the given community set structure
  *

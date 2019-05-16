@@ -99,7 +99,7 @@ typedef void(bgpstream_patricia_tree_process_node_t)(
  * @return the result set instance created, NULL if an error occurs
  */
 bgpstream_patricia_tree_result_set_t *
-bgpstream_patricia_tree_result_set_create();
+bgpstream_patricia_tree_result_set_create(void);
 
 /** Free a result set instance
  *

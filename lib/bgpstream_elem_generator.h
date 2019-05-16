@@ -61,7 +61,7 @@ typedef struct bgpstream_elem_generator bgpstream_elem_generator_t;
  * possible that at some point in the future it may actually generate elem
  * records on the fly.
  */
-bgpstream_elem_generator_t *bgpstream_elem_generator_create();
+bgpstream_elem_generator_t *bgpstream_elem_generator_create(void);
 
 /** Destroy the given generator
  *

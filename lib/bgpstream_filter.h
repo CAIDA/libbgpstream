@@ -75,7 +75,7 @@ typedef struct struct_bgpstream_filter_mgr_t {
 } bgpstream_filter_mgr_t;
 
 /* allocate memory for a new bgpstream filter */
-bgpstream_filter_mgr_t *bgpstream_filter_mgr_create();
+bgpstream_filter_mgr_t *bgpstream_filter_mgr_create(void);
 
 /* configure filters in order to select a subset of the bgp data available */
 void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
