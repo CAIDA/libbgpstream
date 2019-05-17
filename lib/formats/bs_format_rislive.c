@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "bs_format_ripejson.h"
+#include "bs_format_rislive.h"
 #include "bgpstream_format_interface.h"
 #include "bgpstream_record_int.h"
 #include "bgpstream_log.h"
@@ -39,12 +39,12 @@
 #define RDATA ((rec_data_t *)(record->__int->data))
 
 typedef enum {
-  RIPE_JSON_MSG_TYPE_OPEN = 1,
-  RIPE_JSON_MSG_TYPE_UPDATE = 2,
-  RIPE_JSON_MSG_TYPE_NOTIFICATION = 3,
-  RIPE_JSON_MSG_TYPE_KEEPALIVE = 4,
-  RIPE_JSON_MSG_TYPE_STATUS = 5,
-} bs_format_ripejson_msg_type_t;
+  RISLIVE_MSG_TYPE_OPEN = 1,
+  RISLIVE_MSG_TYPE_UPDATE = 2,
+  RISLIVE_MSG_TYPE_NOTIFICATION = 3,
+  RISLIVE_MSG_TYPE_KEEPALIVE = 4,
+  RISLIVE_MSG_TYPE_STATUS = 5,
+} bs_format_rislive_msg_type_t;
 
 typedef struct json_field {
   char *ptr;  // field pointer
@@ -82,7 +82,7 @@ typedef struct rec_data {
   parsebgp_msg_t *msg;
 
   // message type: OPEN, UDPATE, STATUS, NOTIFY
-  bs_format_ripejson_msg_type_t msg_type;
+  bs_format_rislive_msg_type_t msg_type;
 
   // message direction: special type for OPEN message, 0 - sent, or 1 - received
   int open_msg_direction;
@@ -438,23 +438,23 @@ again:
   //   - RIS_PEER_STATE
   switch (*FIELDPTR(type)) {
   case 'U':
-    RDATA->msg_type = RIPE_JSON_MSG_TYPE_UPDATE;
+    RDATA->msg_type = RISLIVE_MSG_TYPE_UPDATE;
     rc = process_bgp_message(format, record);
     break;
   case 'O':
-    RDATA->msg_type = RIPE_JSON_MSG_TYPE_OPEN;
+    RDATA->msg_type = RISLIVE_MSG_TYPE_OPEN;
     rc = process_bgp_message(format, record);
     break;
   case 'N':
-    RDATA->msg_type = RIPE_JSON_MSG_TYPE_NOTIFICATION;
+    RDATA->msg_type = RISLIVE_MSG_TYPE_NOTIFICATION;
     rc = process_bgp_message(format, record);
     break;
   case 'K':
-    RDATA->msg_type = RIPE_JSON_MSG_TYPE_KEEPALIVE;
+    RDATA->msg_type = RISLIVE_MSG_TYPE_KEEPALIVE;
     rc = process_bgp_message(format, record);
     break;
   case 'R':
-    RDATA->msg_type = RIPE_JSON_MSG_TYPE_STATUS;
+    RDATA->msg_type = RISLIVE_MSG_TYPE_STATUS;
     rc = process_status_message(format, record);
     break;
   default:
@@ -527,10 +527,10 @@ check_filters(bgpstream_record_t *record, bgpstream_filter_mgr_t *filter_mgr)
 /* =============================================================== */
 /* =============================================================== */
 
-int bs_format_ripejson_create(bgpstream_format_t *format,
+int bs_format_rislive_create(bgpstream_format_t *format,
                               bgpstream_resource_t *res)
 {
-  BS_FORMAT_SET_METHODS(ripejson, format);
+  BS_FORMAT_SET_METHODS(rislive, format);
 
   if ((format->state = malloc_zero(sizeof(state_t))) == NULL) {
     return -1;
@@ -549,7 +549,7 @@ int bs_format_ripejson_create(bgpstream_format_t *format,
 }
 
 bgpstream_format_status_t
-bs_format_ripejson_populate_record(bgpstream_format_t *format,
+bs_format_rislive_populate_record(bgpstream_format_t *format,
                                    bgpstream_record_t *record)
 {
   int rc;
@@ -590,7 +590,7 @@ retry:
   return BGPSTREAM_FORMAT_OK;
 }
 
-int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
+int bs_format_rislive_get_next_elem(bgpstream_format_t *format,
                                      bgpstream_record_t *record,
                                      bgpstream_elem_t **elem)
 {
@@ -602,14 +602,14 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
   }
 
   switch (RDATA->msg_type) {
-  case RIPE_JSON_MSG_TYPE_UPDATE:
+  case RISLIVE_MSG_TYPE_UPDATE:
     rc = bgpstream_parsebgp_process_update(&RDATA->upd_state, RDATA->elem,
                                            RDATA->msg->types.bgp);
     if (rc <= 0) {
       return rc;
     }
     break;
-  case RIPE_JSON_MSG_TYPE_STATUS:
+  case RISLIVE_MSG_TYPE_STATUS:
     RDATA->elem->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
     switch (RDATA->status_msg_state) {
     case 0:
@@ -630,7 +630,7 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
     RDATA->end_of_elems = 1;
     rc = 1;
     break;
-  case RIPE_JSON_MSG_TYPE_OPEN:
+  case RISLIVE_MSG_TYPE_OPEN:
     RDATA->elem->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
     switch (RDATA->open_msg_direction) {
     case 0:
@@ -653,8 +653,8 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
     RDATA->end_of_elems = 1;
     rc = 1;
     break;
-  case RIPE_JSON_MSG_TYPE_NOTIFICATION:
-  case RIPE_JSON_MSG_TYPE_KEEPALIVE:
+  case RISLIVE_MSG_TYPE_NOTIFICATION:
+  case RISLIVE_MSG_TYPE_KEEPALIVE:
   default:
     break;
   }
@@ -664,7 +664,7 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
   return rc;
 }
 
-int bs_format_ripejson_init_data(bgpstream_format_t *format, void **data)
+int bs_format_rislive_init_data(bgpstream_format_t *format, void **data)
 {
   rec_data_t *rd;
   *data = NULL;
@@ -685,7 +685,7 @@ int bs_format_ripejson_init_data(bgpstream_format_t *format, void **data)
   return 0;
 }
 
-void bs_format_ripejson_clear_data(bgpstream_format_t *format, void *data)
+void bs_format_rislive_clear_data(bgpstream_format_t *format, void *data)
 {
   rec_data_t *rd = (rec_data_t *)data;
   assert(rd != NULL);
@@ -696,7 +696,7 @@ void bs_format_ripejson_clear_data(bgpstream_format_t *format, void *data)
   parsebgp_clear_msg(rd->msg);
 }
 
-void bs_format_ripejson_destroy_data(bgpstream_format_t *format, void *data)
+void bs_format_rislive_destroy_data(bgpstream_format_t *format, void *data)
 {
   rec_data_t *rd = (rec_data_t *)data;
   if (rd == NULL) {
@@ -709,7 +709,7 @@ void bs_format_ripejson_destroy_data(bgpstream_format_t *format, void *data)
   free(data);
 }
 
-void bs_format_ripejson_destroy(bgpstream_format_t *format)
+void bs_format_rislive_destroy(bgpstream_format_t *format)
 {
   free(STATE->json_string_buffer);
   free(format->state);

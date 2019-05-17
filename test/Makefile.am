@@ -39,7 +39,7 @@ endif
 TESTS = 				\
 	bgpstream-test 			\
 	bgpstream-test-filters		\
-	bgpstream-test-ripejson 	\
+	bgpstream-test-rislive 	\
 	bgpstream-test-utils-addr 	\
 	bgpstream-test-utils-pfx	\
 	bgpstream-test-utils-patricia 			\
@@ -48,7 +48,7 @@ TESTS = 				\
 check_PROGRAMS =  			\
 	bgpstream-test 			\
 	bgpstream-test-filters		\
-	bgpstream-test-ripejson 	\
+	bgpstream-test-rislive 	\
 	bgpstream-test-utils-addr 	\
 	bgpstream-test-utils-pfx	\
 	bgpstream-test-utils-patricia  \
@@ -69,8 +69,8 @@ bgpstream_test_LDADD   = $(top_builddir)/lib/libbgpstream.la
 bgpstream_test_filters_SOURCES = bgpstream-test-filters.c bgpstream_test.h
 bgpstream_test_filters_LDADD   = $(top_builddir)/lib/libbgpstream.la
 
-bgpstream_test_ripejson_SOURCES = bgpstream-test-ripejson.c bgpstream-test-ripejson.h bgpstream_test.h
-bgpstream_test_ripejson_LDADD   = $(top_builddir)/lib/libbgpstream.la
+bgpstream_test_rislive_SOURCES = bgpstream-test-rislive.c bgpstream-test-rislive.h bgpstream_test.h
+bgpstream_test_rislive_LDADD   = $(top_builddir)/lib/libbgpstream.la
 
 bgpstream_test_rpki_SOURCES = bgpstream-test-rpki.c bgpstream-test-rpki.h bgpstream_test.h
 bgpstream_test_rpki_LDADD   = $(top_builddir)/lib/libbgpstream.la
