@@ -25,7 +25,7 @@ ChangeLog
 tools/bgpreader
 test/bgpstream-test
 test/bgpstream-test-filters
-test/bgpstream-test-ripejson
+test/bgpstream-test-rislive
 test/bgpstream-test-rpki
 test/bgpstream-test-utils-addr
 test/bgpstream-test-utils-pfx
