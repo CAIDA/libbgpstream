@@ -43,7 +43,7 @@
 static char *type_strs[] = {
   "mrt",      // BGPSTREAM_RESOURCE_FORMAT_MRT
   "bmp",      // BGPSTREAM_RESOURCE_FORMAT_BMP
-  "rislive",  // BGPSTREAM_RESOURCE_FORMAT_RISLIVE
+  "ris-live",  // BGPSTREAM_RESOURCE_FORMAT_RISLIVE
 };
 
 /* ---------- START CLASS DEFINITION ---------- */
@@ -85,7 +85,7 @@ static bgpstream_data_interface_option_t options[] = {
     BGPSTREAM_DATA_INTERFACE_SINGLEFILE, // interface ID
     OPTION_UPDATE_TYPE,                  // internal ID
     "upd-type",                          // name
-    "update file type (mrt/bmp/rislive) (default: mrt)",
+    "update file type (mrt/bmp/ris-live) (default: mrt)",
   },
 };
 
