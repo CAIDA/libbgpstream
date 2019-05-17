@@ -170,12 +170,12 @@ static ssize_t hexstr_to_bgpmsg(uint8_t *buf, size_t buflen, const char *hexstr,
   // 2 characters per octet, and BGP messages cannot be more than 4096 bytes
   uint16_t msg_len = hexstr_len / 2;
   if ((hexstr_len & 0x1) != 0) {
-    bgpstream_log(BGPSTREAM_LOG_WARN, "Malformed RIS-Live raw BGP message");
+    bgpstream_log(BGPSTREAM_LOG_WARN, "Malformed RIS Live raw BGP message");
     return -1;
   }
   if (hexstr_len > UINT16_MAX || msg_len > buflen) {
     bgpstream_log(BGPSTREAM_LOG_WARN,
-                  "RIS-Live raw BGP message too long (%"PRIu16" bytes)", msg_len);
+                  "RIS Live raw BGP message too long (%"PRIu16" bytes)", msg_len);
     return -1;
   }
   // parse the hex string, one nybble at a time
@@ -213,7 +213,7 @@ static int process_common_fields(bgpstream_format_t *format,
   FIELDPTR(peer)[FIELDLEN(peer)] = '\0';
   if (bgpstream_str2addr((char *)FIELDPTR(peer), &RDATA->elem->peer_ip) ==
       NULL) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "error parsing address");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not parse RIS Live peer address");
     return -1;
   }
   FIELDPTR(peer)[FIELDLEN(peer)] = tmp;
@@ -241,7 +241,7 @@ process_bgp_message(bgpstream_format_t *format, bgpstream_record_t *record)
   if ((err = parsebgp_decode(STATE->opts, PARSEBGP_MSG_TYPE_BGP, RDATA->msg,
                              STATE->json_bytes_buffer, &dec_len)) !=
       PARSEBGP_OK) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to parse message (%s)",
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to parse RIS Live raw data (%s)",
                   parsebgp_strerror(err));
     parsebgp_clear_msg(RDATA->msg);
     return BGPSTREAM_FORMAT_CORRUPTED_MSG;
@@ -258,19 +258,26 @@ process_bgp_message(bgpstream_format_t *format, bgpstream_record_t *record)
 static bgpstream_format_status_t
 process_status_message(bgpstream_format_t *format, bgpstream_record_t *record)
 {
-
-  // process direction
-  if (FIELDLEN(state) == 4 &&
+  // TODO: figure out what the correct peer states are (AK asked SDS to check)
+  if (FIELDLEN(state) == sizeof("down")-1 &&
       bcmp("down", FIELDPTR(state), FIELDLEN(state)) == 0) {
     // down message
-    RDATA->status_msg_state = 0;
-  } else if (FIELDLEN(state) == 9 &&
+    RDATA->status_msg_state = BGPSTREAM_ELEM_PEERSTATE_IDLE;
+  } else if (FIELDLEN(state) == sizeof("connected")-1 &&
              bcmp("connected", FIELDPTR(state), FIELDLEN(state)) == 0) {
     // connected message
-    RDATA->status_msg_state = 1;
+    RDATA->status_msg_state = BGPSTREAM_ELEM_PEERSTATE_OPENSENT;
+  } else if (FIELDLEN(state) == sizeof("up")-1 &&
+             bcmp("up", FIELDPTR(state), FIELDLEN(state)) == 0) {
+    // up message
+    RDATA->status_msg_state = BGPSTREAM_ELEM_PEERSTATE_ESTABLISHED;
   } else {
     // unknown
-    RDATA->status_msg_state = -1;
+    bgpstream_log(BGPSTREAM_LOG_WARN,
+                  "Unknown RIS Live status message state: '%.*s'",
+                  (int)FIELDLEN(state), FIELDPTR(state));
+    bgpstream_log(BGPSTREAM_LOG_WARN, "%s", STATE->json_string_buffer);
+    RDATA->status_msg_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
   }
 
   if (process_common_fields(format, record) < 0) {
@@ -284,7 +291,7 @@ static bgpstream_format_status_t
 process_unsupported_message(bgpstream_format_t *format,
                             bgpstream_record_t *record)
 {
-  bgpstream_log(BGPSTREAM_LOG_WARN, "unsupported ris-stream message: %s",
+  bgpstream_log(BGPSTREAM_LOG_WARN, "Unsupported RIS Live message: %s",
                 STATE->json_string_buffer);
   record->status = BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD;
   record->collector_name[0] = '\0';
@@ -295,7 +302,7 @@ static bgpstream_format_status_t
 process_corrupted_message(bgpstream_format_t *format,
                           bgpstream_record_t *record)
 {
-  bgpstream_log(BGPSTREAM_LOG_WARN, "corrupted ris-stream message: %s",
+  bgpstream_log(BGPSTREAM_LOG_WARN, "Corrupted RIS Live message: %s",
                 STATE->json_string_buffer);
   record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
   record->collector_name[0] = '\0';
@@ -321,7 +328,8 @@ static int process_data(bgpstream_format_t *format,
   for (i = 0; i < root_tok->size; i++) {
     // all keys must be strings
     if (t->type != JSMN_STRING) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Encountered non-string key: '%.*s'",
+      bgpstream_log(BGPSTREAM_LOG_ERR,
+                    "Encountered non-string RIS Live key: '%.*s'",
                     t->end - t->start, STATE->json_string_buffer + t->start);
       return -1;
     }
@@ -358,7 +366,7 @@ bs_format_process_json_fields(bgpstream_format_t *format,
 
   // allocate some tokens to start
   if ((root_tok = malloc(sizeof(jsmntok_t) * tokcount)) == NULL) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not malloc initial tokens");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "RIS Live: Could not malloc initial tokens");
     goto corrupted;
   }
 
@@ -368,22 +376,23 @@ again:
     if (r == JSMN_ERROR_NOMEM) {
       tokcount *= 2;
       if ((root_tok = realloc(root_tok, sizeof(jsmntok_t) * tokcount)) == NULL) {
-        bgpstream_log(BGPSTREAM_LOG_ERR, "Could not realloc tokens");
+        bgpstream_log(BGPSTREAM_LOG_ERR, "RIS Live: Could not realloc tokens");
         goto corrupted;
       }
       goto again;
     }
     if (r == JSMN_ERROR_INVAL) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid character in JSON string");
+      bgpstream_log(BGPSTREAM_LOG_ERR,
+                    "RIS Live: Invalid character in JSON string");
       goto corrupted;
     }
-    bgpstream_log(BGPSTREAM_LOG_ERR, "JSON parser returned %d", r);
+    bgpstream_log(BGPSTREAM_LOG_ERR, "RIS Live: JSON parser returned %d", r);
     goto corrupted;
   }
 
   /* Assume the top-level element is an object */
   if (p.toknext < 1 || root_tok->type != JSMN_OBJECT) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "JSON top-level not object");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "RIS Live: JSON top-level not object");
     goto corrupted;
   }
   t = root_tok + 1;
@@ -392,7 +401,8 @@ again:
   for (i = 0; i < root_tok->size; i++) {
     // all keys must be strings
     if (t->type != JSMN_STRING) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Encountered non-string key: '%.*s'",
+      bgpstream_log(BGPSTREAM_LOG_ERR,
+                    "RIS Live: Encountered non-string key: '%.*s'",
                     t->end - t->start, STATE->json_string_buffer + t->start);
       goto corrupted;
     }
@@ -403,7 +413,7 @@ again:
       jsmn_type_assert(t, JSMN_STRING);
       if (jsmn_streq(STATE->json_string_buffer, t, "ris_message") != 1) {
         // TODO: consider handling error message (ris_error)
-        bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid RIS message type: '%.*s'",
+        bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid RIS Live message type: '%.*s'",
                       t->end - t->start, STATE->json_string_buffer + t->start);
         goto corrupted;
       }
@@ -425,7 +435,7 @@ again:
   }
 
   if (FIELDLEN(type) == 0) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Missing message type");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Missing RIS Live message type");
     goto corrupted;
   }
 
@@ -577,7 +587,7 @@ retry:
 
   // reference: bgpstream_parsebgp_common.c:597
   if ((filter = check_filters(record, format->filter_mgr)) < 0) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Format-specific filtering failed");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "RIS Live format-specific filtering failed");
     return BGPSTREAM_FORMAT_UNKNOWN_ERROR;
   }
   if (filter != BGPSTREAM_PARSEBGP_KEEP) {
@@ -611,45 +621,18 @@ int bs_format_rislive_get_next_elem(bgpstream_format_t *format,
     break;
   case RISLIVE_MSG_TYPE_STATUS:
     RDATA->elem->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
-    switch (RDATA->status_msg_state) {
-    case 0:
-      RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
-      RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_IDLE;
-      break;
-    case 1:
-      RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
-      RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_ESTABLISHED;
-      break;
-    default:
-      RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
-      RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
-      bgpstream_log(BGPSTREAM_LOG_WARN, "unsupported status type, %d",
-                    RDATA->status_msg_state);
-      break;
-    }
+    RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
+    RDATA->elem->new_state = RDATA->status_msg_state;
     RDATA->end_of_elems = 1;
     rc = 1;
     break;
   case RISLIVE_MSG_TYPE_OPEN:
+    bgpstream_log(BGPSTREAM_LOG_WARN, "RIS Live OPEN support coming soon...");
     RDATA->elem->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
-    switch (RDATA->open_msg_direction) {
-    case 0:
-      // "sent" OPEN
-      RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
-      RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_OPENSENT;
-      break;
-    case 1:
-      // "received" OPEN
-      RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
-      RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_OPENCONFIRM;
-      break;
-    default:
-      RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
-      RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
-      bgpstream_log(BGPSTREAM_LOG_WARN,
-                    "unsupported open message direction, %d",
-                    RDATA->open_msg_direction);
-    }
+    // TODO: add OPEN message parsing to bgpstream_parsebgp_common
+    // TODO: also parse the "direction" field from ris-live JSON
+    RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
+    RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
     RDATA->end_of_elems = 1;
     rc = 1;
     break;
