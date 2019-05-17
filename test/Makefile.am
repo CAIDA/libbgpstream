@@ -69,7 +69,7 @@ bgpstream_test_LDADD   = $(top_builddir)/lib/libbgpstream.la
 bgpstream_test_filters_SOURCES = bgpstream-test-filters.c bgpstream_test.h
 bgpstream_test_filters_LDADD   = $(top_builddir)/lib/libbgpstream.la
 
-bgpstream_test_rislive_SOURCES = bgpstream-test-rislive.c bgpstream-test-rislive.h bgpstream_test.h
+bgpstream_test_rislive_SOURCES = bgpstream-test-rislive.c bgpstream_test.h
 bgpstream_test_rislive_LDADD   = $(top_builddir)/lib/libbgpstream.la
 
 bgpstream_test_rpki_SOURCES = bgpstream-test-rpki.c bgpstream-test-rpki.h bgpstream_test.h

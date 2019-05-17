@@ -24,12 +24,36 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "bgpstream-test-rislive.h"
 #include "bgpstream.h"
 #include "bgpstream_test.h"
 #include "utils.h"
 #include <stdio.h>
 #include <string.h>
+
+#define SETUP                                                                  \
+  do {                                                                         \
+    bs = bgpstream_create();                                                   \
+  } while (0)
+
+#define CHECK_SET_INTERFACE(interface)                                         \
+  do {                                                                         \
+    di_id = bgpstream_get_data_interface_id_by_name(bs, STR(interface));       \
+    bgpstream_set_data_interface(bs, di_id);                                   \
+  } while (0)
+
+const char *valid_output[] = {
+  "U|A|1553627987.890000|singlefile|rrc00|||11708|72.22.223.9|45.161.192.0/23|72.22.223.9|11708 32097 1299 52320 263009 263009 263009 263009 263009 52993 268481 268481|268481|||",
+  "U|S|1553624995.840000|singlefile|rrc00|||60474|94.177.122.251|||||||OPENSENT",
+  "", // notification
+  "", // keepalive
+  "U|S|1553625081.880000|singlefile|rrc01|||24931|195.66.224.59|||||||IDLE", // ris_peer_state
+  ""
+  "ESTABLISHED",
+  "U|S|1534175193.450000|singlefile|rrc21|||31122|37.49.237.31|||||||IDLE",
+  "",
+  "",
+  "",
+};
 
 static char buf[65536];
 
