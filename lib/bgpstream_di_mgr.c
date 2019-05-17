@@ -61,8 +61,8 @@
 #include "bsdi_betabmp.h"
 #endif
 
-#ifdef WITH_DATA_INTERFACE_BETARISLIVE
-#include "bsdi_betarislive.h"
+#ifdef WITH_DATA_INTERFACE_RISLIVE
+#include "bsdi_rislive.h"
 #endif
 
 /* After 10 retries, start exponential backoff */
@@ -144,8 +144,8 @@ static const di_alloc_func_t di_alloc_functions[] = {
   NULL,
 #endif
 
-#ifdef WITH_DATA_INTERFACE_BETARISLIVE
-  bsdi_betarislive_alloc,
+#ifdef WITH_DATA_INTERFACE_RISLIVE
+  bsdi_rislive_alloc,
 #else
   NULL,
 #endif

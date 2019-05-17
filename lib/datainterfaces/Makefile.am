@@ -68,9 +68,9 @@ DI_SOURCES+=bsdi_betabmp.c \
 	    bsdi_betabmp.h
 endif
 
-if WITH_DATA_INTERFACE_BETARISLIVE
-DI_SOURCES+=bsdi_betarislive.c \
-	    bsdi_betarislive.h
+if WITH_DATA_INTERFACE_RISLIVE
+DI_SOURCES+=bsdi_rislive.c \
+	    bsdi_rislive.h
 endif
 
 libbgpstream_data_interfaces_la_SOURCES = $(DI_SOURCES)

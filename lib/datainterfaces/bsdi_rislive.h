@@ -24,11 +24,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __BSDI_BETARISLIVE_H
-#define __BSDI_BETARISLIVE_H
+#ifndef __BSDI_RISLIVE_H
+#define __BSDI_RISLIVE_H
 
 #include "bgpstream_di_interface.h"
 
-BSDI_GENERATE_PROTOS(betarislive);
+BSDI_GENERATE_PROTOS(rislive);
 
-#endif /* __BSDI_BETARISLIVE_H */
+#endif /* __BSDI_RISLIVE_H */

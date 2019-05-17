@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "bsdi_betarislive.h"
+#include "bsdi_rislive.h"
 #include "bgpstream_log.h"
 #include "config.h"
 #include "utils.h"
@@ -33,7 +33,7 @@
 #include <string.h>
 #include <wandio.h>
 
-#define STATE (BSDI_GET_STATE(di, betarislive))
+#define STATE (BSDI_GET_STATE(di, rislive))
 
 #define FIREHOSE_URL "https://ris-live.ripe.net/v1/stream/?format=json"
 #define DEFAULT_CLIENT "libbgpstream-default"
@@ -49,7 +49,7 @@ enum {
 static bgpstream_data_interface_option_t options[] = {
   /* Firehose Client */
   {
-    BGPSTREAM_DATA_INTERFACE_BETARISLIVE, // interface ID
+    BGPSTREAM_DATA_INTERFACE_RISLIVE, // interface ID
     OPTION_CLIENT,                        // internal ID
     "client",                             // client name
     "client name for RIS-Live firehose stream (default: " DEFAULT_CLIENT ")",
@@ -58,13 +58,13 @@ static bgpstream_data_interface_option_t options[] = {
 
 /* create the class structure for this data interface */
 BSDI_CREATE_CLASS_FULL(
-  betarislive, "beta-ris-stream", BGPSTREAM_DATA_INTERFACE_BETARISLIVE,
-  "Read updates in real-time from the RIPE RIS live stream (BETA)",
+  rislive, "ris-live", BGPSTREAM_DATA_INTERFACE_RISLIVE,
+  "Read updates in real-time from the RIPE RIS live stream",
   options);
 
 /* ---------- END CLASS DEFINITION ---------- */
 
-typedef struct bsdi_betarislive_state {
+typedef struct bsdi_rislive_state {
   /* user-provided options: */
 
   // RIS live firehose client name
@@ -76,7 +76,7 @@ typedef struct bsdi_betarislive_state {
   // we only ever yield one resource
   int done;
 
-} bsdi_betarislive_state_t;
+} bsdi_rislive_state_t;
 
 /* ========== PRIVATE METHODS BELOW HERE ========== */
 
@@ -103,11 +103,11 @@ static int build_url(bsdi_t *di)
 
 /* ========== PUBLIC METHODS BELOW HERE ========== */
 
-int bsdi_betarislive_init(bsdi_t *di)
+int bsdi_rislive_init(bsdi_t *di)
 {
-  bsdi_betarislive_state_t *state;
+  bsdi_rislive_state_t *state;
 
-  if ((state = malloc_zero(sizeof(bsdi_betarislive_state_t))) == NULL) {
+  if ((state = malloc_zero(sizeof(bsdi_rislive_state_t))) == NULL) {
     goto err;
   }
   BSDI_SET_STATE(di, state);
@@ -115,17 +115,17 @@ int bsdi_betarislive_init(bsdi_t *di)
   return 0;
 
 err:
-  bsdi_betarislive_destroy(di);
+  bsdi_rislive_destroy(di);
   return -1;
 }
 
-int bsdi_betarislive_start(bsdi_t *di)
+int bsdi_rislive_start(bsdi_t *di)
 {
   // our defaults are sufficient to run
   return 0;
 }
 
-int bsdi_betarislive_set_option(
+int bsdi_rislive_set_option(
   bsdi_t *di, const bgpstream_data_interface_option_t *option_type,
   const char *option_value)
 {
@@ -144,7 +144,7 @@ int bsdi_betarislive_set_option(
   return 0;
 }
 
-void bsdi_betarislive_destroy(bsdi_t *di)
+void bsdi_rislive_destroy(bsdi_t *di)
 {
   if (di == NULL || STATE == NULL) {
     return;
@@ -160,7 +160,7 @@ void bsdi_betarislive_destroy(bsdi_t *di)
   BSDI_SET_STATE(di, NULL);
 }
 
-int bsdi_betarislive_update_resources(bsdi_t *di)
+int bsdi_rislive_update_resources(bsdi_t *di)
 {
   int rc;
   bgpstream_resource_t *res = NULL;
