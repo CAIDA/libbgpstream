@@ -33,12 +33,12 @@
 #include <assert.h>
 
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent
-#define HTTP_USER_AGENT_HDR "User-Agent: libbgpstream/"PACKAGE_VERSION
+static char http_user_agent_hdr[] = "User-Agent: libbgpstream/"PACKAGE_VERSION;
 
 int bs_transport_http_create(bgpstream_transport_t *transport)
 {
   io_t *fh = NULL;
-  char *http_hdr = HTTP_USER_AGENT_HDR;
+  char *http_hdr = http_user_agent_hdr;
 
   BS_TRANSPORT_SET_METHODS(http, transport);
 

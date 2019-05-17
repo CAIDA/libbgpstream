@@ -181,8 +181,8 @@
 
 struct options {
   struct option option;
-  char *usage;
-  char *expl;
+  const char *usage;
+  const char *expl;
 };
 
 enum rpki_options {

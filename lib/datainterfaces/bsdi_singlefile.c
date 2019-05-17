@@ -40,7 +40,7 @@
 #define STATE (BSDI_GET_STATE(di, singlefile))
 
 // mapping from type name to resource format type
-static char *type_strs[] = {
+static const char *type_strs[] = {
   "mrt",      // BGPSTREAM_RESOURCE_FORMAT_MRT
   "bmp",      // BGPSTREAM_RESOURCE_FORMAT_BMP
   "ris-live",  // BGPSTREAM_RESOURCE_FORMAT_RISLIVE
