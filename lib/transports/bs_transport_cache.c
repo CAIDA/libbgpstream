@@ -75,7 +75,7 @@ typedef struct cache_state {
 /**
    Initialize the cache_state_t data structure;
 */
-int init_state(bgpstream_transport_t *transport)
+static int init_state(bgpstream_transport_t *transport)
 {
 
   // define local variables

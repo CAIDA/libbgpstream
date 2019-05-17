@@ -92,7 +92,7 @@ static void store_path_destroy(bgpstream_as_path_store_path_t *spath)
   spath->path.data_alloc_len = 0;
 }
 
-int store_path_dup(bgpstream_as_path_store_path_t *dst,
+static int store_path_dup(bgpstream_as_path_store_path_t *dst,
                    bgpstream_as_path_store_path_t *src)
 {
   *dst = *src;

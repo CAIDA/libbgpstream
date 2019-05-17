@@ -34,7 +34,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-const char *bgpstream_filter_type_to_string(bgpstream_filter_type_t type)
+static const char *bgpstream_filter_type_to_string(bgpstream_filter_type_t type)
 {
   switch (type) {
   case BGPSTREAM_FILTER_TYPE_RECORD_TYPE:

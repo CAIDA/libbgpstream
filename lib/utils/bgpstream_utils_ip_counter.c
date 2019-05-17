@@ -367,9 +367,10 @@ int bgpstream_ip_counter_add(bgpstream_ip_counter_t *ipc, bgpstream_pfx_t *pfx)
   return 0;
 }
 
-uint32_t bgpstream_ip_counter_is_overlapping4(bgpstream_ip_counter_t *ipc,
-                                              bgpstream_ipv4_pfx_t *pfx,
-                                              uint8_t *more_specific)
+static uint32_t bgpstream_ip_counter_is_overlapping4(
+    bgpstream_ip_counter_t *ipc,
+    bgpstream_ipv4_pfx_t *pfx,
+    uint8_t *more_specific)
 {
   v4pfx_int_t *current = ipc->v4list;
   uint32_t start = 0;
@@ -416,9 +417,10 @@ uint32_t bgpstream_ip_counter_is_overlapping4(bgpstream_ip_counter_t *ipc,
   return overlap_count;
 }
 
-uint64_t bgpstream_ip_counter_is_overlapping6(bgpstream_ip_counter_t *ipc,
-                                              bgpstream_ipv6_pfx_t *pfx,
-                                              uint8_t *more_specific)
+static uint64_t bgpstream_ip_counter_is_overlapping6(
+    bgpstream_ip_counter_t *ipc,
+    bgpstream_ipv6_pfx_t *pfx,
+    uint8_t *more_specific)
 {
   v6pfx_int_t *current = ipc->v6list;
   v6pfx_int_t *previous = ipc->v6list;
