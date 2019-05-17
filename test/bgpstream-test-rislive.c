@@ -83,7 +83,7 @@ int test_bgpstream_rislive()
          bs, di_id, "upd-type")) == NULL) {
     return -1;
   }
-  if (bgpstream_set_data_interface_option(bs, option, "rislive") != 0) {
+  if (bgpstream_set_data_interface_option(bs, option, "ris-live") != 0) {
     return -1;
   }
   if ((option = bgpstream_get_data_interface_option_by_name(
