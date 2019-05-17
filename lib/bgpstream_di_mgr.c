@@ -61,6 +61,10 @@
 #include "bsdi_betabmp.h"
 #endif
 
+#ifdef WITH_DATA_INTERFACE_RISLIVE
+#include "bsdi_rislive.h"
+#endif
+
 /* After 10 retries, start exponential backoff */
 #define DATA_INTERFACE_BLOCKING_RETRY_CNT 10
 /* Wait at least 20 seconds if the broker has no new data for us */
@@ -136,6 +140,12 @@ static const di_alloc_func_t di_alloc_functions[] = {
 
 #ifdef WITH_DATA_INTERFACE_BETABMP
   bsdi_betabmp_alloc,
+#else
+  NULL,
+#endif
+
+#ifdef WITH_DATA_INTERFACE_RISLIVE
+  bsdi_rislive_alloc,
 #else
   NULL,
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 The Regents of the University of California.
+ * Copyright (C) 2017 The Regents of the University of California.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -24,11 +24,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __BS_FORMAT_RIPEJSON_H
-#define __BS_FORMAT_RIPEJSON_H
+#ifndef __BSDI_RISLIVE_H
+#define __BSDI_RISLIVE_H
 
-#include "bgpstream_format_interface.h"
+#include "bgpstream_di_interface.h"
 
-BS_FORMAT_GENERATE_PROTOS(ripejson);
+BSDI_GENERATE_PROTOS(rislive);
 
-#endif /* __BS_FORMAT_RIPEJSON_H */
+#endif /* __BSDI_RISLIVE_H */

@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "bs_format_ripejson.h"
+#include "bs_format_rislive.h"
 #include "bgpstream_format_interface.h"
 #include "bgpstream_record_int.h"
 #include "bgpstream_log.h"
@@ -39,12 +39,12 @@
 #define RDATA ((rec_data_t *)(record->__int->data))
 
 typedef enum {
-  RIPE_JSON_MSG_TYPE_ANNOUNCE = 1,
-  RIPE_JSON_MSG_TYPE_WITHDRAW = 2,
-  RIPE_JSON_MSG_TYPE_STATUS = 3,
-  RIPE_JSON_MSG_TYPE_OPEN = 4,
-  RIPE_JSON_MSG_TYPE_NOTIFY = 5,
-} bs_format_ripejson_msg_type_t;
+  RISLIVE_MSG_TYPE_OPEN = 1,
+  RISLIVE_MSG_TYPE_UPDATE = 2,
+  RISLIVE_MSG_TYPE_NOTIFICATION = 3,
+  RISLIVE_MSG_TYPE_KEEPALIVE = 4,
+  RISLIVE_MSG_TYPE_STATUS = 5,
+} bs_format_rislive_msg_type_t;
 
 typedef struct json_field {
   char *ptr;  // field pointer
@@ -54,23 +54,15 @@ typedef struct json_field {
 // json fields that does not contain in the raw message bytes
 typedef struct json_field_ptrs {
   /* common fields */
-  json_field_t body;      // raw bytes of the bgp message
   json_field_t timestamp; // timestamp of the message
-  json_field_t host;      // collector name (e.g. rrc21)
-  json_field_t id;        // message ID
-  json_field_t peer_asn;  // peer ASN
   json_field_t peer;      // peer IP
+  json_field_t peer_asn;  // peer ASN
+  json_field_t raw;       // raw bytes of the bgp message
+  json_field_t host;      // collector name (e.g. rrc21)
   json_field_t type;      // message type
-
-  /* open message fields */
-  json_field_t asn;       // AS number for connected router
-  json_field_t hold_time; // up time
-  json_field_t router_id; // router IP address
-  json_field_t direction; // sent/receive
 
   /* state message fields */
   json_field_t state;  // new state: connected, down
-  json_field_t reason; // reason of the state change
 } json_field_ptrs_t;
 
 typedef struct rec_data {
@@ -90,7 +82,7 @@ typedef struct rec_data {
   parsebgp_msg_t *msg;
 
   // message type: OPEN, UDPATE, STATUS, NOTIFY
-  bs_format_ripejson_msg_type_t msg_type;
+  bs_format_rislive_msg_type_t msg_type;
 
   // message direction: special type for OPEN message, 0 - sent, or 1 - received
   int open_msg_direction;
@@ -121,6 +113,8 @@ typedef struct state {
 
 } state_t;
 
+#define JSON_BUFLEN 1024*1024 // 1 MB buffer
+
 /* ======================================================== */
 /* ======================================================== */
 /* ==================== JSON UTILITIES ==================== */
@@ -129,6 +123,7 @@ typedef struct state {
 
 #define FIELDPTR(field) STATE->json_fields.field.ptr
 #define FIELDLEN(field) STATE->json_fields.field.len
+#define TIF filter_mgr->time_interval
 
 #define STRTOUL(field, dest)                                                   \
   do {                                                                         \
@@ -137,16 +132,8 @@ typedef struct state {
     dest = strtoul((char *)FIELDPTR(field), NULL, 10);                         \
     FIELDPTR(field)[FIELDLEN(field)] = tmp;                                    \
   } while (0)
-#define STRTOD(field, dest)                                                    \
-  do {                                                                         \
-    char tmp = FIELDPTR(field)[FIELDLEN(field)];                               \
-    FIELDPTR(field)[FIELDLEN(field)] = '\0';                                   \
-    dest = strtod((char *)FIELDPTR(field), NULL);                              \
-    FIELDPTR(field)[FIELDLEN(field)] = tmp;                                    \
-  } while (0)
 
 // convert char array to bytes
-// by @alistair
 static int hexstr_to_bytes(uint8_t *buf, const char *hexstr, size_t hexstr_len)
 {
   size_t i;
@@ -178,30 +165,23 @@ static int hexstr_to_bytes(uint8_t *buf, const char *hexstr, size_t hexstr_len)
 // convert bgp message hex string to char (byte) array, with added header marker
 // by @alistairking
 static ssize_t hexstr_to_bgpmsg(uint8_t *buf, size_t buflen, const char *hexstr,
-                                size_t hexstr_len, uint8_t msg_type)
+                                size_t hexstr_len)
 {
   // 2 characters per octet, and BGP messages cannot be more than 4096 bytes
-  if ((hexstr_len & 0x1) != 0 || hexstr_len > (4096 * 2)) {
+  uint16_t msg_len = hexstr_len / 2;
+  if ((hexstr_len & 0x1) != 0) {
+    bgpstream_log(BGPSTREAM_LOG_WARN, "Malformed RIS-Live raw BGP message");
     return -1;
   }
-  uint16_t msg_len = (hexstr_len / 2) + 2 + 1;
-  uint16_t tmp = htons(msg_len);
-  uint8_t *bufp = buf;
-
-  if (msg_len > buflen) {
+  if (hexstr_len > UINT16_MAX || msg_len > buflen) {
+    bgpstream_log(BGPSTREAM_LOG_WARN,
+                  "RIS-Live raw BGP message too long (%"PRIu16" bytes)", msg_len);
     return -1;
   }
-
-  // populate the message header (but don't include the marker)
-  memcpy(buf, &tmp, sizeof(tmp));
-  buf[2] = msg_type;
-
   // parse the hex string, one nybble at a time
-  bufp = buf + 3;
-  if (hexstr_to_bytes(bufp, hexstr, hexstr_len) < 0) {
+  if (hexstr_to_bytes(buf, hexstr, hexstr_len) < 0) {
     return -1;
   }
-
   return msg_len;
 }
 
@@ -212,11 +192,14 @@ static ssize_t hexstr_to_bgpmsg(uint8_t *buf, size_t buflen, const char *hexstr,
 /* ====================================================================== */
 
 // process common header fields for all message types
+// the fields are stored in the json_fields struct, include:
+// - host
+// - peer
+// - peer_asn
+// - timestamp
 static int process_common_fields(bgpstream_format_t *format,
                                  bgpstream_record_t *record)
 {
-
-  double time_double;
   // populate collector name
   memcpy(record->collector_name, FIELDPTR(host), FIELDLEN(host));
   record->collector_name[FIELDLEN(host)] = '\0';
@@ -236,29 +219,25 @@ static int process_common_fields(bgpstream_format_t *format,
   FIELDPTR(peer)[FIELDLEN(peer)] = tmp;
 
   // populate time-stamp
-  STRTOD(timestamp, time_double);
-  record->time_sec = (uint32_t)time_double;
-  record->time_usec =
-    (uint32_t)((time_double - (uint32_t)time_double) * 1000000);
-
+  strntotime(FIELDPTR(timestamp), FIELDLEN(timestamp), &record->time_sec,
+             &record->time_usec);
   return 0;
 }
 
 static bgpstream_format_status_t
-process_update_message(bgpstream_format_t *format, bgpstream_record_t *record)
+process_bgp_message(bgpstream_format_t *format, bgpstream_record_t *record)
 {
-
   // convert body to bytes
   ssize_t rc = hexstr_to_bgpmsg(
     STATE->json_bytes_buffer, sizeof(STATE->json_bytes_buffer),
-    (char *)FIELDPTR(body), FIELDLEN(body), PARSEBGP_BGP_TYPE_UPDATE);
+    (char *)FIELDPTR(raw), FIELDLEN(raw));
   if (rc < 0) {
     return BGPSTREAM_FORMAT_CORRUPTED_MSG;
   }
 
+  // decode bytes of bgp message
   parsebgp_error_t err;
   size_t dec_len = (size_t)rc;
-
   if ((err = parsebgp_decode(STATE->opts, PARSEBGP_MSG_TYPE_BGP, RDATA->msg,
                              STATE->json_bytes_buffer, &dec_len)) !=
       PARSEBGP_OK) {
@@ -268,6 +247,7 @@ process_update_message(bgpstream_format_t *format, bgpstream_record_t *record)
     return BGPSTREAM_FORMAT_CORRUPTED_MSG;
   }
 
+  // extract other fields from the message: peer, peer_asn, host, timestamp
   if (process_common_fields(format, record) < 0) {
     return BGPSTREAM_FORMAT_CORRUPTED_MSG;
   }
@@ -301,110 +281,6 @@ process_status_message(bgpstream_format_t *format, bgpstream_record_t *record)
 }
 
 static bgpstream_format_status_t
-process_open_message(bgpstream_format_t *format, bgpstream_record_t *record)
-{
-
-  int json_str_len = FIELDLEN(body);
-  char *json_str_ptr = FIELDPTR(body);
-  parsebgp_error_t err;
-  uint8_t *ptr = STATE->json_bytes_buffer;
-  int msg_len = 0;
-
-  // fields
-  uint32_t asn4;
-  uint16_t hold_time;
-  uint32_t router_id;
-  uint16_t total_length;
-  size_t dec_len;
-  bgpstream_addr_storage_t addr;
-
-  // the first two bytes will be filled with the message length later
-  int loc = 2;
-
-  ptr[loc] = PARSEBGP_BGP_TYPE_OPEN;
-  loc++;
-
-  /* add missing open message headers */
-
-  // version
-  ptr[loc] = 4;
-  loc++;
-
-  // my autonomous system
-  STRTOUL(asn, asn4);
-  // if the ASN is 4 byte, use ASN23456 as placeholder
-  uint16_t asn = htons((uint16_t)(asn4 > UINT16_MAX ? 23456 : asn4));
-  memcpy(&ptr[loc], &asn, sizeof(uint16_t));
-  loc += 2;
-
-  // hold time
-  STRTOUL(hold_time, hold_time);
-  memcpy(&ptr[loc], &hold_time, sizeof(uint16_t));
-  loc += 2;
-
-  // bgp identifier
-  memcpy(STATE->field_buffer, FIELDPTR(router_id), FIELDLEN(router_id));
-  STATE->field_buffer[FIELDLEN(router_id)] = '\0';
-  if (bgpstream_str2addr((char *)STATE->field_buffer, &addr) == NULL) {
-    // if the field is not an IP address, it is then an 4 byte integer
-    STRTOUL(router_id, router_id);
-    router_id = htonl(router_id);
-    memcpy(&ptr[loc], &router_id, sizeof(uint32_t));
-  } else {
-    memcpy(&ptr[loc], &addr.ipv4, sizeof(uint32_t));
-  }
-  loc += 4;
-
-  // opt parm len
-  if (json_str_ptr[0] == '0' && json_str_ptr[1] == '2') {
-    // if body starts with correct parameter type "0x02"
-    // no missing param type
-    msg_len = json_str_len / 2;
-    ptr[loc] = (uint8_t)(msg_len); // adding
-    loc++;
-  } else {
-    // if misses param type
-    msg_len = json_str_len / 2 + 1;
-    ptr[loc] = (uint8_t)(msg_len); // adding
-    ptr[loc + 1] = 2;
-    loc += 2;
-  }
-
-  if (hexstr_to_bytes(&ptr[loc], (char *)FIELDPTR(body), FIELDLEN(body)) < 0) {
-    return BGPSTREAM_FORMAT_CORRUPTED_MSG;
-  }
-
-  // set msg length
-  total_length = htons(msg_len + 10 + 2 + 1);
-  memcpy(ptr, &total_length, sizeof(total_length));
-
-  dec_len = (size_t)total_length;
-  if ((err = parsebgp_decode(STATE->opts, PARSEBGP_MSG_TYPE_BGP, RDATA->msg,
-                             STATE->json_bytes_buffer, &dec_len)) !=
-      PARSEBGP_OK) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to parse message (%d:%s)", err,
-                  parsebgp_strerror(err));
-    parsebgp_clear_msg(RDATA->msg);
-    return BGPSTREAM_FORMAT_CORRUPTED_MSG;
-  }
-
-  // process direction
-  if (FIELDLEN(direction) == 4 &&
-      bcmp("sent", FIELDPTR(direction), FIELDLEN(direction)) == 0) {
-    // equals
-    RDATA->open_msg_direction = 0;
-  } else {
-    RDATA->open_msg_direction = 1;
-  }
-
-  if (process_common_fields(format, record) < 0) {
-    return BGPSTREAM_FORMAT_CORRUPTED_MSG;
-  }
-
-  return BGPSTREAM_FORMAT_OK;
-}
-
-static bgpstream_format_status_t
 process_unsupported_message(bgpstream_format_t *format,
                             bgpstream_record_t *record)
 {
@@ -426,41 +302,72 @@ process_corrupted_message(bgpstream_format_t *format,
   return BGPSTREAM_FORMAT_CORRUPTED_MSG;
 }
 
+#define NEXT_TOK t++
+
 #define PARSEFIELD(field)                                                      \
-  if (jsmn_streq(STATE->json_string_buffer, &t[i], STR(field)) == 1) {         \
-    STATE->json_fields.field = (json_field_t){value_ptr, value_size};          \
-    i++;                                                                       \
+  if (jsmn_streq(STATE->json_string_buffer, t, STR(field)) == 1) {             \
+    NEXT_TOK;                                                                  \
+    STATE->json_fields.field.ptr = STATE->json_string_buffer + t->start;\
+    STATE->json_fields.field.len = t->end - t->start;                  \
+    NEXT_TOK;                                                                  \
   }
+
+static int process_data(bgpstream_format_t *format,
+                        jsmntok_t *root_tok)
+{
+  int i;
+  jsmntok_t *t = root_tok + 1;
+
+  for (i = 0; i < root_tok->size; i++) {
+    // all keys must be strings
+    if (t->type != JSMN_STRING) {
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Encountered non-string key: '%.*s'",
+                    t->end - t->start, STATE->json_string_buffer + t->start);
+      return -1;
+    }
+    PARSEFIELD(raw) //
+    else PARSEFIELD(timestamp)  //
+      else PARSEFIELD(host)     //
+      else PARSEFIELD(peer_asn) //
+      else PARSEFIELD(peer)     //
+      else PARSEFIELD(type)     //
+      else PARSEFIELD(state)    //
+      else
+    {
+      NEXT_TOK; // move past the key
+      t = jsmn_skip(t); // skip the value
+    }
+  }
+
+  return 0;
+}
 
 static bgpstream_format_status_t
 bs_format_process_json_fields(bgpstream_format_t *format,
                               bgpstream_record_t *record)
 {
-  int i;
-  int r;
+  int i, r;
   bgpstream_format_status_t rc;
   jsmn_parser p;
-  char *value_ptr, *next_ptr;
-  size_t value_size;
 
-  jsmntok_t *t;
+  jsmntok_t *t, *root_tok;
   size_t tokcount = 128;
 
   // prepare parser
   jsmn_init(&p);
 
   // allocate some tokens to start
-  if ((t = malloc(sizeof(jsmntok_t) * tokcount)) == NULL) {
+  if ((root_tok = malloc(sizeof(jsmntok_t) * tokcount)) == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not malloc initial tokens");
     goto corrupted;
   }
 
 again:
   if ((r = jsmn_parse(&p, STATE->json_string_buffer,
-                      STATE->json_string_buffer_len, t, tokcount)) < 0) {
+                      STATE->json_string_buffer_len, root_tok, tokcount)) < 0) {
     if (r == JSMN_ERROR_NOMEM) {
       tokcount *= 2;
-      if ((t = realloc(t, sizeof(jsmntok_t) * tokcount)) == NULL) {
+      if ((root_tok = realloc(root_tok, sizeof(jsmntok_t) * tokcount)) == NULL) {
         bgpstream_log(BGPSTREAM_LOG_ERR, "Could not realloc tokens");
         goto corrupted;
       }
@@ -475,58 +382,83 @@ again:
   }
 
   /* Assume the top-level element is an object */
-  if (r < 1 || t[0].type != JSMN_OBJECT) {
+  if (p.toknext < 1 || root_tok->type != JSMN_OBJECT) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "JSON top-level not object");
     goto corrupted;
   }
+  t = root_tok + 1;
 
-  /* Loop over all fields of the json string buffer */
-  for (i = 1; i < r - 1; i++) {
-    value_ptr = STATE->json_string_buffer + t[i + 1].start;
-    value_size = t[i + 1].end - t[i + 1].start;
-
-    /* Assume the top-level element is an object */
-    if (t[i].type != JSMN_STRING) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "JSON key not string");
+  /* iterate over the children of the root object */
+  for (i = 0; i < root_tok->size; i++) {
+    // all keys must be strings
+    if (t->type != JSMN_STRING) {
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Encountered non-string key: '%.*s'",
+                    t->end - t->start, STATE->json_string_buffer + t->start);
       goto corrupted;
     }
 
-    PARSEFIELD(body)
-    else PARSEFIELD(timestamp) else PARSEFIELD(host) else PARSEFIELD(id) else PARSEFIELD(peer_asn) else PARSEFIELD(peer) else PARSEFIELD(type) else PARSEFIELD(
-      asn) else PARSEFIELD(hold_time) else PARSEFIELD(router_id) else PARSEFIELD(direction) else PARSEFIELD(state) else PARSEFIELD(reason) else
-    {
-      // skipping all
-      next_ptr = value_ptr + value_size;
-      while (STATE->json_string_buffer + t[i + 1].start < next_ptr) {
-        i++;
+    if (jsmn_streq(STATE->json_string_buffer, t, "type") == 1) {
+      // outer message envelope type, must be "ris_message"
+      NEXT_TOK;
+      jsmn_type_assert(t, JSMN_STRING);
+      if (jsmn_streq(STATE->json_string_buffer, t, "ris_message") != 1) {
+        // TODO: consider handling error message (ris_error)
+        bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid RIS message type: '%.*s'",
+                      t->end - t->start, STATE->json_string_buffer + t->start);
+        goto corrupted;
       }
+      NEXT_TOK;
+    } else if (jsmn_streq(STATE->json_string_buffer, t, "data") == 1) {
+      NEXT_TOK;
+      jsmn_type_assert(t, JSMN_OBJECT);
+      // handle data
+      if ((rc = process_data(format, t)) != 0) {
+        goto corrupted;
+      }
+      break; // we have all we need, so no need to keep parsing
+    } else {
+      // skip any other top-level keys (e.g., "type")
+      NEXT_TOK;
+      // and their value
+      t = jsmn_skip(t);
     }
   }
 
+  if (FIELDLEN(type) == 0) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Missing message type");
+    goto corrupted;
+  }
+
   // process each type of message separately
+  // the types of messages include
+  //   - UPDATE
+  //   - OPEN
+  //   - NOTIFICATION
+  //   - KEEPALIVE
+  //   - RIS_PEER_STATE
   switch (*FIELDPTR(type)) {
-  case 'A':
-    RDATA->msg_type = RIPE_JSON_MSG_TYPE_ANNOUNCE;
-    rc = process_update_message(format, record);
-    break;
-  case 'W':
-    RDATA->msg_type = RIPE_JSON_MSG_TYPE_WITHDRAW;
-    rc = process_update_message(format, record);
-    break;
-  case 'S':
-    RDATA->msg_type = RIPE_JSON_MSG_TYPE_STATUS;
-    rc = process_status_message(format, record);
+  case 'U':
+    RDATA->msg_type = RISLIVE_MSG_TYPE_UPDATE;
+    rc = process_bgp_message(format, record);
     break;
   case 'O':
-    RDATA->msg_type = RIPE_JSON_MSG_TYPE_OPEN;
-    rc = process_open_message(format, record);
+    RDATA->msg_type = RISLIVE_MSG_TYPE_OPEN;
+    rc = process_bgp_message(format, record);
     break;
   case 'N':
-    RDATA->msg_type = RIPE_JSON_MSG_TYPE_NOTIFY;
-    rc = BGPSTREAM_FORMAT_UNSUPPORTED_MSG;
+    RDATA->msg_type = RISLIVE_MSG_TYPE_NOTIFICATION;
+    rc = process_bgp_message(format, record);
+    break;
+  case 'K':
+    RDATA->msg_type = RISLIVE_MSG_TYPE_KEEPALIVE;
+    rc = process_bgp_message(format, record);
+    break;
+  case 'R':
+    RDATA->msg_type = RISLIVE_MSG_TYPE_STATUS;
+    rc = process_status_message(format, record);
     break;
   default:
-    rc = BGPSTREAM_FORMAT_CORRUPTED_MSG;
+    rc = BGPSTREAM_FORMAT_UNSUPPORTED_MSG;
     break;
   }
 
@@ -545,16 +477,48 @@ again:
   }
 
 ok:
-  free(t);
+  free(root_tok);
   return BGPSTREAM_FORMAT_OK;
 
+err:
 corrupted:
-  free(t);
+  free(root_tok);
   return process_corrupted_message(format, record);
 
 unsupported:
-  free(t);
+  free(root_tok);
   return process_unsupported_message(format, record);
+}
+
+/* -------------------- RECORD FILTERING -------------------- */
+
+static bgpstream_parsebgp_check_filter_rc_t
+check_filters(bgpstream_record_t *record, bgpstream_filter_mgr_t *filter_mgr)
+{
+  // Collector
+  if (filter_mgr->collectors != NULL) {
+    if (bgpstream_str_set_exists(filter_mgr->collectors,
+                                 record->collector_name) == 0) {
+      return BGPSTREAM_PARSEBGP_FILTER_OUT;
+    }
+  }
+
+  // Project
+  if (filter_mgr->projects != NULL) {
+    if (bgpstream_str_set_exists(filter_mgr->projects,
+                                 record->project_name) == 0) {
+      return BGPSTREAM_PARSEBGP_FILTER_OUT;
+    }
+  }
+
+  // Time window
+  if (TIF!=NULL &&
+      (record->time_sec < TIF->begin_time ||
+       (TIF->end_time != BGPSTREAM_FOREVER && record->time_sec > TIF->end_time))){
+      return BGPSTREAM_PARSEBGP_FILTER_OUT;
+  }
+
+  return BGPSTREAM_PARSEBGP_KEEP;
 }
 
 /* =============================================================== */
@@ -563,43 +527,47 @@ unsupported:
 /* =============================================================== */
 /* =============================================================== */
 
-int bs_format_ripejson_create(bgpstream_format_t *format,
+int bs_format_rislive_create(bgpstream_format_t *format,
                               bgpstream_resource_t *res)
 {
-  BS_FORMAT_SET_METHODS(ripejson, format);
+  BS_FORMAT_SET_METHODS(rislive, format);
 
   if ((format->state = malloc_zero(sizeof(state_t))) == NULL) {
     return -1;
   }
 
-  if ((STATE->json_string_buffer = malloc(BGPSTREAM_PARSEBGP_BUFLEN)) == NULL) {
+  if ((STATE->json_string_buffer = malloc(JSON_BUFLEN)) == NULL) {
     return -1;
   }
 
   parsebgp_opts_init(&STATE->opts);
   bgpstream_parsebgp_opts_init(&STATE->opts);
-  STATE->opts.bgp.marker_omitted = 1;
+  STATE->opts.bgp.marker_omitted = 0;
   STATE->opts.bgp.asn_4_byte = 1;
 
   return 0;
 }
 
 bgpstream_format_status_t
-bs_format_ripejson_populate_record(bgpstream_format_t *format,
+bs_format_rislive_populate_record(bgpstream_format_t *format,
                                    bgpstream_record_t *record)
 {
   int rc;
+  int filter;
 
+retry:
   STATE->json_string_buffer_len = bgpstream_transport_readline(
     format->transport, STATE->json_string_buffer, BGPSTREAM_PARSEBGP_BUFLEN);
 
   assert(STATE->json_string_buffer_len < BGPSTREAM_PARSEBGP_BUFLEN);
 
   if (STATE->json_string_buffer_len < 0) {
+    // corrupted record
     record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
     record->collector_name[0] = '\0';
     return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
   } else if (STATE->json_string_buffer_len == 0) {
+    // end of dump
     return BGPSTREAM_FORMAT_END_OF_DUMP;
   }
 
@@ -607,10 +575,22 @@ bs_format_ripejson_populate_record(bgpstream_format_t *format,
     return rc;
   }
 
+  // reference: bgpstream_parsebgp_common.c:597
+  if ((filter = check_filters(record, format->filter_mgr)) < 0) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Format-specific filtering failed");
+    return BGPSTREAM_FORMAT_UNKNOWN_ERROR;
+  }
+  if (filter != BGPSTREAM_PARSEBGP_KEEP) {
+    // move on to the next record
+    parsebgp_clear_msg(RDATA->msg);
+    goto retry;
+  }
+  // valid message, and it passes our filters
+  record->status = BGPSTREAM_RECORD_STATUS_VALID_RECORD;
   return BGPSTREAM_FORMAT_OK;
 }
 
-int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
+int bs_format_rislive_get_next_elem(bgpstream_format_t *format,
                                      bgpstream_record_t *record,
                                      bgpstream_elem_t **elem)
 {
@@ -622,15 +602,14 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
   }
 
   switch (RDATA->msg_type) {
-  case RIPE_JSON_MSG_TYPE_ANNOUNCE:
-  case RIPE_JSON_MSG_TYPE_WITHDRAW:
+  case RISLIVE_MSG_TYPE_UPDATE:
     rc = bgpstream_parsebgp_process_update(&RDATA->upd_state, RDATA->elem,
                                            RDATA->msg->types.bgp);
     if (rc <= 0) {
       return rc;
     }
     break;
-  case RIPE_JSON_MSG_TYPE_STATUS:
+  case RISLIVE_MSG_TYPE_STATUS:
     RDATA->elem->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
     switch (RDATA->status_msg_state) {
     case 0:
@@ -651,7 +630,7 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
     RDATA->end_of_elems = 1;
     rc = 1;
     break;
-  case RIPE_JSON_MSG_TYPE_OPEN:
+  case RISLIVE_MSG_TYPE_OPEN:
     RDATA->elem->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
     switch (RDATA->open_msg_direction) {
     case 0:
@@ -674,8 +653,8 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
     RDATA->end_of_elems = 1;
     rc = 1;
     break;
-  case RIPE_JSON_MSG_TYPE_NOTIFY:
-    break;
+  case RISLIVE_MSG_TYPE_NOTIFICATION:
+  case RISLIVE_MSG_TYPE_KEEPALIVE:
   default:
     break;
   }
@@ -685,7 +664,7 @@ int bs_format_ripejson_get_next_elem(bgpstream_format_t *format,
   return rc;
 }
 
-int bs_format_ripejson_init_data(bgpstream_format_t *format, void **data)
+int bs_format_rislive_init_data(bgpstream_format_t *format, void **data)
 {
   rec_data_t *rd;
   *data = NULL;
@@ -706,7 +685,7 @@ int bs_format_ripejson_init_data(bgpstream_format_t *format, void **data)
   return 0;
 }
 
-void bs_format_ripejson_clear_data(bgpstream_format_t *format, void *data)
+void bs_format_rislive_clear_data(bgpstream_format_t *format, void *data)
 {
   rec_data_t *rd = (rec_data_t *)data;
   assert(rd != NULL);
@@ -717,7 +696,7 @@ void bs_format_ripejson_clear_data(bgpstream_format_t *format, void *data)
   parsebgp_clear_msg(rd->msg);
 }
 
-void bs_format_ripejson_destroy_data(bgpstream_format_t *format, void *data)
+void bs_format_rislive_destroy_data(bgpstream_format_t *format, void *data)
 {
   rec_data_t *rd = (rec_data_t *)data;
   if (rd == NULL) {
@@ -730,7 +709,7 @@ void bs_format_ripejson_destroy_data(bgpstream_format_t *format, void *data)
   free(data);
 }
 
-void bs_format_ripejson_destroy(bgpstream_format_t *format)
+void bs_format_rislive_destroy(bgpstream_format_t *format)
 {
   free(STATE->json_string_buffer);
   free(format->state);

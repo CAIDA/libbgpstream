@@ -24,16 +24,49 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "bgpstream-test-ripejson.h"
 #include "bgpstream.h"
 #include "bgpstream_test.h"
 #include "utils.h"
 #include <stdio.h>
 #include <string.h>
 
+#define SETUP                                                                  \
+  do {                                                                         \
+    bs = bgpstream_create();                                                   \
+  } while (0)
+
+#define CHECK_SET_INTERFACE(interface)                                         \
+  do {                                                                         \
+    di_id = bgpstream_get_data_interface_id_by_name(bs, STR(interface));       \
+    bgpstream_set_data_interface(bs, di_id);                                   \
+  } while (0)
+
+const char *valid_output[] = {
+  "U|A|1553627987.890000|singlefile|rrc00|||11708|72.22.223.9|45.161.192.0/23|72.22.223.9|11708 32097 1299 52320 263009 263009 263009 263009 263009 52993 268481 268481|268481|||",
+  "U|S|1553624995.840000|singlefile|rrc00|||60474|94.177.122.251|||||||OPENSENT",
+  "", // notification
+  "", // keepalive
+  "U|S|1553625081.880000|singlefile|rrc01|||24931|195.66.224.59|||||||IDLE", // ris_peer_state
+  ""
+  "ESTABLISHED",
+  "U|S|1534175193.450000|singlefile|rrc21|||31122|37.49.237.31|||||||IDLE",
+  "",
+  "",
+  "",
+};
+
 static char buf[65536];
 
-int test_bgpstream_ripejson()
+/*
+ * 1. update
+ * 2. open
+ * 3. notification
+ * 4. keepalive
+ * 5. ris_peer_state
+ * 6. unsupported (change keepalive message's type to an unsupported one)
+ * 7. corrupted (change keepalive messages's raw bytes)
+ */
+int test_bgpstream_rislive()
 {
   /* Declare BGPStream requirements */
   int rrc = 0, count = 0, rcount = 0, erc = 0;
@@ -50,7 +83,7 @@ int test_bgpstream_ripejson()
          bs, di_id, "upd-type")) == NULL) {
     return -1;
   }
-  if (bgpstream_set_data_interface_option(bs, option, "ripejson") != 0) {
+  if (bgpstream_set_data_interface_option(bs, option, "ris-live") != 0) {
     return -1;
   }
   if ((option = bgpstream_get_data_interface_option_by_name(
@@ -68,6 +101,7 @@ int test_bgpstream_ripejson()
   }
 
   while ((rrc = bgpstream_get_next_record(bs, &rec)) > 0) {
+    fprintf(stderr, "checking entry %d\n", rcount);
     switch (rec->status) {
     case BGPSTREAM_RECORD_STATUS_VALID_RECORD:
 
@@ -79,25 +113,24 @@ int test_bgpstream_ripejson()
           return -1;
         }
 
-        if (strcmp(buf, valid_output[count]) != 0) {
+        if (strcmp(buf, valid_output[rcount]) != 0) {
           // Strings are not identical
           fprintf(stderr, "elem output different, rcount %d, count %d\n",
                   rcount, count);
           fprintf(stderr, "INVALID: %s\nCORRECT: %s\n", buf,
-                  valid_output[rcount + count]);
+                  valid_output[rcount]);
           goto err;
         }
         fprintf(stderr, "VALID: %s\n", buf);
         count++;
         buf[0] = '\0';
       }
-
       fprintf(stderr, "correctly valid record %d\n\n", rcount);
       break;
 
     case BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD:
-      if (rcount != 6) {
-        // only item 6 is unsupported
+      if (rcount != 5) {
+        // only item 5 is unsupported
         fprintf(stderr, "record %d shouldn't be unsupported\n", rcount);
         goto err;
       }
@@ -105,7 +138,7 @@ int test_bgpstream_ripejson()
       break;
 
     case BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD:
-      if (rcount <= 6) {
+      if (rcount <= 5) {
         fprintf(stderr, "record %d shouldn't be corrupted\n", rcount);
         goto err;
       }
@@ -121,8 +154,8 @@ int test_bgpstream_ripejson()
     rcount++;
   }
 
-  if (rcount != 9) {
-    // if not all 9 records passed
+  if (rcount != 7) {
+    // if not all 7 records passed
     return -1;
   }
 
@@ -133,5 +166,5 @@ err:
 
 int main()
 {
-  return test_bgpstream_ripejson();
+  return test_bgpstream_rislive();
 }

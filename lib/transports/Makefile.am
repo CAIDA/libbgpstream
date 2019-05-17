@@ -29,7 +29,7 @@ SUBDIRS=
 # to allow #include <config.h>
 AM_CPPFLAGS= 	-I$(top_srcdir) \
 		-I$(top_srcdir)/lib \
-                -I$(top_srcdir)/lib/utils \
+				-I$(top_srcdir)/lib/utils \
 	 	-I$(top_srcdir)/common
 
 
@@ -45,6 +45,9 @@ SOURCES+=bs_transport_file.c \
 
 SOURCES+=bs_transport_cache.c \
 	 bs_transport_cache.h
+
+SOURCES+=bs_transport_http.c \
+	 bs_transport_http.h
 
 if WITH_TRANSPORT_KAFKA
 SOURCES+=bs_transport_kafka.c \

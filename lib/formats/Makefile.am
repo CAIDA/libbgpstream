@@ -29,7 +29,7 @@ SUBDIRS= libparsebgp
 # to allow #include <config.h>
 AM_CPPFLAGS= 	-I$(top_srcdir) \
 		-I$(top_srcdir)/lib \
-                -I$(top_srcdir)/lib/utils \
+				-I$(top_srcdir)/lib/utils \
 	 	-I$(top_srcdir)/common \
 		-I$(top_srcdir)/lib/formats/libparsebgp/lib \
 		-I$(top_srcdir)/lib/formats/libparsebgp/lib/bgp \
@@ -44,8 +44,8 @@ SOURCES= 				\
 	bs_format_bmp.h			\
 	bs_format_mrt.c 		\
 	bs_format_mrt.h 		\
-	bs_format_ripejson.c 		\
-	bs_format_ripejson.h 		\
+	bs_format_rislive.c 		\
+	bs_format_rislive.h 		\
 	bgpstream_parsebgp_common.c	\
 	bgpstream_parsebgp_common.h
 

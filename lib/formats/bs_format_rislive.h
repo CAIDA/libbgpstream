@@ -24,33 +24,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-const char *valid_output[] = {
-  "U|A|1533666470.700000|singlefile|rrc13|||28917|2001:7f8:20:101::208:147|"
-  "2804:45d0::/32|2001:7f8:20:101::208:147|28917 6939 266951|266951|28917:4000 "
-  "28917:4100 28917:4101||",
-  "U|W|1534175898.170000|singlefile|rrc21|||198290|37.49.236.123|185.124.96.0/"
-  "22||||||",
-  "U|W|1534175898.170000|singlefile|rrc21|||198290|37.49.236.123|185.166.180.0/"
-  "22||||||",
-  "U|S|1533938856.529999|singlefile|rrc00|||200358|89.163.209.32|||||||"
-  "OPENSENT",
-  "U|S|1533938856.529999|singlefile|rrc00|||200358|89.163.209.32|||||||"
-  "OPENCONFIRM",
-  "U|S|1534175211.490000|singlefile|rrc21|||49375|2001:7f8:54::201|||||||"
-  "ESTABLISHED",
-  "U|S|1534175193.450000|singlefile|rrc21|||31122|37.49.237.31|||||||IDLE",
-  "",
-  "",
-  "",
-};
+#ifndef __BS_FORMAT_RISLIVE_H
+#define __BS_FORMAT_RISLIVE_H
 
-#define SETUP                                                                  \
-  do {                                                                         \
-    bs = bgpstream_create();                                                   \
-  } while (0)
+#include "bgpstream_format_interface.h"
 
-#define CHECK_SET_INTERFACE(interface)                                         \
-  do {                                                                         \
-    di_id = bgpstream_get_data_interface_id_by_name(bs, STR(interface));       \
-    bgpstream_set_data_interface(bs, di_id);                                   \
-  } while (0)
+BS_FORMAT_GENERATE_PROTOS(rislive);
+
+#endif /* __BS_FORMAT_RIPEJSON_H */
