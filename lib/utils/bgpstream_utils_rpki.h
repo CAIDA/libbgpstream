@@ -127,14 +127,15 @@ void bgpstream_rpki_parse_unified(bgpstream_rpki_input_t *inp);
  * @param optarg       Pointer to the arguments buffer
  * @param inp          Pointer to the BGPStream RPKI input struct
  */
-void bgpstream_rpki_parse_ssh(char *optarg, bgpstream_rpki_input_t *inp);
+void bgpstream_rpki_parse_ssh(const char *optarg, bgpstream_rpki_input_t *inp);
 
 /** Add the collectors arguments to the input struct
  *
  * @param optarg       Pointer to the arguments buffer
  * @param inp          Pointer to the BGPStream RPKI input struct
  */
-void bgpstream_rpki_parse_collectors(char *optarg, bgpstream_rpki_input_t *inp);
+void bgpstream_rpki_parse_collectors(const char *optarg,
+    bgpstream_rpki_input_t *inp);
 
 /** If the default mode is active, set RPKI active without a specific collector
  *

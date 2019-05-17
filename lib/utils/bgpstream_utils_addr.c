@@ -178,7 +178,7 @@ void bgpstream_addr_copy(bgpstream_ip_addr_t *dst, bgpstream_ip_addr_t *src)
   }
 }
 
-bgpstream_addr_storage_t *bgpstream_str2addr(char *addr_str,
+bgpstream_addr_storage_t *bgpstream_str2addr(const char *addr_str,
                                              bgpstream_addr_storage_t *addr)
 {
   if (addr_str == NULL || addr == NULL) {

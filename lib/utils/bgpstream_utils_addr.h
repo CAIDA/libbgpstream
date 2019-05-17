@@ -277,7 +277,7 @@ void bgpstream_addr_copy(bgpstream_ip_addr_t *dst, bgpstream_ip_addr_t *src);
  * @return the pointer to an initialized address storage, NULL if the
  *         address is not valid
  */
-bgpstream_addr_storage_t *bgpstream_str2addr(char *addr_str,
+bgpstream_addr_storage_t *bgpstream_str2addr(const char *addr_str,
                                              bgpstream_addr_storage_t *addr);
 
 /** Returns the index associated to an IP version
