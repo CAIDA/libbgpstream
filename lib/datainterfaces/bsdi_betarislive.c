@@ -177,7 +177,7 @@ int bsdi_betarislive_update_resources(bsdi_t *di)
   }
 
   if ((rc = bgpstream_resource_mgr_push(
-         BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_FILE,
+         BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_HTTP,
          BGPSTREAM_RESOURCE_FORMAT_RIPEJSON, STATE->url,
          0,                   // indicate we don't know how much historical data there is
          BGPSTREAM_FOREVER,   // indicate that the resource is a "stream"

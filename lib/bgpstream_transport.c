@@ -37,6 +37,7 @@
 // WITH_TRANSPORT_FILE
 #include "bs_transport_cache.h"
 #include "bs_transport_file.h"
+#include "bs_transport_http.h"
 
 #ifdef WITH_TRANSPORT_KAFKA
 #include "bs_transport_kafka.h"
@@ -61,6 +62,7 @@ static const transport_create_func_t create_functions[] = {
 
   bs_transport_cache_create,
 
+  bs_transport_http_create,
 };
 
 bgpstream_transport_t *bgpstream_transport_create(bgpstream_resource_t *res)
