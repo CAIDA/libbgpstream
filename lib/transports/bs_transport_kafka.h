@@ -29,6 +29,6 @@
 
 #include "bgpstream_transport_interface.h"
 
-BS_TRANSPORT_GENERATE_PROTOS(kafka);
+BS_TRANSPORT_GENERATE_PROTOS(kafka)
 
 #endif /* __BS_TRANSPORT_KAFKA_H */

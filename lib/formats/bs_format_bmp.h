@@ -29,6 +29,6 @@
 
 #include "bgpstream_format_interface.h"
 
-BS_FORMAT_GENERATE_PROTOS(bmp);
+BS_FORMAT_GENERATE_PROTOS(bmp)
 
 #endif /* __BS_FORMAT_BMP_H */

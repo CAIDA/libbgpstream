@@ -121,7 +121,7 @@ static bgpstream_data_interface_option_t options[] = {
 /* create the class structure for this data interface */
 BSDI_CREATE_CLASS(kafka, BGPSTREAM_DATA_INTERFACE_KAFKA,
                   "Read updates in real-time from an Apache Kafka topic",
-                  options);
+                  options)
 
 /* ---------- END CLASS DEFINITION ---------- */
 

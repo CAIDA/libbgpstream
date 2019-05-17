@@ -32,6 +32,6 @@
 
 #include "bgpstream_transport_interface.h"
 
-BS_TRANSPORT_GENERATE_PROTOS(cache);
+BS_TRANSPORT_GENERATE_PROTOS(cache)
 
 #endif /* __BS_TRANSPORT_CACHE_H */

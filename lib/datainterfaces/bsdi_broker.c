@@ -86,7 +86,7 @@ static bgpstream_data_interface_option_t options[] = {
 /* create the class structure for this data interface */
 BSDI_CREATE_CLASS(
   broker, BGPSTREAM_DATA_INTERFACE_BROKER,
-  "Retrieve metadata information from the BGPStream Broker service", options);
+  "Retrieve metadata information from the BGPStream Broker service", options)
 
 /* ---------- END CLASS DEFINITION ---------- */
 

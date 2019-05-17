@@ -35,7 +35,7 @@
 /* PRIVATE */
 
 KHASH_INIT(bgpstream_str_set, char *, char, 0, kh_str_hash_func,
-           kh_str_hash_equal);
+           kh_str_hash_equal)
 
 struct bgpstream_str_set_t {
   khiter_t k;

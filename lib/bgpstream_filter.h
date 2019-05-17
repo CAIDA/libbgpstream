@@ -44,7 +44,7 @@
 /* hash table community filter:
  * community -> filter mask (asn only, value only, both) */
 KHASH_INIT(bgpstream_community_filter, bgpstream_community_t, uint8_t, 1,
-           bgpstream_community_hash_value, bgpstream_community_equal_value);
+           bgpstream_community_hash_value, bgpstream_community_equal_value)
 typedef khash_t(bgpstream_community_filter) bgpstream_community_filter_t;
 
 typedef struct struct_bgpstream_interval_filter_t {
@@ -53,7 +53,7 @@ typedef struct struct_bgpstream_interval_filter_t {
 } bgpstream_interval_filter_t;
 
 KHASH_INIT(collector_ts, char *, uint32_t, 1, kh_str_hash_func,
-           kh_str_hash_equal);
+           kh_str_hash_equal)
 
 typedef khash_t(collector_ts) collector_ts_t;
 

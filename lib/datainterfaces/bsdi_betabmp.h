@@ -29,6 +29,6 @@
 
 #include "bgpstream_di_interface.h"
 
-BSDI_GENERATE_PROTOS(betabmp);
+BSDI_GENERATE_PROTOS(betabmp)
 
 #endif /* __BSDI_BETABMP_H */

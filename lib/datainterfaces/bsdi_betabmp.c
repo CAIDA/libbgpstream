@@ -87,7 +87,7 @@ static bgpstream_data_interface_option_t options[] = {
 BSDI_CREATE_CLASS_FULL(
   betabmp, "beta-bmp-stream", BGPSTREAM_DATA_INTERFACE_BETABMP,
   "Read updates in real-time from the public BGPStream BMP feed (BETA)",
-  options);
+  options)
 
 /* ---------- END CLASS DEFINITION ---------- */
 

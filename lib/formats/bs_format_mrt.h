@@ -29,6 +29,6 @@
 
 #include "bgpstream_format_interface.h"
 
-BS_FORMAT_GENERATE_PROTOS(mrt);
+BS_FORMAT_GENERATE_PROTOS(mrt)
 
 #endif /* __BS_FORMAT_MRT_H */

@@ -29,6 +29,6 @@
 
 #include "bgpstream_di_interface.h"
 
-BSDI_GENERATE_PROTOS(kafka);
+BSDI_GENERATE_PROTOS(kafka)
 
 #endif /* __BSDI_KAFKA_H */

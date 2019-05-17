@@ -29,6 +29,6 @@
 
 #include "bgpstream_di_interface.h"
 
-BSDI_GENERATE_PROTOS(singlefile);
+BSDI_GENERATE_PROTOS(singlefile)
 
 #endif /* __BSDI_SINGLEFILE_H */

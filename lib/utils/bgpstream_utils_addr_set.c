@@ -48,7 +48,7 @@
 KHASH_INIT(bgpstream_addr_storage_set /* name */,
            bgpstream_addr_storage_t /* khkey_t */, char /* khval_t */,
            0 /* kh_is_set */, STORAGE_HASH_VAL /*__hash_func */,
-           STORAGE_EQUAL_VAL /* __hash_equal */);
+           STORAGE_EQUAL_VAL /* __hash_equal */)
 
 struct bgpstream_addr_storage_set {
   khash_t(bgpstream_addr_storage_set) * hash;
@@ -58,7 +58,7 @@ struct bgpstream_addr_storage_set {
 KHASH_INIT(bgpstream_ipv4_addr_set /* name */,
            bgpstream_ipv4_addr_t /* khkey_t */, char /* khval_t */,
            0 /* kh_is_set */, V4_HASH_VAL /*__hash_func */,
-           V4_EQUAL_VAL /* __hash_equal */);
+           V4_EQUAL_VAL /* __hash_equal */)
 
 struct bgpstream_ipv4_addr_set {
   khash_t(bgpstream_ipv4_addr_set) * hash;
@@ -68,7 +68,7 @@ struct bgpstream_ipv4_addr_set {
 KHASH_INIT(bgpstream_ipv6_addr_set /* name */,
            bgpstream_ipv6_addr_t /* khkey_t */, char /* khval_t */,
            0 /* kh_is_set */, V6_HASH_VAL /*__hash_func */,
-           V6_EQUAL_VAL /* __hash_equal */);
+           V6_EQUAL_VAL /* __hash_equal */)
 
 struct bgpstream_ipv6_addr_set {
   khash_t(bgpstream_ipv6_addr_set) * hash;
