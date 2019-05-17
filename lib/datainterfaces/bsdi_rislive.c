@@ -36,7 +36,7 @@
 #define STATE (BSDI_GET_STATE(di, rislive))
 
 #define FIREHOSE_URL "https://ris-live.ripe.net/v1/stream/?format=json"
-#define DEFAULT_CLIENT "libbgpstream-default"
+#define DEFAULT_CLIENT "libbgpstream-"PACKAGE_VERSION
 
 /* ---------- START CLASS DEFINITION ---------- */
 
