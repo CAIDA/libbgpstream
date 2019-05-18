@@ -30,35 +30,25 @@
 
 #include "bgpstream_utils_time.h"
 #include <inttypes.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <ctype.h>
 #include <sys/time.h>
 
 int bgpstream_time_calc_recent_interval(uint32_t *start, uint32_t *end,
                                         const char *optval)
 {
-
-  char *timetok;
-  char *unittok;
+  char *p;
   uint32_t unitcount = 0;
-
   struct timeval tv;
 
-  timetok = strtok((char *)optval, " ");
+  unitcount = strtoul(optval, &p, 10);
 
-  if (timetok == NULL) {
+  if (p == optval || *p == '\0') {
     return 0;
   }
+  while (isspace(*p)) ++p;
 
-  unitcount = strtoul(timetok, NULL, 10);
-  unittok = strtok(NULL, " ");
-
-  if (!unittok || *unittok == '\0') {
-    return 0;
-  }
-
-  switch (*unittok) {
+  switch (*p) {
   case 's':
     break;
   case 'm':
@@ -71,6 +61,9 @@ int bgpstream_time_calc_recent_interval(uint32_t *start, uint32_t *end,
     unitcount = unitcount * 60 * 60 * 24;
     break;
   default:
+    return 0;
+  }
+  if (*++p != '\0') {
     return 0;
   }
 
