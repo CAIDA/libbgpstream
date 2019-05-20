@@ -33,11 +33,10 @@
 
 typedef enum {
   FAIL = 0,
-  TERM = 1,
-  PREFIXEXT = 2,
-  VALUE = 3,
-  QUOTEDVALUE = 4,
-  ENDVALUE = 5
+  TERM,
+  PREFIXEXT,
+  VALUE,
+  ENDVALUE
 } fp_state_t;
 
 typedef struct single_filter {

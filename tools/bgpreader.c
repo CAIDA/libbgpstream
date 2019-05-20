@@ -617,7 +617,9 @@ int main(int argc, char *argv[])
 
   /* Parse the filter string */
   if (filterstring) {
-    bgpstream_parse_filter_string(bs, filterstring);
+    if (!bgpstream_parse_filter_string(bs, filterstring)) {
+      goto err;
+    }
   }
 
   if (intervalstring) {
