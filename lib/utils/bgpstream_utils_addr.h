@@ -148,8 +148,8 @@ typedef struct struct_bgpstream_addr_storage_t {
  * the buffer.
  */
 #define bgpstream_addr_ntop(buf, len, bsaddr)                                  \
-  inet_ntop((bsaddr)->version, &(((bgpstream_ip_addr_t *)(bsaddr))->addr),     \
-            buf, len)
+  inet_ntop((bsaddr)->version,                                                 \
+      &(((const bgpstream_ip_addr_t *)(bsaddr))->addr), buf, len)
 
 /** Hash the given IPv4 address into a 32bit number
  *
@@ -161,7 +161,7 @@ unsigned int
 #elif ULONG_MAX == 0xffffffffu
 unsigned long
 #endif
-bgpstream_ipv4_addr_hash(bgpstream_ipv4_addr_t *addr);
+bgpstream_ipv4_addr_hash(const bgpstream_ipv4_addr_t *addr);
 
 /** Hash the given IPv6 address into a 64bit number
  *
@@ -173,7 +173,7 @@ unsigned long
 #else
 unsigned long long
 #endif
-bgpstream_ipv6_addr_hash(bgpstream_ipv6_addr_t *addr);
+bgpstream_ipv6_addr_hash(const bgpstream_ipv6_addr_t *addr);
 
 /** Hash the given address storage into a 64bit number
  *
@@ -193,8 +193,8 @@ bgpstream_addr_storage_hash(bgpstream_addr_storage_t *addr);
  * @param addr2         pointer to the second address to compare
  * @return 0 if the addresses are not equal, non-zero if they are equal
  */
-int bgpstream_addr_equal(bgpstream_ip_addr_t *addr1,
-                         bgpstream_ip_addr_t *addr2);
+int bgpstream_addr_equal(const bgpstream_ip_addr_t *addr1,
+                         const bgpstream_ip_addr_t *addr2);
 
 /** Compare two IPv4 addresses for equality
  *
@@ -202,8 +202,8 @@ int bgpstream_addr_equal(bgpstream_ip_addr_t *addr1,
  * @param addr2         pointer to the second address to compare
  * @return 0 if the addresses are not equal, non-zero if they are equal
  */
-int bgpstream_ipv4_addr_equal(bgpstream_ipv4_addr_t *addr1,
-                              bgpstream_ipv4_addr_t *addr2);
+int bgpstream_ipv4_addr_equal(const bgpstream_ipv4_addr_t *addr1,
+                              const bgpstream_ipv4_addr_t *addr2);
 
 /** Compare two IPv6 addresses for equality
  *
@@ -211,8 +211,8 @@ int bgpstream_ipv4_addr_equal(bgpstream_ipv4_addr_t *addr1,
  * @param addr2         pointer to the second address to compare
  * @return 0 if the addresses are not equal, non-zero if they are equal
  */
-int bgpstream_ipv6_addr_equal(bgpstream_ipv6_addr_t *addr1,
-                              bgpstream_ipv6_addr_t *addr2);
+int bgpstream_ipv6_addr_equal(const bgpstream_ipv6_addr_t *addr1,
+                              const bgpstream_ipv6_addr_t *addr2);
 
 /** Compare two generic addresses for equality
  *
@@ -220,8 +220,8 @@ int bgpstream_ipv6_addr_equal(bgpstream_ipv6_addr_t *addr1,
  * @param addr2         pointer to the second address to compare
  * @return 0 if the addresses are not equal, non-zero if they are equal
  */
-int bgpstream_addr_storage_equal(bgpstream_addr_storage_t *addr1,
-                                 bgpstream_addr_storage_t *ip2);
+int bgpstream_addr_storage_equal(const bgpstream_addr_storage_t *addr1,
+                                 const bgpstream_addr_storage_t *ip2);
 
 /** Apply a mask to the given IP address
  *
@@ -268,7 +268,8 @@ bgpstream_ipv6_addr_t *bgpstream_ipv6_addr_mask(bgpstream_ipv6_addr_t *addr,
  * address type (e.g., if src points to an address storage structure, it may be
  * copied into a destination v4 structure **iff** the src version is v4)
  */
-void bgpstream_addr_copy(bgpstream_ip_addr_t *dst, bgpstream_ip_addr_t *src);
+void bgpstream_addr_copy(bgpstream_ip_addr_t *dst,
+    const bgpstream_ip_addr_t *src);
 
 /** Convert a string into an address storage
  *

@@ -139,7 +139,7 @@ typedef struct struct_bgpstream_pfx_storage_t {
  * You will likely want to use INET_ADDRSTRLEN+3 or INET6_ADDRSTRLEN+3 to
  * dimension the buffer.
  */
-char *bgpstream_pfx_snprintf(char *buf, size_t len, bgpstream_pfx_t *pfx);
+char *bgpstream_pfx_snprintf(char *buf, size_t len, const bgpstream_pfx_t *pfx);
 
 /** Copy one prefix into another
  *
@@ -150,7 +150,7 @@ char *bgpstream_pfx_snprintf(char *buf, size_t len, bgpstream_pfx_t *pfx);
  * prefix type (e.g., if src points to an prefix storage structure, it may be
  * copied into a destination v4 structure **iff** the src version is v4)
  */
-void bgpstream_pfx_copy(bgpstream_pfx_t *dst, bgpstream_pfx_t *src);
+void bgpstream_pfx_copy(bgpstream_pfx_t *dst, const bgpstream_pfx_t *src);
 
 /** Hash the given IPv4 Prefix into a 32bit number
  *
@@ -162,7 +162,7 @@ unsigned int
 #elif ULONG_MAX == 0xffffffffu
 unsigned long
 #endif
-bgpstream_ipv4_pfx_hash(bgpstream_ipv4_pfx_t *pfx);
+bgpstream_ipv4_pfx_hash(const bgpstream_ipv4_pfx_t *pfx);
 
 /** Hash the given IPv6 prefix into a 64bit number
  *
@@ -174,7 +174,7 @@ unsigned long
 #else
 unsigned long long
 #endif
-bgpstream_ipv6_pfx_hash(bgpstream_ipv6_pfx_t *pfx);
+bgpstream_ipv6_pfx_hash(const bgpstream_ipv6_pfx_t *pfx);
 
 /** Hash the given prefix storage into a 64bit number
  *
@@ -186,7 +186,7 @@ unsigned long
 #else
 unsigned long long
 #endif
-bgpstream_pfx_storage_hash(bgpstream_pfx_storage_t *pfx);
+bgpstream_pfx_storage_hash(const bgpstream_pfx_storage_t *pfx);
 
 /** Compare two prefixes for equality
  *
@@ -194,7 +194,8 @@ bgpstream_pfx_storage_hash(bgpstream_pfx_storage_t *pfx);
  * @param pfx2          pointer to the first prefix to compare
  * @return 0 if the prefixes are not equal, non-zero if they are equal
  */
-int bgpstream_pfx_equal(bgpstream_pfx_t *pfx1, bgpstream_pfx_t *pfx2);
+int bgpstream_pfx_equal(const bgpstream_pfx_t *pfx1,
+                        const bgpstream_pfx_t *pfx2);
 
 /** Compare two IPv4 prefixes for equality
  *
@@ -202,8 +203,8 @@ int bgpstream_pfx_equal(bgpstream_pfx_t *pfx1, bgpstream_pfx_t *pfx2);
  * @param pfx2         pointer to the second prefix to compare
  * @return 0 if the prefixes are not equal, non-zero if they are equal
  */
-int bgpstream_ipv4_pfx_equal(bgpstream_ipv4_pfx_t *pfx1,
-                             bgpstream_ipv4_pfx_t *pfx2);
+int bgpstream_ipv4_pfx_equal(const bgpstream_ipv4_pfx_t *pfx1,
+                             const bgpstream_ipv4_pfx_t *pfx2);
 
 /** Compare two IPv6 prefixes for equality
  *
@@ -211,8 +212,8 @@ int bgpstream_ipv4_pfx_equal(bgpstream_ipv4_pfx_t *pfx1,
  * @param pfx2         pointer to the second prefix to compare
  * @return 0 if the prefixes are not equal, non-zero if they are equal
  */
-int bgpstream_ipv6_pfx_equal(bgpstream_ipv6_pfx_t *pfx1,
-                             bgpstream_ipv6_pfx_t *pfx2);
+int bgpstream_ipv6_pfx_equal(const bgpstream_ipv6_pfx_t *pfx1,
+                             const bgpstream_ipv6_pfx_t *pfx2);
 
 /** Compare two generic prefixes for equality
  *
@@ -220,8 +221,8 @@ int bgpstream_ipv6_pfx_equal(bgpstream_ipv6_pfx_t *pfx1,
  * @param pfx2         pointer to the second prefix to compare
  * @return 0 if the prefixes are not equal, non-zero if they are equal
  */
-int bgpstream_pfx_storage_equal(bgpstream_pfx_storage_t *pfx1,
-                                bgpstream_pfx_storage_t *pfx2);
+int bgpstream_pfx_storage_equal(const bgpstream_pfx_storage_t *pfx1,
+                                const bgpstream_pfx_storage_t *pfx2);
 
 /** Check if one prefix contains another
  *
@@ -229,7 +230,8 @@ int bgpstream_pfx_storage_equal(bgpstream_pfx_storage_t *pfx1,
  * @param inner          pointer to the inner prefix to check
  * @return non-zero if inner is a more-specific prefix of outer, 0 if not
  */
-int bgpstream_pfx_contains(bgpstream_pfx_t *outer, bgpstream_pfx_t *inner);
+int bgpstream_pfx_contains(const bgpstream_pfx_t *outer,
+                           const bgpstream_pfx_t *inner);
 
 /** Utility macros used to pass khashes objects by reference
  *  instead of copying them */

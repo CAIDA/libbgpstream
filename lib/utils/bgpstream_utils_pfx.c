@@ -38,7 +38,7 @@
 
 #include "bgpstream_utils_pfx.h"
 
-char *bgpstream_pfx_snprintf(char *buf, size_t len, bgpstream_pfx_t *pfx)
+char *bgpstream_pfx_snprintf(char *buf, size_t len, const bgpstream_pfx_t *pfx)
 {
   char *p = buf;
 
@@ -58,7 +58,7 @@ char *bgpstream_pfx_snprintf(char *buf, size_t len, bgpstream_pfx_t *pfx)
   return buf;
 }
 
-void bgpstream_pfx_copy(bgpstream_pfx_t *dst, bgpstream_pfx_t *src)
+void bgpstream_pfx_copy(bgpstream_pfx_t *dst, const bgpstream_pfx_t *src)
 {
   if (src->address.version == BGPSTREAM_ADDR_VERSION_IPV4) {
     memcpy(dst, src, sizeof(bgpstream_ipv4_pfx_t));
@@ -73,7 +73,7 @@ unsigned int
 #elif ULONG_MAX == 0xffffffffu
 unsigned long
 #endif
-bgpstream_ipv4_pfx_hash(bgpstream_ipv4_pfx_t *pfx)
+bgpstream_ipv4_pfx_hash(const bgpstream_ipv4_pfx_t *pfx)
 {
   // embed the network mask length in the 32 bits
   return __ac_Wang_hash(pfx->address.ipv4.s_addr | (uint32_t)pfx->mask_len);
@@ -84,11 +84,10 @@ unsigned long
 #else
 unsigned long long
 #endif
-bgpstream_ipv6_pfx_hash(bgpstream_ipv6_pfx_t *pfx)
+bgpstream_ipv6_pfx_hash(const bgpstream_ipv6_pfx_t *pfx)
 {
   // ipv6 number - we take most significant 64 bits only
-  unsigned char *s6 = &(pfx->address.ipv6.s6_addr[0]);
-  uint64_t address = *((uint64_t *)s6);
+  uint64_t address = *((const uint64_t *)(&(pfx->address.ipv6.s6_addr[0])));
   // embed the network mask length in the 64 bits
   return __ac_Wang_hash(address | (uint64_t)pfx->mask_len);
 }
@@ -98,42 +97,43 @@ unsigned long
 #else
 unsigned long long
 #endif
-bgpstream_pfx_storage_hash(bgpstream_pfx_storage_t *pfx)
+bgpstream_pfx_storage_hash(const bgpstream_pfx_storage_t *pfx)
 {
   if (pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4) {
-    return bgpstream_ipv4_pfx_hash((bgpstream_ipv4_pfx_t *)pfx);
+    return bgpstream_ipv4_pfx_hash((const bgpstream_ipv4_pfx_t *)pfx);
   }
   if (pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV6) {
-    return bgpstream_ipv6_pfx_hash((bgpstream_ipv6_pfx_t *)pfx);
+    return bgpstream_ipv6_pfx_hash((const bgpstream_ipv6_pfx_t *)pfx);
   }
   return 0;
 }
 
-int bgpstream_pfx_equal(bgpstream_pfx_t *pfx1, bgpstream_pfx_t *pfx2)
+int bgpstream_pfx_equal(const bgpstream_pfx_t *pfx1,
+                        const bgpstream_pfx_t *pfx2)
 {
   if (pfx1->address.version != pfx2->address.version) {
     return 0;
   }
   if (pfx1->address.version == BGPSTREAM_ADDR_VERSION_IPV4) {
-    return bgpstream_ipv4_pfx_equal((bgpstream_ipv4_pfx_t *)pfx1,
-                                    (bgpstream_ipv4_pfx_t *)pfx2);
+    return bgpstream_ipv4_pfx_equal((const bgpstream_ipv4_pfx_t *)pfx1,
+                                    (const bgpstream_ipv4_pfx_t *)pfx2);
   }
   if (pfx1->address.version == BGPSTREAM_ADDR_VERSION_IPV6) {
-    return bgpstream_ipv6_pfx_equal((bgpstream_ipv6_pfx_t *)pfx1,
-                                    (bgpstream_ipv6_pfx_t *)pfx2);
+    return bgpstream_ipv6_pfx_equal((const bgpstream_ipv6_pfx_t *)pfx1,
+                                    (const bgpstream_ipv6_pfx_t *)pfx2);
   }
   return 0;
 }
 
-int bgpstream_ipv4_pfx_equal(bgpstream_ipv4_pfx_t *pfx1,
-                             bgpstream_ipv4_pfx_t *pfx2)
+int bgpstream_ipv4_pfx_equal(const bgpstream_ipv4_pfx_t *pfx1,
+                             const bgpstream_ipv4_pfx_t *pfx2)
 {
   return ((pfx1->mask_len == pfx2->mask_len) &&
           bgpstream_ipv4_addr_equal(&pfx1->address, &pfx2->address));
 }
 
-int bgpstream_ipv6_pfx_equal(bgpstream_ipv6_pfx_t *pfx1,
-                             bgpstream_ipv6_pfx_t *pfx2)
+int bgpstream_ipv6_pfx_equal(const bgpstream_ipv6_pfx_t *pfx1,
+                             const bgpstream_ipv6_pfx_t *pfx2)
 {
   // note: it could be faster to use a loop when inserting differing prefixes
 
@@ -141,8 +141,8 @@ int bgpstream_ipv6_pfx_equal(bgpstream_ipv6_pfx_t *pfx1,
           bgpstream_ipv6_addr_equal(&pfx1->address, &pfx2->address));
 }
 
-int bgpstream_pfx_storage_equal(bgpstream_pfx_storage_t *pfx1,
-                                bgpstream_pfx_storage_t *pfx2)
+int bgpstream_pfx_storage_equal(const bgpstream_pfx_storage_t *pfx1,
+                                const bgpstream_pfx_storage_t *pfx2)
 {
   if (pfx1->mask_len == pfx2->mask_len) {
     return bgpstream_addr_storage_equal(&pfx1->address, &pfx2->address);
@@ -150,7 +150,7 @@ int bgpstream_pfx_storage_equal(bgpstream_pfx_storage_t *pfx1,
   return 0;
 }
 
-int bgpstream_pfx_contains(bgpstream_pfx_t *outer, bgpstream_pfx_t *inner)
+int bgpstream_pfx_contains(const bgpstream_pfx_t *outer, const bgpstream_pfx_t *inner)
 {
   bgpstream_addr_storage_t tmp;
 
