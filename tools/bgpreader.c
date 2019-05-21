@@ -76,115 +76,6 @@
   "# <elem-type>: R RIB, A announcement, W withdrawal, S state message\n"      \
   "#\n"
 
-#define OPTIONS                                                                \
-  (struct options[])                                                           \
-  {                                                                            \
-      {{"data-interface", required_argument, 0, 'd'},                          \
-       "<interface>",                                                          \
-       "use the given data interface to find available data\n"                 \
-       "available data interfaces are:"},                                      \
-      {{"filter", required_argument, 0, 'f'},                                  \
-       "<filterstring>",                                                       \
-       "filter records and elements using the rules\n"                         \
-       "described in the given filter string"},                                \
-      {{"interval", required_argument, 0, 'I'},                                \
-       "<interval>",                                                           \
-       "process records that were received recently, where the\ninterval "     \
-       "describes how far back in time to go. The\ninterval should be "        \
-       "expressed as '<num> <unit>', where\n<unit> can be one of 's', "        \
-       "'m', 'h', 'd' (seconds,\nminutes, hours, days)."},                     \
-      {{"data-interface-option", required_argument, 0, 'o'},                   \
-       "<option-name>=<option-value>*",                                          \
-       "\nset an option for the current data "                                 \
-       "interface.\nuse '-o ?' to get a list of available options for the "    \
-       "current\ndata interface. (data interface can be selected using -d)"},  \
-      {{"project", required_argument, 0, 'p'},                                 \
-       "<project>",                                                            \
-       "process records from only the given project (routeviews, ris)*"},      \
-      {{"collector", required_argument, 0, 'c'},                               \
-       "<collector>",                                                          \
-       "process records from only the given collector*"},                      \
-      {{"record-type", required_argument, 0, 't'},                             \
-       "<type>",                                                               \
-       "process records with only the given type (ribs, updates)*"},           \
-      {{"time-window", required_argument, 0, 'w'},                             \
-       "<start>[,<end>]",                                                      \
-       "process records within the given time window\nspecified in Unix "      \
-       "epoch time\n(omitting the end parameter enables live mode)"},          \
-      {{"rib-period", required_argument, 0, 'P'},                              \
-       "<period>",                                                             \
-       "process a rib files every <period> seconds (bgp time)"},               \
-      {{"peer-asn", required_argument, 0, 'j'},                                \
-       "<peer ASN>",                                                           \
-       "return elems received by a given peer ASN*"},                 \
-      {{"origin-asn", required_argument, 0, 'a'},                              \
-       "<origin ASN>",                                                         \
-       "return elems originated by a given origin ASN*"},             \
-      {{"prefix", required_argument, 0, 'k'},                                  \
-       "<prefix>",                                                             \
-       "return elems associated with a given prefix*"},               \
-      {{"community", required_argument, 0, 'y'},                               \
-       "<community>",                                                          \
-       "return elems with the specified community*\n"                    \
-       "(format: asn:value. the '*' metacharacter is recognized)"},            \
-      {{"count", required_argument, 0, 'n'},                                   \
-       "<rec-cnt>",                                                            \
-       "process at most <rec-cnt> records"},                                   \
-      {{"live", no_argument, 0, 'l'},                                          \
-       "",                                                                     \
-       "enable live mode (make blocking requests for BGP records)\n"           \
-       "allows bgpstream to be used to process data in real-time"},            \
-      {{"output-elems", no_argument, 0, 'e'},                                  \
-       "",                                                                     \
-       "print info "                                                           \
-       "for each element of a BGP record (default)"},                    \
-      {{"output-bgpdump", no_argument, 0, 'm'},                                \
-       "",                                                                     \
-       "print info "                                                           \
-       "for each BGP record in bgpdump -m format"},                      \
-      {{"output-records", no_argument, 0, 'r'},                                \
-       "",                                                                     \
-       "print info "                                                           \
-       "for each BGP record (used mostly for debugging BGPStream)"},           \
-      {{"output-headers", no_argument, 0, 'i'},                                \
-       "",                                                                     \
-       "print format information before output"},                              \
-      {{"version", no_argument, 0, 'v'},                                       \
-       "",                                                                     \
-       "print the version of bgpreader"},                                      \
-      {{"help", no_argument, 0, 'h'}, "", "print this help menu"},             \
-      {{"rpki", no_argument, 0, RPKI_OPTION_DEFAULT},                          \
-       "",                                                                     \
-       "validate the BGP "                                                     \
-       "records with historical RPKI dumps (default collector)"},              \
-      {{"rpki-live", no_argument, 0, RPKI_OPTION_LIVE},                        \
-       "",                                                                     \
-       "validate the BGP "                                                     \
-       " records with the current RPKI dump (default collector)"},             \
-      {{"rpki-collectors", required_argument, 0, RPKI_OPTION_COLLECTORS},      \
-       "<((*|project):(*|(collector(,collectors)*))(;)?)*>",                   \
-       "\nspecify the "                                                        \
-       "collectors used for (historical or live) RPKI validation "},           \
-      {{"rpki-unified", no_argument, 0, RPKI_OPTION_UNIFIED},                  \
-       "",                                                                     \
-       "whether the RPKI validation for different collectors is unified"},     \
-      {{"rpki-ssh", required_argument, 0, RPKI_OPTION_SSH},                    \
-       "<user,hostkey,private key>",                                           \
-       "\nenable SSH encryption for the live connection to the RTR server"},   \
-      {{"help", no_argument, 0, '?'}, "", "print this help menu"},             \
-    {                                                                          \
-      {0, 0, 0, 0}, "", ""                                                     \
-    }                                                                          \
-  }
-
-#define OPTIONS_CNT (ARR_CNT(OPTIONS) - 1)
-
-struct options {
-  struct option option;
-  const char *usage;
-  const char *expl;
-};
-
 enum rpki_options {
   RPKI_OPTION_SSH = 500,
   RPKI_OPTION_COLLECTORS = 501,
@@ -192,6 +83,114 @@ enum rpki_options {
   RPKI_OPTION_UNIFIED = 503,
   RPKI_OPTION_DEFAULT = 504
 };
+
+struct bs_options_t {
+  struct option option;
+  const char *usage;
+  const char *expl;
+};
+
+static struct bs_options_t bs_opts[] =
+{
+  {{"data-interface", required_argument, 0, 'd'},
+   "<interface>",
+   "use the given data interface to find available data\n"
+   "available data interfaces are:"},
+  {{"filter", required_argument, 0, 'f'},
+   "<filterstring>",
+   "filter records and elements using the rules\n"
+   "described in the given filter string"},
+  {{"interval", required_argument, 0, 'I'},
+   "<interval>",
+   "process records that were received recently, where the\ninterval "
+   "describes how far back in time to go. The\ninterval should be "
+   "expressed as '<num> <unit>', where\n<unit> can be one of 's', "
+   "'m', 'h', 'd' (seconds,\nminutes, hours, days)."},
+  {{"data-interface-option", required_argument, 0, 'o'},
+   "<option-name>=<option-value>*",
+   "\nset an option for the current data "
+   "interface.\nuse '-o ?' to get a list of available options for the "
+   "current\ndata interface. (data interface can be selected using -d)"},
+  {{"project", required_argument, 0, 'p'},
+   "<project>",
+   "process records from only the given project (routeviews, ris)*"},
+  {{"collector", required_argument, 0, 'c'},
+   "<collector>",
+   "process records from only the given collector*"},
+  {{"record-type", required_argument, 0, 't'},
+   "<type>",
+   "process records with only the given type (ribs, updates)*"},
+  {{"time-window", required_argument, 0, 'w'},
+   "<start>[,<end>]",
+   "process records within the given time window\nspecified in Unix "
+   "epoch time\n(omitting the end parameter enables live mode)"},
+  {{"rib-period", required_argument, 0, 'P'},
+   "<period>",
+   "process a rib files every <period> seconds (bgp time)"},
+  {{"peer-asn", required_argument, 0, 'j'},
+   "<peer ASN>",
+   "return elems received by a given peer ASN*"},
+  {{"origin-asn", required_argument, 0, 'a'},
+   "<origin ASN>",
+   "return elems originated by a given origin ASN*"},
+  {{"prefix", required_argument, 0, 'k'},
+   "<prefix>",
+   "return elems associated with a given prefix*"},
+  {{"community", required_argument, 0, 'y'},
+   "<community>",
+   "return elems with the specified community*\n"
+   "(format: asn:value. the '*' metacharacter is recognized)"},
+  {{"count", required_argument, 0, 'n'},
+   "<rec-cnt>",
+   "process at most <rec-cnt> records"},
+  {{"live", no_argument, 0, 'l'},
+   "",
+   "enable live mode (make blocking requests for BGP records)\n"
+   "allows bgpstream to be used to process data in real-time"},
+  {{"output-elems", no_argument, 0, 'e'},
+   "",
+   "print info "
+   "for each element of a BGP record (default)"},
+  {{"output-bgpdump", no_argument, 0, 'm'},
+   "",
+   "print info "
+   "for each BGP record in bgpdump -m format"},
+  {{"output-records", no_argument, 0, 'r'},
+   "",
+   "print info "
+   "for each BGP record (used mostly for debugging BGPStream)"},
+  {{"output-headers", no_argument, 0, 'i'},
+   "",
+   "print format information before output"},
+  {{"version", no_argument, 0, 'v'},
+   "",
+   "print the version of bgpreader"},
+  {{"help", no_argument, 0, 'h'}, "", "print this help menu"},
+#ifdef WITH_RPKI
+  {{"rpki", no_argument, 0, RPKI_OPTION_DEFAULT},
+   "",
+   "validate the BGP "
+   "records with historical RPKI dumps (default collector)"},
+  {{"rpki-live", no_argument, 0, RPKI_OPTION_LIVE},
+   "",
+   "validate the BGP "
+   " records with the current RPKI dump (default collector)"},
+  {{"rpki-collectors", required_argument, 0, RPKI_OPTION_COLLECTORS},
+   "<((*|project):(*|(collector(,collectors)*))(;)?)*>",
+   "\nspecify the "
+   "collectors used for (historical or live) RPKI validation "},
+  {{"rpki-unified", no_argument, 0, RPKI_OPTION_UNIFIED},
+   "",
+   "whether the RPKI validation for different collectors is unified"},
+  {{"rpki-ssh", required_argument, 0, RPKI_OPTION_SSH},
+   "<user,hostkey,private key>",
+   "\nenable SSH encryption for the live connection to the RTR server"},
+#endif
+  {{"help", no_argument, 0, '?'}, "", "print this help menu"},
+  {{0, 0, 0, 0}, "", "" }
+};
+
+#define OPTIONS_CNT (ARR_CNT(bs_opts) - 1)
 
 static struct option long_options[OPTIONS_CNT + 1];
 static char short_options[OPTIONS_CNT * 2 + 1];
@@ -254,20 +253,18 @@ static void usage()
     }
 
     char expl_buf[OPTIONS_EXPL_LEN] = {0};
-    for (j = 0; j < strlen(OPTIONS[k].expl); j++) {
+    for (j = 0; j < strlen(bs_opts[k].expl); j++) {
       snprintf(expl_buf + strlen(expl_buf), sizeof(expl_buf) - strlen(expl_buf),
-               OPTIONS[k].expl[j] == '\n' ? "%-48c" : "%c", OPTIONS[k].expl[j]);
+               bs_opts[k].expl[j] == '\n' ? "%-48c" : "%c", bs_opts[k].expl[j]);
     }
-    if (isalpha(OPTIONS[k].option.val)) {
-      fprintf(stderr, " -%c, --%-23s%-15s  %s\n", OPTIONS[k].option.val,
-              OPTIONS[k].option.name, OPTIONS[k].usage, expl_buf);
+    if (isalpha(bs_opts[k].option.val)) {
+      fprintf(stderr, " -%c, --%-23s%-15s  %s\n", bs_opts[k].option.val,
+              bs_opts[k].option.name, bs_opts[k].usage, expl_buf);
     } else {
-#ifdef WITH_RPKI
-      fprintf(stderr, "     --%-23s%-15s  %s\n", OPTIONS[k].option.name,
-              OPTIONS[k].usage, expl_buf);
-#endif
+      fprintf(stderr, "     --%-23s%-15s  %s\n", bs_opts[k].option.name,
+              bs_opts[k].usage, expl_buf);
     }
-    if (OPTIONS[k].option.val == 'd') {
+    if (bs_opts[k].option.val == 'd') {
       data_if_usage();
     }
   }
@@ -354,13 +351,13 @@ int main(int argc, char *argv[])
   int k;
   for (k = 0; k < OPTIONS_CNT; k++) {
     size_t size = strlen(short_options);
-    if (isalpha(OPTIONS[k].option.val)) {
+    if (isalpha(bs_opts[k].option.val)) {
       snprintf(short_options + size, sizeof(short_options) - size,
-               OPTIONS[k].option.has_arg ? "%c:" : "%c", OPTIONS[k].option.val);
+               bs_opts[k].option.has_arg ? "%c:" : "%c", bs_opts[k].option.val);
     }
-    long_options[k] = OPTIONS[k].option;
+    long_options[k] = bs_opts[k].option;
   }
-  long_options[k] = OPTIONS[k].option;
+  long_options[k] = bs_opts[k].option;
 
   while (prevoptind = optind,
          (opt = getopt_long(argc, argv, short_options, long_options, 0)) >= 0) {
