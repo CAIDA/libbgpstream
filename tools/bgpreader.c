@@ -79,10 +79,10 @@
 #define OPTIONS                                                                \
   (struct options[])                                                           \
   {                                                                            \
-    {{"data-interface", required_argument, 0, 'd'},                            \
-     "<interface>",                                                            \
-     "use the given data interface to find available data\n"                   \
-     "available data interfaces are:"},                                        \
+      {{"data-interface", required_argument, 0, 'd'},                          \
+       "<interface>",                                                          \
+       "use the given data interface to find available data\n"                 \
+       "available data interfaces are:"},                                      \
       {{"filter", required_argument, 0, 'f'},                                  \
        "<filterstring>",                                                       \
        "filter records and elements using the rules\n"                         \
@@ -94,7 +94,7 @@
        "expressed as '<num> <unit>', where\n<unit> can be one of 's', "        \
        "'m', 'h', 'd' (seconds,\nminutes, hours, days)."},                     \
       {{"data-interface-option", required_argument, 0, 'o'},                   \
-       "<option-name=option-value>*",                                          \
+       "<option-name>=<option-value>*",                                          \
        "\nset an option for the current data "                                 \
        "interface.\nuse '-o ?' to get a list of available options for the "    \
        "current\ndata interface. (data interface can be selected using -d)"},  \
@@ -126,7 +126,7 @@
       {{"community", required_argument, 0, 'y'},                               \
        "<community>",                                                          \
        "return elems with the specified community*\n"                    \
-       "(format: asn:value,the '*' metacharacter is recognized)"},             \
+       "(format: asn:value. the '*' metacharacter is recognized)"},            \
       {{"count", required_argument, 0, 'n'},                                   \
        "<rec-cnt>",                                                            \
        "process at most <rec-cnt> records"},                                   \
@@ -556,7 +556,7 @@ int main(int argc, char *argv[])
       if ((endp = strchr(interface_options[i], '=')) == NULL) {
         fprintf(stderr, "ERROR: Malformed data interface option (%s)\n",
                 interface_options[i]);
-        fprintf(stderr, "ERROR: Expecting <option-name>,<option-value>\n");
+        fprintf(stderr, "ERROR: Expecting <option-name>=<option-value>\n");
         usage();
         goto err;
       }
