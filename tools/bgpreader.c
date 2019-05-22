@@ -53,7 +53,6 @@
 #define PEERASN_CMD_CNT 1000
 #define ORIGINASN_CMD_CNT 1000
 #define OPTION_CMD_CNT 1024
-#define OPTIONS_EXPL_LEN 1024
 #define BGPSTREAM_RECORD_OUTPUT_FORMAT                                         \
   "# Record format:\n"                                                         \
   "# "                                                                         \
@@ -109,7 +108,7 @@ static struct bs_options_t bs_opts[] =
   {{"data-interface-option", required_argument, 0, 'o'},
    "<option-name>=<option-value>*",
    "\nset an option for the current data "
-   "interface.\nuse '-o ?' to get a list of available options for the "
+   "interface.\nuse '-o?' to get a list of available options for the "
    "current\ndata interface. (data interface can be selected using -d)"},
   {{"project", required_argument, 0, 'p'},
    "<project>",
@@ -165,7 +164,6 @@ static struct bs_options_t bs_opts[] =
   {{"version", no_argument, 0, 'v'},
    "",
    "print the version of bgpreader"},
-  {{"help", no_argument, 0, 'h'}, "", "print this help menu"},
 #ifdef WITH_RPKI
   {{"rpki", no_argument, 0, RPKI_OPTION_DEFAULT},
    "",
@@ -186,7 +184,7 @@ static struct bs_options_t bs_opts[] =
    "<user,hostkey,private key>",
    "\nenable SSH encryption for the live connection to the RTR server"},
 #endif
-  {{"help", no_argument, 0, '?'}, "", "print this help menu"},
+  {{"help", no_argument, 0, 'h'}, "", "print this help menu"},
   {{0, 0, 0, 0}, "", "" }
 };
 
@@ -246,24 +244,23 @@ static void dump_if_options()
 static void usage()
 {
   int k, j;
-  for (k = 0; k < OPTIONS_CNT - 1; k++) {
+  for (k = 0; k < OPTIONS_CNT; k++) {
     if (!k) {
       fprintf(stderr, "usage: bgpreader -w <start>[,<end>] [<options>]\n"
                       "Available options are:\n");
     }
 
-    char expl_buf[OPTIONS_EXPL_LEN] = {0};
-    for (j = 0; j < strlen(bs_opts[k].expl); j++) {
-      snprintf(expl_buf + strlen(expl_buf), sizeof(expl_buf) - strlen(expl_buf),
-               bs_opts[k].expl[j] == '\n' ? "%-48c" : "%c", bs_opts[k].expl[j]);
-    }
-    if (isalpha(bs_opts[k].option.val)) {
-      fprintf(stderr, " -%c, --%-23s%-15s  %s\n", bs_opts[k].option.val,
-              bs_opts[k].option.name, bs_opts[k].usage, expl_buf);
+    if (isgraph(bs_opts[k].option.val)) {
+      fprintf(stderr, " -%c, ", bs_opts[k].option.val);
     } else {
-      fprintf(stderr, "     --%-23s%-15s  %s\n", bs_opts[k].option.name,
-              bs_opts[k].usage, expl_buf);
+      fprintf(stderr, "     ");
     }
+    fprintf(stderr, "--%-23s%-15s  ", bs_opts[k].option.name, bs_opts[k].usage);
+    for (j = 0; j < strlen(bs_opts[k].expl); j++) {
+      fprintf(stderr, bs_opts[k].expl[j] == '\n' ? "%-48c" : "%c",
+          bs_opts[k].expl[j]);
+    }
+    fprintf(stderr, "\n");
     if (bs_opts[k].option.val == 'd') {
       data_if_usage();
     }
@@ -283,8 +280,6 @@ int main(int argc, char *argv[])
 
   int opt;
   int prevoptind;
-
-  opterr = 0;
 
   // variables associated with options
   char *projects[PROJECT_CMD_CNT];
@@ -349,21 +344,35 @@ int main(int argc, char *argv[])
 
   /* build the short and long options */
   int k;
+  size_t short_len = 0;
   for (k = 0; k < OPTIONS_CNT; k++) {
-    size_t size = strlen(short_options);
-    if (isalpha(bs_opts[k].option.val)) {
-      snprintf(short_options + size, sizeof(short_options) - size,
-               bs_opts[k].option.has_arg ? "%c:" : "%c", bs_opts[k].option.val);
+    if (isgraph(bs_opts[k].option.val)) {
+      short_options[short_len++] = bs_opts[k].option.val;
+      if (bs_opts[k].option.has_arg)
+        short_options[short_len++] = ':';
     }
     long_options[k] = bs_opts[k].option;
   }
+  short_options[short_len++] = '\0';
   long_options[k] = bs_opts[k].option;
 
+  opterr = 1;
   while (prevoptind = optind,
          (opt = getopt_long(argc, argv, short_options, long_options, 0)) >= 0) {
-    if (optind == prevoptind + 2 && (optarg == NULL || *optarg == '-')) {
-      opt = ':';
-      --optind;
+    if (optind == prevoptind + 2 && (optarg && *optarg == '-')) {
+      for (k = 0; long_options[k].name; k++) {
+        if (long_options[k].val == opt) break;
+      }
+      if (long_options[k].name) {
+        fprintf(stderr, "ERROR: spaced argument for ");
+        if (isgraph(opt)) fprintf(stderr, "-%c/", opt);
+        fprintf(stderr, "--%s looks like an option (use ",
+            long_options[k].name);
+        if (isgraph(opt)) fprintf(stderr, "-%c'%s' or ", opt, optarg);
+        fprintf(stderr, "--%s='%s' to force the argument)\n",
+            long_options[k].name, optarg);
+      }
+      goto err;
     }
     switch (opt) {
     case 'p':
@@ -372,7 +381,6 @@ int main(int argc, char *argv[])
                 "ERROR: A maximum of %d projects can be specified on "
                 "the command line\n",
                 PROJECT_CMD_CNT);
-        usage();
         goto err;
       }
       projects[projects_cnt++] = strdup(optarg);
@@ -383,7 +391,6 @@ int main(int argc, char *argv[])
                 "ERROR: A maximum of %d collectors can be specified on "
                 "the command line\n",
                 COLLECTOR_CMD_CNT);
-        usage();
         goto err;
       }
       collectors[collectors_cnt++] = strdup(optarg);
@@ -394,7 +401,6 @@ int main(int argc, char *argv[])
                 "ERROR: A maximum of %d types can be specified on "
                 "the command line\n",
                 TYPE_CMD_CNT);
-        usage();
         goto err;
       }
       if (strcmp(optarg, "ribs") != 0 && strcmp(optarg, "updates") != 0) {
@@ -422,7 +428,6 @@ int main(int argc, char *argv[])
                 "ERROR: A maximum of %d peer asns can be specified on "
                 "the command line\n",
                 PEERASN_CMD_CNT);
-        usage();
         goto err;
       }
       peerasns[peerasns_cnt++] = strdup(optarg);
@@ -433,7 +438,6 @@ int main(int argc, char *argv[])
                 "ERROR: A maximum of %d origin asns can be specified on "
                 "the command line\n",
                 ORIGINASN_CMD_CNT);
-        usage();
         goto err;
       }
       originasns[originasns_cnt++] = strdup(optarg);
@@ -444,7 +448,6 @@ int main(int argc, char *argv[])
                 "ERROR: A maximum of %d peer asns can be specified on "
                 "the command line\n",
                 PREFIX_CMD_CNT);
-        usage();
         goto err;
       }
       prefixes[prefixes_cnt++] = strdup(optarg);
@@ -455,7 +458,6 @@ int main(int argc, char *argv[])
                 "ERROR: A maximum of %d communities can be specified on "
                 "the command line\n",
                 PREFIX_CMD_CNT);
-        usage();
         goto err;
       }
       communities[communities_cnt++] = strdup(optarg);
@@ -476,7 +478,6 @@ int main(int argc, char *argv[])
         fprintf(stderr,
                 "ERROR: A maximum of %d interface options can be specified\n",
                 OPTION_CMD_CNT);
-        usage();
         goto err;
       }
       interface_options[interface_options_cnt++] = strdup(optarg);
@@ -508,16 +509,9 @@ int main(int argc, char *argv[])
     case 'I':
       intervalstring = optarg;
       break;
-    case ':':
-      fprintf(stderr, "ERROR: Missing option argument for -%c\n", optopt);
-      usage();
-      goto err;
-      break;
-    case '?':
     case 'v':
       fprintf(stderr, "bgpreader version %d.%d.%d\n", BGPSTREAM_MAJOR_VERSION,
               BGPSTREAM_MID_VERSION, BGPSTREAM_MINOR_VERSION);
-      usage();
       goto done;
       break;
 #ifdef WITH_RPKI
@@ -537,6 +531,9 @@ int main(int argc, char *argv[])
       bgpstream_rpki_parse_default(rpki_input);
       break;
 #endif
+    case 'h':
+      usage();
+      goto done;
     default:
       usage();
       goto err;
@@ -546,7 +543,6 @@ int main(int argc, char *argv[])
   for (i = 0; i < interface_options_cnt; i++) {
     if (*interface_options[i] == '?') {
       dump_if_options();
-      usage();
       goto done;
     } else {
       /* actually set this option */
@@ -554,7 +550,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "ERROR: Malformed data interface option (%s)\n",
                 interface_options[i]);
         fprintf(stderr, "ERROR: Expecting <option-name>=<option-value>\n");
-        usage();
         goto err;
       }
       *endp = '\0';
@@ -563,14 +558,13 @@ int main(int argc, char *argv[])
              bs, di_id, interface_options[i])) == NULL) {
         fprintf(stderr, "ERROR: Invalid option '%s' for data interface '%s'\n",
                 interface_options[i], di_info->name);
-        usage();
+        dump_if_options();
         goto err;
       }
       if (bgpstream_set_data_interface_option(bs, option, endp) != 0) {
         fprintf(stderr,
                 "ERROR: Failed to set option '%s' for data interface '%s'\n",
                 interface_options[i], di_info->name);
-        usage();
         goto err;
       }
     }
@@ -594,17 +588,15 @@ int main(int argc, char *argv[])
 
   /* Cannot output in both bgpstream elem and bgpdump format
    */
-  if (elem_output_on == 1 && record_bgpdump_output_on == 1) {
+  if (elem_output_on && record_bgpdump_output_on) {
     fprintf(stderr, "ERROR: Cannot output in both bgpstream elem (-e) and "
                     "bgpdump format (-m).\n");
-    usage();
     goto err;
   }
 
   /* if the user did not specify any output format
    * then the default one is per elem */
-  if (record_output_on == 0 && elem_output_on == 0 &&
-      record_bgpdump_output_on == 0) {
+  if (!record_output_on && !elem_output_on && !record_bgpdump_output_on) {
     elem_output_on = 1;
   }
 
