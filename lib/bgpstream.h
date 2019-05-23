@@ -170,10 +170,10 @@ typedef struct bgpstream_data_interface_info {
   bgpstream_data_interface_id_t id;
 
   /** The name of this data interface */
-  char *name;
+  const char *name;
 
   /** A human-readable description of this data interface */
-  char *description;
+  const char *description;
 
 } bgpstream_data_interface_info_t;
 
@@ -187,10 +187,10 @@ typedef struct struct_bgpstream_data_interface_option {
   int id;
 
   /** The human-readable name of the option */
-  char *name;
+  const char *name;
 
   /** A human-readable description of the option */
-  char *description;
+  const char *description;
 
 } bgpstream_data_interface_option_t;
 
@@ -205,7 +205,7 @@ typedef struct struct_bgpstream_data_interface_option {
  *
  * @return a pointer to a BGP Stream instance if successful, NULL otherwise
  */
-bgpstream_t *bgpstream_create();
+bgpstream_t *bgpstream_create(void);
 
 /** Add a filter in order to select a subset of the bgp data available
  *

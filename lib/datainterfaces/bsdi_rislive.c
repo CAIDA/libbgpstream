@@ -60,7 +60,7 @@ static bgpstream_data_interface_option_t options[] = {
 BSDI_CREATE_CLASS_FULL(
   rislive, "ris-live", BGPSTREAM_DATA_INTERFACE_RISLIVE,
   "Read updates in real-time from the RIPE RIS live stream",
-  options);
+  options)
 
 /* ---------- END CLASS DEFINITION ---------- */
 

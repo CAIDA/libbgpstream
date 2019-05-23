@@ -29,6 +29,6 @@
 
 #include "bgpstream_di_interface.h"
 
-BSDI_GENERATE_PROTOS(rislive);
+BSDI_GENERATE_PROTOS(rislive)
 
 #endif /* __BSDI_RISLIVE_H */

@@ -49,7 +49,7 @@ typedef struct peer_index_entry {
 } peer_index_entry_t;
 
 KHASH_INIT(td2_peer, int, peer_index_entry_t, 1, kh_int_hash_func,
-           kh_int_hash_equal);
+           kh_int_hash_equal)
 
 typedef struct rec_data {
 

@@ -29,6 +29,6 @@
 
 #include "bgpstream_format_interface.h"
 
-BS_FORMAT_GENERATE_PROTOS(rislive);
+BS_FORMAT_GENERATE_PROTOS(rislive)
 
 #endif /* __BS_FORMAT_RIPEJSON_H */

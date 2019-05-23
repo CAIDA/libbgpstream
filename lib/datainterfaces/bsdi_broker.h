@@ -29,6 +29,6 @@
 
 #include "bgpstream_di_interface.h"
 
-BSDI_GENERATE_PROTOS(broker);
+BSDI_GENERATE_PROTOS(broker)
 
 #endif /* __BSDI_BROKER_H */

@@ -66,7 +66,7 @@ typedef struct bgpstream_ipv6_pfx_set bgpstream_ipv6_pfx_set_t;
  *
  * @return a pointer to the structure, or NULL if an error occurred
  */
-bgpstream_pfx_storage_set_t *bgpstream_pfx_storage_set_create();
+bgpstream_pfx_storage_set_t *bgpstream_pfx_storage_set_create(void);
 
 /** Insert a new prefix into the given set.
  *
@@ -130,7 +130,7 @@ void bgpstream_pfx_storage_set_clear(bgpstream_pfx_storage_set_t *set);
  *
  * @return a pointer to the structure, or NULL if an error occurred
  */
-bgpstream_ipv4_pfx_set_t *bgpstream_ipv4_pfx_set_create();
+bgpstream_ipv4_pfx_set_t *bgpstream_ipv4_pfx_set_create(void);
 
 /** Insert a new prefix into the given set.
  *
@@ -185,7 +185,7 @@ void bgpstream_ipv4_pfx_set_clear(bgpstream_ipv4_pfx_set_t *set);
  *
  * @return a pointer to the structure, or NULL if an error occurred
  */
-bgpstream_ipv6_pfx_set_t *bgpstream_ipv6_pfx_set_create();
+bgpstream_ipv6_pfx_set_t *bgpstream_ipv6_pfx_set_create(void);
 
 /** Insert a new prefix into the given set.
  *

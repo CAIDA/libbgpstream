@@ -29,6 +29,6 @@
 
 #include "bgpstream_di_interface.h"
 
-BSDI_GENERATE_PROTOS(csvfile);
+BSDI_GENERATE_PROTOS(csvfile)
 
 #endif /* __BSDI_CSVFILE_H */

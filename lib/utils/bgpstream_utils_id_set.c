@@ -41,7 +41,7 @@
 KHASH_INIT(bgpstream_id_set /* name */, uint32_t /* khkey_t */,
            char /* khval_t */, 0 /* kh_is_set */,
            kh_int_hash_func /*__hash_func */,
-           kh_int_hash_equal /* __hash_equal */);
+           kh_int_hash_equal /* __hash_equal */)
 
 struct bgpstream_id_set {
   khiter_t k;

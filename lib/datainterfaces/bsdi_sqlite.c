@@ -62,7 +62,7 @@ static bgpstream_data_interface_option_t options[] = {
 /* create the class structure for this data interface */
 BSDI_CREATE_CLASS(sqlite, BGPSTREAM_DATA_INTERFACE_SQLITE,
                   "Retrieve metadata information from an SQLite database",
-                  options);
+                  options)
 
 /* ---------- END CLASS DEFINITION ---------- */
 

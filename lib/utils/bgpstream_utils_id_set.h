@@ -55,7 +55,7 @@ typedef struct bgpstream_id_set bgpstream_id_set_t;
  *
  * @return a pointer to the structure, or NULL if an error occurred
  */
-bgpstream_id_set_t *bgpstream_id_set_create();
+bgpstream_id_set_t *bgpstream_id_set_create(void);
 
 /** Insert a new ID into the given set.
  *

@@ -71,11 +71,11 @@ int bgpstream_peer_sig_map_set(bgpstream_peer_sig_map_t *map,
 /** Map from peer signature to peer ID */
 KHASH_INIT(bgpstream_peer_sig_id_map, bgpstream_peer_sig_t *,
            bgpstream_peer_id_t, 1, bgpstream_peer_sig_hash,
-           bgpstream_peer_sig_equal);
+           bgpstream_peer_sig_equal)
 
 /** Map from peer ID to signature */
 KHASH_INIT(bgpstream_peer_id_sig_map, bgpstream_peer_id_t,
-           bgpstream_peer_sig_t *, 1, kh_int_hash_func, kh_int_hash_equal);
+           bgpstream_peer_sig_t *, 1, kh_int_hash_func, kh_int_hash_equal)
 
 /** Structure representing an instance of a Peer Signature Map */
 struct bgpstream_peer_sig_map {
@@ -179,7 +179,7 @@ err:
 }
 
 bgpstream_peer_id_t bgpstream_peer_sig_map_get_id(
-  bgpstream_peer_sig_map_t *map, char *collector_str,
+  bgpstream_peer_sig_map_t *map, const char *collector_str,
   bgpstream_ip_addr_t *peer_ip_addr, uint32_t peer_asnumber)
 {
   bgpstream_peer_sig_t *new_ps;

@@ -62,9 +62,10 @@
 
 /** Community mask used for filtering */
 
-#define BGPSTREAM_COMMUNITY_FILTER_EXACT 0b0011
-#define BGPSTREAM_COMMUNITY_FILTER_ASN 0b0010
-#define BGPSTREAM_COMMUNITY_FILTER_VALUE 0b0001
+#define BGPSTREAM_COMMUNITY_FILTER_ASN   0x02
+#define BGPSTREAM_COMMUNITY_FILTER_VALUE 0x01
+#define BGPSTREAM_COMMUNITY_FILTER_EXACT \
+  (BGPSTREAM_COMMUNITY_FILTER_ASN | BGPSTREAM_COMMUNITY_FILTER_VALUE)
 
 /** @} */
 
@@ -196,7 +197,7 @@ int bgpstream_community_set_snprintf(char *buf, size_t len,
  * @return pointer to the created community set object if successful, NULL
  * otherwise
  */
-bgpstream_community_set_t *bgpstream_community_set_create();
+bgpstream_community_set_t *bgpstream_community_set_create(void);
 
 /** Clear the given community set structure
  *

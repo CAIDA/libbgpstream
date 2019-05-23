@@ -29,6 +29,6 @@
 
 #include "bgpstream_transport_interface.h"
 
-BS_TRANSPORT_GENERATE_PROTOS(file);
+BS_TRANSPORT_GENERATE_PROTOS(file)
 
 #endif /* __BS_TRANSPORT_FILE_H */

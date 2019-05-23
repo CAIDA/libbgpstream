@@ -40,7 +40,7 @@
 #define STATE (BSDI_GET_STATE(di, singlefile))
 
 // mapping from type name to resource format type
-static char *type_strs[] = {
+static const char *type_strs[] = {
   "mrt",      // BGPSTREAM_RESOURCE_FORMAT_MRT
   "bmp",      // BGPSTREAM_RESOURCE_FORMAT_BMP
   "ris-live",  // BGPSTREAM_RESOURCE_FORMAT_RISLIVE
@@ -91,7 +91,7 @@ static bgpstream_data_interface_option_t options[] = {
 
 /* create the class structure for this data interface */
 BSDI_CREATE_CLASS(singlefile, BGPSTREAM_DATA_INTERFACE_SINGLEFILE,
-                  "Read a single mrt data file (RIB and/or updates)", options);
+                  "Read a single mrt data file (RIB and/or updates)", options)
 
 /* ---------- END CLASS DEFINITION ---------- */
 

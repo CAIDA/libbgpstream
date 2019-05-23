@@ -94,14 +94,15 @@ void bgpstream_rpki_parse_unified(bgpstream_rpki_input_t *inp)
   inp->rpki_unified = 1;
 }
 
-void bgpstream_rpki_parse_ssh(char *optarg, bgpstream_rpki_input_t *inp)
+void bgpstream_rpki_parse_ssh(const char *optarg, bgpstream_rpki_input_t *inp)
 {
   /* Add the SSH parameters to the input struct */
   inp->rpki_ssh_ptr = inp->rpki_ssh;
   snprintf(inp->rpki_ssh_ptr, sizeof(inp->rpki_ssh), "%s", optarg);
 }
 
-void bgpstream_rpki_parse_collectors(char *optarg, bgpstream_rpki_input_t *inp)
+void bgpstream_rpki_parse_collectors(const char *optarg,
+    bgpstream_rpki_input_t *inp)
 {
   /* Add the collectors parameter to the input struct and set RPKI active */
   inp->rpki_active = 1;

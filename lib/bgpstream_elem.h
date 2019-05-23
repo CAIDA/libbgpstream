@@ -271,7 +271,7 @@ typedef struct bgpstream_elem {
  *
  * @return a pointer to an Elem instance if successful, NULL otherwise
  */
-bgpstream_elem_t *bgpstream_elem_create();
+bgpstream_elem_t *bgpstream_elem_create(void);
 
 /** Destroy the given BGP Stream Elem instance
  *

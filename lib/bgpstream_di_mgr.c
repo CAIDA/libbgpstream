@@ -97,7 +97,7 @@ struct bgpstream_di_mgr {
 };
 
 /** Convenience typedef for the interface alloc function type */
-typedef bsdi_t *(*di_alloc_func_t)();
+typedef bsdi_t *(*di_alloc_func_t)(void);
 
 /** Array of DI allocation functions.
  *

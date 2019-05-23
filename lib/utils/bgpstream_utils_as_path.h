@@ -255,7 +255,7 @@ int bgpstream_as_path_get_filterable(char *buf, size_t len,
  *
  * @return pointer to the created AS path object if successful, NULL otherwise
  */
-bgpstream_as_path_t *bgpstream_as_path_create();
+bgpstream_as_path_t *bgpstream_as_path_create(void);
 
 /** Clear the given AS path structure
  *

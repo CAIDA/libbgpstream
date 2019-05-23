@@ -44,7 +44,7 @@
 #define ALL_PEERS ".+"
 
 // allowed offset types
-static char *offset_strs[] = {
+static const char *offset_strs[] = {
   "earliest", // start from the beginning of the topic
   "latest",   // start from the end of the topic
 };
@@ -87,7 +87,7 @@ static bgpstream_data_interface_option_t options[] = {
 BSDI_CREATE_CLASS_FULL(
   betabmp, "beta-bmp-stream", BGPSTREAM_DATA_INTERFACE_BETABMP,
   "Read updates in real-time from the public BGPStream BMP feed (BETA)",
-  options);
+  options)
 
 /* ---------- END CLASS DEFINITION ---------- */
 
@@ -113,11 +113,11 @@ typedef struct bsdi_betabmp_state {
 
 /* ========== PRIVATE METHODS BELOW HERE ========== */
 
-static int append_topic(char **list, char *router, uint32_t *peer_asn)
+static int append_topic(char **list, const char *router, uint32_t *peer_asn)
 {
   char buf[256]; // temp buffer for this topic
   char as_buf[12];
-  char *peer_str = ALL_PEERS;
+  const char *peer_str = ALL_PEERS;
   int new_len = 0;
   int need_comma = (*list != NULL);
 
@@ -161,7 +161,7 @@ static int append_topic(char **list, char *router, uint32_t *peer_asn)
   return new_len;
 }
 
-static int build_topic_list_peers(bsdi_t *di, char **list, char *router)
+static int build_topic_list_peers(bsdi_t *di, char **list, const char *router)
 {
   bgpstream_filter_mgr_t *filter_mgr = BSDI_GET_FILTER_MGR(di);
   uint32_t *peer_asn = NULL;

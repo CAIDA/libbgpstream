@@ -55,7 +55,7 @@ typedef struct bgpstream_str_set_t bgpstream_str_set_t;
  *
  * @return a pointer to the structure, or NULL if an error occurred
  */
-bgpstream_str_set_t *bgpstream_str_set_create();
+bgpstream_str_set_t *bgpstream_str_set_create(void);
 
 /** Insert a new string into the string set.
  *

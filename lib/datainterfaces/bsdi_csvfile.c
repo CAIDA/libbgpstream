@@ -62,7 +62,7 @@ static bgpstream_data_interface_option_t options[] = {
 
 /* create the class structure for this data interface */
 BSDI_CREATE_CLASS(csvfile, BGPSTREAM_DATA_INTERFACE_CSVFILE,
-                  "Retrieve metadata information from a csv file", options);
+                  "Retrieve metadata information from a csv file", options)
 
 /* ---------- END CLASS DEFINITION ---------- */
 

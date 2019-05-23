@@ -43,7 +43,7 @@ unsigned int
 #elif ULONG_MAX == 0xffffffffu
 unsigned long
 #endif
-bgpstream_ipv4_addr_hash(bgpstream_ipv4_addr_t *addr)
+bgpstream_ipv4_addr_hash(const bgpstream_ipv4_addr_t *addr)
 {
   return __ac_Wang_hash(addr->ipv4.s_addr);
 }
@@ -53,10 +53,9 @@ unsigned long
 #else
 unsigned long long
 #endif
-bgpstream_ipv6_addr_hash(bgpstream_ipv6_addr_t *addr)
+bgpstream_ipv6_addr_hash(const bgpstream_ipv6_addr_t *addr)
 {
-  unsigned char *s6 = &(addr->ipv6.s6_addr[0]);
-  return __ac_Wang_hash(*((khint64_t *)s6));
+  return __ac_Wang_hash(*((const khint64_t *)(&(addr->ipv6.s6_addr[0]))));
 }
 
 #if ULONG_MAX == ULLONG_MAX
@@ -81,41 +80,39 @@ bgpstream_addr_storage_hash(bgpstream_addr_storage_t *addr)
   }
 }
 
-int bgpstream_addr_equal(bgpstream_ip_addr_t *addr1, bgpstream_ip_addr_t *addr2)
+int bgpstream_addr_equal(const bgpstream_ip_addr_t *addr1,
+    const bgpstream_ip_addr_t *addr2)
 {
   if (addr1->version == BGPSTREAM_ADDR_VERSION_IPV4 &&
       addr2->version == BGPSTREAM_ADDR_VERSION_IPV4) {
-    return bgpstream_ipv4_addr_equal((bgpstream_ipv4_addr_t *)addr1,
-                                     (bgpstream_ipv4_addr_t *)addr2);
+    return bgpstream_ipv4_addr_equal((const bgpstream_ipv4_addr_t *)addr1,
+                                     (const bgpstream_ipv4_addr_t *)addr2);
   }
   if (addr1->version == BGPSTREAM_ADDR_VERSION_IPV6 &&
       addr2->version == BGPSTREAM_ADDR_VERSION_IPV6) {
-    return bgpstream_ipv6_addr_equal((bgpstream_ipv6_addr_t *)addr1,
-                                     (bgpstream_ipv6_addr_t *)addr2);
+    return bgpstream_ipv6_addr_equal((const bgpstream_ipv6_addr_t *)addr1,
+                                     (const bgpstream_ipv6_addr_t *)addr2);
   }
   return 0;
 }
 
-int bgpstream_addr_storage_equal(bgpstream_addr_storage_t *addr1,
-                                 bgpstream_addr_storage_t *addr2)
+int bgpstream_addr_storage_equal(const bgpstream_addr_storage_t *addr1,
+                                 const bgpstream_addr_storage_t *addr2)
 {
-  return bgpstream_addr_equal((bgpstream_ip_addr_t *)addr1,
-                              (bgpstream_ip_addr_t *)addr2);
+  return bgpstream_addr_equal((const bgpstream_ip_addr_t *)addr1,
+                              (const bgpstream_ip_addr_t *)addr2);
 }
 
-int bgpstream_ipv4_addr_equal(bgpstream_ipv4_addr_t *addr1,
-                              bgpstream_ipv4_addr_t *addr2)
+int bgpstream_ipv4_addr_equal(const bgpstream_ipv4_addr_t *addr1,
+                              const bgpstream_ipv4_addr_t *addr2)
 {
   return addr1->ipv4.s_addr == addr2->ipv4.s_addr;
 }
 
-int bgpstream_ipv6_addr_equal(bgpstream_ipv6_addr_t *addr1,
-                              bgpstream_ipv6_addr_t *addr2)
+int bgpstream_ipv6_addr_equal(const bgpstream_ipv6_addr_t *addr1,
+                              const bgpstream_ipv6_addr_t *addr2)
 {
-  return ((memcmp(&(addr1->ipv6.s6_addr[0]), &(addr2->ipv6.s6_addr[0]),
-                  sizeof(uint64_t)) == 0) &&
-          (memcmp(&(addr1->ipv6.s6_addr[8]), &(addr2->ipv6.s6_addr[8]),
-                  sizeof(uint64_t)) == 0));
+  return memcmp(&(addr1->ipv6.s6_addr[0]), &(addr2->ipv6.s6_addr[0]), 16) == 0;
 }
 
 bgpstream_ip_addr_t *bgpstream_addr_mask(bgpstream_ip_addr_t *addr,
@@ -168,7 +165,8 @@ bgpstream_ipv6_addr_t *bgpstream_ipv6_addr_mask(bgpstream_ipv6_addr_t *addr,
   return addr;
 }
 
-void bgpstream_addr_copy(bgpstream_ip_addr_t *dst, bgpstream_ip_addr_t *src)
+void bgpstream_addr_copy(bgpstream_ip_addr_t *dst,
+    const bgpstream_ip_addr_t *src)
 {
   if (src->version == BGPSTREAM_ADDR_VERSION_IPV4) {
     memcpy(dst, src, sizeof(bgpstream_ipv4_addr_t));
@@ -178,7 +176,7 @@ void bgpstream_addr_copy(bgpstream_ip_addr_t *dst, bgpstream_ip_addr_t *src)
   }
 }
 
-bgpstream_addr_storage_t *bgpstream_str2addr(char *addr_str,
+bgpstream_addr_storage_t *bgpstream_str2addr(const char *addr_str,
                                              bgpstream_addr_storage_t *addr)
 {
   if (addr_str == NULL || addr == NULL) {

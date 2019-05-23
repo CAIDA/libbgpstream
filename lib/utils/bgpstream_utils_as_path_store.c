@@ -63,7 +63,7 @@ typedef struct pathset {
 } __attribute__((packed)) pathset_t;
 
 KHASH_INIT(pathset, uint32_t, pathset_t, 1, kh_int_hash_func,
-           kh_int_hash_equal);
+           kh_int_hash_equal)
 
 struct bgpstream_as_path_store {
 
@@ -92,7 +92,7 @@ static void store_path_destroy(bgpstream_as_path_store_path_t *spath)
   spath->path.data_alloc_len = 0;
 }
 
-int store_path_dup(bgpstream_as_path_store_path_t *dst,
+static int store_path_dup(bgpstream_as_path_store_path_t *dst,
                    bgpstream_as_path_store_path_t *src)
 {
   *dst = *src;

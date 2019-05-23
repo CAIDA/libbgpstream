@@ -45,9 +45,9 @@
  *
  */
 
-#define BGPSTREAM_PATRICIA_LESS_SPECIFICS 0b0100
-#define BGPSTREAM_PATRICIA_EXACT_MATCH 0b0010
-#define BGPSTREAM_PATRICIA_MORE_SPECIFICS 0b0001
+#define BGPSTREAM_PATRICIA_LESS_SPECIFICS 0x04
+#define BGPSTREAM_PATRICIA_EXACT_MATCH    0x02
+#define BGPSTREAM_PATRICIA_MORE_SPECIFICS 0x01
 
 /**
  * @name Opaque Data Structures
@@ -99,7 +99,7 @@ typedef void(bgpstream_patricia_tree_process_node_t)(
  * @return the result set instance created, NULL if an error occurs
  */
 bgpstream_patricia_tree_result_set_t *
-bgpstream_patricia_tree_result_set_create();
+bgpstream_patricia_tree_result_set_create(void);
 
 /** Free a result set instance
  *

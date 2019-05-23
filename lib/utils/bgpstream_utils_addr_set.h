@@ -66,7 +66,7 @@ typedef struct bgpstream_ipv6_addr_set bgpstream_ipv6_addr_set_t;
  *
  * @return a pointer to the structure, or NULL if an error occurred
  */
-bgpstream_addr_storage_set_t *bgpstream_addr_storage_set_create();
+bgpstream_addr_storage_set_t *bgpstream_addr_storage_set_create(void);
 
 /** Insert a new address into the given set.
  *
@@ -112,7 +112,7 @@ void bgpstream_addr_storage_set_clear(bgpstream_addr_storage_set_t *set);
  *
  * @return a pointer to the structure, or NULL if an error occurred
  */
-bgpstream_ipv4_addr_set_t *bgpstream_ipv4_addr_set_create();
+bgpstream_ipv4_addr_set_t *bgpstream_ipv4_addr_set_create(void);
 
 /** Insert a new address into the given set.
  *
@@ -158,7 +158,7 @@ void bgpstream_ipv4_addr_set_clear(bgpstream_ipv4_addr_set_t *set);
  *
  * @return a pointer to the structure, or NULL if an error occurred
  */
-bgpstream_ipv6_addr_set_t *bgpstream_ipv6_addr_set_create();
+bgpstream_ipv6_addr_set_t *bgpstream_ipv6_addr_set_create(void);
 
 /** Insert a new address into the given set.
  *

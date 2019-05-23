@@ -58,7 +58,7 @@
  * interface API
  */
 #define BSDI_GENERATE_PROTOS(ifname)                                           \
-  bsdi_t *bsdi_##ifname##_alloc();                                             \
+  bsdi_t *bsdi_##ifname##_alloc(void);                                         \
   int bsdi_##ifname##_init(bsdi_t *di);                                        \
   int bsdi_##ifname##_start(bsdi_t *di);                                       \
   int bsdi_##ifname##_set_option(                                              \
