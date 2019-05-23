@@ -201,8 +201,7 @@ static int elem_check_filters(bgpstream_record_t *record,
       return 0;
     }
 
-    bgpstream_ip_addr_t *addr = &(((bgpstream_pfx_t *)&elem->prefix)->address);
-    if (addr->version != filter_mgr->ipversion)
+    if (elem->prefix.address.version != filter_mgr->ipversion)
       return 0;
   }
 
@@ -210,8 +209,7 @@ static int elem_check_filters(bgpstream_record_t *record,
     if (elem->type == BGPSTREAM_ELEM_TYPE_PEERSTATE) {
       return 0;
     }
-    return bgpstream_elem_prefix_match(filter_mgr->prefixes,
-                                       (bgpstream_pfx_t *)&elem->prefix);
+    return bgpstream_elem_prefix_match(filter_mgr->prefixes, &elem->prefix);
   }
 
   /* Checking AS Path expressions */

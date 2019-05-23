@@ -126,7 +126,7 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
   case BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_LESS:
   case BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_EXACT:
   case BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_ANY: {
-    bgpstream_pfx_storage_t pfx;
+    bgpstream_pfx_t pfx;
     uint8_t matchtype;
 
     if (bs_filter_mgr->prefixes == NULL) {
@@ -151,8 +151,7 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
     }
 
     pfx.allowed_matches = matchtype;
-    if (bgpstream_patricia_tree_insert(bs_filter_mgr->prefixes,
-                                       (bgpstream_pfx_t *)&pfx) == NULL) {
+    if (bgpstream_patricia_tree_insert(bs_filter_mgr->prefixes, &pfx) == NULL) {
       bgpstream_log(BGPSTREAM_LOG_VFINE,
                     "\tBSF_MGR:: add_filter malloc failed");
       bgpstream_log(BGPSTREAM_LOG_ERR, "\tBSF_MGR: can't add prefix");

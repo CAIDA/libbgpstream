@@ -65,7 +65,7 @@ int bgpstream_peer_sig_equal(bgpstream_peer_sig_t *ps1,
  */
 int bgpstream_peer_sig_map_set(bgpstream_peer_sig_map_t *map,
                                bgpstream_peer_id_t peer_id, char *collector_str,
-                               bgpstream_addr_storage_t *peer_ip_addr,
+                               bgpstream_ip_addr_t *peer_ip_addr,
                                uint32_t peer_asnumber);
 
 /** Map from peer signature to peer ID */
@@ -137,7 +137,7 @@ khint64_t bgpstream_peer_sig_hash(bgpstream_peer_sig_t *ps)
   /* assuming that the number of peers that have the same ip and belong to two
    * different collectors is low (in this specific case there will be a
    * collision in terms of hash). */
-  return bgpstream_addr_storage_hash(&ps->peer_ip_addr);
+  return bgpstream_addr_hash(&ps->peer_ip_addr);
 }
 
 /** @note we do not need to take into account the peer AS number
@@ -146,7 +146,7 @@ int bgpstream_peer_sig_equal(bgpstream_peer_sig_t *ps1,
                              bgpstream_peer_sig_t *ps2)
 {
   return (
-    bgpstream_addr_storage_equal(&ps1->peer_ip_addr, &ps2->peer_ip_addr) &&
+    bgpstream_addr_equal(&ps1->peer_ip_addr, &ps2->peer_ip_addr) &&
     (strcmp(ps1->collector_str, ps2->collector_str) == 0));
 }
 
@@ -187,23 +187,7 @@ bgpstream_peer_id_t bgpstream_peer_sig_map_get_id(
     return -1;
   }
 
-  new_ps->peer_ip_addr.version = peer_ip_addr->version;
-  switch (peer_ip_addr->version) {
-  case BGPSTREAM_ADDR_VERSION_IPV4:
-    memcpy(&new_ps->peer_ip_addr.ipv4.s_addr,
-           &((bgpstream_ipv4_addr_t *)peer_ip_addr)->ipv4.s_addr,
-           sizeof(uint32_t));
-    break;
-  case BGPSTREAM_ADDR_VERSION_IPV6:
-    memcpy(&new_ps->peer_ip_addr.ipv6.s6_addr,
-           &((bgpstream_ipv6_addr_t *)peer_ip_addr)->ipv6.s6_addr,
-           sizeof(uint8_t) * 16);
-    break;
-  default:
-    /* programming error */
-    assert(0);
-  }
-
+  bgpstream_addr_copy(&new_ps->peer_ip_addr, peer_ip_addr);
   strcpy(new_ps->collector_str, collector_str);
   new_ps->peer_asnumber = peer_asnumber;
 

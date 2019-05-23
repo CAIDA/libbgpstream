@@ -149,7 +149,7 @@ typedef struct bgpstream_elem_aggregator {
   uint32_t aggregator_asn;
 
   /** Aggregator IP */
-  bgpstream_addr_storage_t aggregator_addr;
+  bgpstream_ip_addr_t aggregator_addr;
 
 } bgpstream_elem_aggregator_t;
 
@@ -190,7 +190,7 @@ typedef struct bgpstream_elem {
    * This is the IP address that the peer used to connect to the collector (or
    * router in the case of BMP).
    */
-  bgpstream_addr_storage_t peer_ip;
+  bgpstream_ip_addr_t peer_ip;
 
   /** Peer AS number */
   uint32_t peer_asn;
@@ -201,13 +201,13 @@ typedef struct bgpstream_elem {
    *
    * Available only for RIB, Announcement and Withdrawal elem types
    */
-  bgpstream_pfx_storage_t prefix;
+  bgpstream_pfx_t prefix;
 
   /** Next hop
    *
    * Available only for RIB and Announcement elem types
    */
-  bgpstream_addr_storage_t nexthop;
+  bgpstream_ip_addr_t nexthop;
 
   /** AS path
    *

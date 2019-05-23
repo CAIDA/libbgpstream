@@ -121,8 +121,7 @@ int bgpstream_rpki_validate(bgpstream_elem_t const *elem, char *result,
   /* Validate a BGP elem with the ROAFetchlib */
   int val_rst = 0;
   char prefix[INET6_ADDRSTRLEN];
-  bgpstream_addr_ntop(prefix, INET6_ADDRSTRLEN,
-                      &(((bgpstream_pfx_t *)&(elem->prefix))->address));
+  bgpstream_addr_ntop(prefix, INET6_ADDRSTRLEN, &(elem->prefix.address));
   uint32_t asn = 0;
 
   /* Validate the BGP elem only if the origin ASN is a simple ASN value

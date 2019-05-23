@@ -201,7 +201,7 @@ typedef struct bgpstream_record {
    * name is empty. In this case the router IP should be used to identify the
    * router.
    */
-  bgpstream_addr_storage_t router_ip;
+  bgpstream_ip_addr_t router_ip;
 
   /* ---------- DUMP-ONLY FIELDS: ---------- */
 

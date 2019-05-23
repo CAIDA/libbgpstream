@@ -35,13 +35,11 @@
   do {                                                                         \
     switch (afi) {                                                             \
     case PARSEBGP_BGP_AFI_IPV4:                                                \
-      (dst)->version = BGPSTREAM_ADDR_VERSION_IPV4;                            \
-      memcpy(&(dst)->ipv4, src, 4);                                            \
+      bgpstream_ipv4_addr_init(dst, src);                                      \
       break;                                                                   \
                                                                                \
     case PARSEBGP_BGP_AFI_IPV6:                                                \
-      (dst)->version = BGPSTREAM_ADDR_VERSION_IPV6;                            \
-      memcpy(&(dst)->ipv6, src, 16);                                           \
+      bgpstream_ipv6_addr_init(dst, src);                                      \
       break;                                                                   \
                                                                                \
     default:                                                                   \

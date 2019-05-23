@@ -64,7 +64,7 @@ typedef struct struct_bgpstream_peer_sig_t {
   char collector_str[BGPSTREAM_UTILS_STR_NAME_LEN];
 
   /** The IP address of this peer */
-  bgpstream_addr_storage_t peer_ip_addr;
+  bgpstream_ip_addr_t peer_ip_addr;
 
   /** The AS number of this peer*/
   uint32_t peer_asnumber;
