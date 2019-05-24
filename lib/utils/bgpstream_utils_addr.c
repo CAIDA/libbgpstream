@@ -169,25 +169,17 @@ bgpstream_ip_addr_t *bgpstream_str2addr(const char *addr_str,
     return NULL;
   }
 
-  if (strchr(addr_str, ':') != NULL) {
-    /* this looks like it will be an IPv6 address */
-    if (inet_pton(AF_INET6, addr_str, &addr->bs_ipv6.addr) != 1) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not parse address string %s",
-                    addr_str);
-      return NULL;
-    }
-    addr->version = BGPSTREAM_ADDR_VERSION_IPV6;
-  } else {
-    /* probably a v4 address */
-    if (inet_pton(AF_INET, addr_str, &addr->bs_ipv4.addr) != 1) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not parse address string %s",
-                    addr_str);
-      return NULL;
-    }
+  if (inet_pton(AF_INET, addr_str, &addr->bs_ipv4.addr) == 1) {
     addr->version = BGPSTREAM_ADDR_VERSION_IPV4;
+    return addr;
+  } else if (inet_pton(AF_INET6, addr_str, &addr->bs_ipv6.addr) == 1) {
+    addr->version = BGPSTREAM_ADDR_VERSION_IPV6;
+    return addr;
+  } else {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not parse address string %s",
+                  addr_str);
+    return NULL;
   }
-
-  return addr;
 }
 
 uint8_t bgpstream_ipv2idx(bgpstream_addr_version_t v)
