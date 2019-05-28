@@ -41,7 +41,7 @@
     bgpstream_set_data_interface(bs, di_id);                                   \
   } while (0)
 
-const char *valid_output[] = {
+static const char *valid_output[] = {
   "U|A|1553627987.890000|singlefile|rrc00|||11708|72.22.223.9|45.161.192.0/23|72.22.223.9|11708 32097 1299 52320 263009 263009 263009 263009 263009 52993 268481 268481|268481|||",
   "U|S|1553624995.840000|singlefile|rrc00|||60474|94.177.122.251|||||||OPENSENT",
   "", // notification
@@ -66,7 +66,7 @@ static char buf[65536];
  * 6. unsupported (change keepalive message's type to an unsupported one)
  * 7. corrupted (change keepalive messages's raw bytes)
  */
-int test_bgpstream_rislive()
+static int test_bgpstream_rislive()
 {
   /* Declare BGPStream requirements */
   int rrc = 0, count = 0, rcount = 0, erc = 0;

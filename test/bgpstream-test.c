@@ -37,10 +37,10 @@
 #define sqlite_RECORDS 538308
 #define broker_RECORDS 2153
 
-bgpstream_t *bs;
-bgpstream_record_t *rec;
-bgpstream_data_interface_id_t di_id = 0;
-bgpstream_data_interface_option_t *option;
+static bgpstream_t *bs;
+static bgpstream_record_t *rec;
+static bgpstream_data_interface_id_t di_id = 0;
+static bgpstream_data_interface_option_t *option;
 
 #define RUN(interface)                                                         \
   do {                                                                         \
@@ -76,7 +76,7 @@ bgpstream_data_interface_option_t *option;
     bgpstream_set_data_interface(bs, di_id);                                   \
   } while (0)
 
-int test_bgpstream()
+static int test_bgpstream()
 {
   CHECK("BGPStream create", (bs = bgpstream_create()) != NULL);
 
@@ -84,7 +84,7 @@ int test_bgpstream()
   return 0;
 }
 
-int test_singlefile()
+static int test_singlefile()
 {
   SETUP;
 
@@ -110,7 +110,7 @@ int test_singlefile()
   return 0;
 }
 
-int test_csvfile()
+static int test_csvfile()
 {
   SETUP;
 
@@ -129,7 +129,7 @@ int test_csvfile()
   return 0;
 }
 
-int test_sqlite()
+static int test_sqlite()
 {
   SETUP;
 
@@ -149,7 +149,7 @@ int test_sqlite()
 }
 
 #ifdef WITH_DATA_INTERFACE_BROKER
-int test_broker()
+static int test_broker()
 {
   SETUP;
 

@@ -32,15 +32,15 @@
 #include <string.h>
 #include <wandio.h>
 
-bgpstream_t *bs;
-bgpstream_record_t *rec;
-bgpstream_elem_t *elem;
+static bgpstream_t *bs;
+static bgpstream_record_t *rec;
+static bgpstream_elem_t *elem;
 
-bgpstream_data_interface_id_t di_id = 0;
-bgpstream_data_interface_option_t *option;
+static bgpstream_data_interface_id_t di_id = 0;
+static bgpstream_data_interface_option_t *option;
 
 static char elem_buf[65536];
-static char *expected_results[7] = {
+static const char *expected_results[7] = {
   "U|A|1427846850|ris|rrc06|25152|202.249.2.185|202.70.88.0/"
   "21|202.249.2.185|25152 2914 15412 9304 23752|23752|2914:410 2914:1408 "
   "2914:2401 2914:3400||",
@@ -78,7 +78,7 @@ static char *expected_results[7] = {
     bgpstream_set_data_interface(bs, di_id);                                   \
   } while (0)
 
-int test_bgpstream_filters()
+static int test_bgpstream_filters()
 {
   SETUP;
 
