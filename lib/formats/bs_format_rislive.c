@@ -261,11 +261,11 @@ process_status_message(bgpstream_format_t *format, bgpstream_record_t *record)
 
   // process direction
   if (FIELDLEN(state) == 4 &&
-      bcmp("down", FIELDPTR(state), FIELDLEN(state)) == 0) {
+      memcmp("down", FIELDPTR(state), FIELDLEN(state)) == 0) {
     // down message
     RDATA->status_msg_state = 0;
   } else if (FIELDLEN(state) == 9 &&
-             bcmp("connected", FIELDPTR(state), FIELDLEN(state)) == 0) {
+             memcmp("connected", FIELDPTR(state), FIELDLEN(state)) == 0) {
     // connected message
     RDATA->status_msg_state = 1;
   } else {

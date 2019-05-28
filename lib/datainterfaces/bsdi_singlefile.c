@@ -155,7 +155,7 @@ static int same_header(char *filename, char *prev_hdr)
   }
   wandio_destroy(io_h);
 
-  if (bcmp(buffer, prev_hdr, bread) == 0) {
+  if (memcmp(buffer, prev_hdr, bread) == 0) {
     /* there is no difference, it has the same header */
     return 1;
   }
