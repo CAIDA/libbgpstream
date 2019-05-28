@@ -283,11 +283,9 @@ static int populate_prep_cb(bgpstream_format_t *format, uint8_t *buf,
 
   // grab the router IP
   if (IS_ROUTER_IPV6) {
-    record->router_ip.version = BGPSTREAM_ADDR_VERSION_IPV6;
-    memcpy(&record->router_ip.ipv6, buf, 16);
+    bgpstream_ipv6_addr_init(&record->router_ip, buf);
   } else {
-    record->router_ip.version = BGPSTREAM_ADDR_VERSION_IPV4;
-    memcpy(&record->router_ip.ipv4, buf, 4);
+    bgpstream_ipv4_addr_init(&record->router_ip, buf);
   }
   nread += 16;
   buf += 16;

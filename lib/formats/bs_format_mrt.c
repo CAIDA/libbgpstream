@@ -44,7 +44,7 @@ typedef struct peer_index_entry {
   uint32_t peer_asn;
 
   /** Peer IP */
-  bgpstream_addr_storage_t peer_ip;
+  bgpstream_ip_addr_t peer_ip;
 
 } peer_index_entry_t;
 
@@ -132,8 +132,7 @@ static int handle_td2_rib_entry(rec_data_t *rd, khash_t(td2_peer) * peer_table,
     return -1;
   }
   bs_pie = &kh_val(peer_table, k);
-  bgpstream_addr_copy((bgpstream_ip_addr_t *)&rd->elem->peer_ip,
-                      (bgpstream_ip_addr_t *)&bs_pie->peer_ip);
+  bgpstream_addr_copy(&rd->elem->peer_ip, &bs_pie->peer_ip);
 
   rd->elem->peer_asn = bs_pie->peer_asn;
 

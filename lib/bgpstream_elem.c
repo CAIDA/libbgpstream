@@ -285,8 +285,7 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
   case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT:
 
     /* PREFIX */
-    if (bgpstream_pfx_snprintf(buf_p, B_REMAIN,
-        (const bgpstream_pfx_t *)&(elem->prefix)) == NULL) {
+    if (bgpstream_pfx_snprintf(buf_p, B_REMAIN, &(elem->prefix)) == NULL) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed prefix (R/A)");
       return NULL;
     }
@@ -350,8 +349,7 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
   case BGPSTREAM_ELEM_TYPE_WITHDRAWAL:
 
     /* PREFIX */
-    if (bgpstream_pfx_snprintf(buf_p, B_REMAIN,
-        (const bgpstream_pfx_t *)&(elem->prefix)) == NULL) {
+    if (bgpstream_pfx_snprintf(buf_p, B_REMAIN, &(elem->prefix)) == NULL) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed prefix (W)");
       return NULL;
     }

@@ -125,8 +125,7 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
   case BGPSTREAM_ELEM_TYPE_RIB:
   case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT:
     /* PREFIX */
-    if (bgpstream_pfx_snprintf(buf_p, B_REMAIN,
-                               (bgpstream_pfx_t *)&(elem->prefix)) == NULL) {
+    if (bgpstream_pfx_snprintf(buf_p, B_REMAIN, &(elem->prefix)) == NULL) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed prefix");
       return NULL;
     }
@@ -216,8 +215,7 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     break;
   case BGPSTREAM_ELEM_TYPE_WITHDRAWAL:
     /* PREFIX */
-    if (bgpstream_pfx_snprintf(buf_p, B_REMAIN,
-                               (bgpstream_pfx_t *)&(elem->prefix)) == NULL) {
+    if (bgpstream_pfx_snprintf(buf_p, B_REMAIN, &(elem->prefix)) == NULL) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed prefix");
       return NULL;
     }

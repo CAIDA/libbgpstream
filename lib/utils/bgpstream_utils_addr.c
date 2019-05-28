@@ -45,7 +45,7 @@ unsigned long
 #endif
 bgpstream_ipv4_addr_hash(const bgpstream_ipv4_addr_t *addr)
 {
-  return __ac_Wang_hash(addr->ipv4.s_addr);
+  return __ac_Wang_hash(addr->addr.s_addr);
 }
 
 #if ULONG_MAX == ULLONG_MAX
@@ -55,7 +55,7 @@ unsigned long long
 #endif
 bgpstream_ipv6_addr_hash(const bgpstream_ipv6_addr_t *addr)
 {
-  return __ac_Wang_hash(*((const khint64_t *)(&(addr->ipv6.s6_addr[0]))));
+  return __ac_Wang_hash(*((const khint64_t *)(&(addr->addr.s6_addr[0]))));
 }
 
 #if ULONG_MAX == ULLONG_MAX
@@ -63,56 +63,43 @@ unsigned long
 #else
 unsigned long long
 #endif
-bgpstream_addr_storage_hash(bgpstream_addr_storage_t *addr)
+bgpstream_addr_hash(bgpstream_ip_addr_t *addr)
 {
   switch (addr->version) {
   case BGPSTREAM_ADDR_VERSION_IPV4:
-    return bgpstream_ipv4_addr_hash((bgpstream_ipv4_addr_t *)addr);
-    break;
+    return bgpstream_ipv4_addr_hash(&addr->bs_ipv4);
 
   case BGPSTREAM_ADDR_VERSION_IPV6:
-    return bgpstream_ipv6_addr_hash((bgpstream_ipv6_addr_t *)addr);
-    break;
+    return bgpstream_ipv6_addr_hash(&addr->bs_ipv6);
 
   default:
     return 0;
-    break;
   }
 }
 
 int bgpstream_addr_equal(const bgpstream_ip_addr_t *addr1,
     const bgpstream_ip_addr_t *addr2)
 {
-  if (addr1->version == BGPSTREAM_ADDR_VERSION_IPV4 &&
-      addr2->version == BGPSTREAM_ADDR_VERSION_IPV4) {
-    return bgpstream_ipv4_addr_equal((const bgpstream_ipv4_addr_t *)addr1,
-                                     (const bgpstream_ipv4_addr_t *)addr2);
-  }
-  if (addr1->version == BGPSTREAM_ADDR_VERSION_IPV6 &&
-      addr2->version == BGPSTREAM_ADDR_VERSION_IPV6) {
-    return bgpstream_ipv6_addr_equal((const bgpstream_ipv6_addr_t *)addr1,
-                                     (const bgpstream_ipv6_addr_t *)addr2);
-  }
-  return 0;
-}
-
-int bgpstream_addr_storage_equal(const bgpstream_addr_storage_t *addr1,
-                                 const bgpstream_addr_storage_t *addr2)
-{
-  return bgpstream_addr_equal((const bgpstream_ip_addr_t *)addr1,
-                              (const bgpstream_ip_addr_t *)addr2);
+  if (addr1->version != addr2->version)
+    return 0;
+  else if (addr1->version == BGPSTREAM_ADDR_VERSION_IPV4)
+    return bgpstream_ipv4_addr_equal(&addr1->bs_ipv4, &addr2->bs_ipv4);
+  else if (addr1->version == BGPSTREAM_ADDR_VERSION_IPV6)
+    return bgpstream_ipv6_addr_equal(&addr1->bs_ipv6, &addr2->bs_ipv6);
+  else
+    return 0;
 }
 
 int bgpstream_ipv4_addr_equal(const bgpstream_ipv4_addr_t *addr1,
                               const bgpstream_ipv4_addr_t *addr2)
 {
-  return addr1->ipv4.s_addr == addr2->ipv4.s_addr;
+  return addr1->addr.s_addr == addr2->addr.s_addr;
 }
 
 int bgpstream_ipv6_addr_equal(const bgpstream_ipv6_addr_t *addr1,
                               const bgpstream_ipv6_addr_t *addr2)
 {
-  return memcmp(&(addr1->ipv6.s6_addr[0]), &(addr2->ipv6.s6_addr[0]), 16) == 0;
+  return memcmp(&(addr1->addr.s6_addr[0]), &(addr2->addr.s6_addr[0]), 16) == 0;
 }
 
 bgpstream_ip_addr_t *bgpstream_addr_mask(bgpstream_ip_addr_t *addr,
@@ -120,11 +107,11 @@ bgpstream_ip_addr_t *bgpstream_addr_mask(bgpstream_ip_addr_t *addr,
 {
   if (addr->version == BGPSTREAM_ADDR_VERSION_IPV4) {
     return (bgpstream_ip_addr_t *)bgpstream_ipv4_addr_mask(
-      (bgpstream_ipv4_addr_t *)addr, mask_len);
+      &addr->bs_ipv4, mask_len);
   }
   if (addr->version == BGPSTREAM_ADDR_VERSION_IPV6) {
     return (bgpstream_ip_addr_t *)bgpstream_ipv6_addr_mask(
-      (bgpstream_ipv6_addr_t *)addr, mask_len);
+      &addr->bs_ipv6, mask_len);
   }
   return NULL;
 }
@@ -136,7 +123,7 @@ bgpstream_ipv4_addr_t *bgpstream_ipv4_addr_mask(bgpstream_ipv4_addr_t *addr,
     mask_len = 32;
   }
 
-  addr->ipv4.s_addr &= htonl(~(((uint64_t)1 << (32 - mask_len)) - 1));
+  addr->addr.s_addr &= htonl(~(((uint64_t)1 << (32 - mask_len)) - 1));
   return addr;
 }
 
@@ -151,14 +138,14 @@ bgpstream_ipv6_addr_t *bgpstream_ipv6_addr_mask(bgpstream_ipv6_addr_t *addr,
 
   if (mask_len <= 64) {
     /* mask the bottom 64bits and zero the top 64bits */
-    ptr = (uint64_t *)&(addr->ipv6.s6_addr[8]);
+    ptr = (uint64_t *)&(addr->addr.s6_addr[8]);
     *ptr = 0;
-    ptr = (uint64_t *)&(addr->ipv6.s6_addr[0]);
+    ptr = (uint64_t *)&(addr->addr.s6_addr[0]);
     *ptr &= htonll((uint64_t)(~0) << (64 - mask_len));
   } else {
     /* mask the top 64 bits */
     mask_len -= 64;
-    ptr = (uint64_t *)&(addr->ipv6.s6_addr[8]);
+    ptr = (uint64_t *)&(addr->addr.s6_addr[8]);
     *ptr &= htonll((uint64_t)(~0) << (64 - mask_len - 64));
   }
 
@@ -170,38 +157,29 @@ void bgpstream_addr_copy(bgpstream_ip_addr_t *dst,
 {
   if (src->version == BGPSTREAM_ADDR_VERSION_IPV4) {
     memcpy(dst, src, sizeof(bgpstream_ipv4_addr_t));
-  }
-  if (src->version == BGPSTREAM_ADDR_VERSION_IPV6) {
+  } else if (src->version == BGPSTREAM_ADDR_VERSION_IPV6) {
     memcpy(dst, src, sizeof(bgpstream_ipv6_addr_t));
   }
 }
 
-bgpstream_addr_storage_t *bgpstream_str2addr(const char *addr_str,
-                                             bgpstream_addr_storage_t *addr)
+bgpstream_ip_addr_t *bgpstream_str2addr(const char *addr_str,
+                                        bgpstream_ip_addr_t *addr)
 {
   if (addr_str == NULL || addr == NULL) {
     return NULL;
   }
 
-  if (strchr(addr_str, ':') != NULL) {
-    /* this looks like it will be an IPv6 address */
-    if (inet_pton(AF_INET6, addr_str, &addr->ipv6) != 1) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not parse address string %s",
-                    addr_str);
-      return NULL;
-    }
-    addr->version = BGPSTREAM_ADDR_VERSION_IPV6;
-  } else {
-    /* probably a v4 address */
-    if (inet_pton(AF_INET, addr_str, &addr->ipv4) != 1) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Could not parse address string %s",
-                    addr_str);
-      return NULL;
-    }
+  if (inet_pton(AF_INET, addr_str, &addr->bs_ipv4.addr) == 1) {
     addr->version = BGPSTREAM_ADDR_VERSION_IPV4;
+    return addr;
+  } else if (inet_pton(AF_INET6, addr_str, &addr->bs_ipv6.addr) == 1) {
+    addr->version = BGPSTREAM_ADDR_VERSION_IPV6;
+    return addr;
+  } else {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not parse address string %s",
+                  addr_str);
+    return NULL;
   }
-
-  return addr;
 }
 
 uint8_t bgpstream_ipv2idx(bgpstream_addr_version_t v)

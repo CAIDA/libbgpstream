@@ -63,10 +63,10 @@ struct bgpstream_ip_counter {
 /*    ip4.version = BGPSTREAM_ADDR_VERSION_IPV4;  */
 /*    while(current4 != NULL)  */
 /*      {  */
-/*        ip4.ipv4.s_addr = htonl(current4->start);  */
+/*        ip4.addr.s_addr = htonl(current4->start);  */
 /*        bgpstream_addr_ntop(buffer, INET_ADDRSTRLEN, &ip4);  */
 /*        printf("IP space:\t%s\t", buffer);  */
-/*        ip4.ipv4.s_addr = htonl(current4->end);  */
+/*        ip4.addr.s_addr = htonl(current4->end);  */
 /*        bgpstream_addr_ntop(buffer, INET_ADDRSTRLEN, &ip4);  */
 /*        printf("%s\n", buffer);  */
 /*        current4 = current4->next;  */
@@ -80,15 +80,15 @@ struct bgpstream_ip_counter {
 /*    while(current6 != NULL)  */
 /*      { */
 /*        tmp = htonll(current6->start_ms); */
-/*        memcpy(&ip6.ipv6.s6_addr[0], &tmp, sizeof(uint64_t)); */
+/*        memcpy(&ip6.addr.s6_addr[0], &tmp, sizeof(uint64_t)); */
 /*        tmp = htonll(current6->start_ls); */
-/*        memcpy(&ip6.ipv6.s6_addr[8], &tmp, sizeof(uint64_t)); */
+/*        memcpy(&ip6.addr.s6_addr[8], &tmp, sizeof(uint64_t)); */
 /*        bgpstream_addr_ntop(buffer, INET6_ADDRSTRLEN, &ip6);  */
 /*        printf("IP space:\t%s\t", buffer); */
 /*        tmp = htonll(current6->end_ms); */
-/*        memcpy(&ip6.ipv6.s6_addr[0], &tmp, sizeof(uint64_t)); */
+/*        memcpy(&ip6.addr.s6_addr[0], &tmp, sizeof(uint64_t)); */
 /*        tmp = htonll(current6->end_ls); */
-/*        memcpy(&ip6.ipv6.s6_addr[8],&tmp, sizeof(uint64_t)); */
+/*        memcpy(&ip6.addr.s6_addr[8],&tmp, sizeof(uint64_t)); */
 /*        bgpstream_addr_ntop(buffer, INET6_ADDRSTRLEN, &ip6);  */
 /*        printf("%s\n", buffer); */
 /*        current6 = current6->next;  */
@@ -323,15 +323,15 @@ int bgpstream_ip_counter_add(bgpstream_ip_counter_t *ipc, bgpstream_pfx_t *pfx)
 
   if (pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4) {
     mask = ~(((uint64_t)1 << (32 - pfx->mask_len)) - 1);
-    start = ntohl(((bgpstream_ipv4_pfx_t *)pfx)->address.ipv4.s_addr);
+    start = ntohl(pfx->address.bs_ipv4.addr.s_addr);
     start = start & mask;
     end = start | (~mask);
     return merge_in_sorted_queue4(&ipc->v4list, start, end);
   } else {
     if (pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV6) {
-      tmp = &((bgpstream_ipv6_pfx_t *)pfx)->address.ipv6.s6_addr[0];
+      tmp = &pfx->address.bs_ipv6.addr.s6_addr[0];
       start_ms = ntohll(*((uint64_t *)tmp));
-      tmp = &((bgpstream_ipv6_pfx_t *)pfx)->address.ipv6.s6_addr[8];
+      tmp = &pfx->address.bs_ipv6.addr.s6_addr[8];
       start_ls = ntohll(*((uint64_t *)tmp));
       /* printf("+++++++++  %"PRIu64" %"PRIu64"\n", start_ms, start_ls); */
       if (pfx->mask_len > 64) {
@@ -380,7 +380,7 @@ static uint32_t bgpstream_ip_counter_is_overlapping4(
   uint32_t overlap_count = 0;
   *more_specific = 0;
   len = 32 - pfx->mask_len;
-  start = ntohl(pfx->address.ipv4.s_addr);
+  start = ntohl(pfx->address.addr.s_addr);
   start = (start >> len) << len;
   end = 0;
   end = ~end;
@@ -436,9 +436,9 @@ static uint64_t bgpstream_ip_counter_is_overlapping6(
   uint64_t pfx_size;
   *more_specific = 0;
 
-  tmp = &(pfx->address.ipv6.s6_addr[0]);
+  tmp = &(pfx->address.addr.s6_addr[0]);
   start_ms = ntohll(*((uint64_t *)tmp));
-  tmp = &(pfx->address.ipv6.s6_addr[8]);
+  tmp = &(pfx->address.addr.s6_addr[8]);
   start_ls = ntohll(*((uint64_t *)tmp));
 
   /* printf("+++++++++  %"PRIu64" %"PRIu64"\n", start_ms, start_ls); */
@@ -532,11 +532,11 @@ uint64_t bgpstream_ip_counter_is_overlapping(bgpstream_ip_counter_t *ipc,
   *more_specific = 0;
   if (pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4) {
     return bgpstream_ip_counter_is_overlapping4(
-      ipc, (bgpstream_ipv4_pfx_t *)pfx, more_specific);
+      ipc, &pfx->bs_ipv4, more_specific);
   } else {
     if (pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV6) {
       return bgpstream_ip_counter_is_overlapping6(
-        ipc, (bgpstream_ipv6_pfx_t *)pfx, more_specific);
+        ipc, &pfx->bs_ipv6, more_specific);
     }
   }
   return 0;
