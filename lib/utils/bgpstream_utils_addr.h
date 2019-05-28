@@ -64,6 +64,13 @@ typedef enum {
 /** Maximum number of IP versions */
 #define BGPSTREAM_MAX_IP_VERSION_IDX 2
 
+#define BS_ADDR4_OFFSET \
+  offsetof(struct {bgpstream_addr_version_t v; struct in_addr a4;}, a4)
+#define BS_ADDR6_OFFSET \
+  offsetof(struct {bgpstream_addr_version_t v; struct in6_addr a6;}, a6)
+#define BS_ADDR_OFFSET \
+  ((BS_ADDR4_OFFSET > BS_ADDR6_OFFSET) ? BS_ADDR4_OFFSET : BS_ADDR6_OFFSET)
+
 /** @} */
 
 /**
@@ -74,26 +81,24 @@ typedef enum {
 /** An IPv4 BGP Stream IP address */
 typedef struct struct_bgpstream_ipv4_addr_t {
 
-  /** Version of the IP address (must always be BGPSTREAM_ADDR_VERSION_IPV4) */
-  bgpstream_addr_version_t version;
-
   union { // anonymous
-    struct in_addr addr; ///< IPv4 Address
-    max_align_t _dummy[1]; // force alignment of this union
+    /** Version of the IP address (must always be BGPSTREAM_ADDR_VERSION_IPV4) */
+    bgpstream_addr_version_t version;
+    uint8_t _dummy[BS_ADDR_OFFSET]; // force alignment of addr
   };
+  struct in_addr addr; ///< IPv4 Address
 
 } bgpstream_ipv4_addr_t;
 
 /** An IPv6 BGP Stream IP address */
 typedef struct struct_bgpstream_ipv6_addr_t {
 
-  /** Version of the IP address (must always be BGPSTREAM_ADDR_VERSION_IPV6 */
-  bgpstream_addr_version_t version;
-
   union { // anonymous
-    struct in6_addr addr; ///< IPv6 Address
-    max_align_t _dummy[1];  // force alignment of this union
+    /** Version of the IP address (must always be BGPSTREAM_ADDR_VERSION_IPV5) */
+    bgpstream_addr_version_t version;
+    uint8_t _dummy[BS_ADDR_OFFSET]; // force alignment of addr
   };
+  struct in6_addr addr; ///< IPv6 Address
 
 } bgpstream_ipv6_addr_t;
 
@@ -106,12 +111,12 @@ typedef struct struct_bgpstream_ipv6_addr_t {
  */
 typedef union union_bgpstream_ip_addr_t {
   struct { // anonymous
-    /// Version of the IP address
-    bgpstream_addr_version_t version;
     union { // anonymous
-      uint8_t addr[1]; ///< raw bytes of the address
-      max_align_t _dummy[1]; // force alignment of this union
+      /// Version of the IP address
+      bgpstream_addr_version_t version;
+      uint8_t _dummy[BS_ADDR_OFFSET]; // force alignment of addr
     };
+    uint8_t addr[1]; ///< raw bytes of the address
   };
   /// IPv4 variant of this struct, iff version == BGPSTREAM_ADDR_VERSION_IPV4
   bgpstream_ipv4_addr_t bs_ipv4;
