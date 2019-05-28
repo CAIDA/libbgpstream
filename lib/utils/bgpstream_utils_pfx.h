@@ -53,41 +53,50 @@
  *
  * @{ */
 
+#define BS_PFX_OFFSET \
+  offsetof(struct {uint8_t l; uint8_t m; bgpstream_ip_addr_t a;}, a)
+
 /** An IPv4 BGP Stream Prefix */
 typedef struct struct_bgpstream_ipv4_pfx_t {
 
-  /** Length of the prefix mask */
-  uint8_t mask_len;
+  union { // anonymous
+    uint8_t _dummy[BS_PFX_OFFSET]; // force alignment of address
 
-  /** Indicates what type of matches are allowed with this prefix.
-   *  For filtering purposes only.
-   */
-  uint8_t allowed_matches;
+    struct {
+      /** Length of the prefix mask */
+      uint8_t mask_len;
 
-  union {
-    /** The address */
-    bgpstream_ipv4_addr_t address;
-    max_align_t _dummy; // force alignment
+      /** Indicates what type of matches are allowed with this prefix.
+       *  For filtering purposes only.
+       */
+      uint8_t allowed_matches;
+    };
   };
+
+  /** The address */
+  bgpstream_ipv4_addr_t address;
 
 } bgpstream_ipv4_pfx_t;
 
 /** An IPv6 BGP Stream Prefix */
 typedef struct struct_bgpstream_ipv6_pfx_t {
 
-  /** Length of the prefix mask */
-  uint8_t mask_len;
+  union { // anonymous
+    uint8_t _dummy[BS_PFX_OFFSET]; // force alignment of address
 
-  /** Indicates what type of matches are allowed with this prefix.
-   *  For filtering purposes only.
-   */
-  uint8_t allowed_matches;
+    struct {
+      /** Length of the prefix mask */
+      uint8_t mask_len;
 
-  union {
-    /** The address */
-    bgpstream_ipv6_addr_t address;
-    max_align_t _dummy; // force alignment
+      /** Indicates what type of matches are allowed with this prefix.
+       *  For filtering purposes only.
+       */
+      uint8_t allowed_matches;
+    };
   };
+
+  /** The address */
+  bgpstream_ipv6_addr_t address;
 
 } bgpstream_ipv6_pfx_t;
 
@@ -102,19 +111,22 @@ typedef union union_bgpstream_pfx_t {
 
   /// Generic variant
   struct {
-    /** Length of the prefix mask */
-    uint8_t mask_len;
+    union { // anonymous
+      uint8_t _dummy[BS_PFX_OFFSET]; // force alignment of address
 
-    /** Indicates what type of matches are allowed with this prefix.
-     *  For filtering purposes only.
-     */
-    uint8_t allowed_matches;
+      struct {
+        /** Length of the prefix mask */
+        uint8_t mask_len;
 
-    union {
-      /** The address */
-      bgpstream_ip_addr_t address;
-      max_align_t _dummy; // force alignment
+        /** Indicates what type of matches are allowed with this prefix.
+         *  For filtering purposes only.
+         */
+        uint8_t allowed_matches;
+      };
     };
+
+    /** The address */
+    bgpstream_ip_addr_t address;
   };
 
   /// IPv4 variant, iff address.version == BGPSTREAM_ADDR_VERSION_IPV4
