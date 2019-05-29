@@ -177,5 +177,6 @@ static int test_patricia()
 int main()
 {
   CHECK_SECTION("Patricia Tree", test_patricia() == 0);
+  ENDTEST;
   return 0;
 }

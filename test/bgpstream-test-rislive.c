@@ -166,5 +166,7 @@ err:
 
 int main()
 {
-  return test_bgpstream_rislive();
+  int rc = test_bgpstream_rislive();
+  ENDTEST;
+  return rc;
 }

@@ -41,22 +41,22 @@ static bgpstream_data_interface_option_t *option;
 
 static char elem_buf[65536];
 static const char *expected_results[7] = {
-  "U|A|1427846850|ris|rrc06|25152|202.249.2.185|202.70.88.0/"
+  "U|A|1427846850.000000|ris|rrc06|||25152|202.249.2.185|202.70.88.0/"
   "21|202.249.2.185|25152 2914 15412 9304 23752|23752|2914:410 2914:1408 "
   "2914:2401 2914:3400||",
-  "U|A|1427846860|ris|rrc06|25152|202.249.2.185|202.70.88.0/"
+  "U|A|1427846860.000000|ris|rrc06|||25152|202.249.2.185|202.70.88.0/"
   "21|202.249.2.185|25152 2914 15412 9304 23752|23752|2914:410 2914:1408 "
   "2914:2401 2914:3400||",
-  "U|A|1427846871|ris|rrc06|25152|2001:200:0:fe00::6249:0|2620:110:9004::/"
+  "U|A|1427846871.000000|ris|rrc06|||25152|2001:200:0:fe00::6249:0|2620:110:9004::/"
   "48|2001:200:0:fe00::6249:0|25152 2914 3356 13620|13620|2914:420 2914:1001 "
   "2914:2000 2914:3000||",
-  "U|A|1427846874|routeviews|route-views.jinx|37105|196.223.14.46|154.73.136."
+  "U|A|1427846874.000000|routeviews|route-views.jinx|||37105|196.223.14.46|154.73.136."
   "0/24|196.223.14.84|37105 37549|37549|37105:300||",
-  "U|A|1427846874|routeviews|route-views.jinx|37105|196.223.14.46|154.73.137."
+  "U|A|1427846874.000000|routeviews|route-views.jinx|||37105|196.223.14.46|154.73.137."
   "0/24|196.223.14.84|37105 37549|37549|37105:300||",
-  "U|A|1427846874|routeviews|route-views.jinx|37105|196.223.14.46|154.73.138."
+  "U|A|1427846874.000000|routeviews|route-views.jinx|||37105|196.223.14.46|154.73.138."
   "0/24|196.223.14.84|37105 37549|37549|37105:300||",
-  "U|A|1427846874|routeviews|route-views.jinx|37105|196.223.14.46|154.73.139."
+  "U|A|1427846874.000000|routeviews|route-views.jinx|||37105|196.223.14.46|154.73.139."
   "0/24|196.223.14.84|37105 37549|37549|37105:300||"};
 
 #define SETUP                                                                  \
@@ -119,7 +119,7 @@ static int test_bgpstream_filters()
           /* check if the results are exactly the expected ones */
           CHECK("elem equality",
                 (check_res =
-                   strncmp(elem_buf, expected_results[counter], 65536)) == 0);
+                   strcmp(elem_buf, expected_results[counter])) == 0);
 
           counter++;
         }
@@ -135,17 +135,19 @@ static int test_bgpstream_filters()
 
 int main()
 {
+  int rc = 0;
 
 #ifdef WITH_DATA_INTERFACE_BROKER
   SETUP;
   CHECK_SET_INTERFACE(broker);
 
-  test_bgpstream_filters();
+  rc = test_bgpstream_filters();
 
   TEARDOWN;
 #else
   SKIPPED_SECTION("broker data interface filters");
 #endif
 
-  return 0;
+  ENDTEST;
+  return rc;
 }

@@ -24,35 +24,31 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 
+LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
+                  $(top_srcdir)/tap-driver.sh
+
 AM_CPPFLAGS = 	-I$(top_srcdir) \
 	 	-I$(top_srcdir)/lib \
 	 	-I$(top_srcdir)/lib/utils \
 	 	-I$(top_srcdir)/common
 
-# Run bgpstream-test-rpki only if WITH_RPKI is set
-if WITH_RPKI
-RPKI_TEST=bgpstream-test-rpki
-else
-RPKI_TEST=
-endif
-
 TESTS = 				\
-	bgpstream-test 			\
+	bgpstream-test			\
 	bgpstream-test-filters		\
-	bgpstream-test-rislive 	\
-	bgpstream-test-utils-addr 	\
+	bgpstream-test-rislive		\
+	bgpstream-test-utils-addr	\
 	bgpstream-test-utils-pfx	\
-	bgpstream-test-utils-patricia 			\
-  $(RPKI_TEST)
+	bgpstream-test-utils-patricia	\
+	bgpstream-test-rpki
 
-check_PROGRAMS =  			\
-	bgpstream-test 			\
+check_PROGRAMS = 			\
+	bgpstream-test			\
 	bgpstream-test-filters		\
-	bgpstream-test-rislive 	\
-	bgpstream-test-utils-addr 	\
+	bgpstream-test-rislive		\
+	bgpstream-test-utils-addr	\
 	bgpstream-test-utils-pfx	\
-	bgpstream-test-utils-patricia  \
-  $(RPKI_TEST)
+	bgpstream-test-utils-patricia	\
+	bgpstream-test-rpki
 
 # test data files
 EXTRA_DIST = 	sqlite_test.db \

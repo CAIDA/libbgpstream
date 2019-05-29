@@ -216,5 +216,6 @@ int main()
 {
   CHECK_SECTION("IPv4 addresses", test_addresses_ipv4() == 0);
   CHECK_SECTION("IPv6 addresses", test_addresses_ipv6() == 0);
+  ENDTEST;
   return 0;
 }

@@ -39,29 +39,28 @@
   do {                                                                         \
     int s = RESULT_LEN - strlen("Test-Section: ") - strlen(name);              \
     int r = RESULT_LEN - strlen("Result for section ") - strlen(name);         \
-    fprintf(stderr, "* " sep "\n");                                            \
-    fprintf(stderr, "* %*c Test-Section: " name "\n", s/2, ' ');               \
-    fprintf(stderr, "* " sep "\n");                                            \
+    printf("# " sep "\n");                                                     \
+    printf("# %*c Test-Section: " name "\n", s/2, ' ');                        \
+    printf("# " sep "\n");                                                     \
     if (!(check)) {                                                            \
-      fprintf(stderr, "* " sep "\n");                                          \
-      fprintf(stderr, "* %*c Result for section " name ": FAILED\n", r/2, ' ');\
-      fprintf(stderr, "* " sep "\n");                                          \
+      printf("# " sep "\n");                                                   \
+      printf("# %*c Result for section " name ": FAILED\n", r/2, ' ');         \
+      printf("# " sep "\n");                                                   \
       return -1;                                                               \
     } else {                                                                   \
-      fprintf(stderr, "* " sep "\n");                                          \
-      fprintf(stderr, "* %*c Result for section " name ": OK\n", r/2, ' ');    \
-      fprintf(stderr, "* " sep "\n\n");                                        \
+      printf("# " sep "\n");                                                   \
+      printf("# %*c Result for section " name ": OK\n", r/2, ' ');             \
+      printf("# " sep "\n\n");                                                 \
     }                                                                          \
   } while (0)
 
 #define CHECK_RPKI_RESULT(test, check)                                         \
   do {                                                                         \
-    int s = RESULT_LEN - strlen(test);                                         \
     if (!(check)) {                                                            \
-      fprintf(stderr, "*   Test: %s ... %*c FAILED\n", test, s, ' ');          \
+      printf("not ok %d   Test: %s\n", ++tap_test_num, test);                  \
       return -1;                                                               \
     }                                                                          \
-    fprintf(stderr, "*   Test: %s ... %*c OK\n", test, s, ' ');                \
+    printf("ok     %d   Test: %s\n", ++tap_test_num, test);                    \
   } while (0)
 
 #define SETUP                                                                  \
