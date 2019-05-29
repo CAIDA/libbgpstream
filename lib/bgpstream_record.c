@@ -143,7 +143,6 @@ static int elem_check_filters(bgpstream_record_t *record,
                               bgpstream_elem_t *elem)
 {
   bgpstream_filter_mgr_t *filter_mgr = record->__int->format->filter_mgr;
-  int pass = 0;
 
   /* First up, check if this element is the right type */
   if (filter_mgr->elemtype_mask) {
@@ -209,7 +208,8 @@ static int elem_check_filters(bgpstream_record_t *record,
     if (elem->type == BGPSTREAM_ELEM_TYPE_PEERSTATE) {
       return 0;
     }
-    return bgpstream_elem_prefix_match(filter_mgr->prefixes, &elem->prefix);
+    if (bgpstream_elem_prefix_match(filter_mgr->prefixes, &elem->prefix) == 0)
+      return 0;
   }
 
   /* Checking AS Path expressions */
@@ -281,8 +281,8 @@ static int elem_check_filters(bgpstream_record_t *record,
     }
   }
   /* Checking communities (unless it is a withdrawal message) */
-  pass = (filter_mgr->communities != NULL) ? 0 : 1;
   if (filter_mgr->communities) {
+    int pass = 0;
     if (elem->type == BGPSTREAM_ELEM_TYPE_WITHDRAWAL ||
         elem->type == BGPSTREAM_ELEM_TYPE_PEERSTATE) {
       return 0;
