@@ -168,5 +168,6 @@ int main()
   CHECK_SECTION("IPv4 prefixes", test_prefixes_ipv4() == 0);
   CHECK_SECTION("IPv6 prefixes", test_prefixes_ipv6() == 0);
 
+  ENDTEST;
   return 0;
 }

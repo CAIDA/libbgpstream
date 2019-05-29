@@ -316,4 +316,5 @@ AC_CONFIG_FILES([Makefile
                 lib/utils/Makefile
 		tools/Makefile
 		test/Makefile])
+AC_REQUIRE_AUX_FILE([tap-driver.sh])
 AC_OUTPUT

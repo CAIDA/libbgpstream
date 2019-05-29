@@ -26,47 +26,73 @@
 
 #include "bgpstream.h"
 #include "config.h"
+#include <string.h>
+
+/*
+ * Test messages are formatted according to the TAP protocol, specifically for
+ * use with automake's test harness.  See:
+ * https://www.gnu.org/software/automake/manual/automake.html#Custom-Test-Drivers
+ * https://metacpan.org/pod/release/PETDANCE/Test-Harness-2.65_02/lib/Test/Harness/TAP.pod
+ */
+static int tap_test_num = 0;
 
 #define CHECK_MSG(name, err_msg, check)                                        \
   do {                                                                         \
     if (!(check)) {                                                            \
-      fprintf(stderr, " * " name ": FAILED\n");                                \
-      fprintf(stderr, " ! Failed check was: '" #check "'\n");                  \
-      fprintf(stderr, err_msg "\n\n");                                         \
+      const char *_p = err_msg;                                                \
+      int _i;                                                                  \
+      printf("not ok %d - %s\n", ++tap_test_num, name);                        \
+      printf("# Failed check was: '" #check "'\n");                            \
+      while (1) {                                                              \
+        _i = strcspn(_p, "\n");                                                \
+        printf("# %.*s\n", _i, _p);                                            \
+        if (_p[_i] == '\0') break;                                             \
+        _p += _i + 1;                                                          \
+      }                                                                        \
       return -1;                                                               \
     } else {                                                                   \
-      fprintf(stderr, " * " name ": OK\n");                                    \
+      printf("ok     %d - %s\n", ++tap_test_num, name);                        \
     }                                                                          \
   } while (0)
 
 #define CHECK(name, check)                                                     \
   do {                                                                         \
     if (!(check)) {                                                            \
-      fprintf(stderr, " * " name ": FAILED\n");                                \
-      fprintf(stderr, " ! Failed check was: '" #check "'\n");                  \
+      printf("not ok %d - %s\n", ++tap_test_num, name);                        \
+      printf("# Failed check was: '" #check "'\n");                            \
       return -1;                                                               \
     } else {                                                                   \
-      fprintf(stderr, " * " name ": OK\n");                                    \
+      printf("ok     %d - %s\n", ++tap_test_num, name);                        \
     }                                                                          \
   } while (0)
 
 #define CHECK_SECTION(name, check)                                             \
   do {                                                                         \
-    fprintf(stderr, "Checking " name "...\n");                                 \
+    printf("# Checking section: " name "...\n");                               \
     if (!(check)) {                                                            \
-      fprintf(stderr, name ": FAILED\n\n");                                    \
+      printf("# Section %s: FAIL\n", name);                                    \
+      printf("# Failed check was: '" #check "'\n");                            \
       return -1;                                                               \
     } else {                                                                   \
-      fprintf(stderr, name ": OK\n\n");                                        \
+      printf("# Section %s: PASS\n", name);                                    \
     }                                                                          \
   } while (0)
 
 #define SKIPPED(name)                                                          \
   do {                                                                         \
-    fprintf(stderr, " * " name ": SKIPPED\n");                                 \
+    printf("ok     %d # SKIP test %s\n", ++tap_test_num, name);                \
   } while (0)
 
 #define SKIPPED_SECTION(name)                                                  \
   do {                                                                         \
-    fprintf(stderr, name ": SKIPPED\n");                                       \
+    printf("ok     %d # SKIP section: %s\n", ++tap_test_num, name);            \
   } while (0)
+
+// Print the TAP test plan line "1..N"
+#define ENDTEST                                                                \
+  do {                                                                         \
+    printf("1..%d\n", tap_test_num);                                           \
+  } while (0)
+
+#define EXIT_TEST_SKIPPED 77
+#define EXIT_TEST_ERROR   99

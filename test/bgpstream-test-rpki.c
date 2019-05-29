@@ -29,6 +29,8 @@
 
 #include "bgpstream-test-rpki.h"
 #include "bgpstream_test.h"
+
+#ifdef WITH_RPKI
 #include "bgpstream_utils_rpki.h"
 #include "utils.h"
 #include <stdio.h>
@@ -157,6 +159,7 @@ int test_rpki_validate()
   }
   return 0;
 }
+#endif // WITH_RPKI
 
 int main()
 {
@@ -164,6 +167,9 @@ int main()
   CHECK_RPKI_SECTION("RPKI Input", !test_rpki_create_input());
   CHECK_RPKI_SECTION("RPKI Parsing", !test_rpki_parse_input());
   CHECK_RPKI_SECTION("RPKI Validation", !test_rpki_validate());
+#else
+  SKIPPED_SECTION("RPKI");
 #endif
+  ENDTEST;
   return 0;
 }
