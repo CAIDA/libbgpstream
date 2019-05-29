@@ -40,7 +40,7 @@ static bgpstream_data_interface_id_t di_id = 0;
 static bgpstream_data_interface_option_t *option;
 
 static char elem_buf[65536];
-static const char *expected_results[7] = {
+static const char *expected_results[] = {
   "U|A|1427846850.000000|ris|rrc06|||25152|202.249.2.185|202.70.88.0/"
   "21|202.249.2.185|25152 2914 15412 9304 23752|23752|2914:410 2914:1408 "
   "2914:2401 2914:3400||",
@@ -57,7 +57,8 @@ static const char *expected_results[7] = {
   "U|A|1427846874.000000|routeviews|route-views.jinx|||37105|196.223.14.46|154.73.138."
   "0/24|196.223.14.84|37105 37549|37549|37105:300||",
   "U|A|1427846874.000000|routeviews|route-views.jinx|||37105|196.223.14.46|154.73.139."
-  "0/24|196.223.14.84|37105 37549|37549|37105:300||"};
+  "0/24|196.223.14.84|37105 37549|37549|37105:300||",
+  NULL};
 
 #define SETUP                                                                  \
   do {                                                                         \
@@ -105,7 +106,6 @@ static int test_bgpstream_filters()
 
   int ret;
   int counter = 0;
-  int check_res = 0;
   CHECK("stream start (" STR(interface) ")", bgpstream_start(bs) == 0);
 
   while ((ret = bgpstream_get_next_record(bs, &rec)) > 0) {
@@ -113,13 +113,12 @@ static int test_bgpstream_filters()
       while (bgpstream_record_get_next_elem(rec, &elem) > 0) {
         if (bgpstream_record_elem_snprintf(elem_buf, 65536, rec, elem) !=
             NULL) {
-          /* more results than the expected ones*/
-          CHECK("elem partial count", counter < 7);
+          /* make sure we haven't reached end of expected_results */
+          CHECK("elem partial count", expected_results[counter]);
 
           /* check if the results are exactly the expected ones */
           CHECK("elem equality",
-                (check_res =
-                   strcmp(elem_buf, expected_results[counter])) == 0);
+                strcmp(elem_buf, expected_results[counter]) == 0);
 
           counter++;
         }
@@ -127,7 +126,8 @@ static int test_bgpstream_filters()
     }
   }
 
-  CHECK("elem total count", counter == 7);
+  /* make sure we have reached end of expected_results */
+  CHECK("elem total count", !expected_results[counter]);
 
   TEARDOWN;
   return 0;
@@ -138,12 +138,7 @@ int main()
   int rc = 0;
 
 #ifdef WITH_DATA_INTERFACE_BROKER
-  SETUP;
-  CHECK_SET_INTERFACE(broker);
-
   rc = test_bgpstream_filters();
-
-  TEARDOWN;
 #else
   SKIPPED_SECTION("broker data interface filters");
 #endif
