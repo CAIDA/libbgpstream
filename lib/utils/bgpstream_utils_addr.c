@@ -130,24 +130,14 @@ bgpstream_ipv4_addr_t *bgpstream_ipv4_addr_mask(bgpstream_ipv4_addr_t *addr,
 bgpstream_ipv6_addr_t *bgpstream_ipv6_addr_mask(bgpstream_ipv6_addr_t *addr,
                                                 uint8_t mask_len)
 {
-  uint64_t *ptr;
-
-  if (mask_len > 128) {
-    mask_len = 128;
+  if (mask_len >= 128) {
+    return addr;
   }
 
-  if (mask_len <= 64) {
-    /* mask the bottom 64bits and zero the top 64bits */
-    ptr = (uint64_t *)&(addr->addr.s6_addr[8]);
-    *ptr = 0;
-    ptr = (uint64_t *)&(addr->addr.s6_addr[0]);
-    *ptr &= htonll((uint64_t)(~0) << (64 - mask_len));
-  } else {
-    /* mask the top 64 bits */
-    mask_len -= 64;
-    ptr = (uint64_t *)&(addr->addr.s6_addr[8]);
-    *ptr &= htonll((uint64_t)(~0) << (64 - mask_len - 64));
-  }
+  unsigned i = mask_len / 8;
+  addr->addr.s6_addr[i] &= 0xFF << (8 - (mask_len % 8));
+  ++i;
+  memset(&addr->addr.s6_addr[i], 0, 16 - i);
 
   return addr;
 }
