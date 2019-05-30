@@ -127,7 +127,6 @@ bgpstream_peer_sig_map_set_and_get_ps(bgpstream_peer_sig_map_t *map,
     free(ps); /* it was mallocd for us...*/
     return kh_value(map->ps_id, k);
   }
-  return 0;
 }
 
 /* PROTECTED FUNCTIONS (_int.h) */

@@ -727,7 +727,7 @@ bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
   }
 
   /* DEBUG   fprintf(stderr, "Adding %s as a ??\n", buffer); */
-  return new_node;
+  /* return new_node; */
 }
 
 void *bgpstream_patricia_tree_get_user(bgpstream_patricia_node_t *node)
@@ -758,15 +758,13 @@ bgpstream_patricia_tree_get_pfx_overlap_info(bgpstream_patricia_tree_t *pt,
   if (n != NULL) {
     return bgpstream_patricia_tree_get_node_overlap_info(pt, n) |
            BGPSTREAM_PATRICIA_EXACT_MATCH;
-  } else {
-    /* we basically simulate an insertion, to understand whether the prefix
-     * would overlap or not */
-    n = bgpstream_patricia_tree_insert(pt, pfx);
-    uint8_t mask = bgpstream_patricia_tree_get_node_overlap_info(pt, n);
-    bgpstream_patricia_tree_remove_node(pt, n);
-    return mask & (~BGPSTREAM_PATRICIA_EXACT_MATCH);
   }
-  return 0;
+  /* we basically simulate an insertion, to understand whether the prefix
+   * would overlap or not */
+  n = bgpstream_patricia_tree_insert(pt, pfx);
+  uint8_t mask = bgpstream_patricia_tree_get_node_overlap_info(pt, n);
+  bgpstream_patricia_tree_remove_node(pt, n);
+  return mask & (~BGPSTREAM_PATRICIA_EXACT_MATCH);
 }
 
 void bgpstream_patricia_tree_remove(bgpstream_patricia_tree_t *pt,
@@ -965,7 +963,6 @@ uint64_t bgpstream_patricia_prefix_count(bgpstream_patricia_tree_t *pt,
   default:
     return 0;
   }
-  return 0;
 }
 
 uint64_t bgpstream_patricia_tree_count_24subnets(bgpstream_patricia_tree_t *pt)

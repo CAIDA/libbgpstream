@@ -135,7 +135,7 @@ typedef struct bgpstream_as_path_seg_set {
   uint8_t asn_cnt;
 
   /** Array of ASNs in the set */
-  uint32_t asn[0];
+  uint32_t asn[]; // C99 flexible array member
 
 } __attribute__((packed)) bgpstream_as_path_seg_set_t;
 

@@ -329,7 +329,7 @@ int bgpstream_community_set_equal(bgpstream_community_set_t *set1,
 {
   return (set1->communities_hash == set2->communities_hash) &&
          (set1->communities_cnt == set2->communities_cnt) &&
-         bcmp(set1->communities, set2->communities,
+         memcmp(set1->communities, set2->communities,
               sizeof(bgpstream_community_t) * set1->communities_cnt);
 }
 

@@ -130,7 +130,7 @@ uint32_t bgpstream_as_path_store_get_size(bgpstream_as_path_store_t *store);
  * @param path_data     pointer to the (core) path data byte array
  * @param path_len      the number of bytes in the path_data array
  * @param is_core       indicates whether the path is a core path
- * @paran[out] path_id  pointer to a path ID structure to store the ID into
+ * @param[out] path_id  pointer to a path ID structure to store the ID into
  * @return 0 if the ID was populated correctly, -1 otherwise
  *
  * @note this function is designed to be used when deserializing a path

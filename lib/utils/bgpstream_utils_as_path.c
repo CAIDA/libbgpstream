@@ -227,10 +227,10 @@ int bgpstream_as_path_seg_equal(bgpstream_as_path_seg_t *seg1,
         ((bgpstream_as_path_seg_set_t *)seg2)->asn_cnt) {
       return 0;
     }
-    return bcmp(((bgpstream_as_path_seg_set_t *)seg1)->asn,
-                ((bgpstream_as_path_seg_set_t *)seg2)->asn,
-                sizeof(uint32_t) *
-                  ((bgpstream_as_path_seg_set_t *)seg2)->asn_cnt) == 0;
+    return memcmp(((bgpstream_as_path_seg_set_t *)seg1)->asn,
+                  ((bgpstream_as_path_seg_set_t *)seg2)->asn,
+                  sizeof(uint32_t) *
+                    ((bgpstream_as_path_seg_set_t *)seg2)->asn_cnt) == 0;
   }
 }
 
@@ -481,7 +481,7 @@ inline int bgpstream_as_path_equal(bgpstream_as_path_t *path1,
                                    bgpstream_as_path_t *path2)
 {
   return (path1->data_len == path2->data_len) &&
-         !bcmp(path1->data, path2->data, path1->data_len);
+         !memcmp(path1->data, path2->data, path1->data_len);
 }
 
 /* ========== PRIVATE FUNCTIONS ========== */
