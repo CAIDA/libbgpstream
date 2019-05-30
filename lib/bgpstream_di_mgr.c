@@ -390,7 +390,7 @@ int bgpstream_di_mgr_get_next_record(bgpstream_di_mgr_t *di_mgr,
     // we're in blocking mode, so we sleep
     if (sleep(di_mgr->backoff_time) != 0) {
       // interrupted
-      break;
+      return -1;
     }
     // adjust our sleep time, perhaps
     if (di_mgr->retry_cnt >= DATA_INTERFACE_BLOCKING_RETRY_CNT) {
