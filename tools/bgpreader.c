@@ -38,6 +38,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <errno.h>
 #ifdef WITH_RPKI
 #include "utils/bgpstream_utils_rpki.h"
 #endif
@@ -291,6 +292,7 @@ int main(int argc, char *argv[])
   char *intervalstring = NULL;
   uint32_t interval_start = 0;
   uint32_t interval_end = BGPSTREAM_FOREVER;
+  unsigned long t;
   int rib_period = 0;
   int live = 0;
   int output_info = 0;
@@ -392,15 +394,21 @@ int main(int argc, char *argv[])
       break;
 
     case 'w':
-      /* split the window into a start and end */
-      if ((endp = strchr(optarg, ',')) == NULL) {
+      errno = 0;
+      t = strtoul(optarg, &endp, 10); // may set errno
+      if (t > UINT32_MAX) errno = ERANGE;
+      interval_start = (uint32_t)t;
+      if (*endp == '\0') {
         interval_end = BGPSTREAM_FOREVER;
-      } else {
-        *endp = '\0';
-        endp++;
-        interval_end = atoi(endp);
+      } else if (*endp == ',') {
+        t = strtoul(endp+1, &endp, 10); // may set errno
+        if (t > UINT32_MAX) errno = ERANGE;
+        interval_end = (uint32_t)t;
       }
-      interval_start = atoi(optarg);
+      if (errno || *endp != '\0') {
+        fprintf(stderr, "ERROR: bad time window '%s'\n", optarg);
+        goto err;
+      }
       break;
     case 'P':
       rib_period = atoi(optarg);
