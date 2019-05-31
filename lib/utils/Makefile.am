@@ -62,6 +62,7 @@ include_HEADERS= bgpstream_utils.h 		     \
 
 
 libbgpstream_utils_la_SOURCES =             \
+	bgpstream_utils_private.h           \
 	bgpstream_utils.h                   \
 	bgpstream_utils_addr.c              \
 	bgpstream_utils_addr.h              \

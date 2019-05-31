@@ -25,6 +25,7 @@
  */
 
 #include "bgpstream_utils_community_int.h"
+#include "bgpstream_utils_private.h"
 #include "config.h"
 #include "khash.h"
 #include "utils.h"
@@ -338,9 +339,9 @@ int bgpstream_community_set_populate(bgpstream_community_set_t *set,
 
   for (i = 0; i < cnt; i++) {
     c = &set->communities[i];
-    c->asn = ntohs(*(uint16_t *)buf);
+    c->asn = nptohs(buf);
     buf += sizeof(uint16_t);
-    c->value = ntohs(*(uint16_t *)buf);
+    c->value = nptohs(buf);
     buf += sizeof(uint16_t);
     set->communities_hash = set->communities_hash | c->ui32;
   }

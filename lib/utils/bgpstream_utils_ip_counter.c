@@ -27,6 +27,7 @@
 #include "bgpstream_utils_ip_counter.h"
 #include "bgpstream_log.h"
 #include "bgpstream_utils_addr.h"
+#include "bgpstream_utils_private.h"
 #include "utils.h"
 #include <inttypes.h>
 #include <stdio.h>
@@ -330,9 +331,9 @@ int bgpstream_ip_counter_add(bgpstream_ip_counter_t *ipc, bgpstream_pfx_t *pfx)
   } else {
     if (pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV6) {
       tmp = &pfx->address.bs_ipv6.addr.s6_addr[0];
-      start_ms = ntohll(*((uint64_t *)tmp));
+      start_ms = nptohll(tmp);
       tmp = &pfx->address.bs_ipv6.addr.s6_addr[8];
-      start_ls = ntohll(*((uint64_t *)tmp));
+      start_ls = nptohll(tmp);
       /* printf("+++++++++  %"PRIu64" %"PRIu64"\n", start_ms, start_ls); */
       if (pfx->mask_len > 64) {
         /* len_ms = 0 */
@@ -437,9 +438,9 @@ static uint64_t bgpstream_ip_counter_is_overlapping6(
   *more_specific = 0;
 
   tmp = &(pfx->address.addr.s6_addr[0]);
-  start_ms = ntohll(*((uint64_t *)tmp));
+  start_ms = nptohll(tmp);
   tmp = &(pfx->address.addr.s6_addr[8]);
-  start_ls = ntohll(*((uint64_t *)tmp));
+  start_ls = nptohll(tmp);
 
   /* printf("+++++++++  %"PRIu64" %"PRIu64"\n", start_ms, start_ls); */
   if (pfx->mask_len > 64) {
