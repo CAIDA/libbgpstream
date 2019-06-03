@@ -285,9 +285,9 @@ int bgpstream_patricia_tree_get_minimum_coverage(
  *
  * @param pt           pointer to the patricia tree
  * @param node         pointer to the node in the tree
- * @return a mask: all zeroes if no overlap, 1 on first bit if more specifics
- * are present
- *                 1 on the second bit if less specifics are present
+ * @return bitwise-OR of zero or more of the following values:
+ *    * BGPSTREAM_PATRICIA_LESS_SPECIFICS - the tree contains a less specific prefix
+ *    * BGPSTREAM_PATRICIA_MORE_SPECIFICS - the tree contains a more specific prefix
  */
 uint8_t
 bgpstream_patricia_tree_get_node_overlap_info(bgpstream_patricia_tree_t *pt,
@@ -297,9 +297,10 @@ bgpstream_patricia_tree_get_node_overlap_info(bgpstream_patricia_tree_t *pt,
  *
  * @param pt           pointer to the patricia tree
  * @param pfx          pointer to the prefix to check
- * @return a mask: all zeroes if no overlap, 1 on first bit if more specifics
- * are present
- *                 1 on the second bit if less specifics are present
+ * @return bitwise-OR of zero or more of the following values:
+ *    * BGPSTREAM_PATRICIA_LESS_SPECIFICS - the tree contains a less specific prefix
+ *    * BGPSTREAM_PATRICIA_EXACT_MATCH - the tree contains an exact match
+ *    * BGPSTREAM_PATRICIA_MORE_SPECIFICS - the tree contains a more specific prefix
  */
 uint8_t
 bgpstream_patricia_tree_get_pfx_overlap_info(bgpstream_patricia_tree_t *pt,
