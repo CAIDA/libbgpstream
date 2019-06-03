@@ -345,17 +345,11 @@ bgpstream_patricia_tree_find_more_specific(bgpstream_patricia_node_t *node)
   if (node == NULL) {
     return 0;
   }
-  /* if it is a node containing a glue node, then we have to search for other
-   * cases */
-  if (node->prefix.address.version == BGPSTREAM_ADDR_VERSION_UNKNOWN) {
-    if (bgpstream_patricia_tree_find_more_specific(node->l) == 0) {
-      if (bgpstream_patricia_tree_find_more_specific(node->r) == 0) {
-        return 0;
-      }
-    }
-  }
-  /* if it is a node containing a real prefix, we are done */
-  return 1;
+
+  /* Does this node or one of its descendants contains a real prefix? */
+  return node->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN ||
+    bgpstream_patricia_tree_find_more_specific(node->l) ||
+    bgpstream_patricia_tree_find_more_specific(node->r);
 }
 
 static void bgpstream_patricia_tree_merge_tree(bgpstream_patricia_tree_t *dst,
@@ -535,9 +529,10 @@ bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
 
   bgpstream_patricia_node_t *new_node = NULL;
   bgpstream_addr_version_t v = pfx->address.version;
+  bgpstream_patricia_node_t *node_it = bgpstream_patricia_get_head(pt, v);
 
   /* if Patricia Tree is empty, then insert new node */
-  if (bgpstream_patricia_get_head(pt, v) == NULL) {
+  if (node_it == NULL) {
     if ((new_node = bgpstream_patricia_node_create(pt, pfx)) == NULL) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Error creating pt node");
       return NULL;
@@ -549,9 +544,6 @@ bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
   }
 
   /* Prepare data for Patricia Tree navigation */
-
-  bgpstream_patricia_node_t *node_it = bgpstream_patricia_get_head(pt, v);
-
   uint8_t bitlen = pfx->mask_len;
   unsigned char *addr = bgpstream_pfx_get_first_byte(pfx);
 
@@ -1040,7 +1032,7 @@ bgpstream_patricia_tree_get_node_overlap_info(bgpstream_patricia_tree_t *pt,
   bgpstream_patricia_node_t *node_it = node->parent;
   while (node_it != NULL) {
     if (node_it->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN) {
-      /* one more specific found */
+      /* one less specific found */
       mask = mask | BGPSTREAM_PATRICIA_LESS_SPECIFICS;
       break;
     }
