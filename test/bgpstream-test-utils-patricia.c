@@ -41,7 +41,7 @@
 #define IPV4_TEST_PFX_B_CHILD "130.217.250.0/24"
 #define IPV4_TEST_PFX_CNT 3
 #define IPV4_TEST_24_CNT 257
-#define IPV4_TEST_PFX_OVERLAP "130.217.0.0/20"
+#define IPV4_TEST_PFX_OVERLAP "130.217.240.0/20"
 
 #define IPV6_TEST_PFX_A "2001:500:88::/48"
 #define IPV6_TEST_PFX_A_CHILD "2001:500:88:beef::/64"
@@ -117,13 +117,11 @@ static int test_patricia()
     "Patricia Tree v4 overlap info",
     bgpstream_patricia_tree_get_pfx_overlap_info(
       pt, bgpstream_str2pfx(IPV4_TEST_PFX_OVERLAP, &pfx)) ==
-        BGPSTREAM_PATRICIA_LESS_SPECIFICS ||
-      BGPSTREAM_PATRICIA_MORE_SPECIFICS);
+        (BGPSTREAM_PATRICIA_LESS_SPECIFICS | BGPSTREAM_PATRICIA_MORE_SPECIFICS));
   CHECK("Patricia Tree v6 overlap info",
         bgpstream_patricia_tree_get_pfx_overlap_info(
           pt, bgpstream_str2pfx(IPV6_TEST_PFX_B, &pfx)) ==
-            BGPSTREAM_PATRICIA_EXACT_MATCH ||
-          BGPSTREAM_PATRICIA_MORE_SPECIFICS);
+            (BGPSTREAM_PATRICIA_EXACT_MATCH | BGPSTREAM_PATRICIA_MORE_SPECIFICS));
 
   /* Count minimum coverage prefixes */
   CHECK("Patricia Tree v4 minimum coverage",
