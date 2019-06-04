@@ -35,6 +35,7 @@
  * https://metacpan.org/pod/release/PETDANCE/Test-Harness-2.65_02/lib/Test/Harness/TAP.pod
  */
 static int tap_test_num = 0;
+static int test_section_result = 1;
 
 #define CHECK_MSG(name, err_msg, check)                                        \
   do {                                                                         \
@@ -60,7 +61,8 @@ static int tap_test_num = 0;
     if (!(check)) {                                                            \
       printf("not ok %d - %s\n", ++tap_test_num, name);                        \
       printf("# Failed check was: '" #check "'\n");                            \
-      return -1;                                                               \
+      test_section_result = 0;                                                 \
+      /* return -1; */                                                         \
     } else {                                                                   \
       printf("ok     %d - %s\n", ++tap_test_num, name);                        \
     }                                                                          \
@@ -68,11 +70,11 @@ static int tap_test_num = 0;
 
 #define CHECK_SECTION(name, check)                                             \
   do {                                                                         \
+    test_section_result = 1;                                                   \
     printf("# Checking section: " name "...\n");                               \
-    if (!(check)) {                                                            \
+    if (!(check) || !test_section_result) {                                    \
       printf("# Section %s: FAIL\n", name);                                    \
-      printf("# Failed check was: '" #check "'\n");                            \
-      return -1;                                                               \
+      /* return -1; */                                                         \
     } else {                                                                   \
       printf("# Section %s: PASS\n", name);                                    \
     }                                                                          \

@@ -116,6 +116,7 @@ static int test_bgpstream_filters()
             NULL) {
           /* make sure we haven't reached end of expected_results */
           CHECK("elem partial count", expected_results[counter]);
+          if (!expected_results[counter]) break;
 
           /* check if the results are exactly the expected ones */
           CHECK("elem equality",
