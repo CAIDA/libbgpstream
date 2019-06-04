@@ -51,20 +51,20 @@ bgpstream_filter_mgr_t *bgpstream_filter_mgr_create()
   return bs_filter_mgr;
 }
 
-void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
+void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *this,
                                      bgpstream_filter_type_t filter_type,
                                      const char *filter_value)
 {
   bgpstream_str_set_t **v = NULL;
   bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSF_MGR:: add_filter start");
-  if (bs_filter_mgr == NULL) {
+  if (this == NULL) {
     return; // nothing to customize
   }
 
   switch (filter_type) {
   case BGPSTREAM_FILTER_TYPE_ELEM_PEER_ASN:
-    if (bs_filter_mgr->peer_asns == NULL) {
-      if ((bs_filter_mgr->peer_asns = bgpstream_id_set_create()) == NULL) {
+    if (this->peer_asns == NULL) {
+      if ((this->peer_asns = bgpstream_id_set_create()) == NULL) {
         bgpstream_log(BGPSTREAM_LOG_VFINE,
                       "\tBSF_MGR:: add_filter malloc failed");
         bgpstream_log(BGPSTREAM_LOG_ERR, "can't allocate memory");
@@ -74,13 +74,13 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
         return;
       }
     }
-    bgpstream_id_set_insert(bs_filter_mgr->peer_asns,
+    bgpstream_id_set_insert(this->peer_asns,
                             (uint32_t)strtoul(filter_value, NULL, 10));
     return;
 
   case BGPSTREAM_FILTER_TYPE_ELEM_ORIGIN_ASN:
-    if (bs_filter_mgr->origin_asns == NULL) {
-      if ((bs_filter_mgr->origin_asns = bgpstream_id_set_create()) == NULL) {
+    if (this->origin_asns == NULL) {
+      if ((this->origin_asns = bgpstream_id_set_create()) == NULL) {
         bgpstream_log(BGPSTREAM_LOG_VFINE,
                       "\tBSF_MGR:: add_filter malloc failed");
         bgpstream_log(BGPSTREAM_LOG_ERR, "can't allocate memory");
@@ -88,19 +88,19 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
         return;
       }
     }
-    bgpstream_id_set_insert(bs_filter_mgr->origin_asns,
+    bgpstream_id_set_insert(this->origin_asns,
                             (uint32_t)strtoul(filter_value, NULL, 10));
     return;
 
   case BGPSTREAM_FILTER_TYPE_ELEM_TYPE:
     if (strcmp(filter_value, "ribs") == 0) {
-      bs_filter_mgr->elemtype_mask |= (BGPSTREAM_FILTER_ELEM_TYPE_RIB);
+      this->elemtype_mask |= (BGPSTREAM_FILTER_ELEM_TYPE_RIB);
     } else if (strcmp(filter_value, "announcements") == 0) {
-      bs_filter_mgr->elemtype_mask |= (BGPSTREAM_FILTER_ELEM_TYPE_ANNOUNCEMENT);
+      this->elemtype_mask |= (BGPSTREAM_FILTER_ELEM_TYPE_ANNOUNCEMENT);
     } else if (strcmp(filter_value, "withdrawals") == 0) {
-      bs_filter_mgr->elemtype_mask |= (BGPSTREAM_FILTER_ELEM_TYPE_WITHDRAWAL);
+      this->elemtype_mask |= (BGPSTREAM_FILTER_ELEM_TYPE_WITHDRAWAL);
     } else if (strcmp(filter_value, "peerstates") == 0) {
-      bs_filter_mgr->elemtype_mask |= (BGPSTREAM_FILTER_ELEM_TYPE_PEERSTATE);
+      this->elemtype_mask |= (BGPSTREAM_FILTER_ELEM_TYPE_PEERSTATE);
     } else {
       bgpstream_log(BGPSTREAM_LOG_ERR,
                     "\tBSF_MGR: %s is not a known element type", filter_value);
@@ -109,8 +109,8 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
     return;
 
   case BGPSTREAM_FILTER_TYPE_ELEM_ASPATH:
-    if (bs_filter_mgr->aspath_exprs == NULL) {
-      if ((bs_filter_mgr->aspath_exprs = bgpstream_str_set_create()) == NULL) {
+    if (this->aspath_exprs == NULL) {
+      if ((this->aspath_exprs = bgpstream_str_set_create()) == NULL) {
         bgpstream_log(BGPSTREAM_LOG_VFINE,
                       "\tBSF_MGR:: add_filter malloc failed");
         bgpstream_log(BGPSTREAM_LOG_ERR, "\tBSF_MGR: can't allocate memory");
@@ -118,7 +118,7 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
       }
     }
 
-    bgpstream_str_set_insert(bs_filter_mgr->aspath_exprs, filter_value);
+    bgpstream_str_set_insert(this->aspath_exprs, filter_value);
     return;
 
   case BGPSTREAM_FILTER_TYPE_ELEM_PREFIX:
@@ -129,8 +129,8 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
     bgpstream_pfx_t pfx;
     uint8_t matchtype;
 
-    if (bs_filter_mgr->prefixes == NULL) {
-      if ((bs_filter_mgr->prefixes = bgpstream_patricia_tree_create(NULL)) ==
+    if (this->prefixes == NULL) {
+      if ((this->prefixes = bgpstream_patricia_tree_create(NULL)) ==
           NULL) {
         bgpstream_log(BGPSTREAM_LOG_VFINE,
                       "\tBSF_MGR:: add_filter malloc failed");
@@ -151,7 +151,7 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
     }
 
     pfx.allowed_matches = matchtype;
-    if (bgpstream_patricia_tree_insert(bs_filter_mgr->prefixes, &pfx) == NULL) {
+    if (bgpstream_patricia_tree_insert(this->prefixes, &pfx) == NULL) {
       bgpstream_log(BGPSTREAM_LOG_VFINE,
                     "\tBSF_MGR:: add_filter malloc failed");
       bgpstream_log(BGPSTREAM_LOG_ERR, "\tBSF_MGR: can't add prefix");
@@ -165,8 +165,8 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
     int khret;
 
     bgpstream_community_t comm;
-    if (bs_filter_mgr->communities == NULL) {
-      if ((bs_filter_mgr->communities = kh_init(bgpstream_community_filter)) ==
+    if (this->communities == NULL) {
+      if ((this->communities = kh_init(bgpstream_community_filter)) ==
           NULL) {
         bgpstream_log(BGPSTREAM_LOG_VFINE,
                       "\tBSF_MGR:: add_filter malloc failed");
@@ -179,30 +179,30 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
       return;
     }
 
-    if ((k = kh_get(bgpstream_community_filter, bs_filter_mgr->communities,
-                    comm)) == kh_end(bs_filter_mgr->communities)) {
-      k = kh_put(bgpstream_community_filter, bs_filter_mgr->communities, comm,
+    if ((k = kh_get(bgpstream_community_filter, this->communities,
+                    comm)) == kh_end(this->communities)) {
+      k = kh_put(bgpstream_community_filter, this->communities, comm,
                  &khret);
-      kh_value(bs_filter_mgr->communities, k) = mask;
+      kh_value(this->communities, k) = mask;
     }
 
     /* we use the AND because the less restrictive filter wins over the more
      * restrictive:
      * e.g. 10:0, 10:* is equivalent to 10:*
      */
-    kh_value(bs_filter_mgr->communities, k) =
-      kh_value(bs_filter_mgr->communities, k) & mask;
+    kh_value(this->communities, k) =
+      kh_value(this->communities, k) & mask;
     /* DEBUG: fprintf(stderr, "%s - %d\n",
-     *                filter_value, kh_value(bs_filter_mgr->communities, k) );
+     *                filter_value, kh_value(this->communities, k) );
      */
     return;
   }
 
   case BGPSTREAM_FILTER_TYPE_ELEM_IP_VERSION:
     if (strcmp(filter_value, "4") == 0) {
-      bs_filter_mgr->ipversion = BGPSTREAM_ADDR_VERSION_IPV4;
+      this->ipversion = BGPSTREAM_ADDR_VERSION_IPV4;
     } else if (strcmp(filter_value, "6") == 0) {
-      bs_filter_mgr->ipversion = BGPSTREAM_ADDR_VERSION_IPV6;
+      this->ipversion = BGPSTREAM_ADDR_VERSION_IPV6;
     } else {
       bgpstream_log(BGPSTREAM_LOG_ERR,
                     "\tBSF_MGR: Unknown IP version %s, ignoring", filter_value);
@@ -210,16 +210,16 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
     return;
 
   case BGPSTREAM_FILTER_TYPE_PROJECT:
-    v = &bs_filter_mgr->projects;
+    v = &this->projects;
     break;
   case BGPSTREAM_FILTER_TYPE_COLLECTOR:
-    v = &bs_filter_mgr->collectors;
+    v = &this->collectors;
     break;
   case BGPSTREAM_FILTER_TYPE_ROUTER:
-    v = &bs_filter_mgr->routers;
+    v = &this->routers;
     break;
   case BGPSTREAM_FILTER_TYPE_RECORD_TYPE:
-    v = &bs_filter_mgr->bgp_types;
+    v = &this->bgp_types;
     break;
   default:
     bgpstream_log(BGPSTREAM_LOG_ERR, "\tBSF_MGR: unknown filter - ignoring");
@@ -241,25 +241,25 @@ void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
 }
 
 void bgpstream_filter_mgr_rib_period_filter_add(
-  bgpstream_filter_mgr_t *bs_filter_mgr, uint32_t period)
+  bgpstream_filter_mgr_t *this, uint32_t period)
 {
   bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSF_MGR:: add_filter start");
-  assert(bs_filter_mgr != NULL);
-  if (period != 0 && bs_filter_mgr->last_processed_ts == NULL) {
-    if ((bs_filter_mgr->last_processed_ts = kh_init(collector_ts)) == NULL) {
+  assert(this != NULL);
+  if (period != 0 && this->last_processed_ts == NULL) {
+    if ((this->last_processed_ts = kh_init(collector_ts)) == NULL) {
       bgpstream_log(BGPSTREAM_LOG_ERR,
                     "\tBSF_MGR: can't allocate memory for collectortype map");
     }
   }
-  bs_filter_mgr->rib_period = period;
+  this->rib_period = period;
   bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSF_MGR:: add_filter end");
 }
 
 void bgpstream_filter_mgr_interval_filter_add(
-  bgpstream_filter_mgr_t *bs_filter_mgr, uint32_t begin_time, uint32_t end_time)
+  bgpstream_filter_mgr_t *this, uint32_t begin_time, uint32_t end_time)
 {
   bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSF_MGR:: add_filter start");
-  if (bs_filter_mgr == NULL) {
+  if (this == NULL) {
     return; // nothing to customize
   }
   // create a new filter structure
@@ -273,7 +273,7 @@ void bgpstream_filter_mgr_interval_filter_add(
   // copying filter values
   f->begin_time = begin_time;
   f->end_time = end_time;
-  bs_filter_mgr->time_interval = f;
+  this->time_interval = f;
 
   bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSF_MGR:: add_filter stop");
 }
@@ -294,66 +294,66 @@ int bgpstream_filter_mgr_validate(bgpstream_filter_mgr_t *filter_mgr)
 }
 
 /* destroy the memory allocated for bgpstream filter */
-void bgpstream_filter_mgr_destroy(bgpstream_filter_mgr_t *bs_filter_mgr)
+void bgpstream_filter_mgr_destroy(bgpstream_filter_mgr_t *this)
 {
   bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSF_MGR:: destroy start");
-  if (bs_filter_mgr == NULL) {
+  if (this == NULL) {
     return; // nothing to destroy
   }
   // destroying filters
   khiter_t k;
   // projects
-  if (bs_filter_mgr->projects != NULL) {
-    bgpstream_str_set_destroy(bs_filter_mgr->projects);
+  if (this->projects != NULL) {
+    bgpstream_str_set_destroy(this->projects);
   }
   // collectors
-  if (bs_filter_mgr->collectors != NULL) {
-    bgpstream_str_set_destroy(bs_filter_mgr->collectors);
+  if (this->collectors != NULL) {
+    bgpstream_str_set_destroy(this->collectors);
   }
   // routers
-  if (bs_filter_mgr->routers != NULL) {
-    bgpstream_str_set_destroy(bs_filter_mgr->routers);
+  if (this->routers != NULL) {
+    bgpstream_str_set_destroy(this->routers);
   }
   // bgp_types
-  if (bs_filter_mgr->bgp_types != NULL) {
-    bgpstream_str_set_destroy(bs_filter_mgr->bgp_types);
+  if (this->bgp_types != NULL) {
+    bgpstream_str_set_destroy(this->bgp_types);
   }
   // peer asns
-  if (bs_filter_mgr->peer_asns != NULL) {
-    bgpstream_id_set_destroy(bs_filter_mgr->peer_asns);
+  if (this->peer_asns != NULL) {
+    bgpstream_id_set_destroy(this->peer_asns);
   }
   // origin asns
-  if (bs_filter_mgr->origin_asns != NULL) {
-    bgpstream_id_set_destroy(bs_filter_mgr->origin_asns);
+  if (this->origin_asns != NULL) {
+    bgpstream_id_set_destroy(this->origin_asns);
   }
   // aspath expressions
-  if (bs_filter_mgr->aspath_exprs != NULL) {
-    bgpstream_str_set_destroy(bs_filter_mgr->aspath_exprs);
+  if (this->aspath_exprs != NULL) {
+    bgpstream_str_set_destroy(this->aspath_exprs);
   }
   // prefixes
-  if (bs_filter_mgr->prefixes != NULL) {
-    bgpstream_patricia_tree_destroy(bs_filter_mgr->prefixes);
+  if (this->prefixes != NULL) {
+    bgpstream_patricia_tree_destroy(this->prefixes);
   }
   // communities
-  if (bs_filter_mgr->communities != NULL) {
-    kh_destroy(bgpstream_community_filter, bs_filter_mgr->communities);
+  if (this->communities != NULL) {
+    kh_destroy(bgpstream_community_filter, this->communities);
   }
   // time_interval
-  if (bs_filter_mgr->time_interval != NULL) {
-    free(bs_filter_mgr->time_interval);
+  if (this->time_interval != NULL) {
+    free(this->time_interval);
   }
   // rib/update frequency
-  if (bs_filter_mgr->last_processed_ts != NULL) {
-    for (k = kh_begin(bs_filter_mgr->last_processed_ts);
-         k != kh_end(bs_filter_mgr->last_processed_ts); ++k) {
-      if (kh_exist(bs_filter_mgr->last_processed_ts, k)) {
-        free(kh_key(bs_filter_mgr->last_processed_ts, k));
+  if (this->last_processed_ts != NULL) {
+    for (k = kh_begin(this->last_processed_ts);
+         k != kh_end(this->last_processed_ts); ++k) {
+      if (kh_exist(this->last_processed_ts, k)) {
+        free(kh_key(this->last_processed_ts, k));
       }
     }
-    kh_destroy(collector_ts, bs_filter_mgr->last_processed_ts);
+    kh_destroy(collector_ts, this->last_processed_ts);
   }
   // free the mgr structure
-  free(bs_filter_mgr);
-  bs_filter_mgr = NULL;
+  free(this);
+  this = NULL;
   bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSF_MGR:: destroy end");
 }
