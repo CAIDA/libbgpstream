@@ -212,8 +212,9 @@ bgpstream_t *bgpstream_create(void);
  * @param bs            pointer to a BGP Stream instance to filter
  * @param filter_type   the type of the filter to apply
  * @param filter_value  the value to set the filter to
+ * @return 1 if the filter was added successfully, 0 if not.
  */
-void bgpstream_add_filter(bgpstream_t *bs, bgpstream_filter_type_t filter_type,
+int bgpstream_add_filter(bgpstream_t *bs, bgpstream_filter_type_t filter_type,
                           const char *filter_value);
 
 /** Parse a filter string and create appropriate filters to select a subset
@@ -231,8 +232,9 @@ int bgpstream_parse_filter_string(bgpstream_t *bs, const char *fstring);
  *
  * @param bs        pointer to a BGP Stream instance to filter
  * @param period    time period (if zero, all available RIBs are processed)
+ * @return 1 if the filter was added successfully, 0 if not.
  */
-void bgpstream_add_rib_period_filter(bgpstream_t *bs, uint32_t period);
+int bgpstream_add_rib_period_filter(bgpstream_t *bs, uint32_t period);
 
 /** Add a filter to select a specific time range starting from now and
  *  going back a certain number of seconds, minutes, hours or days.
@@ -248,23 +250,25 @@ void bgpstream_add_rib_period_filter(bgpstream_t *bs, uint32_t period);
  *  @param interval   string describing the interval to go back
  *  @param islive     if not zero, live data will be provided once all historic
  *                    data has been fetched.
+ *  @return 1 if the filter was added successfully, 0 if not.
  */
-void bgpstream_add_recent_interval_filter(bgpstream_t *bs, const char *interval,
-                                          uint8_t islive);
+int bgpstream_add_recent_interval_filter(bgpstream_t *bs, const char *interval,
+                                         int islive);
 
 /** Add a filter to select a specific time range from the BGP data available
  *
  * @param bs            pointer to a BGP Stream instance to filter
  * @param begin_time    the first time that will match the filter (inclusive)
  * @param end_time      the last time that will match the filter (inclusive)
+ * @return 1 if the filter was added successfully, 0 if not.
  *
  * If end_time is set to BGPSTREAM_FOREVER (0), the stream will be set to live
  * mode, and will process data forever. If no intervals are added, then
  * BGPStream will default to processing every available record, however, this
  * will trigger a run-time error if using the Broker data interface.
  */
-void bgpstream_add_interval_filter(bgpstream_t *bs, uint32_t begin_time,
-                                   uint32_t end_time);
+int bgpstream_add_interval_filter(bgpstream_t *bs, uint32_t begin_time,
+                                  uint32_t end_time);
 
 /** Get a list of data interfaces that are currently supported
  *

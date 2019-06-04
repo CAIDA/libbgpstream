@@ -78,14 +78,14 @@ typedef struct struct_bgpstream_filter_mgr_t {
 bgpstream_filter_mgr_t *bgpstream_filter_mgr_create(void);
 
 /* configure filters in order to select a subset of the bgp data available */
-void bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
-                                     bgpstream_filter_type_t filter_type,
-                                     const char *filter_value);
+int bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *bs_filter_mgr,
+                                    bgpstream_filter_type_t filter_type,
+                                    const char *filter_value);
 
-void bgpstream_filter_mgr_rib_period_filter_add(
+int bgpstream_filter_mgr_rib_period_filter_add(
   bgpstream_filter_mgr_t *bs_filter_mgr, uint32_t period);
 
-void bgpstream_filter_mgr_interval_filter_add(
+int bgpstream_filter_mgr_interval_filter_add(
   bgpstream_filter_mgr_t *bs_filter_mgr, uint32_t begin_time,
   uint32_t end_time);
 
