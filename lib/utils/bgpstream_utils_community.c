@@ -261,7 +261,7 @@ int bgpstream_community_set_insert(bgpstream_community_set_t *set,
 
   set->communities[set->communities_cnt] = *comm;
   set->communities_cnt++;
-  set->communities_hash = set->communities_hash | *((uint32_t *)comm);
+  set->communities_hash = set->communities_hash | comm->ui32;
   return 0;
 }
 
@@ -286,8 +286,7 @@ int bgpstream_community_set_populate_from_array_zc(
   set->communities_hash = 0;
   int i;
   for (i = 0; i < bgpstream_community_set_size(set); i++) {
-    set->communities_hash =
-      set->communities_hash | *((uint32_t *)&set->communities[i]);
+    set->communities_hash = set->communities_hash | set->communities[i].ui32;
   }
   return 0;
 }
@@ -356,7 +355,7 @@ int bgpstream_community_set_populate(bgpstream_community_set_t *set,
     buf += sizeof(uint16_t);
     c->value = ntohs(*(uint16_t *)buf);
     buf += sizeof(uint16_t);
-    set->communities_hash = set->communities_hash | *((uint32_t *)c);
+    set->communities_hash = set->communities_hash | c->ui32;
   }
 
   set->communities_cnt = cnt;
@@ -377,9 +376,10 @@ int bgpstream_community_set_match(bgpstream_community_set_t *set,
   bgpstream_community_t *hash = (bgpstream_community_t *)&set->communities_hash;
 
   /* first we verify if the hash is compatible */
-  if ((!(mask & BGPSTREAM_COMMUNITY_FILTER_ASN) || hash->asn & com->asn) &&
+  if ((!(mask & BGPSTREAM_COMMUNITY_FILTER_ASN) ||
+       (hash->asn & com->asn) == com->asn) &&
       (!(mask & BGPSTREAM_COMMUNITY_FILTER_VALUE) ||
-       hash->value & com->value)) {
+       (hash->value & com->value) == com->value)) {
     bgpstream_community_t *c;
     int i;
     int n = bgpstream_community_set_size(set);

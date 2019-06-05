@@ -86,8 +86,13 @@ typedef struct bgpstream_community_set bgpstream_community_set_t;
 /** Community attribute value */
 typedef struct bgpstream_community {
 
-  uint16_t asn;
-  uint16_t value;
+  union {
+    struct {
+      uint16_t asn;
+      uint16_t value;
+    };
+    uint32_t ui32; // allow access as 32-bit value, in no particular byte order
+  };
 
 } __attribute__((packed)) bgpstream_community_t;
 
