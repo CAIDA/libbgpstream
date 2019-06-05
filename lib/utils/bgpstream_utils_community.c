@@ -67,41 +67,33 @@ int bgpstream_str2community(const char *buf, bgpstream_community_t *comm)
     return -1;
   }
   uint8_t mask = 0;
-  char com_copy[COMMUNITY_MAX_STR_LEN];
-  strncpy(com_copy, buf, COMMUNITY_MAX_STR_LEN);
-
+  char *ptr;
   unsigned long int r;
-  int ret;
-  char *endptr = NULL;
-  char *found = strchr(com_copy, ':');
-
-  if (found == NULL) {
-    return -1;
-  }
-  *found = '\0';
   errno = 0;
-  comm->asn = 0;
-  if (com_copy[0] != '*') {
-    mask = mask | BGPSTREAM_COMMUNITY_FILTER_ASN;
-    r = strtoul(com_copy, &endptr, 10);
-    ret = errno;
-    if (!(endptr != NULL && *endptr == '\0') || ret != 0) {
+  if (*buf == '*') {
+    buf++;
+  } else {
+    mask |= BGPSTREAM_COMMUNITY_FILTER_ASN;
+    r = strtoul(buf, &ptr, 10);
+    if (errno || r > UINT16_MAX)
       return -1;
-    }
-    comm->asn = (uint32_t)r;
+    buf = ptr;
+    comm->asn = (uint16_t)r;
   }
-
-  endptr = NULL;
-  comm->value = 0;
-  if (*(found + 1) != '*') {
-    mask = mask | BGPSTREAM_COMMUNITY_FILTER_VALUE;
-    r = strtoul(found + 1, &endptr, 10);
-    ret = errno;
-    if (!(endptr != NULL && *endptr == '\0') || ret != 0) {
+  if (*buf != ':')
+    return -1;
+  if (*++buf == '*') {
+    buf++;
+  } else {
+    mask |= BGPSTREAM_COMMUNITY_FILTER_VALUE;
+    r = strtoul(buf, &ptr, 10);
+    if (errno || r > UINT16_MAX)
       return -1;
-    }
-    comm->value = (uint32_t)r;
+    buf = ptr;
+    comm->value = (uint16_t)r;
   }
+  if (*buf != '\0')
+    return -1;
   return (int)mask;
 }
 

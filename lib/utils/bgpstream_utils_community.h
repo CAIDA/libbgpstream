@@ -60,10 +60,9 @@
 
 #define BGPSTREAM_COMMUNITY_NO_EXPORT_SUBCONFED 0xFFFFFF03
 
-/** Community mask used for filtering */
 
-#define BGPSTREAM_COMMUNITY_FILTER_ASN   0x02
-#define BGPSTREAM_COMMUNITY_FILTER_VALUE 0x01
+#define BGPSTREAM_COMMUNITY_FILTER_ASN   0x02   ///< match the ASN
+#define BGPSTREAM_COMMUNITY_FILTER_VALUE 0x01   ///< match the value
 #define BGPSTREAM_COMMUNITY_FILTER_EXACT \
   (BGPSTREAM_COMMUNITY_FILTER_ASN | BGPSTREAM_COMMUNITY_FILTER_VALUE)
 
@@ -112,12 +111,16 @@ typedef struct bgpstream_community {
 int bgpstream_community_snprintf(char *buf, size_t len,
                                  bgpstream_community_t *comm);
 
-/** Read the string representation of a community from the buffer and
- *  populate the community structure .
+/** Read the string representation of a community in the form "<asn>:<value>"
+ * from the buffer and populate the community structure.  Each of the
+ * &lt;asn&gt; and &lt;value&gt; parts may be a number or a "*" wildcard.
  *
  * @param buf           pointer to a character buffer at least len bytes long
  * @param comm          pointer to the community structure populate
- * @return 0 if the operation is successful, -1 otherwise.
+ * @return -1 if the operation failed, otherwise a bitwise-OR mask of zero or
+ * more of the following values:
+ *    * #BGPSTREAM_COMMUNITY_FILTER_ASN - the ASN was a number
+ *    * #BGPSTREAM_COMMUNITY_FILTER_VALUE - the value was a number
  */
 int bgpstream_str2community(const char *buf, bgpstream_community_t *comm);
 
