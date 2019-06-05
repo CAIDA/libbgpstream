@@ -150,37 +150,24 @@ int bgpstream_community_equal_value(bgpstream_community_t comm1,
 
 /* SET FUNCTIONS */
 
-#define ADD_CHAR(chr)                                                          \
-  do {                                                                         \
-    if ((len - written) > 0) {                                                 \
-      *bufp = chr;                                                             \
-      bufp++;                                                                  \
-    }                                                                          \
-    written++;                                                                 \
-  } while (0)
-
 int bgpstream_community_set_snprintf(char *buf, size_t len,
                                      bgpstream_community_set_t *set)
 {
   size_t written = 0;
   int i;
-  int need_sep = 0;
-  char *bufp = buf;
 
   for (i = 0; i < bgpstream_community_set_size(set); i++) {
-    if (need_sep != 0) {
-      ADD_CHAR(' ');
+    if (i > 0) {
+      if (written < len) {
+        buf[written] = ' ';
+      }
+      written++;
     }
-    need_sep = 1;
     written += bgpstream_community_snprintf(
-      bufp, (len - written), bgpstream_community_set_get(set, i));
-    bufp = buf + written;
+      buf + written, (len - written), bgpstream_community_set_get(set, i));
   }
-  *bufp = '\0';
 
-  if (written > len) {
-    buf[len - 1] = '\0';
-  }
+  buf[(written < len) ? written : len - 1] = '\0';
   return written;
 }
 
