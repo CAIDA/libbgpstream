@@ -51,13 +51,38 @@ bgpstream_filter_mgr_t *bgpstream_filter_mgr_create()
   return bs_filter_mgr;
 }
 
+// Create *setp if needed, and insert value into *setp.
+// Returns 1 for success, 0 for failure.
+static int bsf_id_set_insert(bgpstream_id_set_t **setp, uint32_t value)
+{
+  if (*setp == NULL && (*setp = bgpstream_id_set_create()) == NULL) {
+    bgpstream_log(BGPSTREAM_LOG_VFINE,
+                  "\tBSF_MGR:: add_filter malloc failed");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "can't allocate memory");
+    return 0;
+  }
+  return bgpstream_id_set_insert(*setp, value) >= 0;
+}
+
+// Create *setp if needed, and insert value into *setp.
+// Returns 1 for success, 0 for failure.
+static int bsf_str_set_insert(bgpstream_str_set_t **setp, const char *value)
+{
+  if (*setp == NULL && (*setp = bgpstream_str_set_create()) == NULL) {
+    bgpstream_log(BGPSTREAM_LOG_VFINE,
+                  "\tBSF_MGR:: add_filter malloc failed");
+    bgpstream_log(BGPSTREAM_LOG_ERR, "can't allocate memory");
+    return 0;
+  }
+  return bgpstream_str_set_insert(*setp, value) >= 0;
+}
+
 int bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *this,
                                     bgpstream_filter_type_t filter_type,
                                     const char *filter_value)
 {
   unsigned long ul;
   char *endp;
-  bgpstream_str_set_t **v = NULL;
   bgpstream_log(BGPSTREAM_LOG_VFINE, "\tBSF_MGR:: add_filter start");
   if (this == NULL) {
     return 1; // nothing to customize
@@ -65,38 +90,22 @@ int bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *this,
 
   switch (filter_type) {
   case BGPSTREAM_FILTER_TYPE_ELEM_PEER_ASN:
-    if (this->peer_asns == NULL) {
-      if ((this->peer_asns = bgpstream_id_set_create()) == NULL) {
-        bgpstream_log(BGPSTREAM_LOG_VFINE,
-                      "\tBSF_MGR:: add_filter malloc failed");
-        bgpstream_log(BGPSTREAM_LOG_ERR, "can't allocate memory");
-        return 0;
-      }
-    }
     errno = 0;
     ul = strtoul(filter_value, &endp, 10);
     if (errno || ul > UINT32_MAX || *endp) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "invalid peer asn '%s'", filter_value);
       return 0;
     }
-    return bgpstream_id_set_insert(this->peer_asns, (uint32_t)ul) >= 0;
+    return bsf_id_set_insert(&this->peer_asns, (uint32_t)ul);
 
   case BGPSTREAM_FILTER_TYPE_ELEM_ORIGIN_ASN:
-    if (this->origin_asns == NULL) {
-      if ((this->origin_asns = bgpstream_id_set_create()) == NULL) {
-        bgpstream_log(BGPSTREAM_LOG_VFINE,
-                      "\tBSF_MGR:: add_filter malloc failed");
-        bgpstream_log(BGPSTREAM_LOG_ERR, "can't allocate memory");
-        return 0;
-      }
-    }
     errno = 0;
     ul = strtoul(filter_value, &endp, 10);
     if (errno || ul > UINT32_MAX || *endp) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "invalid origin asn '%s'", filter_value);
       return 0;
     }
-    return bgpstream_id_set_insert(this->origin_asns, (uint32_t)ul) >= 0;
+    return bsf_id_set_insert(&this->origin_asns, (uint32_t)ul);
 
   case BGPSTREAM_FILTER_TYPE_ELEM_TYPE:
     if (strcmp(filter_value, "ribs") == 0) {
@@ -115,16 +124,7 @@ int bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *this,
     return 1;
 
   case BGPSTREAM_FILTER_TYPE_ELEM_ASPATH:
-    if (this->aspath_exprs == NULL) {
-      if ((this->aspath_exprs = bgpstream_str_set_create()) == NULL) {
-        bgpstream_log(BGPSTREAM_LOG_VFINE,
-                      "\tBSF_MGR:: add_filter malloc failed");
-        bgpstream_log(BGPSTREAM_LOG_ERR, "can't allocate memory");
-        return 0;
-      }
-    }
-
-    return bgpstream_str_set_insert(this->aspath_exprs, filter_value) >= 0;
+    return bsf_str_set_insert(&this->aspath_exprs, filter_value);
 
   case BGPSTREAM_FILTER_TYPE_ELEM_PREFIX:
   case BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_MORE:
@@ -220,33 +220,21 @@ int bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *this,
     return 1;
 
   case BGPSTREAM_FILTER_TYPE_PROJECT:
-    v = &this->projects;
-    break;
+    return bsf_str_set_insert(&this->projects, filter_value);
+
   case BGPSTREAM_FILTER_TYPE_COLLECTOR:
-    v = &this->collectors;
-    break;
+    return bsf_str_set_insert(&this->collectors, filter_value);
+
   case BGPSTREAM_FILTER_TYPE_ROUTER:
-    v = &this->routers;
-    break;
+    return bsf_str_set_insert(&this->routers, filter_value);
+
   case BGPSTREAM_FILTER_TYPE_RECORD_TYPE:
-    v = &this->bgp_types;
-    break;
+    return bsf_str_set_insert(&this->bgp_types, filter_value);
+
   default:
     bgpstream_log(BGPSTREAM_LOG_ERR, "unknown filter %d", filter_type);
     return 0;
   }
-
-  // TODO XXX kkeys: this block should be a function called from the relevant
-  // switch cases.  BGPSTREAM_FILTER_TYPE_ELEM_ASPATH should also use it.
-  if (*v == NULL) {
-    if ((*v = bgpstream_str_set_create()) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_VFINE,
-                    "\tBSF_MGR:: add_filter malloc failed");
-      bgpstream_log(BGPSTREAM_LOG_ERR, "can't allocate memory");
-      return 0;
-    }
-  }
-  return bgpstream_str_set_insert(*v, filter_value) >= 0;
 }
 
 int bgpstream_filter_mgr_rib_period_filter_add(
