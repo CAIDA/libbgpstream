@@ -70,11 +70,11 @@ The list of accepted terms and their meaning are:
 
   aspath (path)
       restrict the stream to only elements with an AS Path that matches the
-      provided regular expression. The regular expression should be formatted
-      using the standard Cisco format, i.e. '^' represents the start of the
-      AS Path, '$' represents the end of the path and '_' represents the link
-      between two consecutive peers. Standard regex operators can also be
-      used, e.g. *,?,+ and [].
+      provided Cisco regular expression.  In a Cisco regular expression,
+      characters in "|()[].^$*+?\" have the same meaning as in POSIX extended
+      regular expressions; characters in "{}" have no special meaning; and the
+      character "_" matches beginning of string, end of string, space, braces,
+      comma, or underscore, i.e. the same as "(^|$|[ {},_])".
 
       For example, the expression '^681_1444_' will match any AS Paths that
       begin with AS681 followed by AS1444.

@@ -134,7 +134,39 @@ int bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *this,
       bgpstream_log(BGPSTREAM_LOG_ERR, "can't allocate memory");
       return 0;
     }
-    int rc = regcomp(re, filter_value, REG_NOSUB);
+    // Cisco AS path regular expression
+    // https://www.cisco.com/c/en/us/td/docs/routers/crs/software/crs_r4-2/getting_started/configuration/guide/gs42crs/gs42aexp.html
+    // These characters are the same as in POSIX extended:  |()[].^$*+?\
+    // These have no special meaning (unlike POSIX extended):  {}
+    // Cisco adds "_" which is equivalent to POSIX extended "(^|$|[ {},_])"
+    // We convert the Cisco regex to a POSIX extended regex.
+    char posix[256];
+    const char *src = filter_value;
+    char *dst = posix;
+    while (*src) {
+      if (dst - posix > sizeof(posix) - 15) {
+        bgpstream_log(BGPSTREAM_LOG_ERR, "regex too long");
+        return 0;
+      }
+      if (*src == '\\' && src[1]) {
+        *(dst++) = *(src++);
+        *(dst++) = *(src++);
+      } else if (*src == '_') {
+        // XXX bug: inserting parens throws off the backreference count
+        strcpy(dst, "(^|$|[ {},_])");
+        dst += strlen(dst);
+        src++;
+      } else if (strchr("{}", *src)) {
+        *(dst++) = '\\';
+        *(dst++) = *(src++);
+      } else {
+        *(dst++) = *(src++);
+      }
+    }
+    *(dst++) = '\0';
+    bgpstream_log(BGPSTREAM_LOG_VFINE,
+        "convert cisco regex \"%s\" to posix \"%s\"", filter_value, posix);
+    int rc = regcomp(re, posix, REG_EXTENDED | REG_NOSUB);
     if (rc != 0) {
       char errbuf[1024];
       regerror(rc, re, errbuf, sizeof(errbuf));
