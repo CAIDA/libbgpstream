@@ -123,8 +123,40 @@ int bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *this,
     }
     return 1;
 
-  case BGPSTREAM_FILTER_TYPE_ELEM_ASPATH:
-    return bsf_str_set_insert(&this->aspath_exprs, filter_value);
+  case BGPSTREAM_FILTER_TYPE_ELEM_ASPATH: {
+    regex_t *re;
+    uint8_t negate = 0;
+    if (*filter_value == '!') {
+      negate = 1;
+      filter_value++;
+    }
+    if (!(re = malloc(sizeof(regex_t)))) {
+      bgpstream_log(BGPSTREAM_LOG_ERR, "can't allocate memory");
+      return 0;
+    }
+    int rc = regcomp(re, filter_value, REG_NOSUB);
+    if (rc != 0) {
+      char errbuf[1024];
+      regerror(rc, re, errbuf, sizeof(errbuf));
+      bgpstream_log(BGPSTREAM_LOG_ERR, "regex error: %s", errbuf);
+      return 0;
+    }
+    if (++this->aspath_expr_cnt > this->aspath_expr_alloc_cnt) {
+      void *tmp = realloc(this->aspath_exprs,
+          this->aspath_expr_cnt * sizeof(*this->aspath_exprs));
+      if (!tmp) {
+        bgpstream_log(BGPSTREAM_LOG_ERR, "can't allocate memory");
+        regfree(re);
+        return 0;
+      }
+      this->aspath_exprs = tmp;
+      this->aspath_expr_alloc_cnt = this->aspath_expr_cnt;
+    }
+    this->aspath_exprs[this->aspath_expr_cnt-1].re = re;
+    this->aspath_exprs[this->aspath_expr_cnt-1].negate = negate;
+    return 1;
+  }
+
 
   case BGPSTREAM_FILTER_TYPE_ELEM_PREFIX:
   case BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_MORE:
@@ -328,7 +360,12 @@ void bgpstream_filter_mgr_destroy(bgpstream_filter_mgr_t *this)
   }
   // aspath expressions
   if (this->aspath_exprs != NULL) {
-    bgpstream_str_set_destroy(this->aspath_exprs);
+    for (int i = 0; i < this->aspath_expr_cnt; i++) {
+      if (this->aspath_exprs[i].re) {
+        regfree(this->aspath_exprs[i].re);
+      }
+    }
+    free(this->aspath_exprs);
   }
   // prefixes
   if (this->prefixes != NULL) {

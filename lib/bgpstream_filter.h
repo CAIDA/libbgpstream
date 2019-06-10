@@ -35,6 +35,7 @@
 #include "bgpstream.h"
 #include "bgpstream_constants.h"
 #include "khash.h"
+#include <regex.h>
 
 #define BGPSTREAM_FILTER_ELEM_TYPE_RIB 0x1
 #define BGPSTREAM_FILTER_ELEM_TYPE_ANNOUNCEMENT 0x2
@@ -57,12 +58,19 @@ KHASH_INIT(collector_ts, char *, uint32_t, 1, kh_str_hash_func,
 
 typedef khash_t(collector_ts) collector_ts_t;
 
+typedef struct struct_bgpstream_aspath_expr_t {
+  regex_t *re;
+  uint8_t negate;
+} bgpstream_aspath_expr_t;
+
 typedef struct struct_bgpstream_filter_mgr_t {
   bgpstream_str_set_t *projects;
   bgpstream_str_set_t *collectors;
   bgpstream_str_set_t *routers;
   bgpstream_str_set_t *bgp_types;
-  bgpstream_str_set_t *aspath_exprs;
+  bgpstream_aspath_expr_t *aspath_exprs;
+  int aspath_expr_cnt;
+  int aspath_expr_alloc_cnt;
   bgpstream_id_set_t *peer_asns;
   bgpstream_id_set_t *origin_asns;
   bgpstream_patricia_tree_t *prefixes;
