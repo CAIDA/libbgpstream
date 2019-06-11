@@ -121,11 +121,11 @@ bgpstream_ip_addr_t *bgpstream_addr_mask(bgpstream_ip_addr_t *addr,
 bgpstream_ipv4_addr_t *bgpstream_ipv4_addr_mask(bgpstream_ipv4_addr_t *addr,
                                                 uint8_t mask_len)
 {
-  if (mask_len > 32) {
-    mask_len = 32;
+  if (mask_len >= 32) {
+    return addr;
   }
 
-  addr->addr.s_addr &= htonl(~(((uint64_t)1 << (32 - mask_len)) - 1));
+  addr->addr.s_addr &= htonl(~(~(uint32_t)0 >> mask_len));
   return addr;
 }
 
