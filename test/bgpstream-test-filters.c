@@ -37,7 +37,7 @@ static bgpstream_record_t *rec;
 static bgpstream_elem_t *elem;
 
 static bgpstream_data_interface_id_t di_id = 0;
-static bgpstream_data_interface_option_t *option;
+// static bgpstream_data_interface_option_t *option;
 
 static char elem_buf[65536];
 static const char *expected_results[] = {
@@ -79,6 +79,7 @@ static const char *expected_results[] = {
     bgpstream_set_data_interface(bs, di_id);                                   \
   } while (0)
 
+#ifdef WITH_DATA_INTERFACE_BROKER
 static int test_bgpstream_filters()
 {
   SETUP;
@@ -132,6 +133,7 @@ static int test_bgpstream_filters()
   TEARDOWN;
   return 0;
 }
+#endif
 
 int main()
 {

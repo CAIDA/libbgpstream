@@ -36,9 +36,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#define BUFFER_LEN 1024
-static char buffer[BUFFER_LEN];
-
 #define IPV4_TEST_PFX_A "192.0.43.0/24"
 #define IPV4_TEST_PFX_B "130.217.0.0/16"
 #define IPV4_TEST_PFX_B_CHILD "130.217.250.0/24"
