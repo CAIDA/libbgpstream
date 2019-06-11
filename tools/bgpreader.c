@@ -131,6 +131,9 @@ static struct bs_options_t bs_opts[] =
    "<community>",
    "return elems with the specified community*\n"
    "(format: asn:value. the '*' metacharacter is recognized)"},
+  {{"aspath", required_argument, 0, 'A'},
+   "<regex>",
+   "return elems that match the aspath regex*"},
   {{"count", required_argument, 0, 'n'},
    "<rec-cnt>",
    "process at most <rec-cnt> records"},
@@ -365,6 +368,8 @@ int main(int argc, char *argv[])
     PARSE_FILTER_OPTION('k', BGPSTREAM_FILTER_TYPE_ELEM_PREFIX)
       break;
     PARSE_FILTER_OPTION('y', BGPSTREAM_FILTER_TYPE_ELEM_COMMUNITY)
+      break;
+    PARSE_FILTER_OPTION('A', BGPSTREAM_FILTER_TYPE_ELEM_ASPATH)
       break;
     PARSE_FILTER_OPTION('t', BGPSTREAM_FILTER_TYPE_RECORD_TYPE)
       /* TODO: this error check should be in bgpstream_add_filter()? */
