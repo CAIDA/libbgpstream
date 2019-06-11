@@ -103,7 +103,7 @@ bgpstream_patricia_tree_result_set_create(void);
 
 /** Free a result set instance
  *
- * @param this_p        The pointer to the result set instance to free
+ * @param set_p        The pointer to the result set instance to free
  */
 void bgpstream_patricia_tree_result_set_destroy(
   bgpstream_patricia_tree_result_set_t **set_p);
@@ -111,14 +111,14 @@ void bgpstream_patricia_tree_result_set_destroy(
 /** Move the result set iterator pointer to the the beginning
  *  (so that next returns the first element)
  *
- * @param this          The result set instance
+ * @param set          The result set instance
  */
 void bgpstream_patricia_tree_result_set_rewind(
   bgpstream_patricia_tree_result_set_t *set);
 
 /** Get the next result in the result set iterator
  *
- * @param this          The result set instance
+ * @param set          The result set instance
  * @return a pointer to the result
  */
 bgpstream_patricia_node_t *bgpstream_patricia_tree_result_set_next(
@@ -126,7 +126,7 @@ bgpstream_patricia_node_t *bgpstream_patricia_tree_result_set_next(
 
 /** Count the number of results in the list
  *
- * @param result      pointer to the patricia tree result list to print
+ * @param set      pointer to the patricia tree result list to print
  * @return the number of nodes in the result set
  */
 int bgpstream_patricia_tree_result_set_count(
@@ -134,7 +134,7 @@ int bgpstream_patricia_tree_result_set_count(
 
 /** Print the result list
  *
- * @param result      pointer to the patricia tree result list to print
+ * @param set      pointer to the patricia tree result list to print
  */
 void bgpstream_patricia_tree_result_set_print(
   bgpstream_patricia_tree_result_set_t *set);
@@ -296,7 +296,7 @@ bgpstream_patricia_tree_get_node_overlap_info(bgpstream_patricia_tree_t *pt,
 /** Check whether a prefix would overlap with the prefixes already in the tree
  *
  * @param pt           pointer to the patricia tree
- * @param node         pointer to the prefix to check
+ * @param pfx          pointer to the prefix to check
  * @return a mask: all zeroes if no overlap, 1 on first bit if more specifics
  * are present
  *                 1 on the second bit if less specifics are present

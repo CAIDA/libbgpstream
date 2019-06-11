@@ -63,7 +63,7 @@ bgpstream_ip_counter_t *bgpstream_ip_counter_create(void);
 
 /** Add a prefix to the IP Counter
  *
- * @param counter      pointer to the IP Counter
+ * @param ipc          pointer to the IP Counter
  * @param pfx          prefix to insert in IP Counter
  * @return             0 if a prefix was added correctly, -1 otherwise
  */
@@ -71,7 +71,7 @@ int bgpstream_ip_counter_add(bgpstream_ip_counter_t *ipc, bgpstream_pfx_t *pfx);
 
 /** Get the number of unique IPs in the IP Counter
  *
- * @param counter        pointer to the IP Counter
+ * @param ipc            pointer to the IP Counter
  * @param v              IP version
  * @return               number of unique IPs in the IP Counter
  *                       (unique /32 in IPv4, unique /64 in IPv6)
@@ -82,7 +82,7 @@ uint64_t bgpstream_ip_counter_get_ipcount(bgpstream_ip_counter_t *ipc,
 /** Return the number of unique IPs in the IP Counter instance that
  *  overlap with the provided prefix
  *
- * @param counter        pointer to the IP Counter
+ * @param ipc            pointer to the IP Counter
  * @param pfx            prefix to compare
  * @param more_specific  it is set to 1 if the prefix is a more specific
  * @return               number of unique IPs in the IP Counter that
@@ -94,13 +94,13 @@ uint64_t bgpstream_ip_counter_is_overlapping(bgpstream_ip_counter_t *ipc,
 
 /** Empty the IP Counter
  *
- * @param counter        pointer to the IP Counter to clear
+ * @param ipc            pointer to the IP Counter to clear
  */
 void bgpstream_ip_counter_clear(bgpstream_ip_counter_t *ipc);
 
 /** Destroy the given IP Counter
  *
- * @param counter        pointer to the IP Counter to destroy
+ * @param ipc            pointer to the IP Counter to destroy
  */
 void bgpstream_ip_counter_destroy(bgpstream_ip_counter_t *ipc);
 

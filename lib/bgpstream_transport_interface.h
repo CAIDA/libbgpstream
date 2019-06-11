@@ -33,7 +33,7 @@
 #define __BGPSTREAM_TRANSPORT_INTERFACE_H
 
 #include "bgpstream.h"
-#include "bgpstream_transport.h" /*< for bs_transport_t */
+#include "bgpstream_transport.h" /* for bs_transport_t */
 #include "config.h"
 
 /** @file

@@ -82,7 +82,7 @@ void bgpstream_elem_generator_clear(bgpstream_elem_generator_t *generator);
  * This is slightly different to _clear in that it will leave the generator in a
  * "populated" state, but with zero elems.
  */
-void bgpstream_elem_generator_empty(bgpstream_elem_generator_t *self);
+void bgpstream_elem_generator_empty(bgpstream_elem_generator_t *generator);
 
 /** Check if the generator has been populated
  *
@@ -98,7 +98,7 @@ int bgpstream_elem_generator_is_populated(
  * @return pointer to a fresh elem structure if successful, NULL otherwise
  */
 bgpstream_elem_t *
-bgpstream_elem_generator_get_new_elem(bgpstream_elem_generator_t *self);
+bgpstream_elem_generator_get_new_elem(bgpstream_elem_generator_t *generator);
 
 /** "Commit" the given elem to the generator
  *

@@ -28,7 +28,7 @@
 #define __BGPSTREAM_DI_INTERFACE_H
 
 #include "bgpstream.h"
-#include "bgpstream_di_mgr.h" /*< for bsdi_t */
+#include "bgpstream_di_mgr.h" /* for bsdi_t */
 #include "config.h"
 
 /** @file

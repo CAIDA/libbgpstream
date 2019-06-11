@@ -31,7 +31,7 @@
 
 #include "bgpstream_record.h"
 #include "bgpstream_elem_int.h"
-#include "bgpstream_format_interface.h" //< to access filter mgr
+#include "bgpstream_format_interface.h" // to access filter mgr
 #include "bgpstream_int.h"
 #include "bgpstream_log.h"
 #include "utils.h"

@@ -35,7 +35,7 @@
  *
  * @param buf           pointer to a char array
  * @param len           length of the char array
- * @param elem          pointer to a BGP Stream Record to convert to string
+ * @param record        pointer to a BGP Stream Record to convert to string
  * @param elem          pointer to a BGP Stream Elem to convert to string
  * @return pointer to the start of the buffer if successful, NULL otherwise
  */

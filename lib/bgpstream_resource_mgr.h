@@ -55,7 +55,7 @@ void bgpstream_resource_mgr_destroy(bgpstream_resource_mgr_t *q);
  * @param project         borrowed pointer to a project name string
  * @param collector       borrowed pointer to a collector name string
  * @param record_type     type of records provided by resource
- * @param res[out]        set to a pointer to the created resource
+ * @param[out] res        set to a pointer to the created resource
  * @return 1 if the item was added to the queue, 0 if it was filtered out, and
  * -1 if an error occurred
  */

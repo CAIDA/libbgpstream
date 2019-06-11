@@ -37,7 +37,7 @@
 
 /** Hash a peer signature into a 64bit number
  *
- * @param               the peer signature to hash
+ * @param ps            the peer signature to hash
  * @return 64bit hash of the given peer signature
  */
 khint64_t bgpstream_peer_sig_hash(bgpstream_peer_sig_t *ps);
