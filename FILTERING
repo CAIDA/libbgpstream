@@ -74,7 +74,8 @@ The list of accepted terms and their meaning are:
       characters in "|()[].^$*+?\" have the same meaning as in POSIX extended
       regular expressions; characters in "{}" have no special meaning; and the
       character "_" matches beginning of string, end of string, space, braces,
-      comma, or underscore, i.e. the same as "(^|$|[ {},_])".
+      comma, or underscore, i.e. the same as "(^|$|[ {},_])".  POSIX
+      backreferences are also supported.
 
       For example, the expression '^681_1444_' will match any AS Paths that
       begin with AS681 followed by AS1444.

@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <ctype.h>
 
 /* allocate memory for a new bgpstream filter */
 bgpstream_filter_mgr_t *bgpstream_filter_mgr_create()
@@ -138,35 +139,52 @@ int bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *this,
     // https://www.cisco.com/c/en/us/td/docs/routers/crs/software/crs_r4-2/getting_started/configuration/guide/gs42crs/gs42aexp.html
     // These characters are the same as in POSIX extended:  |()[].^$*+?\
     // These have no special meaning (unlike POSIX extended):  {}
+    // We also support backreferences, which aren't described in any official
+    // documentation I can find, but are in unofficial descriptions.
     // Cisco adds "_" which is equivalent to POSIX extended "(^|$|[ {},_])"
     // We convert the Cisco regex to a POSIX extended regex.
-    char posix[256];
-    const char *src = filter_value;
-    char *dst = posix;
-    while (*src) {
-      if (dst - posix > sizeof(posix) - 15) {
+    char posix_re[256];
+    const char *c_ptr = filter_value;
+    char *p_ptr = posix_re;
+    int c_parens = 0;
+    int p_parens = 0;
+    int c2p_parens[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    while (*c_ptr) {
+      if (p_ptr - posix_re > sizeof(posix_re) - 15) {
         bgpstream_log(BGPSTREAM_LOG_ERR, "regex too long");
         return 0;
       }
-      if (*src == '\\' && src[1]) {
-        *(dst++) = *(src++);
-        *(dst++) = *(src++);
-      } else if (*src == '_') {
-        // XXX bug: inserting parens throws off the backreference count
-        strcpy(dst, "(^|$|[ {},_])");
-        dst += strlen(dst);
-        src++;
-      } else if (strchr("{}", *src)) {
-        *(dst++) = '\\';
-        *(dst++) = *(src++);
+      if (*c_ptr == '\\' && isdigit(c_ptr[1])) {
+        // backref may need to be adjusted if we've added extra parens
+        *(p_ptr++) = *(c_ptr++);
+        int n = *(c_ptr++) - '0';
+        if (n > 9 || n > c_parens || c2p_parens[n] > 9) {
+          bgpstream_log(BGPSTREAM_LOG_ERR, "bad backreference in regex");
+          return 0;
+        }
+        *(p_ptr++) = (char)c2p_parens[n] + '0';
+      } else if (*c_ptr == '\\' && c_ptr[1]) {
+        *(p_ptr++) = *(c_ptr++);
+        *(p_ptr++) = *(c_ptr++);
+      } else if (*c_ptr == '_') {
+        strcpy(p_ptr, "(^|$|[ {},_])");
+        p_ptr += strlen(p_ptr);
+        c_ptr++;
+        p_parens++; // we added parens to posix_re that weren't in cisco_re
+      } else if (strchr("{}", *c_ptr)) {
+        *(p_ptr++) = '\\';
+        *(p_ptr++) = *(c_ptr++);
+      } else if (*c_ptr == '(') {
+        c2p_parens[++c_parens] = ++p_parens;
+        *(p_ptr++) = *(c_ptr++);
       } else {
-        *(dst++) = *(src++);
+        *(p_ptr++) = *(c_ptr++);
       }
     }
-    *(dst++) = '\0';
-    bgpstream_log(BGPSTREAM_LOG_VFINE,
-        "convert cisco regex \"%s\" to posix \"%s\"", filter_value, posix);
-    int rc = regcomp(re, posix, REG_EXTENDED | REG_NOSUB);
+    *(p_ptr++) = '\0';
+    bgpstream_log(BGPSTREAM_LOG_FINE,
+        "convert cisco regex \"%s\" to posix \"%s\"", filter_value, posix_re);
+    int rc = regcomp(re, posix_re, REG_EXTENDED | REG_NOSUB);
     if (rc != 0) {
       char errbuf[1024];
       regerror(rc, re, errbuf, sizeof(errbuf));
