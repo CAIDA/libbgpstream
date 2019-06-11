@@ -37,6 +37,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <stdarg.h>
 
 #define STATE ((cache_state_t *)(transport->state))
 
@@ -72,6 +73,29 @@ typedef struct cache_state {
 
 } cache_state_t;
 
+// Like sprintf(), but first allocate a string large enough to hold the output.
+#ifdef __GNUC__
+__attribute__((format(printf, 2, 3)))
+#endif
+static int bs_asprintf(char **strp, const char *fmt, ...)
+{
+  va_list ap;
+  va_start(ap, fmt);
+  int len = vsnprintf(NULL, 0, fmt, ap);
+  va_end(ap);
+  if (len < 0 || !(*strp = malloc(len+1))) {
+    return -1;
+  }
+  va_start(ap, fmt);
+  len = vsnprintf(*strp, len+1, fmt, ap);
+  va_end(ap);
+  if (len < 0) { // shouldn't happen
+    free(*strp);
+    *strp = NULL;
+  }
+  return len;
+}
+
 /**
    Initialize the cache_state_t data structure;
 */
@@ -80,9 +104,6 @@ static int init_state(bgpstream_transport_t *transport)
 
   // define local variables
   char resource_hash[1024];
-  int len_cache_file_path;
-  int len_lock_file_path;
-  int len_temp_file_path;
 
   // get a "hash" string from the resource
   if ((bgpstream_resource_hash_snprintf(resource_hash, sizeof(resource_hash),
@@ -113,54 +134,25 @@ static int init_state(bgpstream_transport_t *transport)
   }
 
   // set cache file path
-  len_cache_file_path = strlen(STATE->cache_directory_path) +
-                        strlen(resource_hash) + strlen(CACHE_FILE_SUFFIX) + 2;
-  if ((STATE->cache_file_path =
-         (char *)malloc(sizeof(char) * len_cache_file_path)) == NULL) {
-    bgpstream_log(
-      BGPSTREAM_LOG_ERR,
-      "ERROR: Could not allocate space for cache file name variable.");
-    return -1;
-  }
-  if ((snprintf(STATE->cache_file_path, len_cache_file_path, "%s/%s%s",
+  if ((bs_asprintf(&STATE->cache_file_path, "%s/%s%s",
                 STATE->cache_directory_path, resource_hash,
-                CACHE_FILE_SUFFIX)) >= len_cache_file_path) {
+                CACHE_FILE_SUFFIX)) < 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR,
                   "ERROR: Could not set cache file name variable.");
     return -1;
   }
 
   // set lock file name: cache_file_path + ".lock"
-  len_lock_file_path =
-    strlen(STATE->cache_file_path) + strlen(CACHE_LOCK_FILE_SUFFIX) + 2;
-  if ((STATE->lock_file_path =
-         (char *)malloc(sizeof(char) * len_lock_file_path)) == NULL) {
-    bgpstream_log(
-      BGPSTREAM_LOG_ERR,
-      "ERROR: Could not allocate space for lock file name variable.");
-    return -1;
-  }
-  if ((snprintf(STATE->lock_file_path, len_lock_file_path, "%s%s",
-                STATE->cache_file_path, CACHE_LOCK_FILE_SUFFIX)) >=
-      len_lock_file_path) {
+  if ((bs_asprintf(&STATE->lock_file_path, "%s%s",
+                STATE->cache_file_path, CACHE_LOCK_FILE_SUFFIX)) < 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR,
                   "ERROR: Could not set lock file name variable.");
     return -1;
   }
 
   // set temporary cache file name: cache_file_path + ".temp"
-  len_temp_file_path =
-    strlen(STATE->cache_file_path) + strlen(CACHE_TEMP_FILE_SUFFIX) + 2;
-  if ((STATE->temp_file_path =
-         (char *)malloc(sizeof(char) * len_temp_file_path)) == NULL) {
-    bgpstream_log(
-      BGPSTREAM_LOG_ERR,
-      "ERROR: Could not allocate space for temp file name variable.");
-    return -1;
-  }
-  if ((snprintf(STATE->temp_file_path, len_temp_file_path, "%s%s",
-                STATE->cache_file_path, CACHE_TEMP_FILE_SUFFIX)) >=
-      len_temp_file_path) {
+  if ((bs_asprintf(&STATE->temp_file_path, "%s%s",
+                STATE->cache_file_path, CACHE_TEMP_FILE_SUFFIX)) < 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR,
                   "ERROR: Could not set temp file name variable.");
     return -1;
