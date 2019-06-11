@@ -137,7 +137,7 @@ int bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *this,
     }
     // Cisco AS path regular expression
     // https://www.cisco.com/c/en/us/td/docs/routers/crs/software/crs_r4-2/getting_started/configuration/guide/gs42crs/gs42aexp.html
-    // These characters are the same as in POSIX extended:  |()[].^$*+?\
+    // These characters are the same as in POSIX extended:  \|()[].^$*+?
     // These have no special meaning (unlike POSIX extended):  {}
     // We also support backreferences, which aren't described in any official
     // documentation I can find, but are in unofficial descriptions.
