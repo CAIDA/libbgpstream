@@ -207,7 +207,6 @@ static int handle_table_dump_v2(rec_data_t *rd, khash_t(td2_peer) * peer_table,
   case PARSEBGP_MRT_TABLE_DUMP_V2_RIB_IPV6_UNICAST:
     return handle_td2_afi_safi_rib(rd, peer_table, mrt, PARSEBGP_BGP_AFI_IPV6,
                                    &td2->afi_safi_rib);
-    break;
 
   default:
     // do nothing
