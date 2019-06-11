@@ -34,6 +34,7 @@
 
 #include "bgpstream_elem.h"
 #include "bgpstream_record.h"
+#include "bgpstream_bgpdump.h"
 #include "bgpstream_utils.h"
 
 /** @file
