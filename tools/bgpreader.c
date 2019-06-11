@@ -45,14 +45,6 @@
 #include "utils.h"
 #include "getopt.h"
 
-#define PROJECT_CMD_CNT 10
-#define TYPE_CMD_CNT 10
-#define COLLECTOR_CMD_CNT 100
-#define PREFIX_CMD_CNT 1000
-#define COMMUNITY_CMD_CNT 1000
-#define PEERASN_CMD_CNT 1000
-#define ORIGINASN_CMD_CNT 1000
-#define OPTION_CMD_CNT 1024
 #define BGPSTREAM_RECORD_OUTPUT_FORMAT                                         \
   "# Record format:\n"                                                         \
   "# "                                                                         \
@@ -139,6 +131,9 @@ static struct bs_options_t bs_opts[] =
    "<community>",
    "return elems with the specified community*\n"
    "(format: asn:value. the '*' metacharacter is recognized)"},
+  {{"aspath", required_argument, 0, 'A'},
+   "<regex>",
+   "return elems that match the aspath regex*"},
   {{"count", required_argument, 0, 'n'},
    "<rec-cnt>",
    "process at most <rec-cnt> records"},
@@ -280,33 +275,13 @@ int main(int argc, char *argv[])
 
   int opt;
   int prevoptind;
+  int error_cnt = 0; // for errors that don't prevent additional option parsing
 
   // variables associated with options
-  char *projects[PROJECT_CMD_CNT];
-  int projects_cnt = 0;
-
-  char *types[TYPE_CMD_CNT];
-  int types_cnt = 0;
-
-  char *collectors[COLLECTOR_CMD_CNT];
-  int collectors_cnt = 0;
-
-  char *peerasns[PEERASN_CMD_CNT];
-  int peerasns_cnt = 0;
-
-  char *originasns[ORIGINASN_CMD_CNT];
-  int originasns_cnt = 0;
-
-  char *prefixes[PREFIX_CMD_CNT];
-  int prefixes_cnt = 0;
-
-  char *communities[COMMUNITY_CMD_CNT];
-  int communities_cnt = 0;
+  const char *interface_options[1024];
+  int interface_options_cnt = 0;
 
   char *endp;
-
-  char *interface_options[OPTION_CMD_CNT];
-  int interface_options_cnt = 0;
 
 #ifdef WITH_RPKI
   bgpstream_rpki_input_t *rpki_input = bgpstream_rpki_create_input();
@@ -347,7 +322,7 @@ int main(int argc, char *argv[])
   size_t short_len = 0;
   for (k = 0; k < OPTIONS_CNT; k++) {
     if (isgraph(bs_opts[k].option.val)) {
-      short_options[short_len++] = bs_opts[k].option.val;
+      short_options[short_len++] = (char)bs_opts[k].option.val;
       if (bs_opts[k].option.has_arg)
         short_options[short_len++] = ':';
     }
@@ -375,42 +350,47 @@ int main(int argc, char *argv[])
       goto err;
     }
     switch (opt) {
-    case 'p':
-      if (projects_cnt == PROJECT_CMD_CNT) {
-        fprintf(stderr,
-                "ERROR: A maximum of %d projects can be specified on "
-                "the command line\n",
-                PROJECT_CMD_CNT);
-        goto err;
-      }
-      projects[projects_cnt++] = strdup(optarg);
+
+#define PARSE_FILTER_OPTION(optletter, filter_type)           \
+    case (optletter):                                         \
+      if (!bgpstream_add_filter(bs, (filter_type), optarg))   \
+        error_cnt++;
+
+    // Filter options that don't depend on di_info can be parsed immediately
+    PARSE_FILTER_OPTION('p', BGPSTREAM_FILTER_TYPE_PROJECT)
       break;
-    case 'c':
-      if (collectors_cnt == COLLECTOR_CMD_CNT) {
-        fprintf(stderr,
-                "ERROR: A maximum of %d collectors can be specified on "
-                "the command line\n",
-                COLLECTOR_CMD_CNT);
-        goto err;
-      }
-      collectors[collectors_cnt++] = strdup(optarg);
+    PARSE_FILTER_OPTION('c', BGPSTREAM_FILTER_TYPE_COLLECTOR)
       break;
-    case 't':
-      if (types_cnt == TYPE_CMD_CNT) {
-        fprintf(stderr,
-                "ERROR: A maximum of %d types can be specified on "
-                "the command line\n",
-                TYPE_CMD_CNT);
-        goto err;
-      }
+    PARSE_FILTER_OPTION('j', BGPSTREAM_FILTER_TYPE_ELEM_PEER_ASN)
+      break;
+    PARSE_FILTER_OPTION('a', BGPSTREAM_FILTER_TYPE_ELEM_ORIGIN_ASN)
+      break;
+    PARSE_FILTER_OPTION('k', BGPSTREAM_FILTER_TYPE_ELEM_PREFIX)
+      break;
+    PARSE_FILTER_OPTION('y', BGPSTREAM_FILTER_TYPE_ELEM_COMMUNITY)
+      break;
+    PARSE_FILTER_OPTION('A', BGPSTREAM_FILTER_TYPE_ELEM_ASPATH)
+      break;
+    PARSE_FILTER_OPTION('t', BGPSTREAM_FILTER_TYPE_RECORD_TYPE)
+      /* TODO: this error check should be in bgpstream_add_filter()? */
       if (strcmp(optarg, "ribs") != 0 && strcmp(optarg, "updates") != 0) {
         fprintf(stderr,
                 "ERROR: record-type must be one of \"ribs\" or \"updates\"\n");
-        usage();
+        error_cnt++;
+      }
+      break;
+
+    case 'o':
+      if (interface_options_cnt == ARR_CNT(interface_options)) {
+        fprintf(stderr,
+                "ERROR: A maximum of %lu interface_options (-o) can be "
+                "specified on the command line\n",
+                ARR_CNT(interface_options));
         goto err;
       }
-      types[types_cnt++] = strdup(optarg);
+      interface_options[interface_options_cnt++] = optarg;
       break;
+
     case 'w':
       /* split the window into a start and end */
       if ((endp = strchr(optarg, ',')) == NULL) {
@@ -421,46 +401,6 @@ int main(int argc, char *argv[])
         interval_end = atoi(endp);
       }
       interval_start = atoi(optarg);
-      break;
-    case 'j':
-      if (peerasns_cnt == PEERASN_CMD_CNT) {
-        fprintf(stderr,
-                "ERROR: A maximum of %d peer asns can be specified on "
-                "the command line\n",
-                PEERASN_CMD_CNT);
-        goto err;
-      }
-      peerasns[peerasns_cnt++] = strdup(optarg);
-      break;
-    case 'a':
-      if (originasns_cnt == ORIGINASN_CMD_CNT) {
-        fprintf(stderr,
-                "ERROR: A maximum of %d origin asns can be specified on "
-                "the command line\n",
-                ORIGINASN_CMD_CNT);
-        goto err;
-      }
-      originasns[originasns_cnt++] = strdup(optarg);
-      break;
-    case 'k':
-      if (prefixes_cnt == PREFIX_CMD_CNT) {
-        fprintf(stderr,
-                "ERROR: A maximum of %d peer asns can be specified on "
-                "the command line\n",
-                PREFIX_CMD_CNT);
-        goto err;
-      }
-      prefixes[prefixes_cnt++] = strdup(optarg);
-      break;
-    case 'y':
-      if (communities_cnt == COMMUNITY_CMD_CNT) {
-        fprintf(stderr,
-                "ERROR: A maximum of %d communities can be specified on "
-                "the command line\n",
-                PREFIX_CMD_CNT);
-        goto err;
-      }
-      communities[communities_cnt++] = strdup(optarg);
       break;
     case 'P':
       rib_period = atoi(optarg);
@@ -473,16 +413,6 @@ int main(int argc, char *argv[])
       }
       di_info = bgpstream_get_data_interface_info(bs, di_id);
       break;
-    case 'o':
-      if (interface_options_cnt == OPTION_CMD_CNT) {
-        fprintf(stderr,
-                "ERROR: A maximum of %d interface options can be specified\n",
-                OPTION_CMD_CNT);
-        goto err;
-      }
-      interface_options[interface_options_cnt++] = strdup(optarg);
-      break;
-
     case 'n':
       rec_limit = atoi(optarg);
       fprintf(stderr, "INFO: Processing at most %d records\n", rec_limit);
@@ -540,8 +470,9 @@ int main(int argc, char *argv[])
     }
   }
 
+  // note: di_info must be initialized before processing interface_options
   for (i = 0; i < interface_options_cnt; i++) {
-    if (*interface_options[i] == '?') {
+    if (strcmp(interface_options[i], "?") == 0) {
       dump_if_options();
       goto done;
     } else {
@@ -550,122 +481,75 @@ int main(int argc, char *argv[])
         fprintf(stderr, "ERROR: Malformed data interface option (%s)\n",
                 interface_options[i]);
         fprintf(stderr, "ERROR: Expecting <option-name>=<option-value>\n");
-        goto err;
-      }
-      *endp = '\0';
-      endp++;
-      if ((option = bgpstream_get_data_interface_option_by_name(
-             bs, di_id, interface_options[i])) == NULL) {
-        fprintf(stderr, "ERROR: Invalid option '%s' for data interface '%s'\n",
-                interface_options[i], di_info->name);
-        dump_if_options();
-        goto err;
-      }
-      if (bgpstream_set_data_interface_option(bs, option, endp) != 0) {
-        fprintf(stderr,
-                "ERROR: Failed to set option '%s' for data interface '%s'\n",
-                interface_options[i], di_info->name);
-        goto err;
+        error_cnt++;
+      } else {
+        *endp = '\0';
+        endp++;
+        if ((option = bgpstream_get_data_interface_option_by_name(
+               bs, di_id, interface_options[i])) == NULL) {
+          fprintf(stderr, "ERROR: Invalid option '%s' for data interface '%s'\n",
+                  interface_options[i], di_info->name);
+          dump_if_options();
+          error_cnt++;
+        } else if (bgpstream_set_data_interface_option(bs, option, endp) != 0) {
+          fprintf(stderr,
+                  "ERROR: Failed to set option '%s' for data interface '%s'\n",
+                  interface_options[i], di_info->name);
+          error_cnt++;
+        }
       }
     }
-    free(interface_options[i]);
-    interface_options[i] = NULL;
   }
-  interface_options_cnt = 0;
+
+  // Cannot output in both bgpstream elem and bgpdump format
+  if (elem_output_on && record_bgpdump_output_on) {
+    fprintf(stderr, "ERROR: Cannot output in both bgpstream elem (-e) and "
+                    "bgpdump format (-m).\n");
+    error_cnt++;
+  }
+
+  // if the user did not specify any output format, default to per elem
+  if (!record_output_on && !elem_output_on && !record_bgpdump_output_on) {
+    elem_output_on = 1;
+  }
+
+  // Parse the filter string
+  if (filterstring) {
+    if (!bgpstream_parse_filter_string(bs, filterstring)) {
+      error_cnt++;
+    }
+  }
+
+  if (intervalstring) {
+    if (!bgpstream_add_recent_interval_filter(bs, intervalstring, live))
+      error_cnt++;
+  }
+
+  // windows
+  if (interval_start != 0) {
+    if (!bgpstream_add_interval_filter(bs, interval_start, interval_end))
+      error_cnt++;
+  }
+
+  /* frequencies */
+  if (rib_period > 0) {
+    if (!bgpstream_add_rib_period_filter(bs, rib_period))
+      error_cnt++;
+  }
+
+  if (error_cnt > 0)
+    goto err;
 
   if (interval_start == 0 && !intervalstring) {
     if (di_id == BGPSTREAM_DATA_INTERFACE_BROKER) {
       fprintf(stderr,
               "ERROR: At least one time window must be set when using the "
               "broker data interface\n");
-      usage();
       goto err;
     } else {
       fprintf(stderr, "WARN: No time window specified, defaulting to all "
                       "available data\n");
     }
-  }
-
-  /* Cannot output in both bgpstream elem and bgpdump format
-   */
-  if (elem_output_on && record_bgpdump_output_on) {
-    fprintf(stderr, "ERROR: Cannot output in both bgpstream elem (-e) and "
-                    "bgpdump format (-m).\n");
-    goto err;
-  }
-
-  /* if the user did not specify any output format
-   * then the default one is per elem */
-  if (!record_output_on && !elem_output_on && !record_bgpdump_output_on) {
-    elem_output_on = 1;
-  }
-
-  /* the program can now start */
-
-  /* allocate memory for interface */
-
-  /* Parse the filter string */
-  if (filterstring) {
-    if (!bgpstream_parse_filter_string(bs, filterstring)) {
-      goto err;
-    }
-  }
-
-  if (intervalstring) {
-    bgpstream_add_recent_interval_filter(bs, intervalstring, live);
-  }
-
-  /* projects */
-  for (i = 0; i < projects_cnt; i++) {
-    bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_PROJECT, projects[i]);
-    free(projects[i]);
-  }
-
-  /* collectors */
-  for (i = 0; i < collectors_cnt; i++) {
-    bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_COLLECTOR, collectors[i]);
-    free(collectors[i]);
-  }
-
-  /* types */
-  for (i = 0; i < types_cnt; i++) {
-    bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_RECORD_TYPE, types[i]);
-    free(types[i]);
-  }
-
-  /* windows */
-  if(interval_start != 0){
-    bgpstream_add_interval_filter(bs, interval_start, interval_end);
-  }
-
-  /* peer asns */
-  for (i = 0; i < peerasns_cnt; i++) {
-    bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_ELEM_PEER_ASN, peerasns[i]);
-    free(peerasns[i]);
-  }
-
-  /* origin asns */
-  for (i = 0; i < originasns_cnt; i++) {
-    bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_ELEM_ORIGIN_ASN, originasns[i]);
-    free(originasns[i]);
-  }
-
-  /* prefixes */
-  for (i = 0; i < prefixes_cnt; i++) {
-    bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_ELEM_PREFIX, prefixes[i]);
-    free(prefixes[i]);
-  }
-
-  /* communities */
-  for (i = 0; i < communities_cnt; i++) {
-    bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_ELEM_COMMUNITY,
-                         communities[i]);
-    free(communities[i]);
-  }
-
-  /* frequencies */
-  if (rib_period > 0) {
-    bgpstream_add_rib_period_filter(bs, rib_period);
   }
 
   /* set data interface */

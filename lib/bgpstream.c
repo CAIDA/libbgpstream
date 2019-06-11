@@ -77,29 +77,27 @@ err:
 }
 
 /* configure filters in order to select a subset of the bgp data available */
-/* TODO: consider having these funcs return an error code */
-void bgpstream_add_filter(bgpstream_t *bs, bgpstream_filter_type_t filter_type,
+int bgpstream_add_filter(bgpstream_t *bs, bgpstream_filter_type_t filter_type,
                           const char *filter_value)
 {
-  bgpstream_filter_mgr_filter_add(bs->filter_mgr, filter_type, filter_value);
+  return bgpstream_filter_mgr_filter_add(bs->filter_mgr, filter_type,
+      filter_value);
 }
 
-void bgpstream_add_rib_period_filter(bgpstream_t *bs, uint32_t period)
+int bgpstream_add_rib_period_filter(bgpstream_t *bs, uint32_t period)
 {
-  bgpstream_filter_mgr_rib_period_filter_add(bs->filter_mgr, period);
+  return bgpstream_filter_mgr_rib_period_filter_add(bs->filter_mgr, period);
 }
 
-void bgpstream_add_recent_interval_filter(bgpstream_t *bs, const char *interval,
-                                          uint8_t islive)
+int bgpstream_add_recent_interval_filter(bgpstream_t *bs, const char *interval,
+                                         int islive)
 {
 
   uint32_t starttime, endtime;
 
-  if (bgpstream_time_calc_recent_interval(&starttime, &endtime, interval) ==
-      0) {
-    bgpstream_log(BGPSTREAM_LOG_ERR,
-                  "Failed to determine suitable time interval");
-    return;
+  if (!bgpstream_time_calc_recent_interval(&starttime, &endtime, interval)) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid time interval '%s'", interval);
+    return 0;
   }
 
   if (islive) {
@@ -107,17 +105,18 @@ void bgpstream_add_recent_interval_filter(bgpstream_t *bs, const char *interval,
     endtime = BGPSTREAM_FOREVER;
   }
 
-  bgpstream_filter_mgr_interval_filter_add(bs->filter_mgr, starttime, endtime);
+  return bgpstream_filter_mgr_interval_filter_add(bs->filter_mgr, starttime,
+      endtime);
 }
 
-void bgpstream_add_interval_filter(bgpstream_t *bs, uint32_t begin_time,
+int bgpstream_add_interval_filter(bgpstream_t *bs, uint32_t begin_time,
                                    uint32_t end_time)
 {
   if (end_time == BGPSTREAM_FOREVER) {
     bgpstream_set_live_mode(bs);
   }
-  bgpstream_filter_mgr_interval_filter_add(bs->filter_mgr, begin_time,
-                                           end_time);
+  return bgpstream_filter_mgr_interval_filter_add(bs->filter_mgr, begin_time,
+                                                  end_time);
 }
 
 int bgpstream_get_data_interfaces(bgpstream_t *bs,

@@ -215,71 +215,29 @@ static int elem_check_filters(bgpstream_record_t *record,
   /* Checking AS Path expressions */
   if (filter_mgr->aspath_exprs) {
     char aspath[65536];
-    char *regexstr;
     int pathlen;
-    regex_t re;
-    int result;
-    int negatives = 0;
-    int positives = 0;
-    int totalpositives = 0;
 
     if (elem->type == BGPSTREAM_ELEM_TYPE_WITHDRAWAL ||
         elem->type == BGPSTREAM_ELEM_TYPE_PEERSTATE) {
       return 0;
     }
 
-    pathlen = bgpstream_as_path_get_filterable(aspath, 65535, elem->as_path);
+    pathlen = bgpstream_as_path_snprintf(aspath, 65535, elem->as_path);
 
-    if (pathlen == 65535) {
+    if (pathlen >= sizeof(aspath)) {
       bgpstream_log(BGPSTREAM_LOG_WARN,
                     "AS Path is too long? Filter may not work well.");
     }
 
-    if (pathlen == 0) {
-      return 0;
-    }
-
-    bgpstream_str_set_rewind(filter_mgr->aspath_exprs);
-    while ((regexstr = bgpstream_str_set_next(filter_mgr->aspath_exprs)) !=
-           NULL) {
-      int negate = 0;
-
-      if (strlen(regexstr) == 0)
-        continue;
-
-      if (*regexstr == '!') {
-        negate = 1;
-        regexstr++;
-      } else {
-        totalpositives += 1;
+    for (int i = 0; i < filter_mgr->aspath_expr_cnt; i++) {
+      int result = regexec(filter_mgr->aspath_exprs[i].re, aspath, 0, NULL, 0);
+      // All aspath regexes must match
+      if ((result == 0) != (filter_mgr->aspath_exprs[i].negate == 0)) {
+        return 0;
       }
-
-      if (regcomp(&re, regexstr, 0) < 0) {
-        /* XXX should really use regerror here for proper error reporting */
-        bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to compile AS path regex");
-        break;
-      }
-
-      result = regexec(&re, aspath, 0, NULL, 0);
-      if (result == 0) {
-        if (!negate) {
-          positives++;
-        }
-        if (negate) {
-          negatives++;
-        }
-      }
-
-      regfree(&re);
-      if (result != REG_NOMATCH && result != 0) {
-        bgpstream_log(BGPSTREAM_LOG_ERR, "Error while matching AS path regex");
-        break;
-      }
-    }
-    if (!(positives == totalpositives && negatives == 0)){
-      return 0;
     }
   }
+
   /* Checking communities (unless it is a withdrawal message) */
   if (filter_mgr->communities) {
     int pass = 0;
