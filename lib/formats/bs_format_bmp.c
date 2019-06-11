@@ -205,7 +205,7 @@ static int populate_prep_cb(bgpstream_format_t *format, uint8_t *buf,
   }
 
   // double-check the magic number
-  if (*(uint32_t *)buf != htonl(0x4F424D50)) {
+  if (memcmp(buf, "OBMP", 4) != 0) {
     // it's not a known OpenBMP header, assume that it is raw BMP
     *lenp = 0;
     return 0;

@@ -75,8 +75,8 @@ unsigned long
 #endif
 bgpstream_ipv4_pfx_hash(const bgpstream_ipv4_pfx_t *pfx)
 {
-  // embed the network mask length in the 32 bits
-  return __ac_Wang_hash(pfx->address.addr.s_addr | (uint32_t)pfx->mask_len);
+  // embed the network mask length in the hash input
+  return __ac_Wang_hash(pfx->address.addr.s_addr ^ pfx->mask_len);
 }
 
 #if ULONG_MAX == ULLONG_MAX
@@ -86,10 +86,10 @@ unsigned long long
 #endif
 bgpstream_ipv6_pfx_hash(const bgpstream_ipv6_pfx_t *pfx)
 {
-  // ipv6 number - we take most significant 64 bits only
-  uint64_t address = *((const uint64_t *)(&(pfx->address.addr.s6_addr[0])));
-  // embed the network mask length in the 64 bits
-  return __ac_Wang_hash(address | (uint64_t)pfx->mask_len);
+  // use only the most significant 64 bits (note: khint_t is 32 bits)
+  const uint32_t *a = (const uint32_t *)(&(pfx->address.addr));
+  // embed the network mask length in the hash input
+  return __ac_Wang_hash(a[0] ^ a[1] ^ pfx->mask_len);
 }
 
 #if ULONG_MAX == ULLONG_MAX

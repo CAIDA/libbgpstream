@@ -55,7 +55,9 @@ unsigned long long
 #endif
 bgpstream_ipv6_addr_hash(const bgpstream_ipv6_addr_t *addr)
 {
-  return __ac_Wang_hash(*((const khint64_t *)(&(addr->addr.s6_addr[0]))));
+  // use only the most significant 64 bits (note: khint_t is 32 bits)
+  const uint32_t *a = (const uint32_t *)(&(addr->addr));
+  return __ac_Wang_hash(a[0] ^ a[1]);
 }
 
 #if ULONG_MAX == ULLONG_MAX
