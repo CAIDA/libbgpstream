@@ -473,7 +473,6 @@ again:
     // other status codes should not appear
     assert(0);
     goto corrupted;
-    break;
   }
 
 ok:

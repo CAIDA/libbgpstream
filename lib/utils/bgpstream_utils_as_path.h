@@ -245,7 +245,7 @@ bgpstream_as_path_t *bgpstream_as_path_create(void);
 
 /** Clear the given AS path structure
  *
- * @param               pointer to the AS path to clear
+ * @param path        pointer to the AS path to clear
  */
 void bgpstream_as_path_clear(bgpstream_as_path_t *path);
 

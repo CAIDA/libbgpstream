@@ -149,7 +149,7 @@ typedef union union_bgpstream_pfx_t {
  * @param buf           pointer to a character buffer at least len bytes long
  * @param len           length of the given character buffer
  * @param pfx           pointer to the bgpstream pfx to convert to string
- * @param returns a pointer to buf if successful, NULL otherwise
+ * @return a pointer to buf if successful, NULL otherwise
  *
  * You will likely want to use INET_ADDRSTRLEN+3 or INET6_ADDRSTRLEN+3 to
  * dimension the buffer.

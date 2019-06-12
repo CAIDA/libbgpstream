@@ -215,7 +215,7 @@ void bgpstream_community_set_clear(bgpstream_community_set_t *set);
 
 /** Destroy the given community set structure
  *
- * @param path        pointer to the AS path structure to destroy
+ * @param set           pointer to the community set to destroy
  */
 void bgpstream_community_set_destroy(bgpstream_community_set_t *set);
 

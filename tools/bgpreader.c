@@ -451,7 +451,6 @@ int main(int argc, char *argv[])
       fprintf(stderr, "bgpreader version %d.%d.%d\n", BGPSTREAM_MAJOR_VERSION,
               BGPSTREAM_MID_VERSION, BGPSTREAM_MINOR_VERSION);
       goto done;
-      break;
 #ifdef WITH_RPKI
     case RPKI_OPTION_SSH:
       bgpstream_rpki_parse_ssh(optarg, rpki_input);

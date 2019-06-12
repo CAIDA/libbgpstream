@@ -196,7 +196,7 @@ typedef bgpstream_parsebgp_check_filter_rc_t(
  * @param format        pointer to the format that originally called
  *                      _populate_record
  * @param buf           pointer to the raw data buffer
- * @param len[out]      length of the data buffer, should updated with the
+ * @param[out] len      length of the data buffer, should updated with the
  *                      number of bytes read
  * @param record        pointer to the record being populated
  * @return 0 if successful, -1 otherwise

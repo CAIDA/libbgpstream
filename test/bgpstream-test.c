@@ -84,6 +84,7 @@ static int test_bgpstream()
   return 0;
 }
 
+#ifdef WITH_DATA_INTERFACE_SINGLEFILE
 static int test_singlefile()
 {
   SETUP;
@@ -109,7 +110,9 @@ static int test_singlefile()
   TEARDOWN;
   return 0;
 }
+#endif
 
+#ifdef WITH_DATA_INTERFACE_CSVFILE
 static int test_csvfile()
 {
   SETUP;
@@ -128,7 +131,9 @@ static int test_csvfile()
   TEARDOWN;
   return 0;
 }
+#endif
 
+#ifdef WITH_DATA_INTERFACE_SQLITE
 static int test_sqlite()
 {
   SETUP;
@@ -147,6 +152,7 @@ static int test_sqlite()
   TEARDOWN;
   return 0;
 }
+#endif
 
 #ifdef WITH_DATA_INTERFACE_BROKER
 static int test_broker()

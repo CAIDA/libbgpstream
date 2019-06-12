@@ -58,7 +58,7 @@ int bgpstream_di_mgr_get_data_interfaces(
 
 /** Get the ID of the data interface with the given name
  *
- * @param di            pointer to a data interface manager instance
+ * @param di_mgr        pointer to a data interface manager instance
  * @param name          name of the data interface to retrieve the ID for
  * @return the ID of the data interface with the given name, or
  * _BGPSTREAM_DATA_INTERFACE_INVALID if no matching interface was found
@@ -69,7 +69,7 @@ bgpstream_di_mgr_get_data_interface_id_by_name(bgpstream_di_mgr_t *di_mgr,
 
 /** Get information for the given data interface
  *
- * @param di            pointer to a data interface manager instance
+ * @param di_mgr        pointer to a data interface manager instance
  * @param if_id         ID of the interface to get the name for
  * @return borrowed pointer to an interface info structure
  */

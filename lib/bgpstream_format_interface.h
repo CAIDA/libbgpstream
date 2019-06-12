@@ -28,7 +28,7 @@
 #define __BGPSTREAM_FORMAT_INTERFACE_H
 
 #include "bgpstream.h"
-#include "bgpstream_format.h" /*< for bgpstream_format_t */
+#include "bgpstream_format.h" /* for bgpstream_format_t */
 #include "bgpstream_transport.h"
 #include "config.h"
 
