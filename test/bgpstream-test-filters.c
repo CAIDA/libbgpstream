@@ -32,6 +32,7 @@
 #include <string.h>
 #include <wandio.h>
 
+#ifdef WITH_DATA_INTERFACE_BROKER
 static bgpstream_t *bs;
 static bgpstream_record_t *rec;
 static bgpstream_elem_t *elem;
@@ -79,7 +80,6 @@ static const char *expected_results[] = {
     bgpstream_set_data_interface(bs, di_id);                                   \
   } while (0)
 
-#ifdef WITH_DATA_INTERFACE_BROKER
 static int test_bgpstream_filters()
 {
   SETUP;
