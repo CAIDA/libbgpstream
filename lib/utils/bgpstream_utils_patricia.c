@@ -61,6 +61,13 @@
 
 #define BIT_TEST(f, b) ((f) & (b))
 
+enum {
+  BGPSTREAM_PATRICIA_SELF,
+  BGPSTREAM_PATRICIA_PARENT,
+  BGPSTREAM_PATRICIA_CHILD,
+  BGPSTREAM_PATRICIA_SIBLING
+};
+
 static int comp_with_mask(void *addr, void *dest, u_int mask)
 {
 
@@ -125,17 +132,9 @@ struct bgpstream_patricia_tree_result_set {
 
 /* ======================= UTILITY FUNCTIONS ======================= */
 
-static unsigned char *bgpstream_pfx_get_first_byte(bgpstream_pfx_t *pfx)
+static inline unsigned char *bgpstream_pfx_get_first_byte(bgpstream_pfx_t *pfx)
 {
-  switch (pfx->address.version) {
-  case BGPSTREAM_ADDR_VERSION_IPV4:
-    return (unsigned char *)&pfx->address.bs_ipv4.addr.s_addr;
-  case BGPSTREAM_ADDR_VERSION_IPV6:
-    return (unsigned char *)&pfx->address.bs_ipv6.addr.s6_addr[0];
-  default:
-    assert(0);
-  }
-  return NULL;
+  return (unsigned char *)&pfx->address.addr;
 }
 
 /* ======================= RESULT SET FUNCTIONS  ======================= */
@@ -367,28 +366,43 @@ static void bgpstream_patricia_tree_merge_tree(bgpstream_patricia_tree_t *dst,
   bgpstream_patricia_tree_merge_tree(dst, node->r);
 }
 
-static void bgpstream_patricia_tree_walk_tree(
+static int bpt_walk_children(
   bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node,
   bgpstream_patricia_tree_process_node_t *fun, void *data)
 {
-  if (node == NULL) {
-    return;
-  }
+  if (node == NULL)
+    return 1; // continue walk
 
   /* In order traversal: Left - Node - Right */
-  bgpstream_patricia_node_t *l = node->l;
-  bgpstream_patricia_node_t *r = node->r;
 
   /* Left */
-  bgpstream_patricia_tree_walk_tree(pt, l, fun, data);
+  if (!bpt_walk_children(pt, node->l, fun, data))
+    return 0; // end walk early
 
   /* Node */
   if (node->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN) {
-    fun(pt, node, data);
+    if (!fun(pt, node, data))
+      return 0; // end walk early
   }
 
   /* Right */
-  bgpstream_patricia_tree_walk_tree(pt, r, fun, data);
+  if (!bpt_walk_children(pt, node->r, fun, data))
+    return 0; // end walk early
+
+  return 1; // continue walk
+}
+
+static int bpt_walk_parents(
+  bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node,
+  bgpstream_patricia_tree_process_node_t *fun, void *data)
+{
+  for ( ; node; node = node->parent) {
+    if (node->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN) {
+      if (!fun(pt, node, data))
+        return 0; // end walk early
+    }
+  }
+  return 1; // continue walk
 }
 
 static void bgpstream_patricia_tree_print_tree(bgpstream_patricia_node_t *node)
@@ -515,6 +529,95 @@ bgpstream_patricia_tree_t *bgpstream_patricia_tree_create(
   return pt;
 }
 
+/* Search below node for another node with the same branching bits as pfx, and
+ * return
+ *   - a node with the same len, if one exists
+ *   - or, a node with a longer len, if one exists
+ *   - or, a node with a shorter len
+ * The bit length of the returned node can be used to determine which type was
+ * returned.
+ */
+static bgpstream_patricia_node_t *
+bpt_search_node(bgpstream_patricia_node_t *node,
+                bgpstream_pfx_t *pfx)
+{
+  unsigned char *addr = bgpstream_pfx_get_first_byte(pfx);
+  while (node->bit < pfx->mask_len) {
+    if (BIT_TEST(addr[node->bit >> 3], 0x80 >> (node->bit & 0x07))) {
+      /* patricia_lookup: take right at node->bit */
+      if (!node->r) return node;
+      node = node->r;
+    } else {
+      /* patricia_lookup: take left at node->bit */
+      if (!node->l) return node;
+      node = node->l;
+    }
+  }
+  return node;
+}
+
+static bgpstream_patricia_node_t *
+bpt_find_insert_point(bgpstream_patricia_node_t *node_it,
+                      bgpstream_pfx_t *pfx,
+                      int *relation,
+                      uint8_t *differ_bit_p)
+{
+  node_it = bpt_search_node(node_it, pfx);
+
+  uint8_t bitlen = pfx->mask_len;
+  unsigned char *addr = bgpstream_pfx_get_first_byte(pfx);
+  unsigned char *test_addr = bgpstream_pfx_get_first_byte(&node_it->prefix);
+
+  /* find the first bit different */
+  int i, j, r;
+  uint8_t check_bit = (node_it->bit < bitlen) ? node_it->bit : bitlen;
+  uint8_t differ_bit = 0;
+  for (i = 0; i * 8 < check_bit; i++) {
+    if ((r = (addr[i] ^ test_addr[i])) == 0) {
+      differ_bit = (i + 1) * 8;
+      continue;
+    }
+    /* I know the better way, but for now */
+    for (j = 0; j < 8; j++) {
+      if (BIT_TEST(r, (0x80 >> j))) {
+        break;
+      }
+    }
+    /* must be found */
+    assert(j < 8);
+    differ_bit = i * 8 + j;
+    break;
+  }
+
+  if (differ_bit > check_bit) {
+    differ_bit = check_bit;
+  }
+
+  /* go back up until we find the parent with all the same leading bits */
+  while (node_it->parent && node_it->parent->bit >= differ_bit) {
+    node_it = node_it->parent;
+  }
+
+  if (differ_bit == bitlen && node_it->bit == bitlen) {
+    /* pfx should be AT node_it */
+    *relation = BGPSTREAM_PATRICIA_SELF;
+
+  } else if (node_it->bit == differ_bit) {
+    /* pfx should be a CHILD of node_it (and have no children of its own) */
+    *relation = BGPSTREAM_PATRICIA_PARENT;
+
+  } else if (bitlen == differ_bit) {
+    /* pfx should be a PARENT of node_it */
+    *relation = BGPSTREAM_PATRICIA_CHILD;
+
+  } else {
+    /* pfx should be a SIBLING of node_it, under a new GLUE NODE */
+    *relation = BGPSTREAM_PATRICIA_SIBLING;
+  }
+  *differ_bit_p = differ_bit;
+  return node_it;
+}
+
 bgpstream_patricia_node_t *
 bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
                                bgpstream_pfx_t *pfx)
@@ -543,77 +646,13 @@ bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
     return new_node;
   }
 
-  /* Prepare data for Patricia Tree navigation */
-  uint8_t bitlen = pfx->mask_len;
-  unsigned char *addr = bgpstream_pfx_get_first_byte(pfx);
-
-  /* navigate Patricia Tree till we:
-   * - reach the end of the tree (i.e. next node_it is null)
-   * - the current node has the same mask length (or greater) and
-   *   it contains a valid prefix (i.e. it is not a glue node)
-   * */
-  while (node_it->bit < bitlen ||
-         node_it->prefix.address.version == BGPSTREAM_ADDR_VERSION_UNKNOWN) {
-    if (node_it->bit < BGPSTREAM_PATRICIA_MAXBITS &&
-        BIT_TEST(addr[node_it->bit >> 3], 0x80 >> (node_it->bit & 0x07))) {
-      /* no more nodes on the right, exit from loop */
-      if (node_it->r == NULL) {
-        break;
-      }
-      /* patricia_lookup: take right at node->bit */
-      node_it = node_it->r;
-    } else {
-      /* no more nodes on the left, exit from loop */
-      if (node_it->l == NULL) {
-        break;
-      }
-      /* patricia_lookup: take left at node->bit */
-      node_it = node_it->l;
-    }
-    assert(node_it);
-  }
-
-  /*  node_it->prefix is the prefix we stopped at */
-  unsigned char *test_addr = bgpstream_pfx_get_first_byte(&node_it->prefix);
-
-  /* find the first bit different */
-  uint8_t check_bit;
+  /* Find insertion point */
+  int relation;
   uint8_t differ_bit;
-  int i, j, r;
-  check_bit = (node_it->bit < bitlen) ? node_it->bit : bitlen;
-  differ_bit = 0;
-  for (i = 0; i * 8 < check_bit; i++) {
-    if ((r = (addr[i] ^ test_addr[i])) == 0) {
-      differ_bit = (i + 1) * 8;
-      continue;
-    }
-    /* I know the better way, but for now */
-    for (j = 0; j < 8; j++) {
-      if (BIT_TEST(r, (0x80 >> j))) {
-        break;
-      }
-    }
-    /* must be found */
-    assert(j < 8);
-    differ_bit = i * 8 + j;
-    break;
-  }
+  node_it = bpt_find_insert_point(node_it, pfx, &relation, &differ_bit);
 
-  if (differ_bit > check_bit) {
-    differ_bit = check_bit;
-  }
-
-  bgpstream_patricia_node_t *parent;
-  bgpstream_patricia_node_t *glue_node;
-
-  /* go back up till we find the right parent **I.E.??** */
-  parent = node_it->parent;
-  while (parent && parent->bit >= differ_bit) {
-    node_it = parent;
-    parent = node_it->parent;
-  }
-
-  if (differ_bit == bitlen && node_it->bit == bitlen) {
+  uint8_t bitlen = pfx->mask_len;
+  if (relation == BGPSTREAM_PATRICIA_SELF) {
     /* check the node contains a valid prefix,
      * i.e. it is not a glue node */
     if (node_it->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN) {
@@ -642,8 +681,9 @@ bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
   }
 
   /* Insert the new node in the Patricia Tree: CHILD */
-  if (node_it->bit == differ_bit) {
+  if (relation == BGPSTREAM_PATRICIA_PARENT) {
     /* appending the new node as a child of node_it */
+    unsigned char *addr = bgpstream_pfx_get_first_byte(pfx);
     new_node->parent = node_it;
     if (node_it->bit < BGPSTREAM_PATRICIA_MAXBITS &&
         BIT_TEST(addr[node_it->bit >> 3], 0x80 >> (node_it->bit & 0x07))) {
@@ -659,8 +699,9 @@ bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
   }
 
   /* Insert the new node in the Patricia Tree: PARENT */
-  if (bitlen == differ_bit) {
+  if (relation == BGPSTREAM_PATRICIA_CHILD) {
     /* attaching the new node as a parent of node_it */
+    unsigned char *test_addr = bgpstream_pfx_get_first_byte(&node_it->prefix);
     if (bitlen < BGPSTREAM_PATRICIA_MAXBITS &&
         BIT_TEST(test_addr[bitlen >> 3], 0x80 >> (bitlen & 0x07))) {
       new_node->r = node_it;
@@ -682,15 +723,17 @@ bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
     /* patricia_lookup: new_node #3 (parent) */
     /* DEBUG fprintf(stderr, "Adding %s as a PARENT node\n", buffer); */
     return new_node;
-  } else {
+
+  } else /* BGPSTREAM_PATRICIA_SIBLING */ {
     /* Insert the new node in the Patricia Tree: CREATE A GLUE NODE AND APPEND
      * TO IT*/
 
-    glue_node = bgpstream_patricia_gluenode_create();
+    bgpstream_patricia_node_t *glue_node = bgpstream_patricia_gluenode_create();
 
     glue_node->bit = differ_bit;
     glue_node->parent = node_it->parent;
 
+    unsigned char *addr = bgpstream_pfx_get_first_byte(pfx);
     if (differ_bit < BGPSTREAM_PATRICIA_MAXBITS &&
         BIT_TEST(addr[differ_bit >> 3], 0x80 >> (differ_bit & 0x07))) {
       glue_node->r = new_node;
@@ -720,6 +763,56 @@ bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
 
   /* DEBUG   fprintf(stderr, "Adding %s as a ??\n", buffer); */
   /* return new_node; */
+}
+
+void bgpstream_patricia_tree_walk_up_down(
+    bgpstream_patricia_tree_t *pt,
+    bgpstream_pfx_t *pfx,
+    bgpstream_patricia_tree_process_node_t *exact_fun,
+    bgpstream_patricia_tree_process_node_t *parent_fun,
+    bgpstream_patricia_tree_process_node_t *child_fun,
+    void *data)
+{
+  bgpstream_addr_version_t v = pfx->address.version;
+  bgpstream_patricia_node_t *node_it = bgpstream_patricia_get_head(pt, v);
+
+  if (!node_it) {
+    // Tree is empty
+    return;
+  }
+
+  // Find insertion point
+  int relation;
+  uint8_t differ_bit; // unused
+  node_it = bpt_find_insert_point(node_it, pfx, &relation, &differ_bit);
+
+  // Walk parents and/or children of the insertion point
+  if (relation == BGPSTREAM_PATRICIA_SELF) {
+    if (node_it->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN) {
+      if (exact_fun && !exact_fun(pt, node_it, data))
+        return;
+    }
+    if (parent_fun && !bpt_walk_parents(pt, node_it->parent, parent_fun, data))
+      return;
+    if (child_fun && !bpt_walk_children(pt, node_it->l, child_fun, data))
+      return;
+    if (child_fun && !bpt_walk_children(pt, node_it->r, child_fun, data))
+      return;
+
+  } else if (relation == BGPSTREAM_PATRICIA_PARENT) {
+    if (parent_fun && !bpt_walk_parents(pt, node_it, parent_fun, data))
+      return;
+
+  } else if (relation == BGPSTREAM_PATRICIA_CHILD) {
+    if (child_fun && !bpt_walk_children(pt, node_it, child_fun, data))
+      return;
+    if (parent_fun && !bpt_walk_parents(pt, node_it->parent, parent_fun, data))
+      return;
+
+  } else if (relation == BGPSTREAM_PATRICIA_SIBLING) {
+    if (parent_fun && !bpt_walk_parents(pt, node_it->parent, parent_fun, data))
+      return;
+  }
 }
 
 void *bgpstream_patricia_tree_get_user(bgpstream_patricia_node_t *node)
@@ -753,6 +846,7 @@ bgpstream_patricia_tree_get_pfx_overlap_info(bgpstream_patricia_tree_t *pt,
   }
   /* we basically simulate an insertion, to understand whether the prefix
    * would overlap or not */
+  /* TODO: replace this code with bgpstream_patricia_tree_walk_up_down() */
   n = bgpstream_patricia_tree_insert(pt, pfx);
   uint8_t mask = bgpstream_patricia_tree_get_node_overlap_info(pt, n);
   bgpstream_patricia_tree_remove_node(pt, n);
@@ -902,44 +996,29 @@ bgpstream_patricia_tree_search_exact(bgpstream_patricia_tree_t *pt,
   assert(pfx->address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN);
 
   bgpstream_addr_version_t v = pfx->address.version;
+  bgpstream_patricia_node_t *node = bgpstream_patricia_get_head(pt, v);
 
   /* if Patricia Tree is empty*/
-  if (bgpstream_patricia_get_head(pt, v) == NULL) {
+  if (node == NULL) {
     return NULL;
   }
-
-  bgpstream_patricia_node_t *node_it = bgpstream_patricia_get_head(pt, v);
   uint8_t bitlen = pfx->mask_len;
-  unsigned char *addr = bgpstream_pfx_get_first_byte(pfx);
 
-  while (node_it->bit < bitlen) {
-    if (BIT_TEST(addr[node_it->bit >> 3], 0x80 >> (node_it->bit & 0x07))) {
-      /* patricia_lookup: take right at node->bit */
-      node_it = node_it->r;
-    } else {
-      /* patricia_lookup: take left at node->bit */
-      node_it = node_it->l;
-    }
-    if (node_it == NULL) {
-      return NULL;
-    }
-  }
+  node = bpt_search_node(node, pfx);
 
-  /* if we passed the right mask, or if we stopped at a glue node, then
-   * no exact match found */
-  if (node_it->bit > bitlen ||
-      node_it->prefix.address.version == BGPSTREAM_ADDR_VERSION_UNKNOWN) {
+  // if node has the wrong length, or is a glue node, then no exact match
+  if (node->bit != bitlen ||
+      node->prefix.address.version == BGPSTREAM_ADDR_VERSION_UNKNOWN) {
     return NULL;
   }
 
-  assert(node_it->bit == bitlen);
   /* compare the prefixes bit by bit
    * TODO: consider replacing with bgpstream_pfx_equal */
   if (comp_with_mask(
-        bgpstream_pfx_get_first_byte(&node_it->prefix),
+        bgpstream_pfx_get_first_byte(&node->prefix),
         bgpstream_pfx_get_first_byte(pfx), bitlen)) {
     /* exact match found */
-    return node_it;
+    return node;
   }
   return NULL;
 }
@@ -1041,13 +1120,9 @@ bgpstream_patricia_tree_get_node_overlap_info(bgpstream_patricia_tree_t *pt,
 
   node_it = node;
   if (node_it != NULL) { /* we do not consider the node itself */
-    /* if one of the subtree return 1 we can avoid the other */
-    if (bgpstream_patricia_tree_find_more_specific(node->l) == 1) {
-      mask = mask | BGPSTREAM_PATRICIA_MORE_SPECIFICS;
-    } else {
-      if (bgpstream_patricia_tree_find_more_specific(node->r) == 1) {
+    if (bgpstream_patricia_tree_find_more_specific(node->l) ||
+        bgpstream_patricia_tree_find_more_specific(node->r)) {
         mask = mask | BGPSTREAM_PATRICIA_MORE_SPECIFICS;
-      }
     }
   }
   return mask;
@@ -1070,8 +1145,10 @@ void bgpstream_patricia_tree_walk(bgpstream_patricia_tree_t *pt,
                                   bgpstream_patricia_tree_process_node_t *fun,
                                   void *data)
 {
-  bgpstream_patricia_tree_walk_tree(pt, pt->head4, fun, data);
-  bgpstream_patricia_tree_walk_tree(pt, pt->head6, fun, data);
+  if (!bpt_walk_children(pt, pt->head4, fun, data))
+    return;
+  if (!bpt_walk_children(pt, pt->head6, fun, data))
+    return;
 }
 
 void bgpstream_patricia_tree_print(bgpstream_patricia_tree_t *pt)

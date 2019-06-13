@@ -83,8 +83,9 @@ typedef void(bgpstream_patricia_tree_destroy_user_t)(void *user);
  * @param node    pointer to the node
  * @param data    user pointer to a data structure that can be used by the
  *                user to store a state
+ * @return        0 to abort the walk early, nonzero to continue
  */
-typedef void(bgpstream_patricia_tree_process_node_t)(
+typedef int(bgpstream_patricia_tree_process_node_t)(
   bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node, void *data);
 
 /** @} */
@@ -317,15 +318,30 @@ bgpstream_patricia_tree_get_pfx(bgpstream_patricia_node_t *node);
 /** Process the nodes while walking the Patricia Tree in order
  *
  * @param pt           pointer to the patricia tree
- * @param fun          pointer to a function to process the nodes in the
- * patricia tree
- * @param data         pointer to a custom structure that can be used to update
- * a state
- *                     during the fun call
+ * @param fun          callback function for nodes with prefixes
+ * @param data         pointer to data that can be used by the callback
  */
 void bgpstream_patricia_tree_walk(bgpstream_patricia_tree_t *pt,
                                   bgpstream_patricia_tree_process_node_t *fun,
                                   void *data);
+
+/** Find the point where pfx would be inserted into the tree, and run the
+ * callback functions on all of the exact match node, ancestor nodes, and
+ * descendant nodes that contain actual prefixes.
+ *
+ * @param pt           pointer to the patricia tree
+ * @param exact_fun    callback function for exact match node
+ * @param parent_fun   callback function for ancestor nodes
+ * @param child_fun    callback function for descendant nodes
+ * @param data         pointer to data that can be used by the callbacks
+ */
+void bgpstream_patricia_tree_walk_up_down(
+    bgpstream_patricia_tree_t *pt,
+    bgpstream_pfx_t *pfx,
+    bgpstream_patricia_tree_process_node_t *exact_fun,
+    bgpstream_patricia_tree_process_node_t *parent_fun,
+    bgpstream_patricia_tree_process_node_t *child_fun,
+    void *data);
 
 /** Print the prefixes in the Patricia Tree
  *
