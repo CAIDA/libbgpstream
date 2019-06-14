@@ -366,43 +366,46 @@ static void bgpstream_patricia_tree_merge_tree(bgpstream_patricia_tree_t *dst,
   bgpstream_patricia_tree_merge_tree(dst, node->r);
 }
 
-static int bpt_walk_children(
+static bgpstream_patricia_walk_cb_result_t bpt_walk_children(
   bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node,
   bgpstream_patricia_tree_process_node_t *fun, void *data)
 {
+  bgpstream_patricia_walk_cb_result_t rc;
+
   if (node == NULL)
-    return 1; // continue walk
+    return BGPSTREAM_PATRICIA_WALK_CONTINUE;
 
   /* In order traversal: Left - Node - Right */
 
   /* Left */
-  if (!bpt_walk_children(pt, node->l, fun, data))
-    return 0; // end walk early
+  rc = bpt_walk_children(pt, node->l, fun, data);
+  if (rc != BGPSTREAM_PATRICIA_WALK_CONTINUE) return rc;
 
   /* Node */
   if (node->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN) {
-    if (!fun(pt, node, data))
-      return 0; // end walk early
+    rc = fun(pt, node, data);
+    if (rc != BGPSTREAM_PATRICIA_WALK_CONTINUE) return rc;
   }
 
   /* Right */
-  if (!bpt_walk_children(pt, node->r, fun, data))
-    return 0; // end walk early
+  rc = bpt_walk_children(pt, node->r, fun, data);
+  if (rc != BGPSTREAM_PATRICIA_WALK_CONTINUE) return rc;
 
-  return 1; // continue walk
+  return BGPSTREAM_PATRICIA_WALK_CONTINUE;
 }
 
-static int bpt_walk_parents(
+static bgpstream_patricia_walk_cb_result_t bpt_walk_parents(
   bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node,
   bgpstream_patricia_tree_process_node_t *fun, void *data)
 {
+  int rc;
   for ( ; node; node = node->parent) {
     if (node->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN) {
-      if (!fun(pt, node, data))
-        return 0; // end walk early
+      rc = fun(pt, node, data);
+      if (rc != BGPSTREAM_PATRICIA_WALK_CONTINUE) return rc;
     }
   }
-  return 1; // continue walk
+  return BGPSTREAM_PATRICIA_WALK_CONTINUE;
 }
 
 static void bgpstream_patricia_tree_print_tree(bgpstream_patricia_node_t *node)
@@ -785,33 +788,44 @@ void bgpstream_patricia_tree_walk_up_down(
   int relation;
   uint8_t differ_bit; // unused
   node_it = bpt_find_insert_point(node_it, pfx, &relation, &differ_bit);
+  int rc;
 
   // Walk parents and/or children of the insertion point
   if (relation == BGPSTREAM_PATRICIA_SELF) {
     if (node_it->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN) {
-      if (exact_fun && !exact_fun(pt, node_it, data))
-        return;
+      if (exact_fun) {
+        rc = exact_fun(pt, node_it, data);
+        if (rc == BGPSTREAM_PATRICIA_WALK_END_ALL) return;
+      }
     }
-    if (parent_fun && !bpt_walk_parents(pt, node_it->parent, parent_fun, data))
-      return;
-    if (child_fun && !bpt_walk_children(pt, node_it->l, child_fun, data))
-      return;
-    if (child_fun && !bpt_walk_children(pt, node_it->r, child_fun, data))
-      return;
+    if (parent_fun) {
+      rc = bpt_walk_parents(pt, node_it->parent, parent_fun, data);
+      if (rc == BGPSTREAM_PATRICIA_WALK_END_ALL) return;
+    }
+    if (child_fun) {
+      rc = bpt_walk_children(pt, node_it->l, child_fun, data);
+      if (rc != BGPSTREAM_PATRICIA_WALK_CONTINUE) return;
+      rc = bpt_walk_children(pt, node_it->r, child_fun, data);
+    }
 
   } else if (relation == BGPSTREAM_PATRICIA_PARENT) {
-    if (parent_fun && !bpt_walk_parents(pt, node_it, parent_fun, data))
-      return;
+    if (parent_fun) {
+      bpt_walk_parents(pt, node_it, parent_fun, data);
+    }
 
   } else if (relation == BGPSTREAM_PATRICIA_CHILD) {
-    if (child_fun && !bpt_walk_children(pt, node_it, child_fun, data))
-      return;
-    if (parent_fun && !bpt_walk_parents(pt, node_it->parent, parent_fun, data))
-      return;
+    if (parent_fun) {
+      rc = bpt_walk_parents(pt, node_it->parent, parent_fun, data);
+      if (rc == BGPSTREAM_PATRICIA_WALK_END_ALL) return;
+    }
+    if (child_fun) {
+      bpt_walk_children(pt, node_it, child_fun, data);
+    }
 
   } else if (relation == BGPSTREAM_PATRICIA_SIBLING) {
-    if (parent_fun && !bpt_walk_parents(pt, node_it->parent, parent_fun, data))
-      return;
+    if (parent_fun) {
+      bpt_walk_parents(pt, node_it->parent, parent_fun, data);
+    }
   }
 }
 
@@ -834,23 +848,35 @@ int bgpstream_patricia_tree_set_user(bgpstream_patricia_tree_t *pt,
   return 1;
 }
 
+static bgpstream_patricia_walk_cb_result_t set_exact(
+    bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node, void *data)
+{
+  *(uint8_t *)data |= BGPSTREAM_PATRICIA_EXACT_MATCH;
+  return BGPSTREAM_PATRICIA_WALK_END_DIRECTION;
+}
+
+static bgpstream_patricia_walk_cb_result_t set_less_specific(
+    bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node, void *data)
+{
+  *(uint8_t *)data |= BGPSTREAM_PATRICIA_LESS_SPECIFICS;
+  return BGPSTREAM_PATRICIA_WALK_END_DIRECTION;
+}
+
+static bgpstream_patricia_walk_cb_result_t set_more_specific(
+    bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node, void *data)
+{
+  *(uint8_t *)data |= BGPSTREAM_PATRICIA_MORE_SPECIFICS;
+  return BGPSTREAM_PATRICIA_WALK_END_DIRECTION;
+}
+
 uint8_t
 bgpstream_patricia_tree_get_pfx_overlap_info(bgpstream_patricia_tree_t *pt,
                                              bgpstream_pfx_t *pfx)
 {
-
-  bgpstream_patricia_node_t *n = bgpstream_patricia_tree_search_exact(pt, pfx);
-  if (n != NULL) {
-    return bgpstream_patricia_tree_get_node_overlap_info(pt, n) |
-           BGPSTREAM_PATRICIA_EXACT_MATCH;
-  }
-  /* we basically simulate an insertion, to understand whether the prefix
-   * would overlap or not */
-  /* TODO: replace this code with bgpstream_patricia_tree_walk_up_down() */
-  n = bgpstream_patricia_tree_insert(pt, pfx);
-  uint8_t mask = bgpstream_patricia_tree_get_node_overlap_info(pt, n);
-  bgpstream_patricia_tree_remove_node(pt, n);
-  return mask & (~BGPSTREAM_PATRICIA_EXACT_MATCH);
+  uint8_t result = 0;
+  bgpstream_patricia_tree_walk_up_down(pt, pfx, set_exact, set_less_specific,
+      set_more_specific, &result);
+  return result;
 }
 
 void bgpstream_patricia_tree_remove(bgpstream_patricia_tree_t *pt,
@@ -1145,10 +1171,8 @@ void bgpstream_patricia_tree_walk(bgpstream_patricia_tree_t *pt,
                                   bgpstream_patricia_tree_process_node_t *fun,
                                   void *data)
 {
-  if (!bpt_walk_children(pt, pt->head4, fun, data))
-    return;
-  if (!bpt_walk_children(pt, pt->head6, fun, data))
-    return;
+  bpt_walk_children(pt, pt->head4, fun, data);
+  bpt_walk_children(pt, pt->head6, fun, data);
 }
 
 void bgpstream_patricia_tree_print(bgpstream_patricia_tree_t *pt)

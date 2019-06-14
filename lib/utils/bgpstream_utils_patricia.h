@@ -49,6 +49,12 @@
 #define BGPSTREAM_PATRICIA_EXACT_MATCH    0x02
 #define BGPSTREAM_PATRICIA_MORE_SPECIFICS 0x01
 
+typedef enum {
+  BGPSTREAM_PATRICIA_WALK_CONTINUE,       ///< continue walk in all directions
+  BGPSTREAM_PATRICIA_WALK_END_DIRECTION,  ///< end this direction, go to next
+  BGPSTREAM_PATRICIA_WALK_END_ALL         ///< end walk in all directions
+} bgpstream_patricia_walk_cb_result_t;
+
 /**
  * @name Opaque Data Structures
  *
@@ -83,10 +89,12 @@ typedef void(bgpstream_patricia_tree_destroy_user_t)(void *user);
  * @param node    pointer to the node
  * @param data    user pointer to a data structure that can be used by the
  *                user to store a state
- * @return        0 to abort the walk early, nonzero to continue
+ * @return        indicator of whether to stop or continue the walk
  */
-typedef int(bgpstream_patricia_tree_process_node_t)(
-  bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node, void *data);
+typedef bgpstream_patricia_walk_cb_result_t
+(bgpstream_patricia_tree_process_node_t)(bgpstream_patricia_tree_t *pt,
+                                         bgpstream_patricia_node_t *node,
+                                         void *data);
 
 /** @} */
 

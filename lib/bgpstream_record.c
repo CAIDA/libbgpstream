@@ -89,35 +89,35 @@ void bgpstream_record_print_mrt_data(bgpstream_record_t *const record)
   // bgpdump_print_entry(record->bd_entry);
 }
 
-static int pfx_exists(bgpstream_patricia_tree_t *pt,
-                     bgpstream_patricia_node_t *node, void *data)
+static bgpstream_patricia_walk_cb_result_t pfx_exists(
+    bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node, void *data)
 {
   *(int*)data = 1;
-  return 0; // end walk early
+  return BGPSTREAM_PATRICIA_WALK_END_ALL;
 }
 
-static int pfx_allows_more_specifics(bgpstream_patricia_tree_t *pt,
-                       bgpstream_patricia_node_t *node, void *data)
+static bgpstream_patricia_walk_cb_result_t pfx_allows_more_specifics(
+    bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node, void *data)
 {
   bgpstream_pfx_t *pfx = bgpstream_patricia_tree_get_pfx(node);
   if (pfx->allowed_matches == BGPSTREAM_PREFIX_MATCH_ANY ||
       pfx->allowed_matches == BGPSTREAM_PREFIX_MATCH_MORE) {
     *(int*)data = 1;
-    return 0; // end walk early
+    return BGPSTREAM_PATRICIA_WALK_END_ALL;
   }
-  return 1; // continue walk
+  return BGPSTREAM_PATRICIA_WALK_CONTINUE;
 }
 
-static int pfx_allows_less_specifics(bgpstream_patricia_tree_t *pt,
-                       bgpstream_patricia_node_t *node, void *data)
+static bgpstream_patricia_walk_cb_result_t pfx_allows_less_specifics(
+    bgpstream_patricia_tree_t *pt, bgpstream_patricia_node_t *node, void *data)
 {
   bgpstream_pfx_t *pfx = bgpstream_patricia_tree_get_pfx(node);
   if (pfx->allowed_matches == BGPSTREAM_PREFIX_MATCH_ANY ||
       pfx->allowed_matches == BGPSTREAM_PREFIX_MATCH_LESS) {
     *(int*)data = 1;
-    return 0; // end walk early
+    return BGPSTREAM_PATRICIA_WALK_END_ALL;
   }
-  return 1; // continue walk
+  return BGPSTREAM_PATRICIA_WALK_CONTINUE;
 }
 
 static int bgpstream_elem_prefix_match(bgpstream_patricia_tree_t *prefixes,
