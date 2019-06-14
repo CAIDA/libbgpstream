@@ -89,53 +89,47 @@ void bgpstream_record_print_mrt_data(bgpstream_record_t *const record)
   // bgpdump_print_entry(record->bd_entry);
 }
 
+static bgpstream_patricia_walk_cb_result_t pfx_exists(
+    const bgpstream_patricia_tree_t *pt, const bgpstream_patricia_node_t *node,
+    void *data)
+{
+  *(int*)data = 1;
+  return BGPSTREAM_PATRICIA_WALK_END_ALL;
+}
+
+static bgpstream_patricia_walk_cb_result_t pfx_allows_more_specifics(
+    const bgpstream_patricia_tree_t *pt, const bgpstream_patricia_node_t *node,
+    void *data)
+{
+  const bgpstream_pfx_t *pfx = bgpstream_patricia_tree_get_pfx(node);
+  if (pfx->allowed_matches == BGPSTREAM_PREFIX_MATCH_ANY ||
+      pfx->allowed_matches == BGPSTREAM_PREFIX_MATCH_MORE) {
+    *(int*)data = 1;
+    return BGPSTREAM_PATRICIA_WALK_END_ALL;
+  }
+  return BGPSTREAM_PATRICIA_WALK_CONTINUE;
+}
+
+static bgpstream_patricia_walk_cb_result_t pfx_allows_less_specifics(
+    const bgpstream_patricia_tree_t *pt, const bgpstream_patricia_node_t *node,
+    void *data)
+{
+  const bgpstream_pfx_t *pfx = bgpstream_patricia_tree_get_pfx(node);
+  if (pfx->allowed_matches == BGPSTREAM_PREFIX_MATCH_ANY ||
+      pfx->allowed_matches == BGPSTREAM_PREFIX_MATCH_LESS) {
+    *(int*)data = 1;
+    return BGPSTREAM_PATRICIA_WALK_END_ALL;
+  }
+  return BGPSTREAM_PATRICIA_WALK_CONTINUE;
+}
+
 static int bgpstream_elem_prefix_match(bgpstream_patricia_tree_t *prefixes,
                                        bgpstream_pfx_t *search)
 {
-
-  bgpstream_patricia_tree_result_set_t *res = NULL;
-  bgpstream_patricia_node_t *it;
   int matched = 0;
 
-  /* If this is an exact match, the allowable matches don't matter */
-  if (bgpstream_patricia_tree_search_exact(prefixes, search)) {
-    return 1;
-  }
-
-  bgpstream_patricia_node_t *n =
-    bgpstream_patricia_tree_insert(prefixes, search);
-
-  /* Check for less specific prefixes that have the "MORE" match flag */
-  res = bgpstream_patricia_tree_result_set_create();
-  bgpstream_patricia_tree_get_less_specifics(prefixes, n, res);
-
-  while ((it = bgpstream_patricia_tree_result_set_next(res)) != NULL) {
-    bgpstream_pfx_t *pfx = bgpstream_patricia_tree_get_pfx(it);
-
-    if (pfx->allowed_matches == BGPSTREAM_PREFIX_MATCH_ANY ||
-        pfx->allowed_matches == BGPSTREAM_PREFIX_MATCH_MORE) {
-      matched = 1;
-      goto endmatch;
-    }
-  }
-
-  bgpstream_patricia_tree_get_more_specifics(prefixes, n, res);
-
-  while ((it = bgpstream_patricia_tree_result_set_next(res)) != NULL) {
-    bgpstream_pfx_t *pfx = bgpstream_patricia_tree_get_pfx(it);
-
-    /* TODO maybe have a way of limiting the amount of bits we are allowed to
-     * go back? or make it specifiable via the language? */
-    if (pfx->allowed_matches == BGPSTREAM_PREFIX_MATCH_ANY ||
-        pfx->allowed_matches == BGPSTREAM_PREFIX_MATCH_LESS) {
-      matched = 1;
-      goto endmatch;
-    }
-  }
-
-endmatch:
-  bgpstream_patricia_tree_result_set_destroy(&res);
-  bgpstream_patricia_tree_remove_node(prefixes, n);
+  bgpstream_patricia_tree_walk_up_down(prefixes, search, pfx_exists,
+      pfx_allows_more_specifics, pfx_allows_less_specifics, &matched);
   return matched;
 }
 
