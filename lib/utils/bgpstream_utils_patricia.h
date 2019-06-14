@@ -92,8 +92,8 @@ typedef void(bgpstream_patricia_tree_destroy_user_t)(void *user);
  * @return        indicator of whether to stop or continue the walk
  */
 typedef bgpstream_patricia_walk_cb_result_t
-(bgpstream_patricia_tree_process_node_t)(bgpstream_patricia_tree_t *pt,
-                                         bgpstream_patricia_node_t *node,
+(bgpstream_patricia_tree_process_node_t)(const bgpstream_patricia_tree_t *pt,
+                                         const bgpstream_patricia_node_t *node,
                                          void *data);
 
 /** @} */
@@ -139,7 +139,7 @@ bgpstream_patricia_node_t *bgpstream_patricia_tree_result_set_next(
  * @return the number of nodes in the result set
  */
 int bgpstream_patricia_tree_result_set_count(
-  bgpstream_patricia_tree_result_set_t *set);
+  const bgpstream_patricia_tree_result_set_t *set);
 
 /** Print the result list
  *
@@ -167,7 +167,7 @@ bgpstream_patricia_tree_t *bgpstream_patricia_tree_create(
  */
 bgpstream_patricia_node_t *
 bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
-                               bgpstream_pfx_t *pfx);
+                               const bgpstream_pfx_t *pfx);
 
 /** Get the user pointer associated with the node
  *
@@ -202,7 +202,7 @@ void bgpstream_patricia_tree_merge(bgpstream_patricia_tree_t *dst,
  * @param pfx          pointer to the prefix to remove
  */
 void bgpstream_patricia_tree_remove(bgpstream_patricia_tree_t *pt,
-                                    bgpstream_pfx_t *pfx);
+                                    const bgpstream_pfx_t *pfx);
 
 /** Remove a node from the Patricia Tree
  *
@@ -219,9 +219,9 @@ void bgpstream_patricia_tree_remove_node(bgpstream_patricia_tree_t *pt,
  * @return a pointer to the prefix in the Patricia Tree, or NULL if an error
  * occurred
  */
-bgpstream_patricia_node_t *
-bgpstream_patricia_tree_search_exact(bgpstream_patricia_tree_t *pt,
-                                     bgpstream_pfx_t *pfx);
+const bgpstream_patricia_node_t *
+bgpstream_patricia_tree_search_exact(const bgpstream_patricia_tree_t *pt,
+                                     const bgpstream_pfx_t *pfx);
 
 /** Count the number of prefixes in the Patricia Tree
  *
@@ -229,20 +229,22 @@ bgpstream_patricia_tree_search_exact(bgpstream_patricia_tree_t *pt,
  * @param v          IP version
  * @return the number of prefixes
  */
-uint64_t bgpstream_patricia_prefix_count(bgpstream_patricia_tree_t *pt,
+uint64_t bgpstream_patricia_prefix_count(const bgpstream_patricia_tree_t *pt,
                                          bgpstream_addr_version_t v);
 
 /** Count the number of unique /24 IPv4 prefixes in the Patricia Tree
  *
  * @param pt           pointer to the patricia tree
  */
-uint64_t bgpstream_patricia_tree_count_24subnets(bgpstream_patricia_tree_t *pt);
+uint64_t bgpstream_patricia_tree_count_24subnets(
+    const bgpstream_patricia_tree_t *pt);
 
 /** Count the number of unique /64 IPv6 prefixes in the Patricia Tree
  *
  * @param pt           pointer to the patricia tree
  */
-uint64_t bgpstream_patricia_tree_count_64subnets(bgpstream_patricia_tree_t *pt);
+uint64_t bgpstream_patricia_tree_count_64subnets(
+    const bgpstream_patricia_tree_t *pt);
 
 /** Return more specific prefixes
  *
@@ -299,8 +301,8 @@ int bgpstream_patricia_tree_get_minimum_coverage(
  *    * BGPSTREAM_PATRICIA_MORE_SPECIFICS - the tree contains a more specific prefix
  */
 uint8_t
-bgpstream_patricia_tree_get_node_overlap_info(bgpstream_patricia_tree_t *pt,
-                                              bgpstream_patricia_node_t *node);
+bgpstream_patricia_tree_get_node_overlap_info(
+    const bgpstream_patricia_tree_t *pt, const bgpstream_patricia_node_t *node);
 
 /** Check whether a prefix would overlap with the prefixes already in the tree
  *
@@ -312,16 +314,16 @@ bgpstream_patricia_tree_get_node_overlap_info(bgpstream_patricia_tree_t *pt,
  *    * BGPSTREAM_PATRICIA_MORE_SPECIFICS - the tree contains a more specific prefix
  */
 uint8_t
-bgpstream_patricia_tree_get_pfx_overlap_info(bgpstream_patricia_tree_t *pt,
-                                             bgpstream_pfx_t *pfx);
+bgpstream_patricia_tree_get_pfx_overlap_info(
+    const bgpstream_patricia_tree_t *pt, const bgpstream_pfx_t *pfx);
 
 /** Get node's prefix
  *
  * @param node         pointer to the node
  * @return a pointer to the node's prefix , or NULL if an error occurred
  */
-bgpstream_pfx_t *
-bgpstream_patricia_tree_get_pfx(bgpstream_patricia_node_t *node);
+const bgpstream_pfx_t *
+bgpstream_patricia_tree_get_pfx(const bgpstream_patricia_node_t *node);
 
 /** Process the nodes while walking the Patricia Tree in order
  *
@@ -329,7 +331,7 @@ bgpstream_patricia_tree_get_pfx(bgpstream_patricia_node_t *node);
  * @param fun          callback function for nodes with prefixes
  * @param data         pointer to data that can be used by the callback
  */
-void bgpstream_patricia_tree_walk(bgpstream_patricia_tree_t *pt,
+void bgpstream_patricia_tree_walk(const bgpstream_patricia_tree_t *pt,
                                   bgpstream_patricia_tree_process_node_t *fun,
                                   void *data);
 
@@ -344,8 +346,8 @@ void bgpstream_patricia_tree_walk(bgpstream_patricia_tree_t *pt,
  * @param data         pointer to data that can be used by the callbacks
  */
 void bgpstream_patricia_tree_walk_up_down(
-    bgpstream_patricia_tree_t *pt,
-    bgpstream_pfx_t *pfx,
+    const bgpstream_patricia_tree_t *pt,
+    const bgpstream_pfx_t *pfx,
     bgpstream_patricia_tree_process_node_t *exact_fun,
     bgpstream_patricia_tree_process_node_t *parent_fun,
     bgpstream_patricia_tree_process_node_t *child_fun,
@@ -355,7 +357,7 @@ void bgpstream_patricia_tree_walk_up_down(
  *
  * @param pt           pointer to the patricia tree
  */
-void bgpstream_patricia_tree_print(bgpstream_patricia_tree_t *pt);
+void bgpstream_patricia_tree_print(const bgpstream_patricia_tree_t *pt);
 
 /** Clear the given Patricia Tree (i.e. remove all prefixes)
  *
