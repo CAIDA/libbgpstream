@@ -98,6 +98,28 @@ typedef bgpstream_patricia_walk_cb_result_t
 
 /** @} */
 
+/** @private Convert a const node* to a node* (while otherwise maintaining
+ * type safety).
+ *
+ * This is for internal use with functions that don't modify the tree but
+ * return a pointer to a node in the tree which the caller may modify iff the
+ * tree was not const.
+ */
+static inline bgpstream_patricia_node_t *
+bgpstream_nonconst_node(const bgpstream_patricia_node_t *node)
+{
+  // Assinging a node to c and reading from nc effectively removes the const
+  // qualifier, which is safe iff we know the input is not _really_ const
+  // Unlike a (const bgpstream_patricia_node_t *) cast, this will not generate
+  // a -Wcast-qual warning.
+  union {
+    const bgpstream_patricia_node_t *c;
+    bgpstream_patricia_node_t *nc;
+  } u;
+  u.c = node;
+  return u.nc;
+}
+
 /**
  * @name Public API Functions
  *
@@ -220,8 +242,23 @@ void bgpstream_patricia_tree_remove_node(bgpstream_patricia_tree_t *pt,
  * occurred
  */
 const bgpstream_patricia_node_t *
-bgpstream_patricia_tree_search_exact(const bgpstream_patricia_tree_t *pt,
-                                     const bgpstream_pfx_t *pfx);
+bgpstream_patricia_tree_search_exact_const(const bgpstream_patricia_tree_t *pt,
+                                           const bgpstream_pfx_t *pfx);
+
+/** Search exact prefix in Patricia Tree
+ *
+ * @param pt           pointer to the patricia tree to lookup in
+ * @param pfx          pointer to the prefix to search
+ * @return a pointer to the prefix in the Patricia Tree, or NULL if an error
+ * occurred
+ */
+static inline bgpstream_patricia_node_t *
+bgpstream_patricia_tree_search_exact(bgpstream_patricia_tree_t *pt,
+                                     const bgpstream_pfx_t *pfx)
+{
+  return bgpstream_nonconst_node(bgpstream_patricia_tree_search_exact_const(
+    pt, pfx));
+}
 
 /** Count the number of prefixes in the Patricia Tree
  *

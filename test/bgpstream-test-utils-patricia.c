@@ -54,7 +54,7 @@ static int test_patricia()
   bgpstream_patricia_tree_result_set_t *res;
   bgpstream_patricia_node_t *node;
   bgpstream_pfx_t pfx;
-  bgpstream_pfx_t *pfxp;
+  const bgpstream_pfx_t *pfxp;
   int count4 = 0;
   int count6 = 0;
 

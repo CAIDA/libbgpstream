@@ -68,16 +68,6 @@ enum {
   BGPSTREAM_PATRICIA_SIBLING
 };
 
-// Assinging a node to c and reading from nc effectively removes the const qualifier,
-// which is safe iff we know the input is not _really_ const.
-// Unlike a (const bgpstream_patricia_node_t *) cast, this will not generate a
-// -Wcast-qual warning when used correctly, but will generate a warning if the
-// input is not a _node_t.
-typedef union {
-  const bgpstream_patricia_node_t *c;
-  bgpstream_patricia_node_t *nc;
-} bgpstream_patricia_node_constcast_t;
-
 static int comp_with_mask(const void *addr, const void *dest, u_int mask)
 {
 
@@ -630,9 +620,8 @@ bpt_find_insert_point(bgpstream_patricia_node_t *node_it,
                       int *relation,
                       uint8_t *differ_bit_p)
 {
-  bgpstream_patricia_node_constcast_t ccnode;
-  ccnode.c = bpt_find_insert_point_const(node_it, pfx, relation, differ_bit_p);
-  return ccnode.nc;
+  return bgpstream_nonconst_node(bpt_find_insert_point_const(
+    node_it, pfx, relation, differ_bit_p));
 }
 
 bgpstream_patricia_node_t *
@@ -900,9 +889,8 @@ bgpstream_patricia_tree_get_pfx_overlap_info(
 void bgpstream_patricia_tree_remove(bgpstream_patricia_tree_t *pt,
                                     const bgpstream_pfx_t *pfx)
 {
-  bgpstream_patricia_node_constcast_t ccnode;
-  ccnode.c = bgpstream_patricia_tree_search_exact(pt, pfx);
-  bgpstream_patricia_tree_remove_node(pt, ccnode.nc);
+  bgpstream_patricia_tree_remove_node(pt,
+    bgpstream_patricia_tree_search_exact(pt, pfx));
 }
 
 void bgpstream_patricia_tree_remove_node(bgpstream_patricia_tree_t *pt,
@@ -1032,8 +1020,8 @@ void bgpstream_patricia_tree_remove_node(bgpstream_patricia_tree_t *pt,
 }
 
 const bgpstream_patricia_node_t *
-bgpstream_patricia_tree_search_exact(const bgpstream_patricia_tree_t *pt,
-                                     const bgpstream_pfx_t *pfx)
+bgpstream_patricia_tree_search_exact_const(const bgpstream_patricia_tree_t *pt,
+                                           const bgpstream_pfx_t *pfx)
 {
   assert(pt);
   assert(pfx);
