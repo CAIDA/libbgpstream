@@ -28,6 +28,12 @@
 #include "config.h"
 #include <string.h>
 
+#if defined(__GNUC__)
+ #define UNUSED  __attribute__((unused))
+#else
+ #define UNUSED  /* empty */
+#endif
+
 /*
  * Test messages are formatted according to the TAP protocol, specifically for
  * use with automake's test harness.  See:
@@ -35,7 +41,7 @@
  * https://metacpan.org/pod/release/PETDANCE/Test-Harness-2.65_02/lib/Test/Harness/TAP.pod
  */
 static int tap_test_num = 0;
-static int test_section_result = 1;
+static int test_section_result UNUSED = 1;
 
 #define CHECK_MSG(name, err_msg, check)                                        \
   do {                                                                         \
