@@ -72,11 +72,11 @@ typedef enum {
   /** AS Path Segment Set */
   BGPSTREAM_AS_PATH_SEG_SET = 2,
 
-  /** AS Path Segment Confederation Set */
-  BGPSTREAM_AS_PATH_SEG_CONFED_SET = 3,
+  /** AS Path Segment Confederation Sequence (RFC 5065) */
+  BGPSTREAM_AS_PATH_SEG_CONFED_SEQ = 3,
 
-  /** AS Path Segment Confederation Sequence */
-  BGPSTREAM_AS_PATH_SEG_CONFED_SEQ = 4,
+  /** AS Path Segment Confederation Set (RFC 5065) */
+  BGPSTREAM_AS_PATH_SEG_CONFED_SET = 4,
 
   /** @todo etc */
 
@@ -126,8 +126,8 @@ typedef struct bgpstream_as_path_seg_set {
 
   /** Type of the AS Path Segment:
    *    BGPSTREAM_AS_PATH_SEG_SET,
-   *    BGPSTREAM_AS_PATH_SEG_CONFED_SET,
-   *    BGPSTREAM_AS_PATH_SEG_CONFED_SEQ
+   *    BGPSTREAM_AS_PATH_SEG_CONFED_SEQ,
+   *    BGPSTREAM_AS_PATH_SEG_CONFED_SET
    */
   uint8_t type;
 
@@ -175,9 +175,10 @@ typedef struct bgpstream_as_path_iter {
  * - If the segment is an AS Confederation Set
  *   (BGPSTREAM_AS_PATH_SEG_CONFED_SET), then the string will be a
  *   comma-separated list of ASNs, enclosed in brackets. E.g., "[12345,6789]".
- * - If the segment is an AS Sequence Set (BGPSTREAM_AS_PATH_SEG_CONFED_SEQ),
- *   then the string will be a space-separated list of ASNs, enclosed in
- *   parentheses. E.g., "(12345 6789)".
+ * - If the segment is an AS Confederation Sequence
+ *   (BGPSTREAM_AS_PATH_SEG_CONFED_SEQ), then the string will be a
+ *   space-separated list of ASNs, enclosed in parentheses.
+ *   E.g., "(12345 6789)".
  * Note that it is possible to have a set/sequence with only a single element.
  */
 int bgpstream_as_path_seg_snprintf(char *buf, size_t len,
