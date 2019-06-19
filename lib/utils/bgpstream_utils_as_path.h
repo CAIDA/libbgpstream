@@ -185,7 +185,7 @@ typedef struct bgpstream_as_path_iter {
  * Note that it is possible to have a set/sequence with only a single element.
  */
 int bgpstream_as_path_seg_snprintf(char *buf, size_t len,
-                                   bgpstream_as_path_seg_t *seg);
+                                   const bgpstream_as_path_seg_t *seg);
 
 /** Duplicate the given AS Path Segment
  *
@@ -196,7 +196,7 @@ int bgpstream_as_path_seg_snprintf(char *buf, size_t len,
  * bgpstream_as_path_seg_destroy
  */
 bgpstream_as_path_seg_t *
-bgpstream_as_path_seg_dup(bgpstream_as_path_seg_t *src);
+bgpstream_as_path_seg_dup(const bgpstream_as_path_seg_t *src);
 
 /** Destroy the given AS Path Segment
  *
@@ -214,7 +214,7 @@ unsigned int
 #elif ULONG_MAX == 0xffffffffu
 unsigned long
 #endif
-bgpstream_as_path_seg_hash(bgpstream_as_path_seg_t *seg);
+bgpstream_as_path_seg_hash(const bgpstream_as_path_seg_t *seg);
 
 /** Compare two AS path segments for equality
  *
@@ -222,8 +222,8 @@ bgpstream_as_path_seg_hash(bgpstream_as_path_seg_t *seg);
  * @param seg2          pointer to the second AS path segment to compare
  * @return 0 if the segments are not equal, non-zero if they are equal
  */
-int bgpstream_as_path_seg_equal(bgpstream_as_path_seg_t *seg1,
-                                bgpstream_as_path_seg_t *seg2);
+int bgpstream_as_path_seg_equal(const bgpstream_as_path_seg_t *seg1,
+                                const bgpstream_as_path_seg_t *seg2);
 
 /* AS PATH FUNCTIONS */
 
@@ -239,7 +239,7 @@ int bgpstream_as_path_seg_equal(bgpstream_as_path_seg_t *seg1,
  * output was truncated.
  */
 int bgpstream_as_path_snprintf(char *buf, size_t len,
-                               bgpstream_as_path_t *as_path);
+                               const bgpstream_as_path_t *as_path);
 
 /** Create an empty AS path structure.
  *
@@ -268,7 +268,8 @@ void bgpstream_as_path_destroy(bgpstream_as_path_t *path);
  * @note this function will overwrite any data currently in dst. If there are
  * existing borrowed segment pointers into the path they will become garbage.
  */
-int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src);
+int bgpstream_as_path_copy(bgpstream_as_path_t *dst,
+    const bgpstream_as_path_t *src);
 
 /** Get the origin AS segment from the given path
  *
@@ -313,7 +314,7 @@ void bgpstream_as_path_iter_reset(bgpstream_as_path_iter_t *iter);
  * path is valid.
  */
 bgpstream_as_path_seg_t *
-bgpstream_as_path_get_next_seg(bgpstream_as_path_t *path,
+bgpstream_as_path_get_next_seg(const bgpstream_as_path_t *path,
                                bgpstream_as_path_iter_t *iter);
 
 /** Get the number of segments in the AS Path
@@ -371,7 +372,7 @@ unsigned int
 #elif ULONG_MAX == 0xffffffffu
 unsigned long
 #endif
-bgpstream_as_path_hash(bgpstream_as_path_t *path);
+bgpstream_as_path_hash(const bgpstream_as_path_t *path);
 
 /** Compare two AS path for equality
  *
@@ -382,8 +383,8 @@ bgpstream_as_path_hash(bgpstream_as_path_t *path);
  * @note for this function to return true, the paths must be identical. If ASN
  * ordering within sets is not consistent, this will return false.
  */
-int bgpstream_as_path_equal(bgpstream_as_path_t *path1,
-                            bgpstream_as_path_t *path2);
+int bgpstream_as_path_equal(const bgpstream_as_path_t *path1,
+                            const bgpstream_as_path_t *path2);
 
 /** @} */
 

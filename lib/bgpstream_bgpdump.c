@@ -59,8 +59,8 @@
   } while (0)
 
 char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
-                                             bgpstream_record_t *record,
-                                             bgpstream_elem_t *elem)
+                                             const bgpstream_record_t *record,
+                                             const bgpstream_elem_t *elem)
 {
   assert(record);
   assert(elem);

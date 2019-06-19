@@ -296,7 +296,7 @@ void bgpstream_elem_clear(bgpstream_elem_t *elem);
  * function.
  */
 bgpstream_elem_t *bgpstream_elem_copy(bgpstream_elem_t *dst,
-                                      bgpstream_elem_t *src);
+                                      const bgpstream_elem_t *src);
 
 /** Write the string representation of the elem type into the provided buffer
  *

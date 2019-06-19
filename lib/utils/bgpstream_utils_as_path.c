@@ -41,18 +41,18 @@
 
 #define SIZEOF_SEG_SET(segp)                                                   \
   (sizeof(bgpstream_as_path_seg_set_t) +                                       \
-   (sizeof(uint32_t) * ((bgpstream_as_path_seg_set_t *)(segp))->asn_cnt))
+   (sizeof(uint32_t) * (segp)->asn_cnt))
 
 #define SIZEOF_SEG(segp)                                                       \
   (((segp)->type == BGPSTREAM_AS_PATH_SEG_ASN)                                 \
      ? sizeof(bgpstream_as_path_seg_asn_t)                                     \
-     : SIZEOF_SEG_SET(segp))
+     : SIZEOF_SEG_SET((const bgpstream_as_path_seg_set_t *)(segp)))
 
 #define CUR_SEG(path, iter)                                                    \
   ((bgpstream_as_path_seg_t *)((path)->data + (iter)->cur_offset))
 
 static bgpstream_as_path_seg_asn_t *
-seg_asn_dup(bgpstream_as_path_seg_asn_t *src)
+seg_asn_dup(const bgpstream_as_path_seg_asn_t *src)
 {
   bgpstream_as_path_seg_asn_t *seg = NULL;
 
@@ -66,7 +66,7 @@ seg_asn_dup(bgpstream_as_path_seg_asn_t *src)
 }
 
 static bgpstream_as_path_seg_set_t *
-seg_set_dup(bgpstream_as_path_seg_set_t *src)
+seg_set_dup(const bgpstream_as_path_seg_set_t *src)
 {
   bgpstream_as_path_seg_set_t *seg = NULL;
   int i;
@@ -100,7 +100,8 @@ seg_set_dup(bgpstream_as_path_seg_set_t *src)
 #define SET_SNPRINTF(fchr, lchr, schr)                                         \
   do {                                                                         \
     char *bufp = buf + written;                                                \
-    bgpstream_as_path_seg_set_t *segset = (bgpstream_as_path_seg_set_t *)seg;  \
+    const bgpstream_as_path_seg_set_t *segset =                                \
+      (const bgpstream_as_path_seg_set_t *)seg;                                \
     ADD_CHAR(fchr);                                                            \
     int i;                                                                     \
     for (i = 0; i < segset->asn_cnt; i++) {                                    \
@@ -123,7 +124,7 @@ seg_set_dup(bgpstream_as_path_seg_set_t *src)
  * at all since this is a well-known format also used by bgpdump).
  */
 int bgpstream_as_path_seg_snprintf(char *buf, size_t len,
-                                   bgpstream_as_path_seg_t *seg)
+                                   const bgpstream_as_path_seg_t *seg)
 {
   size_t written = 0;
   size_t remain = 0;
@@ -137,8 +138,8 @@ int bgpstream_as_path_seg_snprintf(char *buf, size_t len,
 
   switch (seg->type) {
   case BGPSTREAM_AS_PATH_SEG_ASN:
-    written =
-      snprintf(buf, len, "%" PRIu32, ((bgpstream_as_path_seg_asn_t *)seg)->asn);
+    written = snprintf(buf, len, "%" PRIu32,
+        ((const bgpstream_as_path_seg_asn_t *)seg)->asn);
     break;
 
   case BGPSTREAM_AS_PATH_SEG_SET:
@@ -169,7 +170,8 @@ int bgpstream_as_path_seg_snprintf(char *buf, size_t len,
   return written;
 }
 
-bgpstream_as_path_seg_t *bgpstream_as_path_seg_dup(bgpstream_as_path_seg_t *src)
+bgpstream_as_path_seg_t *bgpstream_as_path_seg_dup(
+    const bgpstream_as_path_seg_t *src)
 {
   assert(src != NULL);
 
@@ -177,10 +179,10 @@ bgpstream_as_path_seg_t *bgpstream_as_path_seg_dup(bgpstream_as_path_seg_t *src)
 
   if (src->type == BGPSTREAM_AS_PATH_SEG_ASN) {
     return (bgpstream_as_path_seg_t *)seg_asn_dup(
-      (bgpstream_as_path_seg_asn_t *)src);
+      (const bgpstream_as_path_seg_asn_t *)src);
   } else {
     return (bgpstream_as_path_seg_t *)seg_set_dup(
-      (bgpstream_as_path_seg_set_t *)src);
+      (const bgpstream_as_path_seg_set_t *)src);
   }
 }
 
@@ -196,21 +198,21 @@ inline
 #elif ULONG_MAX == 0xffffffffu
   unsigned long
 #endif
-  bgpstream_as_path_seg_hash(bgpstream_as_path_seg_t *seg)
+bgpstream_as_path_seg_hash(const bgpstream_as_path_seg_t *seg)
 {
   if (seg == NULL) {
     return -1;
   }
 
   if (seg->type == BGPSTREAM_AS_PATH_SEG_ASN) {
-    return ((bgpstream_as_path_seg_asn_t *)seg)->asn;
+    return ((const bgpstream_as_path_seg_asn_t *)seg)->asn;
   }
 
-  return ((bgpstream_as_path_seg_set_t *)seg)->asn[0];
+  return ((const bgpstream_as_path_seg_set_t *)seg)->asn[0];
 }
 
-int bgpstream_as_path_seg_equal(bgpstream_as_path_seg_t *seg1,
-                                bgpstream_as_path_seg_t *seg2)
+int bgpstream_as_path_seg_equal(const bgpstream_as_path_seg_t *seg1,
+                                const bgpstream_as_path_seg_t *seg2)
 {
   if (seg1->type != seg2->type) {
     return 0;
@@ -219,22 +221,23 @@ int bgpstream_as_path_seg_equal(bgpstream_as_path_seg_t *seg1,
   assert(seg1->type != BGPSTREAM_AS_PATH_SEG_INVALID);
 
   if (seg1->type == BGPSTREAM_AS_PATH_SEG_ASN) {
-    return ((bgpstream_as_path_seg_asn_t *)seg1)->asn ==
-           ((bgpstream_as_path_seg_asn_t *)seg2)->asn;
+    return ((const bgpstream_as_path_seg_asn_t *)seg1)->asn ==
+           ((const bgpstream_as_path_seg_asn_t *)seg2)->asn;
   } else {
-    if (((bgpstream_as_path_seg_set_t *)seg1)->asn_cnt !=
-        ((bgpstream_as_path_seg_set_t *)seg2)->asn_cnt) {
+    if (((const bgpstream_as_path_seg_set_t *)seg1)->asn_cnt !=
+        ((const bgpstream_as_path_seg_set_t *)seg2)->asn_cnt) {
       return 0;
     }
-    return memcmp(((bgpstream_as_path_seg_set_t *)seg1)->asn,
-                  ((bgpstream_as_path_seg_set_t *)seg2)->asn,
+    return memcmp(((const bgpstream_as_path_seg_set_t *)seg1)->asn,
+                  ((const bgpstream_as_path_seg_set_t *)seg2)->asn,
                   sizeof(uint32_t) *
-                    ((bgpstream_as_path_seg_set_t *)seg2)->asn_cnt) == 0;
+                    ((const bgpstream_as_path_seg_set_t *)seg2)->asn_cnt) == 0;
   }
 }
 
 /* AS PATH FUNCTIONS */
-int bgpstream_as_path_snprintf(char *buf, size_t len, bgpstream_as_path_t *path)
+int bgpstream_as_path_snprintf(char *buf, size_t len,
+                               const bgpstream_as_path_t *path)
 {
   bgpstream_as_path_iter_t iter;
   size_t written = 0;
@@ -295,7 +298,8 @@ void bgpstream_as_path_destroy(bgpstream_as_path_t *path)
   free(path);
 }
 
-int bgpstream_as_path_copy(bgpstream_as_path_t *dst, bgpstream_as_path_t *src)
+int bgpstream_as_path_copy(bgpstream_as_path_t *dst,
+    const bgpstream_as_path_t *src)
 {
   if (dst->data_alloc_len == UINT16_MAX) {
     /* no longer points to external memory */
@@ -349,7 +353,7 @@ void bgpstream_as_path_iter_reset(bgpstream_as_path_iter_t *iter)
 }
 
 bgpstream_as_path_seg_t *
-bgpstream_as_path_get_next_seg(bgpstream_as_path_t *path,
+bgpstream_as_path_get_next_seg(const bgpstream_as_path_t *path,
                                bgpstream_as_path_iter_t *iter)
 {
   bgpstream_as_path_seg_t *cur_seg;
@@ -447,25 +451,25 @@ unsigned int
 #elif ULONG_MAX == 0xffffffffu
 unsigned long
 #endif
-bgpstream_as_path_hash(bgpstream_as_path_t *path)
+bgpstream_as_path_hash(const bgpstream_as_path_t *path)
 {
   if (path->data_len > 0) {
     /* put the peer (ish) hash into the top bits */
     /* and put the origin hash into the bottom bits */
     return mixbits(
-      ((bgpstream_as_path_seg_hash((bgpstream_as_path_seg_t *)path->data) &
+      ((bgpstream_as_path_seg_hash((const bgpstream_as_path_seg_t *)path->data) &
         0xFFFF)
        << 8) |
       (bgpstream_as_path_seg_hash(
-         (bgpstream_as_path_seg_t *)(path->data + path->origin_offset)) &
+         (const bgpstream_as_path_seg_t *)(path->data + path->origin_offset)) &
        0xFFFF));
   } else {
     return 0;
   }
 }
 
-inline int bgpstream_as_path_equal(bgpstream_as_path_t *path1,
-                                   bgpstream_as_path_t *path2)
+inline int bgpstream_as_path_equal(const bgpstream_as_path_t *path1,
+                                   const bgpstream_as_path_t *path2)
 {
   return (path1->data_len == path2->data_len) &&
          !memcmp(path1->data, path2->data, path1->data_len);

@@ -83,7 +83,7 @@ void bgpstream_record_clear(bgpstream_record_t *record)
   record->time_usec = 0;
 }
 
-void bgpstream_record_print_mrt_data(bgpstream_record_t *const record)
+void bgpstream_record_print_mrt_data(const bgpstream_record_t *record)
 {
   assert(0 && "TODO: fix this implementation");
   // bgpdump_print_entry(record->bd_entry);
@@ -406,7 +406,7 @@ int bgpstream_record_status_snprintf(char *buf, size_t len,
   } while (0)
 
 char *bgpstream_record_snprintf(char *buf, size_t len,
-                                bgpstream_record_t *record)
+                                const bgpstream_record_t *record)
 {
   assert(record);
 
@@ -477,8 +477,8 @@ char *bgpstream_record_snprintf(char *buf, size_t len,
 }
 
 char *bgpstream_record_elem_snprintf(char *buf, size_t len,
-                                     bgpstream_record_t *record,
-                                     bgpstream_elem_t *elem)
+                                     const bgpstream_record_t *record,
+                                     const bgpstream_elem_t *elem)
 {
   assert(record);
   assert(elem);
