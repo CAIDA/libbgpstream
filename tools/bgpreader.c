@@ -299,6 +299,7 @@ int main(int argc, char *argv[])
   int record_output_on = 0;
   int record_bgpdump_output_on = 0;
   int elem_output_on = 0;
+  int exitstatus = -1; // fail, until proven otherwise
 
   int rec_limit = -1;
 
@@ -349,7 +350,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "--%s='%s' to force the argument)\n",
             long_options[k].name, optarg);
       }
-      goto err;
+      goto done;
     }
     switch (opt) {
 
@@ -388,7 +389,7 @@ int main(int argc, char *argv[])
                 "ERROR: A maximum of %lu interface_options (-o) can be "
                 "specified on the command line\n",
                 ARR_CNT(interface_options));
-        goto err;
+        goto done;
       }
       interface_options[interface_options_cnt++] = optarg;
       break;
@@ -407,7 +408,7 @@ int main(int argc, char *argv[])
       }
       if (errno || *endp != '\0') {
         fprintf(stderr, "ERROR: bad time window '%s'\n", optarg);
-        goto err;
+        goto done;
       }
       break;
     case 'P':
@@ -417,7 +418,7 @@ int main(int argc, char *argv[])
       if ((di_id = bgpstream_get_data_interface_id_by_name(bs, optarg)) == 0) {
         fprintf(stderr, "ERROR: Invalid data interface name '%s'\n", optarg);
         usage();
-        goto err;
+        goto done;
       }
       di_info = bgpstream_get_data_interface_info(bs, di_id);
       break;
@@ -450,6 +451,7 @@ int main(int argc, char *argv[])
     case 'v':
       fprintf(stderr, "bgpreader version %d.%d.%d\n", BGPSTREAM_MAJOR_VERSION,
               BGPSTREAM_MID_VERSION, BGPSTREAM_MINOR_VERSION);
+      exitstatus = 0; // success
       goto done;
 #ifdef WITH_RPKI
     case RPKI_OPTION_SSH:
@@ -470,10 +472,11 @@ int main(int argc, char *argv[])
 #endif
     case 'h':
       usage();
+      exitstatus = 0; // success
       goto done;
     default:
       usage();
-      goto err;
+      goto done;
     }
   }
 
@@ -481,6 +484,7 @@ int main(int argc, char *argv[])
   for (i = 0; i < interface_options_cnt; i++) {
     if (strcmp(interface_options[i], "?") == 0) {
       dump_if_options();
+      exitstatus = 0; // success
       goto done;
     } else {
       /* actually set this option */
@@ -545,14 +549,14 @@ int main(int argc, char *argv[])
   }
 
   if (error_cnt > 0)
-    goto err;
+    goto done;
 
   if (interval_start == 0 && !intervalstring) {
     if (di_id == BGPSTREAM_DATA_INTERFACE_BROKER) {
       fprintf(stderr,
               "ERROR: At least one time window must be set when using the "
               "broker data interface\n");
-      goto err;
+      goto done;
     } else {
       fprintf(stderr, "WARN: No time window specified, defaulting to all "
                       "available data\n");
@@ -590,14 +594,14 @@ int main(int argc, char *argv[])
   if (rpki_input != NULL && rpki_input->rpki_active) {
     if (!bgpstream_rpki_parse_interval(rpki_input, interval_start, interval_end)) {
       fprintf(stderr, "ERROR: Could not parse time window for RPKI\n");
-      goto err;
+      goto done;
     }
     cfg = bgpstream_rpki_set_cfg(rpki_input);
   }
 #endif
 
-  while ((rrc = bgpstream_get_next_record(bs, &bs_record)) > 0 &&
-         (rec_limit < 0 || rec_cnt < rec_limit)) {
+  while ((rec_limit < 0 || rec_cnt < rec_limit) &&
+         (rrc = bgpstream_get_next_record(bs, &bs_record)) > 0) {
     rec_cnt++;
 
     if (bs_record->status != BGPSTREAM_RECORD_STATUS_VALID_RECORD) {
@@ -605,7 +609,7 @@ int main(int argc, char *argv[])
     }
 
     if (record_output_on && print_record(bs_record) != 0) {
-      goto err;
+      goto done;
     }
 
     /* check if the record is of type RIB, in case extract the ID */
@@ -613,7 +617,7 @@ int main(int argc, char *argv[])
     if (bs_record->type == BGPSTREAM_RIB &&
         bs_record->dump_pos == BGPSTREAM_DUMP_START &&
         print_record(bs_record) != 0) {
-      goto err;
+      goto done;
     }
 
     if (record_bgpdump_output_on || elem_output_on) {
@@ -628,51 +632,43 @@ int main(int argc, char *argv[])
         // print record following bgpdump format
         if (record_bgpdump_output_on &&
             print_elem_bgpdump(bs_record, bs_elem) != 0) {
-          goto err;
+          goto done;
         } else if (elem_output_on && print_elem(bs_record, bs_elem) != 0) {
-          goto err;
+          goto done;
         }
       }
 
       if (erc != 0) {
         fprintf(stderr, "ERROR: Failed to get elem from record\n");
-        goto err;
+        goto done;
       }
 
       /* check if end of RIB has been reached */
       if (bs_record->type == BGPSTREAM_RIB &&
           bs_record->dump_pos == BGPSTREAM_DUMP_END &&
           print_record(bs_record) != 0) {
-        goto err;
+        goto done;
       }
     }
   }
-  if (rrc != 0) {
-    fprintf(stderr, "ERROR: Failed to get record from stream\n");
-    goto err;
-  }
 
-#ifdef WITH_RPKI
-  if (rpki_input != NULL && rpki_input->rpki_active) {
-    bgpstream_rpki_destroy_cfg(cfg);
-    bgpstream_rpki_destroy_input(rpki_input);
+  if (rrc < 0) {
+    fprintf(stderr, "ERROR: Failed to get record from stream\n");
+  } else {
+    exitstatus = 0; // success
   }
-#endif
 
 done:
-  /* deallocate memory for interface */
-  bgpstream_destroy(bs);
-  return 0;
-
-err:
-  bgpstream_destroy(bs);
 #ifdef WITH_RPKI
   if (rpki_input != NULL && rpki_input->rpki_active) {
     bgpstream_rpki_destroy_cfg(cfg);
     bgpstream_rpki_destroy_input(rpki_input);
   }
 #endif
-  return -1;
+
+  /* deallocate memory for interface */
+  bgpstream_destroy(bs);
+  return exitstatus;
 }
 
 /* print utility functions */
