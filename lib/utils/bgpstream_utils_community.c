@@ -51,7 +51,7 @@ struct bgpstream_community_set {
 
   /** Communities hash (OR between
    *  all communities in the set) */
-  uint32_t communities_hash;
+  bgpstream_community_t communities_hash;
 };
 
 /* ========== PUBLIC FUNCTIONS ========== */
@@ -186,7 +186,7 @@ bgpstream_community_set_t *bgpstream_community_set_create()
 void bgpstream_community_set_clear(bgpstream_community_set_t *set)
 {
   set->communities_cnt = 0;
-  set->communities_hash = 0;
+  set->communities_hash.ui32 = 0;
 }
 
 void bgpstream_community_set_destroy(bgpstream_community_set_t *set)
@@ -198,7 +198,7 @@ void bgpstream_community_set_destroy(bgpstream_community_set_t *set)
   set->communities = NULL;
   set->communities_cnt = 0;
   set->communities_alloc_cnt = 0;
-  set->communities_hash = 0;
+  set->communities_hash.ui32 = 0;
 
   free(set);
 }
@@ -249,7 +249,7 @@ int bgpstream_community_set_insert(bgpstream_community_set_t *set,
 
   set->communities[set->communities_cnt] = *comm;
   set->communities_cnt++;
-  set->communities_hash = set->communities_hash | comm->ui32;
+  set->communities_hash.ui32 |= comm->ui32;
   return 0;
 }
 
@@ -271,10 +271,10 @@ int bgpstream_community_set_populate_from_array_zc(
   set->communities_alloc_cnt = -1; /* signal that memory is not owned by us */
   set->communities = comms;
   set->communities_cnt = comms_cnt;
-  set->communities_hash = 0;
+  set->communities_hash.ui32 = 0;
   int i;
   for (i = 0; i < bgpstream_community_set_size(set); i++) {
-    set->communities_hash = set->communities_hash | set->communities[i].ui32;
+    set->communities_hash.ui32 |= set->communities[i].ui32;
   }
   return 0;
 }
@@ -306,7 +306,7 @@ bgpstream_community_set_hash(const bgpstream_community_set_t *set)
 int bgpstream_community_set_equal(const bgpstream_community_set_t *set1,
                                   const bgpstream_community_set_t *set2)
 {
-  return (set1->communities_hash == set2->communities_hash) &&
+  return (set1->communities_hash.ui32 == set2->communities_hash.ui32) &&
          (set1->communities_cnt == set2->communities_cnt) &&
          memcmp(set1->communities, set2->communities,
               sizeof(bgpstream_community_t) * set1->communities_cnt);
@@ -343,7 +343,7 @@ int bgpstream_community_set_populate(bgpstream_community_set_t *set,
     buf += sizeof(uint16_t);
     c->value = nptohs(buf);
     buf += sizeof(uint16_t);
-    set->communities_hash = set->communities_hash | c->ui32;
+    set->communities_hash.ui32 |= c->ui32;
   }
 
   set->communities_cnt = cnt;
@@ -361,8 +361,7 @@ int bgpstream_community_set_exists(const bgpstream_community_set_t *set,
 int bgpstream_community_set_match(const bgpstream_community_set_t *set,
                                   const bgpstream_community_t *com, uint8_t mask)
 {
-  const bgpstream_community_t *hash =
-    (const bgpstream_community_t *)&set->communities_hash; // XXX what?
+  const bgpstream_community_t *hash = &set->communities_hash;
 
   /* first we verify if the hash is compatible */
   if ((!(mask & BGPSTREAM_COMMUNITY_FILTER_ASN) ||
