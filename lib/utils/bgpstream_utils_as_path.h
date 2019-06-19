@@ -99,17 +99,6 @@ typedef struct bgpstream_as_path bgpstream_as_path_t;
  *
  * @{ */
 
-/** Generic AS Path Segment.
- *
- * This must be cast to the appropriate structure based on the type
- */
-typedef struct bgpstream_as_path_seg {
-
-  /** Type of the AS Path Segment (bgpstream_as_path_seg_type_t) */
-  uint8_t type;
-
-} bgpstream_as_path_seg_t;
-
 /** Simple ASN AS Path Segment */
 typedef struct bgpstream_as_path_seg_asn {
 
@@ -138,6 +127,35 @@ typedef struct bgpstream_as_path_seg_set {
   uint32_t asn[]; // C99 flexible array member
 
 } __attribute__((packed)) bgpstream_as_path_seg_set_t;
+
+/** Generic AS Path Segment.
+ *
+ * A pointer to this type is used to point to either a
+ * bgpstream_as_path_seg_asn_t or a bgpstream_as_path_seg_set_t.
+ * Choose the appropriate union member based on the type, e.g.
+ *
+ *     if (seg->type == BGPSTREAM_AS_PATH_SEG_ASN) {
+ *       // do something with seg->asn;
+ *     } else {
+ *       // do something with seg->set;
+ *     }
+ *
+ * (Casting also works, but is less convenient and error prone).
+ */
+typedef struct bgpstream_as_path_seg {
+
+  union {
+    /** Type of the AS Path Segment (bgpstream_as_path_seg_type_t) */
+    uint8_t type;
+
+    /** Simple ASN Path Segment, if type == BGPSTREAM_AS_PATH_SEG_ASN */
+    bgpstream_as_path_seg_asn_t asn;
+
+    /** AS Path Segment Set, if type != BGPSTREAM_AS_PATH_SEG_ASN */
+    bgpstream_as_path_seg_set_t set;
+  };
+
+} bgpstream_as_path_seg_t;
 
 /** Path iterator structure */
 typedef struct bgpstream_as_path_iter {
