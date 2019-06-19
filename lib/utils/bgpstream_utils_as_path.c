@@ -99,7 +99,7 @@ seg_set_dup(bgpstream_as_path_seg_set_t *src)
 
 #define SET_SNPRINTF(fchr, lchr, schr)                                         \
   do {                                                                         \
-    char *bufp = buf;                                                          \
+    char *bufp = buf + written;                                                \
     bgpstream_as_path_seg_set_t *segset = (bgpstream_as_path_seg_set_t *)seg;  \
     ADD_CHAR(fchr);                                                            \
     int i;                                                                     \
@@ -157,9 +157,9 @@ int bgpstream_as_path_seg_snprintf(char *buf, size_t len,
     break;
 
   default:
-    written = 0;
-    if (len > 0)
-      *buf = '\0';
+    written =
+      snprintf(buf, len, "<Unknown segment type %d:", seg->type);
+      SET_SNPRINTF(' ', '>', ' ');
     break;
   }
 
@@ -570,19 +570,7 @@ int bgpstream_as_path_append(bgpstream_as_path_t *path,
   // get a pointer to the newly added segment
   seg = CUR_SEG(path, &iter);
 
-  switch (type) {
-  case BGPSTREAM_AS_PATH_SEG_SET:
-  case BGPSTREAM_AS_PATH_SEG_ASN:
-  case BGPSTREAM_AS_PATH_SEG_CONFED_SEQ:
-  case BGPSTREAM_AS_PATH_SEG_CONFED_SET:
-    seg->type = type;
-    break;
-
-  default:
-    bgpstream_log(BGPSTREAM_LOG_ERR, "AS_PATH with unknown segment type %d",
-                  type);
-    return -1;
-  }
+  seg->type = type;
 
   // TODO: this code will allow adjacent segments of the same type to be added
   // which is technically illegal.
