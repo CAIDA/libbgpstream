@@ -157,9 +157,8 @@ int bgpstream_as_path_seg_snprintf(char *buf, size_t len,
     break;
 
   default:
-    written =
-      snprintf(buf, len, "<Unknown segment type %d:", seg->type);
-      SET_SNPRINTF(' ', '>', ' ');
+    /* <A B C> */
+    SET_SNPRINTF('<', '>', ' ');
     break;
   }
 

@@ -179,6 +179,9 @@ typedef struct bgpstream_as_path_iter {
  *   (BGPSTREAM_AS_PATH_SEG_CONFED_SEQ), then the string will be a
  *   space-separated list of ASNs, enclosed in parentheses.
  *   E.g., "(12345 6789)".
+ * - If the segment is an unknown type (this should not happen), then the
+ *   string will be a space-separated list of ASNs, enclosed in angle
+ *   brackets.  E.g., "<12345 6789>".
  * Note that it is possible to have a set/sequence with only a single element.
  */
 int bgpstream_as_path_seg_snprintf(char *buf, size_t len,
