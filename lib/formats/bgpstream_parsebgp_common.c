@@ -46,8 +46,8 @@ static bgpstream_as_path_seg_type_t as_path_types[] = {
   BGPSTREAM_AS_PATH_SEG_INVALID,    // INVALID
   BGPSTREAM_AS_PATH_SEG_SET,        // PARSEBGP_BGP_UPDATE_AS_PATH_SEG_AS_SET
   BGPSTREAM_AS_PATH_SEG_ASN,        // PARSEBGP_BGP_UPDATE_AS_PATH_SEG_AS_SEQ
-  BGPSTREAM_AS_PATH_SEG_CONFED_SET, // PARSEBGP_BGP_UPDATE_AS_PATH_SEG_CONFED_SET
   BGPSTREAM_AS_PATH_SEG_CONFED_SEQ, // PARSEBGP_BGP_UPDATE_AS_PATH_SEG_CONFED_SEQ
+  BGPSTREAM_AS_PATH_SEG_CONFED_SET, // PARSEBGP_BGP_UPDATE_AS_PATH_SEG_CONFED_SET
 };
 
 static int append_segments(bgpstream_as_path_t *bs_path,
@@ -91,7 +91,7 @@ static int append_segments(bgpstream_as_path_t *bs_path,
 
     // ensure we're not going to wander off the end of as_path_types array
     if (seg->type < PARSEBGP_BGP_UPDATE_AS_PATH_SEG_AS_SET ||
-        seg->type > PARSEBGP_BGP_UPDATE_AS_PATH_SEG_CONFED_SEQ) {
+        seg->type > PARSEBGP_BGP_UPDATE_AS_PATH_SEG_CONFED_SET) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Unknown AS Path segment type %d",
                     seg->type);
       return -1;

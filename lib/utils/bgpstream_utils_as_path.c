@@ -146,14 +146,14 @@ int bgpstream_as_path_seg_snprintf(char *buf, size_t len,
     SET_SNPRINTF('{', '}', ',');
     break;
 
-  case BGPSTREAM_AS_PATH_SEG_CONFED_SET:
-    /* [A,B,C] */
-    SET_SNPRINTF('[', ']', ',');
-    break;
-
   case BGPSTREAM_AS_PATH_SEG_CONFED_SEQ:
     /* (A B C) */
     SET_SNPRINTF('(', ')', ' ');
+    break;
+
+  case BGPSTREAM_AS_PATH_SEG_CONFED_SET:
+    /* [A,B,C] */
+    SET_SNPRINTF('[', ']', ',');
     break;
 
   default:
@@ -573,8 +573,8 @@ int bgpstream_as_path_append(bgpstream_as_path_t *path,
   switch (type) {
   case BGPSTREAM_AS_PATH_SEG_SET:
   case BGPSTREAM_AS_PATH_SEG_ASN:
-  case BGPSTREAM_AS_PATH_SEG_CONFED_SET:
   case BGPSTREAM_AS_PATH_SEG_CONFED_SEQ:
+  case BGPSTREAM_AS_PATH_SEG_CONFED_SET:
     seg->type = type;
     break;
 
