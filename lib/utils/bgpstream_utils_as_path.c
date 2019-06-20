@@ -91,28 +91,9 @@ seg_set_dup(const bgpstream_as_path_seg_set_t *src)
 #define ADD_CHAR(chr)                                                          \
   do {                                                                         \
     if (written < len) {                                                       \
-      *bufp = chr;                                                             \
-      bufp++;                                                                  \
+      buf[written] = chr;                                                      \
     }                                                                          \
     written++;                                                                 \
-  } while (0)
-
-#define SET_SNPRINTF(fchr, lchr, schr)                                         \
-  do {                                                                         \
-    char *bufp = buf + written;                                                \
-    ADD_CHAR(fchr);                                                            \
-    int i;                                                                     \
-    for (i = 0; i < seg->set.asn_cnt; i++) {                                   \
-      remain = (len <= written) ? 0 : len - written;                           \
-      written += snprintf(bufp, remain, "%" PRIu32, seg->set.asn[i]);          \
-      bufp = buf + written;                                                    \
-      if (i < seg->set.asn_cnt - 1) {                                          \
-        ADD_CHAR(schr);                                                        \
-      }                                                                        \
-    }                                                                          \
-    ADD_CHAR(lchr);                                                            \
-    if (written < len)                                                         \
-      *bufp = '\0';                                                            \
   } while (0)
 
 /*
@@ -125,7 +106,7 @@ int bgpstream_as_path_seg_snprintf(char *buf, size_t len,
                                    const bgpstream_as_path_seg_t *seg)
 {
   size_t written = 0;
-  size_t remain = 0;
+  const char *chars;
 
   if (seg == NULL) {
     if (len > 0) {
@@ -136,31 +117,41 @@ int bgpstream_as_path_seg_snprintf(char *buf, size_t len,
 
   switch (seg->type) {
   case BGPSTREAM_AS_PATH_SEG_ASN:
-    written = snprintf(buf, len, "%" PRIu32, seg->asn.asn);
-    break;
+    return snprintf(buf, len, "%" PRIu32, seg->asn.asn);
 
   case BGPSTREAM_AS_PATH_SEG_SET:
     /* {A,B,C} */
-    SET_SNPRINTF('{', '}', ',');
+    chars = "{,}";
     break;
 
   case BGPSTREAM_AS_PATH_SEG_CONFED_SEQ:
     /* (A B C) */
-    SET_SNPRINTF('(', ')', ' ');
+    chars = "( )";
     break;
 
   case BGPSTREAM_AS_PATH_SEG_CONFED_SET:
     /* [A,B,C] */
-    SET_SNPRINTF('[', ']', ',');
+    chars = "[,]";
     break;
 
   default:
     /* <A B C> */
-    SET_SNPRINTF('<', '>', ' ');
+    chars = "< >";
     break;
   }
 
-  if (written >= len && len > 0) {
+  ADD_CHAR(chars[0]);
+  for (int i = 0; i < seg->set.asn_cnt; i++) {
+    if (i > 0) {
+      ADD_CHAR(chars[1]);
+    }
+    size_t remain = (len <= written) ? 0 : len - written;
+    written += snprintf(buf + written, remain, "%" PRIu32, seg->set.asn[i]);
+  }
+  ADD_CHAR(chars[2]);
+  if (written < len) {
+    buf[written] = '\0';
+  } else if (len > 0) {
     buf[len - 1] = '\0';
   }
 
@@ -229,10 +220,8 @@ int bgpstream_as_path_snprintf(char *buf, size_t len,
 {
   bgpstream_as_path_iter_t iter;
   size_t written = 0;
-  size_t remain = 0;
   bgpstream_as_path_seg_t *seg;
   int need_sep = 0;
-  char *bufp = buf;
 
   /* iterate through the path and print each segment */
   bgpstream_as_path_iter_reset(&iter);
@@ -241,9 +230,8 @@ int bgpstream_as_path_snprintf(char *buf, size_t len,
       ADD_CHAR(' ');
     }
     need_sep = 1;
-    remain = (len <= written) ? 0 : len - written;
-    written += bgpstream_as_path_seg_snprintf(bufp, remain, seg);
-    bufp = buf + written;
+    size_t remain = (len <= written) ? 0 : len - written;
+    written += bgpstream_as_path_seg_snprintf(buf + written, remain, seg);
   }
   if (len > 0) {
     if (written == 0) {
