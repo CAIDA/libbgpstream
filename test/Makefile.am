@@ -39,6 +39,7 @@ TESTS = 				\
 	bgpstream-test-utils-addr	\
 	bgpstream-test-utils-pfx	\
 	bgpstream-test-utils-patricia	\
+	bgpstream-test-utils-aspath	\
 	bgpstream-test-rpki
 
 check_PROGRAMS = 			\
@@ -48,6 +49,7 @@ check_PROGRAMS = 			\
 	bgpstream-test-utils-addr	\
 	bgpstream-test-utils-pfx	\
 	bgpstream-test-utils-patricia	\
+	bgpstream-test-utils-aspath	\
 	bgpstream-test-rpki
 
 # test data files
@@ -79,6 +81,9 @@ bgpstream_test_utils_pfx_LDADD   = $(top_builddir)/lib/libbgpstream.la
 
 bgpstream_test_utils_patricia_SOURCES = bgpstream-test-utils-patricia.c bgpstream_test.h
 bgpstream_test_utils_patricia_LDADD   = $(top_builddir)/lib/libbgpstream.la
+
+bgpstream_test_utils_aspath_SOURCES = bgpstream-test-utils-aspath.c bgpstream_test.h
+bgpstream_test_utils_aspath_LDADD   = $(top_builddir)/lib/libbgpstream.la
 
 ACLOCAL_AMFLAGS = -I m4
 

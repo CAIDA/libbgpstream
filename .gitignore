@@ -30,6 +30,7 @@ test/bgpstream-test-rpki
 test/bgpstream-test-utils-addr
 test/bgpstream-test-utils-pfx
 test/bgpstream-test-utils-patricia
+test/bgpstream-test-utils-aspath
 
 # doxygen/sphinx files
 docs/sphinx
