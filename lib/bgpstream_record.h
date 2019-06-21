@@ -250,7 +250,7 @@ int bgpstream_record_get_next_elem(bgpstream_record_t *record,
  *
  * See https://bitbucket.org/ripencc/bgpdump for more information about bgpdump
  */
-void bgpstream_record_print_mrt_data(bgpstream_record_t *record);
+void bgpstream_record_print_mrt_data(const bgpstream_record_t *record);
 
 /** Write the string representation of the record type into the provided buffer
  *
@@ -261,7 +261,7 @@ void bgpstream_record_print_mrt_data(bgpstream_record_t *record);
  * unlimited
  */
 int bgpstream_record_type_snprintf(char *buf, size_t len,
-                                   bgpstream_record_type_t type);
+                                   const bgpstream_record_type_t type);
 
 /** Write the string representation of the record dump position into the
  * provided
@@ -296,7 +296,7 @@ int bgpstream_record_status_snprintf(char *buf, size_t len,
  * @return pointer to the start of the buffer if successful, NULL otherwise
  */
 char *bgpstream_record_snprintf(char *buf, size_t len,
-                                bgpstream_record_t *record);
+                                const bgpstream_record_t *record);
 
 /** Write the string representation of the record/elem into the provided buffer
  *
@@ -307,8 +307,8 @@ char *bgpstream_record_snprintf(char *buf, size_t len,
  * @return pointer to the start of the buffer if successful, NULL otherwise
  */
 char *bgpstream_record_elem_snprintf(char *buf, size_t len,
-                                     bgpstream_record_t *record,
-                                     bgpstream_elem_t *elem);
+                                     const bgpstream_record_t *record,
+                                     const bgpstream_elem_t *elem);
 
 /** @} */
 

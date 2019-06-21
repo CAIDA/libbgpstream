@@ -51,13 +51,13 @@ struct bgpstream_community_set {
 
   /** Communities hash (OR between
    *  all communities in the set) */
-  uint32_t communities_hash;
+  bgpstream_community_t communities_hash;
 };
 
 /* ========== PUBLIC FUNCTIONS ========== */
 
 int bgpstream_community_snprintf(char *buf, size_t len,
-                                 bgpstream_community_t *comm)
+                                 const bgpstream_community_t *comm)
 {
   return snprintf(buf, len, "%" PRIu16 ":%" PRIu16, comm->asn, comm->value);
 }
@@ -98,7 +98,7 @@ int bgpstream_str2community(const char *buf, bgpstream_community_t *comm)
   return (int)mask;
 }
 
-bgpstream_community_t *bgpstream_community_dup(bgpstream_community_t *src)
+bgpstream_community_t *bgpstream_community_dup(const bgpstream_community_t *src)
 {
   bgpstream_community_t *dst = NULL;
 
@@ -122,7 +122,7 @@ unsigned int
 #elif ULONG_MAX == 0xffffffffu
 unsigned long
 #endif
-bgpstream_community_hash(bgpstream_community_t *comm)
+bgpstream_community_hash(const bgpstream_community_t *comm)
 {
   return comm->asn | comm->value;
 }
@@ -137,8 +137,8 @@ bgpstream_community_hash_value(bgpstream_community_t comm)
   return bgpstream_community_hash(&comm);
 }
 
-int bgpstream_community_equal(bgpstream_community_t *comm1,
-                              bgpstream_community_t *comm2)
+int bgpstream_community_equal(const bgpstream_community_t *comm1,
+                              const bgpstream_community_t *comm2)
 {
   return (comm1->asn == comm2->asn) && (comm1->value == comm2->value);
 }
@@ -152,7 +152,7 @@ int bgpstream_community_equal_value(bgpstream_community_t comm1,
 /* SET FUNCTIONS */
 
 int bgpstream_community_set_snprintf(char *buf, size_t len,
-                                     bgpstream_community_set_t *set)
+                                     const bgpstream_community_set_t *set)
 {
   size_t written = 0;
   int i;
@@ -186,7 +186,7 @@ bgpstream_community_set_t *bgpstream_community_set_create()
 void bgpstream_community_set_clear(bgpstream_community_set_t *set)
 {
   set->communities_cnt = 0;
-  set->communities_hash = 0;
+  set->communities_hash.ui32 = 0;
 }
 
 void bgpstream_community_set_destroy(bgpstream_community_set_t *set)
@@ -198,13 +198,13 @@ void bgpstream_community_set_destroy(bgpstream_community_set_t *set)
   set->communities = NULL;
   set->communities_cnt = 0;
   set->communities_alloc_cnt = 0;
-  set->communities_hash = 0;
+  set->communities_hash.ui32 = 0;
 
   free(set);
 }
 
 int bgpstream_community_set_copy(bgpstream_community_set_t *dst,
-                                 bgpstream_community_set_t *src)
+                                 const bgpstream_community_set_t *src)
 {
   if (dst->communities_alloc_cnt < src->communities_cnt) {
     if ((dst->communities =
@@ -224,13 +224,13 @@ int bgpstream_community_set_copy(bgpstream_community_set_t *dst,
   return 0;
 }
 
-bgpstream_community_t *
-bgpstream_community_set_get(bgpstream_community_set_t *set, int i)
+const bgpstream_community_t *
+bgpstream_community_set_get(const bgpstream_community_set_t *set, int i)
 {
   return (i < set->communities_cnt) ? &set->communities[i] : NULL;
 }
 
-int bgpstream_community_set_size(bgpstream_community_set_t *set)
+int bgpstream_community_set_size(const bgpstream_community_set_t *set)
 {
   return set->communities_cnt;
 }
@@ -249,7 +249,7 @@ int bgpstream_community_set_insert(bgpstream_community_set_t *set,
 
   set->communities[set->communities_cnt] = *comm;
   set->communities_cnt++;
-  set->communities_hash = set->communities_hash | comm->ui32;
+  set->communities_hash.ui32 |= comm->ui32;
   return 0;
 }
 
@@ -271,10 +271,10 @@ int bgpstream_community_set_populate_from_array_zc(
   set->communities_alloc_cnt = -1; /* signal that memory is not owned by us */
   set->communities = comms;
   set->communities_cnt = comms_cnt;
-  set->communities_hash = 0;
+  set->communities_hash.ui32 = 0;
   int i;
   for (i = 0; i < bgpstream_community_set_size(set); i++) {
-    set->communities_hash = set->communities_hash | set->communities[i].ui32;
+    set->communities_hash.ui32 |= set->communities[i].ui32;
   }
   return 0;
 }
@@ -284,7 +284,7 @@ unsigned int
 #elif ULONG_MAX == 0xffffffffu
 unsigned long
 #endif
-bgpstream_community_set_hash(bgpstream_community_set_t *set)
+bgpstream_community_set_hash(const bgpstream_community_set_t *set)
 {
   int i;
   uint32_t h;
@@ -303,10 +303,10 @@ bgpstream_community_set_hash(bgpstream_community_set_t *set)
   return h;
 }
 
-int bgpstream_community_set_equal(bgpstream_community_set_t *set1,
-                                  bgpstream_community_set_t *set2)
+int bgpstream_community_set_equal(const bgpstream_community_set_t *set1,
+                                  const bgpstream_community_set_t *set2)
 {
-  return (set1->communities_hash == set2->communities_hash) &&
+  return (set1->communities_hash.ui32 == set2->communities_hash.ui32) &&
          (set1->communities_cnt == set2->communities_cnt) &&
          memcmp(set1->communities, set2->communities,
               sizeof(bgpstream_community_t) * set1->communities_cnt);
@@ -343,7 +343,7 @@ int bgpstream_community_set_populate(bgpstream_community_set_t *set,
     buf += sizeof(uint16_t);
     c->value = nptohs(buf);
     buf += sizeof(uint16_t);
-    set->communities_hash = set->communities_hash | c->ui32;
+    set->communities_hash.ui32 |= c->ui32;
   }
 
   set->communities_cnt = cnt;
@@ -351,24 +351,24 @@ int bgpstream_community_set_populate(bgpstream_community_set_t *set,
   return 0;
 }
 
-int bgpstream_community_set_exists(bgpstream_community_set_t *set,
-                                   bgpstream_community_t *com)
+int bgpstream_community_set_exists(const bgpstream_community_set_t *set,
+                                   const bgpstream_community_t *com)
 {
   return bgpstream_community_set_match(set, com,
                                        BGPSTREAM_COMMUNITY_FILTER_EXACT);
 }
 
-int bgpstream_community_set_match(bgpstream_community_set_t *set,
-                                  bgpstream_community_t *com, uint8_t mask)
+int bgpstream_community_set_match(const bgpstream_community_set_t *set,
+                                  const bgpstream_community_t *com, uint8_t mask)
 {
-  bgpstream_community_t *hash = (bgpstream_community_t *)&set->communities_hash;
+  const bgpstream_community_t *hash = &set->communities_hash;
 
   /* first we verify if the hash is compatible */
   if ((!(mask & BGPSTREAM_COMMUNITY_FILTER_ASN) ||
        (hash->asn & com->asn) == com->asn) &&
       (!(mask & BGPSTREAM_COMMUNITY_FILTER_VALUE) ||
        (hash->value & com->value) == com->value)) {
-    bgpstream_community_t *c;
+    const bgpstream_community_t *c;
     int i;
     int n = bgpstream_community_set_size(set);
     for (i = 0; i < n; i++) {

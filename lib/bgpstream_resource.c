@@ -140,7 +140,7 @@ const char *bgpstream_resource_get_attr(bgpstream_resource_t *resource,
 }
 
 int bgpstream_resource_hash_snprintf(char *buf, size_t buf_len,
-                                     bgpstream_resource_t *res)
+                                     const bgpstream_resource_t *res)
 {
   return snprintf(buf, buf_len, "%s.%s.%s.%" PRIu32 ".%" PRIu32, res->project,
                   res->collector,

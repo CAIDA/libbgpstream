@@ -93,7 +93,7 @@ void bgpstream_elem_clear(bgpstream_elem_t *elem)
 }
 
 bgpstream_elem_t *bgpstream_elem_copy(bgpstream_elem_t *dst,
-                                      bgpstream_elem_t *src)
+                                      const bgpstream_elem_t *src)
 {
   /* save all ptrs before memcpy */
   bgpstream_as_path_t *dst_aspath = dst->as_path;

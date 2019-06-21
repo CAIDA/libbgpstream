@@ -114,7 +114,7 @@ typedef struct bgpstream_community {
  * output was truncated.
  */
 int bgpstream_community_snprintf(char *buf, size_t len,
-                                 bgpstream_community_t *comm);
+                                 const bgpstream_community_t *comm);
 
 /** Read the string representation of a community in the form "<asn>:<value>"
  * from the buffer and populate the community structure.  Each of the
@@ -137,7 +137,8 @@ int bgpstream_str2community(const char *buf, bgpstream_community_t *comm);
  * @note the returned community must be destroyed using
  * bgpstream_community_destroy
  */
-bgpstream_community_t *bgpstream_community_dup(bgpstream_community_t *src);
+bgpstream_community_t *bgpstream_community_dup(
+    const bgpstream_community_t *src);
 
 /** Destroy the given community
  *
@@ -155,7 +156,7 @@ unsigned int
 #elif ULONG_MAX == 0xffffffffu
 unsigned long
 #endif
-bgpstream_community_hash(bgpstream_community_t *comm);
+bgpstream_community_hash(const bgpstream_community_t *comm);
 
 /** Hash the given community into a 32bit number
  *
@@ -175,8 +176,8 @@ bgpstream_community_hash_value(bgpstream_community_t comm);
  * @param comm2         pointer to the second community to compare
  * @return 0 if the communities are not equal, non-zero if they are equal
  */
-int bgpstream_community_equal(bgpstream_community_t *comm1,
-                              bgpstream_community_t *comm2);
+int bgpstream_community_equal(const bgpstream_community_t *comm1,
+                              const bgpstream_community_t *comm2);
 
 /** Compare two communities for equality
  *
@@ -198,7 +199,7 @@ int bgpstream_community_equal_value(bgpstream_community_t comm1,
  * output was truncated.
  */
 int bgpstream_community_set_snprintf(char *buf, size_t len,
-                                     bgpstream_community_set_t *set);
+                                     const bgpstream_community_set_t *set);
 
 /** Create an empty community set structure.
  *
@@ -229,7 +230,7 @@ void bgpstream_community_set_destroy(bgpstream_community_set_t *set);
  * existing borrowed community pointers into the path they will become garbage.
  */
 int bgpstream_community_set_copy(bgpstream_community_set_t *dst,
-                                 bgpstream_community_set_t *src);
+                                 const bgpstream_community_set_t *src);
 
 /** Get the community value at the given index in the set
  *
@@ -241,15 +242,15 @@ int bgpstream_community_set_copy(bgpstream_community_set_t *dst,
  * using bgpstream_community_destroy. Also, it is only valid as long as the set
  * is valid.
  */
-bgpstream_community_t *
-bgpstream_community_set_get(bgpstream_community_set_t *set, int i);
+const bgpstream_community_t *
+bgpstream_community_set_get(const bgpstream_community_set_t *set, int i);
 
 /** Get the number of communities in the set
  *
  * @param set           pointer to the set to get the size of
  * @return the number of communities in the given set
  */
-int bgpstream_community_set_size(bgpstream_community_set_t *set);
+int bgpstream_community_set_size(const bgpstream_community_set_t *set);
 
 /** Insert the given community into the community set
  *
@@ -294,7 +295,7 @@ unsigned int
 #elif ULONG_MAX == 0xffffffffu
 unsigned long
 #endif
-bgpstream_community_set_hash(bgpstream_community_set_t *set);
+bgpstream_community_set_hash(const bgpstream_community_set_t *set);
 
 /** Compare two community sets for equality
  *
@@ -305,8 +306,8 @@ bgpstream_community_set_hash(bgpstream_community_set_t *set);
  * @note this is not a true check for set equality. For this function to return
  * true, the ordering within the sets must also be identical.
  */
-int bgpstream_community_set_equal(bgpstream_community_set_t *set1,
-                                  bgpstream_community_set_t *set2);
+int bgpstream_community_set_equal(const bgpstream_community_set_t *set1,
+                                  const bgpstream_community_set_t *set2);
 
 /** Check if a community is part of a community set
  *
@@ -315,8 +316,8 @@ int bgpstream_community_set_equal(bgpstream_community_set_t *set1,
  * @return 1 if the set contains the community, 0 if not
  *
  */
-int bgpstream_community_set_exists(bgpstream_community_set_t *set,
-                                   bgpstream_community_t *com);
+int bgpstream_community_set_exists(const bgpstream_community_set_t *set,
+                                   const bgpstream_community_t *com);
 
 /** Check if a community matches of a community set
  *
@@ -327,8 +328,8 @@ int bgpstream_community_set_exists(bgpstream_community_set_t *set,
  * @return 1 if the set matches the community, 0 if not
  *
  */
-int bgpstream_community_set_match(bgpstream_community_set_t *set,
-                                  bgpstream_community_t *com, uint8_t mask);
+int bgpstream_community_set_match(const bgpstream_community_set_t *set,
+                                  const bgpstream_community_t *com, uint8_t mask);
 
 /** @} */
 

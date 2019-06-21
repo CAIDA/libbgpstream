@@ -186,6 +186,6 @@ const char *bgpstream_resource_get_attr(bgpstream_resource_t *resource,
  * @return pointer to a unique hash of this resource
  */
 int bgpstream_resource_hash_snprintf(char *buf, size_t buf_len,
-                                     bgpstream_resource_t *resource);
+                                     const bgpstream_resource_t *resource);
 
 #endif /* __BGPSTREAM_RESOURCE_H */

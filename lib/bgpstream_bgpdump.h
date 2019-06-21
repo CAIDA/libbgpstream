@@ -40,7 +40,7 @@
  * @return pointer to the start of the buffer if successful, NULL otherwise
  */
 char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
-                                             bgpstream_record_t *record,
-                                             bgpstream_elem_t *elem);
+                                             const bgpstream_record_t *record,
+                                             const bgpstream_elem_t *elem);
 
 #endif // __BGPSTREAM_BGPDUMP_H_

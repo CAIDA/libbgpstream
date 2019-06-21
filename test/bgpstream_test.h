@@ -41,11 +41,13 @@
  * https://metacpan.org/pod/release/PETDANCE/Test-Harness-2.65_02/lib/Test/Harness/TAP.pod
  */
 static int tap_test_num = 0;
+static int test_failures = 0;
 static int test_section_result UNUSED = 1;
 
 #define CHECK_MSG(name, err_msg, check)                                        \
   do {                                                                         \
     if (!(check)) {                                                            \
+      test_failures++;                                                         \
       const char *_p = err_msg;                                                \
       int _i;                                                                  \
       printf("not ok %d - %s\n", ++tap_test_num, name);                        \
@@ -65,10 +67,11 @@ static int test_section_result UNUSED = 1;
 #define CHECK(name, check)                                                     \
   do {                                                                         \
     if (!(check)) {                                                            \
+      test_failures++;                                                         \
       printf("not ok %d - %s\n", ++tap_test_num, name);                        \
       printf("# Failed check was: '" #check "'\n");                            \
       test_section_result = 0;                                                 \
-      /* return -1; */                                                         \
+      /* return EXIT_TEST_ERROR; */                                            \
     } else {                                                                   \
       printf("ok     %d - %s\n", ++tap_test_num, name);                        \
     }                                                                          \
@@ -100,7 +103,10 @@ static int test_section_result UNUSED = 1;
 #define ENDTEST                                                                \
   do {                                                                         \
     printf("1..%d\n", tap_test_num);                                           \
+    if (test_failures > 0)                                                     \
+      exit(EXIT_TEST_ERROR);                                                   \
   } while (0)
 
+// Exit status for automake script-based tests
 #define EXIT_TEST_SKIPPED 77
 #define EXIT_TEST_ERROR   99

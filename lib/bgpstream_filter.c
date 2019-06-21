@@ -27,6 +27,7 @@
  *   Chiara Orsini
  *   Alistair King
  *   Shane Alcock <salcock@waikato.ac.nz>
+ *   Ken Keys
  */
 
 #include "bgpstream_filter.h"
@@ -57,8 +58,6 @@ bgpstream_filter_mgr_t *bgpstream_filter_mgr_create()
 static int bsf_id_set_insert(bgpstream_id_set_t **setp, uint32_t value)
 {
   if (*setp == NULL && (*setp = bgpstream_id_set_create()) == NULL) {
-    bgpstream_log(BGPSTREAM_LOG_VFINE,
-                  "\tBSF_MGR:: add_filter malloc failed");
     bgpstream_log(BGPSTREAM_LOG_ERR, "can't allocate memory");
     return 0;
   }
@@ -70,8 +69,6 @@ static int bsf_id_set_insert(bgpstream_id_set_t **setp, uint32_t value)
 static int bsf_str_set_insert(bgpstream_str_set_t **setp, const char *value)
 {
   if (*setp == NULL && (*setp = bgpstream_str_set_create()) == NULL) {
-    bgpstream_log(BGPSTREAM_LOG_VFINE,
-                  "\tBSF_MGR:: add_filter malloc failed");
     bgpstream_log(BGPSTREAM_LOG_ERR, "can't allocate memory");
     return 0;
   }
@@ -219,8 +216,6 @@ int bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *this,
     if (this->prefixes == NULL) {
       if ((this->prefixes = bgpstream_patricia_tree_create(NULL)) ==
           NULL) {
-        bgpstream_log(BGPSTREAM_LOG_VFINE,
-                      "\tBSF_MGR:: add_filter malloc failed");
         bgpstream_log(BGPSTREAM_LOG_ERR, "can't allocate memory");
         return 0;
       }
@@ -242,8 +237,6 @@ int bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *this,
 
     pfx.allowed_matches = matchtype;
     if (bgpstream_patricia_tree_insert(this->prefixes, &pfx) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_VFINE,
-                    "\tBSF_MGR:: add_filter malloc failed");
       bgpstream_log(BGPSTREAM_LOG_ERR, "can't add prefix");
       return 0;
     }
@@ -258,8 +251,6 @@ int bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *this,
     if (this->communities == NULL) {
       if ((this->communities = kh_init(bgpstream_community_filter)) ==
           NULL) {
-        bgpstream_log(BGPSTREAM_LOG_VFINE,
-                      "\tBSF_MGR:: add_filter malloc failed");
         bgpstream_log(BGPSTREAM_LOG_ERR, "can't allocate memory");
         return 0;
       }
