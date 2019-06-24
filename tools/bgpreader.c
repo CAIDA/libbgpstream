@@ -39,6 +39,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/ioctl.h> // for TIOCGWINSZ
 #ifdef WITH_RPKI
 #include "utils/bgpstream_utils_rpki.h"
 #endif
@@ -86,23 +87,21 @@ static struct bs_options_t bs_opts[] =
 {
   {{"data-interface", required_argument, 0, 'd'},
    "<interface>",
-   "use the given data interface to find available data\n"
-   "available data interfaces are:"},
+   "use the given data interface to find available data. "
+   "Available values are:"},
   {{"filter", required_argument, 0, 'f'},
    "<filterstring>",
-   "filter records and elements using the rules\n"
+   "filter records and elements using the rules "
    "described in the given filter string"},
   {{"interval", required_argument, 0, 'I'},
-   "<interval>",
-   "process records that were received recently, where the\ninterval "
-   "describes how far back in time to go. The\ninterval should be "
-   "expressed as '<num> <unit>', where\n<unit> can be one of 's', "
-   "'m', 'h', 'd' (seconds,\nminutes, hours, days)."},
+   "<num> <unit>",
+   "process records that were received the last <num> <unit>s of time, where "
+   "<unit> is one of 's', 'm', 'h', 'd' (seconds, minutes, hours, days)." },
   {{"data-interface-option", required_argument, 0, 'o'},
    "<option-name>=<option-value>*",
-   "\nset an option for the current data "
-   "interface.\nuse '-o?' to get a list of available options for the "
-   "current\ndata interface. (data interface can be selected using -d)"},
+   "set an option for the current data "
+   "interface. Use '-o?' to get a list of available options for the "
+   "current data interface (as selected with -d)"},
   {{"project", required_argument, 0, 'p'},
    "<project>",
    "process records from only the given project (routeviews, ris)*"},
@@ -114,8 +113,8 @@ static struct bs_options_t bs_opts[] =
    "process records with only the given type (ribs, updates)*"},
   {{"time-window", required_argument, 0, 'w'},
    "<start>[,<end>]",
-   "process records within the given time window\nspecified in Unix "
-   "epoch time\n(omitting the end parameter enables live mode)"},
+   "process records within the given time window specified in Unix "
+   "epoch time (omitting <end> enables live mode)"},
   {{"rib-period", required_argument, 0, 'P'},
    "<period>",
    "process a rib files every <period> seconds (bgp time)"},
@@ -130,7 +129,7 @@ static struct bs_options_t bs_opts[] =
    "return elems associated with a given prefix*"},
   {{"community", required_argument, 0, 'y'},
    "<community>",
-   "return elems with the specified community*\n"
+   "return elems with the specified community* "
    "(format: asn:value. the '*' metacharacter is recognized)"},
   {{"aspath", required_argument, 0, 'A'},
    "<regex>",
@@ -140,7 +139,7 @@ static struct bs_options_t bs_opts[] =
    "process at most <rec-cnt> records"},
   {{"live", no_argument, 0, 'l'},
    "",
-   "enable live mode (make blocking requests for BGP records)\n"
+   "enable live mode (make blocking requests for BGP records); "
    "allows bgpstream to be used to process data in real-time"},
   {{"output-elems", no_argument, 0, 'e'},
    "",
@@ -171,14 +170,14 @@ static struct bs_options_t bs_opts[] =
    " records with the current RPKI dump (default collector)"},
   {{"rpki-collectors", required_argument, 0, RPKI_OPTION_COLLECTORS},
    "<((*|project):(*|(collector(,collectors)*))(;)?)*>",
-   "\nspecify the "
+   "specify the "
    "collectors used for (historical or live) RPKI validation "},
   {{"rpki-unified", no_argument, 0, RPKI_OPTION_UNIFIED},
    "",
    "whether the RPKI validation for different collectors is unified"},
   {{"rpki-ssh", required_argument, 0, RPKI_OPTION_SSH},
    "<user,hostkey,private key>",
-   "\nenable SSH encryption for the live connection to the RTR server"},
+   "enable SSH encryption for the live connection to the RTR server"},
 #endif
   {{"help", no_argument, 0, 'h'}, "", "print this help menu"},
   {{0, 0, 0, 0}, "", "" }
@@ -196,6 +195,48 @@ static bgpstream_data_interface_id_t di_id_default = 0;
 static bgpstream_data_interface_id_t di_id = 0;
 static bgpstream_data_interface_info_t *di_info = NULL;
 
+#define longopt_width  (16)
+#define opt_width      (5 + longopt_width)
+#define optarg_col     (opt_width + 2)
+#define optarg_width   (15)
+#define expl_col       (optarg_col + optarg_width + 2)
+
+static int columns(int fd)
+{
+  static int c = -1;
+#ifdef TIOCGWINSZ
+  if (c < 0) {
+    struct winsize w;
+    if (ioctl(fd, TIOCGWINSZ, &w) == 0)
+      c = w.ws_col;
+  }
+#endif
+  return c > 0 ? c : 80;
+}
+
+// Print a string to stderr with wrapping.
+// str       string to print
+// startcol  assume cursor is initially at this column
+// indent    amount to indent wrapped lines
+// returns   final cursor column
+static int wrap(const char *str, int startcol, int indent)
+{
+  int cols = columns(STDERR_FILENO);
+  if (cols < startcol) cols = 80;
+  if (cols < startcol) cols = INT_MAX;
+  while (strlen(str) > cols - startcol) {
+    const char *p = str + (cols - startcol);
+    while (!isspace(*p) && p > str) p--; // find last space in line
+    if (!isspace(*p)) { // couldn't find a space
+      p = str + (cols - startcol); // wrap at last possible char
+    }
+    fprintf(stderr, "%-.*s\n%*s", (int)(p - str), str, indent, "");
+    for (str = p; isspace(*str); str++); // skip leading spaces on next line
+    startcol = indent;
+  }
+  return startcol + fprintf(stderr, "%s", str);
+}
+
 static void data_if_usage()
 {
   bgpstream_data_interface_id_t *ids = NULL;
@@ -210,8 +251,11 @@ static void data_if_usage()
     info = bgpstream_get_data_interface_info(bs, ids[i]);
 
     if (info != NULL) {
-      fprintf(stderr, "%-30s%-17s%s%s\n", "", info->name, info->description,
-              (ids[i] == di_id_default) ? " (default)" : "");
+      fprintf(stderr, "%-*s%-*s  ", optarg_col, "", optarg_width, info->name);
+      int col = wrap(info->description, expl_col, expl_col);
+      if (ids[i] == di_id_default)
+        wrap(" (default)", col, expl_col);
+      fprintf(stderr, "\n");
     }
   }
 }
@@ -231,7 +275,9 @@ static void dump_if_options()
     fprintf(stderr, "   [NONE]\n");
   } else {
     for (i = 0; i < opt_cnt; i++) {
-      fprintf(stderr, "   %-15s%s\n", options[i].name, options[i].description);
+      fprintf(stderr, "   %-*s", 15, options[i].name);
+      wrap(options[i].description, 18, 18);
+      fprintf(stderr, "\n");
     }
   }
   fprintf(stderr, "\n");
@@ -239,23 +285,26 @@ static void dump_if_options()
 
 static void usage()
 {
-  int k, j;
-  for (k = 0; k < OPTIONS_CNT; k++) {
-    if (!k) {
-      fprintf(stderr, "usage: bgpreader -w <start>[,<end>] [<options>]\n"
-                      "Available options are:\n");
-    }
-
+  fprintf(stderr, "usage: bgpreader -w <start>[,<end>] [<options>]\n"
+                  "Available options are:\n");
+  for (int k = 0; k < OPTIONS_CNT; k++) {
+    // short option
     if (isgraph(bs_opts[k].option.val)) {
       fprintf(stderr, " -%c, ", bs_opts[k].option.val);
     } else {
       fprintf(stderr, "     ");
     }
-    fprintf(stderr, "--%-23s%-15s  ", bs_opts[k].option.name, bs_opts[k].usage);
-    for (j = 0; j < strlen(bs_opts[k].expl); j++) {
-      fprintf(stderr, bs_opts[k].expl[j] == '\n' ? "%-48c" : "%c",
-          bs_opts[k].expl[j]);
-    }
+
+    // long option
+    if (fprintf(stderr, "--%-*s  ", longopt_width - 2, bs_opts[k].option.name) > longopt_width + 2)
+      fprintf(stderr, "\n%*s", optarg_col, "");
+
+    // optarg
+    if (fprintf(stderr, "%-*s  ", optarg_width, bs_opts[k].usage) > optarg_width + 2)
+      fprintf(stderr, "\n%*s", expl_col, "");
+
+    // explanatory text
+    wrap(bs_opts[k].expl, expl_col, expl_col);
     fprintf(stderr, "\n");
     if (bs_opts[k].option.val == 'd') {
       data_if_usage();
