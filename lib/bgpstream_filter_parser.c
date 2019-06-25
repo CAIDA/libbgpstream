@@ -75,9 +75,8 @@ static const char *bgpstream_filter_type_to_string(bgpstream_filter_type_t type)
   return "Unknown filter term ??";
 }
 
-static void instantiate_filter(bgpstream_t *bs, bgpstream_filter_item_t *item)
+static int instantiate_filter(bgpstream_t *bs, bgpstream_filter_item_t *item)
 {
-
   bgpstream_filter_type_t usetype = item->termtype;
 
   switch (item->termtype) {
@@ -96,15 +95,17 @@ static void instantiate_filter(bgpstream_t *bs, bgpstream_filter_item_t *item)
   case BGPSTREAM_FILTER_TYPE_ELEM_TYPE:
     bgpstream_log(BGPSTREAM_LOG_FINE, "Adding filter: %s '%s'",
         bgpstream_filter_type_to_string(item->termtype), item->value);
-    bgpstream_add_filter(bs, usetype, item->value);
+    if (!bgpstream_add_filter(bs, usetype, item->value))
+      return 0;
     break;
 
   default:
     bgpstream_log(BGPSTREAM_LOG_ERR,
                   "Implementation of filter type %s is still to come!",
                   bgpstream_filter_type_to_string(item->termtype));
-    break;
+    return 0;
   }
+  return 1;
 }
 
 // List of terms.
@@ -303,7 +304,8 @@ retry_token:
         goto endparsing;
       }
       if (state == ENDVALUE) {
-        instantiate_filter(bs, filteritem);
+        if (!instantiate_filter(bs, filteritem))
+          goto endparsing;
       }
       break;
 
@@ -311,7 +313,8 @@ retry_token:
       if (bgpstream_parse_value(p, &len, &state, filteritem) == FAIL) {
         goto endparsing;
       }
-      instantiate_filter(bs, filteritem);
+      if (!instantiate_filter(bs, filteritem))
+        goto endparsing;
       break;
 
     case ENDVALUE:
