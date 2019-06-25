@@ -80,6 +80,36 @@ static const char *expected_results[] = {
     bgpstream_set_data_interface(bs, di_id);                                   \
   } while (0)
 
+static void process_records()
+{
+  int ret;
+  int counter = 0;
+
+  CHECK("stream start (" STR(interface) ")", bgpstream_start(bs) == 0);
+
+  while ((ret = bgpstream_get_next_record(bs, &rec)) > 0) {
+    if (rec->status == BGPSTREAM_RECORD_STATUS_VALID_RECORD) {
+      while (bgpstream_record_get_next_elem(rec, &elem) > 0) {
+        if (bgpstream_record_elem_snprintf(elem_buf, 65536, rec, elem) !=
+            NULL) {
+          /* make sure we haven't reached end of expected_results */
+          CHECK("elem partial count", expected_results[counter]);
+          if (!expected_results[counter]) break;
+
+          /* check if the results are exactly the expected ones */
+          CHECK("elem equality",
+                strcmp(elem_buf, expected_results[counter]) == 0);
+
+          counter++;
+        }
+      }
+    }
+  }
+
+  /* make sure we have reached end of expected_results */
+  CHECK("elem total count", !expected_results[counter]);
+}
+
 static int test_bgpstream_filters()
 {
   SETUP;
@@ -105,35 +135,29 @@ static int test_bgpstream_filters()
   bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_ELEM_COMMUNITY, "2914:*");
   bgpstream_add_filter(bs, BGPSTREAM_FILTER_TYPE_ELEM_COMMUNITY, "*:300");
 
-  int ret;
-  int counter = 0;
-  CHECK("stream start (" STR(interface) ")", bgpstream_start(bs) == 0);
+  process_records();
 
-  while ((ret = bgpstream_get_next_record(bs, &rec)) > 0) {
-    if (rec->status == BGPSTREAM_RECORD_STATUS_VALID_RECORD) {
-      while (bgpstream_record_get_next_elem(rec, &elem) > 0) {
-        if (bgpstream_record_elem_snprintf(elem_buf, 65536, rec, elem) !=
-            NULL) {
-          /* make sure we haven't reached end of expected_results */
-          CHECK("elem partial count", expected_results[counter]);
-          if (!expected_results[counter]) break;
+  TEARDOWN;
 
-          /* check if the results are exactly the expected ones */
-          CHECK("elem equality",
-                strcmp(elem_buf, expected_results[counter]) == 0);
 
-          counter++;
-        }
-      }
-    }
-  }
+  SETUP;
 
-  /* make sure we have reached end of expected_results */
-  CHECK("elem total count", !expected_results[counter]);
+  CHECK_SET_INTERFACE(broker);
+
+  bgpstream_add_interval_filter(bs, 1427846847, 1427846874);
+  CHECK("filter string", bgpstream_parse_filter_string(bs,
+    "collector rrc06 route-views.jinx and "
+    "type updates and "
+    "peer 25152 37105 and "
+    "prefix 2620:110:9004::/40 154.73.128.0/17 202.70.88.0/21 and "
+    "comm \"2914:*\" *:300"));
+
+  process_records();
 
   TEARDOWN;
   return 0;
 }
+
 #endif
 
 int main()
