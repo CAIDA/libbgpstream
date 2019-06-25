@@ -107,55 +107,67 @@ static void instantiate_filter(bgpstream_t *bs, bgpstream_filter_item_t *item)
   }
 }
 
+// List of terms.
+// repeatable:
+//   >= 0: term may appear this many more times, and takes a list of values
+//   < 0: term may be repeated any number of times, but takes a single value
+#define TERMS(X) \
+  /* repeatable, word, alt, termtype, state */ \
+  X(1,  "project",      "proj", PROJECT,                 VALUE) \
+  X(1,  "collector",    "coll", COLLECTOR,               VALUE) \
+  X(1,  "router",       "rout", ROUTER,                  VALUE) \
+  X(1,  "type",         NULL,   RECORD_TYPE,             VALUE) \
+  X(1,  "peer",         NULL,   ELEM_PEER_ASN,           VALUE) \
+  X(1,  "prefix",       "pref", ELEM_PREFIX_MORE,        PREFIXEXT) \
+                                /* ^^^ XXX is MORE the best default? */ \
+  X(1,  "community",    "comm", ELEM_COMMUNITY,          VALUE) \
+  X(-1, "aspath",       "path", ELEM_ASPATH,             VALUE) \
+  X(1,  "extcommunity", "extc", ELEM_EXTENDED_COMMUNITY, VALUE) \
+  X(1,  "ipversion",    "ipv",  ELEM_IP_VERSION,         VALUE) \
+  X(1,  "elemtype",     NULL,   ELEM_TYPE,               VALUE) \
+  /* for state transition in bgpstream_parse_endvalue() */ \
+  X(0,  "prefix",       NULL,   ELEM_PREFIX_ANY,         PREFIXEXT) \
+  X(0,  "prefix",       NULL,   ELEM_PREFIX_MORE,        PREFIXEXT) \
+  X(0,  "prefix",       NULL,   ELEM_PREFIX_LESS,        PREFIXEXT) \
+  X(0,  "prefix",       NULL,   ELEM_PREFIX_EXACT,       PREFIXEXT)
+
+
+static const struct {
+  const char *word; // full name
+  const char *alt; // alternate spelling
+  bgpstream_filter_type_t termtype;
+  fp_state_t state;
+} terms[] = {
+  #define TERM_INITIALIZER(repeatable, word, alt, termtype, state) \
+    { (word), (alt), BGPSTREAM_FILTER_TYPE_##termtype, (state) },
+  TERMS(TERM_INITIALIZER)
+  { NULL, NULL, 0, 0 }
+};
 
 static int bgpstream_parse_filter_term(const char *term, size_t len,
-    fp_state_t *state, bgpstream_filter_item_t *curr)
+    fp_state_t *state, bgpstream_filter_item_t *curr, int *repeatable)
 {
 
-  struct {
-    const char *word; // full name
-    const char *alt; // alternate spelling
-    bgpstream_filter_type_t termtype;
-    fp_state_t state;
-  } kw[] = {
-    { "project", "proj",
-      BGPSTREAM_FILTER_TYPE_PROJECT, VALUE },
-    { "collector", "coll",
-      BGPSTREAM_FILTER_TYPE_COLLECTOR, VALUE },
-    { "router", "rout",
-      BGPSTREAM_FILTER_TYPE_ROUTER, VALUE },
-    { "type", NULL,
-      BGPSTREAM_FILTER_TYPE_RECORD_TYPE, VALUE },
-    { "peer", NULL,
-      BGPSTREAM_FILTER_TYPE_ELEM_PEER_ASN, VALUE },
-    { "prefix", "pref",
-      BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_MORE, // XXX is this the best default?
-      PREFIXEXT },
-    { "community", "comm",
-      BGPSTREAM_FILTER_TYPE_ELEM_COMMUNITY, VALUE },
-    { "aspath", "path",
-      BGPSTREAM_FILTER_TYPE_ELEM_ASPATH, VALUE },
-    { "extcommunity", "extc",
-      BGPSTREAM_FILTER_TYPE_ELEM_EXTENDED_COMMUNITY, VALUE },
-    { "ipversion", "ipv",
-      BGPSTREAM_FILTER_TYPE_ELEM_IP_VERSION, VALUE },
-    { "elemtype", NULL,
-      BGPSTREAM_FILTER_TYPE_ELEM_TYPE, VALUE },
-    { NULL, NULL, 0, 0 }
-  };
-
-  for (int i = 0; kw[i].word; ++i) {
-    if ((strncmp(term, kw[i].word, len) == 0 && kw[i].word[len] == '\0') ||
-      (kw[i].alt &&
-       strncmp(term, kw[i].alt, len) == 0 && kw[i].alt[len] == '\0'))
+  for (int i = 0; terms[i].word; ++i) {
+    if ((strncmp(term, terms[i].word, len) == 0 && terms[i].word[len] == '\0') ||
+      (terms[i].alt &&
+       strncmp(term, terms[i].alt, len) == 0 && terms[i].alt[len] == '\0'))
     {
-      bgpstream_log(BGPSTREAM_LOG_FINE, "term: '%s'", kw[i].word);
-      curr->termtype = kw[i].termtype;
-      return *state = kw[i].state;
+      if (repeatable[i] == 0) {
+        bgpstream_log(BGPSTREAM_LOG_ERR, "Term '%*s' used more than once",
+          (int)len, terms[i].word);
+        return *state = FAIL;
+      } else if (repeatable[i] > 0) {
+        repeatable[i]--;
+      }
+      bgpstream_log(BGPSTREAM_LOG_FINE, "term '%s', state %d",
+          terms[i].word, terms[i].state);
+      curr->termtype = terms[i].termtype;
+      return *state = terms[i].state;
     }
   }
 
-  bgpstream_log(BGPSTREAM_LOG_ERR, "Expected a valid term, found '%*s'",
+  bgpstream_log(BGPSTREAM_LOG_ERR, "Expected a valid term, found '%.*s'",
     (int)len, term);
   return *state = FAIL;
 }
@@ -163,6 +175,10 @@ static int bgpstream_parse_filter_term(const char *term, size_t len,
 static int bgpstream_parse_value(const char *value, size_t *lenp,
     fp_state_t *state, bgpstream_filter_item_t *curr)
 {
+  if (curr->value) {
+    free(curr->value);
+    curr->value = NULL;
+  }
 
   if (*value == '"') {
     // quoted string value
@@ -195,23 +211,19 @@ static int bgpstream_parse_value(const char *value, size_t *lenp,
 static int bgpstream_parse_prefixext(const char *ext, size_t *lenp,
     fp_state_t *state, bgpstream_filter_item_t *curr)
 {
-
-  assert(curr->termtype == BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_MORE);
-
   struct {
     const char *word;
     bgpstream_filter_type_t termtype;
-    fp_state_t state;
   } kw[] = {
     /* Any prefix that our prefix belongs to */
-    { "any",   BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_ANY,   VALUE },
+    { "any",   BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_ANY },
     /* Either match this prefix or any more specific prefixes */
-    { "more",  BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_MORE,  VALUE },
+    { "more",  BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_MORE },
     /* Either match this prefix or any less specific prefixes */
-    { "less",  BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_LESS,  VALUE },
+    { "less",  BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_LESS },
     /* Only match exactly this prefix */
-    { "exact", BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_EXACT, VALUE },
-    { NULL, 0, 0 }
+    { "exact", BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_EXACT },
+    { NULL, 0 }
   };
 
   size_t len = *lenp;
@@ -219,7 +231,7 @@ static int bgpstream_parse_prefixext(const char *ext, size_t *lenp,
     if ((strncmp(ext, kw[i].word, len) == 0 && kw[i].word[len] == '\0')) {
       bgpstream_log(BGPSTREAM_LOG_FINE, "Got a '%s' prefix", kw[i].word);
       curr->termtype = kw[i].termtype;
-      return *state = kw[i].state;
+      return *state = VALUE;
     }
   }
 
@@ -228,32 +240,38 @@ static int bgpstream_parse_prefixext(const char *ext, size_t *lenp,
 }
 
 static int bgpstream_parse_endvalue(const char *conj, size_t len,
-    fp_state_t *state, bgpstream_filter_item_t **curr)
+    fp_state_t *state, bgpstream_filter_item_t *curr, int *repeatable)
 {
-
-  if (*curr) {
-    free((*curr)->value);
-    free(*curr);
-    *curr = NULL;
-  }
-
-  /* Check for a valid conjunction */
+  // We've already parsed TERM VALUE; now we expect "and" or another VALUE.
   if (strncmp(conj, "and", len) == 0 && len == 3) {
-    *state = TERM;
+    return *state = TERM;
+  } else if (strncmp(conj, "or", len) == 0 && len == 2) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "'or' is not yet implemented");
+    return *state = FAIL;
   } else {
-    /* TODO allow 'or', anything else? */
-    bgpstream_log(BGPSTREAM_LOG_ERR,
-                  "Bad conjunction in bgpstream filter string: '%s'", conj);
+    for (int i = 0; terms[i].word; ++i) {
+      if (curr->termtype == terms[i].termtype) {
+        if (repeatable[i] < 0) {
+          // this term doesn't allow a list of values
+          bgpstream_log(BGPSTREAM_LOG_ERR,
+            "term '%s' does not allow multiple values", terms[i].word);
+          return *state = FAIL;
+        }
+        bgpstream_log(BGPSTREAM_LOG_FINE, "repeat term '%s', state %d",
+            terms[i].word, terms[i].state);
+        return *state = terms[i].state;
+      }
+    }
     return *state = FAIL;
   }
-
-  *curr = (bgpstream_filter_item_t *)calloc(1, sizeof(bgpstream_filter_item_t));
-  return *state;
 }
 
 int bgpstream_parse_filter_string(bgpstream_t *bs, const char *fstring)
 {
-
+  int repeatable[] = {
+    #define TERM_REPEATABLE(repeatable, word, alt, termtype, state)   (repeatable),
+    TERMS(TERM_REPEATABLE)
+  };
   const char *p;
   size_t len;
   int success = 0; // fail, until proven otherwise
@@ -272,9 +290,10 @@ int bgpstream_parse_filter_string(bgpstream_t *bs, const char *fstring)
     len = strcspn(p, " ");
     if (len == 0) break;
 
+retry_token:
     switch (state) {
     case TERM:
-      if (bgpstream_parse_filter_term(p, len, &state, filteritem) == FAIL) {
+      if (bgpstream_parse_filter_term(p, len, &state, filteritem, repeatable) == FAIL) {
         goto endparsing;
       }
       break;
@@ -296,10 +315,13 @@ int bgpstream_parse_filter_string(bgpstream_t *bs, const char *fstring)
       break;
 
     case ENDVALUE:
-      if (bgpstream_parse_endvalue(p, len, &state, &filteritem) == FAIL) {
+      if (bgpstream_parse_endvalue(p, len, &state, filteritem, repeatable) == FAIL) {
         goto endparsing;
+      } else if (state == TERM) {
+        continue; // got an "and"; continue with the next term
+      } else {
+        goto retry_token; // token was not "and"; retry it with a new state
       }
-      break;
 
     default:
       bgpstream_log(BGPSTREAM_LOG_ERR,
