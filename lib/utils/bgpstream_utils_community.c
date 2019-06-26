@@ -117,21 +117,13 @@ void bgpstream_community_destroy(bgpstream_community_t *comm)
   free(comm);
 }
 
-#if UINT_MAX == 0xffffffffu
-unsigned int
-#elif ULONG_MAX == 0xffffffffu
-unsigned long
-#endif
+uint32_t
 bgpstream_community_hash(const bgpstream_community_t *comm)
 {
   return comm->asn | comm->value;
 }
 
-#if UINT_MAX == 0xffffffffu
-unsigned int
-#elif ULONG_MAX == 0xffffffffu
-unsigned long
-#endif
+uint32_t
 bgpstream_community_hash_value(bgpstream_community_t comm)
 {
   return bgpstream_community_hash(&comm);
@@ -279,11 +271,7 @@ int bgpstream_community_set_populate_from_array_zc(
   return 0;
 }
 
-#if UINT_MAX == 0xffffffffu
-unsigned int
-#elif ULONG_MAX == 0xffffffffu
-unsigned long
-#endif
+uint32_t
 bgpstream_community_set_hash(const bgpstream_community_set_t *set)
 {
   int i;

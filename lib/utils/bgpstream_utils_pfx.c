@@ -68,22 +68,14 @@ void bgpstream_pfx_copy(bgpstream_pfx_t *dst, const bgpstream_pfx_t *src)
   }
 }
 
-#if UINT_MAX == 0xffffffffu
-unsigned int
-#elif ULONG_MAX == 0xffffffffu
-unsigned long
-#endif
+uint32_t
 bgpstream_ipv4_pfx_hash(const bgpstream_ipv4_pfx_t *pfx)
 {
   // embed the network mask length in the hash input
   return __ac_Wang_hash(pfx->address.addr.s_addr ^ pfx->mask_len);
 }
 
-#if ULONG_MAX == ULLONG_MAX
-unsigned long
-#else
-unsigned long long
-#endif
+uint64_t
 bgpstream_ipv6_pfx_hash(const bgpstream_ipv6_pfx_t *pfx)
 {
   // use only the most significant 64 bits (note: khint_t is 32 bits)
@@ -92,11 +84,7 @@ bgpstream_ipv6_pfx_hash(const bgpstream_ipv6_pfx_t *pfx)
   return __ac_Wang_hash(a[0] ^ a[1] ^ pfx->mask_len);
 }
 
-#if ULONG_MAX == ULLONG_MAX
-unsigned long
-#else
-unsigned long long
-#endif
+uint64_t
 bgpstream_pfx_hash(const bgpstream_pfx_t *pfx)
 {
   if (pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4) {
