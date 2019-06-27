@@ -199,6 +199,8 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
   int project_set = 0;
   bgpstream_record_type_t type = 0;
   int type_set = 0;
+  bgpstream_livestream_type_t livestream_type = 0;
+  int livestream_type_set = 0;
   unsigned long initial_time = 0;
   int initial_time_set = 0;
   unsigned long duration = 0;
@@ -383,7 +385,6 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
           }
         }
       } else if(jsmn_streq(js, t, "liveStreams") == 1){
-        // TODO: process livestream json object
         NEXT_TOK;
         jsmn_type_assert(t, JSMN_ARRAY);
         arr_len = t->size; // number of dump files
@@ -395,25 +396,92 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
           for (k = 0; k < obj_len; k++) {
             if (jsmn_streq(js, t, "streamType") == 1) {
               NEXT_TOK;
-              // TODO
+              if (jsmn_streq(js, t, "rislive") == 1) {
+                livestream_type = BGPSTREAM_LIVE_RISLIVE;
+              } else if (jsmn_streq(js, t, "bmp") == 1) {
+                livestream_type = BGPSTREAM_LIVE_BMP;
+              } else {
+                bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid type '%.*s'",
+                              t->end - t->start, js + t->start);
+                goto err;
+              }
+              livestream_type_set = 1;
               NEXT_TOK;
             } else if (jsmn_streq(js, t, "url") == 1) {
               NEXT_TOK;
-              // TODO
+              jsmn_type_assert(t, JSMN_STRING);
+              if (url_len < (t->end - t->start + 1)) {
+                url_len = t->end - t->start + 1;
+                if ((url = realloc(url, url_len)) == NULL) {
+                  bgpstream_log(BGPSTREAM_LOG_ERR,
+                                "Could not realloc URL string");
+                  goto err;
+                }
+              }
+              jsmn_strcpy(url, t, js);
+              unescape_url(url);
+              url_set = 1;
               NEXT_TOK;
             } else if (jsmn_streq(js, t, "project") == 1) {
               NEXT_TOK;
-              // TODO
+              jsmn_type_assert(t, JSMN_STRING);
+              jsmn_strcpy(project, t, js);
+              project_set = 1;
               NEXT_TOK;
             } else if (jsmn_streq(js, t, "collector") == 1) {
               NEXT_TOK;
-              // TODO
+              jsmn_type_assert(t, JSMN_STRING);
+              jsmn_strcpy(collector, t, js);
+              collector_set = 1;
               NEXT_TOK;
             }
           }
           // file obj has been completely read
-          // TODO: validate stream resource here
-          // TODO: push resource to manager
+          // validate stream resource here
+          if (url_set == 0 || project_set == 0 || collector_set == 0 || livestream_type_set == 0) {
+            bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid liveStream record");
+            goto retry;
+          }
+
+#ifdef BROKER_DEBUG
+          bgpstream_log(BGPSTREAM_LOG_INFO, "----------");
+          bgpstream_log(BGPSTREAM_LOG_INFO, "Live stream URL: %s", url);
+          bgpstream_log(BGPSTREAM_LOG_INFO, "Live stream Project: %s", project);
+          bgpstream_log(BGPSTREAM_LOG_INFO, "Live stream Collector: %s", collector);
+          bgpstream_log(BGPSTREAM_LOG_INFO, "Live stream Type: %d", livestream_type);
+#endif
+          // TODO: handle initialization of each stream properly
+          switch(livestream_type){
+            case BGPSTREAM_LIVE_RISLIVE:
+              if ((rc = bgpstream_resource_mgr_push(
+                     BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_HTTP,
+                     BGPSTREAM_RESOURCE_FORMAT_RIPEJSON, url,
+                     0,                   // indicate we don't know how much historical data there is
+                     BGPSTREAM_FOREVER,   // indicate that the resource is a "stream"
+                     "ris-live",          // fix project name to "ris-live"
+                     "",                  // leave collector unset
+                     BGPSTREAM_UPDATE,
+                     &res)) <= 0) {
+                goto err;
+              }
+              break;
+            case BGPSTREAM_LIVE_BMP:
+              // TODO: handle brokers
+              if ((rc = bgpstream_resource_mgr_push(
+                     BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_KAFKA,
+                     BGPSTREAM_RESOURCE_FORMAT_BMP, STATE->brokers,
+                     0, // indicate we don't know how much historical data there is
+                     BGPSTREAM_FOREVER, // indicate that the resource is a "stream"
+                     project,   // fix our project to "caida"
+                     "", // leave collector unset since we'll get it from openbmp hdrs
+                     BGPSTREAM_UPDATE, //
+                     &res)) <= 0) {
+                goto err;
+              }
+              break;
+            default:
+              break;
+          }
         }
       }
     }

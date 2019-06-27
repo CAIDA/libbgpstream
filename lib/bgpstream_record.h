@@ -75,6 +75,20 @@ typedef enum {
 
 } bgpstream_record_type_t;
 
+/** The type of livestream */
+typedef enum {
+
+  /** The record contains data for a BGP Update message */
+  BGPSTREAM_LIVE_RISLIVE = 0,
+
+  /** The record contains data for a BGP RIB message */
+  BGPSTREAM_LIVE_BMP = 1,
+
+  /** INTERNAL: The number of record types in use */
+  _BGPSTREAM_LIVESTREAM_TYPE_CNT = 2,
+
+} bgpstream_livestream_type_t;
+
 /** The position of this record in the dump */
 typedef enum {
 
