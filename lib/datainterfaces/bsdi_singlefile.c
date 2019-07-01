@@ -202,7 +202,6 @@ int bsdi_singlefile_set_option(
   bsdi_t *di, const bgpstream_data_interface_option_t *option_type,
   const char *option_value)
 {
-  int i;
   int found;
 
   switch (option_type->id) {
@@ -219,7 +218,7 @@ int bsdi_singlefile_set_option(
 
   case OPTION_RIB_TYPE:
     found = 0;
-    for (i = 0; i < ARR_CNT(type_strs); i++) {
+    for (bgpstream_resource_format_type_t i = 0; i < ARR_CNT(type_strs); i++) {
       if (strcmp(option_value, type_strs[i]) == 0) {
         STATE->rib_type = i;
         found = 1;
@@ -246,7 +245,7 @@ int bsdi_singlefile_set_option(
 
   case OPTION_UPDATE_TYPE:
     found = 0;
-    for (i = 0; i < ARR_CNT(type_strs); i++) {
+    for (bgpstream_resource_format_type_t i = 0; i < ARR_CNT(type_strs); i++) {
       if (strcmp(option_value, type_strs[i]) == 0) {
         STATE->update_type = i;
         found = 1;

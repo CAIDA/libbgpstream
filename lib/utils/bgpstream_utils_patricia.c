@@ -390,7 +390,7 @@ static bgpstream_patricia_walk_cb_result_t bpt_walk_parents(
   const bgpstream_patricia_tree_t *pt, const bgpstream_patricia_node_t *node,
   bgpstream_patricia_tree_process_node_t *fun, void *data)
 {
-  int rc;
+  bgpstream_patricia_walk_cb_result_t rc;
   for ( ; node; node = node->parent) {
     if (node->prefix.address.version != BGPSTREAM_ADDR_VERSION_UNKNOWN) {
       rc = fun(pt, node, data);
@@ -792,7 +792,7 @@ void bgpstream_patricia_tree_walk_up_down(
   int relation;
   uint8_t differ_bit; // unused
   node_it = bpt_find_insert_point_const(node_it, pfx, &relation, &differ_bit);
-  int rc;
+  bgpstream_patricia_walk_cb_result_t rc;
 
   // Walk parents and/or children of the insertion point
   if (relation == BGPSTREAM_PATRICIA_SELF) {

@@ -142,7 +142,7 @@ typedef union union_bgpstream_ip_addr_t {
  * the buffer.
  */
 #define bgpstream_addr_ntop(buf, len, bsaddr)                                  \
-  inet_ntop((bsaddr)->version, &(bsaddr)->addr, buf, len)
+  inet_ntop((int)(bsaddr)->version, &(bsaddr)->addr, buf, (unsigned)len)
 
 /** Hash the given IPv4 address into a 32bit number
  *

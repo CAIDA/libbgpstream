@@ -145,7 +145,7 @@ static const struct {
   { NULL, NULL, 0, 0 }
 };
 
-static int bgpstream_parse_filter_term(const char *term, size_t len,
+static fp_state_t bgpstream_parse_filter_term(const char *term, size_t len,
     fp_state_t *state, bgpstream_filter_item_t *curr, int *repeatable)
 {
 
@@ -240,7 +240,7 @@ static int bgpstream_parse_prefixext(const char *ext, size_t *lenp,
   return bgpstream_parse_value(ext, lenp, state, curr);
 }
 
-static int bgpstream_parse_endvalue(const char *conj, size_t len,
+static fp_state_t bgpstream_parse_endvalue(const char *conj, size_t len,
     fp_state_t *state, bgpstream_filter_item_t *curr, int *repeatable)
 {
   // We've already parsed TERM VALUE; now we expect "and" or another VALUE.

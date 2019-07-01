@@ -230,7 +230,7 @@ static bsdi_t *get_di(bgpstream_di_mgr_t *di_mgr,
 bgpstream_di_mgr_t *bgpstream_di_mgr_create(bgpstream_filter_mgr_t *filter_mgr)
 {
   bgpstream_di_mgr_t *mgr;
-  int id;
+  bgpstream_data_interface_id_t id;
 
   if ((mgr = malloc_zero(sizeof(bgpstream_di_mgr_t))) == NULL) {
     return NULL; // can't allocate memory
@@ -273,7 +273,7 @@ bgpstream_di_mgr_get_data_interface_id_by_name(bgpstream_di_mgr_t *di_mgr,
                                                const char *name)
 
 {
-  int id;
+  bgpstream_data_interface_id_t id;
 
   for (id = 1; id < _BGPSTREAM_DATA_INTERFACE_CNT; id++) {
     if (bgpstream_di_mgr_get_data_interface_info(di_mgr, id) != NULL &&
@@ -421,7 +421,7 @@ void bgpstream_di_mgr_destroy(bgpstream_di_mgr_t *di_mgr)
   di_mgr->available_dis = NULL;
   di_mgr->available_dis_cnt = 0;
 
-  int id;
+  bgpstream_data_interface_id_t id;
   for (id = 0; id < _BGPSTREAM_DATA_INTERFACE_CNT; id++) {
     di_destroy(di_mgr->interfaces[id]);
     di_mgr->interfaces[id] = NULL;
