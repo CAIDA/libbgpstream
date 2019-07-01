@@ -509,7 +509,7 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
   size_t dec_len = 0, hdr_len = 0;
   uint64_t skipped_cnt = 0;
   parsebgp_error_t err;
-  int filter;
+  bgpstream_parsebgp_check_filter_rc_t filter_rc;
 
   record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE;
 
@@ -616,17 +616,18 @@ refill:
 
   // got a message!
   // let the caller decide if they want it
-  if ((filter = filter_cb(format, record, msg)) < 0) {
+  filter_rc = filter_cb(format, record, msg);
+  if (filter_rc == BGPSTREAM_PARSEBGP_FILTER_ERROR) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Format-specific filtering failed");
     return BGPSTREAM_FORMAT_UNKNOWN_ERROR;
   }
 
-  if (filter == BGPSTREAM_PARSEBGP_KEEP) {
+  if (filter_rc == BGPSTREAM_PARSEBGP_KEEP) {
     // valid message, and it passes our filters
     state->valid_read_cnt++;
     state->successful_read_cnt++;
     record->status = BGPSTREAM_RECORD_STATUS_VALID_RECORD;
-  } else if (filter == BGPSTREAM_PARSEBGP_EOS) {
+  } else if (filter_rc == BGPSTREAM_PARSEBGP_EOS) {
     if (state->successful_read_cnt > 0) {
       // we can't tell if it is the end since we're not going to read any more,
       // so we'll call it the middle.
@@ -637,7 +638,7 @@ refill:
   } else {
     // move on to the next record
 
-    if (filter == BGPSTREAM_PARSEBGP_FILTER_OUT) {
+    if (filter_rc == BGPSTREAM_PARSEBGP_FILTER_OUT) {
       if (skipped_cnt == UINT64_MAX) {
         // probably this will never happen, but lets just be careful we don't
         // wrap and think we haven't skipped anything

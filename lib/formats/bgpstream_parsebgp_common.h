@@ -158,6 +158,9 @@ typedef struct bgpstream_parsebgp_decode_state {
 
 typedef enum {
 
+  /** Indicates an error in the filter */
+  BGPSTREAM_PARSEBGP_FILTER_ERROR = -1,
+
   /** Indicates the message should be filtered */
   BGPSTREAM_PARSEBGP_FILTER_OUT = 0,
 
