@@ -453,7 +453,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
           // TODO: handle initialization of each stream properly
           switch(livestream_type){
             case BGPSTREAM_LIVE_RISLIVE:
-              if ((rc = bgpstream_resource_mgr_push(
+              if (bgpstream_resource_mgr_push(
                      BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_HTTP,
                      BGPSTREAM_RESOURCE_FORMAT_RIPEJSON, url,
                      0,                   // indicate we don't know how much historical data there is
@@ -461,23 +461,23 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                      "ris-live",          // fix project name to "ris-live"
                      "",                  // leave collector unset
                      BGPSTREAM_UPDATE,
-                     &res)) <= 0) {
+                     &res) <= 0) {
                 goto err;
               }
               break;
             case BGPSTREAM_LIVE_BMP:
               // TODO: handle brokers
-              if ((rc = bgpstream_resource_mgr_push(
-                     BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_KAFKA,
-                     BGPSTREAM_RESOURCE_FORMAT_BMP, STATE->brokers,
-                     0, // indicate we don't know how much historical data there is
-                     BGPSTREAM_FOREVER, // indicate that the resource is a "stream"
-                     project,   // fix our project to "caida"
-                     "", // leave collector unset since we'll get it from openbmp hdrs
-                     BGPSTREAM_UPDATE, //
-                     &res)) <= 0) {
-                goto err;
-              }
+              // if (bgpstream_resource_mgr_push(
+              //        BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_KAFKA,
+              //        BGPSTREAM_RESOURCE_FORMAT_BMP, STATE->brokers,
+              //        0, // indicate we don't know how much historical data there is
+              //        BGPSTREAM_FOREVER, // indicate that the resource is a "stream"
+              //        project,   // fix our project to "caida"
+              //        "", // leave collector unset since we'll get it from openbmp hdrs
+              //        BGPSTREAM_UPDATE, //
+              //        &res) <= 0) {
+              //   goto err;
+              // }
               break;
             default:
               break;
