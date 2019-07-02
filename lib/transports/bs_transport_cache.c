@@ -38,6 +38,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <errno.h>
 
 #define STATE ((cache_state_t *)(transport->state))
 
@@ -195,10 +196,9 @@ int bs_transport_cache_create(bgpstream_transport_t *transport)
       // lock file creation failed: other thread is still writing the cache
       // disable write_to_cache flag
       STATE->write_to_cache = 0;
-      bgpstream_log(
-        BGPSTREAM_LOG_WARN,
-        "WARNING: Cache lock file %s exists, local cache will not be used.",
-        STATE->lock_file_path);
+      bgpstream_log(BGPSTREAM_LOG_WARN,
+          "WARNING: not writing local cache (%s: %s)",
+          STATE->lock_file_path, strerror(errno));
     } else {
       // lock file created successfully, now safe to create write cache
       // enable write_to_cache flag
@@ -258,14 +258,14 @@ int64_t bs_transport_cache_read(bgpstream_transport_t *transport,
 
       // rename temporary file to cache file
       if (rename(STATE->temp_file_path, STATE->cache_file_path) != 0) {
-        bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: renaming failed for file %s.",
-                      STATE->temp_file_path);
+        bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: failed to rename %s: %s",
+                      STATE->temp_file_path, strerror(errno));
       }
 
       // remove lock file
       if (remove(STATE->lock_file_path) != 0) {
-        bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: removing lock file failed %s.",
-                      STATE->lock_file_path);
+        bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: failed to remove lock %s: %s",
+                      STATE->lock_file_path, strerror(errno));
       }
 
     } else {
