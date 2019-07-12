@@ -110,6 +110,9 @@ struct bgpstream_resource_mgr {
   // the number of open resources
   int res_open_cnt;
 
+  // the number of stream resources
+  int res_stream_cnt;
+
   // borrowed pointer to a filter manager instance
   bgpstream_filter_mgr_t *filter_mgr;
 };
@@ -438,6 +441,9 @@ static int insert_resource_elem(bgpstream_resource_mgr_t *q,
   if (el->reader != NULL) {
     q->res_open_cnt++;
   }
+  if (el->res->duration == BGPSTREAM_FOREVER) {
+    q->res_stream_cnt++;
+  }
 
   // we're done!
   return dirty_cnt;
@@ -471,11 +477,16 @@ static void pop_res_el(bgpstream_resource_mgr_t *q, struct res_group *gp,
     gp->res_open_checked_cnt--;
     q->res_open_cnt--;
   }
+  if (el->res->duration == BGPSTREAM_FOREVER) {
+    q->res_stream_cnt--;
+  }
   assert(gp->res_cnt >= 0);
   assert(gp->res_open_cnt >= 0);
   assert(gp->res_open_checked_cnt >= 0);
   assert(q->res_cnt >= 0);
   assert(q->res_open_cnt >= 0);
+  assert(q->res_stream_cnt >= 0);
+  assert(q->res_stream_cnt <= q->res_cnt);
   assert(gp->res_open_checked_cnt <= gp->res_open_cnt);
   assert(gp->res_open_cnt >= gp->res_cnt);
   assert(gp->res_cnt <= q->res_cnt);
@@ -871,6 +882,11 @@ err:
 int bgpstream_resource_mgr_empty(bgpstream_resource_mgr_t *q)
 {
   return (q->head == NULL);
+}
+
+int bgpstream_resource_mgr_stream_only(bgpstream_resource_mgr_t *q)
+{
+  return (q->res_stream_cnt == q->res_cnt);
 }
 
 int bgpstream_resource_mgr_get_record(bgpstream_resource_mgr_t *q,

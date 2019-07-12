@@ -74,6 +74,13 @@ int bgpstream_resource_mgr_push(
  */
 int bgpstream_resource_mgr_empty(bgpstream_resource_mgr_t *q);
 
+/** Check if the resource manager queue contains only stream resources
+ *
+ * @param q             pointer to the queue
+ * @return 1 if the queue contains only stream resources, 0 otherwise
+ */
+int bgpstream_resource_mgr_stream_only(bgpstream_resource_mgr_t *q);
+
 /** Get the next record from the stream
  *
  * @param q             pointer to the queue
