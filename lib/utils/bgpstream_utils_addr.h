@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <string.h>
+#include <inttypes.h>
 
 /** @file
  *
