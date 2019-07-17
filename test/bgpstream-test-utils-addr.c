@@ -43,7 +43,7 @@ static char buffer[BUFFER_LEN];
 #define IPV4_TEST_ADDR_A "192.0.43.8"
 #define IPV4_TEST_ADDR_B "192.172.226.3"
 
-static int test_v4_mask(const char *a4str, int len, const char *m4str)
+static int test_v4_mask(const char *a4str, uint8_t len, const char *m4str)
 {
   char buf[80];
   bgpstream_ipv4_addr_t a4, m4;
@@ -136,7 +136,7 @@ static int test_addresses_ipv4()
 #define IPV6_TEST_ADDR_A "2001:500:88:200::8"
 #define IPV6_TEST_ADDR_B "2001:48d0:101:501::123"
 
-static int test_v6_mask(const char *a6str, int len, const char *m6str)
+static int test_v6_mask(const char *a6str, uint8_t len, const char *m6str)
 {
   char buf[80];
   bgpstream_ipv6_addr_t a6, m6;

@@ -45,7 +45,7 @@
  *
  * @{ */
 
-/* @} */
+/** @} */
 
 /**
  * @name Public Enums
@@ -151,11 +151,7 @@ void bgpstream_community_destroy(bgpstream_community_t *comm);
  * @param comm          pointer to the community to hash
  * @return 32bit hash of the community
  */
-#if UINT_MAX == 0xffffffffu
-unsigned int
-#elif ULONG_MAX == 0xffffffffu
-unsigned long
-#endif
+uint32_t
 bgpstream_community_hash(const bgpstream_community_t *comm);
 
 /** Hash the given community into a 32bit number
@@ -163,11 +159,7 @@ bgpstream_community_hash(const bgpstream_community_t *comm);
  * @param comm          community to hash
  * @return 32bit hash of the community
  */
-#if UINT_MAX == 0xffffffffu
-unsigned int
-#elif ULONG_MAX == 0xffffffffu
-unsigned long
-#endif
+uint32_t
 bgpstream_community_hash_value(bgpstream_community_t comm);
 
 /** Compare two communities for equality
@@ -287,14 +279,10 @@ int bgpstream_community_set_populate_from_array_zc(
 
 /** Hash the given community set into a 32bit number
  *
- * @param path          pointer to the community set to hash
+ * @param set           pointer to the community set to hash
  * @return 32bit hash of the community set
  */
-#if UINT_MAX == 0xffffffffu
-unsigned int
-#elif ULONG_MAX == 0xffffffffu
-unsigned long
-#endif
+uint32_t
 bgpstream_community_set_hash(const bgpstream_community_set_t *set);
 
 /** Compare two community sets for equality

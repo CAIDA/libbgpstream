@@ -327,7 +327,7 @@ populate_filter_cb(bgpstream_format_t *format, bgpstream_record_t *record,
     if (handle_td2_peer_index(
           format, &msg->types.mrt->types.table_dump_v2->peer_index) != 0) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to process Peer Index Table");
-      return -1;
+      return BGPSTREAM_PARSEBGP_FILTER_ERROR;
     }
     // indicate that we want this message SKIPPED
     return BGPSTREAM_PARSEBGP_SKIP;

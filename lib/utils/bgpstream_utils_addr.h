@@ -142,18 +142,14 @@ typedef union union_bgpstream_ip_addr_t {
  * the buffer.
  */
 #define bgpstream_addr_ntop(buf, len, bsaddr)                                  \
-  inet_ntop((bsaddr)->version, &(bsaddr)->addr, buf, len)
+  inet_ntop((int)(bsaddr)->version, &(bsaddr)->addr, buf, (unsigned)len)
 
 /** Hash the given IPv4 address into a 32bit number
  *
  * @param addr          pointer to the IPv4 address to hash
  * @return 32bit hash of the address
  */
-#if UINT_MAX == 0xffffffffu
-unsigned int
-#elif ULONG_MAX == 0xffffffffu
-unsigned long
-#endif
+uint32_t
 bgpstream_ipv4_addr_hash(const bgpstream_ipv4_addr_t *addr);
 
 /** Hash the given IPv6 address into a 64bit number
@@ -161,11 +157,7 @@ bgpstream_ipv4_addr_hash(const bgpstream_ipv4_addr_t *addr);
  * @param addr          pointer to the IPv6 address to hash
  * @return 64bit hash of the address
  */
-#if ULONG_MAX == ULLONG_MAX
-unsigned long
-#else
-unsigned long long
-#endif
+uint64_t
 bgpstream_ipv6_addr_hash(const bgpstream_ipv6_addr_t *addr);
 
 /** Hash the given address into a 64bit number
@@ -173,11 +165,7 @@ bgpstream_ipv6_addr_hash(const bgpstream_ipv6_addr_t *addr);
  * @param addr          pointer to the address to hash
  * @return 64bit hash of the address
  */
-#if ULONG_MAX == ULLONG_MAX
-unsigned long
-#else
-unsigned long long
-#endif
+uint64_t
 bgpstream_addr_hash(bgpstream_ip_addr_t *addr);
 
 /** Compare two addresses for equality

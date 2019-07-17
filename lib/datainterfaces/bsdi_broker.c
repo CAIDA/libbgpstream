@@ -207,7 +207,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
 
   // local cache related variables.
   bgpstream_resource_t *res = NULL;
-  int transport_type = 0;
+  bgpstream_resource_transport_type_t transport_type;
 
   if (count == 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Empty JSON response from broker");
@@ -233,7 +233,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
       jsmn_type_assert(t, JSMN_PRIMITIVE);
       unsigned long tmp = 0;
       jsmn_strtoul(&tmp, js, t);
-      STATE->last_response_time = (int)tmp;
+      STATE->last_response_time = (uint32_t)tmp;
       time_set = 1;
       NEXT_TOK;
     } else if (jsmn_streq(js, t, "type") == 1) {

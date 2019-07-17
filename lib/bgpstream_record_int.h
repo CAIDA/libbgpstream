@@ -40,7 +40,10 @@
  *
  */
 
-/** @} */
+/**
+ * @name Private Data Structures
+ *
+ * @{ */
 
 struct bgpstream_record_internal {
 
@@ -50,6 +53,8 @@ struct bgpstream_record_internal {
   /** Private data-structure (optionally) populated by the format module */
   void *data;
 };
+
+/** @} */
 
 /**
  * @name Private API Functions

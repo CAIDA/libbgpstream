@@ -172,11 +172,7 @@ void bgpstream_pfx_copy(bgpstream_pfx_t *dst, const bgpstream_pfx_t *src);
  * @param pfx          pointer to the IPv4 prefix to hash
  * @return 32bit hash of the prefix
  */
-#if UINT_MAX == 0xffffffffu
-unsigned int
-#elif ULONG_MAX == 0xffffffffu
-unsigned long
-#endif
+uint32_t
 bgpstream_ipv4_pfx_hash(const bgpstream_ipv4_pfx_t *pfx);
 
 /** Hash the given IPv6 prefix into a 64bit number
@@ -184,11 +180,7 @@ bgpstream_ipv4_pfx_hash(const bgpstream_ipv4_pfx_t *pfx);
  * @param pfx          pointer to the IPv6 prefix to hash
  * @return 64bit hash of the prefix
  */
-#if ULONG_MAX == ULLONG_MAX
-unsigned long
-#else
-unsigned long long
-#endif
+uint64_t
 bgpstream_ipv6_pfx_hash(const bgpstream_ipv6_pfx_t *pfx);
 
 /** Hash the given prefix into a 64bit number
@@ -196,11 +188,7 @@ bgpstream_ipv6_pfx_hash(const bgpstream_ipv6_pfx_t *pfx);
  * @param pfx          pointer to the prefix to hash
  * @return 64bit hash of the prefix
  */
-#if ULONG_MAX == ULLONG_MAX
-unsigned long
-#else
-unsigned long long
-#endif
+uint64_t
 bgpstream_pfx_hash(const bgpstream_pfx_t *pfx);
 
 /** Compare two prefixes for equality

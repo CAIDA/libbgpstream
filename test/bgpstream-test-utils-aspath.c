@@ -45,7 +45,7 @@ static struct {
   { BGPSTREAM_AS_PATH_SEG_CONFED_SEQ, 4, { 31, 32, 33, 34 }, "(31 32 33 34)"},
   { BGPSTREAM_AS_PATH_SEG_CONFED_SET, 3, { 41, 42, 43 },     "[41,42,43]"},
   { 99 /* invalid */,                 2, { 991, 992 },       "<991 992>"},
-  { -1,                              -1, { -1 },             NULL },
+  { 0,                                0, { 0 },              NULL },
 };
 
 int main(int argc, char *argv[])
@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
   bgpstream_as_path_t *path2 = bgpstream_as_path_create();
   CHECK("as_path create", path1 && path2);
 
-  for (int i = 0; testsegs[i].cnt >= 0; i++) {
+  for (int i = 0; testsegs[i].cnt > 0; i++) {
     CHECK("as_path append segment", bgpstream_as_path_append(path1,
           testsegs[i].type, testsegs[i].asns, testsegs[i].cnt) == 0);
     CHECK("as_path unequal/copy/equal",
@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
       // origin should be the entire last testseg
       CHECK("as_path origin set",
           seg->set.asn_cnt == testsegs[i].cnt &&
-          memcmp(seg->set.asn, testsegs[i].asns, testsegs[i].cnt) == 0);
+          memcmp(seg->set.asn, testsegs[i].asns, (size_t)testsegs[i].cnt) == 0);
       test_cnt++;
     }
     if (i > 0) strcat(expected, " ");
