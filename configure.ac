@@ -310,6 +310,7 @@ AC_CONFIG_FILES([Makefile
                 docs/Makefile
 	        docs/bgpstream.doxygen
 		lib/Makefile
+		lib/bgpstream.h
                 lib/datainterfaces/Makefile
                 lib/transports/Makefile
                 lib/formats/Makefile
