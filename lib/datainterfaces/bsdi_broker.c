@@ -199,8 +199,10 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
   int project_set = 0;
   bgpstream_record_type_t type = 0;
   int type_set = 0;
-  bgpstream_resource_type_t resource_type = 0;
-  int livestream_type_set = 0;
+  bgpstream_resource_transport_type_t transport_type = 0;
+  int transport_type_set = 0;
+  bgpstream_resource_format_type_t format_type = 0;
+  int format_type_set = 0;
   unsigned long initial_time = 0;
   int initial_time_set = 0;
   unsigned long duration = 0;
@@ -208,7 +210,6 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
 
   // local cache related variables.
   bgpstream_resource_t *res = NULL;
-  int transport_type = 0;
 
   if (count == 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Empty JSON response from broker");
@@ -283,22 +284,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
           duration_set = 0;
 
           for (k = 0; k < obj_len; k++) {
-            if (jsmn_streq(js, t, "urlType") == 1) {
-              NEXT_TOK;
-
-              if (jsmn_streq(js, t, "batch") == 1) {
-                resource_type = BGPSTREAM_RES_BATCH;
-              } else if (jsmn_streq(js, t, "ris-live") == 1) {
-                resource_type = BGPSTREAM_RES_RISLIVE;
-              } else if (jsmn_streq(js, t, "bmp") == 1) {
-                resource_type = BGPSTREAM_RES_BMP;
-              } else {
-                bgpstream_log(BGPSTREAM_LOG_ERR, "Unsupported URL type '%.*s'",
-                              t->end - t->start, js + t->start);
-                goto err;
-              }
-              NEXT_TOK;
-            } else if (jsmn_streq(js, t, "url") == 1) {
+            if (jsmn_streq(js, t, "url") == 1) {
               NEXT_TOK;
               jsmn_type_assert(t, JSMN_STRING);
               if (url_len < (t->end - t->start + 1)) {
@@ -351,6 +337,38 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
               jsmn_strtoul(&duration, js, t);
               duration_set = 1;
               NEXT_TOK;
+            } else if (jsmn_streq(js, t, "transport") == 1) {
+              NEXT_TOK;
+              jsmn_type_assert(t, JSMN_STRING);
+              if (jsmn_streq(js, t, "file") == 1) {
+                transport_type = BGPSTREAM_RESOURCE_TRANSPORT_FILE;
+              } else if (jsmn_streq(js, t, "http") == 1) {
+                transport_type = BGPSTREAM_RESOURCE_TRANSPORT_HTTP;
+              } else if (jsmn_streq(js, t, "kafka") == 1) {
+                transport_type = BGPSTREAM_RESOURCE_TRANSPORT_KAFKA;
+              } else {
+                bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid transport type '%.*s'",
+                              t->end - t->start, js + t->start);
+                goto err;
+              }
+              transport_type_set = 1;
+              NEXT_TOK;
+            } else if (jsmn_streq(js, t, "format") == 1) {
+              NEXT_TOK;
+              jsmn_type_assert(t, JSMN_STRING);
+              if (jsmn_streq(js, t, "mrt") == 1) {
+                format_type = BGPSTREAM_RESOURCE_FORMAT_MRT;
+              } else if (jsmn_streq(js, t, "ripejson") == 1) {
+                format_type = BGPSTREAM_RESOURCE_FORMAT_RIPEJSON;
+              } else if (jsmn_streq(js, t, "bmp") == 1) {
+                format_type = BGPSTREAM_RESOURCE_FORMAT_BMP;
+              } else {
+                bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid format type '%.*s'",
+                              t->end - t->start, js + t->start);
+                goto err;
+              }
+              format_type_set = 1;
+              NEXT_TOK;
             } else {
               bgpstream_log(BGPSTREAM_LOG_ERR, "Unknown field '%.*s'",
                             t->end - t->start, js + t->start);
@@ -360,7 +378,8 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
 
 #ifdef BROKER_DEBUG
           bgpstream_log(BGPSTREAM_LOG_INFO, "----------");
-          bgpstream_log(BGPSTREAM_LOG_INFO, "Resource Type: %d", resource_type);
+          bgpstream_log(BGPSTREAM_LOG_INFO, "Transport Type: %d", transport_type);
+          bgpstream_log(BGPSTREAM_LOG_INFO, "Format Type: %d", format_type);
           bgpstream_log(BGPSTREAM_LOG_INFO, "URL: %s", url);
           bgpstream_log(BGPSTREAM_LOG_INFO, "Project: %s", project);
           bgpstream_log(BGPSTREAM_LOG_INFO, "Collector: %s", collector);
@@ -368,79 +387,69 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
           bgpstream_log(BGPSTREAM_LOG_INFO, "InitialTime: %lu", initial_time);
           bgpstream_log(BGPSTREAM_LOG_INFO, "Duration: %lu", duration);
 #endif
-          switch(resource_type){
-            case BGPSTREAM_RES_BATCH:
-              // file obj has been completely read
-              if (url_set == 0 || project_set == 0 || collector_set == 0 ||
-                  type_set == 0 || initial_time_set == 0 || duration_set == 0) {
-                bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid dumpFile record");
-                goto retry;
-              }
-
-              // do we need to update our current_window_end?
-              if (initial_time + duration > STATE->current_window_end) {
-                STATE->current_window_end = (initial_time + duration);
-              }
-
-              transport_type = STATE->cache_dir == NULL
-                ? BGPSTREAM_RESOURCE_TRANSPORT_FILE
-                : BGPSTREAM_RESOURCE_TRANSPORT_CACHE;
-              if (bgpstream_resource_mgr_push(BSDI_GET_RES_MGR(di), transport_type,
-                                              BGPSTREAM_RESOURCE_FORMAT_MRT, url,
-                                              initial_time, duration, project,
-                                              collector, type, &res) < 0) {
-
-                goto err;
-              }
-              // set cache attribute to resource
-              if (transport_type == BGPSTREAM_RESOURCE_TRANSPORT_CACHE &&
-                  bgpstream_resource_set_attr(res,
-                                              BGPSTREAM_RESOURCE_ATTR_CACHE_DIR_PATH,
-                                              STATE->cache_dir) != 0) {
-                return -1;
-              }
-              break;
-
-            case BGPSTREAM_RES_RISLIVE:
-              // validate stream resource here
-              if (url_set == 0 || project_set == 0 || collector_set == 0) {
-                bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid liveStream record");
-                goto retry;
-              }
-              if (bgpstream_resource_mgr_push(
-                    BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_HTTP,
-                    BGPSTREAM_RESOURCE_FORMAT_RIPEJSON, url,
-                    0,                   // indicate we don't know how much historical data there is
-                    BGPSTREAM_FOREVER,   // indicate that the resource is a "stream"
-                    project,
-                    "",                  // leave collector unset
-                    BGPSTREAM_UPDATE,
-                    &res) <= 0) {
-                goto err;
-              }
-              break;
-
-            case BGPSTREAM_RES_BMP:
-              if (bgpstream_resource_mgr_push(
-                    BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_KAFKA,
-                    BGPSTREAM_RESOURCE_FORMAT_BMP, url,
-                    0, // indicate we don't know how much historical data there is
-                    BGPSTREAM_FOREVER, // indicate that the resource is a "stream"
-                    project,
-                    "", // leave collector unset since we'll get it from openbmp hdrs
-                    BGPSTREAM_UPDATE, //
-                    &res) <= 0) {
-                goto err;
-              }
-              break;
-            default:
-              break;
+          // TODO: general check
+          if (url_set == 0 || project_set == 0 || collector_set == 0 ||
+              type_set == 0 || initial_time_set == 0 || duration_set == 0 ||
+              format_type_set == 0 || transport_type_set == 0) {
+            bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid resource record");
+            goto retry;
           }
+
+          // do we need to update our current_window_end?
+          if (transport_type == BGPSTREAM_RESOURCE_TRANSPORT_FILE){
+
+            if(initial_time + duration > STATE->current_window_end) {
+              STATE->current_window_end = (initial_time + duration);
+            }
+
+            if(STATE->cache_dir != NULL){
+              transport_type = BGPSTREAM_RESOURCE_TRANSPORT_CACHE;
+            }
+          }
+
+          if (bgpstream_resource_mgr_push(BSDI_GET_RES_MGR(di), transport_type,
+                                          format_type, url,
+                                          initial_time, duration, project,
+                                          collector, type, &res) < 0) {
+
+            goto err;
+          }
+
+          // set cache attribute to resource
+          if (transport_type == BGPSTREAM_RESOURCE_TRANSPORT_CACHE &&
+              bgpstream_resource_set_attr(res,
+                                          BGPSTREAM_RESOURCE_ATTR_CACHE_DIR_PATH,
+                                          STATE->cache_dir) != 0) {
+            return -1;
+          }
+
+          // if (bgpstream_resource_mgr_push(
+          //       BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_HTTP,
+          //       BGPSTREAM_RESOURCE_FORMAT_RIPEJSON, url,
+          //       0,                   // indicate we don't know how much historical data there is
+          //       BGPSTREAM_FOREVER,   // indicate that the resource is a "stream"
+          //       project,
+          //       "",                  // leave collector unset
+          //       BGPSTREAM_UPDATE,
+          //       &res) <= 0) {
+          //   goto err;
+          // }
+          // if (bgpstream_resource_mgr_push(
+          //       BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_KAFKA,
+          //       BGPSTREAM_RESOURCE_FORMAT_BMP, url,
+          //       0, // indicate we don't know how much historical data there is
+          //       BGPSTREAM_FOREVER, // indicate that the resource is a "stream"
+          //       project,
+          //       "", // leave collector unset since we'll get it from openbmp hdrs
+          //       BGPSTREAM_UPDATE, //
+          //       &res) <= 0) {
+          //   goto err;
+          // }
         }
-        bgpstream_log(BGPSTREAM_LOG_INFO, "Finish processing resources");
       }
     }
   }
+  bgpstream_log(BGPSTREAM_LOG_INFO, "Finish processing resources.");
   // TODO: handle unknown tokens
   if (time_set == 0) {
     goto err;
@@ -500,6 +509,7 @@ static int read_json(bsdi_t *di, io_t *jsonfile)
     strncpy(js + jslen, buf, ret);
     jslen += ret;
   }
+  js[jslen] = '\0';
 
 again:
   if ((ret = jsmn_parse(&p, js, jslen, tok, tokcount)) < 0) {
