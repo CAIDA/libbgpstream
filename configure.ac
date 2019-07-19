@@ -247,8 +247,7 @@ AC_MSG_NOTICE([configuring data interface parameters...])
 
 # broker options
 if test "x$with_di_broker" == xyes; then
-   BS_DI_OPT(broker-url, BROKER_URL, Broker URL, https://broker.bgpstream.caida.org/test)
-   # BS_DI_OPT(broker-url, BROKER_URL, Broker URL, http://127.0.0.1:8000/v1)
+   BS_DI_OPT(broker-url, BROKER_URL, Broker URL, https://broker.bgpstream.caida.org/v2)
 
    AC_MSG_CHECKING([whether to enable broker debugging output])
    AC_ARG_ENABLE([broker-debug],
