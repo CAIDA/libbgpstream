@@ -38,21 +38,24 @@
 #include "bgpstream_log.h"
 #include "bgpstream_utils_addr.h"
 
-#if UINT_MAX == 0xffffffffu
-unsigned int
-#elif ULONG_MAX == 0xffffffffu
-unsigned long
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+ #define STATIC_ASSERT(cond, msg) _Static_assert((cond), #msg)
+#else
+ #define STATIC_ASSERT(cond, msg) typedef char msg [(cond)?1:-1] UNUSED
 #endif
+
+// khash.h defines its own int types somewhat oddly, so we sanity check
+// them here and then use standard int types in our API.
+STATIC_ASSERT(sizeof(khint32_t) == sizeof(uint32_t), khint32_t_is_not_32_bits);
+STATIC_ASSERT(sizeof(khint64_t) == sizeof(uint64_t), khint64_t_is_not_64_bits);
+
+uint32_t
 bgpstream_ipv4_addr_hash(const bgpstream_ipv4_addr_t *addr)
 {
   return __ac_Wang_hash(addr->addr.s_addr);
 }
 
-#if ULONG_MAX == ULLONG_MAX
-unsigned long
-#else
-unsigned long long
-#endif
+uint64_t
 bgpstream_ipv6_addr_hash(const bgpstream_ipv6_addr_t *addr)
 {
   // use only the most significant 64 bits (note: khint_t is 32 bits)
@@ -60,11 +63,7 @@ bgpstream_ipv6_addr_hash(const bgpstream_ipv6_addr_t *addr)
   return __ac_Wang_hash(a[0] ^ a[1]);
 }
 
-#if ULONG_MAX == ULLONG_MAX
-unsigned long
-#else
-unsigned long long
-#endif
+uint64_t
 bgpstream_addr_hash(bgpstream_ip_addr_t *addr)
 {
   switch (addr->version) {

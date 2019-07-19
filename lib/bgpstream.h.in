@@ -52,6 +52,10 @@
  *
  * @{ */
 
+#define BGPSTREAM_MAJOR_VERSION @BGPSTREAM_MAJOR_VERSION@
+#define BGPSTREAM_MID_VERSION   @BGPSTREAM_MID_VERSION@
+#define BGPSTREAM_MINOR_VERSION @BGPSTREAM_MINOR_VERSION@
+
 /** Used to specify an interval that never ends (i.e., when processing in live
     mode). */
 #define BGPSTREAM_FOREVER 0

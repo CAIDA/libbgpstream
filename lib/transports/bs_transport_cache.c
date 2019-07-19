@@ -25,6 +25,7 @@
  *
  * Authors:
  *   Mingwei Zhang
+ *   Ken Keys
  */
 
 #include "bs_transport_cache.h"
@@ -38,6 +39,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <errno.h>
 
 #define STATE ((cache_state_t *)(transport->state))
 
@@ -46,16 +48,6 @@
 #define CACHE_TEMP_FILE_SUFFIX ".temp"
 
 typedef struct cache_state {
-  /** A 0/1 value indicates whether current read is from a local cache
-      file or a remote transport file:
-      0 - read from remote;
-      1 - read from local cache.
-  */
-  int write_to_cache;
-
-  /** absolute path for bgpstream local cache directory */
-  char *cache_directory_path;
-
   /** absolute path for the local cache file */
   char *cache_file_path;
 
@@ -65,10 +57,16 @@ typedef struct cache_state {
   /** absolute path for the local cache temporary file */
   char *temp_file_path;
 
-  /** content reader, either from local cache or from remote URL */
+  /** filename or URI of reader */
+  char *reader_name;
+
+  /** file descriptor of cache lock file */
+  int lock_fd;
+
+  /** content reader, either from local cache or from remote URI */
   io_t *reader;
 
-  /** cache content writer */
+  /** cache content writer, or NULL if we're not writing */
   iow_t *writer;
 
 } cache_state_t;
@@ -84,6 +82,7 @@ static int bs_asprintf(char **strp, const char *fmt, ...)
   int len = vsnprintf(NULL, 0, fmt, ap);
   va_end(ap);
   if (len < 0 || !(*strp = malloc(len+1))) {
+    *strp = NULL;
     return -1;
   }
   va_start(ap, fmt);
@@ -101,18 +100,7 @@ static int bs_asprintf(char **strp, const char *fmt, ...)
 */
 static int init_state(bgpstream_transport_t *transport)
 {
-
-  // define local variables
   char resource_hash[1024];
-
-  // get a "hash" string from the resource
-  if ((bgpstream_resource_hash_snprintf(resource_hash, sizeof(resource_hash),
-                                        transport->res)) >=
-      sizeof(resource_hash)) {
-    bgpstream_log(BGPSTREAM_LOG_ERR,
-                  "ERROR: Could not get resource hash for cache file naming.");
-    return -1;
-  }
 
   // allocate memory for cache_state type in transport data structure
   if ((transport->state = malloc_zero(sizeof(cache_state_t))) == NULL) {
@@ -121,51 +109,100 @@ static int init_state(bgpstream_transport_t *transport)
     return -1;
   }
 
+  STATE->lock_fd = -1;
   STATE->reader = NULL;
   STATE->writer = NULL;
 
-  // set storage directory path
-  if ((STATE->cache_directory_path = strdup(bgpstream_resource_get_attr(
-         transport->res, BGPSTREAM_RESOURCE_ATTR_CACHE_DIR_PATH))) == NULL) {
-    bgpstream_log(
-      BGPSTREAM_LOG_ERR,
-      "ERROR: Could not read local cache directory path in resource.");
+  // get a "hash" string from the resource
+  if ((bgpstream_resource_hash_snprintf(resource_hash, sizeof(resource_hash),
+                                        transport->res)) >=
+      sizeof(resource_hash)) {
+    bgpstream_log(BGPSTREAM_LOG_WARN,
+                  "WARNING: Could not get resource hash for cache file naming.");
+    return 0; // not fatal; we can still read, but won't be able to cache
+  }
+
+  // get storage directory path
+  const char *cache_dir_path = bgpstream_resource_get_attr(
+         transport->res, BGPSTREAM_RESOURCE_ATTR_CACHE_DIR_PATH);
+  if (cache_dir_path == NULL) {
+    bgpstream_log(BGPSTREAM_LOG_WARN,
+      "WARNING: Could not read local cache directory path in resource.");
+    return 0; // not fatal; we can't use cache, but can still read remote
+  }
+
+  // set cache file paths (lock_file is last so if that's set we'll know all
+  // three are set)
+  if (bs_asprintf(&STATE->cache_file_path, "%s/%s%s",
+                  cache_dir_path, resource_hash, CACHE_FILE_SUFFIX) < 0 ||
+    bs_asprintf(&STATE->temp_file_path, "%s%s",
+                STATE->cache_file_path, CACHE_TEMP_FILE_SUFFIX) < 0 ||
+    bs_asprintf(&STATE->lock_file_path, "%s%s",
+                STATE->cache_file_path, CACHE_LOCK_FILE_SUFFIX) < 0)
+  {
+    bgpstream_log(BGPSTREAM_LOG_WARN,
+                  "WARNING: Could not set cache file names.");
+    return 0; // not fatal; we can't use cache, but can still read remote
+  }
+
+  return 0;
+}
+
+static int bs_transport_cache_lock(bgpstream_transport_t *transport)
+{
+  // Note: POSIX fcntl(F_SETLK) locks can not synchronize different threads in
+  // the same process.  BSD flock() can, but is not POSIX.
+  struct flock lock;
+
+  if (!STATE->lock_file_path)
+    return -1;
+
+  if ((STATE->lock_fd = open(STATE->lock_file_path, O_CREAT | O_WRONLY, 0644)) < 0) {
+    bgpstream_log(BGPSTREAM_LOG_WARN, "WARNING: can't open lock file %s: %s",
+        STATE->lock_file_path, strerror(errno));
     return -1;
   }
 
-  // set cache file path
-  if ((bs_asprintf(&STATE->cache_file_path, "%s/%s%s",
-                STATE->cache_directory_path, resource_hash,
-                CACHE_FILE_SUFFIX)) < 0) {
-    bgpstream_log(BGPSTREAM_LOG_ERR,
-                  "ERROR: Could not set cache file name variable.");
-    return -1;
-  }
-
-  // set lock file name: cache_file_path + ".lock"
-  if ((bs_asprintf(&STATE->lock_file_path, "%s%s",
-                STATE->cache_file_path, CACHE_LOCK_FILE_SUFFIX)) < 0) {
-    bgpstream_log(BGPSTREAM_LOG_ERR,
-                  "ERROR: Could not set lock file name variable.");
-    return -1;
-  }
-
-  // set temporary cache file name: cache_file_path + ".temp"
-  if ((bs_asprintf(&STATE->temp_file_path, "%s%s",
-                STATE->cache_file_path, CACHE_TEMP_FILE_SUFFIX)) < 0) {
-    bgpstream_log(BGPSTREAM_LOG_ERR,
-                  "ERROR: Could not set temp file name variable.");
+  lock.l_type = F_WRLCK;
+  lock.l_whence = SEEK_SET;
+  lock.l_start = 0;
+  lock.l_len = 0;
+  if (fcntl(STATE->lock_fd, F_SETLK, &lock) < 0) {
+    bgpstream_log(BGPSTREAM_LOG_WARN, "WARNING: can't lock file %s: %s",
+        STATE->lock_file_path, strerror(errno));
+    close(STATE->lock_fd);
+    STATE->lock_fd = -1;
     return -1;
   }
 
   return 0;
 }
 
+static void bs_transport_cache_unlock(bgpstream_transport_t *transport)
+{
+  // Note: even if we never explicitly release the lock, it will be released
+  // automatically when the lock_fd closes at program exit (the file will
+  // remain, but it will not be locked).
+  remove(STATE->lock_file_path);
+  close(STATE->lock_fd);
+  STATE->lock_fd = -1;
+}
+
+static int open_cache_reader(bgpstream_transport_t *transport)
+{
+  // Create reader that reads from existing local cache file.
+  STATE->reader_name = STATE->cache_file_path;
+  if ((STATE->reader = wandio_create(STATE->reader_name))) {
+    bgpstream_log(BGPSTREAM_LOG_FINE, "reading cache %s", STATE->reader_name);
+    return 0; // success
+  }
+  bgpstream_log(BGPSTREAM_LOG_WARN, "WARNING: Could not read cache %s",
+                STATE->reader_name);
+  return -1;
+}
+
 int bs_transport_cache_create(bgpstream_transport_t *transport)
 {
-
-  int lock_fd; // lock file descriptor
-
   // reset transport method
   BS_TRANSPORT_SET_METHODS(cache, transport);
 
@@ -174,58 +211,63 @@ int bs_transport_cache_create(bgpstream_transport_t *transport)
     return -1;
   }
 
-  // If the cache file exists, don't create cache writer
-  if (access(STATE->cache_file_path, F_OK) != -1) {
-    // local cache file exists, disable write_to_cache flag
-    STATE->write_to_cache = 0;
+  // Check cache access before acquiring the lock, so that most cache readers
+  // never need to lock and multiple cache readers won't block each other.
+  if (STATE->cache_file_path && access(STATE->cache_file_path, R_OK) == 0) {
+    if (open_cache_reader(transport) == 0)
+      return 0; // reading from local cache
+  }
 
-    // create reader that reads from existing local cache file
-    if ((STATE->reader = wandio_create(STATE->cache_file_path)) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Could not open %s for reading",
-                    STATE->cache_file_path);
-      return -1;
-    }
-  } else {
-    // local cache file doesn't exist
-
-    // try to create a lock file for cache writing
-    lock_fd = open(STATE->lock_file_path, O_CREAT | O_EXCL, 0644);
-
-    if (lock_fd < 0) {
-      // lock file creation failed: other thread is still writing the cache
-      // disable write_to_cache flag
-      STATE->write_to_cache = 0;
-      bgpstream_log(
-        BGPSTREAM_LOG_WARN,
-        "WARNING: Cache lock file %s exists, local cache will not be used.",
-        STATE->lock_file_path);
+  if (bs_transport_cache_lock(transport) == 0) {
+    // We own the lock.
+    // Check cache access again to avoid a race where another process finished
+    // writing a cache between our first access() and our getting the lock.
+    if (access(STATE->cache_file_path, R_OK) == 0) {
+      // local cache file exists and is readable
+      bs_transport_cache_unlock(transport);
+      if (open_cache_reader(transport) == 0)
+        return 0; // reading from local cache
+    } else if (errno == ENOENT) {
+      // Local cache file doesn't exist.  Hold on to the lock so we can write
+      // to the cache.
     } else {
-      // lock file created successfully, now safe to create write cache
-      // enable write_to_cache flag
-      STATE->write_to_cache = 1;
-
-      // create cache file writer using wandio with compression enabled at
-      // default compression level ZLib default compression level is 6:
-      // https://zlib.net/manual.html
-      if ((STATE->writer = wandio_wcreate(STATE->temp_file_path,
-                                          WANDIO_COMPRESS_ZLIB, 6, O_CREAT)) ==
-          NULL) {
-        bgpstream_log(BGPSTREAM_LOG_ERR,
-                      "ERROR: Could not open %s for local caching",
-                      STATE->temp_file_path);
-        return -1;
-      }
-    }
-
-    // open reader that reads from remote file
-    if ((STATE->reader = wandio_create(transport->res->url)) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Could not open %s for reading",
-                    transport->res->url);
-      return -1;
+      // local cache file is not readable for some other reason
+      bgpstream_log(BGPSTREAM_LOG_WARN, "WARNING: Could not read cache %s: %s",
+                    STATE->cache_file_path, strerror(errno));
+      bs_transport_cache_unlock(transport);
     }
   }
 
-  return 0;
+
+  // open reader that reads from remote file
+  STATE->reader_name = transport->res->uri;
+  if ((STATE->reader = wandio_create(STATE->reader_name)) == NULL) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Could not open %s for reading",
+                  STATE->reader_name);
+    return -1;
+  }
+  bgpstream_log(BGPSTREAM_LOG_FINE, "reading remote %s", STATE->reader_name);
+
+  if (STATE->lock_fd >= 0) {
+    // We own the lock.
+    // Create cache file writer using wandio with compression enabled at
+    // default compression level ZLib default compression level is 6:
+    // https://zlib.net/manual.html
+    STATE->writer = wandio_wcreate(STATE->temp_file_path,
+                                   WANDIO_COMPRESS_ZLIB, 6, O_CREAT);
+    if (STATE->writer == NULL) {
+      bgpstream_log(BGPSTREAM_LOG_WARN,
+                    "WARNING: Could not open %s for local caching: %s",
+                    STATE->temp_file_path, strerror(errno));
+      // failing to create the cache is not fatal
+      bs_transport_cache_unlock(transport);
+      return 0; // reading from remote file
+    }
+    bgpstream_log(BGPSTREAM_LOG_FINE, "writing temp cache %s",
+        STATE->temp_file_path);
+  }
+
+  return 0; // reading from remote file
 }
 
 int64_t bs_transport_cache_readline(bgpstream_transport_t *transport,
@@ -236,47 +278,58 @@ int64_t bs_transport_cache_readline(bgpstream_transport_t *transport,
                               (read_cb_t *)bs_transport_cache_read);
 }
 
+static void close_cache_writer(bgpstream_transport_t *transport, int valid)
+{
+  if (!STATE->writer)
+    return;
+
+  wandio_wdestroy(STATE->writer);
+  STATE->writer = NULL;
+
+  if (valid) {
+    // rename temporary file to cache file
+    if (rename(STATE->temp_file_path, STATE->cache_file_path) != 0) {
+      bgpstream_log(BGPSTREAM_LOG_WARN, "WARNING: failed to rename %s: %s",
+                    STATE->temp_file_path, strerror(errno));
+    }
+
+  } else {
+    // the cache is incomplete or corrupt; remove temporary file
+    if (remove(STATE->temp_file_path) != 0) {
+      bgpstream_log(BGPSTREAM_LOG_WARN, "WARNING: failed to remove %s: %s",
+                    STATE->temp_file_path, strerror(errno));
+    }
+  }
+
+  bs_transport_cache_unlock(transport);
+}
+
 int64_t bs_transport_cache_read(bgpstream_transport_t *transport,
                                 uint8_t *buffer, int64_t len)
 {
-
   // read content
   int64_t ret = wandio_read(STATE->reader, buffer, len);
 
-  // if cache-writing is enabled
-  if (STATE->write_to_cache == 1) {
+  if (ret < 0) {
+    // reader encountered an error
+    bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR reading from %s",
+        STATE->reader_name);
+    close_cache_writer(transport, 0);
 
-    if (ret == 0) {
-      // reader's EOF reached:
-      //   finished reading a remote content
-      //   save to close cache writer; rename temporary file to cache file; and
-      //   remove write lock
+  } else if (ret == 0) {
+    // reader reached EOF
+    bgpstream_log(BGPSTREAM_LOG_FINE, "EOF on %s", STATE->reader_name);
+    close_cache_writer(transport, 1);
 
-      // close cache writer
-      wandio_wdestroy(STATE->writer);
-      STATE->writer = NULL;
-
-      // rename temporary file to cache file
-      if (rename(STATE->temp_file_path, STATE->cache_file_path) != 0) {
-        bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: renaming failed for file %s.",
-                      STATE->temp_file_path);
-      }
-
-      // remove lock file
-      if (remove(STATE->lock_file_path) != 0) {
-        bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: removing lock file failed %s.",
-                      STATE->lock_file_path);
-      }
-
-    } else {
-      // reader has read content, and has not reached EOF yet
-
-      // write content to temporary cache file
-      if ((wandio_wwrite(STATE->writer, buffer, ret)) != ret) {
-        bgpstream_log(BGPSTREAM_LOG_ERR,
-                      "ERROR: incomplete write of cache content.");
-        return -1;
-      }
+  } else if (STATE->writer) {
+    // reader has read content, and caching is enabled
+    int64_t wret = wandio_wwrite(STATE->writer, buffer, ret);
+    if (wret != ret) {
+      bgpstream_log(BGPSTREAM_LOG_WARN, "WARNING: %s to cache %s.",
+                    wret < 0 ? "error writing" : "incomplete write",
+                    STATE->temp_file_path);
+      close_cache_writer(transport, 0);
+      // caching is now disabled, but we can keep reading
     }
   }
 
@@ -285,9 +338,19 @@ int64_t bs_transport_cache_read(bgpstream_transport_t *transport,
 
 void bs_transport_cache_destroy(bgpstream_transport_t *transport)
 {
-
+  bgpstream_log(BGPSTREAM_LOG_FINE, "destroy reader %s", STATE->reader_name);
   if (transport->state == NULL) {
     return;
+  }
+
+  // close writer
+  while (STATE->writer) {
+    // Cache may be incomplete, so we continue copying remote contents to the
+    // cache.  (The other option would be to delete the cache.)
+    // bs_transport_cache_read() will eventually get EOF or error, and close
+    // the cache writer.
+    uint8_t buf[4096];
+    bs_transport_cache_read(transport, buf, sizeof(buf));
   }
 
   // close reader
@@ -296,16 +359,8 @@ void bs_transport_cache_destroy(bgpstream_transport_t *transport)
     STATE->reader = NULL;
   }
 
-  // close writer
-  if (STATE->writer != NULL) {
-    // the writer should already has been closed when the reader reaches EOF
-    wandio_wdestroy(STATE->writer);
-    STATE->writer = NULL;
-  }
-
   // free up file path variables' memory space
   free(STATE->cache_file_path);
-  free(STATE->lock_file_path);
   free(STATE->temp_file_path);
 
   // free up the cache_state_t's memory space

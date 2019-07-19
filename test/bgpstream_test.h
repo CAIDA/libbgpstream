@@ -53,7 +53,7 @@ static int test_section_result UNUSED = 1;
       printf("not ok %d - %s\n", ++tap_test_num, name);                        \
       printf("# Failed check was: '" #check "'\n");                            \
       while (1) {                                                              \
-        _i = strcspn(_p, "\n");                                                \
+        _i = (int)strcspn(_p, "\n");                                           \
         printf("# %.*s\n", _i, _p);                                            \
         if (_p[_i] == '\0') break;                                             \
         _p += _i + 1;                                                          \

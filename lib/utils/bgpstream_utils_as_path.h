@@ -51,7 +51,7 @@
  *
  * @{ */
 
-/* @} */
+/** @} */
 
 /**
  * @name Public Enums
@@ -227,11 +227,7 @@ void bgpstream_as_path_seg_destroy(bgpstream_as_path_seg_t *seg);
  * @param seg        pointer to the AS path segment to hash
  * @return 32bit hash of the AS path segment
  */
-#if UINT_MAX == 0xffffffffu
-unsigned int
-#elif ULONG_MAX == 0xffffffffu
-unsigned long
-#endif
+uint32_t
 bgpstream_as_path_seg_hash(const bgpstream_as_path_seg_t *seg);
 
 /** Compare two AS path segments for equality
@@ -385,11 +381,7 @@ int bgpstream_as_path_populate_from_data_zc(bgpstream_as_path_t *path,
  * @param path          pointer to the AS path to hash
  * @return 32bit hash of the AS path
  */
-#if UINT_MAX == 0xffffffffu
-unsigned int
-#elif ULONG_MAX == 0xffffffffu
-unsigned long
-#endif
+uint32_t
 bgpstream_as_path_hash(const bgpstream_as_path_t *path);
 
 /** Compare two AS path for equality

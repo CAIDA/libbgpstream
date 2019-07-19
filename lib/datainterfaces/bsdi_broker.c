@@ -41,6 +41,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -235,7 +236,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
       jsmn_type_assert(t, JSMN_PRIMITIVE);
       unsigned long tmp = 0;
       jsmn_strtoul(&tmp, js, t);
-      STATE->last_response_time = (int)tmp;
+      STATE->last_response_time = (uint32_t)tmp;
       time_set = 1;
       NEXT_TOK;
     } else if (jsmn_streq(js, t, "type") == 1) {
@@ -666,8 +667,8 @@ int bsdi_broker_set_option(bsdi_t *di,
   case OPTION_CACHE_DIR:
     // enable cache, no option_value needed
     if (access(option_value, F_OK) == -1) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Cache directory %s does not exist.",
-                    option_value);
+      bgpstream_log(BGPSTREAM_LOG_ERR, "Cannot access cache directory %s: %s.",
+                    option_value, strerror(errno));
       STATE->cache_dir = NULL;
       return -1;
     } else {

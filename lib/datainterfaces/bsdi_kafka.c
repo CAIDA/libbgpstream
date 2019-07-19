@@ -197,7 +197,6 @@ int bsdi_kafka_set_option(bsdi_t *di,
                           const bgpstream_data_interface_option_t *option_type,
                           const char *option_value)
 {
-  int i;
   int found = 0;
 
   switch (option_type->id) {
@@ -223,7 +222,7 @@ int bsdi_kafka_set_option(bsdi_t *di,
     break;
 
   case OPTION_OFFSET:
-    for (i = 0; i < ARR_CNT(offset_strs); i++) {
+    for (int i = 0; i < ARR_CNT(offset_strs); i++) {
       if (strcmp(option_value, offset_strs[i]) == 0) {
         found = 1;
         break;
@@ -243,7 +242,7 @@ int bsdi_kafka_set_option(bsdi_t *di,
     break;
 
   case OPTION_DATA_TYPE:
-    for (i = 0; i < ARR_CNT(type_strs); i++) {
+    for (bgpstream_resource_format_type_t i = 0; i < ARR_CNT(type_strs); i++) {
       if (strcmp(option_value, type_strs[i]) == 0) {
         STATE->data_type = i;
         found = 1;

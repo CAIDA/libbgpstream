@@ -287,7 +287,7 @@ static void usage()
 {
   fprintf(stderr, "usage: bgpreader -w <start>[,<end>] [<options>]\n"
                   "Available options are:\n");
-  for (int k = 0; k < OPTIONS_CNT; k++) {
+  for (unsigned k = 0; k < OPTIONS_CNT; k++) {
     // short option
     if (isgraph(bs_opts[k].option.val)) {
       fprintf(stderr, " -%c, ", bs_opts[k].option.val);
@@ -370,7 +370,7 @@ int main(int argc, char *argv[])
   bgpstream_record_t *bs_record = NULL;
 
   /* build the short and long options */
-  int k;
+  unsigned k;
   size_t short_len = 0;
   for (k = 0; k < OPTIONS_CNT; k++) {
     if (isgraph(bs_opts[k].option.val)) {

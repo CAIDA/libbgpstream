@@ -178,12 +178,7 @@ void bgpstream_as_path_seg_destroy(bgpstream_as_path_seg_t *seg)
   return;
 }
 
-inline
-#if UINT_MAX == 0xffffffffu
-  unsigned int
-#elif ULONG_MAX == 0xffffffffu
-  unsigned long
-#endif
+inline uint32_t
 bgpstream_as_path_seg_hash(const bgpstream_as_path_seg_t *seg)
 {
   if (seg == NULL) {
@@ -422,11 +417,7 @@ static inline uint32_t mixbits(uint32_t a)
   return a;
 }
 
-#if UINT_MAX == 0xffffffffu
-unsigned int
-#elif ULONG_MAX == 0xffffffffu
-unsigned long
-#endif
+uint32_t
 bgpstream_as_path_hash(const bgpstream_as_path_t *path)
 {
   if (path->data_len > 0) {

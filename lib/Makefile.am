@@ -42,6 +42,7 @@ lib_LTLIBRARIES = libbgpstream.la
 # Public header files that need to be installed in order for people to use the
 # library.
 include_HEADERS = bgpstream.h		\
+		  bgpstream_bgpdump.h	\
 		  bgpstream_elem.h	\
 		  bgpstream_record.h
 

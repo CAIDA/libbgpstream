@@ -27,7 +27,7 @@
 #ifndef __BGPSTREAM_UTILS_PEER_SIG_MAP_H
 #define __BGPSTREAM_UTILS_PEER_SIG_MAP_H
 
-#include "bgpstream_utils.h" /** < for COLLECTOR_NAME_LEN */
+#include "bgpstream_utils.h" /* for COLLECTOR_NAME_LEN */
 #include "bgpstream_utils_addr.h"
 
 /** @file

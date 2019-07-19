@@ -70,6 +70,8 @@ bgpstream_transport_t *bgpstream_transport_create(bgpstream_resource_t *res)
   bgpstream_transport_t *transport = NULL;
 
   // check that the transport type is valid
+  // Note: the (int) cast is here to suppress a bogus warning from
+  // -Wtautological-constant-out-of-range-compare in some versions of clang
   if ((int)res->transport_type >= ARR_CNT(create_functions)) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid transport module for %s (ID: %d)",
                   res->url, res->transport_type);

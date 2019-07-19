@@ -216,7 +216,7 @@ static int elem_check_filters(bgpstream_record_t *record,
       return 0;
     }
 
-    pathlen = bgpstream_as_path_snprintf(aspath, 65535, elem->as_path);
+    pathlen = bgpstream_as_path_snprintf(aspath, sizeof(aspath), elem->as_path);
 
     if (pathlen >= sizeof(aspath)) {
       bgpstream_log(BGPSTREAM_LOG_WARN,
