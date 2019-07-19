@@ -602,8 +602,8 @@ int main(int argc, char *argv[])
 
   if (interval_start == 0 && !intervalstring) {
     if (di_id == BGPSTREAM_DATA_INTERFACE_BROKER) {
-      fprintf(stderr, "WARN: No time window specified, defaulting to now to forever interval\n");
-      interval_start = (uint32_t)time(NULL);
+      fprintf(stderr, "WARN: No time window specified, defaulting to live mode\n");
+      interval_start = epoch_sec();
       if (!bgpstream_add_interval_filter(bs, interval_start, interval_end)){
         fprintf(stderr, "ERROR: Could not set interval between %d and %d\n",
                 interval_start, interval_end);

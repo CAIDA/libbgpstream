@@ -238,7 +238,6 @@ int bs_transport_cache_create(bgpstream_transport_t *transport)
     }
   }
 
-
   // open reader that reads from remote file
   STATE->reader_name = transport->res->url;
   if ((STATE->reader = wandio_create(STATE->reader_name)) == NULL) {
