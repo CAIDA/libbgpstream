@@ -35,9 +35,9 @@ int bs_transport_file_create(bgpstream_transport_t *transport)
 
   BS_TRANSPORT_SET_METHODS(file, transport);
 
-  if ((fh = wandio_create(transport->res->uri)) == NULL) {
+  if ((fh = wandio_create(transport->res->url)) == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for reading",
-                  transport->res->uri);
+                  transport->res->url);
     return -1;
   }
 

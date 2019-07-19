@@ -49,7 +49,7 @@ void bgpstream_resource_mgr_destroy(bgpstream_resource_mgr_t *q);
  * @param q               pointer to the queue
  * @param transport_type  transport protocol type
  * @param format_type     format type structure
- * @param uri             borrowed pointer to a URI string
+ * @param url             borrowed pointer to a URL string
  * @param initial_time    time of the first record in the resource
  * @param duration        duration of data in the resource
  * @param project         borrowed pointer to a project name string
@@ -62,7 +62,7 @@ void bgpstream_resource_mgr_destroy(bgpstream_resource_mgr_t *q);
 int bgpstream_resource_mgr_push(
   bgpstream_resource_mgr_t *q,
   bgpstream_resource_transport_type_t transport_type,
-  bgpstream_resource_format_type_t format_type, const char *uri,
+  bgpstream_resource_format_type_t format_type, const char *url,
   uint32_t initial_time, uint32_t duration, const char *project,
   const char *collector, bgpstream_record_type_t record_type,
   bgpstream_resource_t **res);

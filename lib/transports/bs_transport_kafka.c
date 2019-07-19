@@ -115,7 +115,7 @@ static int parse_attrs(bgpstream_transport_t *transport)
   bgpstream_log(
     BGPSTREAM_LOG_FINE,
     "Kafka transport: brokers: '%s', topic: '%s', group: '%s', offset: %s",
-    transport->res->uri, STATE->topic, STATE->group, STATE->offset);
+    transport->res->url, STATE->topic, STATE->group, STATE->offset);
   return 0;
 }
 
@@ -250,7 +250,7 @@ int bs_transport_kafka_create(bgpstream_transport_t *transport)
   }
 
   // add kafka brokers
-  if (rd_kafka_brokers_add(STATE->rk, transport->res->uri) == 0) {
+  if (rd_kafka_brokers_add(STATE->rk, transport->res->url) == 0) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not add Kafka brokers");
     return -1;
   }

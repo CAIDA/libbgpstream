@@ -52,7 +52,7 @@ typedef struct attr {
 
 bgpstream_resource_t *bgpstream_resource_create(
   bgpstream_resource_transport_type_t transport_type,
-  bgpstream_resource_format_type_t format_type, const char *uri,
+  bgpstream_resource_format_type_t format_type, const char *url,
   uint32_t initial_time, uint32_t duration, const char *project,
   const char *collector, bgpstream_record_type_t record_type)
 {
@@ -64,7 +64,7 @@ bgpstream_resource_t *bgpstream_resource_create(
 
   res->transport_type = transport_type;
   res->format_type = format_type;
-  if ((res->uri = strdup(uri)) == NULL) {
+  if ((res->url = strdup(url)) == NULL) {
     goto err;
   }
   res->initial_time = initial_time;
@@ -88,8 +88,8 @@ void bgpstream_resource_destroy(bgpstream_resource_t *resource)
 {
   int i;
 
-  free(resource->uri);
-  resource->uri = NULL;
+  free(resource->url);
+  resource->url = NULL;
 
   free(resource->project);
   resource->project = NULL;

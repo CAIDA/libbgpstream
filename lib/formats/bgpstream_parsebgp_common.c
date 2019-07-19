@@ -590,7 +590,7 @@ refill:
       bgpstream_log(BGPSTREAM_LOG_WARN,
                     "Skipping truncated record %"PRIu64" from '%s'",
                     state->successful_read_cnt,
-                    format->res->uri);
+                    format->res->url);
       state->successful_read_cnt++;
       state->ptr += dec_len;
       state->remain -= dec_len;
@@ -598,7 +598,7 @@ refill:
     }
     // else: its a fatal error
     bgpstream_log(BGPSTREAM_LOG_ERR,
-                  "Failed to parse message from '%s' (%d:%s)", format->res->uri,
+                  "Failed to parse message from '%s' (%d:%s)", format->res->url,
                   err, parsebgp_strerror(err));
 
 #ifdef DEBUG_DUMP_CORRUPT_MSG
