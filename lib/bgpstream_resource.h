@@ -65,7 +65,7 @@ typedef enum bgpstream_resource_format_type {
   BGPSTREAM_RESOURCE_FORMAT_BMP = 1,
 
   /** RIPE-format data encapsulated in JSON */
-  BGPSTREAM_RESOURCE_FORMAT_RIPEJSON = 2,
+  BGPSTREAM_RESOURCE_FORMAT_RISLIVE = 2,
 
 } bgpstream_resource_format_type_t;
 
