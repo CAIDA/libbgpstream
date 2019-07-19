@@ -75,20 +75,6 @@ typedef enum {
 
 } bgpstream_record_type_t;
 
-/** The type of livestream */
-typedef enum {
-
-  BGPSTREAM_RES_BATCH = 0,
-
-  BGPSTREAM_RES_RISLIVE = 1,
-
-  BGPSTREAM_RES_BMP = 2,
-
-  /** INTERNAL: The number of record types in use */
-  _BGPSTREAM_RESOURCE_TYPE_CNT = 3,
-
-} bgpstream_resource_type_t;
-
 /** The position of this record in the dump */
 typedef enum {
 
