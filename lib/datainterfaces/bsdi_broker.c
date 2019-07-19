@@ -218,7 +218,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
 
   if (root_tok->type != JSMN_OBJECT) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Root object is not JSON");
-    bgpstream_log(BGPSTREAM_LOG_INFO, "JSON: %s", js);
+    bgpstream_log(BGPSTREAM_LOG_ERR, "JSON: %s", js);
     goto err;
   }
 
@@ -258,14 +258,11 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
     } else if (jsmn_streq(js, t, "data") == 1) {
       NEXT_TOK;
       jsmn_type_assert(t, JSMN_OBJECT);
-      bgpstream_log(BGPSTREAM_LOG_INFO, "Processing DATA");
-      bgpstream_log(BGPSTREAM_LOG_INFO, "JSON: %s", js);
 
       int data_type_len;
       data_type_len = t->size;
       NEXT_TOK;
       for (l = 0; l < data_type_len; l++) {
-        bgpstream_log(BGPSTREAM_LOG_INFO, "Processing resources");
         jsmn_str_assert(js, t, "resources");
         NEXT_TOK;
         jsmn_type_assert(t, JSMN_ARRAY);
@@ -387,7 +384,6 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
           bgpstream_log(BGPSTREAM_LOG_INFO, "InitialTime: %lu", initial_time);
           bgpstream_log(BGPSTREAM_LOG_INFO, "Duration: %lu", duration);
 #endif
-          // TODO: general check
           if (url_set == 0 || project_set == 0 || collector_set == 0 ||
               type_set == 0 || initial_time_set == 0 || duration_set == 0 ||
               format_type_set == 0 || transport_type_set == 0) {
@@ -422,35 +418,10 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                                           STATE->cache_dir) != 0) {
             return -1;
           }
-
-          // if (bgpstream_resource_mgr_push(
-          //       BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_HTTP,
-          //       BGPSTREAM_RESOURCE_FORMAT_RIPEJSON, url,
-          //       0,                   // indicate we don't know how much historical data there is
-          //       BGPSTREAM_FOREVER,   // indicate that the resource is a "stream"
-          //       project,
-          //       "",                  // leave collector unset
-          //       BGPSTREAM_UPDATE,
-          //       &res) <= 0) {
-          //   goto err;
-          // }
-          // if (bgpstream_resource_mgr_push(
-          //       BSDI_GET_RES_MGR(di), BGPSTREAM_RESOURCE_TRANSPORT_KAFKA,
-          //       BGPSTREAM_RESOURCE_FORMAT_BMP, url,
-          //       0, // indicate we don't know how much historical data there is
-          //       BGPSTREAM_FOREVER, // indicate that the resource is a "stream"
-          //       project,
-          //       "", // leave collector unset since we'll get it from openbmp hdrs
-          //       BGPSTREAM_UPDATE, //
-          //       &res) <= 0) {
-          //   goto err;
-          // }
         }
       }
     }
   }
-  bgpstream_log(BGPSTREAM_LOG_INFO, "Finish processing resources.");
-  // TODO: handle unknown tokens
   if (time_set == 0) {
     goto err;
   }
