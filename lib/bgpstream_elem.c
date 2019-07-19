@@ -269,10 +269,11 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
   ADD_PIPE;
 
   /* PEER IP */
-  if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->peer_ip) == NULL) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed peer address");
-    return NULL;
-  }
+  /* Note: this can fail in rare cases where the peer address is not
+     present in the elem (old quagga collectors sometimes didn't dump
+     this information for state change and open messages). This will
+     result in an empty peer IP field. */
+  bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->peer_ip);
   SEEK_STR_END;
   ADD_PIPE;
 
