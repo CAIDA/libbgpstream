@@ -267,15 +267,15 @@ process_status_message(bgpstream_format_t *format, bgpstream_record_t *record)
    * up -> ESTABLISHED: peer BGP connection established.
    */
   if (FIELDLEN(state) == sizeof("down")-1 &&
-      bcmp("down", FIELDPTR(state), FIELDLEN(state)) == 0) {
+      memcmp("down", FIELDPTR(state), FIELDLEN(state)) == 0) {
     // down message
     RDATA->status_msg_state = BGPSTREAM_ELEM_PEERSTATE_IDLE;
   } else if (FIELDLEN(state) == sizeof("connected")-1 &&
-             bcmp("connected", FIELDPTR(state), FIELDLEN(state)) == 0) {
+             memcmp("connected", FIELDPTR(state), FIELDLEN(state)) == 0) {
     // connected message
     RDATA->status_msg_state = BGPSTREAM_ELEM_PEERSTATE_CONNECT;
   } else if (FIELDLEN(state) == sizeof("up")-1 &&
-             bcmp("up", FIELDPTR(state), FIELDLEN(state)) == 0) {
+             memcmp("up", FIELDPTR(state), FIELDLEN(state)) == 0) {
     // up message
     RDATA->status_msg_state = BGPSTREAM_ELEM_PEERSTATE_ESTABLISHED;
   } else {
