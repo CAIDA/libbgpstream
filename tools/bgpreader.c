@@ -602,10 +602,14 @@ int main(int argc, char *argv[])
 
   if (interval_start == 0 && !intervalstring) {
     if (di_id == BGPSTREAM_DATA_INTERFACE_BROKER) {
-      fprintf(stderr,
-              "ERROR: At least one time window must be set when using the "
-              "broker data interface\n");
-      goto done;
+      fprintf(stderr, "WARN: No time window specified, defaulting to live mode\n");
+      interval_start = epoch_sec();
+      if (!bgpstream_add_interval_filter(bs, interval_start, interval_end)){
+        fprintf(stderr, "ERROR: Could not set interval between %d and %d\n",
+                interval_start, interval_end);
+        goto done;
+      }
+
     } else {
       fprintf(stderr, "WARN: No time window specified, defaulting to all "
                       "available data\n");

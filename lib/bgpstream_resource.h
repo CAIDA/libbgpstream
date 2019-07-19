@@ -65,7 +65,7 @@ typedef enum bgpstream_resource_format_type {
   BGPSTREAM_RESOURCE_FORMAT_BMP = 1,
 
   /** RIPE-format data encapsulated in JSON */
-  BGPSTREAM_RESOURCE_FORMAT_RIPEJSON = 2,
+  BGPSTREAM_RESOURCE_FORMAT_RISLIVE = 2,
 
 } bgpstream_resource_format_type_t;
 
@@ -111,7 +111,7 @@ typedef struct bgpstream_resource {
   /** Protocol/format specific info
    * (e.g. filename, kafka brokers, etc.)
    */
-  char *uri;
+  char *url;
 
   /** Time of first record offered by the resource. A value of 0 indicates that
       the initial time is unknown. */
@@ -150,7 +150,7 @@ typedef struct bgpstream_resource {
 /** Create a new resource metadata object */
 bgpstream_resource_t *bgpstream_resource_create(
   bgpstream_resource_transport_type_t transport_type,
-  bgpstream_resource_format_type_t format_type, const char *uri,
+  bgpstream_resource_format_type_t format_type, const char *url,
   uint32_t initial_time, uint32_t duration, const char *project,
   const char *collector, bgpstream_record_type_t record_type);
 

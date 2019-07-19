@@ -74,14 +74,14 @@ bgpstream_transport_t *bgpstream_transport_create(bgpstream_resource_t *res)
   // -Wtautological-constant-out-of-range-compare in some versions of clang
   if ((int)res->transport_type >= ARR_CNT(create_functions)) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid transport module for %s (ID: %d)",
-                  res->uri, res->transport_type);
+                  res->url, res->transport_type);
     goto err;
   }
 
   // check that the transport is enabled
   if (create_functions[res->transport_type] == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR,
-                  "Could not find transport module for %s (ID: %d)", res->uri,
+                  "Could not find transport module for %s (ID: %d)", res->url,
                   res->transport_type);
     goto err;
   }
@@ -95,7 +95,7 @@ bgpstream_transport_t *bgpstream_transport_create(bgpstream_resource_t *res)
   transport->res = res;
 
   if (create_functions[res->transport_type](transport) != 0) {
-    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open resource (%s)", res->uri);
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open resource (%s)", res->url);
     goto err;
   }
 

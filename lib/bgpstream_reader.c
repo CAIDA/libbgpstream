@@ -167,7 +167,7 @@ static void *threaded_opener(void *user)
     if ((reader->format =
            bgpstream_format_create(reader->res, reader->filter_mgr)) == NULL) {
       bgpstream_log(BGPSTREAM_LOG_WARN, "Could not open (%s). Attempt %d of %d",
-                    reader->res->uri, retries + 1, DUMP_OPEN_MAX_RETRIES);
+                    reader->res->url, retries + 1, DUMP_OPEN_MAX_RETRIES);
       retries++;
       if (retries < DUMP_OPEN_MAX_RETRIES) {
         sleep(delay);
@@ -180,7 +180,7 @@ static void *threaded_opener(void *user)
   if (reader->format == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR,
                   "Could not open dumpfile (%s) after %d attempts. Giving up.",
-                  reader->res->uri, DUMP_OPEN_MAX_RETRIES);
+                  reader->res->url, DUMP_OPEN_MAX_RETRIES);
     reader->status = BGPSTREAM_FORMAT_CANT_OPEN_DUMP;
   } else {
     // create the pair of records

@@ -57,13 +57,13 @@ typedef struct cache_state {
   /** absolute path for the local cache temporary file */
   char *temp_file_path;
 
-  /** filename or URI of reader */
+  /** filename or URL of reader */
   char *reader_name;
 
   /** file descriptor of cache lock file */
   int lock_fd;
 
-  /** content reader, either from local cache or from remote URI */
+  /** content reader, either from local cache or from remote URL */
   io_t *reader;
 
   /** cache content writer, or NULL if we're not writing */
@@ -239,7 +239,7 @@ int bs_transport_cache_create(bgpstream_transport_t *transport)
   }
 
   // open reader that reads from remote file
-  STATE->reader_name = transport->res->uri;
+  STATE->reader_name = transport->res->url;
   if ((STATE->reader = wandio_create(STATE->reader_name)) == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: Could not open %s for reading",
                   STATE->reader_name);

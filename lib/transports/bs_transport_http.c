@@ -42,11 +42,11 @@ int bs_transport_http_create(bgpstream_transport_t *transport)
 
   BS_TRANSPORT_SET_METHODS(http, transport);
 
-  assert(strncmp(transport->res->uri, "http", 4) == 0);
+  assert(strncmp(transport->res->url, "http", 4) == 0);
 
-  if ((fh = http_open_hdrs(transport->res->uri, &http_hdr, 1)) == NULL) {
+  if ((fh = http_open_hdrs(transport->res->url, &http_hdr, 1)) == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Could not open %s for reading",
-                  transport->res->uri);
+                  transport->res->url);
     return -1;
   }
 

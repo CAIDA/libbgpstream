@@ -168,7 +168,7 @@ static int open_res_list(bgpstream_resource_mgr_t *q, struct res_group *gp,
     if ((el->reader = bgpstream_reader_create(el->res, q->filter_mgr)) ==
         NULL) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Failed to open resource: %s",
-                    el->res->uri);
+                    el->res->url);
       return -1;
     }
     // update stats
@@ -323,8 +323,8 @@ static void list_dump(struct res_list_elem *el)
   while (el != NULL) {
     fprintf(stderr, "    next_time: %d\n",
                   get_next_time(el));
-    fprintf(stderr, "    res->uri: %s\n",
-                  el->res->uri);
+    fprintf(stderr, "    res->url: %s\n",
+                  el->res->url);
     fprintf(stderr, "    %s\n",
                   (el->reader == NULL) ? "not-open" : "open");
     el = el->next;
@@ -820,7 +820,7 @@ void bgpstream_resource_mgr_destroy(bgpstream_resource_mgr_t *q)
 int bgpstream_resource_mgr_push(
   bgpstream_resource_mgr_t *q,
   bgpstream_resource_transport_type_t transport_type,
-  bgpstream_resource_format_type_t format_type, const char *uri,
+  bgpstream_resource_format_type_t format_type, const char *url,
   uint32_t initial_time, uint32_t duration, const char *project,
   const char *collector, bgpstream_record_type_t record_type,
   bgpstream_resource_t **resp)
@@ -832,7 +832,7 @@ int bgpstream_resource_mgr_push(
   }
 
   // first create the resource
-  if ((res = bgpstream_resource_create(transport_type, format_type, uri,
+  if ((res = bgpstream_resource_create(transport_type, format_type, url,
                                        initial_time, duration, project,
                                        collector, record_type)) == NULL) {
     return -1;

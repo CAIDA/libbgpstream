@@ -53,7 +53,7 @@ static const char *offset_strs[] = {
 
 /* define the internal option ID values */
 enum {
-  OPTION_BROKERS,        // stored in res->uri
+  OPTION_BROKERS,        // stored in res->url
   OPTION_CONSUMER_GROUP, // allow multiple BGPStream instances to load-balance
   OPTION_OFFSET,         // earliest, latest
 };

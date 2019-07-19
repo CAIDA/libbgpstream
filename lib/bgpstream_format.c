@@ -63,14 +63,14 @@ bgpstream_format_t *bgpstream_format_create(bgpstream_resource_t *res,
   // check that the format type is valid
   if (res->format_type >= ARR_CNT(create_functions)) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid format module for %s (ID: %d)",
-                  res->uri, res->format_type);
+                  res->url, res->format_type);
     goto err;
   }
 
   // check that the format is enabled
   if (create_functions[res->format_type] == NULL) {
     bgpstream_log(BGPSTREAM_LOG_ERR,
-                  "Could not find format module for %s (ID: %d)", res->uri,
+                  "Could not find format module for %s (ID: %d)", res->url,
                   res->format_type);
     goto err;
   }
