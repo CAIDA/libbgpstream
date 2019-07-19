@@ -22,6 +22,7 @@ TAGS
 # Compiled programs
 ChangeLog
 *.tar.gz
+lib/bgpstream.h
 tools/bgpreader
 test/bgpstream-test
 test/bgpstream-test-filters
