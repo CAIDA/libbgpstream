@@ -633,7 +633,6 @@ int bs_format_rislive_get_next_elem(bgpstream_format_t *format,
     rc = 1;
     break;
   case RISLIVE_MSG_TYPE_OPEN:
-    bgpstream_log(BGPSTREAM_LOG_WARN, "RIS Live OPEN support coming soon...");
     RDATA->elem->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
     // TODO: add OPEN message parsing to bgpstream_parsebgp_common
     // TODO: also parse the "direction" field from ris-live JSON
