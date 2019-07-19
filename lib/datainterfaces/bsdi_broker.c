@@ -358,8 +358,8 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
               jsmn_type_assert(t, JSMN_STRING);
               if (jsmn_streq(js, t, "mrt") == 1) {
                 format_type = BGPSTREAM_RESOURCE_FORMAT_MRT;
-              } else if (jsmn_streq(js, t, "ripejson") == 1) {
-                format_type = BGPSTREAM_RESOURCE_FORMAT_RIPEJSON;
+              } else if (jsmn_streq(js, t, "ris-live") == 1) {
+                format_type = BGPSTREAM_RESOURCE_FORMAT_RISLIVE;
               } else if (jsmn_streq(js, t, "bmp") == 1) {
                 format_type = BGPSTREAM_RESOURCE_FORMAT_BMP;
               } else {
