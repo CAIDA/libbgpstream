@@ -258,7 +258,14 @@ process_bgp_message(bgpstream_format_t *format, bgpstream_record_t *record)
 static bgpstream_format_status_t
 process_status_message(bgpstream_format_t *format, bgpstream_record_t *record)
 {
-  // TODO: figure out what the correct peer states are (AK asked SDS to check)
+  /*
+   * State mappin from exabgp source code:
+   *     https://github.com/Exa-Networks/exabgp/blob/master/lib/exabgp/reactor/peer.py
+   *
+   * down -> IDLE: TCP connection lost.
+   * connected -> CONNECT: TCP connection established, ready to send OPEN message
+   * up -> ESTABLISHED: peer BGP connection established.
+   */
   if (FIELDLEN(state) == sizeof("down")-1 &&
       bcmp("down", FIELDPTR(state), FIELDLEN(state)) == 0) {
     // down message
@@ -266,7 +273,7 @@ process_status_message(bgpstream_format_t *format, bgpstream_record_t *record)
   } else if (FIELDLEN(state) == sizeof("connected")-1 &&
              bcmp("connected", FIELDPTR(state), FIELDLEN(state)) == 0) {
     // connected message
-    RDATA->status_msg_state = BGPSTREAM_ELEM_PEERSTATE_OPENSENT;
+    RDATA->status_msg_state = BGPSTREAM_ELEM_PEERSTATE_CONNECT;
   } else if (FIELDLEN(state) == sizeof("up")-1 &&
              bcmp("up", FIELDPTR(state), FIELDLEN(state)) == 0) {
     // up message
