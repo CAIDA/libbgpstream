@@ -235,7 +235,10 @@ static int handle_bgp4mp(rec_data_t *rd, parsebgp_mrt_msg_t *mrt)
   rd->elem->orig_time_sec = 0;
   rd->elem->orig_time_usec = 0;
 
-  COPY_IP(&rd->elem->peer_ip, bgp4mp->afi, bgp4mp->peer_ip, return 0);
+  // Note: we explicitly allow peer ip to be invalid (this happens
+  // sometimes in data from old quagga collectors).
+  COPY_IP(&rd->elem->peer_ip, bgp4mp->afi, bgp4mp->peer_ip,
+          rd->elem->peer_ip.version = BGPSTREAM_ADDR_VERSION_UNKNOWN);
   rd->elem->peer_asn = bgp4mp->peer_asn;
   // other elem fields are specific to the message
 
