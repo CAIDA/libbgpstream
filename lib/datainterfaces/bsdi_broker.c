@@ -678,6 +678,15 @@ static int update_query_url(bsdi_t *di)
       APPEND_STR(f);
     }
   }
+  // routers
+  if (filter_mgr->routers != NULL) {
+    bgpstream_str_set_rewind(filter_mgr->routers);
+    while ((f = bgpstream_str_set_next(filter_mgr->routers)) != NULL) {
+      AMPORQ;
+      APPEND_STR("routers[]=");
+      APPEND_STR(f);
+    }
+  }
   // bgp_types
   if (filter_mgr->bgp_types != NULL) {
     bgpstream_str_set_rewind(filter_mgr->bgp_types);
