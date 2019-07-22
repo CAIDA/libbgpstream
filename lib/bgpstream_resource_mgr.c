@@ -652,7 +652,6 @@ static bgpstream_reader_status_t pop_record(bgpstream_resource_mgr_t *q,
   uint32_t prev_time;
   bgpstream_reader_status_t rs;
   struct res_list_elem *el = NULL;
-  struct res_list_elem *tmp_el = NULL;
   struct res_group *gp = NULL;
   uint32_t now;
   uint64_t sleep_nsec;
@@ -667,6 +666,7 @@ static bgpstream_reader_status_t pop_record(bgpstream_resource_mgr_t *q,
     el = q->head->res_list[BGPSTREAM_UPDATE];
   }
   assert(el != NULL && el->res != NULL);
+  assert(el->prev == NULL);
   assert(el->open != 0);
 
   // we assume that if this resource has a poll timer set that has not expired
@@ -703,19 +703,31 @@ static bgpstream_reader_status_t pop_record(bgpstream_resource_mgr_t *q,
   // a fair shake
   if (rs == BGPSTREAM_READER_STATUS_AGAIN) {
     assert(el->prev == NULL);
+    assert(q->head->res_list[el->res->record_type] == el);
     if (el->next != NULL) {
-      tmp_el = el;
-      while (tmp_el->next != NULL) {
-        tmp_el = tmp_el->next;
-      }
-      assert(el != tmp_el);
+      // grab the next element
+      struct res_list_elem *next_el = el->next;
+      // move the next element to the head
+      q->head->res_list[el->res->record_type] = next_el;
+
+      // disconnect ourselves from the list
+      next_el->prev = NULL;
       el->next = NULL;
-      tmp_el->next = el;
-      el->prev = tmp_el;
+      el->prev = NULL; // not strictly necessary
+
+      // and move us to the end of the list
+      while (next_el->next != NULL) {
+        next_el = next_el->next;
+      }
+      assert(el != next_el);
+      // append ourselves to the end
+      next_el->next = el;
+      el->prev = next_el;
     }
     // and then tell the caller that while we didn't get anything useful, they
     // should try again soon
     el->next_poll = epoch_msec() + AGAIN_POLL_INTERVAL;
+    assert(q->head->res_list[el->res->record_type]->prev == NULL);
     return rs;
   }
 
