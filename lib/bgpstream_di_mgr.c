@@ -371,7 +371,6 @@ int bgpstream_di_mgr_get_next_record(bgpstream_di_mgr_t *di_mgr,
         (bgpstream_resource_mgr_stream_only(di_mgr->res_mgr) != 0 &&
          epoch_sec() >= di_mgr->next_poll)) {
 
-      bgpstream_log(BGPSTREAM_LOG_WARN, "asking DI for resources");
       if (ACTIVE_DI->update_resources(ACTIVE_DI) != 0) {
         // an error occurred
         return -1;
