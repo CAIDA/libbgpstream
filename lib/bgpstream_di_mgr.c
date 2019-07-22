@@ -25,6 +25,7 @@
  */
 
 #include "bgpstream_di_mgr.h"
+#include "bgpstream_log.h"
 #include "config.h"
 #include "utils.h"
 #include <assert.h>
@@ -94,6 +95,11 @@ struct bgpstream_di_mgr {
   int blocking;
   int backoff_time;
   int retry_cnt;
+
+  // polling state when mixing streams and batch resources
+  int next_poll;
+  int poll_freq;
+  int poll_cnt;
 };
 
 /** Convenience typedef for the interface alloc function type */
@@ -242,6 +248,7 @@ bgpstream_di_mgr_t *bgpstream_di_mgr_create(bgpstream_filter_mgr_t *filter_mgr)
   }
   mgr->active_di = BGPSTREAM_DATA_INTERFACE_BROKER;
   mgr->backoff_time = DATA_INTERFACE_BLOCKING_MIN_WAIT;
+  mgr->poll_freq = DATA_INTERFACE_BLOCKING_MIN_WAIT;
 
   /* allocate the interfaces (some may/will be NULL) */
   for (id = 0; id < _BGPSTREAM_DATA_INTERFACE_CNT; id++) {
@@ -358,11 +365,35 @@ int bgpstream_di_mgr_get_next_record(bgpstream_di_mgr_t *di_mgr,
   int rc;
 
   while (1) {
-    // if our queue is empty, ask the DI for more
-    if (bgpstream_resource_mgr_empty(di_mgr->res_mgr) != 0 &&
-        ACTIVE_DI->update_resources(ACTIVE_DI) != 0) {
-      // an error occurred
-      return -1;
+    // if our queue is empty, or we only have stream resources and the
+    // poll timer has expired, then ask the DI for more resources
+    if (bgpstream_resource_mgr_empty(di_mgr->res_mgr) != 0 ||
+        (bgpstream_resource_mgr_stream_only(di_mgr->res_mgr) != 0 &&
+         epoch_sec() >= di_mgr->next_poll)) {
+
+      if (ACTIVE_DI->update_resources(ACTIVE_DI) != 0) {
+        // an error occurred
+        return -1;
+      }
+
+      if (bgpstream_resource_mgr_stream_only(di_mgr->res_mgr) == 0) {
+        // we now have some non-stream resources, so reset the
+        // polling frequency
+        di_mgr->poll_freq = DATA_INTERFACE_BLOCKING_MIN_WAIT;
+      } else {
+        // still stream-only, so let's consider backing off our polling
+        if (di_mgr->poll_cnt >= DATA_INTERFACE_BLOCKING_RETRY_CNT) {
+          // we've made >= 10 polls without getting anything, so back off
+          di_mgr->poll_freq *= 2;
+          if (di_mgr->poll_freq > DATA_INTERFACE_BLOCKING_MAX_WAIT) {
+            // we've backed off our polling frequency to > 150
+            // seconds, so let's revert to 150
+            di_mgr->poll_freq = DATA_INTERFACE_BLOCKING_MAX_WAIT;
+          }
+        }
+        di_mgr->poll_cnt++;
+      }
+      di_mgr->next_poll = epoch_sec() + di_mgr->poll_freq;
     }
 
     // if the queue is not empty, then grab a record
@@ -394,7 +425,7 @@ int bgpstream_di_mgr_get_next_record(bgpstream_di_mgr_t *di_mgr,
     }
     // adjust our sleep time, perhaps
     if (di_mgr->retry_cnt >= DATA_INTERFACE_BLOCKING_RETRY_CNT) {
-      di_mgr->backoff_time = di_mgr->backoff_time * 2;
+      di_mgr->backoff_time *= 2;
       if (di_mgr->backoff_time > DATA_INTERFACE_BLOCKING_MAX_WAIT) {
         di_mgr->backoff_time = DATA_INTERFACE_BLOCKING_MAX_WAIT;
       }
