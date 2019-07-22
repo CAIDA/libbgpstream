@@ -50,10 +50,6 @@
 #define STATE (BSDI_GET_STATE(di, broker))
 #define TIF filter_mgr->time_interval
 
-#define TOPIC_PATTERN "^openbmp\\.router--%s\\.peer-as--%s\\.bmp_raw"
-#define ALL_ROUTERS ".+"
-#define ALL_PEERS ".+"
-
 /* ---------- START CLASS DEFINITION ---------- */
 
 /* define the internal option ID values */
@@ -148,100 +144,6 @@ enum {
   ERR_RETRY = -2,
 };
 
-static int append_topic(char **list, const char *router, uint32_t *peer_asn)
-{
-  char buf[256]; // temp buffer for this topic
-  char as_buf[12];
-  const char *peer_str = ALL_PEERS;
-  int new_len = 0;
-  int need_comma = (*list != NULL);
-
-  if (router == NULL) {
-    router = ALL_ROUTERS;
-  }
-
-  if (peer_asn != NULL) {
-    // build the string representation of the peer AS
-    if (snprintf(as_buf, sizeof(as_buf), "%" PRIu32, *peer_asn) >=
-        sizeof(as_buf)) {
-      return -1;
-    }
-    peer_str = as_buf;
-  }
-
-  // build the string for this topic
-  if (snprintf(buf, sizeof(buf), TOPIC_PATTERN, router, peer_str) >=
-      sizeof(buf)) {
-    return -1;
-  }
-
-  // and append it to the list
-  if (need_comma) {
-    new_len = strlen(*list) + need_comma;
-  }
-  new_len += strlen(buf) + 1;
-
-  if ((*list = realloc(*list, new_len)) == NULL) {
-    return -1;
-  }
-
-  if (need_comma) {
-    strcat(*list, ",");
-  } else {
-    *list[0] = '\0';
-  }
-
-  strcat(*list, buf);
-
-  return new_len;
-}
-
-static int build_topic_list_peers(bsdi_t *di, char **list, const char *router)
-{
-  bgpstream_filter_mgr_t *filter_mgr = BSDI_GET_FILTER_MGR(di);
-  uint32_t *peer_asn = NULL;
-
-  if (filter_mgr->peer_asns == NULL) {
-    return append_topic(list, router, NULL);
-  }
-
-  bgpstream_id_set_rewind(filter_mgr->peer_asns);
-  while ((peer_asn = bgpstream_id_set_next(filter_mgr->peer_asns)) != NULL) {
-    if (append_topic(list, router, peer_asn) < 0) {
-      return -1;
-    }
-  }
-
-  return 0;
-}
-
-static char *build_topic_list(bsdi_t *di)
-{
-  bgpstream_filter_mgr_t *filter_mgr = BSDI_GET_FILTER_MGR(di);
-  char *topic_list = NULL;
-  char *router = NULL;
-
-  // we need r * p topics, one for each router/peer combination
-  if (filter_mgr->routers == NULL) {
-    if (build_topic_list_peers(di, &topic_list, ALL_ROUTERS) < 0) {
-      goto err;
-    }
-  } else {
-    bgpstream_str_set_rewind(filter_mgr->routers);
-    while ((router = bgpstream_str_set_next(filter_mgr->routers)) != NULL) {
-      if (build_topic_list_peers(di, &topic_list, router) < 0) {
-        goto err;
-      }
-    }
-  }
-
-  return topic_list;
-
-err:
-  free(topic_list);
-  return NULL;
-}
-
 #define APPEND_STR(str)                                                        \
   do {                                                                         \
     size_t len = strlen(str);                                                  \
@@ -281,10 +183,10 @@ static void unescape_url(char *url)
 static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                         size_t count)
 {
-  int i, j, k, l;
+  int i, j, k, l, m;
   jsmntok_t *t = root_tok + 1;
 
-  int arr_len, obj_len;
+  int arr_len, obj_len, attr_len;
 
   int time_set = 0;
 
@@ -306,6 +208,8 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
   int initial_time_set = 0;
   unsigned long duration = 0;
   int duration_set = 0;
+  char *kafka_topic = NULL;
+  size_t topic_len = 0;
 
   // local cache related variables.
   bgpstream_resource_t *res = NULL;
@@ -465,6 +369,32 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
               }
               format_type_set = 1;
               NEXT_TOK;
+            } else if (jsmn_streq(js, t, "attr") == 1) {
+              NEXT_TOK;
+              attr_len = t->size;
+              NEXT_TOK;
+              for (m = 0; m < attr_len; m++) {
+                if (jsmn_streq(js, t, "kafka-topics") == 1) {
+                  NEXT_TOK;
+                  jsmn_type_assert(t, JSMN_STRING);
+                  if (topic_len < (t->end - t->start + 1)) {
+                    topic_len = t->end - t->start + 1;
+                    if ((kafka_topic = realloc(kafka_topic, topic_len)) == NULL) {
+                      bgpstream_log(BGPSTREAM_LOG_ERR,
+                                    "Could not realloc kafka topic string");
+                      goto err;
+                    }
+                  }
+                  jsmn_strcpy(kafka_topic, t, js);
+                  // unescape_url(url);
+                  url_set = 1;
+                  NEXT_TOK;
+                } else {
+                  bgpstream_log(BGPSTREAM_LOG_ERR, "Unknown field '%.*s'",
+                                t->end - t->start, js + t->start);
+                  goto err;
+                }
+              }
             } else {
               bgpstream_log(BGPSTREAM_LOG_ERR, "Unknown field '%.*s'",
                             t->end - t->start, js + t->start);
@@ -482,6 +412,9 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
           bgpstream_log(BGPSTREAM_LOG_INFO, "Type: %d", type);
           bgpstream_log(BGPSTREAM_LOG_INFO, "InitialTime: %lu", initial_time);
           bgpstream_log(BGPSTREAM_LOG_INFO, "Duration: %lu", duration);
+          if(format_type == BGPSTREAM_RESOURCE_FORMAT_BMP){
+            bgpstream_log(BGPSTREAM_LOG_INFO, "Kafka topic: %s", kafka_topic);
+          }
 #endif
           if (url_set == 0 || project_set == 0 || collector_set == 0 ||
               type_set == 0 || initial_time_set == 0 || duration_set == 0 ||
@@ -507,28 +440,21 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                                           initial_time, duration, project,
                                           collector, type, &res) < 0) {
 
+            bgpstream_log(BGPSTREAM_LOG_ERR, "Unable to push resource");
             goto err;
           }
 
           if(format_type == BGPSTREAM_RESOURCE_FORMAT_BMP){
-            // special processing for BMP stream via Kafka
-            char* kafka_topic_name = build_topic_list(di);
-            if (bgpstream_resource_set_attr(res, BGPSTREAM_RESOURCE_ATTR_KAFKA_TOPICS,
-                                            kafka_topic_name) != 0) {
+            if(kafka_topic == NULL){
+              bgpstream_log(BGPSTREAM_LOG_ERR, "Missing bmp kafka topic from the broker");
               goto err;
             }
-
-            // if (kafka_group != NULL &&
-            //     bgpstream_resource_set_attr(
-            //       res, BGPSTREAM_RESOURCE_ATTR_KAFKA_CONSUMER_GROUP, kafka_group) != 0) {
-            //   goto err;
-            // }
-
-            // if (kafka_offset != NULL &&
-            //     bgpstream_resource_set_attr(
-            //       res, BGPSTREAM_RESOURCE_ATTR_KAFKA_INIT_OFFSET, kafka_offset) != 0) {
-            //   goto err;
-            // }
+            // special processing for BMP stream via Kafka
+            if (bgpstream_resource_set_attr(res, BGPSTREAM_RESOURCE_ATTR_KAFKA_TOPICS,
+                                            kafka_topic) != 0) {
+              bgpstream_log(BGPSTREAM_LOG_ERR, "Unable to set kafka topic to %s", kafka_topic);
+              goto err;
+            }
           }
 
           // set cache attribute to resource
@@ -547,6 +473,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
   }
 
   free(url);
+  free(kafka_topic);
   return 0;
 
 retry:
