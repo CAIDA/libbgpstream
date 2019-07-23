@@ -164,13 +164,13 @@ enum {
     }                                                                          \
   } while (0)
 
-// NB: this ONLY replaces \/ with /
-static void unescape_url(char *url)
+// NB: this ONLY replaces \<char> with <char>
+static void unescape_char(char *url, char c)
 {
   char *p = url;
 
   while (*p != '\0') {
-    if (*p == '\\' && *(p + 1) == '/') {
+    if (*p == '\\' && *(p + 1) == c) {
       // copy the remainder of the string backward (ugh)
       memmove(p, p + 1, strlen(p + 1) + 1);
     }
@@ -296,7 +296,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                 }
               }
               jsmn_strcpy(url, t, js);
-              unescape_url(url);
+              unescape_char(url,'/');
               url_set = 1;
               NEXT_TOK;
             } else if (jsmn_streq(js, t, "project") == 1) {
@@ -386,7 +386,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                     }
                   }
                   jsmn_strcpy(kafka_topic, t, js);
-                  // unescape_url(url);
+                  unescape_char(kafka_topic,'.');
                   url_set = 1;
                   NEXT_TOK;
                 } else {
