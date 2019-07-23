@@ -108,6 +108,9 @@ static struct bs_options_t bs_opts[] =
   {{"collector", required_argument, 0, 'c'},
    "<collector>",
    "process records from only the given collector*"},
+  {{"router", required_argument, 0, 'R'},
+   "<router>",
+   "process records from only the given router*"},
   {{"record-type", required_argument, 0, 't'},
    "<type>",
    "process records with only the given type (ribs, updates)*"},
@@ -412,6 +415,8 @@ int main(int argc, char *argv[])
     PARSE_FILTER_OPTION('p', BGPSTREAM_FILTER_TYPE_PROJECT)
       break;
     PARSE_FILTER_OPTION('c', BGPSTREAM_FILTER_TYPE_COLLECTOR)
+      break;
+    PARSE_FILTER_OPTION('R', BGPSTREAM_FILTER_TYPE_ROUTER)
       break;
     PARSE_FILTER_OPTION('j', BGPSTREAM_FILTER_TYPE_ELEM_PEER_ASN)
       break;

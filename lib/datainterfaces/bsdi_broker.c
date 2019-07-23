@@ -164,13 +164,13 @@ enum {
     }                                                                          \
   } while (0)
 
-// NB: this ONLY replaces \/ with /
-static void unescape_url(char *url)
+// NB: this ONLY replaces \<char> with <char>
+static void unescape_char(char *url, char c)
 {
   char *p = url;
 
   while (*p != '\0') {
-    if (*p == '\\' && *(p + 1) == '/') {
+    if (*p == '\\' && *(p + 1) == c) {
       // copy the remainder of the string backward (ugh)
       memmove(p, p + 1, strlen(p + 1) + 1);
     }
@@ -183,10 +183,10 @@ static void unescape_url(char *url)
 static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                         size_t count)
 {
-  int i, j, k, l;
+  int i, j, k, l, m;
   jsmntok_t *t = root_tok + 1;
 
-  int arr_len, obj_len;
+  int arr_len, obj_len, attr_len;
 
   int time_set = 0;
 
@@ -208,6 +208,8 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
   int initial_time_set = 0;
   unsigned long duration = 0;
   int duration_set = 0;
+  char *kafka_topic = NULL;
+  size_t topic_len = 0;
 
   // local cache related variables.
   bgpstream_resource_t *res = NULL;
@@ -294,7 +296,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                 }
               }
               jsmn_strcpy(url, t, js);
-              unescape_url(url);
+              unescape_char(url,'/');
               url_set = 1;
               NEXT_TOK;
             } else if (jsmn_streq(js, t, "project") == 1) {
@@ -367,6 +369,32 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
               }
               format_type_set = 1;
               NEXT_TOK;
+            } else if (jsmn_streq(js, t, "attr") == 1) {
+              NEXT_TOK;
+              attr_len = t->size;
+              NEXT_TOK;
+              for (m = 0; m < attr_len; m++) {
+                if (jsmn_streq(js, t, "kafka-topics") == 1) {
+                  NEXT_TOK;
+                  jsmn_type_assert(t, JSMN_STRING);
+                  if (topic_len < (t->end - t->start + 1)) {
+                    topic_len = t->end - t->start + 1;
+                    if ((kafka_topic = realloc(kafka_topic, topic_len)) == NULL) {
+                      bgpstream_log(BGPSTREAM_LOG_ERR,
+                                    "Could not realloc kafka topic string");
+                      goto err;
+                    }
+                  }
+                  jsmn_strcpy(kafka_topic, t, js);
+                  unescape_char(kafka_topic, '\\');
+                  url_set = 1;
+                  NEXT_TOK;
+                } else {
+                  bgpstream_log(BGPSTREAM_LOG_ERR, "Unknown field '%.*s'",
+                                t->end - t->start, js + t->start);
+                  goto err;
+                }
+              }
             } else {
               bgpstream_log(BGPSTREAM_LOG_ERR, "Unknown field '%.*s'",
                             t->end - t->start, js + t->start);
@@ -384,6 +412,9 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
           bgpstream_log(BGPSTREAM_LOG_INFO, "Type: %d", type);
           bgpstream_log(BGPSTREAM_LOG_INFO, "InitialTime: %lu", initial_time);
           bgpstream_log(BGPSTREAM_LOG_INFO, "Duration: %lu", duration);
+          if(format_type == BGPSTREAM_RESOURCE_FORMAT_BMP){
+            bgpstream_log(BGPSTREAM_LOG_INFO, "Kafka topic: %s", kafka_topic);
+          }
 #endif
           if (url_set == 0 || project_set == 0 || collector_set == 0 ||
               type_set == 0 || initial_time_set == 0 || duration_set == 0 ||
@@ -409,7 +440,21 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                                           initial_time, duration, project,
                                           collector, type, &res) < 0) {
 
+            bgpstream_log(BGPSTREAM_LOG_ERR, "Unable to push resource");
             goto err;
+          }
+
+          if(format_type == BGPSTREAM_RESOURCE_FORMAT_BMP){
+            if(kafka_topic == NULL){
+              bgpstream_log(BGPSTREAM_LOG_ERR, "Missing bmp kafka topic from the broker");
+              goto err;
+            }
+            // special processing for BMP stream via Kafka
+            if (bgpstream_resource_set_attr(res, BGPSTREAM_RESOURCE_ATTR_KAFKA_TOPICS,
+                                            kafka_topic) != 0) {
+              bgpstream_log(BGPSTREAM_LOG_ERR, "Unable to set kafka topic to %s", kafka_topic);
+              goto err;
+            }
           }
 
           // set cache attribute to resource
@@ -428,6 +473,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
   }
 
   free(url);
+  free(kafka_topic);
   return 0;
 
 retry:
@@ -557,6 +603,29 @@ static int update_query_url(bsdi_t *di)
       AMPORQ;
       APPEND_STR("collectors[]=");
       APPEND_STR(f);
+    }
+  }
+  // routers
+  if (filter_mgr->routers != NULL) {
+    bgpstream_str_set_rewind(filter_mgr->routers);
+    while ((f = bgpstream_str_set_next(filter_mgr->routers)) != NULL) {
+      AMPORQ;
+      APPEND_STR("routers[]=");
+      APPEND_STR(f);
+    }
+  }
+  // peer asns
+  uint32_t *p;
+  char p_buf[sizeof(STR(UINT32_MAX))+1];
+  if (filter_mgr->peer_asns != NULL) {
+    bgpstream_id_set_rewind(filter_mgr->peer_asns);
+    while ((p = bgpstream_id_set_next(filter_mgr->peer_asns)) != NULL) {
+      if (snprintf(p_buf, sizeof(p_buf), "%"PRIu32, *p) >= sizeof(p_buf)) {
+        goto err;
+      }
+      AMPORQ;
+      APPEND_STR("peer_asns[]=");
+      APPEND_STR(p_buf);
     }
   }
   // bgp_types
