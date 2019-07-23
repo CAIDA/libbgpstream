@@ -302,6 +302,13 @@ int bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *this,
     return bsf_str_set_insert(&this->routers, filter_value);
 
   case BGPSTREAM_FILTER_TYPE_RECORD_TYPE:
+    if (strcmp(filter_value, "ribs") != 0 &&
+        strcmp(filter_value, "updates") != 0) {
+      bgpstream_log(
+        BGPSTREAM_LOG_ERR,
+        "record-type filter must be one of \"ribs\" or \"updates\"");
+      return 0;
+    }
     return bsf_str_set_insert(&this->bgp_types, filter_value);
 
   default:
