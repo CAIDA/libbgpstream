@@ -829,7 +829,7 @@ int bsdi_broker_update_resources(bsdi_t *di)
     attempts++;
 
 #ifdef BROKER_DEBUG
-    bgpstream_log(BGPSTREAM_LOG_INFO, "\nQuery URL: \"%s\"",
+    bgpstream_log(BGPSTREAM_LOG_INFO, "Query URL: \"%s\"",
                   STATE->query_url_buf);
 #endif
 
