@@ -275,7 +275,6 @@ int bgpstream_record_get_next_elem(bgpstream_record_t *record,
       return rc;
     }
 
-    // TODO: push elem filtering down into the formats
     if (elem_check_filters(record, elem) == 0) {
       elem = NULL;
     }

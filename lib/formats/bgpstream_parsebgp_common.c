@@ -515,9 +515,6 @@ bgpstream_format_status_t bgpstream_parsebgp_populate_record(
 
   assert(record->time_sec == 0);
 
-  // TODO: break our beautiful structure and check the transport type, because
-  // if it is kafka we really mustn't refill a partially filled buffer.
-
 refill:
   // if there's nothing left in the buffer, it could just be because we happened
   // to empty it, so let's try and get some more data from the transport just in
@@ -534,8 +531,6 @@ refill:
     }
     if (fill_len < 0) {
       // read error
-      // TODO: create a specific read error failure so that perhaps BGPStream
-      // can retry
 
       // check if EIO happened during read. if so, return warning instead of error.
       // EIO could happen if the file it's reading from is truncated.

@@ -37,7 +37,6 @@
 #define BGPSTREAM_LOG_VFINE 50
 #define BGPSTREAM_LOG_FINEST 60
 
-// TODO: move this to configure (or even an API call)
 #define BGPSTREAM_LOG_LEVEL BGPSTREAM_LOG_INFO
 
 #define bgpstream_log(level, ...)                                              \

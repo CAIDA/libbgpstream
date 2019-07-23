@@ -37,7 +37,6 @@ void bgpstream_log_func(int level, const char *file, int line, const char *fmt,
 {
   va_list va_ap;
 
-  // TODO: consider make this configurable via the public API
   FILE *bgpstream_log_file = stderr;
 
   if (level <= BGPSTREAM_LOG_LEVEL) {

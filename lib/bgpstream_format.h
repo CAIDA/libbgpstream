@@ -54,9 +54,6 @@ typedef enum {
  * @param res           pointer to a resource
  * @param filter_mgr    pointer to filter manager to use for filtering records
  * @return pointer to a format module instance if successful, NULL otherwise
- *
- * TODO: allow return of fatal and non-fatal errors. This way the reader can
- * know whether it is worth retrying the creation of the format.
  */
 bgpstream_format_t *bgpstream_format_create(bgpstream_resource_t *res,
                                             bgpstream_filter_mgr_t *filter_mgr);
