@@ -87,6 +87,7 @@ static int instantiate_filter(bgpstream_t *bs, bgpstream_filter_item_t *item)
   case BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_EXACT:
   case BGPSTREAM_FILTER_TYPE_ELEM_COMMUNITY:
   case BGPSTREAM_FILTER_TYPE_ELEM_PEER_ASN:
+  case BGPSTREAM_FILTER_TYPE_ELEM_ORIGIN_ASN:
   case BGPSTREAM_FILTER_TYPE_PROJECT:
   case BGPSTREAM_FILTER_TYPE_COLLECTOR:
   case BGPSTREAM_FILTER_TYPE_ROUTER:
@@ -119,6 +120,7 @@ static int instantiate_filter(bgpstream_t *bs, bgpstream_filter_item_t *item)
   X(1,  "router",       "rout", ROUTER,                  VALUE) \
   X(1,  "type",         NULL,   RECORD_TYPE,             VALUE) \
   X(1,  "peer",         NULL,   ELEM_PEER_ASN,           VALUE) \
+  X(1,  "origin",       "orig", ELEM_ORIGIN_ASN,         VALUE)     \
   X(1,  "prefix",       "pref", ELEM_PREFIX_MORE,        PREFIXEXT) \
                                 /* ^^^ XXX is MORE the best default? */ \
   X(1,  "community",    "comm", ELEM_COMMUNITY,          VALUE) \
