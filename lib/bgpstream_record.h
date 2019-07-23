@@ -244,14 +244,6 @@ typedef struct bgpstream_record {
 int bgpstream_record_get_next_elem(bgpstream_record_t *record,
                                    bgpstream_elem_t **elem);
 
-/** Dump the given record to stdout in bgpdump format
- *
- * @param record        pointer to a BGP Stream Record instance to dump
- *
- * See https://bitbucket.org/ripencc/bgpdump for more information about bgpdump
- */
-void bgpstream_record_print_mrt_data(const bgpstream_record_t *record);
-
 /** Write the string representation of the record type into the provided buffer
  *
  * @param buf           pointer to a char array
