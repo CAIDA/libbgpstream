@@ -82,8 +82,8 @@ static int handle_peer_up_down(rec_data_t *rd, int peer_up)
 {
   rd->elem->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
 
-  // TODO: fix this after talking with Tim
-  // it is possible we can assume UP means IDLE->ACTIVE
+  // TODO: understand what we can assume about the peer state based on
+  // BMP peer up/down.  maybe we can assume UP means IDLE->ACTIVE?
   rd->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
   if (peer_up) {
     rd->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_ACTIVE;

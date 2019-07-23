@@ -542,8 +542,8 @@ int bgpstream_as_path_append(bgpstream_as_path_t *path,
 
   seg->type = type;
 
-  // TODO: this code will allow adjacent segments of the same type to be added
-  // which is technically illegal.
+  // Note: this code will allow adjacent segments of the same type to
+  // be added which is technically illegal.
 
   // if all the ASes we've been given will go in a single path segment, update
   // the path origin pointer, and set the number of ASes now

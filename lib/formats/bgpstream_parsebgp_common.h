@@ -138,8 +138,6 @@ typedef struct bgpstream_parsebgp_decode_state {
   parsebgp_opts_t parser_opts;
 
   // raw data buffer
-  // TODO: once parsebgp supports reading using a read callback, just pass the
-  // transport callback to the parser
   uint8_t buffer[BGPSTREAM_PARSEBGP_BUFLEN];
 
   // number of bytes left to read in the buffer

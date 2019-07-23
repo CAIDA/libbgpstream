@@ -1045,8 +1045,7 @@ bgpstream_patricia_tree_search_exact_const(const bgpstream_patricia_tree_t *pt,
     return NULL;
   }
 
-  /* compare the prefixes bit by bit
-   * TODO: consider replacing with bgpstream_pfx_equal */
+  /* compare the prefixes bit by bit */
   if (comp_with_mask(
         bgpstream_pfx_get_first_byte(&node->prefix),
         bgpstream_pfx_get_first_byte(pfx), bitlen)) {
