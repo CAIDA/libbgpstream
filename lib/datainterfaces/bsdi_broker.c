@@ -386,7 +386,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                     }
                   }
                   jsmn_strcpy(kafka_topic, t, js);
-                  unescape_char(kafka_topic,'.');
+                  unescape_char(kafka_topic, '\\');
                   url_set = 1;
                   NEXT_TOK;
                 } else {
