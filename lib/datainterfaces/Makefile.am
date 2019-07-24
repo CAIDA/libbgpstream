@@ -63,16 +63,6 @@ DI_SOURCES+=bsdi_sqlite.c \
 	    bsdi_sqlite.h
 endif
 
-if WITH_DATA_INTERFACE_BETABMP
-DI_SOURCES+=bsdi_betabmp.c \
-	    bsdi_betabmp.h
-endif
-
-if WITH_DATA_INTERFACE_RISLIVE
-DI_SOURCES+=bsdi_rislive.c \
-	    bsdi_rislive.h
-endif
-
 libbgpstream_data_interfaces_la_SOURCES = $(DI_SOURCES)
 
 libbgpstream_data_interfaces_la_LIBADD = $(DI_LIBS)
