@@ -2,7 +2,8 @@ Source: libbgpstream2
 Section: libs
 Priority: optional
 Maintainer: BGPStream <bgpstream-info@caida.org>
-Build-Depends: debhelper (>= 10), autotools-dev
+Build-Depends: debhelper (>= 10), autotools-dev, libwandio1 (>=4.2.0),
+ zlib1g-dev, libbz2-dev, libcurl4-openssl-dev
 Standards-Version: 4.1.2
 Homepage: https://bgpstream.caida.org
 
