@@ -49,7 +49,7 @@ SOURCES+=bs_transport_cache.c \
 SOURCES+=bs_transport_http.c \
 	 bs_transport_http.h
 
-if WITH_TRANSPORT_KAFKA
+if WITH_KAFKA
 SOURCES+=bs_transport_kafka.c \
 	 bs_transport_kafka.h
 endif

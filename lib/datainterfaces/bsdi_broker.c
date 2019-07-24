@@ -30,7 +30,6 @@
  */
 
 #include "bsdi_broker.h"
-#include "transports/bs_transport_kafka.h"
 #include "bgpstream_log.h"
 #include "config.h"
 #include "utils.h"
@@ -48,6 +47,10 @@
 #include <unistd.h>
 #include <wandio.h>
 
+#if WITH_KAFKA
+#include "transports/bs_transport_kafka.h"
+#endif
+
 #define STATE (BSDI_GET_STATE(di, broker))
 #define TIF filter_mgr->time_interval
 
@@ -58,8 +61,10 @@ enum {
   OPTION_BROKER_URL,
   OPTION_PARAM,
   OPTION_CACHE_DIR,
+#if WITH_KAFKA
   OPTION_KAFKA_GROUP,
   OPTION_KAFKA_OFFSET,
+#endif
 };
 
 /* define the options this data interface accepts */
@@ -85,6 +90,7 @@ static bgpstream_data_interface_option_t options[] = {
     "cache-dir",                                 // name
     "Enable local cache at provided directory.", // description
   },
+#if WITH_KAFKA
   /* Kafka group */
   {
     BGPSTREAM_DATA_INTERFACE_BROKER,             // interface ID
@@ -99,6 +105,7 @@ static bgpstream_data_interface_option_t options[] = {
     "kafka-offset",                              // name
     "Override kafka offset (default: " STR(BGPSTREAM_TRANSPORT_KAFKA_DEFAULT_OFFSET) ").", // description
   },
+#endif
 };
 
 /* create the class structure for this data interface */
@@ -132,11 +139,13 @@ typedef struct bsdi_broker_state {
   // User-specified location for cache: NULL means cache disabled
   char *cache_dir;
 
+#if WITH_KAFKA
   // Kafka group name
   char *kafka_group;
 
   // Kafka default offset
   char *kafka_offset;
+#endif
 
   /* internal state: */
 
@@ -435,7 +444,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
           bgpstream_log(BGPSTREAM_LOG_INFO, "Type: %d", type);
           bgpstream_log(BGPSTREAM_LOG_INFO, "InitialTime: %lu", initial_time);
           bgpstream_log(BGPSTREAM_LOG_INFO, "Duration: %lu", duration);
-          if(format_type == BGPSTREAM_RESOURCE_FORMAT_BMP){
+          if(kafka_topic != NULL){
             bgpstream_log(BGPSTREAM_LOG_INFO, "Kafka topic: %s", kafka_topic);
           }
 #endif
@@ -445,6 +454,18 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
             bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid resource record");
             goto retry;
           }
+
+
+#ifndef WITH_KAFKA
+          // we are built without kafka support, so ignore kafka resources
+          if (transport_type == BGPSTREAM_RESOURCE_TRANSPORT_KAFKA) {
+            bgpstream_log(
+              BGPSTREAM_LOG_WARN,
+              "Skipping unsuported kafka-based resource (rebuild libbgpstream "
+              "with kafka support to handle this resource)");
+            continue;
+          }
+#endif
 
           // do we need to update our current_window_end?
           if (transport_type == BGPSTREAM_RESOURCE_TRANSPORT_FILE){
@@ -467,6 +488,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
             goto err;
           }
 
+#if WITH_KAFKA
           // handle kafka-specific configuration
           if (transport_type == BGPSTREAM_RESOURCE_TRANSPORT_KAFKA) {
             if (kafka_topic == NULL) {
@@ -501,6 +523,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
               goto err;
             }
           }
+#endif
 
           // set cache attribute to resource
           if (transport_type == BGPSTREAM_RESOURCE_TRANSPORT_CACHE &&
@@ -790,6 +813,7 @@ int bsdi_broker_set_option(bsdi_t *di,
     }
     break;
 
+#if WITH_KAFKA
   case OPTION_KAFKA_GROUP:
     // replaces our current group
     if (STATE->kafka_group != NULL) {
@@ -813,6 +837,7 @@ int bsdi_broker_set_option(bsdi_t *di,
       return -1;
     }
     break;
+#endif
 
   default:
     return -1;
@@ -840,11 +865,13 @@ void bsdi_broker_destroy(bsdi_t *di)
   free(STATE->cache_dir);
   STATE->cache_dir = NULL;
 
+#if WITH_KAFKA
   free(STATE->kafka_group);
   STATE->kafka_group = NULL;
 
   free(STATE->kafka_offset);
   STATE->kafka_offset = NULL;
+#endif
 
   free(STATE);
   BSDI_SET_STATE(di, NULL);
