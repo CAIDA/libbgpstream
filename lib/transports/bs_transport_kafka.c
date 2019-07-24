@@ -35,8 +35,6 @@
 
 #define STATE ((state_t *)(transport->state))
 
-#define DEFAULT_OFFSET "latest"
-
 #define POLL_TIMEOUT_MSEC 0
 
 typedef struct state {
@@ -100,7 +98,8 @@ static int parse_attrs(bgpstream_transport_t *transport)
   if (bgpstream_resource_get_attr(
         transport->res, BGPSTREAM_RESOURCE_ATTR_KAFKA_INIT_OFFSET) == NULL) {
     // set to "latest"
-    if ((STATE->offset = strdup(DEFAULT_OFFSET)) == NULL) {
+    if ((STATE->offset = strdup(BGPSTREAM_TRANSPORT_KAFKA_DEFAULT_OFFSET)) ==
+        NULL) {
       return -1;
     }
   } else {

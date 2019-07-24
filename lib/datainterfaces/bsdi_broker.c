@@ -30,6 +30,7 @@
  */
 
 #include "bsdi_broker.h"
+#include "transports/bs_transport_kafka.h"
 #include "bgpstream_log.h"
 #include "config.h"
 #include "utils.h"
@@ -58,6 +59,7 @@ enum {
   OPTION_PARAM,
   OPTION_CACHE_DIR,
   OPTION_KAFKA_GROUP,
+  OPTION_KAFKA_OFFSET,
 };
 
 /* define the options this data interface accepts */
@@ -89,6 +91,13 @@ static bgpstream_data_interface_option_t options[] = {
     OPTION_KAFKA_GROUP,                          // internal ID
     "kafka-group",                               // name
     "Override kafka group setting (for kafka-based resources).", // description
+  },
+  /* Kafka offset */
+  {
+    BGPSTREAM_DATA_INTERFACE_BROKER,             // interface ID
+    OPTION_KAFKA_OFFSET,                         // internal ID
+    "kafka-offset",                              // name
+    "Override kafka offset (default: " STR(BGPSTREAM_TRANSPORT_KAFKA_DEFAULT_OFFSET) ").", // description
   },
 };
 
@@ -125,6 +134,9 @@ typedef struct bsdi_broker_state {
 
   // Kafka group name
   char *kafka_group;
+
+  // Kafka default offset
+  char *kafka_offset;
 
   /* internal state: */
 
@@ -478,6 +490,16 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                             "Unable to set kafka group to %s", STATE->kafka_group);
               goto err;
             }
+
+            if (STATE->kafka_offset != NULL &&
+                bgpstream_resource_set_attr(
+                  res, BGPSTREAM_RESOURCE_ATTR_KAFKA_INIT_OFFSET,
+                  STATE->kafka_offset) != 0) {
+              bgpstream_log(BGPSTREAM_LOG_ERR,
+                            "Unable to set kafka offset to %s",
+                            STATE->kafka_offset);
+              goto err;
+            }
           }
 
           // set cache attribute to resource
@@ -780,6 +802,18 @@ int bsdi_broker_set_option(bsdi_t *di,
     }
     break;
 
+  case OPTION_KAFKA_OFFSET:
+    // replaces our current offset
+    if (STATE->kafka_offset != NULL) {
+      free(STATE->kafka_offset);
+      STATE->kafka_offset = NULL;
+    }
+    if (!strlen(option_value) ||
+        (STATE->kafka_offset = strdup(option_value)) == NULL) {
+      return -1;
+    }
+    break;
+
   default:
     return -1;
   }
@@ -808,6 +842,9 @@ void bsdi_broker_destroy(bsdi_t *di)
 
   free(STATE->kafka_group);
   STATE->kafka_group = NULL;
+
+  free(STATE->kafka_offset);
+  STATE->kafka_offset = NULL;
 
   free(STATE);
   BSDI_SET_STATE(di, NULL);
