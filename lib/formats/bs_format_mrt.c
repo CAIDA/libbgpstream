@@ -345,8 +345,6 @@ populate_filter_cb(bgpstream_format_t *format, bgpstream_record_t *record,
   record->router_ip.version = 0;
 
   // check the filters
-  // TODO: if this is a BGP4MP or TD1 message (UPDATE), then we can do some
-  // work to prep the path attributes (and then filter on them).
 
   // is this above our interval
   if (format->TIF != NULL &&

@@ -81,9 +81,6 @@ static int handle_update(rec_data_t *rd, parsebgp_bgp_msg_t *bgp)
 static int handle_peer_up_down(rec_data_t *rd, int peer_up)
 {
   rd->elem->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
-
-  // TODO: fix this after talking with Tim
-  // it is possible we can assume UP means IDLE->ACTIVE
   rd->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
   if (peer_up) {
     rd->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_ACTIVE;
@@ -119,8 +116,6 @@ static int check_filters(bgpstream_record_t *record,
 {
   // Collector
   if (filter_mgr->collectors != NULL) {
-    // TODO: this is a little inefficient, especially if the filtering has been
-    // done at the topic (or even broker) level. fixme
     if (bgpstream_str_set_exists(filter_mgr->collectors,
                                  record->collector_name) == 0) {
       return 0;
@@ -129,8 +124,6 @@ static int check_filters(bgpstream_record_t *record,
 
   // Router
   if (filter_mgr->routers != NULL) {
-    // TODO: this is a little inefficient, especially if the filtering has been
-    // done at the topic (or even broker) level. fixme
     if (bgpstream_str_set_exists(filter_mgr->routers, record->router_name) ==
         0) {
       return 0;
@@ -428,7 +421,6 @@ int bs_format_bmp_get_next_elem(bgpstream_format_t *format,
   // what kind of BMP message are we dealing with?
   switch (bmp->type) {
   case PARSEBGP_BMP_TYPE_ROUTE_MON:
-    // TODO: explicitly handle end-of-RIB marker
     rc = handle_update(RDATA, bmp->types.route_mon);
     break;
 

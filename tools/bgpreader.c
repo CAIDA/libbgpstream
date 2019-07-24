@@ -429,12 +429,6 @@ int main(int argc, char *argv[])
     PARSE_FILTER_OPTION('A', BGPSTREAM_FILTER_TYPE_ELEM_ASPATH)
       break;
     PARSE_FILTER_OPTION('t', BGPSTREAM_FILTER_TYPE_RECORD_TYPE)
-      /* TODO: this error check should be in bgpstream_add_filter()? */
-      if (strcmp(optarg, "ribs") != 0 && strcmp(optarg, "updates") != 0) {
-        fprintf(stderr,
-                "ERROR: record-type must be one of \"ribs\" or \"updates\"\n");
-        error_cnt++;
-      }
       break;
 
     case 'o':

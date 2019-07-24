@@ -83,12 +83,6 @@ void bgpstream_record_clear(bgpstream_record_t *record)
   record->time_usec = 0;
 }
 
-void bgpstream_record_print_mrt_data(const bgpstream_record_t *record)
-{
-  assert(0 && "TODO: fix this implementation");
-  // bgpdump_print_entry(record->bd_entry);
-}
-
 static bgpstream_patricia_walk_cb_result_t pfx_exists(
     const bgpstream_patricia_tree_t *pt, const bgpstream_patricia_node_t *node,
     void *data)
@@ -281,7 +275,6 @@ int bgpstream_record_get_next_elem(bgpstream_record_t *record,
       return rc;
     }
 
-    // TODO: push elem filtering down into the formats
     if (elem_check_filters(record, elem) == 0) {
       elem = NULL;
     }

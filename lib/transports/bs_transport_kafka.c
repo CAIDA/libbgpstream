@@ -140,10 +140,9 @@ static void kafka_error_callback(rd_kafka_t *rk, int err, const char *reason,
     break;
   }
 
+  // we don't explicitly handle the error so just log it
   bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: %s (%d): %s",
                 rd_kafka_err2str(err), err, reason);
-
-  // TODO: handle other errors
 }
 
 static int init_kafka_config(bgpstream_transport_t *transport,
@@ -285,7 +284,6 @@ static int handle_err_msg(bgpstream_transport_t *transport,
     return 0; // EOS
   }
 
-  // TODO: handle some more errors
   bgpstream_log(BGPSTREAM_LOG_ERR, "Unhandled Kafka error: %s: %s",
                 rd_kafka_err2str(rk_msg->err), rd_kafka_message_errstr(rk_msg));
 
@@ -325,10 +323,10 @@ int64_t bs_transport_kafka_read(bgpstream_transport_t *transport,
   }
 
   // is the message too long?
-  // TODO: if this is really a problem (e.g., batches of MRT/BMP messages
-  // produced into a single Kafka message, then we can use a local buffer and
-  // split them up for the caller, but really the caller should have a large
-  // enough buffer.. so for now:
+  // if this is really a problem (e.g., batches of MRT/BMP messages
+  // produced into a single Kafka message, then we can use a local
+  // buffer and split them up for the caller, but really the caller
+  // should have a large enough buffer.. so for now:
   assert(rk_msg->len <= len);
 
   // copy the message into the provided buffer
@@ -348,8 +346,6 @@ void bs_transport_kafka_destroy(bgpstream_transport_t *transport)
   }
 
   if (STATE->rk != NULL) {
-    // TODO: consider committing offsets?
-
     // shut down consumer
     if ((err = rd_kafka_consumer_close(STATE->rk)) != 0) {
       bgpstream_log(BGPSTREAM_LOG_ERR, "Could not shut down consumer: %s",

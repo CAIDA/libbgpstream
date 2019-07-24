@@ -72,7 +72,6 @@ int bgpstream_id_set_insert(bgpstream_id_set_t *set, uint32_t id)
   int khret;
   khiter_t k;
   if ((k = kh_get(bgpstream_id_set, set->hash, id)) == kh_end(set->hash)) {
-    /** @todo we should always check the return value from khash funcs */
     k = kh_put(bgpstream_id_set, set->hash, id, &khret);
     return 1;
   }

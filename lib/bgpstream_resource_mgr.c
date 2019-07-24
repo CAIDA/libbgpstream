@@ -36,8 +36,6 @@
 #include <string.h>
 #include <unistd.h>
 
-/** TODO: Fix the rib period filter to not need to build this string as this
-    will fail for collectors with really long names */
 #define BUFFER_LEN 1024
 
 /** Approximately how frequently should stream resources that return AGAIN be

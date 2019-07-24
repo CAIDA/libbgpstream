@@ -78,8 +78,6 @@ typedef enum {
   /** AS Path Segment Confederation Set (RFC 5065) */
   BGPSTREAM_AS_PATH_SEG_CONFED_SET = 4,
 
-  /** @todo etc */
-
 } bgpstream_as_path_seg_type_t;
 
 /** @} */
