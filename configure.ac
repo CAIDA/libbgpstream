@@ -183,23 +183,23 @@ AC_MSG_CHECKING([whether to silence libparsebgp warnings])
 
 AC_MSG_NOTICE([checking transport modules...])
 
-# shall we build with support for the kafka transport module?
-AC_MSG_CHECKING([whether to build kafka transport module])
-AC_ARG_WITH([transport-kafka],
-	[AS_HELP_STRING([--without-transport-kafka],
-	  [do not compile the kafka transport module])],
+# shall we build with support for kafka-based resources?
+AC_MSG_CHECKING([whether to build kafka support])
+AC_ARG_WITH([kafka],
+	[AS_HELP_STRING([--without-kafka],
+	  [do not compile support for kafka-based resources])],
 	  [],
-	  [with_transport_kafka=yes])
-AC_MSG_RESULT([$with_transport_kafka])
+	  [with_kafka=yes])
+AC_MSG_RESULT([$with_kafka])
 
-AM_CONDITIONAL([WITH_TRANSPORT_KAFKA], [test "x$with_transport_kafka" != xno])
+AM_CONDITIONAL([WITH_KAFKA], [test "x$with_kafka" != xno])
 
-if test x"$with_transport_kafka" = xyes; then
+if test x"$with_kafka" = xyes; then
    AC_CHECK_LIB([rdkafka], [rd_kafka_query_watermark_offsets], ,
                [AC_MSG_ERROR(
-                 [librdkafka is required for kafka (--without-transport-kafka to disable)])])
+                 [librdkafka is required for kafka support (--without-kafka to disable)])])
 
-   AC_DEFINE([WITH_TRANSPORT_KAFKA],[1],[Building kafka transport module])
+   AC_DEFINE([WITH_KAFKA],[1],[Building kafka support])
 fi
 
 AC_MSG_NOTICE([])
@@ -207,9 +207,7 @@ AC_MSG_NOTICE([checking data interfaces...])
 
 BS_WITH_DI([bgpstream_broker],[broker],[BROKER],[yes])
 BS_WITH_DI([bgpstream_singlefile],[singlefile],[SINGLEFILE],[yes])
-BS_WITH_DI([bgpstream_kafka],[kafka],[KAFKA],[yes])
-BS_WITH_DI([bgpstream_betabmp],[betabmp],[BETABMP],[yes])
-BS_WITH_DI([bgpstream_rislive],[rislive],[RISLIVE],[yes])
+BS_WITH_DI([bgpstream_kafka],[kafka],[KAFKA],[$with_kafka])
 BS_WITH_DI([bgpstream_csvfile],[csvfile],[CSVFILE],[yes])
 BS_WITH_DI([bgpstream_sqlite],[sqlite],[SQLITE],[no])
 
@@ -225,14 +223,8 @@ if test "x$with_di_broker" == xyes; then
 fi
 
 if test "x$with_di_kafka" == xyes; then
-   if test x"$with_transport_kafka" != xyes; then
-      AC_MSG_ERROR([Kafka data interface requires Kafka transport module (--without-kafka to disable)])
-   fi
-fi
-
-if test "x$with_di_betabmp" == xyes; then
-   if test x"$with_transport_kafka" != xyes; then
-      AC_MSG_ERROR([(Beta) BMP Stream data interface requires Kafka transport module (--without-betabmp to disable)])
+   if test x"$with_kafka" != xyes; then
+      AC_MSG_ERROR([Kafka data interface requires Kafka support (--without-kafka to disable)])
    fi
 fi
 

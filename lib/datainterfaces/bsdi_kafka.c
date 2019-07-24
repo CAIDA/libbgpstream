@@ -25,6 +25,7 @@
  */
 
 #include "bsdi_kafka.h"
+#include "transports/bs_transport_kafka.h"
 #include "bgpstream_log.h"
 #include "config.h"
 #include "utils.h"
@@ -35,7 +36,6 @@
 
 #define STATE (BSDI_GET_STATE(di, kafka))
 
-#define DEFAULT_OFFSET "latest"
 #define DEFAULT_PROJECT ""
 #define DEFAULT_COLLECTOR ""
 
@@ -93,7 +93,7 @@ static bgpstream_data_interface_option_t options[] = {
     BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
     OPTION_OFFSET,                  // internal ID
     "offset",                       // name
-    "initial offset (earliest/latest) (default: " DEFAULT_OFFSET ")",
+    "initial offset (earliest/latest) (default: " BGPSTREAM_TRANSPORT_KAFKA_DEFAULT_OFFSET ")",
   },
   /* Data type */
   {
