@@ -57,6 +57,7 @@ enum {
   OPTION_BROKER_URL,
   OPTION_PARAM,
   OPTION_CACHE_DIR,
+  OPTION_KAFKA_GROUP,
 };
 
 /* define the options this data interface accepts */
@@ -81,6 +82,13 @@ static bgpstream_data_interface_option_t options[] = {
     OPTION_CACHE_DIR,                            // internal ID
     "cache-dir",                                 // name
     "Enable local cache at provided directory.", // description
+  },
+  /* Kafka group */
+  {
+    BGPSTREAM_DATA_INTERFACE_BROKER,             // interface ID
+    OPTION_KAFKA_GROUP,                          // internal ID
+    "kafka-group",                               // name
+    "Override kafka group setting (for kafka-based resources).", // description
   },
 };
 
@@ -114,6 +122,9 @@ typedef struct bsdi_broker_state {
 
   // User-specified location for cache: NULL means cache disabled
   char *cache_dir;
+
+  // Kafka group name
+  char *kafka_group;
 
   /* internal state: */
 
@@ -458,6 +469,15 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                             "Unable to set kafka topic to %s", kafka_topic);
               goto err;
             }
+
+            if (STATE->kafka_group != NULL &&
+                bgpstream_resource_set_attr(
+                  res, BGPSTREAM_RESOURCE_ATTR_KAFKA_CONSUMER_GROUP,
+                  STATE->kafka_group) != 0) {
+              bgpstream_log(BGPSTREAM_LOG_ERR,
+                            "Unable to set kafka group to %s", STATE->kafka_group);
+              goto err;
+            }
           }
 
           // set cache attribute to resource
@@ -748,6 +768,18 @@ int bsdi_broker_set_option(bsdi_t *di,
     }
     break;
 
+  case OPTION_KAFKA_GROUP:
+    // replaces our current group
+    if (STATE->kafka_group != NULL) {
+      free(STATE->kafka_group);
+      STATE->kafka_group = NULL;
+    }
+    if (strlen(option_value) &&
+        (STATE->kafka_group = strdup(option_value)) == NULL) {
+      return -1;
+    }
+    break;
+
   default:
     return -1;
   }
@@ -773,6 +805,9 @@ void bsdi_broker_destroy(bsdi_t *di)
 
   free(STATE->cache_dir);
   STATE->cache_dir = NULL;
+
+  free(STATE->kafka_group);
+  STATE->kafka_group = NULL;
 
   free(STATE);
   BSDI_SET_STATE(di, NULL);
