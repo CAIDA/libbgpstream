@@ -444,15 +444,18 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
             goto err;
           }
 
-          if(format_type == BGPSTREAM_RESOURCE_FORMAT_BMP){
-            if(kafka_topic == NULL){
-              bgpstream_log(BGPSTREAM_LOG_ERR, "Missing bmp kafka topic from the broker");
+          // handle kafka-specific configuration
+          if (transport_type == BGPSTREAM_RESOURCE_TRANSPORT_KAFKA) {
+            if (kafka_topic == NULL) {
+              bgpstream_log(BGPSTREAM_LOG_ERR,
+                            "Missing bmp kafka topic from the broker");
               goto err;
             }
-            // special processing for BMP stream via Kafka
-            if (bgpstream_resource_set_attr(res, BGPSTREAM_RESOURCE_ATTR_KAFKA_TOPICS,
-                                            kafka_topic) != 0) {
-              bgpstream_log(BGPSTREAM_LOG_ERR, "Unable to set kafka topic to %s", kafka_topic);
+            if (bgpstream_resource_set_attr(
+                  res, BGPSTREAM_RESOURCE_ATTR_KAFKA_TOPICS, kafka_topic) !=
+                0) {
+              bgpstream_log(BGPSTREAM_LOG_ERR,
+                            "Unable to set kafka topic to %s", kafka_topic);
               goto err;
             }
           }
