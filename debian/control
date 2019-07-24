@@ -7,6 +7,17 @@ Build-Depends: debhelper (>= 10), autotools-dev, libwandio1 (>=4.2.0),
 Standards-Version: 4.1.2
 Homepage: https://bgpstream.caida.org
 
+Package: bgpstream
+Architecture: any
+Section: libdevel
+Depends: bgpstream2-tools (=${binary:Version}), libbgpstream2-dev (=${binary:Version}),
+ ${shlibs:Depends}, ${misc:Depends}
+Description: meta package for full libbgpstream2 tools and development environment
+ This package contains all libbgpstream2's library, development environment, and tools.
+ .
+ BGPStream: An open-source software framework for live and historical BGP data analysis,
+ supporting scientific research, operational monitoring, and post-event analysis.
+
 Package: bgpstream2-tools
 Architecture: any
 Section: libs
