@@ -771,6 +771,9 @@ void bsdi_broker_destroy(bsdi_t *di)
   }
   STATE->params_cnt = 0;
 
+  free(STATE->cache_dir);
+  STATE->cache_dir = NULL;
+
   free(STATE);
   BSDI_SET_STATE(di, NULL);
 }
