@@ -22,16 +22,28 @@ Package: bgpstream2-tools
 Architecture: any
 Section: libs
 Depends: libwandio1 (>=4.2.0), libbgpstream2 (=${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
-Description: BGPStream: An open-source software framework for live and historical BGP data analysis, supporting scientific research, operational monitoring, and post-event analysis.
+Description: example tools for libbgpstream2 library
+ This package contains some example tools that uses libbgpstream2 library.
+ .
+ BGPStream: An open-source software framework for live and historical BGP data analysis,
+ supporting scientific research, operational monitoring, and post-event analysis.
 
 Package: libbgpstream2
 Architecture: any
 Section: libs
 Depends: libwandio1 (>=4.2.0), ${shlibs:Depends}, ${misc:Depends}
-Description: BGPStream: An open-source software framework for live and historical BGP data analysis, supporting scientific research, operational monitoring, and post-event analysis.
+Description: software framework for live and historical BGP data analysis
+ This package contains the libbgpstream2 library.
+ .
+ BGPStream: An open-source software framework for live and historical BGP data analysis,
+ supporting scientific research, operational monitoring, and post-event analysis.
 
 Package: libbgpstream2-dev
 Architecture: any
 Section: libdevel
 Depends: libbgpstream2 (=${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
-Description: BGPStream: An open-source software framework for live and historical BGP data analysis, supporting scientific research, operational monitoring, and post-event analysis.
+Description: development environment for libbgpstream2
+ This package contains development headers and shared libraries for the libbgpstream2 library.
+ .
+ BGPStream: An open-source software framework for live and historical BGP data analysis,
+ supporting scientific research, operational monitoring, and post-event analysis.
