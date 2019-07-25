@@ -574,22 +574,19 @@ refill:
   }
 
   dec_len = state->remain;
-  if ((err = parsebgp_decode(state->parser_opts, state->msg_type, msg,
-                             state->ptr, &dec_len)) != PARSEBGP_OK) {
+  err = parsebgp_decode(state->parser_opts, state->msg_type, msg,
+                             state->ptr, &dec_len);
+  if (err == PARSEBGP_TRUNCATED_MSG) {
+    bgpstream_log(BGPSTREAM_LOG_WARN,
+                  "Read truncated record %"PRIu64" from '%s'",
+                  state->successful_read_cnt,
+                  format->res->url);
+  } else if (err != PARSEBGP_OK) {
     parsebgp_clear_msg(msg);
     if (err == PARSEBGP_PARTIAL_MSG) {
       // refill the buffer and try again
       refill = 1;
       goto refill;
-    } else if (err == PARSEBGP_TRUNCATED_MSG) {
-      bgpstream_log(BGPSTREAM_LOG_WARN,
-                    "Skipping truncated record %"PRIu64" from '%s'",
-                    state->successful_read_cnt,
-                    format->res->url);
-      state->successful_read_cnt++;
-      state->ptr += dec_len;
-      state->remain -= dec_len;
-      goto refill; // skip to the next message (not a forced refill)
     }
     // else: its a fatal error
     bgpstream_log(BGPSTREAM_LOG_ERR,
