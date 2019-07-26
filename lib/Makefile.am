@@ -94,7 +94,7 @@ libbgpstream_la_LIBADD = \
 			$(top_builddir)/lib/utils/libbgpstream-utils.la \
 			$(top_builddir)/common/libcccommon.la
 
-libbgpstream_la_LDFLAGS = -version-info @LIBBGPSTREAM_MAJOR_VERSION@:@LIBBGPSTREAM_MINOR_VERSION@:@LIBBGPSTREAM_MID_VERSION@
+libbgpstream_la_LDFLAGS = -version-info @LIBBGPSTREAM_SHLIB_CURRENT@:@LIBBGPSTREAM_SHLIB_REVISION@:@LIBBGPSTREAM_SHLIB_AGE@
 
 ACLOCAL_AMFLAGS = -I m4
 
