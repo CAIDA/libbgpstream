@@ -376,7 +376,7 @@ int bgpstream_record_status_snprintf(char *buf, size_t len,
   return 1;
 }
 
-#define B_REMAIN (len - written)
+#define B_REMAIN (len > written ? len - written : 0) /* unsigned */
 #define B_FULL (written >= len)
 #define ADD_PIPE                                                               \
   do {                                                                         \

@@ -37,6 +37,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
 /* ==================== PROTECTED FUNCTIONS ==================== */
 
@@ -120,38 +121,38 @@ bgpstream_elem_t *bgpstream_elem_copy(bgpstream_elem_t *dst,
 int bgpstream_elem_type_snprintf(char *buf, size_t len,
                                  bgpstream_elem_type_t type)
 {
-  /* ensure we have enough bytes to write our single character */
-  if (len == 0) {
-    return 1;
-  } else if (len == 1) {
-    buf[0] = '\0';
-    return 1;
-  }
+  int written = 1;
+  char c = '\0';
 
   switch (type) {
   case BGPSTREAM_ELEM_TYPE_RIB:
-    buf[0] = 'R';
+    c = 'R';
     break;
 
   case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT:
-    buf[0] = 'A';
+    c = 'A';
     break;
 
   case BGPSTREAM_ELEM_TYPE_WITHDRAWAL:
-    buf[0] = 'W';
+    c = 'W';
     break;
 
   case BGPSTREAM_ELEM_TYPE_PEERSTATE:
-    buf[0] = 'S';
+    c = 'S';
     break;
 
   default:
-    buf[0] = '\0';
-    break;
+    written = 0;
+    return 0;
   }
 
-  buf[1] = '\0';
-  return 1;
+  if (len > written) {
+    if (written > 0) buf[0] = c;
+    buf[written] = '\0';
+  } else if (len == 1) {
+    buf[0] = '\0';
+  }
+  return written;
 }
 
 int bgpstream_elem_peerstate_snprintf(char *buf, size_t len,
@@ -215,7 +216,7 @@ int bgpstream_elem_peerstate_snprintf(char *buf, size_t len,
   return written;
 }
 
-#define B_REMAIN (len - written)
+#define B_REMAIN (len > written ? len - written : 0) /* unsigned */
 #define B_FULL (written >= len)
 #define ADD_PIPE                                                               \
   do {                                                                         \
@@ -272,8 +273,12 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
   /* Note: this can fail in rare cases where the peer address is not
      present in the elem (old quagga collectors sometimes didn't dump
      this information for state change and open messages). This will
-     result in an empty peer IP field. */
-  bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->peer_ip);
+     result in an empty peer IP field.  But if it fails due to lack of
+     space, we should fail too. */
+  if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->peer_ip) == NULL &&
+      errno == ENOSPC) {
+    return NULL;
+  }
   SEEK_STR_END;
   ADD_PIPE;
 
@@ -287,16 +292,19 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
 
     /* PREFIX */
     if (bgpstream_pfx_snprintf(buf_p, B_REMAIN, &(elem->prefix)) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed prefix (R/A)");
+      if (errno != ENOSPC)
+        bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed prefix (R/A)");
       return NULL;
     }
     SEEK_STR_END;
     ADD_PIPE;
 
     /* NEXT HOP */
-    if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->nexthop) != NULL) {
-      SEEK_STR_END;
+    if (bgpstream_addr_ntop(buf_p, B_REMAIN, &elem->nexthop) == NULL &&
+        errno == ENOSPC) {
+      return NULL;
     }
+    SEEK_STR_END;
     ADD_PIPE;
 
     /* AS PATH */
@@ -351,7 +359,8 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
 
     /* PREFIX */
     if (bgpstream_pfx_snprintf(buf_p, B_REMAIN, &(elem->prefix)) == NULL) {
-      bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed prefix (W)");
+      if (errno != ENOSPC)
+        bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed prefix (W)");
       return NULL;
     }
     SEEK_STR_END;

@@ -149,9 +149,11 @@ typedef union union_bgpstream_pfx_t {
  * @param buf           pointer to a character buffer at least len bytes long
  * @param len           length of the given character buffer
  * @param pfx           pointer to the bgpstream pfx to convert to string
- * @return a pointer to buf if successful, NULL otherwise
+ * @return a pointer to buf if successful.  Otherwise, returns NULL with errno
+ * set to ENOSPC if there was not enough space to write the string, or some
+ * other value set by inet_ntop().
  *
- * You will likely want to use INET_ADDRSTRLEN+3 or INET6_ADDRSTRLEN+3 to
+ * You will likely want to use INET_ADDRSTRLEN+3 or INET6_ADDRSTRLEN+4 to
  * dimension the buffer.
  */
 char *bgpstream_pfx_snprintf(char *buf, size_t len, const bgpstream_pfx_t *pfx);

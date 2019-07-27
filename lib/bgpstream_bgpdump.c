@@ -36,7 +36,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 
-#define B_REMAIN (len - written)
+#define B_REMAIN (len > written ? len - written : 0) /* unsigned */
 #define B_FULL (written >= len)
 #define ADD_PIPE                                                               \
   do {                                                                         \

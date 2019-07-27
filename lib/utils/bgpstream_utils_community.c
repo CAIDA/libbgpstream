@@ -157,7 +157,8 @@ int bgpstream_community_set_snprintf(char *buf, size_t len,
       written++;
     }
     written += bgpstream_community_snprintf(
-      buf + written, (len - written), bgpstream_community_set_get(set, i));
+      buf + written, len > written ? len - written : 0,
+      bgpstream_community_set_get(set, i));
   }
 
   buf[(written < len) ? written : len - 1] = '\0';
