@@ -40,25 +40,14 @@ static bgpstream_elem_t *elem;
 static bgpstream_data_interface_id_t di_id = 0;
 // static bgpstream_data_interface_option_t *option;
 
-static char elem_buf[65536];
 static const char *expected_results[] = {
-  "U|A|1427846850.000000|ris|rrc06|||25152|202.249.2.185|202.70.88.0/"
-  "21|202.249.2.185|25152 2914 15412 9304 23752|23752|2914:410 2914:1408 "
-  "2914:2401 2914:3400||",
-  "U|A|1427846860.000000|ris|rrc06|||25152|202.249.2.185|202.70.88.0/"
-  "21|202.249.2.185|25152 2914 15412 9304 23752|23752|2914:410 2914:1408 "
-  "2914:2401 2914:3400||",
-  "U|A|1427846871.000000|ris|rrc06|||25152|2001:200:0:fe00::6249:0|2620:110:9004::/"
-  "48|2001:200:0:fe00::6249:0|25152 2914 3356 13620|13620|2914:420 2914:1001 "
-  "2914:2000 2914:3000||",
-  "U|A|1427846874.000000|routeviews|route-views.jinx|||37105|196.223.14.46|154.73.136."
-  "0/24|196.223.14.84|37105 37549|37549|37105:300||",
-  "U|A|1427846874.000000|routeviews|route-views.jinx|||37105|196.223.14.46|154.73.137."
-  "0/24|196.223.14.84|37105 37549|37549|37105:300||",
-  "U|A|1427846874.000000|routeviews|route-views.jinx|||37105|196.223.14.46|154.73.138."
-  "0/24|196.223.14.84|37105 37549|37549|37105:300||",
-  "U|A|1427846874.000000|routeviews|route-views.jinx|||37105|196.223.14.46|154.73.139."
-  "0/24|196.223.14.84|37105 37549|37549|37105:300||",
+  "U|A|1427846850.000000|ris|rrc06|||25152|202.249.2.185|202.70.88.0/21|202.249.2.185|25152 2914 15412 9304 23752|23752|2914:410 2914:1408 2914:2401 2914:3400||",
+  "U|A|1427846860.000000|ris|rrc06|||25152|202.249.2.185|202.70.88.0/21|202.249.2.185|25152 2914 15412 9304 23752|23752|2914:410 2914:1408 2914:2401 2914:3400||",
+  "U|A|1427846871.000000|ris|rrc06|||25152|2001:200:0:fe00::6249:0|2620:110:9004::/48|2001:200:0:fe00::6249:0|25152 2914 3356 13620|13620|2914:420 2914:1001 2914:2000 2914:3000||",
+  "U|A|1427846874.000000|routeviews|route-views.jinx|||37105|196.223.14.46|154.73.136.0/24|196.223.14.84|37105 37549|37549|37105:300||",
+  "U|A|1427846874.000000|routeviews|route-views.jinx|||37105|196.223.14.46|154.73.137.0/24|196.223.14.84|37105 37549|37549|37105:300||",
+  "U|A|1427846874.000000|routeviews|route-views.jinx|||37105|196.223.14.46|154.73.138.0/24|196.223.14.84|37105 37549|37549|37105:300||",
+  "U|A|1427846874.000000|routeviews|route-views.jinx|||37105|196.223.14.46|154.73.139.0/24|196.223.14.84|37105 37549|37549|37105:300||",
   NULL};
 
 #define SETUP                                                                  \
@@ -90,18 +79,16 @@ static void process_records()
   while ((ret = bgpstream_get_next_record(bs, &rec)) > 0) {
     if (rec->status == BGPSTREAM_RECORD_STATUS_VALID_RECORD) {
       while (bgpstream_record_get_next_elem(rec, &elem) > 0) {
-        if (bgpstream_record_elem_snprintf(elem_buf, 65536, rec, elem) !=
-            NULL) {
-          /* make sure we haven't reached end of expected_results */
-          CHECK("elem partial count", expected_results[counter]);
-          if (!expected_results[counter]) break;
 
-          /* check if the results are exactly the expected ones */
-          CHECK("elem equality",
-                strcmp(elem_buf, expected_results[counter]) == 0);
+        /* make sure we haven't reached end of expected_results */
+        CHECK("elem partial count", expected_results[counter]);
+        if (!expected_results[counter]) break;
 
-          counter++;
-        }
+        CHECK_SNPRINTF("elem equality",
+          expected_results[counter], 65536, CHAR_P,
+          bgpstream_record_elem_snprintf(cs_buf, cs_len, rec, elem));
+
+        counter++;
       }
     }
   }

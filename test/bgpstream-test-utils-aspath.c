@@ -31,8 +31,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-static char buffer[1024];
-
 
 static struct {
   bgpstream_as_path_seg_type_t type;
@@ -80,9 +78,8 @@ int main(int argc, char *argv[])
     }
     if (i > 0) strcat(expected, " ");
     strcat(expected, testsegs[i].expected);
-    bgpstream_as_path_snprintf(buffer, sizeof(buffer), path1);
-    CHECK("as_path print", strcmp(buffer, expected) == 0);
-    // printf("# output:  %s\n", buffer);
+    CHECK_SNPRINTF("as_path print", expected, 1024, int,
+      bgpstream_as_path_snprintf(cs_buf, cs_len, path1));
   }
 
   CHECK("as_path len", bgpstream_as_path_get_len(path1) == test_cnt);
