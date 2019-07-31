@@ -31,4 +31,18 @@
 #include "bgpstream.h"
 #include "bgpstream_filter.h"
 
+// Append ch and '\0' to buf if there's enough room.
+// Returns number of characters that would have been written (excluding the
+// terminating '\0'), i.e. 1.  Use (retval >= len) to check for overflow.
+static inline int bgpstream_char_snprintf(char *buf, size_t len, char ch)
+{
+  if (len > 1) {
+    buf[0] = ch;
+    buf[1] = '\0';
+  } else if (len == 1) {
+    buf[0] = '\0';
+  }
+  return 1;
+}
+
 #endif /* _BGPSTREAM_INT_H */

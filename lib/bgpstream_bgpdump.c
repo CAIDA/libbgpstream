@@ -40,14 +40,12 @@
 #define B_FULL (written >= len)
 #define ADD_PIPE                                                               \
   do {                                                                         \
-    if (B_REMAIN > 1) {                                                        \
-      *buf_p = '|';                                                            \
-      buf_p++;                                                                 \
-      *buf_p = '\0';                                                           \
-      written++;                                                               \
-    } else {                                                                   \
-      return NULL;                                                             \
+    if (len > written + 1) {                                                   \
+      buf_p[0] = '|';                                                          \
+      buf_p[1] = '\0';                                                         \
     }                                                                          \
+    buf_p++;                                                                   \
+    written++;                                                                 \
   } while (0)
 
 #define SEEK_STR_END                                                           \
@@ -80,6 +78,7 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     c = snprintf(buf_p, B_REMAIN, "BGP4MP|%" PRIu32, record->time_sec);
     break;
   default:
+    c = 0;
     break;
   }
   written += c;
@@ -100,6 +99,7 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     c = snprintf(buf_p, B_REMAIN, "STATE");
     break;
   default:
+    c = 0;
     break;
   }
 
@@ -136,8 +136,7 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     c = bgpstream_as_path_snprintf(buf_p, B_REMAIN, elem->as_path);
     written += c;
     buf_p += c;
-    if (B_FULL)
-      return NULL;
+
     ADD_PIPE;
 
     /* SOURCE (IGP) */
@@ -152,6 +151,7 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
       c = snprintf(buf_p, B_REMAIN, "INCOMPLETE");
       break;
     default:
+      c = 0;
       break;
     }
     written += c;
@@ -182,8 +182,7 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     c = bgpstream_community_set_snprintf(buf_p, B_REMAIN, elem->communities);
     written += c;
     buf_p += c;
-    if (B_FULL)
-      return NULL;
+
     ADD_PIPE;
 
     /* AGGREGATE AG/NAG */
@@ -230,8 +229,5 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     break;
   }
 
-  if (B_FULL)
-    return NULL;
-
-  return buf;
+  return B_FULL ? NULL : buf;
 }

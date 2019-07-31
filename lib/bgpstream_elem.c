@@ -28,6 +28,7 @@
 #include "bgpstream_log.h"
 #include "bgpstream_record.h"
 #include "bgpstream_utils.h"
+#include "bgpstream_int.h" // for bgpstream_char_snprintf()
 #include "config.h"
 #ifdef WITH_RPKI
 #include "bgpstream_utils_rpki.h"
@@ -121,38 +122,20 @@ bgpstream_elem_t *bgpstream_elem_copy(bgpstream_elem_t *dst,
 int bgpstream_elem_type_snprintf(char *buf, size_t len,
                                  bgpstream_elem_type_t type)
 {
-  int written = 1;
-  char c = '\0';
+  char ch;
 
   switch (type) {
-  case BGPSTREAM_ELEM_TYPE_RIB:
-    c = 'R';
-    break;
-
-  case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT:
-    c = 'A';
-    break;
-
-  case BGPSTREAM_ELEM_TYPE_WITHDRAWAL:
-    c = 'W';
-    break;
-
-  case BGPSTREAM_ELEM_TYPE_PEERSTATE:
-    c = 'S';
-    break;
-
-  default:
-    written = 0;
-    return 0;
+    case BGPSTREAM_ELEM_TYPE_RIB:          ch = 'R'; break;
+    case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT: ch = 'A'; break;
+    case BGPSTREAM_ELEM_TYPE_WITHDRAWAL:   ch = 'W'; break;
+    case BGPSTREAM_ELEM_TYPE_PEERSTATE:    ch = 'S'; break;
+    default:
+      if (len > 0)
+        buf[0] = '\0';
+      return 0;
   }
 
-  if (len > written) {
-    if (written > 0) buf[0] = c;
-    buf[written] = '\0';
-  } else if (len == 1) {
-    buf[0] = '\0';
-  }
-  return written;
+  return bgpstream_char_snprintf(buf, len, ch);
 }
 
 int bgpstream_elem_peerstate_snprintf(char *buf, size_t len,
@@ -220,14 +203,12 @@ int bgpstream_elem_peerstate_snprintf(char *buf, size_t len,
 #define B_FULL (written >= len)
 #define ADD_PIPE                                                               \
   do {                                                                         \
-    if (B_REMAIN > 1) {                                                        \
-      *buf_p = '|';                                                            \
-      buf_p++;                                                                 \
-      *buf_p = '\0';                                                           \
-      written++;                                                               \
-    } else {                                                                   \
-      return NULL;                                                             \
+    if (len > written + 1) {                                                   \
+      buf_p[0] = '|';                                                          \
+      buf_p[1] = '\0';                                                         \
     }                                                                          \
+    buf_p++;                                                                   \
+    written++;                                                                 \
   } while (0)
 
 #define SEEK_STR_END                                                           \
@@ -257,9 +238,6 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
     written += c;
     buf_p += c;
 
-    if (B_FULL)
-      return NULL;
-
     ADD_PIPE;
   }
 
@@ -281,9 +259,6 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
   }
   SEEK_STR_END;
   ADD_PIPE;
-
-  if (B_FULL)
-    return NULL;
 
   /* conditional fields */
   switch (elem->type) {
@@ -311,8 +286,7 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
     c = bgpstream_as_path_snprintf(buf_p, B_REMAIN, elem->as_path);
     written += c;
     buf_p += c;
-    if (B_FULL)
-      return NULL;
+
     ADD_PIPE;
 
     /* ORIGIN AS */
@@ -327,16 +301,13 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
     c = bgpstream_community_set_snprintf(buf_p, B_REMAIN, elem->communities);
     written += c;
     buf_p += c;
-    if (B_FULL)
-      return NULL;
+
     ADD_PIPE;
 
     /* OLD STATE (empty) */
     ADD_PIPE;
 
     /* NEW STATE (empty) */
-    if (B_FULL)
-      return NULL;
 
 #ifdef WITH_RPKI
     /* RPKI validation */
@@ -376,8 +347,6 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
     /* OLD STATE (empty) */
     ADD_PIPE;
     /* NEW STATE (empty) */
-    if (B_FULL)
-      return NULL;
     /* END OF LINE */
     break;
 
@@ -399,9 +368,6 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
     written += c;
     buf_p += c;
 
-    if (B_FULL)
-      return NULL;
-
     ADD_PIPE;
 
     /* NEW STATE (empty) */
@@ -409,8 +375,6 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
     written += c;
     buf_p += c;
 
-    if (B_FULL)
-      return NULL;
     /* END OF LINE */
     break;
 
@@ -419,7 +383,7 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
     return NULL;
   }
 
-  return buf;
+  return B_FULL ? NULL : buf;
 }
 
 char *bgpstream_elem_snprintf(char *buf, size_t len,

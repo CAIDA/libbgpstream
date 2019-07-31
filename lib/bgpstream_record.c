@@ -287,107 +287,70 @@ int bgpstream_record_get_next_elem(bgpstream_record_t *record,
 int bgpstream_record_type_snprintf(char *buf, size_t len,
                                    bgpstream_record_type_t type)
 {
-  /* ensure we have enough bytes to write our single character */
-  if (len == 0) {
-    return -1;
-  } else if (len == 1) {
-    buf[0] = '\0';
-    return -1;
-  }
+  char ch;
+
   switch (type) {
-  case BGPSTREAM_RIB:
-    buf[0] = 'R';
-    break;
-  case BGPSTREAM_UPDATE:
-    buf[0] = 'U';
-    break;
-  default:
-    buf[0] = '\0';
-    break;
+    case BGPSTREAM_RIB:    ch = 'R'; break;
+    case BGPSTREAM_UPDATE: ch = 'U'; break;
+    default:
+      if (len > 0)
+        buf[0] = '\0';
+      return 0;
   }
-  buf[1] = '\0';
-  return 1;
+
+  return bgpstream_char_snprintf(buf, len, ch);
 }
 
 int bgpstream_record_dump_pos_snprintf(char *buf, size_t len,
                                        bgpstream_dump_position_t dump_pos)
 {
-  /* ensure we have enough bytes to write our single character */
-  if (len == 0) {
-    return -1;
-  } else if (len == 1) {
-    buf[0] = '\0';
-    return -1;
-  }
+  char ch;
 
   switch (dump_pos) {
-  case BGPSTREAM_DUMP_START:
-    buf[0] = 'B';
-    break;
-  case BGPSTREAM_DUMP_MIDDLE:
-    buf[0] = 'M';
-    break;
-  case BGPSTREAM_DUMP_END:
-    buf[0] = 'E';
-    break;
-  default:
-    buf[0] = '\0';
-    break;
+    case BGPSTREAM_DUMP_START:  ch = 'B'; break;
+    case BGPSTREAM_DUMP_MIDDLE: ch = 'M'; break;
+    case BGPSTREAM_DUMP_END:    ch = 'E'; break;
+    default:
+      if (len > 0)
+        buf[0] = '\0';
+      return 0;
   }
-  buf[1] = '\0';
-  return 1;
+
+  return bgpstream_char_snprintf(buf, len, ch);
 }
 
 int bgpstream_record_status_snprintf(char *buf, size_t len,
                                      bgpstream_record_status_t status)
 {
-  /* ensure we have enough bytes to write our single character */
-  if (len == 0) {
-    return -1;
-  } else if (len == 1) {
-    buf[0] = '\0';
-    return -1;
-  }
+  char ch;
 
   switch (status) {
-  case BGPSTREAM_RECORD_STATUS_VALID_RECORD:
-    buf[0] = 'V';
-    break;
-  case BGPSTREAM_RECORD_STATUS_FILTERED_SOURCE:
-    buf[0] = 'F';
-    break;
-  case BGPSTREAM_RECORD_STATUS_EMPTY_SOURCE:
-    buf[0] = 'E';
-    break;
-  case BGPSTREAM_RECORD_STATUS_OUTSIDE_TIME_INTERVAL:
-    buf[0] = 'O';
-    break;
-  case BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE:
-    buf[0] = 'S';
-    break;
-  case BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD:
-    buf[0] = 'R';
-    break;
-  case BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD:
-    buf[0] = 'U';
-    break;
+    case BGPSTREAM_RECORD_STATUS_VALID_RECORD:          ch = 'V'; break;
+    case BGPSTREAM_RECORD_STATUS_FILTERED_SOURCE:       ch = 'F'; break;
+    case BGPSTREAM_RECORD_STATUS_EMPTY_SOURCE:          ch = 'E'; break;
+    case BGPSTREAM_RECORD_STATUS_OUTSIDE_TIME_INTERVAL: ch = 'O'; break;
+    case BGPSTREAM_RECORD_STATUS_CORRUPTED_SOURCE:      ch = 'S'; break;
+    case BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD:      ch = 'R'; break;
+    case BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD:    ch = 'U'; break;
+    default:
+      if (len > 0)
+        buf[0] = '\0';
+      return 0;
   }
-  buf[1] = '\0';
-  return 1;
+
+  return bgpstream_char_snprintf(buf, len, ch);
 }
 
 #define B_REMAIN (len > written ? len - written : 0) /* unsigned */
 #define B_FULL (written >= len)
 #define ADD_PIPE                                                               \
   do {                                                                         \
-    if (B_REMAIN > 1) {                                                        \
-      *buf_p = '|';                                                            \
-      buf_p++;                                                                 \
-      *buf_p = '\0';                                                           \
-      written++;                                                               \
-    } else {                                                                   \
-      return NULL;                                                             \
+    if (len > written + 1) {                                                   \
+      buf_p[0] = '|';                                                          \
+      buf_p[1] = '\0';                                                         \
     }                                                                          \
+    buf_p++;                                                                   \
+    written++;                                                                 \
   } while (0)
 
 #define SEEK_STR_END                                                           \
@@ -408,24 +371,18 @@ char *bgpstream_record_snprintf(char *buf, size_t len,
   char *buf_p = buf;
 
   /* Record type */
-  if ((c = bgpstream_record_type_snprintf(buf_p, B_REMAIN, record->type)) < 0) {
-    return NULL;
-  }
+  c = bgpstream_record_type_snprintf(buf_p, B_REMAIN, record->type);
   written += c;
   buf_p += c;
+
   ADD_PIPE;
 
   /* record position */
-  if ((c = bgpstream_record_dump_pos_snprintf(buf_p, len - written,
-                                              record->dump_pos)) < 0) {
-    return NULL;
-  }
+  c = bgpstream_record_dump_pos_snprintf(buf_p, B_REMAIN, record->dump_pos);
   written += c;
   buf_p += c;
-  ADD_PIPE;
 
-  if (B_FULL)
-    return NULL;
+  ADD_PIPE;
 
   /* Record timestamp, project, collector, router names */
   c = snprintf(buf_p, B_REMAIN, "%" PRIu32 ".%06" PRIu32 "|%s|%s|%s|",
@@ -433,9 +390,6 @@ char *bgpstream_record_snprintf(char *buf, size_t len,
                record->collector_name, record->router_name);
   written += c;
   buf_p += c;
-
-  if (B_FULL)
-    return NULL;
 
   /* Router IP */
   if (record->router_ip.version != 0) {
@@ -448,25 +402,16 @@ char *bgpstream_record_snprintf(char *buf, size_t len,
   ADD_PIPE;
 
   /* record status */
-  if ((c = bgpstream_record_status_snprintf(buf_p, len - written,
-                                            record->status)) < 0) {
-    return NULL;
-  }
+  c = bgpstream_record_status_snprintf(buf_p, B_REMAIN, record->status);
   written += c;
   buf_p += c;
-
-  if (B_FULL)
-    return NULL;
 
   /* dump time */
   c = snprintf(buf_p, B_REMAIN, "|%" PRIu32, record->dump_time_sec);
   written += c;
   buf_p += c;
 
-  if (B_FULL)
-    return NULL;
-
-  return buf;
+  return B_FULL ? NULL : buf;
 }
 
 char *bgpstream_record_elem_snprintf(char *buf, size_t len,
@@ -481,19 +426,17 @@ char *bgpstream_record_elem_snprintf(char *buf, size_t len,
   char *buf_p = buf;
 
   /* Record type */
-  if ((c = bgpstream_record_type_snprintf(buf_p, B_REMAIN, record->type)) < 0) {
-    return NULL;
-  }
+  c = bgpstream_record_type_snprintf(buf_p, B_REMAIN, record->type);
   written += c;
   buf_p += c;
+
   ADD_PIPE;
 
   /* Elem type */
-  if ((c = bgpstream_elem_type_snprintf(buf_p, B_REMAIN, elem->type)) < 0) {
-    return NULL;
-  }
+  c = bgpstream_elem_type_snprintf(buf_p, B_REMAIN, elem->type);
   written += c;
   buf_p += c;
+
   ADD_PIPE;
 
   /* Record timestamp, project, collector, router names */
@@ -502,9 +445,6 @@ char *bgpstream_record_elem_snprintf(char *buf, size_t len,
                record->collector_name, record->router_name);
   written += c;
   buf_p += c;
-
-  if (B_FULL)
-    return NULL;
 
   /* Router IP */
   if (record->router_ip.version != 0) {
@@ -520,11 +460,6 @@ char *bgpstream_record_elem_snprintf(char *buf, size_t len,
     return NULL;
   }
 
-  written += c;
-  buf_p += c;
-
-  if (B_FULL)
-    return NULL;
-
+  // We don't need to check B_FULL because elem_custom_snprintf() did
   return buf;
 }
