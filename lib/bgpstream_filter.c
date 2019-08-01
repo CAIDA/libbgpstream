@@ -365,7 +365,7 @@ int bgpstream_filter_mgr_validate(bgpstream_filter_mgr_t *filter_mgr)
                       TIF->begin_time > TIF->end_time)) {
     /* invalid interval */
     bgpstream_log(BGPSTREAM_LOG_ERR,
-                  "Interval %" PRIu32 ",%" PRIu32 " is invalid\n",
+                  "Interval start %" PRIu32 " is later than end %" PRIu32 "\n",
                   TIF->begin_time, TIF->end_time);
     return -1;
   }

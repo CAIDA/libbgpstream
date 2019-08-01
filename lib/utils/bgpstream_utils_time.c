@@ -32,6 +32,9 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <string.h>
+#include <errno.h>
+#include <time.h>
 #include <sys/time.h>
 
 int bgpstream_time_calc_recent_interval(uint32_t *start, uint32_t *end,
@@ -74,4 +77,59 @@ int bgpstream_time_calc_recent_interval(uint32_t *start, uint32_t *end,
   *start = tv.tv_sec - unitcount;
   *end = tv.tv_sec;
   return 1;
+}
+
+// Convert a string to a unix timestamp in *t.  The string can be in
+// "Y-m-d [H:M[:S]]" format (in the UTC timezone) or a unix timestamp.
+// Returns a pointer to the first unused character of the string, or NULL if
+// the string is invalid.
+char *bgpstream_parse_time(const char *s, uint32_t *t)
+{
+  char *end;
+  const char *formats[] = {
+    // "%Y-%m-%d %H:%M:%S %z ", // %z is not posix
+    "%Y-%m-%d %H:%M:%S ",
+    // "%Y-%m-%d %H:%M %z ",    // %z is not posix
+    "%Y-%m-%d %H:%M ",
+    "%Y-%m-%d ",
+    NULL,
+  };
+
+  while (isspace(*s)) s++;
+
+  // Try each format
+  struct tm tm;
+  for (int i = 0; formats[i]; i++) {
+    memset(&tm, 0, sizeof(tm));
+    end = strptime(s, formats[i], &tm);
+    if (end) { // success
+      // Annoyingly, mktime() uses localtime, so we have to setenv TZ.
+      char *oldtz = getenv("TZ");
+      if (setenv("TZ", "UTC", 1) != 0) {
+        return NULL;
+      }
+      time_t tt = mktime(&tm);
+      // restore TZ
+      if (oldtz) {
+        setenv("TZ", oldtz, 1);
+      } else {
+        unsetenv("TZ");
+      }
+      if (tt > UINT32_MAX)
+        return NULL;
+      *t = (uint32_t)tt;
+      return end;
+    }
+  }
+
+  // Try unix timestamp
+  if (!isdigit(*s))
+    return NULL;
+  errno = 0;
+  unsigned long ul = strtoul(s, &end, 10);
+  if (errno || ul > UINT32_MAX)
+    return NULL;
+  *t = (uint32_t)ul;
+  while (isspace(*end)) end++;
+  return end;
 }

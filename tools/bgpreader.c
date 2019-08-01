@@ -116,8 +116,9 @@ static struct bs_options_t bs_opts[] =
    "process records with only the given type (ribs, updates)*"},
   {{"time-window", required_argument, 0, 'w'},
    "<start>[,<end>]",
-   "process records within the given time window specified in Unix "
-   "epoch time (omitting <end> enables live mode)"},
+   "process records within the given time window.  <start> and <end> may be in "
+   "'Y-m-d [H:M[:S]]' format (in UTC) or in unix epoch time.  Omitting <end> "
+   "enables live mode."},
   {{"rib-period", required_argument, 0, 'P'},
    "<period>",
    "process a rib files every <period> seconds (bgp time)"},
@@ -344,7 +345,6 @@ int main(int argc, char *argv[])
   char *intervalstring = NULL;
   uint32_t interval_start = 0;
   uint32_t interval_end = BGPSTREAM_FOREVER;
-  unsigned long t;
   int rib_period = 0;
   int live = 0;
   int output_info = 0;
@@ -443,22 +443,24 @@ int main(int argc, char *argv[])
       break;
 
     case 'w':
-      errno = 0;
-      t = strtoul(optarg, &endp, 10); // may set errno
-      if (t > UINT32_MAX) errno = ERANGE;
-      interval_start = (uint32_t)t;
-      if (*endp == '\0') {
-        interval_end = BGPSTREAM_FOREVER;
-      } else if (*endp == ',') {
-        t = strtoul(endp+1, &endp, 10); // may set errno
-        if (t > UINT32_MAX) errno = ERANGE;
-        interval_end = (uint32_t)t;
+    {
+      char *end;
+      end = bgpstream_parse_time(optarg, &interval_start);
+      char *label = "start";
+      if (end) {
+        if (*end == '\0') {
+          interval_end = BGPSTREAM_FOREVER;
+        } else if (*end == ',') {
+          end = bgpstream_parse_time(end+1, &interval_end);
+          label = "end";
+        }
       }
-      if (errno || *endp != '\0') {
-        fprintf(stderr, "ERROR: bad time window '%s'\n", optarg);
+      if (end == NULL || *end != '\0') {
+        fprintf(stderr, "ERROR: bad %s time in '%s'\n", label, optarg);
         goto done;
       }
       break;
+    }
     case 'P':
       rib_period = atoi(optarg);
       break;
