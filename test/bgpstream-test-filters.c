@@ -50,6 +50,9 @@ static const char *expected_results[] = {
   "U|A|1427846874.000000|routeviews|route-views.jinx|||37105|196.223.14.46|154.73.139.0/24|196.223.14.84|37105 37549|37549|37105:300||",
   NULL};
 
+static const char *mangled_expected_results =
+  "|A|1427846874.000000|routeviews|route-views.jinx|||37105||154.73.139.0/203|196.223.14.84|37105 37549|37549|37105:300||";
+
 #define SETUP                                                                  \
   do {                                                                         \
     bs = bgpstream_create();                                                   \
@@ -87,6 +90,16 @@ static void process_records()
         CHECK_SNPRINTF("elem equality",
           expected_results[counter], 65536, CHAR_P,
           bgpstream_record_elem_snprintf(cs_buf, cs_len, rec, elem));
+
+        // try mangling some values in the last elem to see if printer breaks
+        if (!expected_results[counter+1]) {
+          rec->type = 201;
+          elem->peer_ip.version = 202;
+          elem->prefix.mask_len = 203;
+          CHECK_SNPRINTF("mangled elem equality",
+            mangled_expected_results, 65536, CHAR_P,
+            bgpstream_record_elem_snprintf(cs_buf, cs_len, rec, elem));
+        }
 
         counter++;
       }
