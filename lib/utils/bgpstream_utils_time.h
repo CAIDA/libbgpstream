@@ -34,4 +34,5 @@
 int bgpstream_time_calc_recent_interval(uint32_t *start, uint32_t *end,
                                         const char *optval);
 
+char *bgpstream_parse_time(const char *s, uint32_t *t);
 #endif
