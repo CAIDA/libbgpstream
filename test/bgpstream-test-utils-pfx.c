@@ -37,7 +37,6 @@
 #include <unistd.h>
 
 #define BUFFER_LEN 1024
-static char buffer[BUFFER_LEN];
 
 #define IPV4_TEST_PFX_A "192.0.43.0/24"
 #define IPV4_TEST_PFX_B "130.217.0.0/16"
@@ -56,9 +55,8 @@ static int test_prefixes_ipv4()
         bgpstream_str2pfx(IPV4_TEST_PFX_A, &a) != NULL);
 
   /* convert prefix to string */
-  bgpstream_pfx_snprintf(buffer, BUFFER_LEN, &a);
-  CHECK("IPv4 prefix to string",
-        strncmp(IPV4_TEST_PFX_A, buffer, BUFFER_LEN) == 0);
+  CHECK_SNPRINTF("IPv4 prefix to string", IPV4_TEST_PFX_A, BUFFER_LEN,
+    CHAR_P, bgpstream_pfx_snprintf(cs_buf, cs_len, &a));
 
   /* STORAGE CHECKS */
 
@@ -117,9 +115,8 @@ static int test_prefixes_ipv6()
         bgpstream_str2pfx(IPV6_TEST_PFX_A, &a) != NULL);
 
   /* convert prefix to string */
-  bgpstream_pfx_snprintf(buffer, BUFFER_LEN, &a);
-  CHECK("IPv6 prefix to string",
-        strncmp(IPV6_TEST_PFX_A, buffer, BUFFER_LEN) == 0);
+  CHECK_SNPRINTF("IPv6 prefix to string", IPV6_TEST_PFX_A, BUFFER_LEN,
+    CHAR_P, bgpstream_pfx_snprintf(cs_buf, cs_len, &a));
 
   /* STORAGE CHECKS */
 

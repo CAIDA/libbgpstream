@@ -40,21 +40,20 @@
 
 char *bgpstream_pfx_snprintf(char *buf, size_t len, const bgpstream_pfx_t *pfx)
 {
-  char *p = buf;
-
   /* print the address */
   if (bgpstream_addr_ntop(buf, len, &(pfx->address)) == NULL) {
     return NULL;
   }
 
-  while (*p != '\0') {
-    p++;
-    len--;
+  size_t written = strlen(buf);
+
+  /* print the mask length */
+  written += snprintf(buf + written, len - written, "/%" PRIu8, pfx->mask_len);
+
+  if (written >= len) {
+    errno = ENOSPC;
+    return NULL;
   }
-
-  /* print the mask */
-  snprintf(p, len, "/%" PRIu8, pfx->mask_len);
-
   return buf;
 }
 
