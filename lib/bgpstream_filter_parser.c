@@ -70,6 +70,8 @@ static const char *bgpstream_filter_type_to_string(bgpstream_filter_type_t type)
     return "Prefix (old format)";
   case BGPSTREAM_FILTER_TYPE_ELEM_TYPE:
     return "Element Type";
+  case BGPSTREAM_FILTER_TYPE_RESOURCE_TYPE:
+    return "Resource Type";
   }
 
   return "Unknown filter term ??";
@@ -94,6 +96,7 @@ static int instantiate_filter(bgpstream_t *bs, bgpstream_filter_item_t *item)
   case BGPSTREAM_FILTER_TYPE_ELEM_ASPATH:
   case BGPSTREAM_FILTER_TYPE_ELEM_IP_VERSION:
   case BGPSTREAM_FILTER_TYPE_ELEM_TYPE:
+  case BGPSTREAM_FILTER_TYPE_RESOURCE_TYPE:
     bgpstream_log(BGPSTREAM_LOG_FINE, "Adding filter: %s '%s'",
         bgpstream_filter_type_to_string(item->termtype), item->value);
     if (!bgpstream_add_filter(bs, usetype, item->value))
@@ -119,6 +122,7 @@ static int instantiate_filter(bgpstream_t *bs, bgpstream_filter_item_t *item)
   X(1,  "collector",    "coll", COLLECTOR,               VALUE) \
   X(1,  "router",       "rout", ROUTER,                  VALUE) \
   X(1,  "type",         NULL,   RECORD_TYPE,             VALUE) \
+  X(1,  "resourcetype", "restype", RESOURCE_TYPE,        VALUE)  \
   X(1,  "peer",         NULL,   ELEM_PEER_ASN,           VALUE) \
   X(1,  "origin",       "orig", ELEM_ORIGIN_ASN,         VALUE)     \
   X(1,  "prefix",       "pref", ELEM_PREFIX_MORE,        PREFIXEXT) \

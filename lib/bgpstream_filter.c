@@ -311,6 +311,16 @@ int bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *this,
     }
     return bsf_str_set_insert(&this->bgp_types, filter_value);
 
+  case BGPSTREAM_FILTER_TYPE_RESOURCE_TYPE:
+    if (strcmp(filter_value, "stream") != 0 &&
+        strcmp(filter_value, "batch") != 0) {
+      bgpstream_log(
+        BGPSTREAM_LOG_ERR,
+        "resource-type filter must be one of \"stream\" or \"batch\"");
+      return 0;
+    }
+    return bsf_str_set_insert(&this->res_types, filter_value);
+
   default:
     bgpstream_log(BGPSTREAM_LOG_ERR, "unknown filter %d", filter_type);
     return 0;
@@ -397,6 +407,10 @@ void bgpstream_filter_mgr_destroy(bgpstream_filter_mgr_t *this)
   // bgp_types
   if (this->bgp_types != NULL) {
     bgpstream_str_set_destroy(this->bgp_types);
+  }
+  // res_types
+  if (this->res_types != NULL) {
+    bgpstream_str_set_destroy(this->res_types);
   }
   // peer asns
   if (this->peer_asns != NULL) {

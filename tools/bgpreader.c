@@ -114,6 +114,9 @@ static struct bs_options_t bs_opts[] =
   {{"record-type", required_argument, 0, 't'},
    "<type>",
    "process records with only the given type (ribs, updates)*"},
+  {{"resource-type", required_argument, 0, 'T'},
+   "<resource-type>",
+   "process records from only the given resource type (stream, batch)*"},
   {{"time-window", required_argument, 0, 'w'},
    "<start>[,<end>]",
    "process records within the given time window.  <start> and <end> may be in "
@@ -429,6 +432,8 @@ int main(int argc, char *argv[])
     PARSE_FILTER_OPTION('A', BGPSTREAM_FILTER_TYPE_ELEM_ASPATH)
       break;
     PARSE_FILTER_OPTION('t', BGPSTREAM_FILTER_TYPE_RECORD_TYPE)
+      break;
+    PARSE_FILTER_OPTION('T', BGPSTREAM_FILTER_TYPE_RESOURCE_TYPE)
       break;
 
     case 'o':
