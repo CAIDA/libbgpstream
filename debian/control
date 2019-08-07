@@ -1,0 +1,50 @@
+Source: libbgpstream2
+Section: libs
+Priority: optional
+Maintainer: BGPStream <bgpstream-info@caida.org>
+Build-Depends: debhelper (>= 10), autotools-dev,
+ libwandio1 (>=4.2.0), librdkafka1 (>=0.11.3),
+ zlib1g-dev, libbz2-dev, libcurl4-openssl-dev
+Standards-Version: 4.1.2
+Homepage: https://bgpstream.caida.org
+
+Package: bgpstream
+Architecture: any
+Section: libdevel
+Depends: bgpstream2-tools (=${binary:Version}), libbgpstream2-dev (=${binary:Version}),
+ ${shlibs:Depends}, ${misc:Depends}
+Description: meta package for full libbgpstream2 tools and development environment
+ This package contains all libbgpstream2's library, development environment, and tools.
+ .
+ BGPStream: An open-source software framework for live and historical BGP data analysis,
+ supporting scientific research, operational monitoring, and post-event analysis.
+
+Package: bgpstream2-tools
+Architecture: any
+Section: libs
+Depends: libwandio1 (>=4.2.0), libbgpstream2 (=${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Description: example tools for libbgpstream2 library
+ This package contains some example tools that uses libbgpstream2 library.
+ .
+ BGPStream: An open-source software framework for live and historical BGP data analysis,
+ supporting scientific research, operational monitoring, and post-event analysis.
+
+Package: libbgpstream2
+Architecture: any
+Section: libs
+Depends: libwandio1 (>=4.2.0), ${shlibs:Depends}, ${misc:Depends}
+Description: software framework for live and historical BGP data analysis
+ This package contains the libbgpstream2 library.
+ .
+ BGPStream: An open-source software framework for live and historical BGP data analysis,
+ supporting scientific research, operational monitoring, and post-event analysis.
+
+Package: libbgpstream2-dev
+Architecture: any
+Section: libdevel
+Depends: libbgpstream2 (=${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Description: development environment for libbgpstream2
+ This package contains development headers and shared libraries for the libbgpstream2 library.
+ .
+ BGPStream: An open-source software framework for live and historical BGP data analysis,
+ supporting scientific research, operational monitoring, and post-event analysis.
