@@ -128,6 +128,9 @@ typedef enum {
   /** Filter elems based on the element type, e.g. withdrawals, announcements */
   BGPSTREAM_FILTER_TYPE_ELEM_TYPE,
 
+  /** Filter records based on resource type (i.e., 'stream', or 'batch') */
+  BGPSTREAM_FILTER_TYPE_RESOURCE_TYPE,
+
 } bgpstream_filter_type_t;
 
 /** Data Interface IDs */

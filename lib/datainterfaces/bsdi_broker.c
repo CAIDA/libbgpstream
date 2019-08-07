@@ -651,8 +651,8 @@ static int update_query_url(bsdi_t *di)
   // http://bgpstream.caida.org/broker/data?
   APPEND_STR("/data");
 
-  // projects, collectors, bgp_types, and time_interval are used as filters
-  // only if they are provided by the user
+  // projects, collectors, bgp_types, res_types, and time_interval are
+  // used as filters only if they are provided by the user
 
   // projects
   char *f;
@@ -702,6 +702,15 @@ static int update_query_url(bsdi_t *di)
     while ((f = bgpstream_str_set_next(filter_mgr->bgp_types)) != NULL) {
       AMPORQ;
       APPEND_STR("types[]=");
+      APPEND_STR(f);
+    }
+  }
+  // res_types
+  if (filter_mgr->res_types != NULL) {
+    bgpstream_str_set_rewind(filter_mgr->res_types);
+    while ((f = bgpstream_str_set_next(filter_mgr->res_types)) != NULL) {
+      AMPORQ;
+      APPEND_STR("resourceTypes[]=");
       APPEND_STR(f);
     }
   }

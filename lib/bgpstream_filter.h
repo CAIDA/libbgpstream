@@ -68,6 +68,7 @@ typedef struct struct_bgpstream_filter_mgr_t {
   bgpstream_str_set_t *collectors;
   bgpstream_str_set_t *routers;
   bgpstream_str_set_t *bgp_types;
+  bgpstream_str_set_t *res_types;
   bgpstream_aspath_expr_t *aspath_exprs;
   int aspath_expr_cnt;
   int aspath_expr_alloc_cnt;
