@@ -292,7 +292,7 @@ static void dump_if_options()
 
 static void usage()
 {
-  fprintf(stderr, "usage: bgpreader -w <start>[,<end>] [<options>]\n"
+  fprintf(stderr, "Usage: bgpreader [<options>]\n"
                   "Available options are:\n");
   for (unsigned k = 0; k < OPTIONS_CNT; k++) {
     // short option
@@ -606,6 +606,13 @@ int main(int argc, char *argv[])
   if (error_cnt > 0)
     goto done;
 
+  // if the user didn't specify any arguments, or gave extra args,
+  // then give them the help output
+  if (argc == 1 || argc != optind) {
+    usage();
+    goto done;
+  }
+
   if (interval_start == 0 && !intervalstring) {
     if (di_id == BGPSTREAM_DATA_INTERFACE_BROKER) {
       fprintf(stderr, "WARN: No time window specified, defaulting to live mode\n");
@@ -615,7 +622,6 @@ int main(int argc, char *argv[])
                 interval_start, interval_end);
         goto done;
       }
-
     } else {
       fprintf(stderr, "WARN: No time window specified, defaulting to all "
                       "available data\n");
