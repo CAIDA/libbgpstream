@@ -65,10 +65,12 @@ typedef enum {
 /** Maximum number of IP versions */
 #define BGPSTREAM_MAX_IP_VERSION_IDX 2
 
-#define BS_ADDR4_OFFSET \
-  offsetof(struct {bgpstream_addr_version_t v; struct in_addr a4;}, a4)
-#define BS_ADDR6_OFFSET \
-  offsetof(struct {bgpstream_addr_version_t v; struct in6_addr a6;}, a6)
+struct bs_addr4_offset {bgpstream_addr_version_t v; struct in_addr a4;};
+#define BS_ADDR4_OFFSET offsetof(struct bs_addr4_offset, a4)
+
+struct bs_addr6_offset {bgpstream_addr_version_t v; struct in6_addr a6;};
+#define BS_ADDR6_OFFSET offsetof(struct bs_addr6_offset, a6)
+
 #define BS_ADDR_OFFSET \
   ((BS_ADDR4_OFFSET > BS_ADDR6_OFFSET) ? BS_ADDR4_OFFSET : BS_ADDR6_OFFSET)
 
