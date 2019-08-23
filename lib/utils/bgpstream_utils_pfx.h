@@ -53,8 +53,8 @@
  *
  * @{ */
 
-#define BS_PFX_OFFSET \
-  offsetof(struct {uint8_t l; uint8_t m; bgpstream_ip_addr_t a;}, a)
+struct bs_pfx_offset {uint8_t l; uint8_t m; bgpstream_ip_addr_t a;};
+#define BS_PFX_OFFSET offsetof(struct bs_pfx_offset, a)
 
 /** An IPv4 BGP Stream Prefix */
 typedef struct struct_bgpstream_ipv4_pfx_t {
