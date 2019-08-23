@@ -202,16 +202,18 @@ bgpstream_patricia_node_create(bgpstream_patricia_tree_t *pt,
   return node;
 }
 
-static bgpstream_patricia_node_t *bgpstream_patricia_gluenode_create()
+static bgpstream_patricia_node_t *bgpstream_patricia_gluenode_create(
+  bgpstream_pfx_t *pfx, uint8_t bit)
 {
   bgpstream_patricia_node_t *node;
 
   if ((node = malloc_zero(sizeof(bgpstream_patricia_node_t))) == NULL) {
     return NULL;
   }
+  bgpstream_pfx_copy(&node->prefix, pfx);
   node->prefix.address.version = BGPSTREAM_ADDR_VERSION_UNKNOWN;
   node->parent = NULL;
-  node->bit = 0;
+  node->bit = bit;
   node->l = NULL;
   node->r = NULL;
   return node;
@@ -735,9 +737,9 @@ bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
     /* Insert the new node in the Patricia Tree: CREATE A GLUE NODE AND APPEND
      * TO IT*/
 
-    bgpstream_patricia_node_t *glue_node = bgpstream_patricia_gluenode_create();
+    bgpstream_patricia_node_t *glue_node =
+      bgpstream_patricia_gluenode_create(pfx, differ_bit);
 
-    glue_node->bit = differ_bit;
     glue_node->parent = node_it->parent;
 
     const unsigned char *paddr = bgpstream_pfx_get_first_byte(pfx);
