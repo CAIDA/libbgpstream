@@ -144,6 +144,21 @@ static int test_patricia()
   bgpstream_patricia_tree_destroy(pt);
   bgpstream_patricia_tree_result_set_destroy(&res);
 
+  // This sequence of inserts caused an assertion failure in @6959441
+  const char *pfxs[] = {
+    "1.0.0.0/24",
+    "1.0.4.0/22",
+    "1.0.64.0/18",
+    "1.0.128.0/24",
+    "1.0.129.0/24",
+    "1.0.132.0/22",
+    NULL
+  };
+  pt = bgpstream_patricia_tree_create(NULL);
+  for (int i = 0; pfxs[i]; i++){
+    INSERT(4, pfxs[i], i+1);
+  }
+
   return 0;
 }
 
