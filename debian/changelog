@@ -1,5 +1,6 @@
-libbgpstream2 (2.0.0) unstable; urgency=medium
+libbgpstream2 (2.0.0~rc1) unstable; urgency=medium
 
-  * Initial release
+  * This is the first release candidate for libbgpstream version 2.0.0
 
- -- BGPStream <bgpstream-info@caida.org>  Tue, 23 Jul 2019 20:14:22 +0000
+ -- Alistair King <bgpstream-info@caida.org>  Mon, 26 Aug 2019 10:36:01 -0700
+
