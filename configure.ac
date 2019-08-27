@@ -184,10 +184,8 @@ AC_MSG_RESULT([$with_kafka])
 AM_CONDITIONAL([WITH_KAFKA], [test "x$with_kafka" != xno])
 
 if test x"$with_kafka" = xyes; then
-   AC_CHECK_LIB([rdkafka], [rd_kafka_query_watermark_offsets], ,
-               [AC_MSG_ERROR(
-                 [librdkafka is required for kafka support (--without-kafka to disable)])])
-
+   # kafka support is requested, check for dependencies
+   CHECK_LIBRDKAFA_VERSION([0.11.0], [0x000b00ff])
    AC_DEFINE([WITH_KAFKA],[1],[Building kafka support])
 fi
 
