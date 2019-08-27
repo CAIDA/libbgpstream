@@ -205,7 +205,7 @@ bgpstream_patricia_node_create(bgpstream_patricia_tree_t *pt,
 }
 
 static bgpstream_patricia_node_t *bgpstream_patricia_gluenode_create(
-  bgpstream_pfx_t *pfx, uint8_t mask_len)
+  const bgpstream_pfx_t *pfx, uint8_t mask_len)
 {
   bgpstream_patricia_node_t *node;
 
