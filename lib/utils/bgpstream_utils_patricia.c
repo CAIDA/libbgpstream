@@ -212,7 +212,8 @@ static bgpstream_patricia_node_t *bgpstream_patricia_gluenode_create(
   if ((node = malloc_zero(sizeof(bgpstream_patricia_node_t))) == NULL) {
     return NULL;
   }
-  bgpstream_pfx_copy(&node->prefix, pfx);
+  bgpstream_addr_copy(&node->prefix.address, &pfx->address);
+  bgpstream_addr_mask(&node->prefix.address, mask_len);
   node->prefix.mask_len = mask_len;
   node->parent = NULL;
   node->actual = 0;

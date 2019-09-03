@@ -69,6 +69,16 @@ static int test_patricia()
 #define BPT_get_mincovering_pfx  bgpstream_patricia_tree_get_mincovering_prefix
 #define BPT_pfx_count            bgpstream_patricia_prefix_count
 
+#define INSERT(ipv, str, count) \
+  do { \
+    char namebuf[1024]; \
+    snprintf(namebuf, sizeof(namebuf), "Insert into Patricia Tree v%d: %s", \
+      ipv, str); \
+    CHECK(namebuf, \
+      BPT_insert(pt, s2p(str)) && \
+      BPT_pfx_count(pt, BGPSTREAM_ADDR_VERSION_IPV##ipv) == count); \
+  } while (0)
+
   /* Create a Patricia Tree */
   CHECK("Create Patricia Tree",
         (pt = bgpstream_patricia_tree_create(NULL)) != NULL);
@@ -78,11 +88,6 @@ static int test_patricia()
         (res = bgpstream_patricia_tree_result_set_create()) != NULL);
 
   /* Insert into Patricia Tree */
-
-#define INSERT(ipv, str, count) \
-  CHECK("Insert into Patricia Tree v" #ipv, \
-    BPT_insert(pt, s2p(str)) && \
-    BPT_pfx_count(pt, BGPSTREAM_ADDR_VERSION_IPV##ipv) == count)
 
   INSERT(4, IPV4_TEST_PFX_A,       ++count4);
   INSERT(4, IPV4_TEST_PFX_B,       ++count4);
@@ -151,13 +156,17 @@ static int test_patricia()
     "1.0.64.0/18",
     "1.0.128.0/24",
     "1.0.129.0/24",
-    "1.0.132.0/22",
+    "1.0.132.0/22", // failed assert
+    "2.158.48.15/21",
+    "2.158.57.0/24",
+    "2.158.48.0/20", // different failed assert
     NULL
   };
   pt = bgpstream_patricia_tree_create(NULL);
   for (int i = 0; pfxs[i]; i++){
     INSERT(4, pfxs[i], i+1);
   }
+  bgpstream_patricia_tree_destroy(pt);
 
   return 0;
 }
