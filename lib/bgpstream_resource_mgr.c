@@ -53,9 +53,9 @@ struct res_list_elem {
   /** Is the reader open? (i.e. have we waited for it to open) */
   int open;
 
-  /** Time when this resource should next be polled (if 0 then poll
+  /** Time in ms when this resource should next be polled (if 0 then poll
       immediately) */
-  uint32_t next_poll;
+  uint64_t next_poll;
 
   /** Previous list elem */
   struct res_list_elem *prev;
@@ -651,7 +651,7 @@ static bgpstream_reader_status_t pop_record(bgpstream_resource_mgr_t *q,
   bgpstream_reader_status_t rs;
   struct res_list_elem *el = NULL;
   struct res_group *gp = NULL;
-  uint32_t now;
+  uint64_t now;
   uint64_t sleep_nsec;
   struct timespec rqtp;
 
