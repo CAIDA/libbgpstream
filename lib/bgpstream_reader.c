@@ -93,6 +93,11 @@ static int prefetch_record(bgpstream_reader_t *reader)
   // try and get the next entry from the resource (will do filtering)
   reader->status = bgpstream_format_populate_record(reader->format, record);
 
+  // exit with error in case of read error
+  if (reader->status == BGPSTREAM_FORMAT_READ_ERROR) {
+    return -1;
+  }
+
   // if we got any of the non-error END_OF_DUMP messages but this is a stream
   // resource, then pretend we're ok.  but beware that now we'll be "OK", with
   // an unfilled prefetch record
