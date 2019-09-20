@@ -342,7 +342,7 @@ int bsdi_sqlite_update_resources(bsdi_t *di)
     const char *proj = (const char *)sqlite3_column_text(STATE->stmt, 1);
     const char *coll = (const char *)sqlite3_column_text(STATE->stmt, 2);
     const char *type_str = (const char *)sqlite3_column_text(STATE->stmt, 3);
-    bgpstream_record_dump_type_t type;
+    bgpstream_record_type_t type;
     if (strcmp("ribs", type_str) == 0) {
       type = BGPSTREAM_RIB;
     } else if (strcmp("updates", type_str) == 0) {
