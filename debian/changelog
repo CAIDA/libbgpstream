@@ -1,6 +1,12 @@
+libbgpstream2 (2.0.0~rc1-1) unstable; urgency=medium
+
+  * Various fixes and improvements to debian packaging
+
+ -- Alistair King <software@caida.org>  Thu, 03 Oct 2019 14:06:55 -0700
+
 libbgpstream2 (2.0.0~rc1) unstable; urgency=medium
 
   * This is the first release candidate for libbgpstream version 2.0.0
 
- -- Alistair King <bgpstream-info@caida.org>  Mon, 26 Aug 2019 10:36:01 -0700
+ -- Alistair King <software@caida.org>  Mon, 26 Aug 2019 10:36:01 -0700
 
