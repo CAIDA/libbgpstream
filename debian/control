@@ -35,7 +35,7 @@ Description: example tools for libbgpstream2 library
 Package: libbgpstream2
 Architecture: any
 Section: libs
-Depends: libwandio1 (>=4.2.0), librdkafka1-dev (>=0.11.3), ${shlibs:Depends},
+Depends: libwandio1 (>=4.2.0), librdkafka-dev (>=0.11.3), ${shlibs:Depends},
  ${misc:Depends}
 Description: Software framework for live and historical BGP data analysis
  BGPStream: An open-source software framework for live and historical BGP data
