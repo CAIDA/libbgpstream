@@ -73,7 +73,7 @@ value, but can be specified multiple times in the filter expression.
       Placing a '!' in front of the regular expression will cause the
       result to be negated, i.e. the element will only be streamed
       if the path does NOT match the regular expression. For example,
-      "!$681_" will stream all paths that do not begin with AS681.
+      "!^681_" will stream all paths that do not begin with AS681.
 
 Examples
 ========
