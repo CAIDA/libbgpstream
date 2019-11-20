@@ -239,6 +239,7 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
   unsigned long initial_time = 0;
   int initial_time_set = 0;
   unsigned long duration = 0;
+  unsigned long version = 0;
   int duration_set = 0;
   char *kafka_topic = NULL;
   size_t topic_len = 0;
@@ -265,7 +266,16 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
                     t->end - t->start, js + t->start);
       goto err;
     }
-    if (jsmn_streq(js, t, "time") == 1) {
+    if (jsmn_streq(js, t, "version") == 1) {
+      NEXT_TOK;
+      jsmn_strtoul(&version, js, t);
+      if(version != BGPSTREAM_MAJOR_VERSION){
+        bgpstream_log(BGPSTREAM_LOG_ERR, "Broker version does not match: libbgpstream=%d broker=%.*s",
+                      BGPSTREAM_MAJOR_VERSION, t->end - t->start, js + t->start);
+        goto err;
+      }
+      NEXT_TOK;
+    } else if (jsmn_streq(js, t, "time") == 1) {
       NEXT_TOK;
       jsmn_type_assert(t, JSMN_PRIMITIVE);
       unsigned long tmp = 0;
