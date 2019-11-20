@@ -123,6 +123,8 @@ BSDI_CREATE_CLASS(
    this) */
 #define URL_BUFLEN 4096
 
+#define BROKER_VERSION 2
+
 typedef struct bsdi_broker_state {
 
   /* user-provided options: */
@@ -269,9 +271,9 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
     if (jsmn_streq(js, t, "version") == 1) {
       NEXT_TOK;
       jsmn_strtoul(&version, js, t);
-      if(version != BGPSTREAM_MAJOR_VERSION){
-        bgpstream_log(BGPSTREAM_LOG_ERR, "Broker version does not match: libbgpstream=%d broker=%.*s",
-                      BGPSTREAM_MAJOR_VERSION, t->end - t->start, js + t->start);
+      if(version != BROKER_VERSION){
+        bgpstream_log(BGPSTREAM_LOG_ERR, "Broker version does not match: wanted=%d received=%.*s",
+                      BROKER_VERSION, t->end - t->start, js + t->start);
         goto err;
       }
       NEXT_TOK;
