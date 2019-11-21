@@ -181,7 +181,7 @@ static int populate_prep_cb(bgpstream_format_t *format, uint8_t *buf,
     while ((len - nread) > 0) {
       if (newln == 2) {
         // this is the first byte of the payload
-        *lenp = nread - 1;
+        *lenp = nread;
         return 0;
       }
       if (*buf == '\n') {
