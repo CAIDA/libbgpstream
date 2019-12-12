@@ -101,7 +101,8 @@ static struct bs_options_t bs_opts[] =
    "<option-name>=<option-value>*",
    "set an option for the current data "
    "interface. Use '-o?' to get a list of available options for the "
-   "current data interface (as selected with -d)"},
+   "current data interface (as selected with -d). "
+   "Each option can only be set once."},
   {{"project", required_argument, 0, 'p'},
    "<project>",
    "process records from only the given project (routeviews, ris)*"},
