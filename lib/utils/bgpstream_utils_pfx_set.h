@@ -71,9 +71,13 @@ bgpstream_pfx_set_t *bgpstream_pfx_set_create(void);
 /** Insert a new prefix into the given set.
  *
  * @param set           pointer to the prefix set
- * @param pfx          prefix to insert in the set
+ * @param pfx           pointer to the prefix to insert in the set
  * @return 1 if the prefix was inserted, 0 if it already existed, -1 if an
  * error occurred
+ *
+ * This function inserts a copy of the prefix (not the pointer).
+ * It is also safe to pass a pointer to a bgpstream_ipv4_pfx_t or
+ * bgpstream_ipv6_pfx_t (cast to bgpstream_pfx_t *) in the pfx parameter.
  */
 int bgpstream_pfx_set_insert(bgpstream_pfx_set_t *set,
                              bgpstream_pfx_t *pfx);
@@ -81,8 +85,11 @@ int bgpstream_pfx_set_insert(bgpstream_pfx_set_t *set,
 /** Check whether a prefix exists in the set
  *
  * @param set           pointer to the prefix set
- * @param pfx          prefix to insert in the set
+ * @param pfx           pointer to the prefix to look up
  * @return 0 if the prefix is not in the set, 1 if it is in the set
+ *
+ * It is also safe to pass a pointer to a bgpstream_ipv4_pfx_t or
+ * bgpstream_ipv6_pfx_t (cast to bgpstream_pfx_t *) in the pfx parameter.
  */
 int bgpstream_pfx_set_exists(bgpstream_pfx_set_t *set,
                              bgpstream_pfx_t *pfx);
@@ -135,11 +142,11 @@ bgpstream_ipv4_pfx_set_t *bgpstream_ipv4_pfx_set_create(void);
 /** Insert a new prefix into the given set.
  *
  * @param set           pointer to the prefix set
- * @param pfx          prefix to insert in the set
+ * @param pfx           pointer to the prefix to insert in the set
  * @return 1 if the prefix was inserted, 0 if it already existed, -1 if an
  * error occurred
  *
- * This function takes a copy of the prefix before it is inserted in the set.
+ * This function inserts a copy of the prefix (not the pointer).
  */
 int bgpstream_ipv4_pfx_set_insert(bgpstream_ipv4_pfx_set_t *set,
                                   bgpstream_ipv4_pfx_t *pfx);
@@ -147,7 +154,7 @@ int bgpstream_ipv4_pfx_set_insert(bgpstream_ipv4_pfx_set_t *set,
 /** Check whether a prefix exists in the set
  *
  * @param set           pointer to the prefix set
- * @param pfx          prefix to insert in the set
+ * @param pfx           pointer to the prefix to look up
  * @return 0 if the prefix is not in the set, 1 if it is in the set
  */
 int bgpstream_ipv4_pfx_set_exists(bgpstream_ipv4_pfx_set_t *set,
@@ -190,9 +197,11 @@ bgpstream_ipv6_pfx_set_t *bgpstream_ipv6_pfx_set_create(void);
 /** Insert a new prefix into the given set.
  *
  * @param set           pointer to the prefix set
- * @param pfx          prefix to insert in the set
+ * @param pfx           pointer to the prefix to insert in the set
  * @return 1 if the prefix was inserted, 0 if it already existed, -1 if an
  * error occurred
+ *
+ * This function inserts a copy of the prefix (not the pointer).
  */
 int bgpstream_ipv6_pfx_set_insert(bgpstream_ipv6_pfx_set_t *set,
                                   bgpstream_ipv6_pfx_t *pfx);
@@ -200,7 +209,7 @@ int bgpstream_ipv6_pfx_set_insert(bgpstream_ipv6_pfx_set_t *set,
 /** Check whether a prefix exists in the set
  *
  * @param set           pointer to the prefix set
- * @param pfx          prefix to insert in the set
+ * @param pfx           pointer to the prefix to look up
  * @return 0 if the prefix is not in the set, 1 if it is in the set
  */
 int bgpstream_ipv6_pfx_set_exists(bgpstream_ipv6_pfx_set_t *set,
