@@ -47,8 +47,10 @@ static int test_prefixes_ipv4()
   bgpstream_pfx_t a;
   bgpstream_pfx_t b;
 
-  bgpstream_ipv4_pfx_t a4;
-  bgpstream_ipv4_pfx_t b4;
+  // using heap instead of stack can reveal certain types of memory access
+  // errors, especially when run under valgrind
+  bgpstream_ipv4_pfx_t *a4 = malloc(sizeof(bgpstream_ipv4_pfx_t));
+  bgpstream_ipv4_pfx_t *b4 = malloc(sizeof(bgpstream_ipv4_pfx_t));
 
   /* build a prefix from a string */
   CHECK("IPv4 prefix from string",
@@ -65,33 +67,53 @@ static int test_prefixes_ipv4()
 
   /* check generic equal */
   CHECK("IPv4 prefix generic-equals",
-    bgpstream_pfx_equal(&a, &b) == 0 && bgpstream_pfx_equal(&a, &a) != 0);
+    !bgpstream_pfx_equal(&a, &b) && bgpstream_pfx_equal(&a, &a));
 
   /* IPV4-SPECIFIC CHECKS */
 
   /* populate ipv4 a */
-  bgpstream_str2pfx(IPV4_TEST_PFX_A, (bgpstream_pfx_t *)&a4);
+  bgpstream_str2pfx(IPV4_TEST_PFX_A, (bgpstream_pfx_t *)a4);
   /* populate ipv4 b */
-  bgpstream_str2pfx(IPV4_TEST_PFX_B, (bgpstream_pfx_t *)&b4);
+  bgpstream_str2pfx(IPV4_TEST_PFX_B, (bgpstream_pfx_t *)b4);
 
   /* check generic equal */
   CHECK(
     "IPv4 prefix generic-equals (cast from ipv4)",
-    bgpstream_pfx_equal((bgpstream_pfx_t *)&a4, (bgpstream_pfx_t *)&b4) == 0 &&
-      bgpstream_pfx_equal((bgpstream_pfx_t *)&a4, (bgpstream_pfx_t *)&a4) != 0);
+    !bgpstream_pfx_equal((bgpstream_pfx_t *)a4, (bgpstream_pfx_t *)b4) &&
+      bgpstream_pfx_equal((bgpstream_pfx_t *)a4, (bgpstream_pfx_t *)a4));
 
   /* check ipv4 equal */
   CHECK("IPv4 prefix ipv4-equals (ipv4)",
-        bgpstream_ipv4_pfx_equal(&a4, &b4) == 0 &&
-          bgpstream_ipv4_pfx_equal(&a4, &a4) != 0);
+        !bgpstream_ipv4_pfx_equal(a4, b4) &&
+          bgpstream_ipv4_pfx_equal(a4, a4));
 
   /* prefix contains (i.e. more specifics) */
   bgpstream_str2pfx(IPV4_TEST_PFX_B, &a);
   bgpstream_str2pfx(IPV4_TEST_PFX_B_CHILD, &b);
   /* b is a child of a BUT a is NOT a child of b */
   CHECK("IPv4 prefix contains",
-    bgpstream_pfx_contains(&a, &b) != 0 && bgpstream_pfx_contains(&b, &a) == 0);
+    bgpstream_pfx_contains(&a, &b) && !bgpstream_pfx_contains(&b, &a));
 
+  /* prefix set checks */
+  bgpstream_pfx_set_t *set = bgpstream_pfx_set_create();
+  CHECK("IPv4 pfx_set_insert",
+      bgpstream_pfx_set_insert(set, (bgpstream_pfx_t*)a4) == 1);
+  CHECK("IPv4 pfx_set_exists",
+      bgpstream_pfx_set_exists(set, (bgpstream_pfx_t*)a4) &&
+      !bgpstream_pfx_set_exists(set, (bgpstream_pfx_t*)b4));
+  CHECK("IPv4 pfx_set_insert",
+      bgpstream_pfx_set_insert(set, (bgpstream_pfx_t*)b4) == 1);
+  CHECK("IPv4 pfx_set_exists",
+      bgpstream_pfx_set_exists(set, (bgpstream_pfx_t*)a4) &&
+      bgpstream_pfx_set_exists(set, (bgpstream_pfx_t*)b4));
+  CHECK("IPv4 pfx_set_insert dup",
+      bgpstream_pfx_set_insert(set, (bgpstream_pfx_t*)a4) == 0);
+  CHECK("IPv4 pfx_set_version_size",
+      bgpstream_pfx_set_version_size(set, BGPSTREAM_ADDR_VERSION_IPV4) == 2);
+  bgpstream_pfx_set_destroy(set);
+
+  free(a4);
+  free(b4);
   return 0;
 }
 
@@ -107,8 +129,10 @@ static int test_prefixes_ipv6()
   bgpstream_pfx_t b;
   bgpstream_pfx_t b_child;
 
-  bgpstream_ipv6_pfx_t a6;
-  bgpstream_ipv6_pfx_t b6;
+  // using heap instead of stack can reveal certain types of memory access
+  // errors, especially when run under valgrind
+  bgpstream_ipv6_pfx_t *a6 = malloc(sizeof(bgpstream_ipv6_pfx_t));
+  bgpstream_ipv6_pfx_t *b6 = malloc(sizeof(bgpstream_ipv6_pfx_t));
 
   /* build a prefix from a string */
   CHECK("IPv6 prefix from string",
@@ -125,25 +149,25 @@ static int test_prefixes_ipv6()
 
   /* check generic equal */
   CHECK("IPv6 prefix generic-equals",
-    bgpstream_pfx_equal(&a, &b) == 0 && bgpstream_pfx_equal(&a, &a) != 0);
+    !bgpstream_pfx_equal(&a, &b) && bgpstream_pfx_equal(&a, &a));
 
   /* IPV6-SPECIFIC CHECKS */
 
   /* populate ipv6 a */
-  bgpstream_str2pfx(IPV6_TEST_PFX_A, (bgpstream_pfx_t *)&a6);
+  bgpstream_str2pfx(IPV6_TEST_PFX_A, (bgpstream_pfx_t *)a6);
   /* populate ipv6 b */
-  bgpstream_str2pfx(IPV6_TEST_PFX_B, (bgpstream_pfx_t *)&b6);
+  bgpstream_str2pfx(IPV6_TEST_PFX_B, (bgpstream_pfx_t *)b6);
 
   /* check generic equal */
   CHECK(
     "IPv6 prefix generic-equals (cast from ipv6)",
-    bgpstream_pfx_equal((bgpstream_pfx_t *)&a6, (bgpstream_pfx_t *)&b6) == 0 &&
-      bgpstream_pfx_equal((bgpstream_pfx_t *)&a6, (bgpstream_pfx_t *)&a6) != 0);
+    !bgpstream_pfx_equal((bgpstream_pfx_t *)a6, (bgpstream_pfx_t *)b6) &&
+      bgpstream_pfx_equal((bgpstream_pfx_t *)a6, (bgpstream_pfx_t *)a6));
 
   /* check ipv6 equal */
   CHECK("IPv6 prefix ipv6-equals (ipv6)",
-        bgpstream_ipv6_pfx_equal(&a6, &b6) == 0 &&
-          bgpstream_ipv6_pfx_equal(&a6, &a6) != 0);
+        !bgpstream_ipv6_pfx_equal(a6, b6) &&
+          bgpstream_ipv6_pfx_equal(a6, a6));
 
   /* prefix contains (i.e. more specifics) */
   bgpstream_str2pfx(IPV6_TEST_PFX_A, &a);
@@ -152,10 +176,31 @@ static int test_prefixes_ipv6()
   bgpstream_str2pfx(IPV6_TEST_PFX_B_CHILD, &b_child);
   /* b is a child of a BUT a is NOT a child of b */
   CHECK("IPv6 prefix contains",
-        bgpstream_pfx_contains(&a, &a_child) != 0 &&
-          bgpstream_pfx_contains(&a_child, &a) == 0 &&
-          bgpstream_pfx_contains(&b, &b_child) != 0 &&
-          bgpstream_pfx_contains(&b_child, &b) == 0);
+        bgpstream_pfx_contains(&a, &a_child) &&
+        !bgpstream_pfx_contains(&a_child, &a) &&
+        bgpstream_pfx_contains(&b, &b_child) &&
+        !bgpstream_pfx_contains(&b_child, &b));
+
+  /* prefix set checks */
+  bgpstream_pfx_set_t *set = bgpstream_pfx_set_create();
+  CHECK("IPv6 pfx_set_insert",
+      bgpstream_pfx_set_insert(set, (bgpstream_pfx_t*)a6) == 1);
+  CHECK("IPv6 pfx_set_exists",
+      bgpstream_pfx_set_exists(set, (bgpstream_pfx_t*)a6) &&
+      !bgpstream_pfx_set_exists(set, (bgpstream_pfx_t*)b6));
+  CHECK("IPv6 pfx_set_insert",
+      bgpstream_pfx_set_insert(set, (bgpstream_pfx_t*)b6) == 1);
+  CHECK("IPv6 pfx_set_exists",
+      bgpstream_pfx_set_exists(set, (bgpstream_pfx_t*)a6) &&
+      bgpstream_pfx_set_exists(set, (bgpstream_pfx_t*)b6));
+  CHECK("IPv6 pfx_set_insert dup",
+      bgpstream_pfx_set_insert(set, (bgpstream_pfx_t*)a6) == 0);
+  CHECK("IPv6 pfx_set_version_size",
+      bgpstream_pfx_set_version_size(set, BGPSTREAM_ADDR_VERSION_IPV6) == 2);
+  bgpstream_pfx_set_destroy(set);
+
+  free(a6);
+  free(b6);
 
   return 0;
 }
