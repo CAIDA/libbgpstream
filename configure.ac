@@ -154,21 +154,16 @@ AC_MSG_NOTICE([---- BGPStream configuration ----])
 AC_MSG_NOTICE([checking format modules...])
 
 # allow libparsebgp warnings to be silenced
-AC_MSG_CHECKING([whether to silence libparsebgp warnings])
+AC_MSG_CHECKING([whether to enable libparsebgp warnings])
    AC_ARG_ENABLE([parser-warnings],
-       [AS_HELP_STRING([--disable-parser-warnings],
+       [AS_HELP_STRING([--enable-parser-warnings],
                [disable BGP parse warnings (def=no)])],
                [enable_parser_warnings="$enableval"],
-               [enable_parser_warnings=yes])
-   if test x"$enable_parser_warnings" != x"no"; then
-      disable_parser_warnings="no"
-   else
-      disable_parser_warnings="yes"
-   fi
-   AC_MSG_RESULT([$disable_parser_warnings])
-   if test x"$disable_parser_warnings" == x"yes"; then
+               [enable_parser_warnings=no])
+   if test x"$enable_parser_warnings" == x"no"; then
       AC_DEFINE([PARSEBGP_SILENCE_WARNING],[],[Disable parsebgp warnings])
    fi
+   AC_MSG_RESULT([$enable_parser_warnings])
 
 AC_MSG_NOTICE([checking transport modules...])
 
