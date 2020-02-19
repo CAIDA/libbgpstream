@@ -98,9 +98,6 @@ bgpstream_pfx_set_t *bgpstream_pfx_set_create()
 int bgpstream_pfx_set_insert(bgpstream_pfx_set_t *set,
                              bgpstream_pfx_t *pfx)
 {
-  int khret;
-  khiter_t k;
-
   if (pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4) {
     return v4hash_insert(set->v4hash, &pfx->bs_ipv4);
   } else {
