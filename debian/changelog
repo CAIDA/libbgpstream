@@ -1,3 +1,9 @@
+libbgpstream2 (2.0.0~rc4) unstable; urgency=medium
+
+  * Forth public release candidate for libbgpstream version 2.0.0
+
+ -- Alistair King <software@caida.org>  Mon, 13 Apr 2020 08:00:00 -0800
+
 libbgpstream2 (2.0.0~rc3) unstable; urgency=medium
 
   * Third public release candidate for libbgpstream version 2.0.0
