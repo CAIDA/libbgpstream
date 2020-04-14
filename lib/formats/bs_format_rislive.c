@@ -415,16 +415,34 @@ again:
     }
 
     if (jsmn_streq(STATE->json_string_buffer, t, "type") == 1) {
-      // outer message envelope type, must be "ris_message"
+      // outer message envelope type, must be "ris_message" or "ris_error"
       NEXT_TOK;
       jsmn_type_assert(t, JSMN_STRING);
-      if (jsmn_streq(STATE->json_string_buffer, t, "ris_message") != 1) {
-        // TODO: consider handling error message (ris_error)
+      if (jsmn_streq(STATE->json_string_buffer, t, "ris_message") == 1) {
+        // move on to continue processing the data of the ris message
+        NEXT_TOK;
+      } else if (jsmn_streq(STATE->json_string_buffer, t, "ris_error") == 1) {
+        // the message is a "ris_error" message
+        // example: {"data":{"message":"msg content"}}
+        NEXT_TOK;
+        NEXT_TOK;
+        NEXT_TOK;
+        // move token to "message" key and check key name
+        if (jsmn_streq(STATE->json_string_buffer, t, "message") != 1){
+          bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid RIS Live error: %s",
+                        STATE->json_string_buffer);
+          goto corrupted;
+        }
+        NEXT_TOK;
+        jsmn_type_assert(t, JSMN_STRING);
+        bgpstream_log(BGPSTREAM_LOG_WARN, "RIS-Live error message: '%.*s'",
+                      t->end - t->start, STATE->json_string_buffer + t->start);
+        goto ok;
+      } else {
         bgpstream_log(BGPSTREAM_LOG_ERR, "Invalid RIS Live message type: '%.*s'",
                       t->end - t->start, STATE->json_string_buffer + t->start);
         goto corrupted;
       }
-      NEXT_TOK;
     } else if (jsmn_streq(STATE->json_string_buffer, t, "data") == 1) {
       NEXT_TOK;
       jsmn_type_assert(t, JSMN_OBJECT);
