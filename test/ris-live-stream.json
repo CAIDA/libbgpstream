@@ -5,3 +5,4 @@
 {"type": "ris_message", "data": {"timestamp": 1553625081.88, "peer": "195.66.224.59", "peer_asn": "24931", "id": "195.66.224.59-1553625081.88-235807", "host": "rrc01", "type": "RIS_PEER_STATE", "state": "down"}}
 {"type": "ris_message", "data": {"timestamp": 1553625034.06, "peer": "80.249.210.89", "peer_asn": "31042", "id": "80.249.210.89-1553625034.06-3003976", "raw": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF001304", "host": "rrc03", "type": "CEEPALIVE"}}
 {"type": "ris_message", "data": {"timestamp": 1553625034.06, "peer": "80.249.210.89", "peer_asn": "31042", "id": "80.249.210.89-1553625034.06-3003976", "raw": "FF1FFFFFFFFFFFFFFFFFFFFFFFFFFFFF001304", "host": "rrc03", "type": "KEEPALIVE"}}
+{"type":"ris_error","data":{"message":"this is a test error message"}}

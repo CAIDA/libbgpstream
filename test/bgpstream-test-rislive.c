@@ -53,6 +53,7 @@ static const char *valid_output[] = {
   "",
   "",
   "",
+  "",
 };
 
 static char buf[65536];
@@ -154,7 +155,7 @@ static int test_bgpstream_rislive()
     rcount++;
   }
 
-  if (rcount != 7) {
+  if (rcount != 8) {
     // if not all 7 records passed
     return -1;
   }
