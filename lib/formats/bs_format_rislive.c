@@ -306,16 +306,6 @@ process_unsupported_message(bgpstream_format_t *format,
 }
 
 static bgpstream_format_status_t
-process_skipped_message(bgpstream_format_t *format,
-                            bgpstream_record_t *record)
-{
-  // skipped message
-  record->status = BGPSTREAM_RECORD_STATUS_SKIPPED_RECORD;
-  record->collector_name[0] = '\0';
-  return BGPSTREAM_FORMAT_SKIPPED_MSG;
-}
-
-static bgpstream_format_status_t
 process_corrupted_message(bgpstream_format_t *format,
                           bgpstream_record_t *record)
 {
@@ -508,8 +498,6 @@ again:
     goto corrupted;
   case BGPSTREAM_FORMAT_UNSUPPORTED_MSG:
     goto unsupported;
-  case BGPSTREAM_FORMAT_SKIPPED_MSG:
-    goto skipped;
   default:
     // other status codes should not appear
     assert(0);
@@ -528,10 +516,6 @@ corrupted:
 unsupported:
   free(root_tok);
   return process_unsupported_message(format, record);
-
-skipped:
-  free(root_tok);
-  return process_skipped_message(format, record);
 }
 
 /* -------------------- RECORD FILTERING -------------------- */
@@ -663,7 +647,6 @@ int bs_format_rislive_get_next_elem(bgpstream_format_t *format,
   case RISLIVE_MSG_TYPE_OPEN:
   case RISLIVE_MSG_TYPE_NOTIFICATION:
   case RISLIVE_MSG_TYPE_KEEPALIVE:
-    return 0;
   default:
     break;
   }

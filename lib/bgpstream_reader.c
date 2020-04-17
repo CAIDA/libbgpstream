@@ -105,12 +105,10 @@ static int prefetch_record(bgpstream_reader_t *reader)
     return 0;
   }
 
-  // if we see corrupted, unsupported, or skipped message, we still
+  // if we see corrupted or unsupported message, we still
   // fill the buffer and should continue reading
   if (reader->status == BGPSTREAM_FORMAT_CORRUPTED_MSG ||
-      reader->status == BGPSTREAM_FORMAT_UNSUPPORTED_MSG ||
-      reader->status == BGPSTREAM_FORMAT_SKIPPED_MSG
-  ) {
+      reader->status == BGPSTREAM_FORMAT_UNSUPPORTED_MSG) {
     reader->rec_buf_filled[PREFETCH_IDX] = 1;
     reader->status = BGPSTREAM_FORMAT_OK;
     return 0;

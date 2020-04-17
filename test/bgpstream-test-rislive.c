@@ -125,19 +125,6 @@ static int test_bgpstream_rislive()
       fprintf(stderr, "correctly valid record %d\n\n", rcount);
       break;
 
-    case BGPSTREAM_RECORD_STATUS_SKIPPED_RECORD:
-        if (strcmp(buf, valid_output[rcount]) != 0) {
-          // Strings are not identical
-          fprintf(stderr, "elem output different, rcount %d, count %d\n",
-                  rcount, count);
-          fprintf(stderr, "INVALID: %s\nCORRECT: %s\n", buf,
-                  valid_output[rcount]);
-          goto err;
-        }
-        buf[0] = '\0';
-      fprintf(stderr, "correctly skipped record %d\n\n", rcount);
-      break;
-
     case BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD:
       if (rcount != 5) {
         // only item 5 is unsupported
