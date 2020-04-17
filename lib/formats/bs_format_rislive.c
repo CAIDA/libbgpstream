@@ -306,6 +306,16 @@ process_unsupported_message(bgpstream_format_t *format,
 }
 
 static bgpstream_format_status_t
+process_skipped_message(bgpstream_format_t *format,
+                            bgpstream_record_t *record)
+{
+  // skipped message
+  record->status = BGPSTREAM_RECORD_STATUS_SKIPPED_RECORD;
+  record->collector_name[0] = '\0';
+  return BGPSTREAM_FORMAT_SKIPPED_MSG;
+}
+
+static bgpstream_format_status_t
 process_corrupted_message(bgpstream_format_t *format,
                           bgpstream_record_t *record)
 {
@@ -476,21 +486,15 @@ again:
     RDATA->msg_type = RISLIVE_MSG_TYPE_UPDATE;
     rc = process_bgp_message(format, record);
     break;
-  case 'O':
-    RDATA->msg_type = RISLIVE_MSG_TYPE_OPEN;
-    rc = process_bgp_message(format, record);
-    break;
-  case 'N':
-    RDATA->msg_type = RISLIVE_MSG_TYPE_NOTIFICATION;
-    rc = process_bgp_message(format, record);
-    break;
-  case 'K':
-    RDATA->msg_type = RISLIVE_MSG_TYPE_KEEPALIVE;
-    rc = process_bgp_message(format, record);
-    break;
   case 'R':
     RDATA->msg_type = RISLIVE_MSG_TYPE_STATUS;
     rc = process_status_message(format, record);
+    break;
+  case 'O':
+  case 'N':
+  case 'K':
+    // skip OPEN, NOTIFICATION, KEEPALIVE messages
+    rc = BGPSTREAM_FORMAT_SKIPPED_MSG;
     break;
   default:
     rc = BGPSTREAM_FORMAT_UNSUPPORTED_MSG;
@@ -504,6 +508,8 @@ again:
     goto corrupted;
   case BGPSTREAM_FORMAT_UNSUPPORTED_MSG:
     goto unsupported;
+  case BGPSTREAM_FORMAT_SKIPPED_MSG:
+    goto skipped;
   default:
     // other status codes should not appear
     assert(0);
@@ -522,6 +528,10 @@ corrupted:
 unsupported:
   free(root_tok);
   return process_unsupported_message(format, record);
+
+skipped:
+  free(root_tok);
+  return process_skipped_message(format, record);
 }
 
 /* -------------------- RECORD FILTERING -------------------- */
@@ -651,16 +661,9 @@ int bs_format_rislive_get_next_elem(bgpstream_format_t *format,
     rc = 1;
     break;
   case RISLIVE_MSG_TYPE_OPEN:
-    RDATA->elem->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
-    // TODO: add OPEN message parsing to bgpstream_parsebgp_common
-    // TODO: also parse the "direction" field from ris-live JSON
-    RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
-    RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
-    RDATA->end_of_elems = 1;
-    rc = 1;
-    break;
   case RISLIVE_MSG_TYPE_NOTIFICATION:
   case RISLIVE_MSG_TYPE_KEEPALIVE:
+    return 0;
   default:
     break;
   }

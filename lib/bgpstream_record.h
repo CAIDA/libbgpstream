@@ -114,6 +114,9 @@ typedef enum {
   /* Record unsupported */
   BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD = 6,
 
+  /* Record explicitly skipped */
+  BGPSTREAM_RECORD_STATUS_SKIPPED_RECORD = 7,
+
 } bgpstream_record_status_t;
 
 /** @} */
