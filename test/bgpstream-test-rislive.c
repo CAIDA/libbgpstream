@@ -41,19 +41,12 @@
     bgpstream_set_data_interface(bs, di_id);                                   \
   } while (0)
 
+#define N_RECORDS 7
+
 static const char *valid_output[] = {
   "U|A|1553627987.890000|singlefile|rrc00|||11708|72.22.223.9|45.161.192.0/23|72.22.223.9|11708 32097 1299 52320 263009 263009 263009 263009 263009 52993 268481 268481|268481|||",
-  "U|S|1553624995.840000|singlefile|rrc00|||60474|94.177.122.251|||||||",
-  "", // notification
-  "", // keepalive
   "U|S|1553625081.880000|singlefile|rrc01|||24931|195.66.224.59|||||||IDLE", // ris_peer_state
-  ""
-  "ESTABLISHED",
-  "U|S|1534175193.450000|singlefile|rrc21|||31122|37.49.237.31|||||||IDLE",
-  "",
-  "",
-  "",
-  "",
+  "", // ris-live server-side error message
 };
 
 static char buf[65536];
@@ -130,8 +123,8 @@ static int test_bgpstream_rislive()
       break;
 
     case BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD:
-      if (rcount != 5) {
-        // only item 5 is unsupported
+      if (rcount < 3) {
+        // first three records should be supported
         fprintf(stderr, "record %d shouldn't be unsupported\n", rcount);
         goto err;
       }
@@ -139,7 +132,7 @@ static int test_bgpstream_rislive()
       break;
 
     case BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD:
-      if (rcount <= 5) {
+      if (rcount < 6) {
         fprintf(stderr, "record %d shouldn't be corrupted\n", rcount);
         goto err;
       }
@@ -155,8 +148,9 @@ static int test_bgpstream_rislive()
     rcount++;
   }
 
-  if (rcount != 8) {
-    // if not all 7 records passed
+  if (rcount != N_RECORDS) {
+    // if not all records passed
+    fprintf(stderr, "there should be %d records, processed only %d records\n", N_RECORDS, rcount);
     return -1;
   }
 

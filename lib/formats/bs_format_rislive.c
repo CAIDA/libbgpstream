@@ -298,8 +298,6 @@ static bgpstream_format_status_t
 process_unsupported_message(bgpstream_format_t *format,
                             bgpstream_record_t *record)
 {
-  bgpstream_log(BGPSTREAM_LOG_WARN, "Unsupported RIS Live message: %s",
-                STATE->json_string_buffer);
   record->status = BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD;
   record->collector_name[0] = '\0';
   return BGPSTREAM_FORMAT_UNSUPPORTED_MSG;
@@ -476,22 +474,16 @@ again:
     RDATA->msg_type = RISLIVE_MSG_TYPE_UPDATE;
     rc = process_bgp_message(format, record);
     break;
-  case 'O':
-    RDATA->msg_type = RISLIVE_MSG_TYPE_OPEN;
-    rc = process_bgp_message(format, record);
-    break;
-  case 'N':
-    RDATA->msg_type = RISLIVE_MSG_TYPE_NOTIFICATION;
-    rc = process_bgp_message(format, record);
-    break;
-  case 'K':
-    RDATA->msg_type = RISLIVE_MSG_TYPE_KEEPALIVE;
-    rc = process_bgp_message(format, record);
-    break;
   case 'R':
     RDATA->msg_type = RISLIVE_MSG_TYPE_STATUS;
     rc = process_status_message(format, record);
     break;
+  case 'O':
+    // skip OPEN messages
+  case 'N':
+    // skip NOTIFICATION messages
+  case 'K':
+    // skip KEEPALIVE messages
   default:
     rc = BGPSTREAM_FORMAT_UNSUPPORTED_MSG;
     break;
@@ -651,14 +643,6 @@ int bs_format_rislive_get_next_elem(bgpstream_format_t *format,
     rc = 1;
     break;
   case RISLIVE_MSG_TYPE_OPEN:
-    RDATA->elem->type = BGPSTREAM_ELEM_TYPE_PEERSTATE;
-    // TODO: add OPEN message parsing to bgpstream_parsebgp_common
-    // TODO: also parse the "direction" field from ris-live JSON
-    RDATA->elem->old_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
-    RDATA->elem->new_state = BGPSTREAM_ELEM_PEERSTATE_UNKNOWN;
-    RDATA->end_of_elems = 1;
-    rc = 1;
-    break;
   case RISLIVE_MSG_TYPE_NOTIFICATION:
   case RISLIVE_MSG_TYPE_KEEPALIVE:
   default:
