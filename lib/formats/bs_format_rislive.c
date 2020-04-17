@@ -298,8 +298,6 @@ static bgpstream_format_status_t
 process_unsupported_message(bgpstream_format_t *format,
                             bgpstream_record_t *record)
 {
-  bgpstream_log(BGPSTREAM_LOG_WARN, "Unsupported RIS Live message: %s",
-                STATE->json_string_buffer);
   record->status = BGPSTREAM_RECORD_STATUS_UNSUPPORTED_RECORD;
   record->collector_name[0] = '\0';
   return BGPSTREAM_FORMAT_UNSUPPORTED_MSG;
@@ -481,11 +479,11 @@ again:
     rc = process_status_message(format, record);
     break;
   case 'O':
+    // skip OPEN messages
   case 'N':
+    // skip NOTIFICATION messages
   case 'K':
-    // skip OPEN, NOTIFICATION, KEEPALIVE messages
-    rc = BGPSTREAM_FORMAT_SKIPPED_MSG;
-    break;
+    // skip KEEPALIVE messages
   default:
     rc = BGPSTREAM_FORMAT_UNSUPPORTED_MSG;
     break;
