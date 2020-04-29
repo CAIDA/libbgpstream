@@ -456,9 +456,11 @@ static int process_json(bsdi_t *di, const char *js, jsmntok_t *root_tok,
           bgpstream_log(BGPSTREAM_LOG_INFO, "Type: %d", type);
           bgpstream_log(BGPSTREAM_LOG_INFO, "InitialTime: %lu", initial_time);
           bgpstream_log(BGPSTREAM_LOG_INFO, "Duration: %lu", duration);
-          if(kafka_topic != NULL){
+#ifdef WITH_KAFKA
+          if (transport_type == BGPSTREAM_RESOURCE_TRANSPORT_KAFKA && kafka_topic != NULL){
             bgpstream_log(BGPSTREAM_LOG_INFO, "Kafka topic: %s", kafka_topic);
           }
+#endif
 #endif
           if (url_set == 0 || project_set == 0 || collector_set == 0 ||
               type_set == 0 || initial_time_set == 0 || duration_set == 0 ||
