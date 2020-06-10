@@ -201,7 +201,7 @@ fi
 AC_MSG_NOTICE([checking data interface dependencies...])
 
 if test "x$with_di_broker" == xyes; then
-  CHECK_WANDIO_HTTP("http://bgpstream.caida.org/broker")
+  CHECK_WANDIO_HTTP("https://broker.bgpstream.caida.org/v2/meta/projects")
 fi
 
 if test "x$with_di_kafka" == xyes; then
