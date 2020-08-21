@@ -173,12 +173,20 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
       c = snprintf(buf_p, B_REMAIN, "%" PRIu32, elem->local_pref);
       written += c;
       buf_p += c;
+    } else {
+      c = snprintf(buf_p, B_REMAIN, "0");
+      written += c;
+      buf_p += c;
     }
     ADD_PIPE;
 
     /* MED */
     if (elem->has_med) {
       c = snprintf(buf_p, B_REMAIN, "%" PRIu32, elem->med);
+      written += c;
+      buf_p += c;
+    } else {
+      c = snprintf(buf_p, B_REMAIN, "0");
       written += c;
       buf_p += c;
     }
