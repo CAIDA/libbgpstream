@@ -155,6 +155,7 @@ static int test_sqlite()
 #endif
 
 #ifdef WITH_DATA_INTERFACE_BROKER
+#define BGPSTREAM_DI_BROKER_TEST_URL BGPSTREAM_DI_BROKER_URL "/meta/projects"
 static int test_broker()
 {
   SETUP;
@@ -162,7 +163,7 @@ static int test_broker()
   CHECK_SET_INTERFACE(broker);
 
   /* test http connectivity */
-  io_t *file = wandio_create(BGPSTREAM_DI_BROKER_URL);
+  io_t *file = wandio_create(BGPSTREAM_DI_BROKER_TEST_URL);
   CHECK_MSG("HTTP connectivity to broker",
             "Failed to connect to BGPStream Broker via HTTP.\n"
             "Maybe wandio is built without HTTP support, "
