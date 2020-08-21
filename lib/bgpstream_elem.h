@@ -246,11 +246,20 @@ typedef struct bgpstream_elem {
    */
   bgpstream_elem_origin_type_t origin;
 
+  /** Set if the origin field is valid */
+  uint8_t has_origin;
+
   /** MED attribute */
   uint32_t med;
 
+  /** Set if the med field is valid */
+  uint8_t has_med;
+
   /** LOCAL_PREF attribute */
   uint32_t local_pref;
+
+  /** Set if the local_pref field is valid */
+  uint8_t has_local_pref;
 
   /** Atomic aggregate attribute */
   uint8_t atomic_aggregate;
