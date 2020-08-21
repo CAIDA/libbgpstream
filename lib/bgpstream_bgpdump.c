@@ -140,22 +140,24 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     ADD_PIPE;
 
     /* SOURCE (IGP) */
-    switch (elem->origin) {
-    case BGPSTREAM_ELEM_BGP_UPDATE_ORIGIN_IGP:
-      c = snprintf(buf_p, B_REMAIN, "IGP");
-      break;
-    case BGPSTREAM_ELEM_BGP_UPDATE_ORIGIN_EGP:
-      c = snprintf(buf_p, B_REMAIN, "EGP");
-      break;
-    case BGPSTREAM_ELEM_BGP_UPDATE_ORIGIN_INCOMPLETE:
-      c = snprintf(buf_p, B_REMAIN, "INCOMPLETE");
-      break;
-    default:
-      c = 0;
-      break;
+    if (elem->has_origin) {
+      switch (elem->origin) {
+      case BGPSTREAM_ELEM_BGP_UPDATE_ORIGIN_IGP:
+        c = snprintf(buf_p, B_REMAIN, "IGP");
+        break;
+      case BGPSTREAM_ELEM_BGP_UPDATE_ORIGIN_EGP:
+        c = snprintf(buf_p, B_REMAIN, "EGP");
+        break;
+      case BGPSTREAM_ELEM_BGP_UPDATE_ORIGIN_INCOMPLETE:
+        c = snprintf(buf_p, B_REMAIN, "INCOMPLETE");
+        break;
+      default:
+        c = 0;
+        break;
+      }
+      written += c;
+      buf_p += c;
     }
-    written += c;
-    buf_p += c;
     ADD_PIPE;
 
     /* NEXT HOP */
@@ -167,15 +169,27 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     ADD_PIPE;
 
     /* LOCAL_PREF */
-    c = snprintf(buf_p, B_REMAIN, "%" PRIu32, elem->local_pref);
-    written += c;
-    buf_p += c;
+    if (elem->has_local_pref) {
+      c = snprintf(buf_p, B_REMAIN, "%" PRIu32, elem->local_pref);
+      written += c;
+      buf_p += c;
+    } else {
+      c = snprintf(buf_p, B_REMAIN, "0");
+      written += c;
+      buf_p += c;
+    }
     ADD_PIPE;
 
     /* MED */
-    c = snprintf(buf_p, B_REMAIN, "%" PRIu32, elem->med);
-    written += c;
-    buf_p += c;
+    if (elem->has_med) {
+      c = snprintf(buf_p, B_REMAIN, "%" PRIu32, elem->med);
+      written += c;
+      buf_p += c;
+    } else {
+      c = snprintf(buf_p, B_REMAIN, "0");
+      written += c;
+      buf_p += c;
+    }
     ADD_PIPE;
 
     /* COMMUNITIES */

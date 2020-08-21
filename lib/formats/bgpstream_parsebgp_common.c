@@ -395,9 +395,6 @@ int bgpstream_parsebgp_process_path_attrs(
   parsebgp_bgp_update_as_path_t *aspath = NULL;
   parsebgp_bgp_update_as_path_t *as4path = NULL;
 
-  bgpstream_as_path_clear(el->as_path);
-  bgpstream_community_set_clear(el->communities);
-
   // AS Path(s)
   if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_AS_PATH].type ==
       PARSEBGP_BGP_PATH_ATTR_TYPE_AS_PATH) {
@@ -411,17 +408,26 @@ int bgpstream_parsebgp_process_path_attrs(
   if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_ORIGIN].type ==
       PARSEBGP_BGP_PATH_ATTR_TYPE_ORIGIN) {
     el->origin = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_ORIGIN].data.origin;
+    el->has_origin = 1;
+  } else {
+    el->has_origin = 0;
   }
   // MED
   if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MED].type ==
       PARSEBGP_BGP_PATH_ATTR_TYPE_MED) {
     el->med = attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MED].data.med;
+    el->has_med = 1;
+  } else {
+    el->has_med = 0;
   }
   // LOCAL_PREF
   if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_LOCAL_PREF].type ==
       PARSEBGP_BGP_PATH_ATTR_TYPE_LOCAL_PREF) {
     el->local_pref =
       attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_LOCAL_PREF].data.local_pref;
+    el->has_local_pref = 1;
+  } else {
+    el->has_local_pref = 0;
   }
   // Atomic aggregate: AG/NAG
   if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_ATOMIC_AGGREGATE].type ==
@@ -458,6 +464,7 @@ int bgpstream_parsebgp_process_path_attrs(
   }
 
   // Communities
+  bgpstream_community_set_clear(el->communities);
   if (attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_COMMUNITIES].type ==
         PARSEBGP_BGP_PATH_ATTR_TYPE_COMMUNITIES &&
       bgpstream_community_set_populate(
