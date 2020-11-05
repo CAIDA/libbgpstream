@@ -131,6 +131,21 @@ void bgpstream_pfx_set_destroy(bgpstream_pfx_set_t *set);
  */
 void bgpstream_pfx_set_clear(bgpstream_pfx_set_t *set);
 
+/** Iterate over a prefix set and invoke a callback function against each
+ *  prefix in the set.
+ *
+ *  @param set          pointer to the prefix set to iterate over
+ *  @param callback     callback function to invoke on each prefix, takes
+ *                      two parameters (the prefix and a void * for passing
+ *                      in external data variables.
+ *  @param userdata     pointer to a structure containing external data
+ *                      variables that may be required by the callback function.
+ *
+ *  @return 0 if the iteration completes successfully, -1 otherwise.
+ */
+int bgpstream_pfx_set_iterate(bgpstream_pfx_set_t *set,
+    void (*callback)(bgpstream_pfx_t *, void *), void *userdata);
+
 /* IPv4 */
 
 /** Create a new IPv4 Prefix set instance
@@ -188,6 +203,21 @@ void bgpstream_ipv4_pfx_set_destroy(bgpstream_ipv4_pfx_set_t *set);
  */
 void bgpstream_ipv4_pfx_set_clear(bgpstream_ipv4_pfx_set_t *set);
 
+/** Iterate over an IPv4 prefix set and invoke a callback function against each
+ *  prefix in the set.
+ *
+ *  @param set          pointer to the prefix set to iterate over
+ *  @param callback     callback function to invoke on each prefix, takes
+ *                      two parameters (the prefix and a void * for passing
+ *                      in external data variables.
+ *  @param userdata     pointer to a structure containing external data
+ *                      variables that may be required by the callback function.
+ *
+ *  @return 0 if the iteration completes successfully, -1 otherwise.
+ */
+int bgpstream_ipv4_pfx_set_iterate(bgpstream_ipv4_pfx_set_t *set,
+    void (*callback)(bgpstream_pfx_t *, void *), void *userdata);
+
 /** Create a new IPv6 Prefix set instance
  *
  * @return a pointer to the structure, or NULL if an error occurred
@@ -242,5 +272,20 @@ void bgpstream_ipv6_pfx_set_destroy(bgpstream_ipv6_pfx_set_t *set);
  * @param set           pointer to the prefix set to clear
  */
 void bgpstream_ipv6_pfx_set_clear(bgpstream_ipv6_pfx_set_t *set);
+
+/** Iterate over an IPv6 prefix set and invoke a callback function against each
+ *  prefix in the set.
+ *
+ *  @param set          pointer to the prefix set to iterate over
+ *  @param callback     callback function to invoke on each prefix, takes
+ *                      two parameters (the prefix and a void * for passing
+ *                      in external data variables.
+ *  @param userdata     pointer to a structure containing external data
+ *                      variables that may be required by the callback function.
+ *
+ *  @return 0 if the iteration completes successfully, -1 otherwise.
+ */
+int bgpstream_ipv6_pfx_set_iterate(bgpstream_ipv6_pfx_set_t *set,
+    void (*callback)(bgpstream_pfx_t *, void *), void *userdata);
 
 #endif /* __BGPSTREAM_UTILS_PFX_SET_H */
