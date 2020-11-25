@@ -161,8 +161,13 @@ void bgpstream_pfx_set_clear(bgpstream_pfx_set_t *set)
 int bgpstream_pfx_set_iterate(bgpstream_pfx_set_t *set,
     void (*callback)(bgpstream_pfx_t *, void *), void *userdata)
 {
-  if (bgpstream_ipv4_pfx_set_iterate(set->v4hash, callback, userdata) < 0 ||
-      bgpstream_ipv6_pfx_set_iterate(set->v6hash, callback, userdata) < 0) {
+  bgpstream_ipv4_pfx_set_t v4set;
+  bgpstream_ipv6_pfx_set_t v6set;
+
+  v4set.hash = set->v4hash;
+  v6set.hash = set->v6hash;
+  if (bgpstream_ipv4_pfx_set_iterate(&v4set, callback, userdata) < 0 ||
+      bgpstream_ipv6_pfx_set_iterate(&v6set, callback, userdata) < 0) {
     return -1;
   }
   return 0;
