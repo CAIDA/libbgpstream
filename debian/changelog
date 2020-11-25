@@ -1,3 +1,9 @@
+libbgpstream2 (2.1.0) unstable; urgency=medium
+
+  *  Add utility functions to iterate over a prefix set
+
+ -- Mingwei Zhang <software@caida.org>  Wed, 25 Nov 2020 08:00:00 -0800
+
 libbgpstream2 (2.0.0) unstable; urgency=medium
 
   * libbgpstream version 2.0.0 release

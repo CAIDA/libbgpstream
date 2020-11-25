@@ -29,7 +29,7 @@ AC_PREREQ([2.68])
 
 # bgpstream package version
 m4_define([PKG_MAJOR_VERSION], [2])
-m4_define([PKG_MID_VERSION],   [0])
+m4_define([PKG_MID_VERSION],   [1])
 m4_define([PKG_MINOR_VERSION], [0])
 
 AC_INIT([libbgpstream], PKG_MAJOR_VERSION.PKG_MID_VERSION.PKG_MINOR_VERSION, [bgpstream-info@caida.org])
