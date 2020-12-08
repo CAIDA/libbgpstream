@@ -272,6 +272,11 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
       return NULL;
     }
     SEEK_STR_END;
+    if (elem->has_addl_path_id) {
+      c = snprintf(buf_p, B_REMAIN, "#%" PRIu32, elem->addl_path_id);
+      written += c;
+      buf_p += c;
+    }
     ADD_PIPE;
 
     /* NEXT HOP */

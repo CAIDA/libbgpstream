@@ -70,12 +70,14 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
   /* Record type */
   switch (elem->type) {
   case BGPSTREAM_ELEM_TYPE_RIB:
-    c = snprintf(buf_p, B_REMAIN, "TABLE_DUMP2|%" PRIu32, record->time_sec);
+    c = snprintf(buf_p, B_REMAIN, "TABLE_DUMP2%s|%" PRIu32,
+        elem->has_addl_path_id ? "_AP" : "", record->time_sec);
     break;
   case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT:
   case BGPSTREAM_ELEM_TYPE_WITHDRAWAL:
   case BGPSTREAM_ELEM_TYPE_PEERSTATE:
-    c = snprintf(buf_p, B_REMAIN, "BGP4MP|%" PRIu32, record->time_sec);
+    c = snprintf(buf_p, B_REMAIN, "BGP4MP%s|%" PRIu32,
+        elem->has_addl_path_id ? "_AP" : "", record->time_sec);
     break;
   default:
     c = 0;
@@ -131,6 +133,13 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
     }
     SEEK_STR_END;
     ADD_PIPE;
+
+    if (elem->has_addl_path_id) {
+      c = snprintf(buf_p, B_REMAIN, "%" PRIu32, elem->addl_path_id);
+      written += c;
+      buf_p += c;
+      ADD_PIPE;
+    }
 
     /* AS PATH */
     c = bgpstream_as_path_snprintf(buf_p, B_REMAIN, elem->as_path);

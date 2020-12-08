@@ -203,6 +203,15 @@ typedef struct bgpstream_elem {
    */
   bgpstream_pfx_t prefix;
 
+  /** Additional Path Identifier (RFC 7911)
+   *
+   * Available only for RIB, Announcement and Withdrawal elem types
+   */
+  uint32_t addl_path_id;
+
+  /** Set if the addl_path_id field is valid */
+  uint8_t has_addl_path_id;
+
   /** Next hop
    *
    * Available only for RIB and Announcement elem types

@@ -89,6 +89,8 @@ static int handle_table_dump(rec_data_t *rd, parsebgp_mrt_msg_t *mrt)
   el->type = BGPSTREAM_ELEM_TYPE_RIB;
   el->orig_time_sec = td->originated_time;
   el->orig_time_usec = 0;
+  el->has_addl_path_id = 0;
+  el->addl_path_id = 0;
 
   COPY_IP(&el->peer_ip, mrt->subtype, &td->peer_ip, return -1);
 
@@ -122,6 +124,8 @@ static int handle_td2_rib_entry(rec_data_t *rd, khash_t(td2_peer) * peer_table,
 
   rd->elem->orig_time_sec = re->originated_time;
   rd->elem->orig_time_usec = 0;
+  rd->elem->has_addl_path_id = re->has_addl_path_id;
+  rd->elem->addl_path_id = re->addl_path_id;
 
   // look the peer up in the peer index table
   if ((k = kh_get(td2_peer, peer_table, re->peer_index)) ==
@@ -202,9 +206,11 @@ static int handle_table_dump_v2(rec_data_t *rd, khash_t(td2_peer) * peer_table,
     break;
 
   case PARSEBGP_MRT_TABLE_DUMP_V2_RIB_IPV4_UNICAST:
+  case PARSEBGP_MRT_TABLE_DUMP_V2_RIB_IPV4_UNICAST_ADDPATH:
     return handle_td2_afi_safi_rib(rd, peer_table, mrt, PARSEBGP_BGP_AFI_IPV4,
                                    &td2->afi_safi_rib);
   case PARSEBGP_MRT_TABLE_DUMP_V2_RIB_IPV6_UNICAST:
+  case PARSEBGP_MRT_TABLE_DUMP_V2_RIB_IPV6_UNICAST_ADDPATH:
     return handle_td2_afi_safi_rib(rd, peer_table, mrt, PARSEBGP_BGP_AFI_IPV6,
                                    &td2->afi_safi_rib);
 

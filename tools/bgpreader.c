@@ -62,8 +62,8 @@
   "# Elem format:\n"                                                           \
   "# "                                                                         \
   "<rec-type>|<elem-type>|<rec-ts-sec>.<rec-ts-usec>|<project>|<collector>|<"  \
-  "router>|<router-ip>|<peer-ASN>|<peer-IP>|<prefix>|<next-hop-IP>|<AS-path>|" \
-  "<origin-AS>|<communities>|<old-state>|<new-state>\n"                        \
+  "router>|<router-ip>|<peer-ASN>|<peer-IP>|<prefix>[#<path_id>]|<next-hop-IP>"\
+  "|<AS-path>|<origin-AS>|<communities>|<old-state>|<new-state>\n"             \
   "#\n"                                                                        \
   "# <rec-type>: R RIB, U Update\n"                                            \
   "# <elem-type>: R RIB, A announcement, W withdrawal, S state message\n"      \
