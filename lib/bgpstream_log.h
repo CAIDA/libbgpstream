@@ -27,6 +27,7 @@
 #ifndef _BGPSTREAM_LOG_H
 #define _BGPSTREAM_LOG_H
 
+#include "config.h"
 #include <stdarg.h>
 
 #define BGPSTREAM_LOG_ERR 0
@@ -37,7 +38,11 @@
 #define BGPSTREAM_LOG_VFINE 50
 #define BGPSTREAM_LOG_FINEST 60
 
+#ifdef DEBUG
+#define BGPSTREAM_LOG_LEVEL BGPSTREAM_LOG_FINE
+#else
 #define BGPSTREAM_LOG_LEVEL BGPSTREAM_LOG_INFO
+#endif
 
 #define bgpstream_log(level, ...)                                              \
   do {                                                                         \
