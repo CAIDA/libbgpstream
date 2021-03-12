@@ -24,6 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "config.h"
 #include "bs_transport_kafka.h"
 #include "bgpstream_transport_interface.h"
 #include "bgpstream_log.h"
@@ -140,7 +141,7 @@ static void kafka_error_callback(rd_kafka_t *rk, int err, const char *reason,
   }
 
   // we don't explicitly handle the error so just log it
-  bgpstream_log(BGPSTREAM_LOG_ERR, "ERROR: %s (%d): %s",
+  bgpstream_log(BGPSTREAM_LOG_ERR, "%s (%d): %s",
                 rd_kafka_err2str(err), err, reason);
 }
 
@@ -177,6 +178,36 @@ static int init_kafka_config(bgpstream_transport_t *transport,
     bgpstream_log(BGPSTREAM_LOG_ERR, "Config Error: %s", errstr);
     return -1;
   }
+
+  // Enable SO_KEEPALIVE in case we're behind a NAT
+  if (rd_kafka_conf_set(conf, "socket.keepalive.enable", "true", errstr,
+                        sizeof(errstr)) != RD_KAFKA_CONF_OK) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Config Error: %s", errstr);
+    return -1;
+  }
+
+  // Try to prevent slow consumers from getting batches that they can't download
+  // within the 1 minute that rdkafka will wait.
+  if (rd_kafka_conf_set(conf, "fetch.message.max.bytes", "131072", errstr,
+                        sizeof(errstr)) != RD_KAFKA_CONF_OK) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Config Error: %s", errstr);
+    return -1;
+  }
+
+  // Don't let the broker wait long before giving us data. We want realtime!
+  if (rd_kafka_conf_set(conf, "fetch.wait.max.ms", "50", errstr,
+                        sizeof(errstr)) != RD_KAFKA_CONF_OK) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Config Error: %s", errstr);
+    return -1;
+  }
+
+#ifdef DEBUG
+  if (rd_kafka_conf_set(conf, "debug", "broker", errstr,
+                        sizeof(errstr)) != RD_KAFKA_CONF_OK) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Config Error: %s", errstr);
+    return -1;
+  }
+#endif
 
   return 0;
 }
@@ -278,16 +309,20 @@ int bs_transport_kafka_create(bgpstream_transport_t *transport)
 static int handle_err_msg(bgpstream_transport_t *transport,
                           rd_kafka_message_t *rk_msg)
 {
-  if (rk_msg->err == RD_KAFKA_RESP_ERR__PARTITION_EOF) {
-    rd_kafka_message_destroy(rk_msg);
-    return 0; // EOS
+  int rc = -1;
+
+  switch (rk_msg->err) {
+  case RD_KAFKA_RESP_ERR__PARTITION_EOF:
+    // treat this as EOS so we get re-queued in live mode
+    rc = 0;
+    break;
+
+  default:
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Unhandled Kafka error: %s: %s",
+                  rd_kafka_err2str(rk_msg->err), rd_kafka_message_errstr(rk_msg));
   }
-
-  bgpstream_log(BGPSTREAM_LOG_ERR, "Unhandled Kafka error: %s: %s",
-                rd_kafka_err2str(rk_msg->err), rd_kafka_message_errstr(rk_msg));
-
   rd_kafka_message_destroy(rk_msg);
-  return -1;
+  return rc;
 }
 
 int64_t bs_transport_kafka_readline(bgpstream_transport_t *transport,
