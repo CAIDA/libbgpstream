@@ -36,7 +36,7 @@
 
 #define STATE ((state_t *)(transport->state))
 
-#define POLL_TIMEOUT_MSEC 0
+#define POLL_TIMEOUT_MSEC 500
 
 typedef struct state {
 
