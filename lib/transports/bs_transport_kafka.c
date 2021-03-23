@@ -201,6 +201,15 @@ static int init_kafka_config(bgpstream_transport_t *transport,
     return -1;
   }
 
+  // We don't want to use range rebalance strategy since often our
+  // topics only have one partition.
+  // TODO: use an incremental strategy and allow group.instance.id to be set.
+  if (rd_kafka_conf_set(conf, "partition.assignment.strategy", "roundrobin", errstr,
+                        sizeof(errstr)) != RD_KAFKA_CONF_OK) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "Config Error: %s", errstr);
+    return -1;
+  }
+
 #ifdef DEBUG
   if (rd_kafka_conf_set(conf, "debug", "broker", errstr,
                         sizeof(errstr)) != RD_KAFKA_CONF_OK) {
