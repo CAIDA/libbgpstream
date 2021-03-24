@@ -606,6 +606,10 @@ refill:
     fclose(fp);
 #endif
 
+    // move past this record in our buffer
+    state->ptr += dec_len;
+    state->remain -= dec_len;
+
     record->status = BGPSTREAM_RECORD_STATUS_CORRUPTED_RECORD;
     return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
   }
