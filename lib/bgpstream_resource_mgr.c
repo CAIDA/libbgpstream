@@ -40,7 +40,7 @@
 
 /** Approximately how frequently should stream resources that return AGAIN be
     polled? (in msec) */
-#define AGAIN_POLL_INTERVAL 500
+#define AGAIN_POLL_INTERVAL 100
 #define MSEC_TO_NSEC 1000000
 
 struct res_list_elem {
