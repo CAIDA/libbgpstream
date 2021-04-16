@@ -1,3 +1,16 @@
+libbgpstream2 (2.2.0) unstable; urgency=medium
+
+  * Kafka: Kafka transport performance improvements
+  * Kafka: try blocking for a while before returning EOF
+  * Kafka: prefer roundrobin rebalance strategy
+  * Parse: Ensure we move past an invalid message 
+  * Parse: Fix "incompatible pointer type" warning in pfx_set code
+  * Parse: Update to latest libparsebgp
+    * Support RFC 8050 MRT Additional Path extension
+    * Fix parsing of missing OPEN/UPDATE messages 
+
+ -- Mingwei Zhang <software@caida.org>  Fri, 16 Apr 2021 08:00:00 -0800
+
 libbgpstream2 (2.1.0) unstable; urgency=medium
 
   *  Add utility functions to iterate over a prefix set
