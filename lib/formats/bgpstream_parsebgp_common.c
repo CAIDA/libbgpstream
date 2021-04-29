@@ -596,7 +596,7 @@ refill:
       goto refill;
     }
     // else: its a fatal error
-    bgpstream_log(BGPSTREAM_LOG_ERR,
+    bgpstream_log(BGPSTREAM_LOG_WARN,
                   "Failed to parse message from '%s' (%d:%s)", format->res->url,
                   err, parsebgp_strerror(err));
 
