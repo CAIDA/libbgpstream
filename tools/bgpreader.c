@@ -670,10 +670,6 @@ int main(int argc, char *argv[])
          (rrc = bgpstream_get_next_record(bs, &bs_record)) > 0) {
     rec_cnt++;
 
-    if (bs_record->status != BGPSTREAM_RECORD_STATUS_VALID_RECORD) {
-      continue;
-    }
-
     if (record_output_on && print_record(bs_record) != 0) {
       goto done;
     }
