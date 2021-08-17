@@ -660,10 +660,17 @@ bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
   /* Find insertion point */
   int relation;
   uint8_t differ_bit;
+  uint8_t bitlen = pfx->mask_len;
+
+  /* Avoid inserting /0s -- they don't make sense and tend to confuse
+   * matters.
+   */
+  if (bitlen == 0) {
+    return NULL;
+  }
 
   node_it = bpt_find_insert_point(node_it, pfx, &relation, &differ_bit);
 
-  uint8_t bitlen = pfx->mask_len;
   if (relation == BGPSTREAM_PATRICIA_SELF) {
     /* check the node contains an actual prefix,
      * i.e. it is not a glue node */
