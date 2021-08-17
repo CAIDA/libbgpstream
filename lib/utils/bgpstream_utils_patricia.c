@@ -645,6 +645,13 @@ bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
   bgpstream_addr_version_t v = pfx->address.version;
   bgpstream_patricia_node_t *node_it = bgpstream_patricia_get_head(pt, v);
 
+  /* Be kind and mask off any trailing bits in the provided prefix */
+  uint8_t bitlen = pfx->mask_len;
+  bgpstream_pfx_t pfxclean;
+  bgpstream_pfx_copy(&pfxclean, pfx);
+  bgpstream_addr_mask(&pfxclean.address, bitlen);
+  pfx = &pfxclean;
+
   /* if Patricia Tree is empty, then insert new node */
   if (node_it == NULL) {
     if ((new_node = bgpstream_patricia_node_create(pt, pfx)) == NULL) {
@@ -663,7 +670,6 @@ bgpstream_patricia_tree_insert(bgpstream_patricia_tree_t *pt,
 
   node_it = bpt_find_insert_point(node_it, pfx, &relation, &differ_bit);
 
-  uint8_t bitlen = pfx->mask_len;
   if (relation == BGPSTREAM_PATRICIA_SELF) {
     /* check the node contains an actual prefix,
      * i.e. it is not a glue node */
