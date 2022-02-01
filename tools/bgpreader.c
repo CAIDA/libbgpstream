@@ -129,6 +129,9 @@ static struct bs_options_t bs_opts[] =
   {{"peer-asn", required_argument, 0, 'j'},
    "<peer ASN>",
    "return elems received by a given peer ASN*"},
+  {{"peer-asn", required_argument, 0, 'J'},
+   "<not peer ASN>",
+   "exclude elems received by a given peer ASN*"},
   {{"origin-asn", required_argument, 0, 'a'},
    "<origin ASN>",
    "return elems originated by a given origin ASN*"},
@@ -423,6 +426,8 @@ int main(int argc, char *argv[])
     PARSE_FILTER_OPTION('R', BGPSTREAM_FILTER_TYPE_ROUTER)
       break;
     PARSE_FILTER_OPTION('j', BGPSTREAM_FILTER_TYPE_ELEM_PEER_ASN)
+      break;
+    PARSE_FILTER_OPTION('J', BGPSTREAM_FILTER_TYPE_ELEM_NOT_PEER_ASN)
       break;
     PARSE_FILTER_OPTION('a', BGPSTREAM_FILTER_TYPE_ELEM_ORIGIN_ASN)
       break;

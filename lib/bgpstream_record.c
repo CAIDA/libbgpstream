@@ -164,6 +164,13 @@ static int elem_check_filters(bgpstream_record_t *record,
     return 0;
   }
 
+  /* Checking not peer ASNs: if the filter is on and the peer asn is in the
+  * set, return 0 */
+  if (filter_mgr->not_peer_asns &&
+      bgpstream_id_set_exists(filter_mgr->not_peer_asns, elem->peer_asn) == 1) {
+    return 0;
+  }
+
   /* Checking origin ASN */
   if (filter_mgr->origin_asns) {
     if (elem->type == BGPSTREAM_ELEM_TYPE_WITHDRAWAL ||
