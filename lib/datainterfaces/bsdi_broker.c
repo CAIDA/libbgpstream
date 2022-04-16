@@ -696,20 +696,6 @@ static int update_query_url(bsdi_t *di)
       APPEND_STR(f);
     }
   }
-  // not peer asns
-  uint32_t *np;
-  char np_buf[sizeof(STR(UINT32_MAX))+1];
-  if (filter_mgr->not_peer_asns != NULL) {
-    bgpstream_id_set_rewind(filter_mgr->not_peer_asns);
-    while ((np = bgpstream_id_set_next(filter_mgr->not_peer_asns)) != NULL) {
-      if (snprintf(np_buf, sizeof(np_buf), "%"PRIu32, *np) >= sizeof(np_buf)) {
-        goto err;
-      }
-      AMPORQ;
-      APPEND_STR("not_peer_asns[]=");
-      APPEND_STR(np_buf);
-    }
-  }
   // peer asns
   uint32_t *p;
   char p_buf[sizeof(STR(UINT32_MAX))+1];

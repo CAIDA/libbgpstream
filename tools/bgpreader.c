@@ -129,7 +129,7 @@ static struct bs_options_t bs_opts[] =
   {{"peer-asn", required_argument, 0, 'j'},
    "<peer ASN>",
    "return elems received by a given peer ASN*"},
-  {{"peer-asn", required_argument, 0, 'J'},
+  {{"not-peer-asn", required_argument, 0, 'J'},
    "<not peer ASN>",
    "exclude elems received by a given peer ASN*"},
   {{"origin-asn", required_argument, 0, 'a'},
