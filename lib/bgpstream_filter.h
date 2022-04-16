@@ -73,6 +73,7 @@ typedef struct struct_bgpstream_filter_mgr_t {
   int aspath_expr_cnt;
   int aspath_expr_alloc_cnt;
   bgpstream_id_set_t *peer_asns;
+  bgpstream_id_set_t *not_peer_asns;
   bgpstream_id_set_t *origin_asns;
   bgpstream_patricia_tree_t *prefixes;
   bgpstream_community_filter_t *communities;

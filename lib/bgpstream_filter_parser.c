@@ -44,6 +44,8 @@ static const char *bgpstream_filter_type_to_string(bgpstream_filter_type_t type)
     return "Prefix (or more specific)";
   case BGPSTREAM_FILTER_TYPE_ELEM_COMMUNITY:
     return "Community";
+  case BGPSTREAM_FILTER_TYPE_ELEM_NOT_PEER_ASN:
+    return "Not Peer ASN";
   case BGPSTREAM_FILTER_TYPE_ELEM_PEER_ASN:
     return "Peer ASN";
   case BGPSTREAM_FILTER_TYPE_ELEM_ORIGIN_ASN:
@@ -89,6 +91,7 @@ static int instantiate_filter(bgpstream_t *bs, bgpstream_filter_item_t *item)
   case BGPSTREAM_FILTER_TYPE_ELEM_PREFIX_EXACT:
   case BGPSTREAM_FILTER_TYPE_ELEM_COMMUNITY:
   case BGPSTREAM_FILTER_TYPE_ELEM_PEER_ASN:
+  case BGPSTREAM_FILTER_TYPE_ELEM_NOT_PEER_ASN:
   case BGPSTREAM_FILTER_TYPE_ELEM_ORIGIN_ASN:
   case BGPSTREAM_FILTER_TYPE_PROJECT:
   case BGPSTREAM_FILTER_TYPE_COLLECTOR:

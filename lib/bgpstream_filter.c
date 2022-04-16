@@ -96,6 +96,15 @@ int bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *this,
     }
     return bsf_id_set_insert(&this->peer_asns, (uint32_t)ul);
 
+  case BGPSTREAM_FILTER_TYPE_ELEM_NOT_PEER_ASN:
+    errno = 0;
+    ul = strtoul(filter_value, &endp, 10);
+    if (errno || ul > UINT32_MAX || *endp) {
+      bgpstream_log(BGPSTREAM_LOG_ERR, "invalid not peer asn '%s'", filter_value);
+      return 0;
+    }
+    return bsf_id_set_insert(&this->not_peer_asns, (uint32_t)ul);
+
   case BGPSTREAM_FILTER_TYPE_ELEM_ORIGIN_ASN:
     errno = 0;
     ul = strtoul(filter_value, &endp, 10);
@@ -415,6 +424,10 @@ void bgpstream_filter_mgr_destroy(bgpstream_filter_mgr_t *this)
   // peer asns
   if (this->peer_asns != NULL) {
     bgpstream_id_set_destroy(this->peer_asns);
+  }
+  // not peer asns
+  if (this->not_peer_asns != NULL) {
+    bgpstream_id_set_destroy(this->not_peer_asns);
   }
   // origin asns
   if (this->origin_asns != NULL) {
