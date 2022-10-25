@@ -620,6 +620,7 @@ static int open_batch(bgpstream_resource_mgr_t *q, struct res_group *gp)
   struct res_group *cur = gp;
   int first = 1;
   uint32_t last_overlap_end = 0;
+  uint32_t original_time = 0;
 
   while (cur != NULL && (first != 0 || last_overlap_end > cur->overlap_start)) {
     // this is included in the batch
@@ -628,10 +629,19 @@ static int open_batch(bgpstream_resource_mgr_t *q, struct res_group *gp)
       return -1;
     }
 
+    if (first == 1) {
+        original_time = cur->time;
+    }
     // update our overlap calculation
     if (first != 0 || cur->overlap_end > last_overlap_end) {
       first = 0;
-      last_overlap_end = cur->overlap_end;
+      // only extend the overlap end if the group starts at or before the
+      // rest of the groups in the batch, otherwise we can end up in a
+      // situation where a collector that is not in sync with the others
+      // can cause our overlap range to extend infinitely
+      if (cur->time <= original_time) {
+          last_overlap_end = cur->overlap_end;
+      }
     }
 
     cur = cur->next;
