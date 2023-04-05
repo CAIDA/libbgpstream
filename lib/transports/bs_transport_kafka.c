@@ -37,6 +37,7 @@
 #define STATE ((state_t *)(transport->state))
 
 #define POLL_TIMEOUT_MSEC 500
+#define SEEK_TIMEOUT_MSEC (10 * 1000)
 
 typedef struct state {
 
@@ -44,6 +45,7 @@ typedef struct state {
   char *topic;
   char *group;
   char *offset;
+  int64_t timestamp_from;
 
   // rdkafka instance
   rd_kafka_t *rk;
@@ -57,12 +59,17 @@ typedef struct state {
   // has a fatal error occured?
   int fatal_error;
 
+  // have we already performed an initial rebalance
+  // (used when seeking to timestamp)
+  int rebalance_done;
+
 } state_t;
 
 static int parse_attrs(bgpstream_transport_t *transport)
 {
   char buf[1024];
-  uint64_t ts;
+  uint64_t u64;
+  const char *tmpstr;
 
   // Topic Name (required)
   if (bgpstream_resource_get_attr(
@@ -81,9 +88,9 @@ static int parse_attrs(bgpstream_transport_t *transport)
   if (bgpstream_resource_get_attr(
         transport->res, BGPSTREAM_RESOURCE_ATTR_KAFKA_CONSUMER_GROUP) == NULL) {
     // generate a "random" group ID
-    ts = epoch_msec();
-    srand(ts);
-    snprintf(buf, sizeof(buf), "bgpstream-%" PRIx64 "-%x", ts, rand());
+    u64 = epoch_msec();
+    srand(u64);
+    snprintf(buf, sizeof(buf), "bgpstream-%" PRIx64 "-%x", u64, rand());
     if ((STATE->group = strdup(buf)) == NULL) {
       return -1;
     }
@@ -112,10 +119,18 @@ static int parse_attrs(bgpstream_transport_t *transport)
     }
   }
 
+  // Timestamp-from (optional)
+  if ((tmpstr = bgpstream_resource_get_attr(
+         transport->res, BGPSTREAM_RESOURCE_ATTR_KAFKA_TIMESTAMP_FROM)) != NULL) {
+    STATE->timestamp_from = strtoll(tmpstr, NULL, 10);
+  }
+
   bgpstream_log(
     BGPSTREAM_LOG_FINE,
-    "Kafka transport: brokers: '%s', topic: '%s', group: '%s', offset: %s",
-    transport->res->url, STATE->topic, STATE->group, STATE->offset);
+    "Kafka transport: brokers: '%s', topic: '%s', group: '%s', offset: %s, "
+    "timestamp-from: %"PRIi64,
+    transport->res->url, STATE->topic, STATE->group, STATE->offset,
+    STATE->timestamp_from);
   return 0;
 }
 
@@ -143,6 +158,118 @@ static void kafka_error_callback(rd_kafka_t *rk, int err, const char *reason,
   // we don't explicitly handle the error so just log it
   bgpstream_log(BGPSTREAM_LOG_ERR, "%s (%d): %s",
                 rd_kafka_err2str(err), err, reason);
+}
+
+#ifdef DEBUG
+static void log_partition_list (const rd_kafka_topic_partition_list_t *partitions)
+{
+  int i;
+  for (i = 0; i < partitions->cnt; i++) {
+    bgpstream_log(BGPSTREAM_LOG_FINE, "  - %s [%" PRId32 "] offset %" PRId64,
+                  partitions->elems[i].topic,
+                  partitions->elems[i].partition, partitions->elems[i].offset);
+  }
+}
+#endif
+
+static void seek_timestamp_offset(bgpstream_transport_t *transport,
+                                 rd_kafka_topic_partition_list_t *partitions)
+{
+#ifdef DEBUG
+  bgpstream_log(BGPSTREAM_LOG_FINE, "Before seeking offsets to timestamps:");
+  log_partition_list(partitions);
+#endif
+  // first, set all the offsets to our timestamp_from value
+  for (int i = 0; i < partitions->cnt; i++) {
+    partitions->elems[i].offset = STATE->timestamp_from;
+  }
+
+  // now ask for those to be replaced with the appropriate offset
+  rd_kafka_resp_err_t ret_err =
+    rd_kafka_offsets_for_times(STATE->rk, partitions, SEEK_TIMEOUT_MSEC);
+
+  switch (ret_err) {
+  case RD_KAFKA_RESP_ERR_NO_ERROR:
+    // all good
+    break;
+
+  case RD_KAFKA_RESP_ERR__TIMED_OUT:
+  case RD_KAFKA_RESP_ERR__INVALID_ARG:
+  case RD_KAFKA_RESP_ERR__UNKNOWN_PARTITION:
+  case RD_KAFKA_RESP_ERR_LEADER_NOT_AVAILABLE:
+  default:
+    // well, at least we tried
+    bgpstream_log(BGPSTREAM_LOG_WARN,
+                  "Failed to seek some topics to initial timestamp: %s",
+                  rd_kafka_err2str(ret_err));
+    break;
+  }
+
+#ifdef DEBUG
+  bgpstream_log(BGPSTREAM_LOG_FINE, "After seeking offsets to timestamps:");
+  log_partition_list(partitions);
+#endif
+}
+
+static void rebalance_cb(rd_kafka_t *rk, rd_kafka_resp_err_t err,
+                         rd_kafka_topic_partition_list_t *partitions,
+                         void *opaque)
+{
+  bgpstream_transport_t *transport = (bgpstream_transport_t*)opaque;
+  rd_kafka_error_t *error = NULL;
+  rd_kafka_resp_err_t ret_err = RD_KAFKA_RESP_ERR_NO_ERROR;
+
+  // TODO: only seek to start time once per topic
+  bgpstream_log(BGPSTREAM_LOG_FINE, "Consumer group rebalanced, assigning offsets ");
+
+  switch (err) {
+  case RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS:
+#ifdef DEBUG
+    bgpstream_log(BGPSTREAM_LOG_FINE, "kafka: assigned (%s):", "TODO");
+    //              rd_kafka_rebalance_protocol(rk));
+    log_partition_list(partitions);
+#endif
+    if (STATE->rebalance_done == 0) {
+      seek_timestamp_offset(transport, partitions);
+    }
+    STATE->rebalance_done = 1;
+    // XXX TODO: fix this for new (as yet unreleased) librdkafka API!!
+    //if (!strcmp(rd_kafka_rebalance_protocol(rk), "COOPERATIVE"))
+    //  error = rd_kafka_incremental_assign(rk, partitions);
+    //else
+    ret_err = rd_kafka_assign(rk, partitions);
+    break;
+
+  case RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS:
+#ifdef DEBUG
+    bgpstream_log(BGPSTREAM_LOG_FINE, "kafka: revoked (%s):", "TODO");
+    //              rd_kafka_rebalance_protocol(rk));
+    log_partition_list(partitions);
+#endif
+
+    // XXX TODO: fix this for new (as yet unreleased) librdkafka API!!
+    //if (!strcmp(rd_kafka_rebalance_protocol(rk), "COOPERATIVE")) {
+    //  error = rd_kafka_incremental_unassign(rk, partitions);
+    //} else {
+      ret_err = rd_kafka_assign(rk, NULL);
+    //}
+    break;
+
+  default:
+    bgpstream_log(BGPSTREAM_LOG_ERR, "kafka: failed: %s",
+                  rd_kafka_err2str(err));
+    rd_kafka_assign(rk, NULL);
+    break;
+  }
+
+  if (error != NULL) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "kafka: incremental assign failure: %s",
+                  rd_kafka_error_string(error));
+    rd_kafka_error_destroy(error);
+  } else if (ret_err) {
+    bgpstream_log(BGPSTREAM_LOG_ERR, "kafka: assign failure: %s",
+                  rd_kafka_err2str(ret_err));
+  }
 }
 
 static int init_kafka_config(bgpstream_transport_t *transport,
@@ -177,6 +304,11 @@ static int init_kafka_config(bgpstream_transport_t *transport,
                         sizeof(errstr)) != RD_KAFKA_CONF_OK) {
     bgpstream_log(BGPSTREAM_LOG_ERR, "Config Error: %s", errstr);
     return -1;
+  }
+
+  // Set up a rebalance callback if we're going to seek to specific offsets
+  if (STATE->timestamp_from != 0) {
+    rd_kafka_conf_set_rebalance_cb(conf, rebalance_cb);
   }
 
   // Enable SO_KEEPALIVE in case we're behind a NAT

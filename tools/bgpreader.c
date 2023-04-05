@@ -286,7 +286,7 @@ static void dump_if_options()
     fprintf(stderr, "   [NONE]\n");
   } else {
     for (i = 0; i < opt_cnt; i++) {
-      fprintf(stderr, "   %-*s", 15, options[i].name);
+      fprintf(stderr, "   %-*s", 16, options[i].name);
       wrap(options[i].description, 18, 18);
       fprintf(stderr, "\n");
     }
