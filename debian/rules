@@ -27,6 +27,9 @@ configure:
 configure-stamp: configure
 	dh_testdir
 
+	git submodule init
+	git submodule update
+
 	dh_autoreconf
 
 	./configure $(CONFFLAGS) \
