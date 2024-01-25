@@ -155,9 +155,14 @@ static struct res_list_elem *res_list_elem_create(bgpstream_resource_t *res)
   return el;
 }
 
+#define MAX_SIMULTANEOUS_GROUP_CONNECTIONS (15)
+
 static int open_res_list(bgpstream_resource_mgr_t *q, struct res_group *gp,
                          struct res_list_elem *el)
 {
+  int outstanding = 0;
+  bgpstream_reader_t *last = NULL;
+
   while (el != NULL) {
     assert(el->res != NULL);
     // it is possible that this is already open (because of re-sorting)
@@ -175,7 +180,28 @@ static int open_res_list(bgpstream_resource_mgr_t *q, struct res_group *gp,
     // update stats
     q->res_open_cnt++;
     gp->res_open_cnt++;
+
+    outstanding ++;
+    /* RIPE RIS doesn't like it if we try to open too many connections at
+     * once, so we have to arbitrarily cap the number of reader threads that
+     * we start before checking for a completed connection.
+     */
+    if (outstanding > MAX_SIMULTANEOUS_GROUP_CONNECTIONS) {
+      if (bgpstream_reader_open_wait(el->reader) != 0) {
+        return -1;
+      }
+      outstanding = 0;
+      last = NULL;
+    } else {
+      last = el->reader;
+    }
     el = el->next;
+  }
+
+  if (outstanding > 0 && last != NULL) {
+    if (bgpstream_reader_open_wait(last) != 0) {
+      return -1;
+    }
   }
 
   return 0;
