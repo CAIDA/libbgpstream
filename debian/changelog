@@ -1,3 +1,17 @@
+libbgpstream2 (2.3.0) unstable; urgency=medium
+
+  * Downgrade parsebgp invalid message log to warning.
+  * Return parsebgp-invalid as corrupted message.
+  * Remove valid-record check from bgpreader.
+  * Add -J option to exclude collector peers by ASN.
+  * Fix "infinite" batch size bug when update timestamps are not in sync.
+  * Remove repeated call to AM_INIT_AUTOMAKE in configure.ac.
+  * Update ax_pthread.m4.
+  * Bring the common submodule up to date.
+  * Resource manager: place limit on number of unconfirmed opened elements.
+
+ -- Brendon Jones <software@caida.org>  Fri, 09 Feb 2024 18:43:11 +1300
+
 libbgpstream2 (2.2.0) unstable; urgency=medium
 
   * Kafka: Kafka transport performance improvements
