@@ -337,8 +337,14 @@ static int handle_end_of_rib(bgpstream_elem_t *elem,
     return 1;
   }
 
-  // IPv6 (or other AFI) unicast EoR: an MP_UNREACH_NLRI attribute carrying zero
-  // withdrawn NLRIs with the unicast SAFI
+  // IPv4/IPv6 unicast EoR: the UPDATE carries exactly one path attribute, an
+  // empty MP_UNREACH_NLRI (zero withdrawn NLRIs) for the IPv4 or IPv6 unicast
+  // address family. Requiring MP_UNREACH to be the *only* attribute (and the
+  // AFI/SAFI to be one we recognise) avoids misclassifying malformed UPDATEs or
+  // non-IPv4/IPv6 families as an EoR.
+  if (update->path_attrs.attrs_cnt != 1) {
+    return 0;
+  }
   parsebgp_bgp_update_path_attr_t *mp_unreach_attr =
     &update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI];
   if (mp_unreach_attr->type != PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI) {
@@ -353,8 +359,11 @@ static int handle_end_of_rib(bgpstream_elem_t *elem,
   elem->type = BGPSTREAM_ELEM_TYPE_END_OF_RIB;
   if (mp_unreach->afi == PARSEBGP_BGP_AFI_IPV6) {
     bgpstream_ipv6_addr_init(&elem->prefix.address, zero_addr);
-  } else {
+  } else if (mp_unreach->afi == PARSEBGP_BGP_AFI_IPV4) {
     bgpstream_ipv4_addr_init(&elem->prefix.address, zero_addr);
+  } else {
+    // some other (unsupported) address family - not an EoR we represent
+    return 0;
   }
   elem->prefix.mask_len = 0;
   return 1;
