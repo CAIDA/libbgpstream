@@ -129,6 +129,7 @@ int bgpstream_elem_type_snprintf(char *buf, size_t len,
     case BGPSTREAM_ELEM_TYPE_ANNOUNCEMENT: ch = 'A'; break;
     case BGPSTREAM_ELEM_TYPE_WITHDRAWAL:   ch = 'W'; break;
     case BGPSTREAM_ELEM_TYPE_PEERSTATE:    ch = 'S'; break;
+    case BGPSTREAM_ELEM_TYPE_END_OF_RIB:   ch = 'E'; break;
     default:
       if (len > 0)
         buf[0] = '\0';
@@ -375,6 +376,30 @@ char *bgpstream_elem_custom_snprintf(char *buf, size_t len,
     written += c;
     buf_p += c;
 
+    /* END OF LINE */
+    break;
+
+  case BGPSTREAM_ELEM_TYPE_END_OF_RIB:
+
+    /* PREFIX (AFI indicator) */
+    if (bgpstream_pfx_snprintf(buf_p, B_REMAIN, &(elem->prefix)) == NULL) {
+      if (errno != ENOSPC)
+        bgpstream_log(BGPSTREAM_LOG_ERR, "Malformed prefix (E)");
+      return NULL;
+    }
+    SEEK_STR_END;
+    ADD_PIPE;
+    /* NEXT HOP (empty) */
+    ADD_PIPE;
+    /* AS PATH (empty) */
+    ADD_PIPE;
+    /* ORIGIN AS (empty) */
+    ADD_PIPE;
+    /* COMMUNITIES (empty) */
+    ADD_PIPE;
+    /* OLD STATE (empty) */
+    ADD_PIPE;
+    /* NEW STATE (empty) */
     /* END OF LINE */
     break;
 

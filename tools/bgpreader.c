@@ -771,6 +771,12 @@ static int print_elem_bgpdump(bgpstream_record_t *record,
     return -1;
   }
 
+  /* Some elem types (e.g. End-of-RIB markers) have no representation in the
+   * bgpdump output format and produce an empty string; skip them. */
+  if (buf[0] == '\0') {
+    return 0;
+  }
+
   printf("%s\n", buf);
   return 0;
 }

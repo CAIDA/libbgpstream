@@ -67,6 +67,16 @@ char *bgpstream_record_elem_bgpdump_snprintf(char *buf, size_t len,
   ssize_t c = 0;      /* < how many chars were written */
   char *buf_p = buf;
 
+  /* The original bgpdump tool does not represent End-of-RIB markers in its
+   * output (an EoR is an empty UPDATE, which it silently drops). To stay
+   * faithful to that format we emit nothing for them. Callers should skip empty
+   * output. */
+  if (elem->type == BGPSTREAM_ELEM_TYPE_END_OF_RIB) {
+    if (len > 0)
+      buf[0] = '\0';
+    return buf;
+  }
+
   /* Record type */
   switch (elem->type) {
   case BGPSTREAM_ELEM_TYPE_RIB:
