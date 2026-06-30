@@ -36,6 +36,7 @@ TESTS = 				\
 	bgpstream-test			\
 	bgpstream-test-filters		\
 	bgpstream-test-rislive		\
+	bgpstream-test-eor		\
 	bgpstream-test-utils-addr	\
 	bgpstream-test-utils-pfx	\
 	bgpstream-test-utils-patricia	\
@@ -46,6 +47,7 @@ check_PROGRAMS = 			\
 	bgpstream-test			\
 	bgpstream-test-filters		\
 	bgpstream-test-rislive		\
+	bgpstream-test-eor		\
 	bgpstream-test-utils-addr	\
 	bgpstream-test-utils-pfx	\
 	bgpstream-test-utils-patricia	\
@@ -56,6 +58,7 @@ check_PROGRAMS = 			\
 EXTRA_DIST = 	sqlite_test.db \
 		csv_test.csv \
 		ris-live-stream.json \
+		eor-stream.json \
 		routeviews.route-views.jinx.ribs.1427846400.bz2 \
 		routeviews.route-views.jinx.updates.1427846400.bz2 \
 		ris.rrc06.updates.1427846400.gz \
@@ -69,6 +72,9 @@ bgpstream_test_filters_LDADD   = $(top_builddir)/lib/libbgpstream.la
 
 bgpstream_test_rislive_SOURCES = bgpstream-test-rislive.c bgpstream_test.h
 bgpstream_test_rislive_LDADD   = $(top_builddir)/lib/libbgpstream.la
+
+bgpstream_test_eor_SOURCES = bgpstream-test-eor.c bgpstream_test.h
+bgpstream_test_eor_LDADD   = $(top_builddir)/lib/libbgpstream.la
 
 bgpstream_test_rpki_SOURCES = bgpstream-test-rpki.c bgpstream-test-rpki.h bgpstream_test.h
 bgpstream_test_rpki_LDADD   = $(top_builddir)/lib/libbgpstream.la
