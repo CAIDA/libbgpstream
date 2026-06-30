@@ -86,6 +86,9 @@ typedef struct bgpstream_parsebgp_upd_state {
   // has the BGP4MP state been prepared
   int ready;
 
+  // has the End-of-RIB check been performed
+  int eor_done;
+
   // how many native (IPv4) withdrawals still to yield
   int withdrawal_v4_cnt;
   int withdrawal_v4_idx;

@@ -682,6 +682,7 @@ void bs_format_rislive_clear_data(bgpstream_format_t *format, void *data)
   bgpstream_elem_clear(rd->elem);
   rd->end_of_elems = 0;
   rd->next_re = 0;
+  rd->msg_type = 0;
   bgpstream_parsebgp_upd_state_reset(&rd->upd_state);
   parsebgp_clear_msg(rd->msg);
 }

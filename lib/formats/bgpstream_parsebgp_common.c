@@ -310,6 +310,48 @@ static int handle_prefix(bgpstream_elem_t *elem,
     }                                                                          \
   } while (0)
 
+// Detect an RFC 4724 End-of-RIB marker and, if found, populate `elem` as an
+// END_OF_RIB elem whose prefix encodes the AFI (0.0.0.0/0 for IPv4 unicast,
+// ::/0 for IPv6 unicast). Returns 1 if an EoR was detected and `elem` was
+// populated, 0 otherwise. The caller guarantees the UPDATE carries no
+// withdrawn/announced NLRIs before calling this.
+static int handle_end_of_rib(bgpstream_elem_t *elem,
+                             parsebgp_bgp_update_t *update)
+{
+  // a 16-byte zeroed source so we can build the 0.0.0.0/0 or ::/0 prefix that
+  // encodes the EoR AFI
+  static const uint8_t zero_addr[16] = { 0 };
+
+  // IPv4 unicast EoR: a completely empty UPDATE (no NLRIs, no path attrs)
+  if (update->path_attrs.attrs_cnt == 0) {
+    elem->type = BGPSTREAM_ELEM_TYPE_END_OF_RIB;
+    bgpstream_ipv4_addr_init(&elem->prefix.address, zero_addr);
+    elem->prefix.mask_len = 0;
+    return 1;
+  }
+
+  // IPv6 (or other AFI) unicast EoR: an MP_UNREACH_NLRI attribute carrying zero
+  // withdrawn NLRIs with the unicast SAFI
+  parsebgp_bgp_update_path_attr_t *mp_unreach_attr =
+    &update->path_attrs.attrs[PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI];
+  if (mp_unreach_attr->type != PARSEBGP_BGP_PATH_ATTR_TYPE_MP_UNREACH_NLRI) {
+    return 0;
+  }
+  parsebgp_bgp_update_mp_unreach_t *mp_unreach = mp_unreach_attr->data.mp_unreach;
+  if (mp_unreach->withdrawn_nlris_cnt != 0 ||
+      mp_unreach->safi != PARSEBGP_BGP_SAFI_UNICAST) {
+    return 0;
+  }
+  elem->type = BGPSTREAM_ELEM_TYPE_END_OF_RIB;
+  if (mp_unreach->afi == PARSEBGP_BGP_AFI_IPV6) {
+    bgpstream_ipv6_addr_init(&elem->prefix.address, zero_addr);
+  } else {
+    bgpstream_ipv4_addr_init(&elem->prefix.address, zero_addr);
+  }
+  elem->prefix.mask_len = 0;
+  return 1;
+}
+
 int bgpstream_parsebgp_process_update(bgpstream_parsebgp_upd_state_t *upd_state,
                                       bgpstream_elem_t *elem,
                                       parsebgp_bgp_msg_t *bgp)
@@ -322,6 +364,11 @@ int bgpstream_parsebgp_process_update(bgpstream_parsebgp_upd_state_t *upd_state,
 
     // first, a sanity check
     if (bgp->type != PARSEBGP_BGP_TYPE_UPDATE) {
+      return 0;
+    }
+
+    // the message claims to be an UPDATE, but carries no UPDATE payload
+    if (update == NULL) {
       return 0;
     }
 
@@ -355,6 +402,16 @@ int bgpstream_parsebgp_process_update(bgpstream_parsebgp_upd_state_t *upd_state,
   // are we at end-of-elems?
   if (upd_state->withdrawal_v4_cnt == 0 && upd_state->withdrawal_v6_cnt == 0 &&
       upd_state->announce_v4_cnt == 0 && upd_state->announce_v6_cnt == 0) {
+
+    // Check if this is an End-of-RIB marker (RFC 4724). We only emit a single
+    // EoR elem per record, so guard with eor_done.
+    if (upd_state->eor_done == 0 && update != NULL) {
+      upd_state->eor_done = 1;
+      if (handle_end_of_rib(elem, update) != 0) {
+        return 1;
+      }
+    }
+
     return 0;
   }
 
