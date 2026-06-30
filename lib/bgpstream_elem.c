@@ -92,6 +92,15 @@ void bgpstream_elem_clear(bgpstream_elem_t *elem)
 {
   bgpstream_as_path_clear(elem->as_path);
   bgpstream_community_set_clear(elem->communities);
+
+  /* reset the remaining type-dependent fields so that a re-used elem does not
+   * leak stale values (e.g. path attributes from a previous elem) */
+  elem->nexthop.version = BGPSTREAM_ADDR_VERSION_UNKNOWN;
+  elem->has_origin = 0;
+  elem->has_med = 0;
+  elem->has_local_pref = 0;
+  elem->atomic_aggregate = 0;
+  elem->aggregator.has_aggregator = 0;
 }
 
 bgpstream_elem_t *bgpstream_elem_copy(bgpstream_elem_t *dst,

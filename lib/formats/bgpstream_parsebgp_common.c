@@ -322,8 +322,15 @@ static int handle_end_of_rib(bgpstream_elem_t *elem,
   // encodes the EoR AFI
   static const uint8_t zero_addr[16] = { 0 };
 
-  // IPv4 unicast EoR: a completely empty UPDATE (no NLRIs, no path attrs)
-  if (update->path_attrs.attrs_cnt == 0) {
+  // IPv4 unicast EoR: a completely empty UPDATE (no withdrawn or announced
+  // NLRIs, and no path attributes). Note that we must check the original NLRI
+  // counts (not the upd_state counters, which have been decremented to zero as
+  // elems were yielded) so that we don't mistake a withdrawal-only UPDATE for
+  // an EoR.
+  if (update->path_attrs.attrs_cnt == 0 &&
+      update->withdrawn_nlris.prefixes_cnt == 0 &&
+      update->announced_nlris.prefixes_cnt == 0) {
+    bgpstream_elem_clear(elem);
     elem->type = BGPSTREAM_ELEM_TYPE_END_OF_RIB;
     bgpstream_ipv4_addr_init(&elem->prefix.address, zero_addr);
     elem->prefix.mask_len = 0;
@@ -342,6 +349,7 @@ static int handle_end_of_rib(bgpstream_elem_t *elem,
       mp_unreach->safi != PARSEBGP_BGP_SAFI_UNICAST) {
     return 0;
   }
+  bgpstream_elem_clear(elem);
   elem->type = BGPSTREAM_ELEM_TYPE_END_OF_RIB;
   if (mp_unreach->afi == PARSEBGP_BGP_AFI_IPV6) {
     bgpstream_ipv6_addr_init(&elem->prefix.address, zero_addr);
