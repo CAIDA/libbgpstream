@@ -155,6 +155,11 @@ static int elem_check_filters(bgpstream_record_t *record,
         !(filter_mgr->elemtype_mask & BGPSTREAM_FILTER_ELEM_TYPE_WITHDRAWAL)) {
       return 0;
     }
+
+    if (elem->type == BGPSTREAM_ELEM_TYPE_END_OF_RIB &&
+        !(filter_mgr->elemtype_mask & BGPSTREAM_FILTER_ELEM_TYPE_END_OF_RIB)) {
+      return 0;
+    }
   }
 
   /* Checking peer ASNs: if the filter is on and the peer asn is not in the

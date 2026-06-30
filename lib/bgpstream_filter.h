@@ -41,6 +41,7 @@
 #define BGPSTREAM_FILTER_ELEM_TYPE_ANNOUNCEMENT 0x2
 #define BGPSTREAM_FILTER_ELEM_TYPE_WITHDRAWAL 0x4
 #define BGPSTREAM_FILTER_ELEM_TYPE_PEERSTATE 0x8
+#define BGPSTREAM_FILTER_ELEM_TYPE_END_OF_RIB 0x10
 
 /* hash table community filter:
  * community -> filter mask (asn only, value only, both) */

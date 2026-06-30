@@ -123,6 +123,8 @@ int bgpstream_filter_mgr_filter_add(bgpstream_filter_mgr_t *this,
       this->elemtype_mask |= (BGPSTREAM_FILTER_ELEM_TYPE_WITHDRAWAL);
     } else if (strcmp(filter_value, "peerstates") == 0) {
       this->elemtype_mask |= (BGPSTREAM_FILTER_ELEM_TYPE_PEERSTATE);
+    } else if (strcmp(filter_value, "endofrib") == 0) {
+      this->elemtype_mask |= (BGPSTREAM_FILTER_ELEM_TYPE_END_OF_RIB);
     } else {
       bgpstream_log(BGPSTREAM_LOG_ERR,
                     "unknown element type '%s'", filter_value);

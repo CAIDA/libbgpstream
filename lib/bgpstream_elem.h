@@ -124,6 +124,9 @@ typedef enum {
   /** Peer state change */
   BGPSTREAM_ELEM_TYPE_PEERSTATE = 4,
 
+  /** End-of-RIB marker (RFC 4724) */
+  BGPSTREAM_ELEM_TYPE_END_OF_RIB = 5,
+
 } bgpstream_elem_type_t;
 
 typedef struct struct_bgpstream_annotations_t {
