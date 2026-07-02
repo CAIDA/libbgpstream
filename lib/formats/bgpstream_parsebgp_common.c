@@ -313,8 +313,7 @@ static int handle_prefix(bgpstream_elem_t *elem,
 // Detect an RFC 4724 End-of-RIB marker and, if found, populate `elem` as an
 // END_OF_RIB elem whose prefix encodes the AFI (0.0.0.0/0 for IPv4 unicast,
 // ::/0 for IPv6 unicast). Returns 1 if an EoR was detected and `elem` was
-// populated, 0 otherwise. The caller guarantees the UPDATE carries no
-// withdrawn/announced NLRIs before calling this.
+// populated, 0 otherwise.
 static int handle_end_of_rib(bgpstream_elem_t *elem,
                              parsebgp_bgp_update_t *update)
 {
@@ -339,10 +338,11 @@ static int handle_end_of_rib(bgpstream_elem_t *elem,
 
   // IPv4/IPv6 unicast EoR: the UPDATE carries exactly one path attribute, an
   // empty MP_UNREACH_NLRI (zero withdrawn NLRIs) for the IPv4 or IPv6 unicast
-  // address family. Requiring MP_UNREACH to be the *only* attribute (and the
-  // AFI/SAFI to be one we recognise) avoids misclassifying malformed UPDATEs or
-  // non-IPv4/IPv6 families as an EoR.
-  if (update->path_attrs.attrs_cnt != 1) {
+  // address family. Per RFC 4724, a valid EoR must not carry any native NLRIs
+  // either, so reject UPDATEs that contained IPv4 withdrawals or announcements.
+  if (update->path_attrs.attrs_cnt != 1 ||
+      update->withdrawn_nlris.prefixes_cnt != 0 ||
+      update->announced_nlris.prefixes_cnt != 0) {
     return 0;
   }
   parsebgp_bgp_update_path_attr_t *mp_unreach_attr =
