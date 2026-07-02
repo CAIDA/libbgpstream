@@ -139,6 +139,7 @@ static int test_eor(void)
                 strcmp(buf, exp->prefixes[e]) == 0);
       e++;
     }
+    CHECK_MSG(exp->desc, "no elem error", erc == 0);
     CHECK_MSG(exp->desc, "elem count", e == exp->n_elems);
     rcount++;
   }
