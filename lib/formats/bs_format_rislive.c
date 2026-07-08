@@ -594,7 +594,7 @@ retry:
     return BGPSTREAM_FORMAT_CORRUPTED_DUMP;
   } else if (STATE->json_string_buffer_len == 0) {
     // end of dump
-    return BGPSTREAM_FORMAT_END_OF_DUMP;
+    return BGPSTREAM_FORMAT_READ_ERROR;
   }
 
   if ((rc = bs_format_process_json_fields(format, record)) != 0) {
