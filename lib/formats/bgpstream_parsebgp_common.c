@@ -780,5 +780,6 @@ void bgpstream_parsebgp_opts_init(parsebgp_opts_t *opts)
 
 #ifdef PARSEBGP_SILENCE_WARNING
   opts->silence_not_implemented = 1;
+  opts->silence_invalid = 1;
 #endif
 }
