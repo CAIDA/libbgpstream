@@ -87,6 +87,9 @@ typedef enum bgpstream_resource_attr_type {
   /** The path toward a local cache */
   BGPSTREAM_RESOURCE_ATTR_CACHE_DIR_PATH = 3,
 
+  /** Kafka message timestamp to begin from */
+  BGPSTREAM_RESOURCE_ATTR_KAFKA_TIMESTAMP_FROM = 4,
+
   /** INTERNAL: The total number of attribute types in use */
   _BGPSTREAM_RESOURCE_ATTR_CNT,
 

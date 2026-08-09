@@ -30,6 +30,7 @@
 #include "config.h"
 #include "utils.h"
 #include <assert.h>
+#include <errno.h>
 #include <inttypes.h>
 #include <string.h>
 #include <wandio.h>
@@ -60,6 +61,7 @@ enum {
   OPTION_TOPIC,          // stored in kafka_topic res attribute
   OPTION_CONSUMER_GROUP, // allow multiple BGPStream instances to load-balance
   OPTION_OFFSET,         // begin, end, committed
+  OPTION_TIMESTAMP_FROM, // msec since epoch (inclusive)
   OPTION_DATA_TYPE,      //
   OPTION_PROJECT,        //
   OPTION_COLLECTOR,      //
@@ -94,6 +96,13 @@ static bgpstream_data_interface_option_t options[] = {
     OPTION_OFFSET,                  // internal ID
     "offset",                       // name
     "initial offset (earliest/latest) (default: " BGPSTREAM_TRANSPORT_KAFKA_DEFAULT_OFFSET ")",
+  },
+  /* Timestamp to start from */
+  {
+    BGPSTREAM_DATA_INTERFACE_KAFKA, // interface ID
+    OPTION_TIMESTAMP_FROM,          // internal ID
+    "timestamp-from",               // name
+    "start from given timestamp (default: unused)",
   },
   /* Data type */
   {
@@ -139,6 +148,9 @@ typedef struct bsdi_kafka_state {
 
   // Offset
   char *offset;
+
+  // Seek to message with timestamp
+  char *timestamp_from;
 
   // explicitly set project name
   char *project;
@@ -198,6 +210,7 @@ int bsdi_kafka_set_option(bsdi_t *di,
                           const char *option_value)
 {
   int found = 0;
+  int32_t i64;
 
   switch (option_type->id) {
   case OPTION_BROKERS:
@@ -237,6 +250,21 @@ int bsdi_kafka_set_option(bsdi_t *di,
     }
     free(STATE->offset);
     if ((STATE->offset = strdup(option_value)) == NULL) {
+      return -1;
+    }
+    break;
+
+  case OPTION_TIMESTAMP_FROM:
+    errno = 0;
+    i64 = strtoll(option_value, NULL, 10);
+    if (i64 == 0 || errno != 0) {
+      fprintf(stderr,
+              "ERROR: Invalid timestamp-from '%s'. Must be msec since epoch\n",
+              option_value);
+      return -1;
+    }
+    free(STATE->timestamp_from);
+    if ((STATE->timestamp_from = strdup(option_value)) == NULL) {
       return -1;
     }
     break;
@@ -294,6 +322,9 @@ void bsdi_kafka_destroy(bsdi_t *di)
   free(STATE->offset);
   STATE->offset = NULL;
 
+  free(STATE->timestamp_from);
+  STATE->timestamp_from = NULL;
+
   free(STATE->project);
   STATE->project = NULL;
 
@@ -340,6 +371,12 @@ int bsdi_kafka_update_resources(bsdi_t *di)
   if (STATE->offset != NULL &&
       bgpstream_resource_set_attr(
         res, BGPSTREAM_RESOURCE_ATTR_KAFKA_INIT_OFFSET, STATE->offset) != 0) {
+    return -1;
+  }
+
+  if (STATE->timestamp_from != NULL &&
+      bgpstream_resource_set_attr(
+        res, BGPSTREAM_RESOURCE_ATTR_KAFKA_TIMESTAMP_FROM, STATE->timestamp_from) != 0) {
     return -1;
   }
 
