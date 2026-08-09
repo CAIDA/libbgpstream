@@ -27,6 +27,7 @@
 #include "bgpstream_test.h"
 
 #include <arpa/inet.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <stdio.h>
@@ -48,6 +49,54 @@
 #define IPV6_TEST_PFX_B_CHILD "2001:48d0:101:501:beef::/96"
 #define IPV6_TEST_64_CNT 65537
 
+// does NOT mask off trailing bits in the resulting prefix
+// copied from bgpstream_str2pfx
+static bgpstream_pfx_t *str2pfx_raw(const char *pfx_str, bgpstream_pfx_t *pfx)
+{
+  if (pfx_str == NULL || pfx == NULL) {
+    return NULL;
+  }
+
+  char pfx_copy[INET6_ADDRSTRLEN + 3];
+  char *endptr = NULL;
+
+  /* strncpy() functions copy at most len characters from src into
+   * dst.  If src is less than len characters long, the remainder of
+   * dst is filled with `\0' characters.  Otherwise, dst is not
+   * terminated. */
+  strncpy(pfx_copy, pfx_str, INET6_ADDRSTRLEN + 3);
+  if (pfx_copy[INET6_ADDRSTRLEN + 3 - 1] != '\0') {
+    return NULL;
+  }
+
+  /* get pointer to ip/mask divisor */
+  char *found = strchr(pfx_copy, '/');
+  if (found == NULL) {
+    return NULL;
+  }
+
+  *found = '\0';
+  /* get the ip address */
+  if (bgpstream_str2addr(pfx_copy, &pfx->address) == NULL) {
+    return NULL;
+  }
+
+  /* get the mask len */
+  errno = 0;
+  unsigned long int r = strtoul(found + 1, &endptr, 10);
+  int ret = errno;
+  if (!(endptr != NULL && *endptr == '\0') || ret != 0 ||
+      (pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV4 && r > 32) ||
+      (pfx->address.version == BGPSTREAM_ADDR_VERSION_IPV6 && r > 128)) {
+    return NULL;
+  }
+  pfx->mask_len = (uint8_t)r;
+  pfx->allowed_matches = BGPSTREAM_PREFIX_MATCH_ANY;
+
+  return pfx;
+}
+
+
 static int test_patricia()
 {
   bgpstream_patricia_tree_t *pt;
@@ -59,7 +108,7 @@ static int test_patricia()
   int count6 = 0;
 
 // Convenience macros
-#define s2p(str) bgpstream_str2pfx((str), &pfx)
+#define s2p(str) str2pfx_raw((str), &pfx)
 #define BPT_insert               bgpstream_patricia_tree_insert
 #define BPT_search_exact         bgpstream_patricia_tree_search_exact
 #define BPT_get_pfx_overlap_info bgpstream_patricia_tree_get_pfx_overlap_info
@@ -167,6 +216,66 @@ static int test_patricia()
     INSERT(4, pfxs[i], i+1);
   }
   bgpstream_patricia_tree_destroy(pt);
+
+  /* Default route */
+  pt = bgpstream_patricia_tree_create(NULL);
+  res = bgpstream_patricia_tree_result_set_create();
+  count4 = 0;
+  INSERT(4, "10.0.0.0/8", ++count4);
+  INSERT(4, "10.1.2.3/32", ++count4);
+  INSERT(4, "0.0.0.0/0", ++count4);
+  INSERT(4, "192.172.226.78/32", ++count4);
+
+  CHECK("Patricia Tree v4 default route - non-default case",
+        (node = BPT_search_exact(pt, s2p("10.1.2.3/32"))) != NULL &&
+        BPT_get_mincovering_pfx(pt, node, res) == 0 &&
+        bgpstream_patricia_tree_result_set_count(res) == 1 &&
+        (node = bgpstream_patricia_tree_result_set_next(res)) != NULL &&
+        (pfxp = BPT_get_pfx(node)) != NULL &&
+        bgpstream_pfx_equal(pfxp, s2p("10.0.0.0/8")) != 0);
+
+  CHECK("Patricia Tree v4 default route - default case",
+        (node = BPT_search_exact(pt, s2p("192.172.226.78/32"))) != NULL &&
+        BPT_get_mincovering_pfx(pt, node, res) == 0 &&
+        bgpstream_patricia_tree_result_set_count(res) == 1 &&
+        (node = bgpstream_patricia_tree_result_set_next(res)) != NULL &&
+        (pfxp = BPT_get_pfx(node)) != NULL &&
+        bgpstream_pfx_equal(pfxp, s2p("0.0.0.0/0")) != 0);
+  bgpstream_patricia_tree_destroy(pt);
+  bgpstream_patricia_tree_result_set_destroy(&res);
+
+  /* Incorrectly masked prefixes */
+  pt = bgpstream_patricia_tree_create(NULL);
+  res = bgpstream_patricia_tree_result_set_create();
+  count4 = 0;
+
+  // simple case: we expect the parent of 10.1.2.3/32 to be 10.1.0.0/16
+  INSERT(4, "10.1.2.3/16", ++count4); // should be masked off during insertion
+  INSERT(4, "10.1.2.3/32", ++count4);
+  // insert a node so that a glue node is created at the root
+  INSERT(4, "192.172.226.77/32", ++count4);
+  // insert our incorrectly masked "default" route, it should replace the root glue node
+  INSERT(4, "192.172.226.78/0", ++count4);
+  INSERT(4, "192.172.226.78/32", ++count4);
+
+  CHECK("Patricia Tree v4 - unmasked prefixes",
+        (node = BPT_search_exact(pt, s2p("10.1.2.3/32"))) != NULL &&
+        BPT_get_mincovering_pfx(pt, node, res) == 0 &&
+        bgpstream_patricia_tree_result_set_count(res) == 1 &&
+        (node = bgpstream_patricia_tree_result_set_next(res)) != NULL &&
+        (pfxp = BPT_get_pfx(node)) != NULL &&
+        bgpstream_pfx_equal(pfxp, s2p("10.1.0.0/16")) != 0);
+
+  CHECK("Patricia Tree v4 - unmasked prefixes; replace glue",
+        (node = BPT_search_exact(pt, s2p("192.172.226.78/32"))) != NULL &&
+        BPT_get_mincovering_pfx(pt, node, res) == 0 &&
+        bgpstream_patricia_tree_result_set_count(res) == 1 &&
+        (node = bgpstream_patricia_tree_result_set_next(res)) != NULL &&
+        (pfxp = BPT_get_pfx(node)) != NULL &&
+        bgpstream_pfx_equal(pfxp, s2p("0.0.0.0/0")) != 0);
+
+  bgpstream_patricia_tree_destroy(pt);
+  bgpstream_patricia_tree_result_set_destroy(&res);
 
   return 0;
 }
